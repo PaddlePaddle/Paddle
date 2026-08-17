@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import inspect
 import unittest
 
 import numpy as np
@@ -144,9 +145,63 @@ class API_TestDygraphBmm(unittest.TestCase):
             x = paddle.to_tensor(input1)
             y = paddle.to_tensor(input2)
             out = paddle.bmm(x, y)
+            legacy_name_out = paddle.bmm(x, y, "my_bmm")
+            legacy_dtype_like_name_out = paddle.bmm(x, y, "float32")
             out_np = out.numpy()
+            legacy_name_out_np = legacy_name_out.numpy()
+            legacy_dtype_like_name_out_np = legacy_dtype_like_name_out.numpy()
         expected_result = np.matmul(input1, input2)
         np.testing.assert_allclose(expected_result, out_np, rtol=1e-05)
+        np.testing.assert_allclose(
+            expected_result, legacy_name_out_np, rtol=1e-05
+        )
+        np.testing.assert_allclose(
+            expected_result, legacy_dtype_like_name_out_np, rtol=1e-05
+        )
+
+    def test_signature(self):
+        parameters = inspect.signature(paddle.bmm).parameters
+
+        self.assertEqual(
+            list(parameters),
+            ['x', 'y', 'out_dtype', 'name', 'out'],
+        )
+        self.assertEqual(
+            parameters['out_dtype'].kind,
+            inspect.Parameter.POSITIONAL_OR_KEYWORD,
+        )
+        self.assertEqual(
+            parameters['name'].kind,
+            inspect.Parameter.POSITIONAL_OR_KEYWORD,
+        )
+        self.assertEqual(
+            parameters['out'].kind,
+            inspect.Parameter.KEYWORD_ONLY,
+        )
+
+    def test_tensor_method(self):
+        x = paddle.randn([2, 3, 4])
+        y = paddle.randn([2, 4, 5])
+        result = x.bmm(y)
+        legacy_name_result = x.bmm(y, 'tensor_bmm')
+        expected = paddle.bmm(x, y)
+
+        self.assertIs(paddle.Tensor.bmm, paddle.bmm)
+        np.testing.assert_allclose(result.numpy(), expected.numpy(), rtol=1e-05)
+        np.testing.assert_allclose(
+            legacy_name_result.numpy(),
+            expected.numpy(),
+            rtol=1e-05,
+        )
+
+    def test_legacy_linalg_entry(self):
+        x = paddle.randn([2, 3, 4])
+        y = paddle.randn([2, 4, 5])
+        out = paddle.tensor.linalg.bmm(x, y)
+        expected = paddle.bmm(x, y)
+
+        self.assertIs(paddle.tensor.linalg.bmm, paddle.bmm)
+        np.testing.assert_allclose(out.numpy(), expected.numpy(), rtol=1e-05)
 
 
 class TestBmmAPIError(unittest.TestCase):
@@ -224,6 +279,252 @@ class TestBmmOutAndParamDecorator(unittest.TestCase):
             np.testing.assert_allclose(
                 grad_y.numpy(), grad_y_std.numpy(), rtol=1e-7
             )
+
+
+class TestBmmOutDtypeDynamicOnly(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static()
+
+    def _skip_if_no_fp16_cuda(self):
+        if not paddle.is_compiled_with_cuda() or paddle.is_compiled_with_rocm():
+            self.skipTest("CUDA is required for bmm out_dtype")
+        if paddle.device.cuda.get_device_capability() < (5, 3):
+            self.skipTest(
+                "FP16 bmm out_dtype requires CUDA compute capability >= 5.3"
+            )
+
+    def _skip_if_no_bf16_cuda(self):
+        if not paddle.is_compiled_with_cuda() or paddle.is_compiled_with_rocm():
+            self.skipTest("CUDA is required for bmm out_dtype")
+        if paddle.device.cuda.get_device_capability()[0] < 8:
+            self.skipTest(
+                "BF16 bmm out_dtype requires CUDA compute capability >= 8"
+            )
+
+    def test_fp16_to_fp32(self):
+        self._skip_if_no_fp16_cuda()
+        x = paddle.randn([2, 3, 4], dtype='float16')
+        y = paddle.randn([2, 4, 5], dtype='float16')
+        result = paddle.bmm(x, y, out_dtype=paddle.float32)
+        string_dtype_result = paddle.bmm(x, y, out_dtype='float32')
+        expected = paddle.bmm(x.astype('float32'), y.astype('float32'))
+        self.assertEqual(result.dtype, paddle.float32)
+        self.assertEqual(string_dtype_result.dtype, paddle.float32)
+        np.testing.assert_allclose(
+            result.numpy(), expected.numpy(), rtol=1e-3, atol=1e-3
+        )
+        np.testing.assert_allclose(
+            string_dtype_result.numpy(),
+            expected.numpy(),
+            rtol=1e-3,
+            atol=1e-3,
+        )
+
+    def test_fp16_to_fp32_positional_args(self):
+        self._skip_if_no_fp16_cuda()
+        x = paddle.randn([2, 3, 4], dtype='float16')
+        y = paddle.randn([2, 4, 5], dtype='float16')
+        result = paddle.bmm(x, y, 'float32', 'bmm_positional')
+        expected = paddle.bmm(x.astype('float32'), y.astype('float32'))
+        self.assertEqual(result.dtype, paddle.float32)
+        np.testing.assert_allclose(
+            result.numpy(), expected.numpy(), rtol=1e-3, atol=1e-3
+        )
+
+    def test_fp16_to_fp32_positional_dtype(self):
+        self._skip_if_no_fp16_cuda()
+        x = paddle.randn([2, 3, 4], dtype='float16')
+        y = paddle.randn([2, 4, 5], dtype='float16')
+        result = paddle.bmm(x, y, paddle.float32)
+        expected = paddle.bmm(x.astype('float32'), y.astype('float32'))
+        self.assertEqual(result.dtype, paddle.float32)
+        np.testing.assert_allclose(
+            result.numpy(), expected.numpy(), rtol=1e-3, atol=1e-3
+        )
+
+    def test_legacy_name_with_out_dtype_keyword(self):
+        self._skip_if_no_fp16_cuda()
+        x = paddle.randn([2, 3, 4], dtype='float16')
+        y = paddle.randn([2, 4, 5], dtype='float16')
+        result = paddle.bmm(x, y, 'bmm_name', out_dtype=paddle.float32)
+        expected = paddle.bmm(x.astype('float32'), y.astype('float32'))
+        self.assertEqual(result.dtype, paddle.float32)
+        np.testing.assert_allclose(
+            result.numpy(), expected.numpy(), rtol=1e-3, atol=1e-3
+        )
+
+    def test_fp16_to_fp32_non_contiguous(self):
+        self._skip_if_no_fp16_cuda()
+        x = paddle.randn([2, 4, 3], dtype='float16').transpose([0, 2, 1])
+        y = paddle.randn([2, 5, 4], dtype='float16').transpose([0, 2, 1])
+        result = paddle.bmm(x, y, out_dtype=paddle.float32)
+        expected = paddle.bmm(x.astype('float32'), y.astype('float32'))
+        self.assertEqual(result.dtype, paddle.float32)
+        np.testing.assert_allclose(
+            result.numpy(), expected.numpy(), rtol=1e-3, atol=1e-3
+        )
+
+    def test_fp16_to_fp32_out(self):
+        self._skip_if_no_fp16_cuda()
+        x = paddle.randn([2, 3, 4], dtype='float16')
+        y = paddle.randn([2, 4, 5], dtype='float16')
+        out = paddle.empty([2, 3, 5], dtype='float32')
+        result = paddle.bmm(x, y, out_dtype=paddle.float32, out=out)
+        expected = paddle.bmm(x.astype('float32'), y.astype('float32'))
+        self.assertEqual(result.dtype, paddle.float32)
+        np.testing.assert_allclose(
+            result.numpy(), expected.numpy(), rtol=1e-3, atol=1e-3
+        )
+        np.testing.assert_allclose(
+            out.numpy(), expected.numpy(), rtol=1e-3, atol=1e-3
+        )
+
+    def test_out_dtype_rejects_mixed_input_dtypes(self):
+        self._skip_if_no_fp16_cuda()
+        x = paddle.randn([2, 3, 4], dtype='float16')
+        y = paddle.randn([2, 4, 5], dtype='bfloat16')
+        with self.assertRaises(TypeError):
+            paddle.bmm(x, y, out_dtype=paddle.float32)
+
+    def test_bf16_to_fp32(self):
+        self._skip_if_no_bf16_cuda()
+        x = paddle.randn([2, 3, 4], dtype='bfloat16')
+        y = paddle.randn([2, 4, 5], dtype='bfloat16')
+        result = paddle.bmm(x, y, out_dtype=paddle.float32)
+        expected = paddle.bmm(x.astype('float32'), y.astype('float32'))
+        self.assertEqual(result.dtype, paddle.float32)
+        np.testing.assert_allclose(
+            result.numpy(), expected.numpy(), rtol=1e-2, atol=1e-2
+        )
+
+    def test_bf16_to_fp32_non_contiguous(self):
+        self._skip_if_no_bf16_cuda()
+        x = paddle.randn([2, 4, 3], dtype='bfloat16').transpose([0, 2, 1])
+        y = paddle.randn([2, 5, 4], dtype='bfloat16').transpose([0, 2, 1])
+        result = paddle.bmm(x, y, out_dtype=paddle.float32)
+        expected = paddle.bmm(x.astype('float32'), y.astype('float32'))
+        self.assertEqual(result.dtype, paddle.float32)
+        np.testing.assert_allclose(
+            result.numpy(), expected.numpy(), rtol=1e-2, atol=1e-2
+        )
+
+    def test_bf16_to_fp32_out(self):
+        self._skip_if_no_bf16_cuda()
+        x = paddle.randn([2, 3, 4], dtype='bfloat16')
+        y = paddle.randn([2, 4, 5], dtype='bfloat16')
+        out = paddle.empty([2, 3, 5], dtype='float32')
+        result = paddle.bmm(x, y, out_dtype=paddle.float32, out=out)
+        expected = paddle.bmm(x.astype('float32'), y.astype('float32'))
+        self.assertEqual(result.dtype, paddle.float32)
+        np.testing.assert_allclose(
+            result.numpy(), expected.numpy(), rtol=1e-2, atol=1e-2
+        )
+        np.testing.assert_allclose(
+            out.numpy(), expected.numpy(), rtol=1e-2, atol=1e-2
+        )
+
+    def test_out_dtype_rejects_unsupported_cases(self):
+        self._skip_if_no_fp16_cuda()
+        x = paddle.to_tensor(np.ones([2, 3, 4], dtype='float32'))
+        y = paddle.to_tensor(np.ones([2, 4, 5], dtype='float32'))
+        with self.assertRaises(TypeError):
+            paddle.bmm(x, y, out_dtype=paddle.float32)
+
+        x_fp16 = paddle.to_tensor(np.ones([2, 3, 4], dtype='float16'))
+        y_fp16 = paddle.to_tensor(np.ones([2, 4, 5], dtype='float16'))
+        with self.assertRaises(TypeError):
+            paddle.bmm(x_fp16, y_fp16, out_dtype=paddle.float16)
+        with self.assertRaises(TypeError):
+            paddle.bmm(x_fp16, y, out_dtype=paddle.float32)
+        with self.assertRaises(ValueError):
+            paddle.bmm(
+                x_fp16.reshape([6, 4]),
+                y_fp16.reshape([8, 5]),
+                out_dtype=paddle.float32,
+            )
+        with self.assertRaises(TypeError):
+            paddle.bmm(
+                x_fp16,
+                y_fp16,
+                out_dtype=paddle.float32,
+                out=paddle.empty([2, 3, 5], dtype='float16'),
+            )
+
+    def test_out_dtype_rejects_unsupported_device(self):
+        x = paddle.to_tensor(
+            np.ones([2, 3, 4], dtype='float16'), place=paddle.CPUPlace()
+        )
+        y = paddle.to_tensor(
+            np.ones([2, 4, 5], dtype='float16'), place=paddle.CPUPlace()
+        )
+        with self.assertRaises(NotImplementedError):
+            paddle.bmm(x, y, out_dtype=paddle.float32)
+
+    @unittest.skipUnless(
+        paddle.is_compiled_with_rocm(),
+        "ROCm is required for the bmm out_dtype backend check",
+    )
+    def test_out_dtype_rejects_rocm(self):
+        place = paddle.CUDAPlace(0)
+        x = paddle.to_tensor(np.ones([2, 3, 4], dtype='float16'), place=place)
+        y = paddle.to_tensor(np.ones([2, 4, 5], dtype='float16'), place=place)
+        with self.assertRaises(NotImplementedError):
+            paddle.bmm(x, y, out_dtype=paddle.float32)
+
+    def test_static_shape_validation(self):
+        paddle.enable_static()
+        try:
+            main = paddle.static.Program()
+            startup = paddle.static.Program()
+            with paddle.static.program_guard(main, startup):
+                x_2d = paddle.static.data('x_2d', [3, 4], dtype='float32')
+                y_2d = paddle.static.data('y_2d', [4, 5], dtype='float32')
+                with self.assertRaises(ValueError):
+                    paddle.bmm(x_2d, y_2d)
+
+                x = paddle.static.data('x', [2, 3, 4], dtype='float32')
+                y_bad_width = paddle.static.data(
+                    'y_bad_width', [2, 5, 6], dtype='float32'
+                )
+                with self.assertRaises(ValueError):
+                    paddle.bmm(x, y_bad_width)
+
+                y_bad_batch = paddle.static.data(
+                    'y_bad_batch', [3, 4, 5], dtype='float32'
+                )
+                with self.assertRaises(ValueError):
+                    paddle.bmm(x, y_bad_batch)
+        finally:
+            paddle.disable_static()
+
+    def test_legacy_static_graph(self):
+        paddle.enable_static()
+        try:
+            with paddle.pir_utils.OldIrGuard():
+                main = paddle.static.Program()
+                startup = paddle.static.Program()
+                with paddle.static.program_guard(main, startup):
+                    x = paddle.static.data('x', [2, 3, 4], dtype='float32')
+                    y = paddle.static.data('y', [2, 4, 5], dtype='float32')
+                    result = paddle.bmm(x, y)
+
+                self.assertEqual(list(result.shape), [2, 3, 5])
+                self.assertEqual(main.global_block().ops[-1].type, 'bmm')
+        finally:
+            paddle.disable_static()
+
+    def test_static_out_dtype_fails_closed(self):
+        paddle.enable_static()
+        try:
+            main = paddle.static.Program()
+            startup = paddle.static.Program()
+            with paddle.static.program_guard(main, startup):
+                x = paddle.static.data('x', [2, 3, 4], dtype='bfloat16')
+                y = paddle.static.data('y', [2, 4, 5], dtype='bfloat16')
+                with self.assertRaises(NotImplementedError):
+                    paddle.bmm(x, y, out_dtype=paddle.float32)
+        finally:
+            paddle.disable_static()
 
 
 if __name__ == "__main__":

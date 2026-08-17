@@ -566,7 +566,7 @@
   traits : paddle::dialect::ForwardOnlyTrait
 
 - op : baddbmm
-  args : (Tensor input, Tensor x, Tensor y, double beta=1.0, double alpha=1.0, DataType out_dtype=DataType::UNDEFINED)
+  args : (Tensor input, Tensor x, Tensor y, double beta=1.0, double alpha=1.0)
   output : Tensor(out)
   infer_meta :
     func : BaddbmmInferMeta
@@ -5967,8 +5967,8 @@
   kernel :
     func : view_dtype
     data_type : input
-  backward : view_dtype_grad
   no_need_buffer : input
+  traits : paddle::dialect::ForwardOnlyTrait
   interfaces : paddle::dialect::InferSymbolicShapeInterface
 
 - op : view_shape

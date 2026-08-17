@@ -15,6 +15,10 @@ cc_test(
   buffered_allocator_test
   SRCS buffered_allocator_test.cc
   DEPS phi common)
+cc_test(
+  memory_history_recorder_test
+  SRCS memory_history_recorder_test.cc
+  DEPS phi common)
 
 if(WITH_GPU)
   nv_test(
@@ -130,8 +134,10 @@ if(WITH_GPU)
   if(WITH_TESTING AND TEST stream_safe_cuda_alloc_test)
     set_tests_properties(
       stream_safe_cuda_alloc_test
-      PROPERTIES ENVIRONMENT "FLAGS_use_stream_safe_cuda_allocator=true; \
-        FLAGS_allocator_strategy=auto_growth")
+      PROPERTIES
+        ENVIRONMENT
+        "FLAGS_use_stream_safe_cuda_allocator=true;FLAGS_allocator_strategy=auto_growth;FLAGS_use_vmm_auto_growth_best_fit_allocator_v2=false"
+    )
   endif()
   if(WITH_TESTING AND TEST cuda_malloc_async_allocator_test)
     set_tests_properties(
@@ -168,8 +174,10 @@ if(WITH_GPU AND WITH_TESTING)
     DEPS phi common)
   set_tests_properties(
     get_base_ptr_test
-    PROPERTIES ENVIRONMENT "FLAGS_allocator_strategy=auto_growth; \
-                                    FLAGS_use_stream_safe_cuda_allocator=true;")
+    PROPERTIES
+      ENVIRONMENT
+      "FLAGS_allocator_strategy=auto_growth;FLAGS_use_stream_safe_cuda_allocator=true;FLAGS_use_vmm_auto_growth_best_fit_allocator_v2=false"
+  )
 endif()
 
 if(WIN32)
@@ -231,6 +239,17 @@ if(WITH_GPU)
     nv_test(
       multi_scale_allocator_test
       SRCS multi_scale_allocator_test.cc
+      DEPS phi common)
+  endif()
+endif()
+
+if(WITH_GPU)
+  if(WIN32)
+    message(STATUS "Skip memory_history_hook_test on Windows")
+  else()
+    nv_test(
+      memory_history_hook_test
+      SRCS memory_history_hook_test.cc
       DEPS phi common)
   endif()
 endif()

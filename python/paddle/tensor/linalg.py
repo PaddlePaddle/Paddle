@@ -23,7 +23,6 @@ import paddle
 from paddle import _C_ops
 from paddle._C_ops import (  # noqa: F401
     bincount,
-    bmm,
     cholesky,
     cross,
     det,
@@ -61,7 +60,10 @@ from ..framework import (
 )
 from .creation import full
 from .manipulation import cast
-from .math import _get_reduce_axis
+from .math import (
+    _get_reduce_axis,
+    bmm,  # noqa: F401
+)
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
