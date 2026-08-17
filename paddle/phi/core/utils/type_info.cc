@@ -82,7 +82,8 @@ template class TypeInfoTraits<phi::DeviceContext, XPUPinnedContext>;
 #endif
 
 #ifdef PADDLE_WITH_DNNL
-template class TypeInfoTraits<phi::StorageProperties, OneDNNStorageProperties>;
+template class PADDLE_API
+    TypeInfoTraits<phi::StorageProperties, OneDNNStorageProperties>;
 #endif
 
 #ifdef PADDLE_WITH_XPU
