@@ -21,6 +21,7 @@ jobs:
     if: ${{ github.repository_owner == 'PaddlePaddle' }}
     runs-on:
       group: APPROVAL
+    timeout-minutes: 5
     continue-on-error: true
     permissions:
       contents: read
