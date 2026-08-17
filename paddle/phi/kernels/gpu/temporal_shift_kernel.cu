@@ -139,8 +139,7 @@ void TemporalShiftKernel(const Context& dev_ctx,
   const uint32_t grid_32 = static_cast<uint32_t>(grid);
   const uint32_t threads_32 = static_cast<uint32_t>(threads);
 
-  // Equals `blockDim.x * gridDim.x`, the per-thread step of the grid-stride
-  // loop in the kernels below.
+  // the calculation of `stride` must in sync with kernel
   const int64_t total_stride = grid * threads;
   if (data_layout == DataLayout::NCHW) {
     // `tid` peaks at `numel - 1 + total_stride`
