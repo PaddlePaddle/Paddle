@@ -19,99 +19,144 @@ const PAGE_SIZE = 100;
 const MAX_FILES = 3000;
 const sleep = (attempt) =>
   new Promise((resolve) => setTimeout(resolve, attempt * 250));
-const isNetworkError = (error) =>
-  error instanceof TypeError ||
-  error?.name === 'AbortError' ||
-  error?.name === 'TimeoutError';
 
-async function githubGet(url, token) {
-  if (!token) throw new Error('GitHub token is required');
+function isRetryable(error) {
+  return (
+    error?.retryable === true ||
+    error instanceof TypeError ||
+    error?.name === 'AbortError' ||
+    error?.name === 'TimeoutError'
+  );
+}
 
-  for (let attempt = 1; attempt <= 3; attempt += 1) {
-    try {
-      const response = await fetch(url, {
-        headers: {
-          Accept: 'application/vnd.github+json',
-          Authorization: `Bearer ${token}`,
-          'User-Agent': 'paddle-skip-skill-action',
-          'X-GitHub-Api-Version': '2022-11-28',
-        },
-        signal: AbortSignal.timeout(10_000),
-      });
-      if (response.status === 429 || response.status >= 500) {
-        if (attempt === 3) {
-          throw new Error('GitHub API is temporarily unavailable');
-        }
+function retry(fn, shouldRetry, attempts) {
+  return async (...args) => {
+    for (let attempt = 1; attempt <= attempts; attempt += 1) {
+      try {
+        return await fn(...args);
+      } catch (error) {
+        if (!shouldRetry(error) || attempt === attempts) throw error;
         await sleep(attempt);
-        continue;
       }
-      if (!response.ok) {
-        throw new Error(`GitHub API request failed (${response.status})`);
-      }
-      return await response.json();
-    } catch (error) {
-      if (isNetworkError(error) && attempt < 3) {
-        await sleep(attempt);
-        continue;
-      }
-      throw error;
     }
+  };
+}
+
+async function getJson(url, token) {
+  if (!token) throw new Error('GitHub token is required');
+  const response = await fetch(url, {
+    headers: {
+      Accept: 'application/vnd.github+json',
+      Authorization: `Bearer ${token}`,
+      'User-Agent': 'paddle-skip-skill-action',
+      'X-GitHub-Api-Version': '2022-11-28',
+    },
+    signal: AbortSignal.timeout(10_000),
+  });
+  if (!response.ok) {
+    throw Object.assign(
+      new Error(`GitHub API request failed (${response.status})`),
+      { retryable: response.status === 429 || response.status >= 500 },
+    );
+  }
+  return response.json();
+}
+
+const githubGet = retry(getJson, isRetryable, 3);
+
+function withAllPages(getPage) {
+  return async (url, token, expected) => {
+    const files = [];
+    const pages = Math.ceil(expected / PAGE_SIZE);
+    for (let page = 1; page <= pages; page += 1) {
+      const batch = await getPage(
+        `${url}?per_page=${PAGE_SIZE}&page=${page}`,
+        token,
+      );
+      const expectedSize = Math.min(PAGE_SIZE, expected - files.length);
+      if (!Array.isArray(batch) || batch.length !== expectedSize) return null;
+      files.push(...batch);
+    }
+    return files;
+  };
+}
+
+const listFiles = withAllPages(githubGet);
+
+function filePaths(file) {
+  if (!file || typeof file.filename !== 'string' || !file.filename) return null;
+  switch (file.status) {
+    case 'renamed':
+      return typeof file.previous_filename === 'string' && file.previous_filename
+        ? [file.filename, file.previous_filename]
+        : null;
+    case 'added':
+    case 'removed':
+    case 'modified':
+    case 'copied':
+    case 'changed':
+    case 'unchanged':
+      return [file.filename];
+    default:
+      return null;
   }
 }
 
 function allPathsIgnored(files, patterns) {
   return files.every((file) => {
-    if (!file || typeof file.filename !== 'string' || !file.filename) {
-      return false;
-    }
-    const paths = [file.filename];
-    if ('previous_filename' in file) {
-      if (typeof file.previous_filename !== 'string' || !file.previous_filename) {
-        return false;
-      }
-      paths.push(file.previous_filename);
-    } else if (file.status === 'renamed') {
-      return false;
-    }
-    return paths.every((filePath) =>
-      patterns.some((pattern) => matchesGlob(filePath, pattern)),
+    const paths = filePaths(file);
+    return (
+      paths !== null &&
+      paths.every((filePath) =>
+        patterns.some((pattern) => matchesGlob(filePath, pattern)),
+      )
     );
   });
+}
+
+function pullContext(event) {
+  const repository = event.repository?.full_name;
+  const parts = typeof repository === 'string' ? repository.split('/') : [];
+  const number = event.pull_request?.number;
+  const head = event.pull_request?.head?.sha;
+  if (
+    parts.length !== 2 ||
+    parts.some((part) => !part) ||
+    !Number.isInteger(number) ||
+    number < 1 ||
+    !/^[0-9a-f]{40}$/i.test(head ?? '')
+  ) {
+    return null;
+  }
+  return { repository: parts.map(encodeURIComponent).join('/'), number, head };
+}
+
+function parsePatterns(value) {
+  return (value ?? '')
+    .split(',')
+    .map((pattern) => pattern.trim())
+    .filter(Boolean);
 }
 
 async function shouldSkip() {
   const event = JSON.parse(readFileSync(process.env.GITHUB_EVENT_PATH, 'utf8'));
   if (process.env.GITHUB_EVENT_NAME !== 'pull_request') return false;
 
-  const repository = event.repository?.full_name;
-  const number = event.pull_request?.number;
-  const eventHead = event.pull_request?.head?.sha;
-  const patterns = (process.env['INPUT_IGNORE-PATHS'] ?? '')
-    .split(',')
-    .map((pattern) => pattern.trim())
-    .filter(Boolean);
-  if (
-    typeof repository !== 'string' ||
-    repository.split('/').length !== 2 ||
-    !Number.isInteger(number) ||
-    !/^[0-9a-f]{40}$/i.test(eventHead ?? '') ||
-    patterns.length === 0
-  ) {
-    return false;
-  }
+  const context = pullContext(event);
+  const patterns = parsePatterns(process.env['INPUT_IGNORE-PATHS']);
+  if (context === null || patterns.length === 0) return false;
 
-  const apiBase = (process.env.GITHUB_API_URL ?? 'https://api.github.com').replace(
+  const api = (process.env.GITHUB_API_URL ?? 'https://api.github.com').replace(
     /\/+$/,
     '',
   );
-  const [owner, repo] = repository.split('/').map(encodeURIComponent);
-  const pullUrl = `${apiBase}/repos/${owner}/${repo}/pulls/${number}`;
+  const pullUrl = `${api}/repos/${context.repository}/pulls/${context.number}`;
   const token = process.env['INPUT_GITHUB-TOKEN'];
   const pull = await githubGet(pullUrl, token);
   const expected = pull.changed_files;
   if (
-    pull.number !== number ||
-    pull.head?.sha !== eventHead ||
+    pull.number !== context.number ||
+    pull.head?.sha !== context.head ||
     !Number.isInteger(expected) ||
     expected < 1 ||
     expected > MAX_FILES
@@ -119,34 +164,22 @@ async function shouldSkip() {
     return false;
   }
 
-  const files = [];
-  const pages = Math.ceil(expected / PAGE_SIZE);
-  for (let page = 1; page <= pages; page += 1) {
-    const batch = await githubGet(
-      `${pullUrl}/files?per_page=${PAGE_SIZE}&page=${page}`,
-      token,
-    );
-    if (
-      !Array.isArray(batch) ||
-      batch.length < 1 ||
-      batch.length > PAGE_SIZE ||
-      (page < pages && batch.length !== PAGE_SIZE)
-    ) {
-      return false;
-    }
-    files.push(...batch);
-  }
-  return files.length === expected && allPathsIgnored(files, patterns);
+  const files = await listFiles(`${pullUrl}/files`, token, expected);
+  return files !== null && allPathsIgnored(files, patterns);
 }
 
-let skip = false;
-try {
-  skip = await shouldSkip();
-} catch {
-  console.warn('::warning::Unable to verify changed files; CI will run.');
+async function run() {
+  let skip = false;
+  try {
+    skip = await shouldSkip();
+  } catch {
+    console.warn('::warning::Unable to verify changed files; CI will run.');
+  }
+  try {
+    appendFileSync(process.env.GITHUB_OUTPUT, `should-skip=${skip}\n`);
+  } catch {
+    console.warn('::warning::Unable to write the skip-skill action output.');
+  }
 }
-try {
-  appendFileSync(process.env.GITHUB_OUTPUT, `should-skip=${skip}\n`);
-} catch {
-  console.warn('::warning::Unable to write the skip-skill action output.');
-}
+
+await run();

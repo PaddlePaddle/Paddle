@@ -41,7 +41,7 @@ jobs:
       contents: read
       pull-requests: read
     outputs:
-      can-skip: ${{ steps.skip-skill.outputs.should-skip || 'false' }}
+      can-skip: ${{ steps.skip-skill.outputs.should-skip }}
     steps:
       - name: Cleanup
         run: |
