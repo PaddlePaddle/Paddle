@@ -41,7 +41,8 @@ RUN bash /build_scripts/install_trt.sh
 # # So install a newer version here.
 RUN bash /build_scripts/install_patchelf.sh
 #RUN apt-get install -y gcc-8 g++-8
-RUN bash /build_scripts/install_gcc.sh gcc82
+RUN bash /build_scripts/install_gcc.sh gcc82 && \
+    /usr/local/gcc-8.2/bin/gcc --version
 RUN cp gcc gcc.bak && cp g++ g++.bak && rm gcc && rm g++
 RUN ln -sf /usr/local/gcc-8.2/bin/gcc /usr/local/bin/gcc
 RUN ln -sf /usr/local/gcc-8.2/bin/g++ /usr/local/bin/g++
@@ -113,7 +114,7 @@ RUN for py in 3.10 3.11 3.12 3.13 3.13t; do \
   python3.13t -m pip install setuptools==69.5.1
 
 
-RUN wget -q https://ftp.gnu.org/gnu/binutils/binutils-2.33.1.tar.gz && \
+RUN wget -q https://xly-devops.bj.bcebos.com/gouzil/binutils-2.33.1.tar.gz && \
     tar -xzf binutils-2.33.1.tar.gz && \
     cd binutils-2.33.1 && \
     ./configure && make -j && make install && cd .. && rm -rf binutils-2.33.1 binutils-2.33.1.tar.gz

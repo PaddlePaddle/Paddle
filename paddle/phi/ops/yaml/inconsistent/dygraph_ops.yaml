@@ -19,6 +19,16 @@
   invoke : add_n_impl(inputs)
   backward : add_n_grad
 
+- op : addmm_out_dtype
+  args : (Tensor input, Tensor x, Tensor y, DataType out_dtype, double beta=1.0, double alpha=1.0)
+  output : Tensor(out)
+  infer_meta :
+    func : AddmmOutDtypeInferMeta
+  kernel :
+    func : addmm_out_dtype
+    data_type : x
+  traits : paddle::dialect::ForwardOnlyTrait
+
 - op : arange
   args : (Tensor start, Tensor end, Tensor step, DataType dtype, Place place={})
   output : Tensor(out)
@@ -42,6 +52,16 @@
     func : assign
   backward : assign_grad
   inplace : (x -> out)
+
+- op : baddbmm_out_dtype
+  args : (Tensor input, Tensor x, Tensor y, DataType out_dtype, double beta=1.0, double alpha=1.0)
+  output : Tensor(out)
+  infer_meta :
+    func : BaddbmmOutDtypeInferMeta
+  kernel :
+    func : baddbmm_out_dtype
+    data_type : x
+  traits : paddle::dialect::ForwardOnlyTrait
 
 - op : batch_norm
   args : (Tensor x, Tensor mean, Tensor variance, Tensor scale, Tensor bias, bool is_test, float momentum, float epsilon, str data_format, bool use_global_stats, bool trainable_statistics)

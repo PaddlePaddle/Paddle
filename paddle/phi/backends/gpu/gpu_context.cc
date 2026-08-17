@@ -254,11 +254,15 @@ struct GPUContext::Impl {
         cudaFree(cublas_workspace_);
         cublas_workspace_ = nullptr;
       }
+#endif
       if (cublaslt_workspace_) {
+#ifdef PADDLE_WITH_HIP
+        hipFree(cublaslt_workspace_);
+#else
         cudaFree(cublaslt_workspace_);
+#endif
         cublaslt_workspace_ = nullptr;
       }
-#endif
       DestroyInternalWorkspace();
       DestroyInternalEigenDevice();
       phi::DestroySparseHandle(sparse_handle_);
@@ -328,11 +332,13 @@ struct GPUContext::Impl {
   // Persistent cublasLt workspace: grow-only, freed in destructor.
   // Returns {ptr, size}. Thread-safe via mutex for grow path.
   std::pair<void*, size_t> GetCublasLtWorkspace(size_t required_size) {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #ifdef PADDLE_WITH_CUDA
     if (compute_capability_ / 10 >= 9) {
       required_size =
           std::max(required_size, GetCublasWorkspaceSize(compute_capability_));
     }
+#endif
     if (cublaslt_workspace_size_ >= required_size && cublaslt_workspace_) {
       return {cublaslt_workspace_, cublaslt_workspace_size_};
     }
@@ -342,9 +348,17 @@ struct GPUContext::Impl {
       return {cublaslt_workspace_, cublaslt_workspace_size_};
     }
     if (cublaslt_workspace_) {
+#ifdef PADDLE_WITH_HIP
+      hipFree(cublaslt_workspace_);
+#else
       cudaFree(cublaslt_workspace_);
+#endif
     }
+#ifdef PADDLE_WITH_HIP
+    PADDLE_ENFORCE_GPU_SUCCESS(hipMalloc(&cublaslt_workspace_, required_size));
+#else
     PADDLE_ENFORCE_GPU_SUCCESS(cudaMalloc(&cublaslt_workspace_, required_size));
+#endif
     cublaslt_workspace_size_ = required_size;
     return {cublaslt_workspace_, cublaslt_workspace_size_};
 #else

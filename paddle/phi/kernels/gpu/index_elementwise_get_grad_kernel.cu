@@ -15,6 +15,9 @@
 #include "paddle/phi/kernels/index_elementwise_get_grad_kernel.h"
 
 #include "paddle/common/enforce.h"
+#ifdef PADDLE_WITH_CUDA
+#include "paddle/phi/backends/gpu/cuda/cuda_device_function.h"
+#endif
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/common/data_type.h"
@@ -181,7 +184,7 @@ __global__ void IndexingBackwardKernel(const int64_t* sorted_indices,
                                        int64_t stride_before,
                                        int64_t outer_dim,
                                        bool accumulate) {
-  using opmath_t = typename MPTypeTrait<scalar_t>::Type;
+  using opmath_t = typename phi::dtype::MPTypeTrait<scalar_t>::Type;
 
   for (int64_t z = blockIdx.z; z < outer_dim; z += gridDim.z) {
     for (int64_t idx =
@@ -245,6 +248,82 @@ __global__ void IndexingBackwardKernel(const int64_t* sorted_indices,
           curr_idx++;
         } while (curr_idx < numel &&
                  sorted_indices[curr_idx] == sorted_indices[curr_idx - 1]);
+      }
+    }
+  }
+}
+
+// The sliceSize == 1 case can reduce all duplicate gradients with one warp.
+// This mirrors the specialized CUDA path used by PyTorch and avoids routing
+// the reduction through the generic feature-unrolled kernel.
+template <typename scalar_t>
+__global__ void IndexingBackwardKernelStride1(const int64_t* sorted_indices,
+                                              const int64_t* indices,
+                                              const scalar_t* grad_output,
+                                              scalar_t* grad_weight,
+                                              int64_t numel,
+                                              int64_t stride,
+                                              int64_t stride_before,
+                                              int64_t outer_dim,
+                                              bool accumulate) {
+  using opmath_t = typename MPTypeTrait<scalar_t>::Type;
+
+  for (int64_t z = blockIdx.z; z < outer_dim; z += gridDim.z) {
+    for (int64_t idx =
+             static_cast<int64_t>(blockIdx.x) * blockDim.y + threadIdx.y;
+         idx < numel;
+         idx += static_cast<int64_t>(gridDim.x) * blockDim.y) {
+      const int64_t current_index = sorted_indices[idx];
+      if (idx != 0 && current_index == sorted_indices[idx - 1]) {
+        continue;
+      }
+
+      int64_t num_duplicates = 1;
+      while (idx + num_duplicates < numel &&
+             sorted_indices[idx + num_duplicates] == current_index) {
+        ++num_duplicates;
+      }
+
+      const int64_t weight_row = current_index * stride + z * stride_before;
+      const opmath_t scale = static_cast<opmath_t>(1.0);
+
+      if (!accumulate) {
+        if (threadIdx.x == 0) {
+          const int64_t grad_row =
+              indices[idx + num_duplicates - 1] * stride + z * numel * stride;
+          grad_weight[weight_row] = static_cast<scalar_t>(
+              static_cast<opmath_t>(grad_output[grad_row]) * scale);
+        }
+      } else {
+        opmath_t gradient = static_cast<opmath_t>(0.0);
+        const int lane = threadIdx.x;
+        const int64_t num_warp_passes = num_duplicates / WARP_SIZE;
+
+        for (int64_t i = 0; i < num_warp_passes; ++i) {
+          const int64_t duplicate_idx = idx + i * WARP_SIZE + lane;
+          const int64_t grad_row =
+              indices[duplicate_idx] * stride + z * numel * stride;
+          gradient += static_cast<opmath_t>(grad_output[grad_row]) * scale;
+        }
+
+        unsigned mask = 0;
+        CREATE_SHFL_MASK(mask, true);
+        for (int offset = WARP_SIZE / 2; offset > 0; offset /= 2) {
+          gradient = gradient +
+                     backends::gpu::CudaShuffleDownSync(mask, gradient, offset);
+        }
+
+        if (lane == 0) {
+          for (int64_t i = num_warp_passes * WARP_SIZE; i < num_duplicates;
+               ++i) {
+            const int64_t duplicate_idx = idx + i;
+            const int64_t grad_row =
+                indices[duplicate_idx] * stride + z * numel * stride;
+            gradient += static_cast<opmath_t>(grad_output[grad_row]) * scale;
+          }
+          grad_weight[weight_row] = static_cast<scalar_t>(
+              static_cast<opmath_t>(grad_weight[weight_row]) + gradient);
+        }
       }
     }
   }
@@ -359,16 +438,29 @@ void IndexPutWithSortKernel(const GPUContext& dev_ctx,
                  static_cast<int64_t>(max_grid_size[2])));
     dim3 block(WARP_SIZE, INDICES_PER_BLOCK);
 
-    IndexingBackwardKernel<T, UNROLL>
-        <<<grid, block, 0, stream>>>(sorted_indices.data<IndexT>(),
-                                     orig_indices.data<IndexT>(),
-                                     expandedValue.data<T>(),
-                                     src_.data<T>(),
-                                     num_indices,
-                                     sliceSize,
-                                     strideBefore,
-                                     nElemBefore,
-                                     true);
+    if (sliceSize == 1) {
+      IndexingBackwardKernelStride1<T>
+          <<<grid, block, 0, stream>>>(sorted_indices.data<IndexT>(),
+                                       orig_indices.data<IndexT>(),
+                                       expandedValue.data<T>(),
+                                       src_.data<T>(),
+                                       num_indices,
+                                       sliceSize,
+                                       strideBefore,
+                                       nElemBefore,
+                                       accumulate);
+    } else {
+      IndexingBackwardKernel<T, UNROLL>
+          <<<grid, block, 0, stream>>>(sorted_indices.data<IndexT>(),
+                                       orig_indices.data<IndexT>(),
+                                       expandedValue.data<T>(),
+                                       src_.data<T>(),
+                                       num_indices,
+                                       sliceSize,
+                                       strideBefore,
+                                       nElemBefore,
+                                       accumulate);
+    }
 
     if (permuted) {
       DenseTensor transposed_src;
