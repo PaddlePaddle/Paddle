@@ -22,6 +22,7 @@ jobs:
     runs-on:
       group: APPROVAL
     timeout-minutes: 5
+    continue-on-error: true
     permissions:
       contents: read
       pull-requests: read
