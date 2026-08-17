@@ -24,11 +24,4 @@ void ViewShapeGradKernel(const Context& dev_ctx,
                          const DenseTensor& out_grad,
                          const std::vector<int64_t>& dims,
                          DenseTensor* input_grad);
-
-template <typename Context>
-void ViewDtypeGradKernel(const Context& dev_ctx,
-                         const DenseTensor& input,
-                         const DenseTensor& out_grad,
-                         DataType dtype,
-                         DenseTensor* input_grad);
 }  // namespace phi
