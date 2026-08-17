@@ -43,7 +43,7 @@
 
 ## 测试质量与验证
 
-- 行为变化应放入最接近变更模块的现有目录，例如 `test/legacy_test/`、`test/cpp/`、`test/auto_parallel/`、`test/collective/`、`test/custom_device/` 或对应 `python/` 测试目录；分布式行为需要代表性的多进程覆盖。
+- 行为变化应放入最接近变更模块的现有目录，例如 `test/legacy_test/`、`test/cpp/`、`test/auto_parallel/`、`test/collective/`、`test/custom_kernel/`、`test/custom_runtime/`、`test/custom_op/` 或对应 `python/` 测试目录；分布式行为需要代表性的多进程覆盖。
 - 算子测试应覆盖前向、反向、PIR/动态图（适用时）、shape/dtype/设备边界和异常路径；测试应验证核心结果而不是只断言不报错。
 - 测试之间不得相互依赖；外部网络、文件系统、随机状态或服务应隔离，不能依赖不稳定的共享状态。
 - 断言不能吞掉异常、使用 `assert True` 或 mock 掉被测函数来制造成功；浮点结果使用合理容差，重复场景优先参数化。

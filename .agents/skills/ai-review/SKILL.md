@@ -25,7 +25,7 @@ description: 使用 PaddlePaddle 仓库规则评审 Pull Request 和全仓库代
 
 ## 适用的已有 Skill
 
-涉及专门领域时同时读取对应 skill 的 references，并以实际源码为准：算子开发使用 `paddle-op-dev`，分布式设计使用 `paddle-design-distributed`，编译使用 `paddle-build`，调试使用 `paddle-debug`、`paddle-design-compiler`、`paddle-design-eager-graph` 或 `paddle-design-phi-kernel`。
+涉及专门领域时同时读取对应 skill 的 references，并以实际源码为准：算子开发使用 `paddle-op-dev`，分布式设计使用 `paddle-design-distributed`，编译使用 `paddle-build`，调试使用 `paddle-debug`、`paddle-design-compiler`、`paddle-eager-graph` 或 `paddle-phi-kernel`。
 
 ## 基本原则
 
