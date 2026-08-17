@@ -205,7 +205,7 @@ void RoiPoolKernel(const Context& dev_ctx,
   int* box_id_data = reinterpret_cast<int*>(box_ptr->ptr());
   const int* stable_box_batch_id =
       backends::gpu::RestoreHostMemIfCapturingCUDAGraph(
-          box_batch_id_data, static_cast<size_t>(box_batch_id_list.numel()));
+          box_batch_id_data, static_cast<size_t>(bytes / sizeof(int)));
   memory_utils::Copy(gplace,
                      box_id_data,
                      CPUPlace(),
