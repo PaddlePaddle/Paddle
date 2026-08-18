@@ -13,7 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <algorithm>
+#include <array>
 
+#include "paddle/common/enforce.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/kernels/funcs/sequence_padding.h"
 
@@ -112,14 +114,29 @@ class PaddingDenseTensorFunctor<GPUContext, T> {
     /* At least use 32 threads to copy sequence_width elements,
      * and at least 8 elements for each thread.
      */
-    size_t block_dim_x =
+    size_t block_dim_x_64 =
         std::min(((((step_width + 7) >> 3) + 31) >> 5) << 5, kBlockSize);
-    size_t block_dim_y = kBlockSize / block_dim_x;
-    dim3 threads(block_dim_x, block_dim_y);
+    size_t block_dim_y_64 = kBlockSize / block_dim_x_64;
+    PADDLE_ENFORCE_LE_UINT32_MAX(block_dim_x_64, "sequence padding block.x");
+    PADDLE_ENFORCE_LE_UINT32_MAX(block_dim_y_64, "sequence padding block.y");
+    dim3 threads(static_cast<uint32_t>(block_dim_x_64),
+                 static_cast<uint32_t>(block_dim_y_64));
 
-    size_t grid_dim_x = (pad_seq_len + block_dim_y - 1) / block_dim_y;
-    size_t grid_dim_y = seq_num;
-    dim3 grid(grid_dim_x, grid_dim_y);
+    size_t grid_dim_x_64 = (pad_seq_len + block_dim_y_64 - 1) / block_dim_y_64;
+    size_t grid_dim_y_64 = seq_num;
+    std::array<unsigned int, 3> max_grid_dim = dev_ctx.GetCUDAMaxGridDimSize();
+    PADDLE_ENFORCE_LE(grid_dim_x_64,
+                      max_grid_dim[0],
+                      common::errors::InvalidArgument(
+                          "sequence padding grid.x exceeds device limit."));
+    PADDLE_ENFORCE_LE(grid_dim_y_64,
+                      max_grid_dim[1],
+                      common::errors::InvalidArgument(
+                          "sequence padding grid.y exceeds device limit."));
+    PADDLE_ENFORCE_LE_UINT32_MAX(grid_dim_x_64, "sequence padding grid.x");
+    PADDLE_ENFORCE_LE_UINT32_MAX(grid_dim_y_64, "sequence padding grid.y");
+    dim3 grid(static_cast<uint32_t>(grid_dim_x_64),
+              static_cast<uint32_t>(grid_dim_y_64));
 
     const T* seq_data = seq_tensor.data<T>();
     T* pad_data = pad_tensor->data<T>();
@@ -172,14 +189,29 @@ class UnpaddingDenseTensorFunctor<GPUContext, T> {
     /* At least use 32 threads to copy sequence_width elements,
      * and at least 8 elements for each thread.
      */
-    size_t block_dim_x =
+    size_t block_dim_x_64 =
         std::min(((((step_width + 7) >> 3) + 31) >> 5) << 5, kBlockSize);
-    size_t block_dim_y = kBlockSize / block_dim_x;
-    dim3 threads(block_dim_x, block_dim_y);
+    size_t block_dim_y_64 = kBlockSize / block_dim_x_64;
+    PADDLE_ENFORCE_LE_UINT32_MAX(block_dim_x_64, "sequence padding block.x");
+    PADDLE_ENFORCE_LE_UINT32_MAX(block_dim_y_64, "sequence padding block.y");
+    dim3 threads(static_cast<uint32_t>(block_dim_x_64),
+                 static_cast<uint32_t>(block_dim_y_64));
 
-    size_t grid_dim_x = (pad_seq_len + block_dim_y - 1) / block_dim_y;
-    size_t grid_dim_y = seq_num;
-    dim3 grid(grid_dim_x, grid_dim_y);
+    size_t grid_dim_x_64 = (pad_seq_len + block_dim_y_64 - 1) / block_dim_y_64;
+    size_t grid_dim_y_64 = seq_num;
+    std::array<unsigned int, 3> max_grid_dim = dev_ctx.GetCUDAMaxGridDimSize();
+    PADDLE_ENFORCE_LE(grid_dim_x_64,
+                      max_grid_dim[0],
+                      common::errors::InvalidArgument(
+                          "sequence padding grid.x exceeds device limit."));
+    PADDLE_ENFORCE_LE(grid_dim_y_64,
+                      max_grid_dim[1],
+                      common::errors::InvalidArgument(
+                          "sequence padding grid.y exceeds device limit."));
+    PADDLE_ENFORCE_LE_UINT32_MAX(grid_dim_x_64, "sequence padding grid.x");
+    PADDLE_ENFORCE_LE_UINT32_MAX(grid_dim_y_64, "sequence padding grid.y");
+    dim3 grid(static_cast<uint32_t>(grid_dim_x_64),
+              static_cast<uint32_t>(grid_dim_y_64));
 
     const T* pad_data = pad_tensor.data<T>();
     T* seq_data = seq_tensor->data<T>();

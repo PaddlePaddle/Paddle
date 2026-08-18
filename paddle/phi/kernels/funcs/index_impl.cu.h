@@ -18,6 +18,7 @@ limitations under the License. */
 #include <thrust/host_vector.h>
 #include <thrust/random.h>
 
+#include "paddle/common/enforce.h"
 #include "paddle/common/hostdevice.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/core/dense_tensor.h"
@@ -67,22 +68,26 @@ void IndexKernel(const KPDevice &dev_ctx, DenseTensor *out, Functor func) {
       phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel, vec_size);
   size_t grid = config.block_per_grid.x;
   size_t block = config.thread_per_block.x;
+  PADDLE_ENFORCE_LE_UINT32_MAX(grid, "index kernel grid.x");
+  PADDLE_ENFORCE_LE_UINT32_MAX(block, "index kernel block.x");
   auto stream = dev_ctx.stream();
 #endif
   size_t main_offset =
       (numel / (vec_size * static_cast<size_t>(block))) * vec_size * block;
+  const uint32_t grid_u32 = static_cast<uint32_t>(grid);
+  const uint32_t block_u32 = static_cast<uint32_t>(block);
   switch (vec_size) {
     case 4:
-      VectorizedIndexKernel<T, Functor, 4>
-          <<<grid, block, 0, stream>>>(out_data, numel, main_offset, func);
+      VectorizedIndexKernel<T, Functor, 4><<<grid_u32, block_u32, 0, stream>>>(
+          out_data, numel, main_offset, func);
       break;
     case 2:
-      VectorizedIndexKernel<T, Functor, 2>
-          <<<grid, block, 0, stream>>>(out_data, numel, main_offset, func);
+      VectorizedIndexKernel<T, Functor, 2><<<grid_u32, block_u32, 0, stream>>>(
+          out_data, numel, main_offset, func);
       break;
     case 1:
-      VectorizedIndexKernel<T, Functor, 1>
-          <<<grid, block, 0, stream>>>(out_data, numel, main_offset, func);
+      VectorizedIndexKernel<T, Functor, 1><<<grid_u32, block_u32, 0, stream>>>(
+          out_data, numel, main_offset, func);
       break;
     default: {
       PADDLE_THROW(common::errors::Unimplemented(

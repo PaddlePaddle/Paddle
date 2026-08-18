@@ -13,6 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include <array>
+
+#include "paddle/common/enforce.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
@@ -286,14 +289,23 @@ void LaunchNarrowDims2TransposeKernel(const GPUContext& d,
                                       const Dim3<IndexType>& input_dims,
                                       T* output) {
   constexpr int NumThreads = tile_long;
+  PADDLE_ENFORCE_LE(total_tiles_count,
+                    d.GetCUDAMaxGridDimSize()[0],
+                    common::errors::InvalidArgument(
+                        "transpose grid.x exceeds device limit."));
+  PADDLE_ENFORCE_LE_UINT32_MAX(total_tiles_count, "transpose grid.x");
   if (tile_size_i <= tile_long && tile_size_j <= tile_short) {
     TilingSwapDim1And2<T, NumThreads, tile_long, tile_short, IndexType>
-        <<<total_tiles_count, NumThreads, 0, d.stream()>>>(
-            input, input_dims, output);
+        <<<static_cast<uint32_t>(total_tiles_count),
+           NumThreads,
+           0,
+           d.stream()>>>(input, input_dims, output);
   } else {
     TilingSwapDim1And2<T, NumThreads, tile_short, tile_long, IndexType>
-        <<<total_tiles_count, NumThreads, 0, d.stream()>>>(
-            input, input_dims, output);
+        <<<static_cast<uint32_t>(total_tiles_count),
+           NumThreads,
+           0,
+           d.stream()>>>(input, input_dims, output);
   }
 }
 
@@ -577,8 +589,32 @@ void SendSwapDim1And2InTranspose(const GPUContext& d,
   if constexpr (std::is_same<T, phi::float8_e4m3fn>::value) {
     if (input_dims[1] >= 128 && input_dims[2] >= 128 &&
         input_dims[1] % 128 == 0 && input_dims[2] % 128 == 0) {
+      const auto max_grid_dim = d.GetCUDAMaxGridDimSize();
+      const int64_t fp8_grid_x = static_cast<int64_t>(input_dims[2]) / 128;
+      const int64_t fp8_grid_y = static_cast<int64_t>(input_dims[1]) / 128;
+      const int64_t fp8_grid_z = static_cast<int64_t>(input_dims[0]);
+      PADDLE_ENFORCE_LE(fp8_grid_x,
+                        max_grid_dim[0],
+                        common::errors::InvalidArgument(
+                            "fp8 transpose grid.x exceeds device limit."));
+      PADDLE_ENFORCE_LE(fp8_grid_y,
+                        max_grid_dim[1],
+                        common::errors::InvalidArgument(
+                            "fp8 transpose grid.y exceeds device limit."));
+      PADDLE_ENFORCE_LE(fp8_grid_z,
+                        max_grid_dim[2],
+                        common::errors::InvalidArgument(
+                            "fp8 transpose grid.z exceeds device limit."));
+      PADDLE_ENFORCE_LE_UINT32_MAX(input_dims[0], "fp8 transpose batch");
+      PADDLE_ENFORCE_LE_UINT32_MAX(input_dims[1], "fp8 transpose M");
+      PADDLE_ENFORCE_LE_UINT32_MAX(input_dims[2], "fp8 transpose N");
       dispatch_fp8_fast_transpose_kernel<T, IndexType>(
-          d, input, input_dims[0], input_dims[1], input_dims[2], output);
+          d,
+          input,
+          static_cast<uint32_t>(input_dims[0]),
+          static_cast<uint32_t>(input_dims[1]),
+          static_cast<uint32_t>(input_dims[2]),
+          output);
       return;
     }
   }
@@ -606,9 +642,16 @@ void SendSwapDim1And2InTranspose(const GPUContext& d,
     total_tiles_count *= input_dims_aligned[1];
     total_tiles_count *= input_dims_aligned[2];
 
+    PADDLE_ENFORCE_LE(total_tiles_count,
+                      d.GetCUDAMaxGridDimSize()[0],
+                      common::errors::InvalidArgument(
+                          "transpose grid.x exceeds device limit."));
+    PADDLE_ENFORCE_LE_UINT32_MAX(total_tiles_count, "transpose grid.x");
     TilingSwapDim1And2<T, kNumThreads, kTileSize, kTileSize, IndexType>
-        <<<total_tiles_count, kNumThreads, 0, d.stream()>>>(
-            input, input_dims, output);
+        <<<static_cast<uint32_t>(total_tiles_count),
+           kNumThreads,
+           0,
+           d.stream()>>>(input, input_dims, output);
 
   } else if (narrow_tile) {
     // If input shape is like Rect, such as 2X100, use Narrow tile size.
@@ -1313,15 +1356,34 @@ struct TransposeLauncher {
                   const T* src,
                   T* dst) {
     constexpr int ReadSize = sizeof(T) > sizeof(float) ? 1 : VecSize;
-    const IndexT cols = dims[rank - 1] / VecSize;
+    const IndexT cols = static_cast<IndexT>(dims[rank - 1] / VecSize);
     const IndexT n_cols_tile = GET_TILE_SIZE(cols, kTileSize);
 
     if (perm_type == PermuteType::kGeneralTranspose) {
-      IndexT chs = (rank == 2) ? 1 : dims[0];
-      IndexT rows = dims[rank - 2];
+      IndexT chs = (rank == 2) ? 1 : static_cast<IndexT>(dims[0]);
+      IndexT rows = static_cast<IndexT>(dims[rank - 2]);
       IndexT n_rows_tile = FindRowTiles(
           chs, rows, num_rows_tile, n_cols_tile, dev_ctx.GetSMCount());
-      dim3 blocks(n_cols_tile, n_rows_tile, chs);
+      std::array<unsigned int, 3> max_grid_dim =
+          dev_ctx.GetCUDAMaxGridDimSize();
+      PADDLE_ENFORCE_LE(n_cols_tile,
+                        max_grid_dim[0],
+                        common::errors::InvalidArgument(
+                            "transpose grid.x exceeds device limit."));
+      PADDLE_ENFORCE_LE(n_rows_tile,
+                        max_grid_dim[1],
+                        common::errors::InvalidArgument(
+                            "transpose grid.y exceeds device limit."));
+      PADDLE_ENFORCE_LE(chs,
+                        max_grid_dim[2],
+                        common::errors::InvalidArgument(
+                            "transpose grid.z exceeds device limit."));
+      PADDLE_ENFORCE_LE_UINT32_MAX(n_cols_tile, "transpose grid.x");
+      PADDLE_ENFORCE_LE_UINT32_MAX(n_rows_tile, "transpose grid.y");
+      PADDLE_ENFORCE_LE_UINT32_MAX(chs, "transpose grid.z");
+      dim3 blocks(static_cast<uint32_t>(n_cols_tile),
+                  static_cast<uint32_t>(n_rows_tile),
+                  static_cast<uint32_t>(chs));
       dim3 threads(kTileSize, kBlockRows, 1);
 
       if (is_vec_write) {
@@ -1334,11 +1396,30 @@ struct TransposeLauncher {
                 src, dst, n_rows_tile - 1, n_cols_tile - 1, cols, rows);
       }
     } else {
-      IndexT rows = dims[0];
-      IndexT chs = dims[rank - 2];
+      IndexT rows = static_cast<IndexT>(dims[0]);
+      IndexT chs = static_cast<IndexT>(dims[rank - 2]);
       IndexT n_rows_tile = FindRowTiles(
           chs, rows, num_rows_tile, n_cols_tile, dev_ctx.GetSMCount());
-      dim3 blocks(n_cols_tile, n_rows_tile, chs);
+      std::array<unsigned int, 3> max_grid_dim =
+          dev_ctx.GetCUDAMaxGridDimSize();
+      PADDLE_ENFORCE_LE(n_cols_tile,
+                        max_grid_dim[0],
+                        common::errors::InvalidArgument(
+                            "transpose grid.x exceeds device limit."));
+      PADDLE_ENFORCE_LE(n_rows_tile,
+                        max_grid_dim[1],
+                        common::errors::InvalidArgument(
+                            "transpose grid.y exceeds device limit."));
+      PADDLE_ENFORCE_LE(chs,
+                        max_grid_dim[2],
+                        common::errors::InvalidArgument(
+                            "transpose grid.z exceeds device limit."));
+      PADDLE_ENFORCE_LE_UINT32_MAX(n_cols_tile, "transpose grid.x");
+      PADDLE_ENFORCE_LE_UINT32_MAX(n_rows_tile, "transpose grid.y");
+      PADDLE_ENFORCE_LE_UINT32_MAX(chs, "transpose grid.z");
+      dim3 blocks(static_cast<uint32_t>(n_cols_tile),
+                  static_cast<uint32_t>(n_rows_tile),
+                  static_cast<uint32_t>(chs));
       dim3 threads(kTileSize, kBlockRows, 1);
 
       if (is_vec_write) {

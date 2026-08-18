@@ -13,8 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <algorithm>
+#include <array>
 #include <vector>
 
+#include "paddle/common/enforce.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
@@ -444,7 +446,19 @@ class Im2ColFunctor<funcs::ColFormat::OCF, DeviceContext, T> {
     dim3 threads(block_dim_x,
                  block_dim_y,
                  std::min(block_dim_z, static_cast<int>(im_channels)));
-    dim3 grid(col_width, col_height);
+    std::array<unsigned int, 3> max_grid_dim = dev_ctx.GetCUDAMaxGridDimSize();
+    PADDLE_ENFORCE_LE(
+        col_width,
+        max_grid_dim[0],
+        common::errors::InvalidArgument("im2col grid.x exceeds device limit."));
+    PADDLE_ENFORCE_LE(
+        col_height,
+        max_grid_dim[1],
+        common::errors::InvalidArgument("im2col grid.y exceeds device limit."));
+    PADDLE_ENFORCE_LE_UINT32_MAX(col_width, "im2col grid.x");
+    PADDLE_ENFORCE_LE_UINT32_MAX(col_height, "im2col grid.y");
+    dim3 grid(static_cast<uint32_t>(col_width),
+              static_cast<uint32_t>(col_height));
     im2colOCF<T><<<grid, threads, 0, dev_ctx.stream()>>>(im.data<T>(),
                                                          im_channels,
                                                          im_height,
@@ -573,7 +587,19 @@ class Col2ImFunctor<funcs::ColFormat::OCF, DeviceContext, T> {
     dim3 threads(block_dim_x,
                  block_dim_y,
                  std::min(block_dim_z, static_cast<int>(im_channels)));
-    dim3 grid(col_width, col_height);
+    std::array<unsigned int, 3> max_grid_dim = dev_ctx.GetCUDAMaxGridDimSize();
+    PADDLE_ENFORCE_LE(
+        col_width,
+        max_grid_dim[0],
+        common::errors::InvalidArgument("col2im grid.x exceeds device limit."));
+    PADDLE_ENFORCE_LE(
+        col_height,
+        max_grid_dim[1],
+        common::errors::InvalidArgument("col2im grid.y exceeds device limit."));
+    PADDLE_ENFORCE_LE_UINT32_MAX(col_width, "col2im grid.x");
+    PADDLE_ENFORCE_LE_UINT32_MAX(col_height, "col2im grid.y");
+    dim3 grid(static_cast<uint32_t>(col_width),
+              static_cast<uint32_t>(col_height));
     col2imOCF<T><<<grid, threads, 0, dev_ctx.stream()>>>(col.data<T>(),
                                                          im_channels,
                                                          im_height,

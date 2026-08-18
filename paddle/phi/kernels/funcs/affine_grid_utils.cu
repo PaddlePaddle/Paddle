@@ -16,6 +16,7 @@
 
 #include "paddle/phi/kernels/funcs/affine_grid_utils.h"
 
+#include "paddle/common/enforce.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
@@ -164,8 +165,18 @@ void CreateBaseGridKernel_4D(const Context& dev_ctx,
                              bool align_corners) {
   int64_t total_elements = n * h * w;
   auto stream = dev_ctx.stream();
-  int64_t block_size = 512;
-  int64_t grid_size = (total_elements + block_size - 1) / block_size;
+  constexpr uint32_t block_size = 512;
+  int64_t grid_size_64 = (total_elements + block_size - 1) / block_size;
+  int64_t max_grid_dim = dev_ctx.GetCUDAMaxGridDimSize()[0];
+  PADDLE_ENFORCE_LE(
+      grid_size_64,
+      max_grid_dim,
+      common::errors::InvalidArgument(
+          "base grid 4D grid.x must be less than or equal to %d, but got %d.",
+          max_grid_dim,
+          grid_size_64));
+  PADDLE_ENFORCE_LE_UINT32_MAX(grid_size_64, "base grid 4D grid.x");
+  uint32_t grid_size = static_cast<uint32_t>(grid_size_64);
   CreateBaseGridKernel_4D_Kernel<T><<<grid_size, block_size, 0, stream>>>(
       base_grid_data, n, h, w, align_corners);
 }
@@ -180,8 +191,18 @@ void CreateBaseGridKernel_5D(const Context& dev_ctx,
                              bool align_corners) {
   int64_t total_elements = n * d * h * w;
   auto stream = dev_ctx.stream();
-  int64_t block_size = 512;
-  int64_t grid_size = (total_elements + block_size - 1) / block_size;
+  constexpr uint32_t block_size = 512;
+  int64_t grid_size_64 = (total_elements + block_size - 1) / block_size;
+  int64_t max_grid_dim = dev_ctx.GetCUDAMaxGridDimSize()[0];
+  PADDLE_ENFORCE_LE(
+      grid_size_64,
+      max_grid_dim,
+      common::errors::InvalidArgument(
+          "base grid 5D grid.x must be less than or equal to %d, but got %d.",
+          max_grid_dim,
+          grid_size_64));
+  PADDLE_ENFORCE_LE_UINT32_MAX(grid_size_64, "base grid 5D grid.x");
+  uint32_t grid_size = static_cast<uint32_t>(grid_size_64);
   CreateBaseGridKernel_5D_Kernel<T><<<grid_size, block_size, 0, stream>>>(
       base_grid_data, n, d, h, w, align_corners);
 }

@@ -31,6 +31,7 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 
+#include "paddle/common/enforce.h"
 #include "paddle/phi/kernels/argsort_kernel.h"
 #include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/take_along_axis_kernel.h"
@@ -1834,10 +1835,12 @@ void launch(TensorInfo<const T, IndexType> input,
   assert(ok);
   (void)ok;
   int warp_size = TOPK_WARP_SIZE;
-  dim3 block(
+  int64_t block_64 =
       std::min(topk_ceil_div((int64_t)inputSliceSize, (int64_t)warp_size) *
                    (int64_t)warp_size,
-               (int64_t)1024));
+               (int64_t)1024);
+  PADDLE_ENFORCE_LE_UINT32_MAX(block_64, "topk block.x");
+  dim3 block(static_cast<uint32_t>(block_64));
   gatherTopK<T, IndexType, Dim, /*WithKthValues=*/false>
       <<<grid, block, 0, stream>>>(input,
                                    inputSliceSize,
@@ -2257,9 +2260,15 @@ void launch(TensorInfo<const T, IndexType> input,
   int items_per_block = items_per_thread * BLOCK_THREADS;
 
   using Bitwise = typename TopKTypeConfig<T>::RadixType;
-  uint32_t blocks_per_slice =
-      topk_ceil_div((int64_t)inputSliceSize, (int64_t)items_per_block);
-  uint32_t num_blocks = numInputSlices * blocks_per_slice;
+  int64_t blocks_per_slice_64 =
+      topk_ceil_div(static_cast<int64_t>(inputSliceSize),
+                    static_cast<int64_t>(items_per_block));
+  PADDLE_ENFORCE_LE_UINT32_MAX(blocks_per_slice_64, "topk blocks_per_slice");
+  uint32_t blocks_per_slice = static_cast<uint32_t>(blocks_per_slice_64);
+  int64_t num_blocks_64 = static_cast<int64_t>(numInputSlices) *
+                          static_cast<int64_t>(blocks_per_slice);
+  PADDLE_ENFORCE_LE_UINT32_MAX(num_blocks_64, "topk num blocks");
+  uint32_t num_blocks = static_cast<uint32_t>(num_blocks_64);
 
   // Temporary storage allocation using phi::memory_utils
   auto phi_stream = phi::Stream(reinterpret_cast<phi::StreamId>(stream));
@@ -2280,38 +2289,50 @@ void launch(TensorInfo<const T, IndexType> input,
   auto ks_to_find_buffer = phi::memory_utils::Alloc(
       place, 2 * numInputSlices * sizeof(uint32_t), phi_stream);
   uint32_t* ks_to_find = reinterpret_cast<uint32_t*>(ks_to_find_buffer->ptr());
-  uint32_t k_to_find =
-      largest ? inputSliceSize - outputSliceSize + 1 : outputSliceSize;
+  uint64_t k_to_find_64 = static_cast<uint64_t>(
+      largest ? inputSliceSize - outputSliceSize + 1 : outputSliceSize);
+  PADDLE_ENFORCE_LE_UINT32_MAX(k_to_find_64, "topk k_to_find");
+  uint32_t k_to_find = static_cast<uint32_t>(k_to_find_64);
+  int64_t fill_grid_64 =
+      std::min(((int64_t)numInputSlices + 511) / 512, (int64_t)1073741824);
+  PADDLE_ENFORCE_LE(
+      fill_grid_64,
+      phi::backends::gpu::GetDeviceProperties(device_id).maxGridSize[0],
+      common::errors::InvalidArgument(
+          "topk fill grid.x exceeds device limit."));
+  PADDLE_ENFORCE_LE_UINT32_MAX(fill_grid_64, "topk fill grid.x");
+  uint32_t fill_grid = static_cast<uint32_t>(fill_grid_64);
   fill<uint32_t>
-      <<<std::min(((int64_t)numInputSlices + 511) / 512, (int64_t)1073741824),
-         512,
-         0,
-         stream>>>(ks_to_find, k_to_find, numInputSlices);
+      <<<fill_grid, 512, 0, stream>>>(ks_to_find, k_to_find, numInputSlices);
 
   auto desired_buffer = phi::memory_utils::Alloc(
       place, 2 * numInputSlices * sizeof(Bitwise), phi_stream);
   Bitwise* desired = reinterpret_cast<Bitwise*>(desired_buffer->ptr());
 
-  auto counts_buffer = phi::memory_utils::Alloc(
-      place, num_blocks * RADIX_DIGITS * sizeof(int16_t), phi_stream);
+  size_t counts_bytes =
+      static_cast<size_t>(num_blocks) * RADIX_DIGITS * sizeof(int16_t);
+  auto counts_buffer =
+      phi::memory_utils::Alloc(place, counts_bytes, phi_stream);
   int16_t* counts = reinterpret_cast<int16_t*>(counts_buffer->ptr());
   static_assert(MAX_ITEMS_PER_THREAD * BLOCK_THREADS <
                     std::numeric_limits<int16_t>::max(),
                 "blockwise counter too large");
 
 #if TOPK_CUB_SUPPORTS_SCAN_BY_KEY()
-  auto withinKCounts_buffer = phi::memory_utils::Alloc(
-      place, num_blocks * sizeof(uint32_t), phi_stream);
+  size_t block_counts_bytes =
+      static_cast<size_t>(num_blocks) * sizeof(uint32_t);
+  auto withinKCounts_buffer =
+      phi::memory_utils::Alloc(place, block_counts_bytes, phi_stream);
   uint32_t* withinKCounts =
       reinterpret_cast<uint32_t*>(withinKCounts_buffer->ptr());
 #ifdef PADDLE_WITH_HIP
-  hipMemsetAsync(withinKCounts, 0, num_blocks * sizeof(uint32_t), stream);
+  hipMemsetAsync(withinKCounts, 0, block_counts_bytes, stream);
 #else
-  cudaMemsetAsync(withinKCounts, 0, num_blocks * sizeof(uint32_t), stream);
+  cudaMemsetAsync(withinKCounts, 0, block_counts_bytes, stream);
 #endif
 
-  auto kthCounts_buffer = phi::memory_utils::Alloc(
-      place, num_blocks * sizeof(uint32_t), phi_stream);
+  auto kthCounts_buffer =
+      phi::memory_utils::Alloc(place, block_counts_bytes, phi_stream);
   uint32_t* kthCounts = reinterpret_cast<uint32_t*>(kthCounts_buffer->ptr());
 #else
   uint32_t* withinKCounts = nullptr;
@@ -2322,6 +2343,19 @@ void launch(TensorInfo<const T, IndexType> input,
   bool ok = getGridFromTiles(num_blocks, &grid);
   assert(ok);
   (void)ok;
+  const auto& device_prop = phi::backends::gpu::GetDeviceProperties(device_id);
+  PADDLE_ENFORCE_LE(
+      grid.x,
+      device_prop.maxGridSize[0],
+      common::errors::InvalidArgument("topk grid.x exceeds device limit."));
+  PADDLE_ENFORCE_LE(
+      grid.y,
+      device_prop.maxGridSize[1],
+      common::errors::InvalidArgument("topk grid.y exceeds device limit."));
+  PADDLE_ENFORCE_LE(
+      grid.z,
+      device_prop.maxGridSize[2],
+      common::errors::InvalidArgument("topk grid.z exceeds device limit."));
   dim3 block(BLOCK_THREADS);
 
   uint32_t* ks_to_find_in = ks_to_find;
@@ -2375,11 +2409,17 @@ void launch(TensorInfo<const T, IndexType> input,
   desired = desired_in;
 
 #if TOPK_CUB_SUPPORTS_SCAN_BY_KEY()
-  computeBlockwiseKthCounts<Bitwise>
-      <<<std::min(((int64_t)numInputSlices + 255) / 256, (int64_t)1073741824),
-         256,
-         0,
-         stream>>>(desired, counts, num_blocks, blocks_per_slice, kthCounts);
+  int64_t kth_counts_grid_64 =
+      std::min(((int64_t)numInputSlices + 255) / 256, (int64_t)1073741824);
+  PADDLE_ENFORCE_LE(
+      kth_counts_grid_64,
+      phi::backends::gpu::GetDeviceProperties(device_id).maxGridSize[0],
+      common::errors::InvalidArgument(
+          "topk kth counts grid.x exceeds device limit."));
+  PADDLE_ENFORCE_LE_UINT32_MAX(kth_counts_grid_64, "topk kth counts grid.x");
+  uint32_t kth_counts_grid = static_cast<uint32_t>(kth_counts_grid_64);
+  computeBlockwiseKthCounts<Bitwise><<<kth_counts_grid, 256, 0, stream>>>(
+      desired, counts, num_blocks, blocks_per_slice, kthCounts);
 
   // Use cub::DeviceScan::InclusiveSumByKey
   using counting_iter_t = cub::CountingInputIterator<uint32_t>;
@@ -2458,10 +2498,28 @@ void launch(TensorInfo<const T, IndexType> input,
     assert(ok2);
     (void)ok2;
     int warp_size = TOPK_WARP_SIZE;
-    dim3 block2(
+    int64_t block_64 =
         std::min(topk_ceil_div((int64_t)inputSliceSize, (int64_t)warp_size) *
                      (int64_t)warp_size,
-                 (int64_t)1024));
+                 (int64_t)1024);
+    PADDLE_ENFORCE_LE(grid2.x,
+                      device_prop.maxGridSize[0],
+                      common::errors::InvalidArgument(
+                          "topk fallback grid.x exceeds device limit."));
+    PADDLE_ENFORCE_LE(grid2.y,
+                      device_prop.maxGridSize[1],
+                      common::errors::InvalidArgument(
+                          "topk fallback grid.y exceeds device limit."));
+    PADDLE_ENFORCE_LE(grid2.z,
+                      device_prop.maxGridSize[2],
+                      common::errors::InvalidArgument(
+                          "topk fallback grid.z exceeds device limit."));
+    PADDLE_ENFORCE_LE(block_64,
+                      device_prop.maxThreadsPerBlock,
+                      common::errors::InvalidArgument(
+                          "topk fallback block.x exceeds device limit."));
+    PADDLE_ENFORCE_LE_UINT32_MAX(block_64, "topk fallback block.x");
+    dim3 block2(static_cast<uint32_t>(block_64));
     sbtopk::gatherTopK<T, IndexType, Dim, /*WithKthValues=*/true>
         <<<grid2, block2, 0, stream>>>(input,
                                        inputSliceSize,

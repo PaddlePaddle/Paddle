@@ -25,6 +25,7 @@
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
 
+#include "paddle/common/enforce.h"
 #include "paddle/common/flags.h"
 
 COMMON_DECLARE_bool(use_accuracy_compatible_kernel);
@@ -208,9 +209,13 @@ static void InclusiveScanInnerDim(const T *x,
   constexpr size_t kThreadNumX = 16;
   constexpr size_t kThreadNumY = 32;
 
-  size_t grid_dim = (outer_dim + kThreadNumY - 1) / kThreadNumY;
-  grid_dim = std::min<size_t>(grid_dim, dev_ctx.GetCUDAMaxGridDimSize()[0]);
-  dim3 thread_dims(kThreadNumX, kThreadNumY);
+  size_t grid_dim_64 = (outer_dim + kThreadNumY - 1) / kThreadNumY;
+  grid_dim_64 =
+      std::min<size_t>(grid_dim_64, dev_ctx.GetCUDAMaxGridDimSize()[0]);
+  PADDLE_ENFORCE_LE_UINT32_MAX(grid_dim_64, "inclusive scan grid.x");
+  uint32_t grid_dim = static_cast<uint32_t>(grid_dim_64);
+  dim3 thread_dims(static_cast<uint32_t>(kThreadNumX),
+                   static_cast<uint32_t>(kThreadNumY));
   if (reverse) {
     InclusiveScanInnerDimCUDAKernel<T,
                                     BinaryOp,
@@ -375,6 +380,8 @@ void InclusiveScanInnerDimSklansky(const T *src,
                                    const GPUContext &dev_ctx) {
   int64_t num_rows = outer_dim;
   int64_t row_size = inner_dim;
+  PADDLE_ENFORCE_LE_UINT32_MAX(num_rows, "inclusive scan num rows");
+  PADDLE_ENFORCE_LE_UINT32_MAX(row_size, "inclusive scan row size");
 
   const uint32_t num_threads = 512;
   const uint32_t log_num_threads_x = GetLogNumThreadsX(num_rows, row_size);
@@ -385,7 +392,9 @@ void InclusiveScanInnerDimSklansky(const T *src,
 
   int64_t max_grid_dim = dev_ctx.GetCUDAMaxGridDimSize()[0];
   int64_t grid_y = CeilDiv(num_rows, int64_t{threads.y});
-  dim3 grid(std::min(max_grid_dim, grid_y));
+  int64_t grid_x_64 = std::min(max_grid_dim, grid_y);
+  PADDLE_ENFORCE_LE_UINT32_MAX(grid_x_64, "inclusive scan sklansky grid.x");
+  dim3 grid(static_cast<uint32_t>(grid_x_64));
 
   size_t shared_mem_bytes = num_threads_y * (num_threads_x * 2) * sizeof(T);
 

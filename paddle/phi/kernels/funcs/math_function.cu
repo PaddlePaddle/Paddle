@@ -112,14 +112,46 @@ void BatchTranspose(T* output,
         "Unsupported input size, batch: %ld,m: %ld, n: %ld", batch, m, n));
   }
 
-  dim3 logical_grid((n + 31) / 32, (m + 31) / 32, batch);
+  int64_t logical_grid_x = (n + 31) / 32;
+  int64_t logical_grid_y = (m + 31) / 32;
+  int64_t logical_grid_z = batch;
+  PADDLE_ENFORCE_LE_UINT32_MAX(logical_grid_x, "batch transpose grid.x");
+  PADDLE_ENFORCE_LE_UINT32_MAX(logical_grid_y, "batch transpose grid.y");
+  PADDLE_ENFORCE_LE_UINT32_MAX(logical_grid_z, "batch transpose grid.z");
+  dim3 logical_grid(static_cast<uint32_t>(logical_grid_x),
+                    static_cast<uint32_t>(logical_grid_y),
+                    static_cast<uint32_t>(logical_grid_z));
   dim3 block(32, 8);
   // we set swizzle to 2 default.
   int swizzle = (logical_grid.y + max_grid_y - 1) / max_grid_y;
   swizzle = std::max(swizzle, 2);
-  dim3 physical_grid(logical_grid.x * swizzle,
-                     (logical_grid.y + swizzle - 1) / swizzle,
-                     batch);
+  int64_t physical_grid_x = static_cast<int64_t>(logical_grid.x) * swizzle;
+  int64_t physical_grid_y = (logical_grid.y + swizzle - 1) / swizzle;
+  int64_t physical_grid_z = batch;
+  PADDLE_ENFORCE_LE(physical_grid_x,
+                    prop.maxGridSize[0],
+                    common::errors::InvalidArgument(
+                        "batch transpose physical grid.x exceeds device "
+                        "limit."));
+  PADDLE_ENFORCE_LE(physical_grid_y,
+                    prop.maxGridSize[1],
+                    common::errors::InvalidArgument(
+                        "batch transpose physical grid.y exceeds device "
+                        "limit."));
+  PADDLE_ENFORCE_LE(physical_grid_z,
+                    prop.maxGridSize[2],
+                    common::errors::InvalidArgument(
+                        "batch transpose physical grid.z exceeds device "
+                        "limit."));
+  PADDLE_ENFORCE_LE_UINT32_MAX(physical_grid_x,
+                               "batch transpose physical grid.x");
+  PADDLE_ENFORCE_LE_UINT32_MAX(physical_grid_y,
+                               "batch transpose physical grid.y");
+  PADDLE_ENFORCE_LE_UINT32_MAX(physical_grid_z,
+                               "batch transpose physical grid.z");
+  dim3 physical_grid(static_cast<uint32_t>(physical_grid_x),
+                     static_cast<uint32_t>(physical_grid_y),
+                     static_cast<uint32_t>(physical_grid_z));
   batch_transpose_kernel<<<physical_grid, block>>>(
       output, input, batch, m, n, swizzle);
 }

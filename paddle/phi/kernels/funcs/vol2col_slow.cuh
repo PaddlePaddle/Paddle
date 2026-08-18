@@ -175,28 +175,37 @@ void vol2col_slow(const Context& dev_ctx,
   auto stream = dev_ctx.stream();
   const auto num_kernels =
       static_cast<int64_t>(channels) * depth_col * height_col * width_col;
-  Vol2colKernel<<<GET_BLOCKS(num_kernels), CUDA_NUM_THREADS, 0, stream>>>(
-      num_kernels,
-      data_vol,
-      depth,
-      height,
-      width,
-      ksize_t,
-      ksize_h,
-      ksize_w,
-      pad_t,
-      pad_h,
-      pad_w,
-      stride_t,
-      stride_h,
-      stride_w,
-      dilation_t,
-      dilation_h,
-      dilation_w,
-      depth_col,
-      height_col,
-      width_col,
-      data_col);
+  int64_t vol2col_blocks =
+      (num_kernels + CUDA_NUM_THREADS - 1) / CUDA_NUM_THREADS;
+  PADDLE_ENFORCE_LE(
+      vol2col_blocks,
+      dev_ctx.GetCUDAMaxGridDimSize()[0],
+      common::errors::InvalidArgument("vol2col grid.x exceeds device limit."));
+  PADDLE_ENFORCE_LE_UINT32_MAX(vol2col_blocks, "vol2col grid.x");
+  Vol2colKernel<<<static_cast<uint32_t>(vol2col_blocks),
+                  static_cast<uint32_t>(CUDA_NUM_THREADS),
+                  0,
+                  stream>>>(num_kernels,
+                            data_vol,
+                            depth,
+                            height,
+                            width,
+                            ksize_t,
+                            ksize_h,
+                            ksize_w,
+                            pad_t,
+                            pad_h,
+                            pad_w,
+                            stride_t,
+                            stride_h,
+                            stride_w,
+                            dilation_t,
+                            dilation_h,
+                            dilation_w,
+                            depth_col,
+                            height_col,
+                            width_col,
+                            data_col);
 }
 
 template <typename T, typename accT, typename Context>
@@ -224,29 +233,38 @@ void col2vol_slow(const Context& dev_ctx,
                   T* data_vol) {
   auto stream = dev_ctx.stream();
   const auto num_kernels = channels * depth * height * width;
-  Vol2imKernel<T, accT>
-      <<<GET_BLOCKS(num_kernels), CUDA_NUM_THREADS, 0, stream>>>(num_kernels,
-                                                                 data_col,
-                                                                 depth,
-                                                                 height,
-                                                                 width,
-                                                                 channels,
-                                                                 patch_t,
-                                                                 patch_h,
-                                                                 patch_w,
-                                                                 pad_t,
-                                                                 pad_h,
-                                                                 pad_w,
-                                                                 stride_t,
-                                                                 stride_h,
-                                                                 stride_w,
-                                                                 dilation_t,
-                                                                 dilation_h,
-                                                                 dilation_w,
-                                                                 output_depth,
-                                                                 output_height,
-                                                                 output_width,
-                                                                 data_vol);
+  int64_t vol2im_blocks =
+      (num_kernels + CUDA_NUM_THREADS - 1) / CUDA_NUM_THREADS;
+  PADDLE_ENFORCE_LE(
+      vol2im_blocks,
+      dev_ctx.GetCUDAMaxGridDimSize()[0],
+      common::errors::InvalidArgument("vol2im grid.x exceeds device limit."));
+  PADDLE_ENFORCE_LE_UINT32_MAX(vol2im_blocks, "vol2im grid.x");
+  Vol2imKernel<T, accT><<<static_cast<uint32_t>(vol2im_blocks),
+                          static_cast<uint32_t>(CUDA_NUM_THREADS),
+                          0,
+                          stream>>>(num_kernels,
+                                    data_col,
+                                    depth,
+                                    height,
+                                    width,
+                                    channels,
+                                    patch_t,
+                                    patch_h,
+                                    patch_w,
+                                    pad_t,
+                                    pad_h,
+                                    pad_w,
+                                    stride_t,
+                                    stride_h,
+                                    stride_w,
+                                    dilation_t,
+                                    dilation_h,
+                                    dilation_w,
+                                    output_depth,
+                                    output_height,
+                                    output_width,
+                                    data_vol);
 }
 #endif  // __CUDACC__
 

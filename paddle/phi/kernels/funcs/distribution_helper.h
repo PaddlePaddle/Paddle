@@ -29,6 +29,7 @@ limitations under the License. */
 #include "paddle/phi/core/generator.h"
 
 #if defined(__NVCC__) || defined(__HIPCC__)
+#include "paddle/common/enforce.h"
 #include "paddle/phi/kernels/funcs/index_impl.cu.h"
 #include "paddle/phi/kernels/funcs/rng_launch_config.h"
 #include "paddle/phi/kernels/primitive/kernel_primitives.h"
@@ -353,8 +354,21 @@ void distribution_and_transform(const GPUContext &dev_ctx,
   uint64_t seed = seed_offset.first;
   uint64_t offset = seed_offset.second;
 
+  PADDLE_ENFORCE_LE(grid_size,
+                    dev_ctx.GetCUDAMaxGridDimSize()[0],
+                    common::errors::InvalidArgument(
+                        "distribution kernel grid.x exceeds device limit."));
+  PADDLE_ENFORCE_LE(block_size,
+                    dev_ctx.GetMaxThreadsPerBlock(),
+                    common::errors::InvalidArgument(
+                        "distribution kernel block.x exceeds device limit."));
+  PADDLE_ENFORCE_LE_UINT32_MAX(grid_size, "distribution kernel grid.x");
+  PADDLE_ENFORCE_LE_UINT32_MAX(block_size, "distribution kernel block.x");
+  uint32_t grid = static_cast<uint32_t>(grid_size);
+  uint32_t block = static_cast<uint32_t>(block_size);
+
   DistributionKernel<T, DistOp, TransformOp>
-      <<<grid_size, block_size, 0, dev_ctx.stream()>>>(
+      <<<grid, block, 0, dev_ctx.stream()>>>(
           size, seed, offset, dist, trans, out_data, total_thread);
 }
 
