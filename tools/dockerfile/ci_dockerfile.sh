@@ -105,7 +105,7 @@ function make_ubuntu20_cu12_dockerfile(){
 function make_ubuntu20_cu123_dockerfile(){
   dockerfile_name="Dockerfile.cuda123_cudnn9_gcc122_ubuntu20"
   sed "s#<baseimg>#nvidia/cuda:12.3.1-devel-ubuntu20.04#g" ./Dockerfile.ubuntu20 >${dockerfile_name}
-  sed -i "s#<setcuda>#ENV LD_LIBRARY_PATH=/usr/local/cuda-12.3/targets/x86_64-linux/lib:\$LD_LIBRARY_PATH #g" ${dockerfile_name}
+  sed -i "s#<setcuda>#ENV LD_LIBRARY_PATH=/usr/local/gcc-12.1/lib64:/usr/local/gcc-12.1/lib:/usr/local/cuda-12.3/targets/x86_64-linux/lib:\$LD_LIBRARY_PATH #g" ${dockerfile_name}
   sed -i 's#<install_cpu_package>##g' ${dockerfile_name}
   sed -i "7i ENV TZ=Asia/Beijing" ${dockerfile_name}
   sed -i "8i RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone" ${dockerfile_name}
