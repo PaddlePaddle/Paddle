@@ -80,7 +80,7 @@ TEST(DataTransformOneDNN, PreservesFormatWhenUpdatingMemDesc) {
 
 TEST(DataTransformOneDNN, RejectsOtherStorageProperties) {
   phi::DenseTensor tensor;
-  tensor.set_storage_properties(std::make_unique<phi::NPUStorageProperties>());
+  tensor.set_storage_properties(std::make_unique<phi::StorageProperties>());
   const dnnl::memory::desc mem_desc(
       {1}, dnnl::memory::data_type::f32, dnnl::memory::format_tag::x);
 
