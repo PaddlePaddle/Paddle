@@ -79,7 +79,12 @@ def create_nccl_config(
             ll128_buffsize (int): buffer size of ll128 protocol. simple_buffsize (int): buffer size of
             simple protocol. buffsize_align (int): alignment unit of the total buffer size.
             nchannels (int): max number of channels. algoStr (str): communication algorithm.
-            protoStr (str): communication protocol.
+            protoStr (str): communication protocol. cta_policy (int): one of 0 (DEFAULT),
+            1 (EFFICIENCY) or 2 (ZERO). ZERO selects the zero-SM path, where intra-node
+            traffic goes through the Copy Engines and inter-node traffic through the RMA
+            CPU proxy, so collectives consume no SM. It only takes effect for buffers
+            registered with ``paddle.distributed.register_comm_buffer()``; unregistered
+            buffers silently fall back to the SM-based path.
 
     Returns:
         NCCLConfig (NCCLConfig | None): an object containing the information,

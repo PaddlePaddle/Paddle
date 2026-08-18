@@ -131,5 +131,40 @@ NCCL_RAND_ROUTINE_EACH_AFTER_2703(DECLARE_DYNAMIC_LOAD_NCCL_WRAP)
 NCCL_RAND_ROUTINE_EACH_AFTER_21100(DECLARE_DYNAMIC_LOAD_NCCL_WRAP)
 #endif
 
+#if NCCL_VERSION_CODE >= 21400
+#define NCCL_RAND_ROUTINE_EACH_AFTER_21400(__macro) \
+  __macro(ncclCommInitRankConfig);
+NCCL_RAND_ROUTINE_EACH_AFTER_21400(DECLARE_DYNAMIC_LOAD_NCCL_WRAP)
+#endif
+
+// User buffer registration, required by the zero-copy and the zero-SM
+// (NCCL_CTA_POLICY_ZERO) communication paths.
+#if NCCL_VERSION_CODE >= 21900
+#define NCCL_RAND_ROUTINE_EACH_AFTER_21900(__macro) \
+  __macro(ncclMemAlloc);                            \
+  __macro(ncclMemFree);                             \
+  __macro(ncclCommRegister);                        \
+  __macro(ncclCommDeregister);
+NCCL_RAND_ROUTINE_EACH_AFTER_21900(DECLARE_DYNAMIC_LOAD_NCCL_WRAP)
+#endif
+
+// Symmetric memory window registration. The hierarchical zero-SM collectives
+// (NCCL 2.30.7+) operate on buffers registered through this API.
+#if NCCL_VERSION_CODE >= 22700
+#define NCCL_RAND_ROUTINE_EACH_AFTER_22700(__macro) \
+  __macro(ncclCommWindowRegister);                  \
+  __macro(ncclCommWindowDeregister);
+NCCL_RAND_ROUTINE_EACH_AFTER_22700(DECLARE_DYNAMIC_LOAD_NCCL_WRAP)
+#endif
+
+// Single-call all-to-all. Unlike a group of ncclSend/ncclRecv this is a
+// symmetric collective, which is what makes the zero-SM path reachable for
+// all-to-all. Present in 2.29.7; the exact version it appeared in is unknown,
+// so the gate matches the one used for ncclConfig_t::CTAPolicy.
+#if NCCL_VERSION_CODE >= 22900
+#define NCCL_RAND_ROUTINE_EACH_AFTER_22900(__macro) __macro(ncclAlltoAll);
+NCCL_RAND_ROUTINE_EACH_AFTER_22900(DECLARE_DYNAMIC_LOAD_NCCL_WRAP)
+#endif
+
 }  // namespace dynload
 }  // namespace phi

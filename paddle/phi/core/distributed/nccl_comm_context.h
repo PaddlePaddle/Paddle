@@ -22,6 +22,8 @@
 #include <hip/hip_runtime.h>
 #endif
 
+#include <unordered_map>
+
 #include "paddle/common/macros.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_decls.h"
@@ -114,6 +116,48 @@ class NCCLCommContext final : public CommContext {
 
   void GroupEnd();
 
+  // Registers a device buffer as a NCCL symmetric memory window and returns
+  // the window handle (as an opaque pointer). Registration is what enables the
+  // zero-SM communication paths: with NCCL_CTA_POLICY_ZERO, intra-node traffic
+  // is moved by the Copy Engines and inter-node traffic by the RMA CPU proxy,
+  // so no SM is consumed by the collective.
+  //
+  // This is a collective requirement, not a local one: every rank of the
+  // communicator must register buffers of the same size in the same order, and
+  // a single collective call must have either all of its buffers registered or
+  // none of them. `ptr` and `size` must both be aligned to
+  // kNCCLWindowAlignment.
+  //
+  // Repeated calls with the same `ptr` return the cached handle, so callers may
+  // register on every step without paying the registration cost again.
+  // Returns nullptr when the loaded NCCL does not provide the window API.
+  void* RegisterWindow(void* ptr, size_t size, int win_flags);
+
+  // Deregisters a previously registered buffer. No-op for unknown pointers.
+  void DeregisterWindow(void* ptr);
+
+  // Deregisters every window owned by this communicator. Called before the
+  // communicator itself is destroyed.
+  void DeregisterAllWindows();
+
+  // True when [ptr, ptr + size) lies inside a window registered here, i.e.
+  // when a collective over that buffer may take a symmetric-memory path.
+  bool IsRegistered(const void* ptr, size_t size) const;
+
+  // True when the loaded NCCL provides the single-call all-to-all, the only
+  // all-to-all entry point that can reach the zero-SM path. A group of
+  // Send/Recv calls always runs a point-to-point device kernel instead.
+  bool IsAllToAllAvailable() const;
+
+  // Symmetric all-to-all: rank j receives in_tensor[i * count, (i + 1) * count)
+  // from rank i, so every rank must contribute and receive the same count.
+  // Only call it when IsAllToAllAvailable() is true.
+  void AllToAll(DenseTensor* out_tensor,
+                const DenseTensor& in_tensor,
+                gpuStream_t stream);
+
+  static constexpr size_t kNCCLWindowAlignment = 4096;
+
 #if NCCL_VERSION_CODE >= 21100
   // Creates a new reduction operator which pre-multiplies input values by a
   // given scalar locally before reducing them with peer values via summation.
@@ -145,6 +189,17 @@ class NCCLCommContext final : public CommContext {
   int nranks;
   int myrank;
   int param;
+
+  // A registered window: its NCCL handle and the byte range it covers. The
+  // range is what lets IsRegistered() accept a slice of a registered buffer.
+  struct RegisteredWindow {
+    void* handle{nullptr};
+    size_t size{0};
+  };
+
+  // buffer pointer -> window, kept so that registration is idempotent and
+  // every window can be released before the communicator is destroyed.
+  std::unordered_map<void*, RegisteredWindow> windows_;
 };
 
 }  // namespace distributed

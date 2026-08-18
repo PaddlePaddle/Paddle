@@ -53,6 +53,36 @@ using phi::distributed::ToNCCLRedType;
 
 uint64_t ProcessGroupNCCL::s_group_call_counter = 0;
 
+namespace {
+
+// True when every rank sends and receives the same number of rows, the only
+// shape ncclAlltoAll can express (it takes a single count for all peers).
+bool IsUniformSplit(const std::vector<int64_t>& in_split_sizes,
+                    const std::vector<int64_t>& out_split_sizes) {
+  if (in_split_sizes.empty() ||
+      in_split_sizes.size() != out_split_sizes.size()) {
+    return false;
+  }
+  const int64_t split = in_split_sizes[0];
+  if (split <= 0) {
+    return false;
+  }
+  for (size_t i = 0; i < in_split_sizes.size(); ++i) {
+    if (in_split_sizes[i] != split || out_split_sizes[i] != split) {
+      return false;
+    }
+  }
+  return true;
+}
+
+bool IsCommBufferRegistered(phi::distributed::NCCLCommContext* comm_context,
+                            const phi::DenseTensor& tensor) {
+  return comm_context->IsRegistered(
+      tensor.data(), tensor.numel() * phi::SizeOf(tensor.dtype()));
+}
+
+}  // namespace
+
 ProcessGroupNCCL::NCCLTask::NCCLTask(const Place& place,
                                      int rank,
                                      CommType comm_type,
@@ -362,6 +392,26 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllToAll(
             in_dim[0] == 0 ? 0 : in_tensor.numel() / in_dim[0];
         int64_t out_row_size =
             out_dim[0] == 0 ? 0 : out_tensor->numel() / out_dim[0];
+
+        // A single ncclAlltoAll is a symmetric collective, so it can run on the
+        // zero-SM path (Copy Engines intra-node, RMA proxy inter-node), while
+        // the group of Send/Recv calls below always launches a point-to-point
+        // device kernel and therefore occupies SMs. It needs one uniform count
+        // per rank and registered buffers, which is exactly what the zero-SM
+        // buffer pool hands out; anything else keeps using Send/Recv.
+        if (IsUniformSplit(in_split_sizes, out_split_sizes) &&
+            in_row_size == out_row_size &&
+            in_tensor.numel() == out_tensor->numel() &&
+            in_tensor.dtype() == out_tensor->dtype() &&
+            comm_context->IsAllToAllAvailable() &&
+            IsCommBufferRegistered(comm_context, in_tensor) &&
+            IsCommBufferRegistered(comm_context, *out_tensor)) {
+          VLOG(3) << "[AllToAll] symmetric ncclAlltoAll path, count per rank: "
+                  << in_tensor.numel() / size_;
+          comm_context->AllToAll(out_tensor, in_tensor, stream);
+          return;
+        }
+
         int64_t in_offset = 0, in_numel = 0, out_offset = 0, out_numel = 0;
         DenseTensor input_partial, output_partial;
 

@@ -26,7 +26,8 @@ std::shared_ptr<NCCLConfig> NCCLConfig::CreateNCCLConfig(
     const int buffsize_align,
     const int nchannels,
     const std::string& algoStr,
-    const std::string& protoStr) {
+    const std::string& protoStr,
+    const int cta_policy) {
   return std::make_shared<NCCLConfig>(commName,
                                       ll_buffsize,
                                       ll128_buffsize,
@@ -34,7 +35,8 @@ std::shared_ptr<NCCLConfig> NCCLConfig::CreateNCCLConfig(
                                       buffsize_align,
                                       nchannels,
                                       algoStr,
-                                      protoStr);
+                                      protoStr,
+                                      cta_policy);
 }
 
 NCCLConfig::NCCLConfig(const std::string& commName,
@@ -44,7 +46,8 @@ NCCLConfig::NCCLConfig(const std::string& commName,
                        const int buffsize_align,
                        const int nchannels,
                        const std::string& algoStr,
-                       const std::string& protoStr)
+                       const std::string& protoStr,
+                       const int cta_policy)
     : commName_(commName),
       ll_buffsize_(ll_buffsize),
       ll128_buffsize_(ll128_buffsize),
@@ -53,6 +56,7 @@ NCCLConfig::NCCLConfig(const std::string& commName,
       nchannels_(nchannels),
       algoStr_(algoStr),
       protoStr_(protoStr),
+      cta_policy_(cta_policy),
       nccl_memopt_config_ptr(nullptr) {
   if (phi::dynload::ncclCommGenMemOptConfig.IsValid()) {
     nccl_memopt_config_ptr = phi::dynload::ncclCommGenMemOptConfig(
@@ -65,9 +69,31 @@ NCCLConfig::NCCLConfig(const std::string& commName,
         algoStr_.empty() ? nullptr : algoStr_.c_str(),
         protoStr_.empty() ? nullptr : protoStr_.c_str());
   }
+#if NCCL_VERSION_CODE >= 21400
+  if (cta_policy_ >= 0) {
+#if defined(PADDLE_WITH_NCCL) && NCCL_VERSION_CODE >= 22900
+    nccl_config_.CTAPolicy = cta_policy_;
+    has_origin_config_ = true;
+    VLOG(3) << "NCCLConfig " << commName_ << " requests CTAPolicy "
+            << cta_policy_;
+#else
+    LOG(WARNING) << "cta_policy is ignored: Paddle was compiled against a "
+                    "communication library whose config has no CTAPolicy "
+                    "field (NCCL_VERSION_CODE "
+                 << NCCL_VERSION_CODE << ").";
+#endif
+  }
+#endif
 }
 
-ncclConfig_t* NCCLConfig::GetOrigin() { return nullptr; }
+ncclConfig_t* NCCLConfig::GetOrigin() {
+#if NCCL_VERSION_CODE >= 21400
+  if (has_origin_config_) {
+    return &nccl_config_;
+  }
+#endif
+  return nullptr;
+}
 
 ncclMemOptConfig_t* NCCLConfig::GetMemOpt() { return nccl_memopt_config_ptr; }
 
