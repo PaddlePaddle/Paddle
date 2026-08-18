@@ -481,6 +481,9 @@ message NCCLConfig {
   optional int32 nchannels = 6;
   optional string algoStr = 7;
   optional string protoStr = 8;
+  // NCCL_CTA_POLICY_DEFAULT(0) / _EFFICIENCY(1) / _ZERO(2). _ZERO selects the
+  // zero-SM communication path and only takes effect for registered buffers.
+  optional int32 cta_policy = 9;
 }
 
 message DpConfig {

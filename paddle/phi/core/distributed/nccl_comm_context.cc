@@ -69,6 +69,22 @@ void NCCLCommContext::CreateNCCLComm(
       if (nccl_config_ptr != nullptr) {
         LOG(WARNING) << "ncclCommInitRankConfigMemOpt is not supported.";
       }
+#if defined(PADDLE_WITH_NCCL) && NCCL_VERSION_CODE >= 23007
+      // Without the internal MemOpt entry point, a requested ncclConfig_t (for
+      // instance a CTAPolicy) would be dropped silently, so fall back to the
+      // upstream config-aware initializer whenever there is a config to pass.
+      if (nccl_config_ptr != nullptr &&
+          nccl_config_ptr->GetOrigin() != nullptr &&
+          phi::dynload::ncclCommInitRankConfig.IsValid()) {
+        NCCL_CHECK(
+            phi::dynload::ncclCommInitRankConfig(&nccl_comm_,
+                                                 nranks,
+                                                 nccl_id,
+                                                 myrank,
+                                                 nccl_config_ptr->GetOrigin()));
+        return;
+      }
+#endif
       NCCL_CHECK(
           phi::dynload::ncclCommInitRank(&nccl_comm_, nranks, nccl_id, myrank));
     }
@@ -77,9 +93,91 @@ void NCCLCommContext::CreateNCCLComm(
 
 void NCCLCommContext::DestroyNCCLComm() {
   if (nccl_comm_ != nullptr) {
+    DeregisterAllWindows();
     NCCL_CHECK(phi::dynload::ncclCommDestroy(nccl_comm_));
     nccl_comm_ = nullptr;
   }
+}
+
+void* NCCLCommContext::RegisterWindow(void* ptr, size_t size, int win_flags) {
+#if defined(PADDLE_WITH_NCCL) && NCCL_VERSION_CODE >= 23007
+  if (!phi::dynload::ncclCommWindowRegister.IsValid()) {
+    LOG(WARNING) << "ncclCommWindowRegister is not provided by the loaded NCCL "
+                    "library, which the zero-SM paths need (NCCL 2.30.7 or "
+                    "newer); buffer registration is skipped.";
+    return nullptr;
+  }
+  auto iter = windows_.find(ptr);
+  if (iter != windows_.end()) {
+    return iter->second.handle;
+  }
+  PADDLE_ENFORCE_EQ(
+      reinterpret_cast<uintptr_t>(ptr) % kNCCLWindowAlignment,
+      0,
+      common::errors::InvalidArgument(
+          "The buffer registered as a NCCL symmetric memory window must be "
+          "aligned to %d bytes, but got pointer %p.",
+          kNCCLWindowAlignment,
+          ptr));
+  PADDLE_ENFORCE_EQ(
+      size % kNCCLWindowAlignment,
+      0,
+      common::errors::InvalidArgument(
+          "The size of a buffer registered as a NCCL symmetric memory window "
+          "must be a multiple of %d bytes, but got %d.",
+          kNCCLWindowAlignment,
+          size));
+  ncclWindow_t win = nullptr;
+  NCCL_CHECK(phi::dynload::ncclCommWindowRegister(
+      nccl_comm_, ptr, size, &win, win_flags));
+  windows_.emplace(ptr, RegisteredWindow{reinterpret_cast<void*>(win), size});
+  VLOG(3) << "Registered NCCL window for buffer " << ptr << " of size " << size
+          << " with flags " << win_flags;
+  return reinterpret_cast<void*>(win);
+#else
+  LOG(WARNING) << "Paddle was compiled against NCCL " << NCCL_VERSION_CODE
+               << ", which has no symmetric memory window API. Buffer "
+                  "registration is skipped.";
+  return nullptr;
+#endif
+}
+
+void NCCLCommContext::DeregisterWindow(void* ptr) {
+#if defined(PADDLE_WITH_NCCL) && NCCL_VERSION_CODE >= 23007
+  auto iter = windows_.find(ptr);
+  if (iter == windows_.end()) {
+    return;
+  }
+  if (phi::dynload::ncclCommWindowDeregister.IsValid()) {
+    NCCL_CHECK(phi::dynload::ncclCommWindowDeregister(
+        nccl_comm_, reinterpret_cast<ncclWindow_t>(iter->second.handle)));
+  }
+  windows_.erase(iter);
+#endif
+}
+
+void NCCLCommContext::DeregisterAllWindows() {
+#if defined(PADDLE_WITH_NCCL) && NCCL_VERSION_CODE >= 23007
+  if (phi::dynload::ncclCommWindowDeregister.IsValid()) {
+    for (auto& item : windows_) {
+      NCCL_CHECK(phi::dynload::ncclCommWindowDeregister(
+          nccl_comm_, reinterpret_cast<ncclWindow_t>(item.second.handle)));
+    }
+  }
+  windows_.clear();
+#endif
+}
+
+bool NCCLCommContext::IsRegistered(const void* ptr, size_t size) const {
+  const auto* begin = static_cast<const char*>(ptr);
+  for (const auto& item : windows_) {
+    const auto* window_begin = static_cast<const char*>(item.first);
+    if (begin >= window_begin &&
+        begin + size <= window_begin + item.second.size) {
+      return true;
+    }
+  }
+  return false;
 }
 
 int NCCLCommContext::GetNcclVersion() { return nccl_version_; }
