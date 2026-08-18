@@ -8398,8 +8398,6 @@ def view(
             shape_or_dtype = convert_nptype_to_datatype_or_vartype(
                 shape_or_dtype
             )
-        if x.dtype == shape_or_dtype:
-            return x
         return _C_ops.view_dtype(x, shape_or_dtype)
 
 

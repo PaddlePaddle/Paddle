@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import functools
 import inspect
+import numbers
 import warnings
 from collections.abc import Callable, Iterable
 from typing import Any, TypeVar, cast
@@ -245,6 +246,74 @@ def bmm_compat_decorator(
     return cast("Callable[_InputT, _RetT]", wrapper)
 
 
+def baddbmm_compat_decorator(
+    func: Callable[_InputT, _RetT],
+) -> Callable[_InputT, _RetT]:
+    """Preserve legacy positional ``beta``, ``alpha``, ``out_dtype``, and
+    ``name``.
+
+    The public signature follows PyTorch by putting ``out_dtype`` in the
+    fourth position and making ``beta`` and ``alpha`` keyword-only. A numeric
+    fourth positional argument continues to use Paddle's legacy argument
+    order.
+    """
+
+    @functools.wraps(func)
+    def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
+        if len(args) >= 4 and isinstance(args[3], numbers.Number):
+            legacy_args = args[3:]
+            legacy_names = ("beta", "alpha", "out_dtype", "name")
+            if len(legacy_args) > len(legacy_names):
+                raise TypeError(
+                    "baddbmm() received too many positional arguments"
+                )
+            for name, value in zip(legacy_names, legacy_args):
+                if name in kwargs:
+                    raise TypeError(
+                        f"baddbmm() got multiple values for argument '{name}'"
+                    )
+                kwargs[name] = value
+            args = args[:3]
+        return func(*args, **kwargs)
+
+    wrapper.__signature__ = inspect.signature(func)
+    return cast("Callable[_InputT, _RetT]", wrapper)
+
+
+def addmm_compat_decorator(
+    func: Callable[_InputT, _RetT],
+) -> Callable[_InputT, _RetT]:
+    """Preserve the legacy positional ``beta``, ``alpha``, and ``name``.
+
+    The public signature follows PyTorch by putting ``out_dtype`` in the
+    fourth position and making ``beta`` and ``alpha`` keyword-only. Numeric
+    fourth positional arguments still use Paddle's legacy argument order.
+    """
+
+    @functools.wraps(func)
+    def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
+        if len(args) >= 4 and isinstance(args[3], numbers.Number):
+            legacy_args = args[3:]
+            if len(legacy_args) > 3:
+                raise TypeError(
+                    "addmm() received too many positional arguments"
+                )
+            for name, value in zip(
+                ("beta", "alpha", "name")[: len(legacy_args)],
+                legacy_args,
+            ):
+                if name in kwargs:
+                    raise TypeError(
+                        f"addmm() got multiple values for argument '{name}'"
+                    )
+                kwargs[name] = value
+            args = args[:3]
+        return func(*args, **kwargs)
+
+    wrapper.__signature__ = inspect.signature(func)
+    return cast("Callable[_InputT, _RetT]", wrapper)
+
+
 def lp_pool_layer_decorator(
     func: Callable[_InputT, _RetT],
 ) -> Callable[_InputT, _RetT]:
@@ -258,6 +327,60 @@ def lp_pool_layer_decorator(
             )
             kwargs["ceil_mode"] = args[4]
             args = args[:4]
+        return func(*args, **kwargs)
+
+    wrapper.__signature__ = inspect.signature(func)
+    return wrapper
+
+
+def prelu_decorator(
+    func: Callable[_InputT, _RetT],
+) -> Callable[_InputT, _RetT]:
+    """Dispatch between the Paddle and PyTorch ``PReLU`` signatures.
+
+    Paddle: ``PReLU(num_parameters, init, weight_attr, data_format, name, device, dtype)``
+    PyTorch: ``PReLU(num_parameters, init, device, dtype)``
+    """
+
+    @functools.wraps(func)
+    def wrapper(*args: _InputT.args, **kwargs: _InputT.kwargs) -> _RetT:
+        if 4 <= len(args) <= 5:
+            device_types = {
+                "cpu",
+                "cuda",
+                "gpu",
+                "dcu",
+                "xpu",
+                "ipu",
+                *(paddle.device.get_all_custom_device_type() or ()),
+            }
+            data_formats = {
+                "NC",
+                "NCL",
+                "NCHW",
+                "NCDHW",
+                "NLC",
+                "NHWC",
+                "NDHWC",
+            }
+            is_paddle_form = (
+                len(args) == 5
+                and isinstance(args[4], str)
+                and args[4] in data_formats
+            )
+            is_paddle_place = isinstance(args[3], paddle.base.libpaddle.Place)
+            is_device = args[3] is None or (
+                isinstance(args[3], str)
+                and args[3].lower().split(":", 1)[0] in device_types
+            )
+            if not is_paddle_form and (is_paddle_place or is_device):
+                for name, value in zip(("device", "dtype"), args[3:]):
+                    if name in kwargs:
+                        raise TypeError(
+                            f"__init__() got multiple values for argument '{name}'"
+                        )
+                    kwargs[name] = value
+                args = args[:3]
         return func(*args, **kwargs)
 
     wrapper.__signature__ = inspect.signature(func)
