@@ -715,7 +715,12 @@ static Tensor dealWithAdvancedIndex(const Tensor& tensor,
     transed_tensor = tensor;
   } else {
     *out_is_view = true;
-    if (FLAGS_use_stride_kernel && *pos_of_new_dim != 0) {
+    // When stride kernel path is active (and not on XPU, where stride kernel
+    // has bugs), skip transposing the tensor since the new kernel handles
+    // non-contiguous strides internally.
+    bool use_stride_transpose =
+        FLAGS_use_stride_kernel && !phi::is_xpu_place(tensor.place());
+    if (use_stride_transpose && *pos_of_new_dim != 0) {
       transed_tensor = tensor;
     } else {
       transed_tensor = transpose_ad_func(tensor, *trans_dim);
@@ -762,7 +767,9 @@ static Tensor getValueForBoolTensor(const Tensor& tensor,
                      bool_index.shape().size()));
   auto tensor_shape = tensor.shape();
   size_t i = 0;
-  if (FLAGS_use_stride_kernel) {
+  bool use_stride_bool_check =
+      FLAGS_use_stride_kernel && !phi::is_xpu_place(self_tensor.place());
+  if (use_stride_bool_check) {
     while (i < bool_index.shape().size()) {
       PADDLE_ENFORCE_EQ(
           bool_index.shape()[i],
@@ -800,7 +807,10 @@ static Tensor getValueForBoolTensor(const Tensor& tensor,
   }
 
   auto bool_2_idx = nonzero_ad_func(bool_index);
-  if (FLAGS_use_stride_kernel && self_tensor.is_contiguous()) {
+  bool use_stride_bool_get2 = FLAGS_use_stride_kernel &&
+                              self_tensor.is_contiguous() &&
+                              !phi::is_xpu_place(self_tensor.place());
+  if (use_stride_bool_get2) {
     std::vector<Tensor> indices =
         PrepareIndices(tensor, bool_2_idx, bool_index);
     for (int i = 0; i < pos_of_new_dim; ++i) {
@@ -1068,21 +1078,12 @@ static void DispatchSetitemKernel(const int pos_of_new_dim,
       }
     } else {
       if (*out_is_view) {
-        mask_tensor = expand_inplace(transed_sub_tensor, &mask_tensor);
-        int64_t slice_offset = static_cast<int64_t>(
-            reinterpret_cast<char*>(transed_sub_tensor->data()) -
-            reinterpret_cast<char*>(tensor->data()));
-        *transed_sub_tensor = index_elementwise_put__ad_func(
-            *tensor,
-            {mask_tensor},
-            (*values)[0],
-            common::vectorize<int64_t>(transed_sub_tensor->dims()),
-            common::vectorize<int64_t>(transed_sub_tensor->strides()),
-            common::vectorize<int64_t>(mask_tensor.dims()),
-            common::vectorize<int64_t>(mask_tensor.strides()),
-            slice_offset);
-        *out_is_view = false;
-        return;
+        // For out_is_view==true with scalar value and bool mask, fall through
+        // to the stride kernel path below. Previously this case passed the
+        // bool mask directly to index_elementwise_put, which reinterprets
+        // 1-byte bool data as 8-byte int64 on XPU, causing garbage results
+        // and crashes. The stride kernel path converts bool to int64 via
+        // nonzero before calling the kernel, avoiding this issue.
       } else {
         Tensor value_tmp_tensor =
             full_ad_func({1}, (*values)[0], tensor->dtype(), tensor->place());
@@ -1092,7 +1093,13 @@ static void DispatchSetitemKernel(const int pos_of_new_dim,
       }
     }
   }
-  if (FLAGS_use_stride_kernel) {
+  // The stride kernel path (index_elementwise_put/put_with_tensor) produces
+  // incorrect results on XPU because XDNN stride handling has precision/offset
+  // bugs. Fall back to the non-stride path (index_put_) on XPU, which works
+  // correctly.
+  bool use_stride =
+      FLAGS_use_stride_kernel && !phi::is_xpu_place(tensor->place());
+  if (use_stride) {
     if (value_tensor->initialized()) {
       *transed_index = expandTensors(*transed_index);
       *transed_index = expand_outplace(*transed_index);
@@ -1110,6 +1117,7 @@ static void DispatchSetitemKernel(const int pos_of_new_dim,
 
       AdvancedIndex ad =
           AdvancedIndex(*transed_sub_tensor, transed_index_int64);
+
       PADDLE_ENFORCE_EQ(
           phi::funcs::CheckIsDimsMatchBool(common::make_ddim(ad.src_sizes),
                                            value_tensor->dims()),
@@ -1161,7 +1169,9 @@ static void DispatchSetitemKernel(const int pos_of_new_dim,
       *out_is_view = false;
     }
   } else {
-    // TODO(czy): remove in the future
+    // Non-stride path (index_put_): used when FLAGS_use_stride_kernel is
+    // false, or when the tensor is on XPU where the stride kernel produces
+    // incorrect results. TODO(czy): remove in the future
     if (value_tensor->initialized()) {
       *transed_sub_tensor = index_put__ad_func(
           *transed_sub_tensor, *transed_index, *value_tensor);
@@ -1202,8 +1212,11 @@ static void ApplySetitem(const std::vector<int> trans_dim,
       }
     }
 
+    // Bypass stride kernel for XPU to avoid XDNN stride bugs
+    bool use_stride_setitem_value_transpose =
+        FLAGS_use_stride_kernel && !phi::is_xpu_place(tensor->place());
     if (value_tensor->dims().size() > 1 && pos_of_new_dim != 0) {
-      if (!FLAGS_use_stride_kernel) {
+      if (!use_stride_setitem_value_transpose) {
         *value_tensor = transpose_ad_func(*value_tensor, trans_dim);
       }
     }
@@ -1280,7 +1293,9 @@ static void ApplyGetitem(const int index_size,
                                  (*transed_index)[0],
                                  slice_offset,
                                  pos_of_new_dim);
-    if (!FLAGS_use_stride_kernel) {
+    bool use_stride_bool_get =
+        FLAGS_use_stride_kernel && !phi::is_xpu_place(tensor->place());
+    if (!use_stride_bool_get) {
       handle_transpose(*out);
     }
     return;
@@ -1295,8 +1310,10 @@ static void ApplyGetitem(const int index_size,
       }
     }
 
-    if (FLAGS_use_stride_kernel && !has_empty_index &&
-        self_tensor->is_contiguous()) {
+    bool use_stride_get = FLAGS_use_stride_kernel && !has_empty_index &&
+                          self_tensor->is_contiguous() &&
+                          !phi::is_xpu_place(tensor->place());
+    if (use_stride_get) {
       const phi::distributed::ProcessMesh* mesh = nullptr;
       if (InputsContainDistTensor(
               &mesh, *self_tensor, *transed_tensor, *transed_index)) {
