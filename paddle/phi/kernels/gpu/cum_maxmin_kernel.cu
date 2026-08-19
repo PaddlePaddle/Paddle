@@ -14,6 +14,7 @@
 
 #include "paddle/phi/kernels/cum_maxmin_kernel.h"
 
+#include <algorithm>
 #include <numeric>
 
 #include "paddle/common/hostdevice.h"
@@ -85,22 +86,46 @@ __device__ void binary_op_update_v(const T1 lhs,
   }
 }
 
-template <typename T1,
-          typename T2,
-          int num_threads_x,
-          int num_threads_y,
-          class BinaryFunction>
+constexpr uint32_t kScanInnerNumThreads = 512;
+
+// Split the fixed budget of `kScanInnerNumThreads` threads between the x (scan)
+// and y (row) dimensions, keeping the ratio between them close to the ratio
+// between row_size and num_rows.
+inline uint32_t GetLogNumThreadsXInnerScan(int64_t num_rows, int64_t row_size) {
+  int32_t log_num_threads_x = 0;
+  int32_t log_num_threads_y = 0;
+  // Exponents beyond 32 cannot change the clamped result below, and stopping
+  // there keeps the shift well defined.
+  while (log_num_threads_x < 32 &&
+         (static_cast<int64_t>(1) << log_num_threads_x) < row_size) {
+    ++log_num_threads_x;
+  }
+  while (log_num_threads_y < 32 &&
+         (static_cast<int64_t>(1) << log_num_threads_y) < num_rows) {
+    ++log_num_threads_y;
+  }
+  // 9 == log2(512). The lower bound 4 == log2(16) keeps the previous
+  // configuration for short rows, where a larger x was found to be detrimental.
+  int32_t log_x = (9 + log_num_threads_x - log_num_threads_y) / 2;
+  return static_cast<uint32_t>(std::min(std::max(4, log_x), 9));
+}
+
+template <typename T1, typename T2, class BinaryFunction>
 __global__ void KernelScanInnerWithIndices(const T1* x_data,
                                            T1* values_data,
                                            T2* indices_data,
                                            int64_t num_rows,
                                            int64_t row_size,
+                                           uint32_t num_threads,
+                                           uint32_t log_num_threads_x,
                                            T1 init,
                                            BinaryFunction binary_op) {
-  __shared__ T1 vbuf[num_threads_y][2 * num_threads_x];
-  __shared__ T2 ibuf[num_threads_y][2 * num_threads_x];
-  T1* row_buf = vbuf[threadIdx.y];
-  T2* row_idx_buf = ibuf[threadIdx.y];
+  alignas(sizeof(double)) extern __shared__ char buf[];
+  T1* vbuf = reinterpret_cast<T1*>(buf);
+  T2* ibuf = reinterpret_cast<T2*>(vbuf + 2 * num_threads);
+  const uint32_t num_threads_x = 1U << log_num_threads_x;
+  T1* row_buf = vbuf + 2 * num_threads_x * threadIdx.y;
+  T2* row_idx_buf = ibuf + 2 * num_threads_x * threadIdx.y;
 
   for (int64_t block_row =
            static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.y);
@@ -146,27 +171,42 @@ __global__ void KernelScanInnerWithIndices(const T1* x_data,
       }
       __syncthreads();
 
-      // Parallel reduction (up-sweep).
-      for (int s = num_threads_x, d = 1; s >= 1; s >>= 1, d <<= 1) {
-        if (row < num_rows && threadIdx.x < s) {
-          int offset = (2 * threadIdx.x + 1) * d - 1;
-          binary_op_update(row_buf[offset],
-                           &row_buf[offset + d],
-                           row_idx_buf[offset],
-                           &row_idx_buf[offset + d],
-                           binary_op);
-        }
-        __syncthreads();
-      }
+      // // Parallel reduction (up-sweep).
+      // for (int s = num_threads_x, d = 1; s >= 1; s >>= 1, d <<= 1) {
+      //   if (row < num_rows && threadIdx.x < s) {
+      //     int offset = (2 * threadIdx.x + 1) * d - 1;
+      //     binary_op_update(row_buf[offset],
+      //                      &row_buf[offset + d],
+      //                      row_idx_buf[offset],
+      //                      &row_idx_buf[offset + d],
+      //                      binary_op);
+      //   }
+      //   __syncthreads();
+      // }
 
-      // Down-sweep.
-      for (int s = 2, d = num_threads_x / 2; d >= 1; s <<= 1, d >>= 1) {
-        if (row < num_rows && threadIdx.x < s - 1) {
-          int offset = 2 * (threadIdx.x + 1) * d - 1;
-          binary_op_update(row_buf[offset],
-                           &row_buf[offset + d],
-                           row_idx_buf[offset],
-                           &row_idx_buf[offset + d],
+      // // Down-sweep.
+      // for (int s = 2, d = num_threads_x / 2; d >= 1; s <<= 1, d >>= 1) {
+      //   if (row < num_rows && threadIdx.x < s - 1) {
+      //     int offset = 2 * (threadIdx.x + 1) * d - 1;
+      //     binary_op_update(row_buf[offset],
+      //                      &row_buf[offset + d],
+      //                      row_idx_buf[offset],
+      //                      &row_idx_buf[offset + d],
+      //                      binary_op);
+      //   }
+      //   __syncthreads();
+      // }
+
+      // Parallel reduction with Sklansky
+      for (uint32_t s = 1; s <= num_threads_x; s <<= 1) {
+        if (row < num_rows) {
+          uint32_t a = (threadIdx.x / s) * (2 * s) + s;
+          uint32_t ti = a + (threadIdx.x % s);
+          uint32_t si = a - 1;
+          binary_op_update(row_buf[si],
+                           &row_buf[ti],
+                           row_idx_buf[si],
+                           &row_idx_buf[ti],
                            binary_op);
         }
         __syncthreads();
@@ -272,15 +312,28 @@ void ScanWithIndicesKernel(const Context& dev_ctx,
     int64_t row_size = x.dims()[ndim - 1];
     int64_t num_rows = x.numel() / row_size;
 
-    dim3 threads(16, 32);
-    dim3 grid(std::min(
-        dev_ctx.GetCUDAMaxGridDimSize()[0],
-        static_cast<unsigned int>(std::ceil(static_cast<float>(num_rows) /
-                                            static_cast<float>(threads.y)))));
+    const uint32_t log_num_threads_x =
+        GetLogNumThreadsXInnerScan(num_rows, row_size);
+    const uint32_t num_threads_x = 1U << log_num_threads_x;
+    const uint32_t num_threads_y = kScanInnerNumThreads / num_threads_x;
+    dim3 threads(num_threads_x, num_threads_y);
+    const int64_t num_blocks =
+        (num_rows + static_cast<int64_t>(threads.y) - 1) / threads.y;
+    dim3 grid(static_cast<unsigned int>(std::min(
+        static_cast<int64_t>(dev_ctx.GetCUDAMaxGridDimSize()[0]), num_blocks)));
 
-    KernelScanInnerWithIndices<T1, T2, 16, 32>
-        <<<grid, threads, 0, dev_ctx.stream()>>>(
-            x_data, values_data, indices_data, num_rows, row_size, init, op);
+    const size_t mem_size =
+        2 * kScanInnerNumThreads * (sizeof(T1) + sizeof(T2));
+    KernelScanInnerWithIndices<T1, T2>
+        <<<grid, threads, mem_size, dev_ctx.stream()>>>(x_data,
+                                                        values_data,
+                                                        indices_data,
+                                                        num_rows,
+                                                        row_size,
+                                                        kScanInnerNumThreads,
+                                                        log_num_threads_x,
+                                                        init,
+                                                        op);
   } else {
     int64_t row_size = x.dims()[axis];
     auto sizes = vectorize(x.dims());
