@@ -21,6 +21,8 @@ limitations under the License. */
 #undef _XOPEN_SOURCE
 #endif
 
+#include <limits>
+
 #include "paddle/fluid/distributed/collective/process_group.h"
 #include "paddle/fluid/distributed/collective/reducer.h"
 #include "paddle/fluid/framework/lod_tensor.h"
@@ -35,6 +37,8 @@ limitations under the License. */
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/distributed/collective/async_load.h"
 #include "paddle/fluid/distributed/collective/process_group_nccl.h"
+#include "paddle/phi/backends/gpu/gpu_info.h"
+#include "paddle/phi/core/distributed/nccl_comm_context.h"
 #endif
 
 #if defined(PADDLE_WITH_MPI)
@@ -1268,7 +1272,142 @@ void BindDistributed(py::module *m) {
             self.EagerConnectRingExchange(nccl_config);
           },
           py::arg("nccl_config"),
-          py::call_guard<py::gil_scoped_release>());
+          py::call_guard<py::gil_scoped_release>())
+      .def(
+          "register_comm_buffer",
+          [](distributed::ProcessGroupNCCL &self,
+             py::handle py_tensor,
+             int win_flags) -> uint64_t {
+            auto tensor = CastPyArg2Tensor(py_tensor.ptr(), 0);
+            auto p_tensor =
+                std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl());
+            // The window covers the whole underlying allocation rather than the
+            // logical bytes of the tensor: core.nccl_mem_alloc() pads the
+            // allocation up to kNCCLWindowAlignment. Requiring offset 0 keeps
+            // this from registering memory the tensor does not own.
+            PADDLE_ENFORCE_EQ(
+                static_cast<bool>(p_tensor->Holder()),
+                true,
+                common::errors::InvalidArgument(
+                    "register_comm_buffer() expects an allocated tensor."));
+            PADDLE_ENFORCE_EQ(
+                p_tensor->meta().offset,
+                0,
+                common::errors::InvalidArgument(
+                    "register_comm_buffer() expects a tensor owning its whole "
+                    "allocation, but got one starting at offset %d of it. "
+                    "Views and slices cannot be registered, register the "
+                    "buffer returned by nccl_symmetric_empty() instead.",
+                    p_tensor->meta().offset));
+            size_t size = p_tensor->Holder()->size();
+            py::gil_scoped_release release;
+            auto *comm_context = self.GetOrCreateCommContext(p_tensor->place());
+            void *win =
+                comm_context->RegisterWindow(p_tensor->data(), size, win_flags);
+            return reinterpret_cast<uint64_t>(win);
+          },
+          py::arg("tensor"),
+          // NCCL_WIN_COLL_SYMMETRIC, the flag required by the zero-SM path.
+          py::arg("win_flags") = 0x01)
+      .def(
+          "deregister_comm_buffer",
+          [](distributed::ProcessGroupNCCL &self, py::handle py_tensor) {
+            auto tensor = CastPyArg2Tensor(py_tensor.ptr(), 0);
+            auto p_tensor =
+                std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl());
+            py::gil_scoped_release release;
+            auto *comm_context = self.GetOrCreateCommContext(p_tensor->place());
+            comm_context->DeregisterWindow(p_tensor->data());
+          },
+          py::arg("tensor"));
+
+  // Allocates a device buffer through ncclMemAlloc, whose address and size are
+  // padded to NCCLCommContext::kNCCLWindowAlignment so that it can be handed to
+  // ProcessGroupNCCL.register_comm_buffer(). Paddle's own allocator generally
+  // does not meet that alignment requirement.
+#if defined(PADDLE_WITH_NCCL) && NCCL_VERSION_CODE >= 23007
+  m->def(
+      "nccl_mem_alloc",
+      [](const std::vector<int64_t> &shape, phi::DataType dtype) -> py::object {
+        PADDLE_ENFORCE_EQ(
+            phi::dynload::ncclMemAlloc.IsValid(),
+            true,
+            common::errors::Unavailable(
+                "ncclMemAlloc is not provided by the loaded NCCL library, "
+                "which the zero-SM paths need (NCCL 2.30.7 or newer) to "
+                "allocate registrable communication buffers."));
+        constexpr size_t kAlign =
+            phi::distributed::NCCLCommContext::kNCCLWindowAlignment;
+        constexpr size_t kMaxSize = std::numeric_limits<size_t>::max();
+        const size_t element_size = phi::SizeOf(dtype);
+        // Each step below can wrap around for an absurd shape. An overflowed
+        // alloc_bytes would allocate far less than the shape kept in the
+        // tensor's meta, so a later collective would write past the allocation:
+        // check every multiplication and the alignment round-up.
+        size_t numel = 1;
+        for (auto dim : shape) {
+          PADDLE_ENFORCE_GT(dim,
+                            0,
+                            common::errors::InvalidArgument(
+                                "nccl_mem_alloc expects a positive shape, but "
+                                "got %d in one of the dimensions.",
+                                dim));
+          PADDLE_ENFORCE_LE(static_cast<size_t>(dim),
+                            kMaxSize / numel,
+                            common::errors::InvalidArgument(
+                                "nccl_mem_alloc got a shape whose element "
+                                "count overflows size_t."));
+          numel *= static_cast<size_t>(dim);
+        }
+        PADDLE_ENFORCE_LE(
+            numel,
+            kMaxSize / element_size,
+            common::errors::InvalidArgument(
+                "nccl_mem_alloc got a shape of %d elements, whose "
+                "size in bytes overflows size_t.",
+                numel));
+        size_t nbytes = numel * element_size;
+        PADDLE_ENFORCE_LE(nbytes,
+                          kMaxSize - (kAlign - 1),
+                          common::errors::InvalidArgument(
+                              "nccl_mem_alloc got %d bytes, which overflows "
+                              "size_t once padded to the %d byte alignment.",
+                              nbytes,
+                              kAlign));
+        size_t alloc_bytes = (nbytes + kAlign - 1) / kAlign * kAlign;
+
+        void *ptr = nullptr;
+        auto place = phi::GPUPlace(phi::backends::gpu::GetCurrentDeviceId());
+        {
+          py::gil_scoped_release release;
+          ncclResult_t status = phi::dynload::ncclMemAlloc(&ptr, alloc_bytes);
+          PADDLE_ENFORCE_EQ(status,
+                            ncclSuccess,
+                            common::errors::Unavailable(
+                                "ncclMemAlloc failed with %d when allocating "
+                                "%d bytes.",
+                                static_cast<int>(status),
+                                alloc_bytes));
+        }
+        // The tensor keeps the requested shape while its allocation records the
+        // padded size, so the padding stays invisible to the caller.
+        auto alloc = std::make_shared<phi::Allocation>(
+            ptr,
+            alloc_bytes,
+            +[](phi::Allocation *allocation) {
+              if (phi::dynload::ncclMemFree.IsValid()) {
+                phi::dynload::ncclMemFree(allocation->ptr());
+              }
+            },
+            place);
+        phi::DenseTensorMeta meta(dtype, common::make_ddim(shape));
+        paddle::Tensor tensor(
+            std::make_shared<phi::DenseTensor>(alloc, std::move(meta)));
+        return py::reinterpret_steal<py::object>(ToPyObject(tensor));
+      },
+      py::arg("shape"),
+      py::arg("dtype"));
+#endif
 
   py::class_<distributed::AsyncLoad::Task,
              std::shared_ptr<distributed::AsyncLoad::Task>>(*m, "AsyncLoadTask")
