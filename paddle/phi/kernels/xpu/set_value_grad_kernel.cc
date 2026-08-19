@@ -14,11 +14,15 @@
 
 #include "paddle/phi/kernels/set_value_grad_kernel.h"
 
+#include <type_traits>
+#include <vector>
+
 #include "glog/logging.h"
 
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/common/int_array.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
@@ -154,23 +158,119 @@ void SetValueGradImpl(const Context& dev_ctx,
 
     DenseTensor tmp = Full<T>(dev_ctx, out_dims_vector, static_cast<T>(0));
 
-    r = xpu::strided_slice_view_update(
-        dev_ctx.x_context(),
-        reinterpret_cast<const XPUType*>(tmp.data<T>()),
-        reinterpret_cast<XPUType*>(x_grad->data<T>()),
-        out_dims_vector,
-        vectorize<int64_t>(x_grad->dims()),
-        starts_indices,
-        ends_indices,
-        steps_indices);
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "strided_slice_view_update");
+    bool need_host_update = false;
+    for (size_t i = 0; i < RANK; ++i) {
+      if (steps_indices[i] > 1) {
+        need_host_update = true;
+        break;
+      }
+    }
+    if (need_host_update) {
+      using HostT = typename std::
+          conditional<std::is_same<T, bool>::value, uint8_t, T>::type;
+      auto x_grad_shape = vectorize<int64_t>(x_grad->dims());
+      std::vector<HostT> x_grad_cpu(x_grad->numel());
+      memory_utils::Copy(CPUPlace(),
+                         x_grad_cpu.data(),
+                         dev_ctx.GetPlace(),
+                         x_grad->data<T>(),
+                         x_grad->numel() * sizeof(T));
+      dev_ctx.Wait();
+
+      std::vector<int64_t> x_grad_strides(RANK, 1);
+      for (int i = static_cast<int>(RANK) - 2; i >= 0; --i) {
+        x_grad_strides[i] = x_grad_strides[i + 1] * x_grad_shape[i + 1];
+      }
+      int64_t slice_numels = common::product(out_dims);
+      for (int64_t i = 0; i < slice_numels; ++i) {
+        int64_t index_tmp = i;
+        int64_t x_grad_offset = 0;
+        for (int dim = static_cast<int>(RANK) - 1; dim >= 0; --dim) {
+          int64_t coord = index_tmp % out_dims[dim];
+          index_tmp /= out_dims[dim];
+          x_grad_offset += (starts_indices[dim] + coord * steps_indices[dim]) *
+                           x_grad_strides[dim];
+        }
+        x_grad_cpu[x_grad_offset] = static_cast<HostT>(0);
+      }
+      memory_utils::Copy(dev_ctx.GetPlace(),
+                         x_grad->data<T>(),
+                         CPUPlace(),
+                         x_grad_cpu.data(),
+                         x_grad->numel() * sizeof(T));
+    } else {
+      r = xpu::strided_slice_view_update(
+          dev_ctx.x_context(),
+          reinterpret_cast<const XPUType*>(tmp.data<T>()),
+          reinterpret_cast<XPUType*>(x_grad->data<T>()),
+          out_dims_vector,
+          vectorize<int64_t>(x_grad->dims()),
+          starts_indices,
+          ends_indices,
+          steps_indices);
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "strided_slice_view_update");
+    }
   }
   if (value_grad) {
     dev_ctx.template Alloc<T>(value_grad);
     set_zero(dev_ctx, value_grad, static_cast<T>(0));
 
+    bool need_host_gather = false;
+    for (size_t i = 0; i < RANK; ++i) {
+      if (steps_indices[i] > 1) {
+        need_host_gather = true;
+        break;
+      }
+    }
+    auto strided_gather = [&](DenseTensor* dst) {
+      using HostT = typename std::
+          conditional<std::is_same<T, bool>::value, uint8_t, T>::type;
+      auto dst_shape = vectorize<int64_t>(dst->dims());
+      std::vector<HostT> out_grad_cpu(out_grad.numel());
+      std::vector<HostT> dst_cpu(dst->numel());
+      memory_utils::Copy(CPUPlace(),
+                         out_grad_cpu.data(),
+                         dev_ctx.GetPlace(),
+                         out_grad.data<T>(),
+                         out_grad.numel() * sizeof(T));
+      dev_ctx.Wait();
+
+      std::vector<int64_t> out_grad_strides(RANK, 1);
+      for (int i = static_cast<int>(RANK) - 2; i >= 0; --i) {
+        out_grad_strides[i] = out_grad_strides[i + 1] * in_dims_vector[i + 1];
+      }
+      int64_t slice_numels = common::product(out_dims);
+      for (int64_t i = 0; i < slice_numels; ++i) {
+        int64_t index_tmp = i;
+        int64_t out_grad_offset = 0;
+        for (int dim = static_cast<int>(RANK) - 1; dim >= 0; --dim) {
+          int64_t coord = index_tmp % dst_shape[dim];
+          index_tmp /= dst_shape[dim];
+          out_grad_offset +=
+              (starts_indices[dim] + coord * steps_indices[dim]) *
+              out_grad_strides[dim];
+        }
+        dst_cpu[i] = out_grad_cpu[out_grad_offset];
+      }
+      memory_utils::Copy(dev_ctx.GetPlace(),
+                         dst->data<T>(),
+                         CPUPlace(),
+                         dst_cpu.data(),
+                         dst->numel() * sizeof(T));
+    };
+
     if (value_grad->dims() == out_dims) {
-      if (need_reverse) {
+      if (need_host_gather) {
+        strided_gather(value_grad);
+        if (need_reverse) {
+          r = xpu::flip(dev_ctx.x_context(),
+                        reinterpret_cast<const XPUType*>(value_grad->data<T>()),
+                        reinterpret_cast<XPUType*>(value_grad->data<T>()),
+                        out_dims_vector,
+                        flip_axis);
+          PADDLE_ENFORCE_XDNN_SUCCESS(r, "flip");
+        }
+      } else if (need_reverse) {
         r = xpu::strided_slice(
             dev_ctx.x_context(),
             reinterpret_cast<const XPUType*>(out_grad.data<T>()),
@@ -250,15 +350,19 @@ void SetValueGradImpl(const Context& dev_ctx,
 
       DenseTensor tmp = Full<T>(dev_ctx, out_dims_vector, static_cast<T>(0));
 
-      r = xpu::strided_slice(
-          dev_ctx.x_context(),
-          reinterpret_cast<const XPUType*>(out_grad.data<T>()),
-          reinterpret_cast<XPUType*>(tmp.data<T>()),
-          in_dims_vector,
-          starts_indices,
-          ends_indices,
-          steps_indices);
-      PADDLE_ENFORCE_XDNN_SUCCESS(r, "strided_slice");
+      if (need_host_gather) {
+        strided_gather(&tmp);
+      } else {
+        r = xpu::strided_slice(
+            dev_ctx.x_context(),
+            reinterpret_cast<const XPUType*>(out_grad.data<T>()),
+            reinterpret_cast<XPUType*>(tmp.data<T>()),
+            in_dims_vector,
+            starts_indices,
+            ends_indices,
+            steps_indices);
+        PADDLE_ENFORCE_XDNN_SUCCESS(r, "strided_slice");
+      }
 
       // accumulate gradient
       DenseTensor tmp2 =

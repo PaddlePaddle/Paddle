@@ -15,6 +15,7 @@
 #include "paddle/phi/kernels/set_value_kernel.h"
 
 #include <algorithm>
+#include <type_traits>
 #include <vector>
 
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
@@ -241,6 +242,52 @@ void SetValueImpl(const Context& dev_ctx,
                   slice_shape,
                   flip_axis);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "flip");
+  }
+  bool need_host_update = false;
+  for (size_t i = 0; i < RANK; ++i) {
+    if (strides_indices[i] > 1) {
+      need_host_update = true;
+      break;
+    }
+  }
+  if (need_host_update) {
+    using HostT = typename std::
+        conditional<std::is_same<T, bool>::value, uint8_t, T>::type;
+    std::vector<HostT> out_cpu(out->numel());
+    std::vector<HostT> slice_cpu(slice_numels);
+    memory_utils::Copy(CPUPlace(),
+                       out_cpu.data(),
+                       dev_ctx.GetPlace(),
+                       out->data<T>(),
+                       out->numel() * sizeof(T));
+    memory_utils::Copy(CPUPlace(),
+                       slice_cpu.data(),
+                       dev_ctx.GetPlace(),
+                       reinterpret_cast<const T*>(slice_data),
+                       slice_numels * sizeof(T));
+    dev_ctx.Wait();
+
+    std::vector<int64_t> out_strides(RANK, 1);
+    for (int i = static_cast<int>(RANK) - 2; i >= 0; --i) {
+      out_strides[i] = out_strides[i + 1] * out_shape[i + 1];
+    }
+    for (int64_t i = 0; i < slice_numels; ++i) {
+      int64_t index_tmp = i;
+      int64_t out_offset = 0;
+      for (int dim = static_cast<int>(RANK) - 1; dim >= 0; --dim) {
+        int64_t coord = index_tmp % slice_shape[dim];
+        index_tmp /= slice_shape[dim];
+        out_offset += (starts_indices[dim] + coord * strides_indices[dim]) *
+                      out_strides[dim];
+      }
+      out_cpu[out_offset] = slice_cpu[i];
+    }
+    memory_utils::Copy(dev_ctx.GetPlace(),
+                       out->data<T>(),
+                       CPUPlace(),
+                       out_cpu.data(),
+                       out->numel() * sizeof(T));
+    return;
   }
   // Step 3: Set out tensor with value
   r = xpu::strided_slice_view_update(
