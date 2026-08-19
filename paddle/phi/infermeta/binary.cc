@@ -2284,7 +2284,10 @@ void GatherNdInferMeta(const MetaTensor& x,
   for (int i = 0; i < index_dims_size - 1; ++i) {
     result_dims.emplace_back(index_dims[i]);
   }
-  for (int64_t i = index_dims[index_dims_size - 1]; i < x_dims_size; ++i) {
+  // NOTE(large-tensor): i < x_dims_size <= INT_MAX
+  for (int i = static_cast<int>(index_dims[index_dims_size - 1]);
+       i < x_dims_size;
+       ++i) {
     result_dims.emplace_back(x_dims[i]);
   }
 

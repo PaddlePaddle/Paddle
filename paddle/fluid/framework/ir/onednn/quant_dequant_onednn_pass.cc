@@ -411,7 +411,7 @@ void QuantDequantOnednnPass::RemoveFakeOps(
 
 void QuantDequantOnednnPass::TransposeWeight(DenseTensor* input) const {
   const auto in_dims = input->dims();
-  std::vector<int> out_dim_v;
+  std::vector<int64_t> out_dim_v;
   std::vector<int> axis;
   for (int i = in_dims.size() - 1; i >= 0; i--) {
     axis.push_back(i);

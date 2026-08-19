@@ -502,7 +502,7 @@ InferFromDimTrans(const DistMetaTensor& input,
   // get the map from sharded input dimensions to output dimensions.
   // key is src dim, value is dst dim.
   std::vector<int64_t> dim_map_src2tgt(ndim, -1);
-  std::unordered_map<int, std::vector<int>> dim_map_dst2src;
+  std::unordered_map<int64_t, std::vector<int64_t>> dim_map_dst2src;
   for (int64_t i = 0, n = static_cast<int64_t>(dim_trans.size()); i < n; i++) {
     std::vector<std::shared_ptr<DimTrans>> dims =
         GetDimTrans(dim_trans[i],
@@ -536,7 +536,7 @@ InferFromDimTrans(const DistMetaTensor& input,
   for (int64_t i = 0; i < ndim; i++) {
     int64_t mesh_dim = input_dims_mapping[i];
     if (mesh_dim > -1 && shardable[i][mesh_dim] && dim_map_src2tgt[i] > -1) {
-      int dst_dim = dim_map_src2tgt[i];
+      int64_t dst_dim = dim_map_src2tgt[i];
       out_dims_mapping[dst_dim].push_back(input_dims_mapping[i]);
 
       auto src_dim = dim_map_dst2src[dst_dim];
@@ -594,7 +594,7 @@ InferFromDimTransCoShard(
   // get the map from sharded input dimensions to output dimensions.
   // key is src dim, value is dst dim.
   std::vector<int64_t> dim_map_src2tgt(ndim, -1);
-  std::unordered_map<int, std::vector<int>> dim_map_dst2src;
+  std::unordered_map<int64_t, std::vector<int64_t>> dim_map_dst2src;
   for (int64_t i = 0, n = static_cast<int64_t>(dim_trans.size()); i < n; i++) {
     std::vector<std::shared_ptr<DimTrans>> dims =
         GetDimTransCoShard(dim_trans[i],
@@ -638,7 +638,7 @@ InferFromDimTransCoShard(
       }
     }
     if (!is_unshardable) {
-      int dst_dim = dim_map_src2tgt[i];
+      int64_t dst_dim = dim_map_src2tgt[i];
       const auto& src_dims = dim_map_dst2src[dst_dim];
       auto min_dim_it = std::min_element(src_dims.begin(), src_dims.end());
       int64_t min_dim = *min_dim_it;
