@@ -112,6 +112,7 @@ from .communication import (  # noqa: F401
     send_object_list,
     stream,
     wait,
+    zero_sm,
 )
 
 # Import the namespace class directly from the submodule so it does not

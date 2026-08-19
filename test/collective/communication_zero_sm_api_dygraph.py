@@ -25,6 +25,7 @@ from paddle.distributed.collective import (
     _register_comm_buffer,
     _ZeroSMPool,
 )
+from paddle.distributed.communication import zero_sm
 from paddle.distributed.fleet.base.topology import create_nccl_config
 
 _ALIGNMENT = 4096
@@ -59,6 +60,21 @@ class ZeroSMTestCase:
             list(range(self._world)), nccl_config=config
         )
         self._expected = [float(i + 1) for i in range(self._world)]
+
+    def _full(self, rows):
+        """Input filled with this rank's id. all-to-all sends one chunk to
+        every rank, so it asks for as many chunks as there are ranks."""
+        return paddle.full([rows, _HIDDEN], float(self._rank + 1), dtype=_DTYPE)
+
+    def _out(self, pooled=True):
+        shape = [_CHUNK * self._world, _HIDDEN]
+        if pooled:
+            return zero_sm.empty(shape, _DTYPE, group=self._group)
+        return paddle.empty(shape, dtype=_DTYPE)
+
+    def _gathered(self, out):
+        paddle.device.synchronize()
+        return [float(out[i * _CHUNK, 0]) for i in range(self._world)]
 
     def test_registration(self):
         # ncclMemAlloc aligns the address; the size is padded in C++ so that a
@@ -169,6 +185,153 @@ class ZeroSMTestCase:
         paddle.device.synchronize()
         gathered = [float(out[i * _CHUNK, 0]) for i in range(self._world)]
         assert gathered == self._expected, gathered
+
+    def test_all_gather_into_tensor(self):
+        for sync_op, use_calc_stream in (
+            (True, True),
+            (True, False),
+            (False, False),
+        ):
+            out = self._out()
+            task = zero_sm.all_gather(
+                out,
+                self._full(_CHUNK),
+                group=self._group,
+                sync_op=sync_op,
+                use_calc_stream=use_calc_stream,
+            )
+            if use_calc_stream:
+                # Ordered behind the staging copy on the same stream.
+                assert task is None or not isinstance(task, zero_sm._StagedTask)
+            elif not sync_op:
+                assert isinstance(task, zero_sm._StagedTask), type(task)
+                assert isinstance(task.is_completed(), bool)
+                # Unknown attributes are forwarded to the wrapped task.
+                try:
+                    forwarded = task.no_such_attribute
+                    raise AssertionError(f"expected no {forwarded}")
+                except AttributeError:
+                    pass
+                task.synchronize()
+            assert self._gathered(out) == self._expected
+
+        # An input already backed by the pool skips the staging copy.
+        pooled = zero_sm.empty([_CHUNK, _HIDDEN], _DTYPE, group=self._group)
+        pooled[:] = float(self._rank + 1)
+        out = self._out()
+        zero_sm.all_gather(out, pooled, group=self._group, use_calc_stream=True)
+        assert _ZeroSMPool.instance(self._group).owns(pooled)
+        assert self._gathered(out) == self._expected
+
+        # The default group owns a pool of its own. It is not a cta_policy=2
+        # group, so only the plumbing is under test here.
+        out = zero_sm.empty([_CHUNK * self._world, _HIDDEN], _DTYPE)
+        zero_sm.all_gather(out, self._full(_CHUNK), use_calc_stream=True)
+        assert self._gathered(out) == self._expected
+
+    def test_all_gather_into_list(self):
+        out = []
+        zero_sm.all_gather(
+            out, self._full(_CHUNK), group=self._group, use_calc_stream=True
+        )
+        paddle.device.synchronize()
+        assert len(out) == self._world, len(out)
+        assert [float(item[0, 0]) for item in out] == self._expected
+
+        # The list holds views of a pooled block. Dropping every other
+        # reference and allocating again must not hand that block out twice.
+        gc.collect()
+        filler = self._out()
+        filler[:] = -1.0
+        paddle.device.synchronize()
+        assert [float(item[0, 0]) for item in out] == self._expected
+
+        for sync_op, use_calc_stream in (
+            (True, True),
+            (True, False),
+            (False, False),
+        ):
+            out = [
+                paddle.zeros([_CHUNK, _HIDDEN], dtype=_DTYPE)
+                for _ in range(self._world)
+            ]
+            task = zero_sm.all_gather(
+                out,
+                self._full(_CHUNK),
+                group=self._group,
+                sync_op=sync_op,
+                use_calc_stream=use_calc_stream,
+            )
+            if not sync_op and not use_calc_stream:
+                # Only the fully asynchronous form defers the write-back; a
+                # sync_op call must have filled the list before returning.
+                task.wait()
+            paddle.device.synchronize()
+            values = [float(item[0, 0]) for item in out]
+            assert values == self._expected, (
+                sync_op,
+                use_calc_stream,
+                values,
+            )
+
+    def test_rejects_unregistered_output(self):
+        # NCCL requires all buffers of a call to be registered or none of them,
+        # so an output that does not come from the pool cannot be used.
+        for collective in (zero_sm.all_gather, zero_sm.alltoall_single):
+            _rejects(
+                collective,
+                self._out(pooled=False),
+                self._full(_CHUNK * self._world),
+                group=self._group,
+                use_calc_stream=True,
+            )
+        # A mis-sized output list is refused as well.
+        _rejects(
+            zero_sm.all_gather,
+            [paddle.zeros([_CHUNK, _HIDDEN], dtype=_DTYPE)],
+            self._full(_CHUNK),
+            group=self._group,
+            use_calc_stream=True,
+        )
+
+    def test_alltoall_single(self):
+        # The split sizes have to be identical on every rank: the pool
+        # registers its blocks collectively, so all ranks must ask for the
+        # same shapes in the same order.
+        splits = [_CHUNK] * self._world
+        for sync_op, use_calc_stream in ((True, True), (False, False)):
+            out = self._out()
+            task = zero_sm.alltoall_single(
+                out,
+                self._full(_CHUNK * self._world),
+                splits,
+                splits,
+                group=self._group,
+                sync_op=sync_op,
+                use_calc_stream=use_calc_stream,
+            )
+            if not use_calc_stream:
+                assert isinstance(task, zero_sm._StagedTask), type(task)
+                task.wait()
+            assert self._gathered(out) == self._expected
+
+        # Without explicit splits the input is spread evenly.
+        out = self._out()
+        zero_sm.alltoall_single(
+            out,
+            self._full(_CHUNK * self._world),
+            group=self._group,
+            use_calc_stream=True,
+        )
+        assert self._gathered(out) == self._expected
+
+        # Buffers that are not registered windows cannot take the symmetric
+        # ncclAlltoAll path; the Send/Recv implementation must still be correct.
+        out = self._out(pooled=False)
+        dist.alltoall_single(
+            out, self._full(_CHUNK * self._world), group=self._group
+        )
+        assert self._gathered(out) == self._expected
 
     def run_test_case(self):
         for name in sorted(n for n in dir(self) if n.startswith("test_")):
