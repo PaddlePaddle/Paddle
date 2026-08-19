@@ -630,6 +630,8 @@ XPUOpMap& get_kl3_ops() {
       {"prod_raw", XPUKernelSet({FLOAT32})},
       {"put_along_axis",
        XPUKernelSet({FLOAT32, INT32, INT64, BFLOAT16, FLOAT16})},
+      {"put_along_axis_grad",
+       XPUKernelSet({FLOAT32, INT64, INT32, INT16, UINT8, BFLOAT16, FLOAT16})},
       {"quantize_linear_deprecated_infer", XPUKernelSet({FLOAT32})},
       {"quantize_linear", XPUKernelSet({FLOAT32})},
       {"range", XPUKernelSet({FLOAT32, FLOAT16, BFLOAT16, INT64, INT32})},
