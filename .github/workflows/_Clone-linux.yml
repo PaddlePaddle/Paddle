@@ -57,7 +57,7 @@ jobs:
       slice-check: ${{ steps.check-execution.outputs.slice-check }}
       xpu-only: ${{ steps.xpu-only-check.outputs.xpu-only }}
     runs-on:
-      group: HK-Clone
+      group: HongKong-Clone
     timeout-minutes: 30
 
     steps:
@@ -83,7 +83,9 @@ jobs:
           echo "can-skip output: ${{ env.CAN_SKIP }}"
 
       - name: Check submodules status
-        run: git submodule foreach --recursive 'git rev-parse HEAD || rm -rf $PWD' || true
+        run: |
+          git submodule foreach --recursive \
+            'git rev-parse HEAD >/dev/null 2>&1 && [ -n "$(git ls-files)" ] || rm -rf "$PWD"' || true
 
       - name: Clone paddle
         uses: actions/checkout@v6
@@ -107,7 +109,12 @@ jobs:
           git fetch origin pull/${{ github.event.pull_request.number }}/head:pr
           git merge --no-ff pr
           git submodule sync --recursive
-          git submodule update --init --recursive
+          if ! git submodule update --init --force --recursive; then
+            echo "submodule update failed; purging module caches and re-cloning"
+            git submodule deinit -f --all || true
+            rm -rf .git/modules
+            git submodule update --init --force --recursive
+          fi
           git branch -d pr
           source ${ci_scripts}/check_execution.sh
           bash ${ci_scripts}/third_party_tag.sh
