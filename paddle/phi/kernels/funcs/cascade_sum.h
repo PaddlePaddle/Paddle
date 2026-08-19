@@ -613,6 +613,24 @@ inline std::vector<int64_t> CastTargetStrides(
   return strides;
 }
 
+// phi::float16/bfloat16 are not std arithmetic types, so the
+// is_floating_point-gated constructor of dtype::complex rejects a direct
+// static_cast; widen through float first. The reverse direction compiles
+// because dtype::complex has an explicit operator float().
+template <typename Dst, typename Src>
+inline Dst CastElement(const Src& value) {
+  if constexpr ((std::is_same_v<Src, float16> ||
+                 std::is_same_v<
+                     Src,
+                     bfloat16>)&&(std::is_same_v<Dst, dtype::complex<float>> ||
+                                  std::is_same_v<Dst,
+                                                 dtype::complex<double>>)) {
+    return Dst(static_cast<float>(value));
+  } else {
+    return static_cast<Dst>(value);
+  }
+}
+
 // Reproduces `Tensor::to(dtype)` with MemoryFormat::Preserve (torch's
 // _to_copy): a non-overlapping-and-dense view keeps its exact strides, so a
 // transposed view stays transposed and the reduction still sees the original
@@ -635,7 +653,7 @@ void CastPreservingLayout(const Src* x_data,
     }
     buffer->resize(extent);
     for (int64_t k = 0; k < extent; ++k) {
-      (*buffer)[k] = static_cast<Dst>(x_data[k]);
+      (*buffer)[k] = CastElement<Dst>(x_data[k]);
     }
     return;
   }
@@ -649,7 +667,7 @@ void CastPreservingLayout(const Src* x_data,
     for (int i = 0; i < rank; ++i) {
       src += index[i] * x_strides[i];
     }
-    (*buffer)[k] = static_cast<Dst>(x_data[src]);
+    (*buffer)[k] = CastElement<Dst>(x_data[src]);
     for (int i = rank - 1; i >= 0; --i) {
       if (++index[i] < x_shape[i]) break;
       index[i] = 0;
