@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import builtins
 import math
 import numbers
 import warnings
@@ -31,7 +32,6 @@ from paddle._C_ops import (  # noqa: F401
     acos_,
     acosh,
     acosh_,
-    addmm,
     addmm_,
     all,
     amax,
@@ -47,7 +47,6 @@ from paddle._C_ops import (  # noqa: F401
     atan_,
     atanh,
     atanh_,
-    baddbmm,
     baddbmm_,
     bitwise_left_shift,
     bitwise_left_shift_,
@@ -122,6 +121,9 @@ from paddle.base.libpaddle import DataType
 from paddle.common_ops_import import VarDesc, dygraph_utils
 from paddle.pir import Value
 from paddle.utils.decorator_utils import (
+    addmm_compat_decorator,
+    baddbmm_compat_decorator,
+    bmm_compat_decorator,
     nansum_decorator,
     param_one_alias,
     param_two_alias,
@@ -2333,6 +2335,403 @@ def mm(
         return out
 
 
+@bmm_compat_decorator
+@param_two_alias(["x", "input"], ["y", "mat2"])
+def bmm(
+    x: Tensor,
+    y: Tensor,
+    out_dtype: DTypeLike | None = None,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor:
+    """
+    Applies batched matrix multiplication to two tensors.
+
+    Both input tensors must be three-dimensional and have the same batch size.
+    If ``x`` has shape ``[b, m, k]`` and ``y`` has shape
+    ``[b, k, n]``, the output has shape ``[b, m, n]``.
+
+    Args:
+        x (Tensor): The first input Tensor.
+            alias: ``input``.
+        y (Tensor): The second input Tensor.
+            alias: ``mat2``.
+        out_dtype (paddle.dtype|None, optional): The desired output data type.
+            Currently only supports ``paddle.float32`` for CUDA float16 or
+            bfloat16 inputs in dynamic graph. Both inputs must have the same
+            data type. For backward compatibility, in a call with exactly
+            three positional arguments, a string in the third position is
+            interpreted as ``name``. Use a dtype object such as
+            ``paddle.float32`` for an unambiguous positional ``out_dtype``, or
+            pass a string dtype using ``out_dtype="float32"``. A string dtype
+            is also accepted positionally when ``name`` is supplied as the
+            fourth positional argument. Default: None.
+        name (str|None, optional): Name for the operation. Default: None.
+
+    Keyword Args:
+        out (Tensor|None, optional): The output Tensor. Default: None.
+
+    Returns:
+        Tensor: The batched matrix multiplication result. Its data type is the
+        same as input unless ``out_dtype`` is specified.
+
+    Examples:
+        .. code-block:: pycon
+
+            >>> import paddle
+            >>> x = paddle.to_tensor([[[1.0, 1.0, 1.0], [2.0, 2.0, 2.0]], [[3.0, 3.0, 3.0], [4.0, 4.0, 4.0]]])
+            >>> y = paddle.to_tensor([[[1.0, 1.0], [2.0, 2.0], [3.0, 3.0]], [[4.0, 4.0], [5.0, 5.0], [6.0, 6.0]]])
+            >>> paddle.bmm(x, y)
+            Tensor(shape=[2, 2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[[ 6.,  6.],
+              [12., 12.]],
+             [[45., 45.],
+              [60., 60.]]])
+    """
+    if out_dtype is not None:
+        out_dtype = convert_nptype_to_datatype_or_vartype(out_dtype)
+
+        float32_dtypes = (core.DataType.FLOAT32, core.VarDesc.VarType.FP32)
+        supported_input_dtypes = (
+            core.DataType.FLOAT16,
+            core.VarDesc.VarType.FP16,
+            core.DataType.BFLOAT16,
+            core.VarDesc.VarType.BF16,
+        )
+        if out_dtype not in float32_dtypes:
+            raise TypeError(
+                "The out_dtype of paddle.bmm currently only supports paddle.float32."
+            )
+        if x.dtype not in supported_input_dtypes:
+            raise TypeError(
+                "The out_dtype of paddle.bmm currently only supports "
+                "float16 or bfloat16 input."
+            )
+        if not in_dynamic_mode():
+            raise NotImplementedError(
+                "The out_dtype of paddle.bmm currently only supports dynamic graph."
+            )
+        if (
+            not paddle.is_compiled_with_cuda()
+            or paddle.is_compiled_with_rocm()
+            or not x.place.is_gpu_place()
+            or not y.place.is_gpu_place()
+        ):
+            raise NotImplementedError(
+                "The out_dtype of paddle.bmm currently only supports CUDA tensors."
+            )
+        return _C_ops.bmm_out_dtype(x, y, out_dtype, out=out)
+
+    if in_dynamic_mode():
+        return _C_ops.bmm(x, y, out=out)
+
+    x_shape = x.shape
+    y_shape = y.shape
+    if not len(x_shape) == len(y_shape) == 3:
+        raise ValueError(
+            "input and mat2 must be 3-dimensional, but received "
+            f"input's shape {x_shape} and mat2's shape {y_shape}."
+        )
+    if x_shape[2] != -1 and y_shape[1] != -1 and x_shape[2] != y_shape[1]:
+        raise ValueError(
+            "input's width must be equal to mat2's height, but received "
+            f"input's shape {x_shape} and mat2's shape {y_shape}."
+        )
+    if x_shape[0] != -1 and y_shape[0] != -1 and x_shape[0] != y_shape[0]:
+        raise ValueError(
+            "input and mat2 must have the same batch size, but received "
+            f"input's shape {x_shape} and mat2's shape {y_shape}."
+        )
+
+    if in_pir_mode():
+        return _C_ops.bmm(x, y, out=out)
+
+    helper = LayerHelper('bmm', **locals())
+    if out is None:
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    helper.append_op(
+        type='bmm',
+        inputs={'X': x, 'Y': y},
+        outputs={'Out': out},
+    )
+    return out
+
+
+@addmm_compat_decorator
+@param_two_alias(["x", "mat1"], ["y", "mat2"])
+def addmm(
+    input: Tensor,
+    x: Tensor,
+    y: Tensor,
+    out_dtype: DTypeLike | None = None,
+    name: str | None = None,
+    *,
+    beta: float = 1.0,
+    alpha: float = 1.0,
+    out: Tensor | None = None,
+) -> Tensor:
+    r"""
+    Perform matrix multiplication for ``x`` and ``y`` and add ``input``.
+
+    The equation is ``out = beta * input + alpha * (x @ y)``. The input
+    tensor can be one- or two-dimensional and is broadcast to the matrix
+    result when needed.
+
+    Args:
+        input (Tensor): The input Tensor to be added to the final result.
+        x (Tensor): The first matrix. Alias: ``mat1``.
+        y (Tensor): The second matrix. Alias: ``mat2``.
+        out_dtype (DTypeLike|None, optional): The output dtype. Currently only
+            ``paddle.float32`` is supported for float16/bfloat16 inputs on
+            CUDA. A numeric fourth positional argument is interpreted as the
+            legacy ``beta`` argument. Default: None.
+        name (str|None, optional): Name for the operation. Default: None.
+
+    Keyword Args:
+        beta (float, optional): Coefficient of ``input``. Default: 1.0.
+        alpha (float, optional): Coefficient of ``x @ y``. Default: 1.0.
+        out (Tensor|None, optional): The output Tensor. Default: None.
+
+    Returns:
+        Tensor: The matrix multiplication result with the broadcasted input
+            added. Its dtype is ``out_dtype`` when specified, otherwise it is
+            the input dtype.
+    """
+    if out_dtype is not None:
+        out_dtype = convert_nptype_to_datatype_or_vartype(out_dtype)
+        float32_dtypes = (core.DataType.FLOAT32, core.VarDesc.VarType.FP32)
+        supported_input_dtypes = (
+            core.DataType.FLOAT16,
+            core.VarDesc.VarType.FP16,
+            core.DataType.BFLOAT16,
+            core.VarDesc.VarType.BF16,
+        )
+        if x.dtype not in supported_input_dtypes:
+            raise TypeError(
+                "The out_dtype of paddle.addmm currently only supports float16 or bfloat16 x."
+            )
+        if out is not None and out.dtype not in float32_dtypes:
+            raise TypeError(
+                "The out tensor dtype must be paddle.float32 when out_dtype is paddle.float32."
+            )
+        if not in_dynamic_mode():
+            raise NotImplementedError(
+                "The out_dtype of paddle.addmm currently only supports dynamic graph."
+            )
+        if (
+            not paddle.is_compiled_with_cuda()
+            or paddle.is_compiled_with_rocm()
+            or not input.place.is_gpu_place()
+            or not x.place.is_gpu_place()
+            or not y.place.is_gpu_place()
+            or (out is not None and not out.place.is_gpu_place())
+        ):
+            raise NotImplementedError(
+                "The out_dtype of paddle.addmm currently only supports CUDA tensors."
+            )
+
+    if (
+        out is not None
+        and paddle.is_grad_enabled()
+        and builtins.any(
+            not tensor.stop_gradient for tensor in (input, x, y, out)
+        )
+    ):
+        raise RuntimeError(
+            "addmm(): functions with out=... arguments don't support automatic "
+            "differentiation, but one of the arguments requires grad."
+        )
+
+    if out_dtype is not None:
+        return _C_ops.addmm_out_dtype(
+            input, x, y, out_dtype, beta, alpha, out=out
+        )
+
+    if in_dynamic_mode():
+        return _C_ops.addmm(input, x, y, beta, alpha, out=out)
+
+    if in_pir_mode():
+        return _C_ops.addmm(input, x, y, beta, alpha, out=out)
+
+    inputs = {'Input': input, 'X': x, 'Y': y}
+    attrs = {'Alpha': alpha, 'Beta': beta}
+    helper = LayerHelper('addmm', **locals())
+    check_variable_and_dtype(
+        input, 'Input', ['float16', 'float32', 'float64', 'uint16'], 'addmm'
+    )
+    check_variable_and_dtype(
+        x, 'X', ['float16', 'float32', 'float64', 'uint16'], 'addmm'
+    )
+    check_variable_and_dtype(
+        y, 'Y', ['float16', 'float32', 'float64', 'uint16'], 'addmm'
+    )
+    if out is None:
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    helper.append_op(
+        type='addmm', inputs=inputs, attrs=attrs, outputs={'Out': out}
+    )
+    return out
+
+
+@baddbmm_compat_decorator
+@param_two_alias(["x", "batch1"], ["y", "batch2"])
+def baddbmm(
+    input: Tensor,
+    x: Tensor,
+    y: Tensor,
+    out_dtype: DTypeLike | None = None,
+    name: str | None = None,
+    *,
+    beta: float = 1.0,
+    alpha: float = 1.0,
+    out: Tensor | None = None,
+) -> Tensor:
+    r"""
+    Perform batch matrix multiplication for input :math:`x` and :math:`y`.
+    :math:`input` is added to the final result. The equation is:
+
+    .. math::
+
+        out = \beta \times input + \alpha \times x \times y
+
+    where :math:`\beta` and :math:`\alpha` are scaling factors.
+
+    Args:
+        input (Tensor): The input tensor to be added to the final result. It
+            must be broadcastable to the result and may have zero to three
+            dimensions. Its data type should be float16, float32, float64, or
+            bfloat16.
+        x (Tensor): The first batch of matrices to be multiplied. It should be
+            a 3-D tensor with shape ``[b, n, p]``. Alias: ``batch1``.
+        y (Tensor): The second batch of matrices to be multiplied. It should be
+            a 3-D tensor with shape ``[b, p, m]``. Alias: ``batch2``.
+        out_dtype (paddle.dtype|None, optional): The desired data type of the
+            returned tensor. Currently only ``paddle.float32`` is supported
+            for CUDA float16/bfloat16 matrix inputs. This path is forward-only.
+            A numeric fourth positional argument is interpreted as the legacy
+            ``beta`` argument.
+            Default: None.
+        name (str|None, optional): Name for the operation. Default: None.
+
+    Keyword Args:
+        beta (float, optional): The scaling factor for input. Default: 1.0.
+        alpha (float, optional): The scaling factor for x @ y. Default: 1.0.
+        out (Tensor|None, optional): The output Tensor. Default: None.
+
+    Returns:
+        Tensor: A 3-D tensor with shape ``[b, n, m]``.
+
+    Examples:
+        .. code-block:: pycon
+
+            >>> import paddle
+
+            >>> x = paddle.ones([2, 2, 2])
+            >>> y = paddle.ones([2, 2, 2])
+            >>> input = paddle.ones([2, 2, 2])
+            >>> paddle.baddbmm(input=input, x=x, y=y, beta=0.5, alpha=5.0)
+            Tensor(shape=[2, 2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[[10.50000000, 10.50000000],
+              [10.50000000, 10.50000000]],
+             [[10.50000000, 10.50000000],
+              [10.50000000, 10.50000000]]])
+    """
+    if out_dtype is not None:
+        out_dtype = convert_nptype_to_datatype_or_vartype(out_dtype)
+        float32_dtypes = (core.DataType.FLOAT32, core.VarDesc.VarType.FP32)
+        supported_input_dtypes = (
+            core.DataType.FLOAT16,
+            core.VarDesc.VarType.FP16,
+            core.DataType.BFLOAT16,
+            core.VarDesc.VarType.BF16,
+        )
+        if x.dtype not in supported_input_dtypes:
+            raise TypeError(
+                "The out_dtype of paddle.baddbmm currently only supports "
+                "float16 or bfloat16 x."
+            )
+        if out is not None and out.dtype not in float32_dtypes:
+            raise TypeError(
+                "The out tensor dtype must be paddle.float32 when out_dtype "
+                "is paddle.float32."
+            )
+        if not in_dynamic_mode():
+            raise NotImplementedError(
+                "The out_dtype of paddle.baddbmm currently only supports "
+                "dynamic graph."
+            )
+        if (
+            not paddle.is_compiled_with_cuda()
+            or paddle.is_compiled_with_rocm()
+            or not input.place.is_gpu_place()
+            or not x.place.is_gpu_place()
+            or not y.place.is_gpu_place()
+            or (out is not None and not out.place.is_gpu_place())
+        ):
+            raise NotImplementedError(
+                "The out_dtype of paddle.baddbmm currently only supports "
+                "CUDA tensors."
+            )
+
+        if paddle.is_grad_enabled() and builtins.any(
+            not tensor.stop_gradient for tensor in (input, x, y)
+        ):
+            raise RuntimeError(
+                "baddbmm(): out_dtype does not support automatic "
+                "differentiation, but one of the input tensors requires "
+                "grad."
+            )
+
+    if (
+        out is not None
+        and paddle.is_grad_enabled()
+        and builtins.any(
+            not tensor.stop_gradient for tensor in (input, x, y, out)
+        )
+    ):
+        raise RuntimeError(
+            "baddbmm(): functions with out=... arguments don't support "
+            "automatic differentiation, but one of the arguments requires "
+            "grad."
+        )
+
+    if out_dtype is not None:
+        result = _C_ops.baddbmm_out_dtype(
+            input, x, y, out_dtype, beta, alpha, out=out
+        )
+        return out if out is not None else result
+
+    if in_dynamic_or_pir_mode():
+        result = _C_ops.baddbmm(input, x, y, beta, alpha, out=out)
+        return out if out is not None else result
+
+    check_variable_and_dtype(
+        input,
+        'Input',
+        ['float16', 'float32', 'float64', 'uint16'],
+        'baddbmm',
+    )
+    check_variable_and_dtype(
+        x, 'X', ['float16', 'float32', 'float64', 'uint16'], 'baddbmm'
+    )
+    check_variable_and_dtype(
+        y, 'Y', ['float16', 'float32', 'float64', 'uint16'], 'baddbmm'
+    )
+
+    helper = LayerHelper('baddbmm', **locals())
+    if out is None:
+        out = helper.create_variable_for_type_inference(dtype=input.dtype)
+    attrs = {'Alpha': alpha, 'Beta': beta}
+    helper.append_op(
+        type='baddbmm',
+        inputs={'Input': input, 'X': x, 'Y': y},
+        outputs={'Out': out},
+        attrs=attrs,
+    )
+    return out
+
+
 def addmv(
     input: Tensor,
     mat: Tensor,
@@ -2372,7 +2771,11 @@ def addmv(
             >>> out = paddle.addmv(input, mat, vec)
     """
     result = addmm(
-        input.unsqueeze(-1), mat, vec.unsqueeze(-1), beta, alpha
+        input.unsqueeze(-1),
+        mat,
+        vec.unsqueeze(-1),
+        beta=beta,
+        alpha=alpha,
     ).squeeze(-1)
     if out is not None:
         paddle.assign(result, out)
@@ -2432,7 +2835,13 @@ def addr(
             >>> vec2 = paddle.randn([4])
             >>> out = paddle.addr(input, vec1, vec2)
     """
-    result = addmm(input, vec1.unsqueeze(-1), vec2.unsqueeze(0), beta, alpha)
+    result = addmm(
+        input,
+        vec1.unsqueeze(-1),
+        vec2.unsqueeze(0),
+        beta=beta,
+        alpha=alpha,
+    )
     if out is not None:
         paddle.assign(result, out)
         return out

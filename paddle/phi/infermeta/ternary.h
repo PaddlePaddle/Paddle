@@ -48,13 +48,28 @@ PADDLE_API void AddmmInferMeta(const MetaTensor& input,
                                double alpha,
                                MetaTensor* out);
 
+PADDLE_API void AddmmOutDtypeInferMeta(const MetaTensor& input,
+                                       const MetaTensor& x,
+                                       const MetaTensor& y,
+                                       DataType out_dtype,
+                                       double beta,
+                                       double alpha,
+                                       MetaTensor* out);
+
 PADDLE_API void BaddbmmInferMeta(const MetaTensor& input,
                                  const MetaTensor& x,
                                  const MetaTensor& y,
                                  double beta,
                                  double alpha,
-                                 DataType out_dtype,
                                  MetaTensor* out);
+
+PADDLE_API void BaddbmmOutDtypeInferMeta(const MetaTensor& input,
+                                         const MetaTensor& x,
+                                         const MetaTensor& y,
+                                         DataType out_dtype,
+                                         double beta,
+                                         double alpha,
+                                         MetaTensor* out);
 
 PADDLE_API void AffineChannelInferMeta(const MetaTensor& x,
                                        const MetaTensor& scale,

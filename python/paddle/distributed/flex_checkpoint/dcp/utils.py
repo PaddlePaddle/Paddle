@@ -192,18 +192,16 @@ def minimal_nd_slice(shape, flat_start, flat_end):
     start_idx = unravel_index(flat_start, shape)
     end_idx = unravel_index(flat_end - 1, shape)
     min_slices = []
+    prefix_has_diverged = False
     for axis in range(len(shape)):
-        if axis == 0:
-            s = start_idx[axis]
-            e = end_idx[axis] + 1
+        if prefix_has_diverged:
+            s = 0
+            e = shape[axis]
         else:
-            if start_idx[axis - 1] == end_idx[axis - 1]:
-                s = min(start_idx[axis], end_idx[axis])
-                e = max(start_idx[axis], end_idx[axis]) + 1
-            else:
-                s = 0
-                e = shape[axis]
+            s = min(start_idx[axis], end_idx[axis])
+            e = max(start_idx[axis], end_idx[axis]) + 1
         min_slices.append((s, e))
+        prefix_has_diverged |= start_idx[axis] != end_idx[axis]
     return min_slices, start_idx, end_idx
 
 

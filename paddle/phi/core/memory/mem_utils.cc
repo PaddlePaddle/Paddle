@@ -215,6 +215,10 @@ std::vector<size_t> GetCompactSize(const GPUPlace& place) {
   return allocate_compact_visitor.GetCompactSize();
 }
 
+std::vector<MemHistoryTraceEntry> GpuMemoryHistoryTrace(const GPUPlace& place) {
+  return MemoryHistoryRecorder::Instance().GetTrace(place.GetDeviceId());
+}
+
 #endif
 
 }  // namespace memory

@@ -17,9 +17,7 @@ import sys
 import unittest
 
 import paddle
-from paddle.compat.proxy import (
-    ProxyModule,
-)
+from paddle.compat.proxy import ProxyModule
 
 sys.path.append(str(pathlib.Path(__file__).parent / "fake_modules"))
 sys.path.append(str(pathlib.Path(__file__).parent / "fake_torch_modules"))
@@ -59,6 +57,25 @@ class TestTorchProxyMixRealTorch(unittest.TestCase):
 
             self.check_is_proxy()
 
+        self.check_is_not_proxy()
+
+    def test_level2_does_not_proxy_torch(self):
+        import torch
+        from torch.nn.functional import relu
+
+        original_torch = torch
+        original_relu = relu
+        self.check_is_not_proxy()
+        paddle.enable_compat(level=2)
+        try:
+            self.check_is_not_proxy()
+            import torch
+            from torch.nn.functional import relu
+
+            self.assertIs(torch, original_torch)
+            self.assertIs(relu, original_relu)
+        finally:
+            paddle.disable_compat()
         self.check_is_not_proxy()
 
     def test_local_enabled_module_import(self):
