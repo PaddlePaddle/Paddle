@@ -64,7 +64,7 @@ PROTECTED_COMPAT_MANGLED_CXX_PREFIXES = (
     "_ZNK6caffe2",
 )
 
-REQUIRED_ABI_APPROVERS = ("SigureMo", "BingooYang")
+REQUIRED_ABI_APPROVERS = ("risemeup1", "BingooYang")
 DEFAULT_GITHUB_REPOSITORY = "PaddlePaddle/Paddle"
 GITHUB_API_URL = "https://api.github.com"
 
@@ -448,7 +448,7 @@ def check_abi_issues_approval(
 
 def format_approval_failure(approval: ApprovalCheckResult) -> str:
     lines = [
-        "You must have one RD (SigureMo or BingooYang) approval for protected "
+        "You must have one RD (risemeup1 or BingooYang) approval for protected "
         "ABI symbol removals.",
     ]
     if approval.reason:
