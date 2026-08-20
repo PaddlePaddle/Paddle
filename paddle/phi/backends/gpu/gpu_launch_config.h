@@ -204,8 +204,13 @@ static inline int GetLastPow2(int n) {
   return std::max(1, n - (n >> 1));
 }
 
+// Only called by `Interpolate2DCUDAFwd` and `Interpolate2DCUDABwd`.
+// num_img(n*c) must be int64_t: both n and c without upstream clamp,
+// so n*c may exceed INT32_MAX.
+// height(out_h) and width(out_w) stay int: since every path that
+// produces them (op attributes, `out_size`) is already int.
 inline GpuLaunchConfig GetGpuLaunchConfig3D(const GPUContext& dev_ctx,
-                                            int num_img,
+                                            int64_t num_img,
                                             int height,
                                             int width) {
   const int kThreadsPerBlock = 256;
@@ -214,15 +219,17 @@ inline GpuLaunchConfig GetGpuLaunchConfig3D(const GPUContext& dev_ctx,
 
   int block_x = std::min(GetLastPow2(width), max_threads);
   int block_y = std::min(GetLastPow2(height), max_threads / block_x);
-  int block_z = std::min(num_img, max_threads / block_x / block_y);
+  int block_z = static_cast<int>(
+      std::min<int64_t>(num_img, max_threads / block_x / block_y));
 
   std::array<unsigned int, 3> max_grid_dim = dev_ctx.GetCUDAMaxGridDimSize();
   unsigned int grid_x =
       std::min(max_grid_dim[0], DivUp<unsigned int>(width, block_x));
   unsigned int grid_y =
       std::min(max_grid_dim[1], DivUp<unsigned int>(height, block_y));
-  unsigned int grid_z =
-      std::min(max_grid_dim[2], DivUp<unsigned int>(num_img, block_z * 4));
+  unsigned int grid_z = static_cast<unsigned int>(std::min<int64_t>(
+      max_grid_dim[2],
+      DivUp<int64_t>(num_img, static_cast<int64_t>(block_z) * 4)));
 
   const int capability = dev_ctx.GetComputeCapability();
   GpuLaunchConfig config;
