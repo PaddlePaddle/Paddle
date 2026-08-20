@@ -33,13 +33,16 @@ def _zero_sm_supported():
     return core.nccl_version() >= _MIN_NCCL_VERSION
 
 
-@unittest.skipIf(
-    not _zero_sm_supported(),
-    "zero-SM collectives need a CUDA build running against NCCL 2.30.7 or newer",
-)
 class TestCommunicationZeroSMAPI(test_base.CommunicationTestDistBase):
     def setUp(self):
-        super().setUp(num_of_devices=2, timeout=180)
+        # Skipped from setUp rather than through a decorator so that the check
+        # runs the same way as the base class' own device-count skip.
+        if not _zero_sm_supported():
+            self.skipTest(
+                "zero-SM collectives need a CUDA build running against NCCL "
+                "2.30.7 or newer"
+            )
+        super().setUp(num_of_devices=2)
 
     def test_zero_sm_api(self):
         self.run_test_case("communication_zero_sm_api_dygraph.py")

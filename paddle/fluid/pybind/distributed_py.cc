@@ -1340,6 +1340,16 @@ void BindDistributed(py::module *m) {
             phi::distributed::NCCLCommContext::kNCCLWindowAlignment;
         constexpr size_t kMaxSize = std::numeric_limits<size_t>::max();
         const size_t element_size = phi::SizeOf(dtype);
+        // phi::SizeOf() returns 0 for DataType::UNDEFINED, which Python can
+        // pass in as core.DataType.UNDEFINED, and the checks below divide by
+        // it. Refuse it here: an integer division by zero raises SIGFPE and
+        // takes the process down instead of raising to the caller.
+        PADDLE_ENFORCE_NE(element_size,
+                          0,
+                          common::errors::InvalidArgument(
+                              "nccl_mem_alloc got dtype %s, which has no "
+                              "element size and cannot be allocated.",
+                              phi::DataTypeToString(dtype)));
         // Each step below can wrap around for an absurd shape. An overflowed
         // alloc_bytes would allocate far less than the shape kept in the
         // tensor's meta, so a later collective would write past the allocation:

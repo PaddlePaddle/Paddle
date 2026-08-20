@@ -563,13 +563,59 @@ class _ZeroSMPool:
         """
         cls._instances.pop(group.name, None)
 
+    def _agree(self, values: list[int]) -> list[int]:
+        """Return the group-wide maximum of ``values``.
+
+        Registration is collective: every rank has to create a window of the
+        same byte size, the same number of times, in the same order. None of
+        that can be decided locally. A dynamic shape (MoE token counts) puts
+        the ranks in different buckets, and even a fixed shape lets their free
+        lists drift apart, because a block only returns to the list once the
+        tensor slicing it is collected, which is a local garbage-collection
+        event. So the ranks vote instead of guessing, and a disagreement costs
+        an extra window rather than a hang. The vote itself runs on a plain
+        unregistered buffer, so it keeps using the SM-based path.
+        """
+        vote = paddle.to_tensor(values, dtype="int64")
+        paddle.distributed.all_reduce(
+            vote,
+            op=paddle.distributed.ReduceOp.MAX,
+            group=self._group,
+            sync_op=True,
+        )
+        return vote.tolist()
+
+    def _plan(
+        self, dtype: DTypeLike, numel: int, needs_block: bool
+    ) -> tuple[bool, int]:
+        """Agree with the group on whether to take a block, and how big.
+
+        The capacity is negotiated in bytes because that is what a window is
+        made of: ranks that disagree on the dtype would otherwise register
+        different sizes for the same element count.
+        """
+        element_size = core.size_of_dtype(dtype)
+        nbytes = 1 << max(0, (numel * element_size - 1).bit_length())
+        if self._group.nranks > 1:
+            needs, nbytes = self._agree([int(needs_block), nbytes])
+            needs_block = bool(needs)
+        return needs_block, max(nbytes // element_size, 1)
+
     def _block(
-        self, dtype: DTypeLike, numel: int
+        self, dtype: DTypeLike, capacity: int
     ) -> tuple[paddle.Tensor, tuple]:
-        capacity = 1 << max(0, (numel - 1).bit_length())
         key = (dtype, capacity)
         cached = self._free.setdefault(key, [])
-        if cached:
+        reuse = bool(cached)
+        if self._group.nranks > 1:
+            # A rank that can reuse a block still has to register one when any
+            # other rank has to, otherwise the two disagree on the call count.
+            # The vote is taken before the decision, never as the right operand
+            # of an ``and``: skipping it on one rank is the very asymmetry this
+            # is here to remove.
+            any_miss = self._agree([0 if reuse else 1])[0]
+            reuse = reuse and not any_miss
+        if reuse:
             return cached.pop(), key
         block = _nccl_symmetric_empty([capacity], dtype)
         if _register_comm_buffer(block, group=self._group) == 0:
@@ -582,14 +628,19 @@ class _ZeroSMPool:
         self._spans.append((start, start + capacity * block.element_size()))
         return block, key
 
-    def empty(self, shape: ShapeLike, dtype: DTypeLike) -> paddle.Tensor:
-        """Return an uninitialized registered tensor of ``shape``."""
-        numel = math.prod(shape)
-        block, key = self._block(dtype, numel)
-        out = block[:numel].reshape(shape)
+    def _take(
+        self, shape: ShapeLike, dtype: DTypeLike, capacity: int
+    ) -> paddle.Tensor:
+        block, key = self._block(dtype, capacity)
+        out = block[: math.prod(shape)].reshape(shape)
         # Keep the block alive through the view and recycle it afterwards.
         weakref.finalize(out, self._free[key].append, block)
         return out
+
+    def empty(self, shape: ShapeLike, dtype: DTypeLike) -> paddle.Tensor:
+        """Return an uninitialized registered tensor of ``shape``."""
+        _, capacity = self._plan(dtype, math.prod(shape), True)
+        return self._take(shape, dtype, capacity)
 
     def owns(self, tensor: paddle.Tensor) -> bool:
         ptr = tensor.data_ptr()
@@ -599,10 +650,15 @@ class _ZeroSMPool:
         """Return a registered tensor holding ``tensor``'s data.
 
         A tensor already backed by the pool is returned as is, so a caller that
-        allocates its input from this pool pays no copy.
+        allocates its input from this pool pays no copy. Whether the copy is
+        needed is a group-wide decision: one rank staging while another does not
+        would make the registration counts diverge.
         """
-        if self.owns(tensor):
+        needs, capacity = self._plan(
+            tensor.dtype, math.prod(tensor.shape), not self.owns(tensor)
+        )
+        if not needs:
             return tensor
-        staged = self.empty(tensor.shape, tensor.dtype)
+        staged = self._take(tensor.shape, tensor.dtype, capacity)
         staged.copy_(tensor, False)
         return staged

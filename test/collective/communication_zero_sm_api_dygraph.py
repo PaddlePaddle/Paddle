@@ -18,6 +18,7 @@ import numpy as np
 
 import paddle
 import paddle.distributed as dist
+from paddle.base import core
 from paddle.distributed.collective import (
     _deregister_comm_buffer,
     _nccl_symmetric_empty,
@@ -80,6 +81,9 @@ class ZeroSMTestCase:
         # A shape whose byte size overflows size_t must be refused rather than
         # wrapping around into a small allocation.
         _rejects(_nccl_symmetric_empty, [2**62, 2**4], _DTYPE)
+        # phi::SizeOf() is 0 for UNDEFINED, which would divide by zero in the
+        # overflow checks and kill the process with SIGFPE.
+        _rejects(_nccl_symmetric_empty, [1], core.DataType.UNDEFINED)
 
         # Leaving ``group`` unset falls back to the global group.
         spare = _nccl_symmetric_empty([_HIDDEN], _DTYPE)
@@ -115,6 +119,47 @@ class ZeroSMTestCase:
         # Registration must not change what a collective computes: run one over
         # pooled buffers on the cta_policy=2 group and check the result.
         pool = _ZeroSMPool.instance(self._group)
+        source = pool.empty([_CHUNK, _HIDDEN], _DTYPE)
+        source[:] = float(self._rank + 1)
+        out = pool.empty([_CHUNK * self._world, _HIDDEN], _DTYPE)
+        dist.stream.all_gather(
+            out, source, group=self._group, use_calc_stream=True
+        )
+        paddle.device.synchronize()
+        gathered = [float(out[i * _CHUNK, 0]) for i in range(self._world)]
+        assert gathered == self._expected, gathered
+
+    def test_asymmetric_dynamic_shapes(self):
+        # A dynamic shape (MoE token counts, for instance) puts the ranks in
+        # different buckets, and registration is collective: the pool has to
+        # negotiate one byte size for the whole group instead of following the
+        # local request. Doing it locally deadlocks right here.
+        pool = _ZeroSMPool.instance(self._group)
+        local = pool.empty([(self._rank + 1) * 48, _HIDDEN], _DTYPE)
+        assert pool.owns(local)
+
+        # Whatever each rank asked for, the block it registered has the same
+        # byte size everywhere.
+        span = pool._spans[-1]
+        sizes = []
+        dist.all_gather(
+            sizes,
+            paddle.to_tensor([span[1] - span[0]], dtype="int64"),
+            group=self._group,
+        )
+        nbytes = [int(size[0]) for size in sizes]
+        assert len(set(nbytes)) == 1, nbytes
+
+        # Now make the free lists disagree on purpose: only rank 0 hands its
+        # block back before the next allocation. Deciding on the local cache
+        # state would make the ranks register a different number of windows.
+        if self._rank == 0:
+            del local
+            gc.collect()
+        spare = pool.empty([(self._rank + 1) * 48, _HIDDEN], _DTYPE)
+        assert pool.owns(spare)
+
+        # The group is still usable, so the registrations stayed in step.
         source = pool.empty([_CHUNK, _HIDDEN], _DTYPE)
         source[:] = float(self._rank + 1)
         out = pool.empty([_CHUNK * self._world, _HIDDEN], _DTYPE)
