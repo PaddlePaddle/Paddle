@@ -455,17 +455,19 @@ void Pad3dKernel(const Context& dev_ctx,
   const size_t out_size = out->numel();
   uint32_t grid = (out_size + block - 1) / block;
 
-  bool use_int32_index = true;
-  if (out_size > std::numeric_limits<int32_t>::max()) {
-    use_int32_index = false;
-  } else {
-    for (int i = 0; i < out_dims.size(); ++i) {
-      if (out_dims[i] > std::numeric_limits<int32_t>::max()) {
-        use_int32_index = false;
-        break;
-      }
-    }
-  }
+  // Three independent sources of magnitude inside the kernels; all must fit:
+  //   out_size : loop bound of every kernel, and the upper bound of out_data
+  //   x.numel(): upper bound of every in_data offset. Negative pads remove
+  //              elements instead of adding them, so x.numel() can far
+  //              exceed out_size.
+  //   in_* / 2 : reflect's `2 * in_dim - x - 2`
+  constexpr int64_t kInt32Max = std::numeric_limits<int32_t>::max();
+  const bool use_int32_index =
+      static_cast<int64_t>(out_size) <= kInt32Max &&
+      static_cast<int64_t>(x.numel()) <= kInt32Max &&
+      (mode != "reflect" ||
+       (in_depth <= kInt32Max / 2 && in_height <= kInt32Max / 2 &&
+        in_width <= kInt32Max / 2));
   if (use_int32_index) {
     if (data_format == "NCDHW") {
       if (mode == "reflect") {

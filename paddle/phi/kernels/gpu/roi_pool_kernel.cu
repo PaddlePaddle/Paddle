@@ -58,14 +58,16 @@ __global__ void GPURoiPoolForward(const IndexType nthreads,
     IndexType n = i / pooled_width / pooled_height / channels;
 
     const T* offset_input_rois = input_rois + n * kROISize;
-    int box_batch_ind = box_batch_id_data[n];
-    int box_start_w = round(offset_input_rois[0] * spatial_scale);
-    int box_start_h = round(offset_input_rois[1] * spatial_scale);
-    int box_end_w = round(offset_input_rois[2] * spatial_scale);
-    int box_end_h = round(offset_input_rois[3] * spatial_scale);
+    IndexType box_batch_ind = box_batch_id_data[n];
+    IndexType box_start_w = round(offset_input_rois[0] * spatial_scale);
+    IndexType box_start_h = round(offset_input_rois[1] * spatial_scale);
+    IndexType box_end_w = round(offset_input_rois[2] * spatial_scale);
+    IndexType box_end_h = round(offset_input_rois[3] * spatial_scale);
 
-    int box_width = max(box_end_w - box_start_w + 1, 1);
-    int box_height = max(box_end_h - box_start_h + 1, 1);
+    IndexType box_width =
+        max(box_end_w - box_start_w + 1, static_cast<IndexType>(1));
+    IndexType box_height =
+        max(box_end_h - box_start_h + 1, static_cast<IndexType>(1));
 
     IndexType hstart = static_cast<IndexType>(
         floor(static_cast<double>(ph) * static_cast<double>(box_height) /
@@ -86,11 +88,11 @@ __global__ void GPURoiPoolForward(const IndexType nthreads,
     bool is_empty = (hend <= hstart) || (wend <= wstart);
 
     T maxval = is_empty ? 0 : -std::numeric_limits<T>::max();
-    int maxidx = -1;
+    IndexType maxidx = -1;
     const T* offset_input_data =
         input_data + (box_batch_ind * channels + c) * height * width;
-    for (int h = hstart; h < hend; ++h) {
-      for (int w = wstart; w < wend; ++w) {
+    for (IndexType h = hstart; h < hend; ++h) {
+      for (IndexType w = wstart; w < wend; ++w) {
         IndexType input_data_index = h * width + w;
         if (offset_input_data[input_data_index] > maxval) {
           maxval = offset_input_data[input_data_index];
@@ -159,9 +161,9 @@ void RoiPoolKernel(const Context& dev_ctx,
                        boxes_num->data<int>(),
                        sizeof(int) * boxes_batch_size,
                        0);
-    int start = 0;
+    int64_t start = 0;
     for (int n = 0; n < boxes_batch_size; ++n) {
-      for (int i = start; i < start + boxes_num_list[n]; ++i) {
+      for (int64_t i = start; i < start + boxes_num_list[n]; ++i) {
         box_batch_id_data[i] = n;
       }
       start += boxes_num_list[n];
@@ -195,7 +197,7 @@ void RoiPoolKernel(const Context& dev_ctx,
     }
   }
 
-  int bytes = box_batch_id_list.numel() * sizeof(int);
+  size_t bytes = box_batch_id_list.numel() * sizeof(int);
   auto box_ptr = phi::memory_utils::Alloc(
       dev_ctx.GetPlace(),
       bytes,
@@ -214,6 +216,7 @@ void RoiPoolKernel(const Context& dev_ctx,
   T* output_data = dev_ctx.template Alloc<T>(out);
   int64_t* arg_max_data = dev_ctx.template Alloc<int64_t>(arg_max);
   if (output_size > std::numeric_limits<int32_t>::max() ||
+      boxes.numel() > std::numeric_limits<int32_t>::max() ||
       x.numel() > std::numeric_limits<int32_t>::max()) {
     GPURoiPoolForward<T, int64_t>
         <<<blocks, threads, 0, dev_ctx.stream()>>>(output_size,
