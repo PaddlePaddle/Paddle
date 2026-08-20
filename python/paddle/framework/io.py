@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import collections
 import copyreg
+import ctypes
 import dataclasses
 import os
 import pickle
@@ -77,7 +78,7 @@ if TYPE_CHECKING:
 
     class _SaveOptions(TypedDict):
         use_binary_format: NotRequired[bool]
-        pickle_protocol: NotRequired[Literal[2, 3, 4]]
+        pickle_protocol: NotRequired[Literal[2, 3, 4, 5]]
 
 
 __all__ = []
@@ -97,7 +98,7 @@ def clear_async_save_task_queue() -> None:
 def async_save(
     obj: object,
     path: str | BytesIO,
-    protocol: Literal[2, 3, 4] = 4,
+    protocol: Literal[2, 3, 4, 5] = 5,
     sync_other_task: bool = False,
     **configs: Unpack[_EmptyDict],
 ) -> None:
@@ -111,8 +112,8 @@ def async_save(
         obj(Object) : The object to be saved.
         path(str|BytesIO) : The path/buffer of the object to be saved.
           If saved in the current directory, the input path string will be used as the file name.
-        protocol(int, optional): The protocol version of pickle module must be greater than 1 and less than 5.
-                                 Default: 4
+        protocol(int, optional): The protocol version of pickle module must be greater than 1 and less than 6.
+                                 Default: 5
         sync_other_task(bool) : Determine whether to wait other async save task to be finished before this one be put in queue.
         **configs(dict, optional): compatible argument to paddle.save, but will be overridden by default setting.
     Examples:
@@ -163,6 +164,20 @@ def async_save(
     async_save_queue.append(t)
 
 
+def _value_to_numpy(value):
+    """Get the numpy copy or view (if satisfied) of the value."""
+    if (
+        isinstance(value, core.eager.Tensor)
+        and value.is_contiguous()
+        and (value.place.is_cpu_place() or value.place.is_cuda_pinned_place())
+    ):
+        # Use zero-copy if the tensor is in DRAM and contiguous.
+        if value.dtype == paddle.float32:
+            buf = (ctypes.c_float * value.size).from_address(value.data_ptr())
+            return np.frombuffer(buf, dtype=np.float32).reshape(value.shape)
+    return np.array(value.cpu())
+
+
 def _build_saved_state_dict(state_dict):
     save_dict = {}
     name_table = {}
@@ -181,7 +196,7 @@ def _build_saved_state_dict(state_dict):
                     and core.is_compiled_with_custom_device('npu')
                 ):
                     value = paddle._C_ops.npu_identity(value, -1)
-                save_dict[key] = np.array(value.cpu())
+                save_dict[key] = _value_to_numpy(value)
             name_table[key] = value.name
         else:
             save_dict[key] = value
@@ -427,9 +442,9 @@ def _pickle_save(obj, f, protocol):
             f"The 'protocol' MUST be `int`, but received {type(protocol)}"
         )
 
-    if protocol < 2 or protocol > 4:
+    if protocol < 2 or protocol > 5:
         raise ValueError(
-            f"Expected 1<'protocol'<5, but received protocol={protocol}"
+            f"Expected 1<'protocol'<6, but received protocol={protocol}"
         )
 
     def reduce_varbase(self):
@@ -790,7 +805,7 @@ def _save_binary_var(obj, path):
 def save(
     obj: _StateDict | NestedStructure[Tensor] | Program,
     path: str | BytesIO,
-    protocol: Literal[2, 3, 4] = 4,
+    protocol: Literal[2, 3, 4, 5] = 5,
     **configs: Unpack[_SaveOptions],
 ) -> None:
     '''
@@ -812,8 +827,8 @@ def save(
         obj(Object) : The object to be saved.
         path(str|BytesIO) : The path/buffer of the object to be saved.
           If saved in the current directory, the input path string will be used as the file name.
-        protocol(int, optional): The protocol version of pickle module must be greater than 1 and less than 5.
-                                 Default: 4
+        protocol(int, optional): The protocol version of pickle module must be greater than 1 and less than 6.
+                                 Default: 5
         **configs(dict, optional): optional keyword arguments. The following options are currently supported:
           use_binary_format(bool): When the saved object is static graph variable, you can specify ``use_binary_for_var``.
           If True, save the file in the c++ binary format when saving a single static graph variable; otherwise, save it in pickle format.
@@ -1020,9 +1035,9 @@ def _legacy_save(obj, path, protocol=2):
             f"The 'protocol' MUST be `int`, but received {type(protocol)}"
         )
 
-    if protocol < 2 or protocol > 4:
+    if protocol < 2 or protocol > 5:
         raise ValueError(
-            f"Expected 1<'protocol'<5, but received protocol={protocol}"
+            f"Expected 1<'protocol'<6, but received protocol={protocol}"
         )
 
     if _is_file_path(path):

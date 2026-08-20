@@ -15,6 +15,7 @@
 #include <string>
 
 #include "paddle/phi/backends/onednn/matmul_utils.h"
+#include "paddle/phi/backends/onednn/onednn_helper.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 
@@ -169,12 +170,15 @@ class FusedMatmulOneDNNHandler
       // fill 1 in the front of adesc, to make residual ndims to be same as dst
       // dims
       int dst_size = out_ddims.size();
-      int origin_size = residual_data->mem_desc().get_ndims();
-      auto reshaped_md = residual_data->mem_desc();
-      dnnl::memory::dims expanded_dims = residual_data->mem_desc().get_dims();
+      int origin_size =
+          phi::funcs::GetOneDNNMemDesc(*residual_data).get_ndims();
+      auto reshaped_md = phi::funcs::GetOneDNNMemDesc(*residual_data);
+      dnnl::memory::dims expanded_dims =
+          phi::funcs::GetOneDNNMemDesc(*residual_data).get_dims();
       if (origin_size < dst_size) {
         expanded_dims.insert(expanded_dims.begin(), dst_size - origin_size, 1);
-        reshaped_md = residual_data->mem_desc().reshape(expanded_dims);
+        reshaped_md =
+            phi::funcs::GetOneDNNMemDesc(*residual_data).reshape(expanded_dims);
       }
 
       auto residual_data_tz = vectorize(residual_data->dims());
@@ -220,8 +224,9 @@ class FusedMatmulOneDNNHandler
   std::shared_ptr<dnnl::memory> AcquireSrcMemoryResidual(
       const DenseTensor *input) {
     const XT *input_data = input->data<XT>();
-    auto residual_memory_p = this->AcquireMemoryFromPrimitive(
-        input->mem_desc(), funcs::to_void_cast<XT>(input_data));
+    auto residual_memory_p =
+        this->AcquireMemoryFromPrimitive(phi::funcs::GetOneDNNMemDesc(*input),
+                                         funcs::to_void_cast<XT>(input_data));
     return residual_memory_p;
   }
 
@@ -371,10 +376,11 @@ void ExecuteFusedMatmul(const OneDNNContext &dev_ctx,
   if (is_output_fused && !funcs::is_int8<T_out>()) {
     auto permuted_md =
         dst_memory_p->get_desc().permute_axes(fused_transpose_Out);
-    out->set_mem_desc(permuted_md.reshape(vectorize<int64_t>(out->dims())));
+    phi::funcs::SetOneDNNMemDesc(
+        out, permuted_md.reshape(vectorize<int64_t>(out->dims())));
   } else {
-    out->set_mem_desc(
-        dst_memory_p->get_desc().reshape(vectorize<int64_t>(out->dims())));
+    phi::funcs::SetOneDNNMemDesc(
+        out, dst_memory_p->get_desc().reshape(vectorize<int64_t>(out->dims())));
   }
 }
 

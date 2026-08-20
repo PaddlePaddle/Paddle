@@ -256,7 +256,7 @@
   inplace : (out_grad -> x_grad)
 
 - backward_op : baddbmm_grad
-  forward : baddbmm (Tensor input, Tensor x, Tensor y, double beta=1.0, double alpha=1.0, DataType out_dtype=DataType::UNDEFINED) -> Tensor(out)
+  forward : baddbmm (Tensor input, Tensor x, Tensor y, double beta=1.0, double alpha=1.0) -> Tensor(out)
   args : (Tensor input, Tensor x, Tensor y, Tensor out_grad, double alpha, double beta)
   output : Tensor(input_grad), Tensor(x_grad), Tensor(y_grad)
   infer_meta :
@@ -4166,18 +4166,6 @@
     func : var_grad
     data_type : x
   composite: var_grad(x, out_grad, axis, keepdim, unbiased, correction, x_grad)
-
-- backward_op : view_dtype_grad
-  forward : view_dtype (Tensor input, DataType dtype) -> Tensor(out)
-  args : (Tensor input, Tensor out_grad, DataType dtype)
-  output : Tensor(input_grad)
-  infer_meta :
-    func : StridedUnChangedInferMeta
-    param : [input]
-  kernel :
-    func : view_dtype_grad
-    data_type : out_grad
-  no_need_buffer: input
 
 - backward_op : view_shape_double_grad
   forward : view_shape_grad (Tensor input, Tensor grad_out, int64_t[] dims) -> Tensor(grad_input)

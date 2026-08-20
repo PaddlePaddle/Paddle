@@ -18,8 +18,12 @@ import sys
 import unittest
 from contextlib import contextmanager
 from functools import wraps
+from unittest import mock
+
+import numpy as np
 
 import paddle
+from paddle.compat import api_dispatch
 from paddle.compat.api_dispatch import _PADDLE_NAMESPACE_SAVED
 from paddle.compat.proxy import TORCH_PROXY_FINDER
 
@@ -60,6 +64,9 @@ class CompatNamespaceAliasBase(unittest.TestCase):
         (paddle, "allclose"),
         (paddle, "equal"),
         (paddle, "seed"),
+        (paddle.Tensor, "numel"),
+        (paddle.Tensor, "type"),
+        (paddle.Tensor, "is_sparse"),
         (paddle.nn, "AvgPool1d"),
         (paddle.nn, "AvgPool2d"),
         (paddle.nn, "AvgPool3d"),
@@ -78,14 +85,14 @@ class CompatNamespaceAliasBase(unittest.TestCase):
         # (attention/sdpa). Original device restored in tearDown.
         self._device = paddle.get_device()
         paddle.set_device('cpu')
-        while TORCH_PROXY_FINDER in sys.meta_path:
+        while TORCH_PROXY_FINDER in sys.meta_path or _PADDLE_NAMESPACE_SAVED:
             paddle.disable_compat()
         self._native = {(m, a): getattr(m, a) for (m, a) in self.EXISTING}
         self._scope = set(TORCH_PROXY_FINDER._local_enabled_scope)
         self._global = TORCH_PROXY_FINDER._globally_enabled
 
     def tearDown(self):
-        while TORCH_PROXY_FINDER in sys.meta_path:
+        while TORCH_PROXY_FINDER in sys.meta_path or _PADDLE_NAMESPACE_SAVED:
             paddle.disable_compat()
         TORCH_PROXY_FINDER._local_enabled_scope = set(self._scope)
         TORCH_PROXY_FINDER._globally_enabled = self._global
@@ -126,8 +133,8 @@ class TestTopLevelAlias(CompatNamespaceAliasBase):
         )
 
     def test_invalid_level_has_no_side_effect(self):
-        with self.assertRaisesRegex(ValueError, "Unsupported level: 3"):
-            paddle.enable_compat(level=3)
+        with self.assertRaisesRegex(ValueError, "Unsupported level: 4"):
+            paddle.enable_compat(level=4)
         self.assertNotIn(TORCH_PROXY_FINDER, sys.meta_path)
         self.assertNativeRestored()
 
@@ -152,6 +159,16 @@ class TestTopLevelAlias(CompatNamespaceAliasBase):
         paddle.enable_compat()  # default level=1
         try:
             self.assertIs(paddle.sort, self._native[(paddle, "sort")])
+            self.assertIs(
+                paddle.Tensor.numel, self._native[(paddle.Tensor, "numel")]
+            )
+            self.assertIs(
+                paddle.Tensor.type, self._native[(paddle.Tensor, "type")]
+            )
+            self.assertIs(
+                paddle.Tensor.is_sparse,
+                self._native[(paddle.Tensor, "is_sparse")],
+            )
             self.assertFalse(hasattr(paddle.sort, "__compat_fn__"))
             with self.assertRaises(TypeError):
                 paddle.sort(
@@ -222,6 +239,10 @@ class TestTopLevelAlias(CompatNamespaceAliasBase):
         )
         self.assertAliased(
             paddle.nn.functional.linear, paddle.compat.nn.functional.linear
+        )
+        self.assertAliased(
+            paddle.distributions.categorical.Categorical,
+            paddle.compat.distributions.categorical.Categorical,
         )
 
     @with_level2
@@ -407,6 +428,7 @@ class TestScopeAndLifecycle(CompatNamespaceAliasBase):
     def test_scoped_level2_enable_aliases(self):
         paddle.enable_compat(scope={"triton"}, level=2, silent=True)
         try:
+            self.assertNotIn(TORCH_PROXY_FINDER, sys.meta_path)
             self.assertAliased(paddle.sort, paddle.compat.sort)
         finally:
             paddle.disable_compat()
@@ -429,23 +451,9 @@ class TestScopeAndLifecycle(CompatNamespaceAliasBase):
         paddle.disable_compat()
         self.assertEqual(len(_PADDLE_NAMESPACE_SAVED), 0)
 
-    def test_bare_guard_keeps_level2_alias(self):
-        t = paddle.to_tensor([[3.0, 1.0, 2.0]])
-        paddle.enable_compat(level=2)
-        try:
-            with paddle.use_compat_guard():
-                self.assertAliased(paddle.sort, paddle.compat.sort)
-                self.assertTrue(hasattr(paddle.sort(t, dim=-1), "values"))
-            # the level in effect survives the guard
-            self.assertAliased(paddle.sort, paddle.compat.sort)
-            self.assertTrue(hasattr(paddle.sort(t, dim=-1), "values"))
-        finally:
-            paddle.disable_compat()
-        self.assertNativeRestored()
-
 
 class TestTorchSurfaceUnderCompat(CompatNamespaceAliasBase):
-    """torch.* reaches the public compat implementations at both levels."""
+    """torch.* reaches public compat APIs only at proxy-enabled levels."""
 
     @staticmethod
     def _drop_torch_modules():
@@ -469,8 +477,8 @@ class TestTorchSurfaceUnderCompat(CompatNamespaceAliasBase):
             self._drop_torch_modules()
             paddle.disable_compat()
 
-    def test_root_torch_apis_resolve_to_compat_at_level2(self):
-        paddle.enable_compat(level=2)
+    def test_root_torch_apis_resolve_to_compat_at_level3(self):
+        paddle.enable_compat(level=3)
         try:
             self._drop_torch_modules()
             import torch
@@ -484,8 +492,8 @@ class TestTorchSurfaceUnderCompat(CompatNamespaceAliasBase):
             self._drop_torch_modules()
             paddle.disable_compat()
 
-    def test_root_compat_only_api_is_registered_at_both_levels(self):
-        for level in (1, 2):
+    def test_root_compat_only_api_is_registered_at_proxy_levels(self):
+        for level in (1, 3):
             with self.subTest(level=level):
                 paddle.enable_compat(level=level)
                 try:
@@ -536,9 +544,12 @@ class TestLevel2InternalCallersUseNative(CompatNamespaceAliasBase):
     def test_tensor_methods_caller_aware(self):
         """torch exposes max/min/sort/split/... as Tensor methods too; under
         level=2 ``x.max(dim=1)`` is torch-style for external callers and native
-        for paddle-internal ``x.max(axis=1)``; restored on disable."""
+        for paddle-internal ``x.max(axis=1)``; disable restores the namespace."""
         native_max = paddle.Tensor.max
         native_split = paddle.Tensor.split
+        native_numel = paddle.Tensor.numel
+        native_type = paddle.Tensor.type
+        native_is_sparse = paddle.Tensor.is_sparse
         t = paddle.to_tensor([[3.0, 1.0, 2.0], [6.0, 5.0, 4.0]])
         with level2_guard():
             r = t.max(dim=1)  # external -> compat namedtuple
@@ -551,15 +562,227 @@ class TestLevel2InternalCallersUseNative(CompatNamespaceAliasBase):
                 2,
             )
             self.assertEqual(len(paddle.split(t, split_size=1, dim=0)), 2)
+            self.assertEqual(t.numel(), 6)
+            self.assertIs(type(t.numel()), int)
+            self.assertIsInstance(paddle.numel(t), paddle.Tensor)
+            self.assertEqual(paddle.empty([0, 3]).numel(), 0)
+            self.assertEqual(t.cpu().type(), "paddle.FloatTensor")
+            self.assertEqual(t.type(paddle.float64).dtype, paddle.float64)
+            self.assertEqual(t.type(paddle.DoubleTensor).dtype, paddle.float64)
+            self.assertEqual(t.type("torch.DoubleTensor").dtype, paddle.float64)
+            self.assertEqual(
+                t.type("paddle.DoubleTensor").dtype, paddle.float64
+            )
+            self.assertEqual(t.type("torch.float64").dtype, paddle.float64)
+            self.assertEqual(t.type("paddle.float64").dtype, paddle.float64)
+            self.assertIs(t.type(paddle.float32), t)
+            self.assertIs(t.type("torch.FloatTensor"), t)
+            self.assertIs(t.type("paddle.FloatTensor"), t)
+            self.assertIs(t.type(t.type()), t)
+            with self.assertRaises(ValueError):
+                t.type("float64")
+            self.assertEqual(
+                paddle.ones([1], dtype="int64").cpu().type(),
+                "paddle.LongTensor",
+            )
+            self.assertEqual(
+                paddle.ones([1], dtype="float8_e4m3fn").cpu().type(),
+                "paddle.Float8_e4m3fnTensor",
+            )
+            self.assertEqual(
+                paddle.ones([1], dtype="float8_e5m2").cpu().type(),
+                "paddle.Float8_e5m2Tensor",
+            )
+            self.assertIs(t.is_sparse, False)
+            coo = paddle.sparse.sparse_coo_tensor([[0], [1]], [1.0], [2, 2])
+            csr = paddle.sparse.sparse_csr_tensor([0, 1, 1], [0], [1.0], [2, 2])
+            self.assertIs(coo.is_sparse, True)
+            self.assertIs(csr.is_sparse, False)
             # paddle-internal native-style call (simulated) stays native
             ns = {"__name__": "paddle.fake_internal", "t": t}
             exec(
                 "internal_max = t.max(axis=1)\n"
-                "internal_split = t.split(num_or_sections=2, axis=0)",
+                "internal_split = t.split(num_or_sections=2, axis=0)\n"
+                "internal_numel = t.numel()\n"
+                "internal_type = t.type\n"
+                "internal_is_sparse = t.is_sparse()",
                 ns,
             )
+            self.assertIsInstance(ns["internal_numel"], paddle.Tensor)
+            self.assertEqual(
+                ns["internal_type"], native_type.__get__(t, paddle.Tensor)
+            )
+            self.assertIs(ns["internal_is_sparse"], False)
+            cached_numel = t.numel
+            cached_max = t.max
+            ns["cached_max"] = cached_max
+            exec("internal_cached_max = cached_max(axis=1)", ns)
+            self.assertIsInstance(ns["internal_cached_max"], paddle.Tensor)
         self.assertIs(paddle.Tensor.max, native_max)  # restored on disable
         self.assertIs(paddle.Tensor.split, native_split)
+        self.assertIs(paddle.Tensor.numel, native_numel)
+        self.assertIs(paddle.Tensor.type, native_type)
+        self.assertIs(paddle.Tensor.is_sparse, native_is_sparse)
+        self.assertEqual(cached_numel(), 6)
+        self.assertTrue(hasattr(cached_max(dim=1), "values"))
+
+    @with_level2
+    def test_tensor_type_edge_cases(self):
+        t = paddle.ones([1])
+        with mock.patch.object(
+            paddle.Tensor, "to", autospec=True, return_value=t
+        ) as tensor_to:
+            self.assertIs(
+                t.type(paddle.float64, **{"async": True}),
+                t,
+            )
+            tensor_to.assert_called_once_with(
+                t,
+                device=None,
+                dtype=paddle.float64,
+                blocking=False,
+            )
+        with self.assertRaisesRegex(
+            TypeError, "unexpected keyword argument 'invalid'"
+        ):
+            t.type(invalid=True)
+        with self.assertRaisesRegex(ValueError, "invalid type"):
+            t.type("paddle.UnknownTensor")
+
+        with mock.patch.object(
+            paddle.Tensor, "to", autospec=True, return_value=t
+        ) as tensor_to:
+            self.assertIs(t.type("paddle.cuda.DoubleTensor"), t)
+            tensor_to.assert_called_once_with(
+                t,
+                device="gpu",
+                dtype='float64',
+                blocking=True,
+            )
+
+        coo = paddle.sparse.sparse_coo_tensor(
+            [[0], [0]], [1.0], [1, 1], place='cpu'
+        )
+        self.assertEqual(coo.type(), "paddle.sparse.FloatTensor")
+        self.assertEqual(t.type(np.float64).dtype, paddle.float64)
+
+        # paddle spells bfloat16 as uint16, which still has a tensor type name
+        self.assertEqual(
+            paddle.ones([1], dtype="uint16").cpu().type(),
+            "paddle.BFloat16Tensor",
+        )
+        if paddle.device.is_compiled_with_cuda():
+            self.assertEqual(
+                paddle.ones([1]).cuda().type(), "paddle.cuda.FloatTensor"
+            )
+
+        # XPU and custom devices keep their own device segment, and the name a
+        # tensor reports must round-trip back to that very tensor
+        for device, expected in (
+            ("gpu", "paddle.cuda.FloatTensor"),
+            ("xpu", "paddle.xpu.FloatTensor"),
+            ("npu", "paddle.npu.FloatTensor"),
+        ):
+            with (
+                mock.patch.object(
+                    paddle.compat, "_place_device", return_value=device
+                ),
+                mock.patch.object(
+                    paddle.compat,
+                    "_tensor_type_devices",
+                    return_value={"cpu", "gpu", "xpu", "npu"},
+                ),
+                mock.patch.object(
+                    paddle.Tensor, "to", autospec=True, return_value=t
+                ) as tensor_to,
+            ):
+                self.assertEqual(t.type(), expected)
+                self.assertIs(t.type(expected), t)
+                tensor_to.assert_not_called()
+
+        # a device segment naming another device does move the tensor
+        with mock.patch.object(
+            paddle.Tensor, "to", autospec=True, return_value=t
+        ) as tensor_to:
+            self.assertIs(t.type("paddle.xpu.FloatTensor"), t)
+            tensor_to.assert_called_once_with(
+                t,
+                device="xpu",
+                dtype='float32',
+                blocking=True,
+            )
+
+        for invalid in (
+            "paddle.tpu.FloatTensor",  # unknown device
+            "paddle.cuda.xpu.FloatTensor",  # two device segments
+        ):
+            with self.assertRaisesRegex(ValueError, "invalid type"):
+                t.type(invalid)
+
+    @with_level2
+    def test_tensor_descriptor_class_access(self):
+        type_descriptor = inspect.getattr_static(paddle.Tensor, "type")
+        sparse_descriptor = inspect.getattr_static(paddle.Tensor, "is_sparse")
+
+        self.assertIs(paddle.Tensor.type, type_descriptor.__compat_fn__)
+        self.assertIsInstance(paddle.Tensor.is_sparse, property)
+        self.assertIs(
+            paddle.Tensor.is_sparse.fget,
+            sparse_descriptor.__compat_fn__,
+        )
+
+        ns = {"__name__": "paddle.fake_internal", "paddle": paddle}
+        exec(
+            "internal_type = paddle.Tensor.type\n"
+            "internal_is_sparse = paddle.Tensor.is_sparse",
+            ns,
+        )
+        self.assertIs(ns["internal_type"], type_descriptor.__native_fn__)
+        self.assertIs(ns["internal_is_sparse"], sparse_descriptor.__native_fn__)
+
+    def test_property_to_property_dispatch(self):
+        class Native:
+            @property
+            def attr(self):
+                return "native"
+
+        class Compat:
+            @property
+            def attr(self):
+                return "compat"
+
+        native_attr = inspect.getattr_static(Native, "attr")
+        compat_attr = inspect.getattr_static(Compat, "attr")
+        Native.attr = api_dispatch.dispatch_property(native_attr, compat_attr)
+        instance = Native()
+
+        self.assertEqual(instance.attr, "compat")
+        self.assertIs(Native.attr, compat_attr)
+
+        ns = {
+            "__name__": "paddle.fake_internal",
+            "Native": Native,
+            "x": instance,
+        }
+        exec("value = x.attr\nattr = Native.attr", ns)
+        self.assertEqual(ns["value"], "native")
+        self.assertIs(ns["attr"], native_attr)
+
+    def test_missing_tensor_override_is_skipped(self):
+        missing_attr = "__missing_tensor_compat_override__"
+        self.assertIsNone(
+            inspect.getattr_static(paddle.Tensor, missing_attr, None)
+        )
+        with (
+            mock.patch.object(paddle.compat, "__all__", ()),
+            mock.patch.dict(
+                paddle.compat._TENSOR_API_OVERRIDES,
+                {missing_attr: mock.sentinel.compat_fn},
+                clear=True,
+            ),
+        ):
+            api_dispatch._patch_tensor_methods()
+        self.assertNotIn((paddle.Tensor, missing_attr), _PADDLE_NAMESPACE_SAVED)
 
     @with_level2
     def test_aliased_class_caller_aware(self):

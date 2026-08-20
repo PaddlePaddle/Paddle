@@ -19,10 +19,6 @@ limitations under the License. */
 #include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/utils/type_registry.h"
 
-#ifdef PADDLE_WITH_DNNL
-#include "dnnl.hpp"  // NOLINT
-#endif
-
 namespace phi {
 
 struct StorageProperties {
@@ -60,29 +56,6 @@ struct XPUStorageProperties
   static constexpr float default_xpu_scale_value = -1.0f;
 
   float xpu_scale_value{default_xpu_scale_value};
-};
-#endif
-
-// Add OneDNNStorageProperties firstly for unittest coverage
-#ifdef PADDLE_WITH_DNNL
-struct OneDNNStorageProperties
-    : public StorageProperties,
-      public TypeInfoTraits<StorageProperties, OneDNNStorageProperties> {
-  virtual ~OneDNNStorageProperties() = default;
-  static const char* name() { return "OneDNNStorageProperties"; }
-
-  /**
-   * @brief the detail format of memory block which have layout as ONEDNN
-   *
-   * @note ONEDNN lib support various memory format like nchw, nhwc, nChw8C,
-   *       nChw16c, etc. For a ONEDNN memory block, layout will be set as
-   *       DataLayout::ONEDNN meanwhile detail memory format will be kept in
-   *       this field.
-   */
-  dnnl::memory::format_tag format = dnnl::memory::format_tag::undef;
-
-  /// \brief memory descriptor of tensor which have layout set as ONEDNN
-  dnnl::memory::desc mem_desc;
 };
 #endif
 

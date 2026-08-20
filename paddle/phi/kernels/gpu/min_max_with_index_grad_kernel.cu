@@ -30,9 +30,13 @@ using EnableIfNonInteger =
     typename std::enable_if<!std::is_integral<T>::value, int>::type;
 
 // Here if keepdim=True, this will fallback to a simplified version of
-// take_along_axis. However, if keepdim=False (by default), indices will
-// not have equal rank will the input values (and values_grad), therefore
-// needs an unsqueeze operation by shallow copying indices and Resize
+// take_along_axis. However, if keepdim=False (by default), indices and
+// values_grad will not have equal rank with the input, therefore both of
+// them need an unsqueeze operation by shallow copying and Resize.
+// values_grad must be unsqueezed together with indices: the scatter functor
+// walks the index tensor with the input rank and reads values_grad through
+// `src.strides()[i]`, so a lower-rank values_grad makes every stride shift
+// by one dim (only dim == rank-1 happens to be unaffected).
 #define DEFINE_WITH_INDEX_GRAD_KERNEL(OpType)                                \
   template <typename T, typename Context, EnableIfNonInteger<T> = 0>         \
   void OpType##WithIndexGradKernel(const Context& dev_ctx,                   \
@@ -53,15 +57,21 @@ using EnableIfNonInteger =
       dim_val += x.dims().size();                                            \
     }                                                                        \
     DenseTensor shallow_copied_inds(indices);                                \
+    DenseTensor shallow_copied_grad(values_grad);                            \
     if (!keepdim) {                                                          \
-      auto indices_dim = x.dims();                                           \
-      indices_dim[dim_val] = 1;                                              \
-      shallow_copied_inds.Resize(indices_dim);                               \
+      auto unsqueezed_dims = x.dims();                                       \
+      unsqueezed_dims[dim_val] = 1;                                          \
+      shallow_copied_inds.Resize(unsqueezed_dims);                           \
+      shallow_copied_grad.Resize(unsqueezed_dims);                           \
     }                                                                        \
     funcs::SetConstant<Context, T> functor;                                  \
     functor(dev_ctx, x_grad, static_cast<T>(0));                             \
-    funcs::gpu_scatter_add_kernel<T, int64_t>(                               \
-        *x_grad, dim_val, shallow_copied_inds, values_grad, true, dev_ctx);  \
+    funcs::gpu_scatter_add_kernel<T, int64_t>(*x_grad,                       \
+                                              dim_val,                       \
+                                              shallow_copied_inds,           \
+                                              shallow_copied_grad,           \
+                                              true,                          \
+                                              dev_ctx);                      \
   }                                                                          \
   template <typename T, typename Context, EnableIfInteger<T> = 0>            \
   void OpType##WithIndexGradKernel(const Context& dev_ctx,                   \

@@ -22,6 +22,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/framework/tensor_util.h"
+#include "paddle/phi/backends/onednn/onednn_helper.h"
 namespace paddle::operators {
 
 // oneDNN's reduction kernel is optimized only for reducing throughout the
@@ -325,7 +326,8 @@ phi::KernelKey GetPad3dExpectedKernelType(
   // only constant mode and non-blocked layouts are supported for oneDNN
   if (op_ptr->CanONEDNNBeUsed(ctx, input_data_type) &&
       ctx.Attr<std::string>("mode") == "constant" &&
-      ctx.Input<DenseTensor>("X")->mem_desc().get_inner_nblks() == 0) {
+      phi::funcs::GetOneDNNMemDesc(*ctx.Input<DenseTensor>("X"))
+              .get_inner_nblks() == 0) {
     return phi::KernelKey(phi::Backend::ONEDNN,
                           phi::DataLayout::ONEDNN,
                           phi::TransToPhiDataType(input_data_type));

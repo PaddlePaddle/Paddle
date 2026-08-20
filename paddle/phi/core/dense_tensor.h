@@ -226,6 +226,8 @@ class PADDLE_API DenseTensor : public TensorBase,
   /// \return The init status of storage_properties.
   bool storage_properties_initialized() const;
 
+  bool has_storage_properties() const { return storage_properties_ != nullptr; }
+
   /// \brief Returns the storage_properties of the tensor.
   /// \return The storage_properties of the tensor.
   template <typename DeviceT>

@@ -121,7 +121,7 @@ void ExecuteReshape(const Context& dev_ctx,
                     const DDim& x_dims,
                     DenseTensor* out) {
   auto out_dims = ValidateShape(shape.GetData(), x_dims);
-  auto x_vec_dims = x.mem_desc().get_dims();
+  auto x_vec_dims = phi::funcs::GetOneDNNMemDesc(x).get_dims();
 
   funcs::ReorderOneDNNHandler reorder_handler(
       x_vec_dims,
@@ -130,7 +130,7 @@ void ExecuteReshape(const Context& dev_ctx,
       dev_ctx.GetEngine());
 
   auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
-      x.mem_desc(), funcs::to_void_cast(x.data<T>()));
+      phi::funcs::GetOneDNNMemDesc(x), funcs::to_void_cast(x.data<T>()));
   out->Resize(x_dims);  // to match x numel, format is changed later
   // reorder is done into a plain tag to allow usage with blocked formats
   auto reorder_dst_memory_p = reorder_handler.AcquireDstMemory(
@@ -146,7 +146,8 @@ void ExecuteReshape(const Context& dev_ctx,
   out->Resize(out_dims);
   const auto reshape_dims =
       out_dims.size() != 0 ? vectorize(out_dims) : std::vector<int64_t>{1};
-  out->set_mem_desc(reorder_dst_memory_p->get_desc().reshape(reshape_dims));
+  phi::funcs::SetOneDNNMemDesc(
+      out, reorder_dst_memory_p->get_desc().reshape(reshape_dims));
 }
 
 template <typename T, typename Context>
