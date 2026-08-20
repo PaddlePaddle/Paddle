@@ -58,10 +58,15 @@ void FullKernel(const Context& dev_ctx,
                 const Scalar& val,
                 DataType dtype,
                 DenseTensor* out) {
+  out->Resize(shape.GetData());
+  if (out->numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
+
   const auto& onednn_engine = dev_ctx.GetEngine();
 
   T fill_value = val.to<T>();
-  out->Resize(shape.GetData());
 
   funcs::FillConstantOneDNNHandler<T> handler(
       out, onednn_engine, dev_ctx.GetPlace());
