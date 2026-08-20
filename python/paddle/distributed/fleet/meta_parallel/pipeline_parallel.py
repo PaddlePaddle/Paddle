@@ -704,8 +704,6 @@ class NoPipelineParallel(MetaParallelBase):
         return res
 
     def _offload_tensors(self, output_tensor):
-        if not self._return_host_tensor:
-            return
         if isinstance(output_tensor, (tuple, list)):
             for t in output_tensor:
                 if not isinstance(t, paddle.Tensor) or isinstance(
