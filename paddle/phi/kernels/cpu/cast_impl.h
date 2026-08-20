@@ -87,12 +87,15 @@ void CastKernelImpl(const CPUContext& dev_ctx,
                     const DenseTensor& x,
                     DataType out_dtype,
                     DenseTensor* out) {
-  auto* in_begin = x.data<InT>();
   auto numel = x.numel();
-  auto* in_end = in_begin + numel;
-
   auto* out_begin = dev_ctx.Alloc<OutT>(out);
   out->set_type(out_dtype);
+  if (numel == 0) {
+    return;
+  }
+
+  auto* in_begin = x.data<InT>();
+  auto* in_end = in_begin + numel;
 
   phi::Transform<CPUContext> trans;
   trans(dev_ctx,
@@ -108,6 +111,12 @@ void CastInplaceKernelImpl(const CPUContext& dev_ctx,
                            DataType out_dtype,
                            DenseTensor* out) {
   auto numel = x.numel();
+  if (numel == 0) {
+    dev_ctx.Alloc<OutT>(out);
+    out->set_type(out_dtype);
+    return;
+  }
+
   auto* in_begin = new InT[numel];
   auto* in_end = in_begin + numel;
   auto* data_origin = x.data<InT>();

@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include <algorithm>
 #include <array>
 #include <cstdint>
 #include <type_traits>
@@ -30,6 +31,14 @@ namespace funcs {
 
 constexpr int MAX_DIMS = DDim::kMaxRank;
 
+// A 0-Size index selects nothing, so the indexed region is empty no matter
+// what the other operands look like.
+inline bool HasEmptyIndex(const std::vector<const DenseTensor*>& index) {
+  return std::any_of(index.begin(), index.end(), [](const DenseTensor* t) {
+    return t->numel() == 0;
+  });
+}
+
 template <int N>
 struct alignas(N) OpaqueType {
   char data[N];
@@ -45,6 +54,14 @@ std::array<char*, DDim::kMaxRank> GetIndexDataPtrs(
                     "The number of index tensors exceeds the maximum rank.");
 
   for (size_t i = 0; i < index.size(); ++i) {
+    // A 0-Size index tensor legally has no data pointer. The iteration space
+    // of every caller is broadcast against the index shape, so it is empty as
+    // well and the pointer is never dereferenced.
+    if (index[i]->numel() == 0) {
+      index_ptrs[i] = nullptr;
+      continue;
+    }
+
     const IndexT* p_index = index[i]->data<IndexT>();
 
     PADDLE_ENFORCE_NOT_NULL(
