@@ -28,6 +28,7 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_DNNL
 #include "paddle/phi/backends/onednn/axpy_handler.h"
+#include "paddle/phi/backends/onednn/onednn_context.h"
 #endif
 
 #include "glog/logging.h"

@@ -43,7 +43,7 @@ void SoftmaxGradKernel(const Context& dev_ctx,
                           {DNNL_ARG_DIFF_SRC, *diff_src_memory_p}});
   astream.wait();
 
-  x_grad->set_mem_desc(diff_src_memory_p->get_desc());
+  phi::funcs::SetOneDNNMemDesc(x_grad, diff_src_memory_p->get_desc());
 }
 
 }  // namespace phi
