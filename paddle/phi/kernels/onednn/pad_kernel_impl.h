@@ -126,7 +126,7 @@ void PadOpKernel(const Context& dev_ctx,
       x_tz, x.dtype(), funcs::ToOneDNNDataType(x.dtype()), onednn_engine);
 
   auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
-      x.mem_desc(), funcs::to_void_cast(x.data<T>()));
+      phi::funcs::GetOneDNNMemDesc(x), funcs::to_void_cast(x.data<T>()));
   auto reorder_dst_memory_p = reorder_handler.AcquireDstMemory(
       out,
       out_tz,
@@ -172,6 +172,6 @@ void PadOpKernel(const Context& dev_ctx,
   reorder_p->execute(astream, *reorder_src_memory_p, *slice_mem_p);
   astream.wait();
 
-  out->set_mem_desc(reorder_dst_memory_p->get_desc());
+  phi::funcs::SetOneDNNMemDesc(out, reorder_dst_memory_p->get_desc());
 }
 }  // namespace phi

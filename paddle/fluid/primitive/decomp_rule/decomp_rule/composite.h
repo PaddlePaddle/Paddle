@@ -1418,8 +1418,7 @@ Tensor baddbmm_decomp(const Tensor& input,
                       const Tensor& x,
                       const Tensor& y,
                       const double beta,
-                      const double alpha,
-                      const DataType out_dtype) {
+                      const double alpha) {
   int64_t batch_size = x.shape()[0];
   Tensor x_y_mat;
   if (batch_size == 0) {

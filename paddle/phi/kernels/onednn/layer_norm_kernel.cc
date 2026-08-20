@@ -36,8 +36,11 @@ class LayerNormOneDNNHandler
     const auto fwd_prop_kind = is_test ? dnnl::prop_kind::forward_inference
                                        : dnnl::prop_kind::forward_training;
 
-    this->AcquireForwardPrimitiveDescriptor(
-        fwd_prop_kind, x->mem_desc(), x->mem_desc(), epsilon, flags);
+    this->AcquireForwardPrimitiveDescriptor(fwd_prop_kind,
+                                            phi::funcs::GetOneDNNMemDesc(*x),
+                                            phi::funcs::GetOneDNNMemDesc(*x),
+                                            epsilon,
+                                            flags);
   }
 
   std::tuple<std::shared_ptr<dnnl::memory>, std::shared_ptr<dnnl::memory>>
@@ -131,7 +134,7 @@ void LayerNormKernel(const Context& dev_ctx,
   layer_norm_p->execute(astream, args);
   astream.wait();
 
-  y->set_mem_desc(dst_memory->get_desc());
+  phi::funcs::SetOneDNNMemDesc(y, dst_memory->get_desc());
 }
 }  // namespace phi
 

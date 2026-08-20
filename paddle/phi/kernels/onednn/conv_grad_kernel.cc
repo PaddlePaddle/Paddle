@@ -13,6 +13,8 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/conv_grad_kernel.h"
+
+#include "paddle/phi/backends/onednn/onednn_helper.h"
 #include "paddle/phi/core/compat/get_kerneltype_forvar_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/visit_type.h"
@@ -141,12 +143,14 @@ void ConvGradKernel(const Context& dev_ctx,
             dnnl::memory::format_tag target_format =
                 weights_tz.size() == 6 ? dnnl::memory::format_tag::oidhw
                                        : dnnl::memory::format_tag::oihw;
-            filter_grad->set_mem_desc(
+            phi::funcs::SetOneDNNMemDesc(
+                filter_grad,
                 dnnl::memory::desc(vectorize<int64_t>(filter_grad->dims()),
                                    in_type,
                                    target_format));
           } else {
-            filter_grad->set_mem_desc(diff_weights_memory_p->get_desc());
+            phi::funcs::SetOneDNNMemDesc(filter_grad,
+                                         diff_weights_memory_p->get_desc());
           }
         }
         if (input_grad) {
@@ -167,7 +171,8 @@ void ConvGradKernel(const Context& dev_ctx,
                                     {DNNL_ARG_DIFF_SRC, *diff_src_memory_p}});
           astream.wait();
 
-          input_grad->set_mem_desc(diff_src_memory_p->get_desc());
+          phi::funcs::SetOneDNNMemDesc(input_grad,
+                                       diff_src_memory_p->get_desc());
         }
       }));
 }

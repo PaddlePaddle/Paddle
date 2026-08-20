@@ -52,7 +52,7 @@ void SoftmaxKernel(const Context& dev_ctx,
     });
   }
 
-  out->set_mem_desc(dst_memory_p->get_desc());
+  phi::funcs::SetOneDNNMemDesc(out, dst_memory_p->get_desc());
 }
 
 }  // namespace phi

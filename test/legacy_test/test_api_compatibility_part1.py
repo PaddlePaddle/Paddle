@@ -2029,17 +2029,25 @@ class TestBaddbmmAPI(unittest.TestCase):
         np.testing.assert_allclose(ref_out_2d, out8.numpy(), rtol=1e-6)
         paddle.enable_static()
 
-    def test_error(self):
-        """Test invalid input dimensions that should raise ValueError."""
+    def test_1d_input(self):
         paddle.disable_static()
-        x = paddle.to_tensor(self.np_x)
-        y = paddle.to_tensor(self.np_y)
+        try:
+            x = paddle.to_tensor(self.np_x)
+            y = paddle.to_tensor(self.np_y)
 
-        # Test 1D input (invalid)
-        input_1d = paddle.to_tensor(np.random.rand(3).astype('float32'))
-        with self.assertRaises(ValueError):
-            paddle.baddbmm(input_1d, x, y)
-        paddle.enable_static()
+            # A 1-D input is right-aligned with the output's last dimension.
+            input_1d = paddle.to_tensor(np.random.rand(3).astype('float32'))
+            out = paddle.baddbmm(input_1d, x, y)
+            expected = input_1d.numpy() + self.np_x @ self.np_y
+            np.testing.assert_allclose(out.numpy(), expected, rtol=1e-6)
+
+            invalid_input = paddle.to_tensor(
+                np.random.rand(2).astype('float32')
+            )
+            with self.assertRaises(ValueError):
+                paddle.baddbmm(invalid_input, x, y)
+        finally:
+            paddle.enable_static()
 
     def test_static_Compatibility(self):
         paddle.enable_static()

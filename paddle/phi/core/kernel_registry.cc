@@ -17,6 +17,9 @@
 #include <typeindex>
 #include <typeinfo>
 
+#ifdef PADDLE_WITH_DNNL
+#include "paddle/phi/backends/onednn/onednn_context.h"
+#endif
 #include "paddle/phi/core/custom_kernel.h"
 #include "paddle/phi/core/kernel_utils.h"
 #include "paddle/phi/core/vocab/string_array.h"

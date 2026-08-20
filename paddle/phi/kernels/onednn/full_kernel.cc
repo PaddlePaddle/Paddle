@@ -92,9 +92,11 @@ void FullKernel(const Context& dev_ctx,
 
   // src0_memory_p's md was just to allow the usage of a binary
   // primitive as a memset, and now we need to create a real one
-  out->set_mem_desc({vectorize(out->dims()),
-                     funcs::OneDNNGetDataType<T>(),
-                     funcs::GetPlainOneDNNFormat(out->dims().size())});
+  phi::funcs::SetOneDNNMemDesc(
+      out,
+      {vectorize(out->dims()),
+       funcs::OneDNNGetDataType<T>(),
+       funcs::GetPlainOneDNNFormat(out->dims().size())});
 }
 }  // namespace phi
 

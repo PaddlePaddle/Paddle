@@ -78,7 +78,7 @@ void EltwiseForward(const OneDNNContext& dev_ctx,
       astream, {{DNNL_ARG_FROM, *src_memory_p}, {DNNL_ARG_TO, *dst_memory_p}});
   astream.wait();
 
-  out->set_mem_desc(dst_memory_p->get_desc());
+  phi::funcs::SetOneDNNMemDesc(out, dst_memory_p->get_desc());
 }
 
 template <typename T, dnnl::algorithm algorithm>
@@ -168,7 +168,7 @@ void RoundKernel(const Context& dev_ctx,
   DenseTensorMeta meta_out(x.dtype(), x.dims());
   out1.set_meta(meta_out);
   out1.set_lod(x.lod());
-  out1.set_mem_desc(x.mem_desc());
+  phi::funcs::SetOneDNNMemDesc(&(out1), phi::funcs::GetOneDNNMemDesc(x));
   dev_ctx.template Alloc<T>(&out1);
 
   for (int i = 0; i < x.numel(); i++) {
