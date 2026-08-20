@@ -322,22 +322,37 @@ PHI_DEFINE_EXPORTED_bool(
     "convolution operators in cuDNN on Ampere or newer GPUs. "
     "Default is true.");
 
+#endif
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_CUSTOM_DEVICE)
 /**
  * CUBLAS related FLAG
  * Name: FLAGS_cublas_allow_tf32
  * Since Version: 3.3.0
- * Value Range: bool, default=false
+ * Value Range: bool, default=false for CUDA/HIP and true for Custom Device-only
  * Example:
  * Note: whether to allow using TensorFloat-32 (TF32) in cublas matmul.
  * TF32 is only available on Ampere or newer GPUs.
  * It provides better performance but lower precision than FP32.
  */
+#if defined(PADDLE_WITH_CUSTOM_DEVICE) && !defined(PADDLE_WITH_CUDA) && \
+    !defined(PADDLE_WITH_HIP)
+constexpr bool kCublasAllowTF32Default = true;
+#else
+constexpr bool kCublasAllowTF32Default = false;
+#endif
+
 PHI_DEFINE_EXPORTED_bool(
     cublas_allow_tf32,
-    false,
+    kCublasAllowTF32Default,
     "Whether to allow using TensorFloat-32 (TF32) tensor cores for "
-    "matrix multiplication operators in cuBLAS on Ampere or newer GPUs. "
-    "Default is false.");
+    "BLAS matrix multiplication. Default is true for Custom Device-only "
+    "builds and false otherwise.");
+
+#endif
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
 #ifdef PADDLE_WITH_HIP
 /**
