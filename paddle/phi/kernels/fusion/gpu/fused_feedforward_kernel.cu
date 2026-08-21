@@ -12,307 +12,157 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/common/errors.h"
-#include "paddle/phi/api/include/tensor.h"
-#include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/funcs/blas/blas.h"
-#include "paddle/phi/kernels/funcs/broadcast_function.h"
-#include "paddle/phi/kernels/funcs/elementwise_functor.h"
-#include "paddle/phi/kernels/funcs/layer_norm_impl.cu.h"
-#include "paddle/phi/kernels/fusion/gpu/fused_attention_utils.h"
+#include "paddle/phi/kernels/fusion/gpu/fused_transformer_kernel_launch.h"
+
 #include "paddle/phi/kernels/fusion/gpu/fused_dropout_helper.h"
-#include "paddle/phi/kernels/impl/matmul_grad_kernel_impl.h"
 
-namespace phi {
-namespace fusion {
+namespace phi::fusion {
 
-template <typename T, typename Context>
-void MatMul(const GPUContext& dev_ctx,
-            const DenseTensor& a,
-            const DenseTensor& b,
-            DenseTensor* c) {
-  auto blas = funcs::GetBlas<Context, T>(dev_ctx);
-  auto a_2d = phi::FoldInitDims(a);
-  auto b_2d = phi::FoldInitDims(b);
-  auto mat_dim_a = funcs::CreateMatrixDescriptor(a_2d.dims(), 0, false);
-  auto mat_dim_b = funcs::CreateMatrixDescriptor(b_2d.dims(), 0, false);
-  T alpha = static_cast<T>(1.0);
-  blas.MatMul(a, mat_dim_a, b, mat_dim_b, alpha, c, T(0));
+namespace {
+
+DropoutParam MakeDropoutParam(const FusedDropoutConfig& config) {
+  return DropoutParam(config.fix_seed,
+                      0,
+                      config.is_test,
+                      config.is_upscale_in_train,
+                      config.probability,
+                      config.seed,
+                      config.seed_value);
 }
 
-template <typename T, typename Context>
-void FFN(const GPUContext& dev_ctx,
-         const DenseTensor& x,
-         const DenseTensor& linear1_weight,
-         const DenseTensor* linear1_bias,
-         const DenseTensor& linear2_weight,
-         const DenseTensor* linear2_bias,
-         const DenseTensor* ln1_scale,
-         const DenseTensor* ln1_bias,
-         const DenseTensor* ln2_scale,
-         const DenseTensor* ln2_bias,
-         DenseTensor* out,
-         DenseTensor* dropout1_mask,
-         DenseTensor* dropout2_mask,
-         DenseTensor* ln1_mean,
-         DenseTensor* ln1_variance,
-         DenseTensor* ln2_mean,
-         DenseTensor* ln2_variance,
-         DenseTensor* linear1_out,
-         DenseTensor* ln1_out,
-         DenseTensor* dropout1_out,
-         DenseTensor* dropout2_out,
-         const int bsz_seq,
-         const int d_model,
-         const int dim_feedforward,
-         const std::string& act_method,
-         const bool pre_layer_norm,
-         const float epsilon1,
-         const float epsilon2,
-         const bool add_residual,
-         const int ring_id,
-         const fusion::DropoutParam& dropout_param1,
-         const fusion::DropoutParam& dropout_param2) {
-  fusion::FusedDropoutLayerNormHelper<T, uint8_t> pre_layernorm_helper(
-      bsz_seq, d_model, epsilon1);
-  fusion::FusedDropoutHelper<T, uint8_t> fused_act_dropout_helper(
-      dev_ctx, bsz_seq, dim_feedforward, dropout_param1);
-  fusion::FusedDropoutLayerNormHelper<T, uint8_t>
-      fused_dropout_layernorm_helper(
-          dev_ctx, bsz_seq, d_model, dropout_param2, epsilon2);
+}  // namespace
 
-  using U = funcs::LayerNormParamType<T>;
-  const DenseTensor* in = &x;
-
-  const U* ln1_scale_ptr =
-      ln1_scale == nullptr ? nullptr : ln1_scale->data<U>();
-  const U* ln1_bias_ptr = ln1_bias == nullptr ? nullptr : ln1_bias->data<U>();
-  const U* ln2_scale_ptr =
-      ln2_scale == nullptr ? nullptr : ln2_scale->data<U>();
-  const U* ln2_bias_ptr = ln2_bias == nullptr ? nullptr : ln2_bias->data<U>();
-  const T* linear1_bias_ptr =
-      linear1_bias == nullptr ? nullptr : linear1_bias->data<T>();
-  const T* linear2_bias_ptr =
-      linear2_bias == nullptr ? nullptr : linear2_bias->data<T>();
-
-  if (pre_layer_norm) {
-    pre_layernorm_helper.LayerNorm(dev_ctx,
-                                   x.data<T>(),
-                                   ln1_scale_ptr,
-                                   ln1_bias_ptr,
-                                   ln1_out->data<T>(),
-                                   ln1_mean->data<U>(),
-                                   ln1_variance->data<U>());
-    in = ln1_out;
-  }
-  MatMul<T, Context>(dev_ctx, *in, linear1_weight, linear1_out);
-  fused_act_dropout_helper.DropoutActBias(dev_ctx,
-                                          linear1_out->data<T>(),
-                                          linear1_bias_ptr,
-                                          act_method,
-                                          dropout1_out->data<T>(),
-                                          dropout1_mask->data<uint8_t>());
-  DenseTensor linear2_out;
-  linear2_out.Resize({bsz_seq, d_model});
-  dev_ctx.template Alloc<T>(&linear2_out, linear2_out.numel() * sizeof(T));
-  MatMul<T, Context>(dev_ctx, *dropout1_out, linear2_weight, &linear2_out);
-
-  // tensor model parallel
-  phi::fusion::AllReduce<T>(linear2_out, ring_id, dev_ctx);
-
-  const T* residual_ptr = add_residual ? x.data<T>() : nullptr;
-  if (!pre_layer_norm) {
-    // TODO(Xreki): support post layer_norm case when add_residual is false.
-    PADDLE_ENFORCE_EQ(add_residual,
-                      true,
-                      common::errors::InvalidArgument(
-                          "Attribute add_residual is expected to be true "
-                          "when pre_layer_norm is false."));
-
-    fused_dropout_layernorm_helper.LayernormResidualDropoutBias(
-        dev_ctx,
-        linear2_out.data<T>(),
-        residual_ptr,
-        linear2_bias_ptr,
-        ln2_scale_ptr,
-        ln2_bias_ptr,
-        dropout2_out->data<T>(),
-        dropout2_mask->data<uint8_t>(),
-        out->data<T>(),
-        ln2_mean->data<U>(),
-        ln2_variance->data<U>());
-  } else {
-    fused_dropout_layernorm_helper.ResidualDropoutBias(
-        dev_ctx,
-        linear2_out.data<T>(),
-        residual_ptr,
-        linear2_bias_ptr,
-        out->data<T>(),
-        dropout2_mask->data<uint8_t>());
-  }
+template <typename T>
+void LaunchLayerNormForward(const GPUContext& dev_ctx,
+                            int rows,
+                            int cols,
+                            float epsilon,
+                            const T* x,
+                            const FusedLayerNormParamType<T>* scale,
+                            const FusedLayerNormParamType<T>* bias,
+                            T* out,
+                            FusedLayerNormParamType<T>* mean,
+                            FusedLayerNormParamType<T>* variance) {
+  FusedDropoutLayerNormHelper<T, uint8_t> helper(rows, cols, epsilon);
+  helper.LayerNorm(dev_ctx, x, scale, bias, out, mean, variance);
 }
 
-template <typename T, typename Context>
-void FusedFeedForwardKernel(const Context& dev_ctx,
-                            const DenseTensor& x,
-                            const optional<DenseTensor>& dropout1_seed,
-                            const optional<DenseTensor>& dropout2_seed,
-                            const DenseTensor& linear1_weight,
-                            const optional<DenseTensor>& linear1_bias,
-                            const DenseTensor& linear2_weight,
-                            const optional<DenseTensor>& linear2_bias,
-                            const optional<DenseTensor>& ln1_scale,
-                            const optional<DenseTensor>& ln1_bias,
-                            const optional<DenseTensor>& ln2_scale,
-                            const optional<DenseTensor>& ln2_bias,
-                            bool pre_layer_norm,
-                            float ln1_epsilon,
-                            float ln2_epsilon,
-                            const std::string& act_method,
-                            float dropout1_prob,
-                            float dropout2_prob,
-                            const std::string& dropout1_implementation,
-                            const std::string& dropout2_implementation,
-                            bool is_test,
-                            bool dropout1_fix_seed,
-                            bool dropout2_fix_seed,
-                            int dropout1_seed_val,
-                            int dropout2_seed_val,
-                            bool add_residual,
-                            int ring_id,
-                            DenseTensor* out,
-                            DenseTensor* dropout1_mask,
-                            DenseTensor* dropout2_mask,
-                            DenseTensor* ln1_mean,
-                            DenseTensor* ln1_variance,
-                            DenseTensor* ln2_mean,
-                            DenseTensor* ln2_variance,
-                            DenseTensor* linear1_out,
-                            DenseTensor* ln1_out,
-                            DenseTensor* dropout1_out,
-                            DenseTensor* dropout2_out) {
-  auto* x_ptr = &x;
-  auto* linear1_weight_ptr = &linear1_weight;
-  auto* linear1_bias_ptr = linear1_bias.get_ptr();
-  auto* linear2_weight_ptr = &linear2_weight;
-  auto* linear2_bias_ptr = linear2_bias.get_ptr();
-
-  auto* ln1_scale_ptr = pre_layer_norm ? ln1_scale.get_ptr() : nullptr;
-  auto* ln1_bias_ptr = pre_layer_norm ? ln1_bias.get_ptr() : nullptr;
-  auto* ln2_scale_ptr = !pre_layer_norm ? ln2_scale.get_ptr() : nullptr;
-  auto* ln2_bias_ptr = !pre_layer_norm ? ln2_bias.get_ptr() : nullptr;
-
-  if (!pre_layer_norm) {
-    ln1_mean = nullptr;
-    ln1_variance = nullptr;
-    ln1_out = nullptr;
-  } else {
-    ln2_mean = nullptr;
-    ln2_variance = nullptr;
-  }
-
-  bool is_upscale_in_train1 = dropout1_implementation == "upscale_in_train";
-  bool is_upscale_in_train2 = dropout2_implementation == "upscale_in_train";
-  auto* dropout1_seed_ptr = dropout1_seed.get_ptr();
-  auto* dropout2_seed_ptr = dropout2_seed.get_ptr();
-
-  fusion::DropoutParam dropout_param1(dropout1_fix_seed,
-                                      0,
-                                      is_test,
-                                      is_upscale_in_train1,
-                                      dropout1_prob,
-                                      dropout1_seed_ptr,
-                                      dropout1_seed_val);
-  fusion::DropoutParam dropout_param2(dropout2_fix_seed,
-                                      0,
-                                      is_test,
-                                      is_upscale_in_train2,
-                                      dropout2_prob,
-                                      dropout2_seed_ptr,
-                                      dropout2_seed_val);
-
-  using U = funcs::LayerNormParamType<T>;
-  dev_ctx.template Alloc<T>(out, out->numel() * sizeof(T));
-  dev_ctx.template Alloc<uint8_t>(dropout1_mask,
-                                  dropout1_mask->numel() * sizeof(uint8_t));
-  dev_ctx.template Alloc<uint8_t>(dropout2_mask,
-                                  dropout2_mask->numel() * sizeof(uint8_t));
-  if (pre_layer_norm) {
-    dev_ctx.template Alloc<U>(ln1_mean, ln1_mean->numel() * sizeof(U));
-    dev_ctx.template Alloc<U>(ln1_variance, ln1_variance->numel() * sizeof(U));
-    dev_ctx.template Alloc<T>(ln1_out, ln1_out->numel() * sizeof(T));
-  } else {
-    dev_ctx.template Alloc<U>(ln2_mean, ln2_mean->numel() * sizeof(U));
-    dev_ctx.template Alloc<U>(ln2_variance, ln2_variance->numel() * sizeof(U));
-  }
-
-  dev_ctx.template Alloc<T>(linear1_out, linear1_out->numel() * sizeof(T));
-  dev_ctx.template Alloc<T>(dropout1_out, dropout1_out->numel() * sizeof(T));
-  dev_ctx.template Alloc<T>(dropout2_out, dropout2_out->numel() * sizeof(T));
-
-  if (out->numel() == 0) {
-    return;
-  }
-
-  auto x_dim = x_ptr->dims();
-  auto mat_dim_x =
-      funcs::CreateMatrixDescriptor(phi::RowMatrixFromVector(x_dim), 0, false);
-
-  auto dim = linear1_weight_ptr->dims();
-  int d_model = dim[0];
-  int dim_feedforward = dim[dim.size() - 1];
-  int bsz_seq = mat_dim_x.batch_size_ * mat_dim_x.height_;
-
-  phi::fusion::FFN<T, Context>(dev_ctx,
-                               x,
-                               linear1_weight,
-                               linear1_bias_ptr,
-                               linear2_weight,
-                               linear2_bias_ptr,
-                               ln1_scale_ptr,
-                               ln1_bias_ptr,
-                               ln2_scale_ptr,
-                               ln2_bias_ptr,
-                               out,
-                               dropout1_mask,
-                               dropout2_mask,
-                               ln1_mean,
-                               ln1_variance,
-                               ln2_mean,
-                               ln2_variance,
-                               linear1_out,
-                               ln1_out,
-                               dropout1_out,
-                               dropout2_out,
-                               bsz_seq,
-                               d_model,
-                               dim_feedforward,
-                               act_method,
-                               pre_layer_norm,
-                               ln1_epsilon,
-                               ln2_epsilon,
-                               add_residual,
-                               ring_id,
-                               dropout_param1,
-                               dropout_param2);
+template <typename T>
+void LaunchDropoutActBiasForward(const GPUContext& dev_ctx,
+                                 int rows,
+                                 int cols,
+                                 const FusedDropoutConfig& dropout,
+                                 const T* x,
+                                 const T* bias,
+                                 const std::string& activation,
+                                 T* out,
+                                 uint8_t* mask) {
+  auto dropout_param = MakeDropoutParam(dropout);
+  FusedDropoutHelper<T, uint8_t> helper(dev_ctx, rows, cols, dropout_param);
+  helper.DropoutActBias(dev_ctx, x, bias, activation, out, mask);
 }
 
-}  // namespace fusion
-}  // namespace phi
-
-PD_REGISTER_KERNEL(fused_feedforward,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::fusion::FusedFeedForwardKernel,
-                   float,
-                   double,
-                   phi::float16) {
-  kernel->OutputAt(1).SetDataType(phi::DataType::UINT8);
-  kernel->OutputAt(2).SetDataType(phi::DataType::UINT8);
-  if (kernel_key.dtype() == phi::DataType::FLOAT16) {
-    kernel->OutputAt(3).SetDataType(phi::DataType::FLOAT32);
-    kernel->OutputAt(4).SetDataType(phi::DataType::FLOAT32);
-    kernel->OutputAt(5).SetDataType(phi::DataType::FLOAT32);
-    kernel->OutputAt(6).SetDataType(phi::DataType::FLOAT32);
-  }
+template <typename T>
+void LaunchResidualDropoutBiasForward(const GPUContext& dev_ctx,
+                                      int rows,
+                                      int cols,
+                                      const FusedDropoutConfig& dropout,
+                                      float epsilon,
+                                      const T* x,
+                                      const T* residual,
+                                      const T* bias,
+                                      T* out,
+                                      uint8_t* mask) {
+  auto dropout_param = MakeDropoutParam(dropout);
+  FusedDropoutLayerNormHelper<T, uint8_t> helper(
+      dev_ctx, rows, cols, dropout_param, epsilon);
+  helper.ResidualDropoutBias(dev_ctx, x, residual, bias, out, mask);
 }
+
+template <typename T>
+void LaunchLayernormResidualDropoutBiasForward(
+    const GPUContext& dev_ctx,
+    int rows,
+    int cols,
+    const FusedDropoutConfig& dropout,
+    float epsilon,
+    const T* x,
+    const T* residual,
+    const T* bias,
+    const FusedLayerNormParamType<T>* scale,
+    const FusedLayerNormParamType<T>* ln_bias,
+    T* dropout_out,
+    uint8_t* mask,
+    T* out,
+    FusedLayerNormParamType<T>* mean,
+    FusedLayerNormParamType<T>* variance) {
+  auto dropout_param = MakeDropoutParam(dropout);
+  FusedDropoutLayerNormHelper<T, uint8_t> helper(
+      dev_ctx, rows, cols, dropout_param, epsilon);
+  helper.LayernormResidualDropoutBias(dev_ctx,
+                                      x,
+                                      residual,
+                                      bias,
+                                      scale,
+                                      ln_bias,
+                                      dropout_out,
+                                      mask,
+                                      out,
+                                      mean,
+                                      variance);
+}
+
+#define INSTANTIATE_FUSED_FEEDFORWARD_FORWARD(T, U)                            \
+  template void LaunchLayerNormForward<T>(const GPUContext&,                   \
+                                          int,                                 \
+                                          int,                                 \
+                                          float,                               \
+                                          const T*,                            \
+                                          const U*,                            \
+                                          const U*,                            \
+                                          T*,                                  \
+                                          U*,                                  \
+                                          U*);                                 \
+  template void LaunchDropoutActBiasForward<T>(const GPUContext&,              \
+                                               int,                            \
+                                               int,                            \
+                                               const FusedDropoutConfig&,      \
+                                               const T*,                       \
+                                               const T*,                       \
+                                               const std::string&,             \
+                                               T*,                             \
+                                               uint8_t*);                      \
+  template void LaunchResidualDropoutBiasForward<T>(const GPUContext&,         \
+                                                    int,                       \
+                                                    int,                       \
+                                                    const FusedDropoutConfig&, \
+                                                    float,                     \
+                                                    const T*,                  \
+                                                    const T*,                  \
+                                                    const T*,                  \
+                                                    T*,                        \
+                                                    uint8_t*);                 \
+  template void LaunchLayernormResidualDropoutBiasForward<T>(                  \
+      const GPUContext&,                                                       \
+      int,                                                                     \
+      int,                                                                     \
+      const FusedDropoutConfig&,                                               \
+      float,                                                                   \
+      const T*,                                                                \
+      const T*,                                                                \
+      const T*,                                                                \
+      const U*,                                                                \
+      const U*,                                                                \
+      T*,                                                                      \
+      uint8_t*,                                                                \
+      T*,                                                                      \
+      U*,                                                                      \
+      U*)
+
+INSTANTIATE_FUSED_FEEDFORWARD_FORWARD(float, float);
+INSTANTIATE_FUSED_FEEDFORWARD_FORWARD(double, double);
+INSTANTIATE_FUSED_FEEDFORWARD_FORWARD(phi::float16, float);
+
+#undef INSTANTIATE_FUSED_FEEDFORWARD_FORWARD
+
+}  // namespace phi::fusion
