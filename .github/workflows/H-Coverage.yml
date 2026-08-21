@@ -199,7 +199,7 @@ jobs:
           mkdir -p build && cd build
           ccache -z
           cmake .. -DPY_VERSION=3.12 -DWITH_GPU=ON -DWITH_DISTRIBUTE=ON -DWITH_TESTING=ON -DCUDA_ARCH_NAME=Manual -DCUDA_ARCH_BIN="90" -DFA_JOB_POOLS_COMPILE=1 -DWITH_CUDNN_FRONTEND=ON -DON_INFER=OFF -DWITH_NVSHMEM=ON
-          make -j20
+          CCACHE_DISABLE=1 make -k -j20
           EXIT_CODE=$?
           ccache -s
           exit $EXIT_CODE
