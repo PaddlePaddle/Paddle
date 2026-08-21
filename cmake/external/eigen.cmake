@@ -23,7 +23,8 @@ if(WIN32)
 endif()
 
 set(EIGEN_INCLUDE_DIR ${EIGEN_SOURCE_DIR})
-include_directories(${EIGEN_INCLUDE_DIR})
+# Use SYSTEM include to suppress warnings from Eigen third-party headers.
+include_directories(SYSTEM ${EIGEN_INCLUDE_DIR})
 ExternalProject_Add(
   extern_eigen3
   ${EXTERNAL_PROJECT_LOG_ARGS}
