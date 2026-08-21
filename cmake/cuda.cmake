@@ -324,7 +324,7 @@ set(CUDA_PROPAGATE_HOST_FLAGS OFF)
 # Release/Debug flags set by cmake. Such as -O3 -g -DNDEBUG etc.
 # So, don't set these flags here.
 
-# TODO: 感觉应该是需要跳过 win 的
+# Windows builds are forced to use C++17 in cmake/flags.cmake.
 set(CMAKE_CUDA_STANDARD 20)
 
 # (Note) For windows, if delete /W[1-4], /W1 will be added defaultly and conflict with -w
