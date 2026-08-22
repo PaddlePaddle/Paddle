@@ -118,19 +118,20 @@ class GemmEpilogueAlgoCache {
             sizeof(workspace_size)));
 
     int returned_results = 0;
-    std::vector<GPU(blasLtMatmulHeuristicResult_t)> heuristic_results(
-        requested_algo_count_);
-    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::GPU(blasLtMatmulAlgoGetHeuristic)(
-        lt_handle,
-        op_desc,
-        a_desc,
-        b_desc,
-        c_desc,
-        c_desc,
-        preference,
-        requested_algo_count_,
-        heuristic_results.data(),
-        &returned_results));
+    // NVCC 12.x ICEs on destroy_at<cublasLtMatmulHeuristicResult_t> in C++20.
+    GPU(blasLtMatmulHeuristicResult_t)
+    heuristic_results[requested_algo_count_]{};
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        phi::dynload::GPU(blasLtMatmulAlgoGetHeuristic)(lt_handle,
+                                                        op_desc,
+                                                        a_desc,
+                                                        b_desc,
+                                                        c_desc,
+                                                        c_desc,
+                                                        preference,
+                                                        requested_algo_count_,
+                                                        heuristic_results,
+                                                        &returned_results));
 
     PADDLE_ENFORCE_GT(
         returned_results,
@@ -257,7 +258,7 @@ class GemmEpilogueAlgoCache {
   }
   std::unordered_map<int64_t, GPU(blasLtMatmulAlgo_t)> map_;
   int search_times_;
-  const int requested_algo_count_ = 10;
+  static constexpr int requested_algo_count_ = 10;
   std::mutex cache_mutex_;
 
   void HashMatmulDesc_(GPU(blasLtMatmulDesc_t) desc,

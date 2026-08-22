@@ -112,7 +112,7 @@ def main() -> int:
             return 2
 
         entry = matches[0]
-        args = [arg for arg in command_args(entry) if arg != "-w"]
+        args = command_args(entry)
         print(f"\n=== NVCC destroy_at diagnostic: {source} ===", flush=True)
         print(shlex.join(args), flush=True)
         result = subprocess.run(args, cwd=entry["directory"], env=env)
