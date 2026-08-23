@@ -318,7 +318,6 @@ void FusedAttentionGradKernel(
                                             seed_1};
   output_size = hidden_size;
   transA = false;
-  transB = false;
   bool compute_bias = false;
   // (b*s, num_head * dim_head) * (num_head * dim_head, dim_embed)
   if (pre_layer_norm) {
