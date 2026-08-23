@@ -73,10 +73,11 @@ void QuantOpKernel(const Context& dev_ctx,
   funcs::ReorderOneDNNHandler reorder_handler(
       x_tz, input.dtype(), x_type, out_dtype, out_type, dev_ctx.GetEngine());
 
-  auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
-      input.mem_desc(), funcs::to_void_cast(input.data<T>()));
+  auto reorder_src_memory_p =
+      reorder_handler.AcquireSrcMemory(phi::funcs::GetOneDNNMemDesc(input),
+                                       funcs::to_void_cast(input.data<T>()));
   auto reorder_dst_memory_p = reorder_handler.AcquireDstMemory(
-      output, input.mem_desc(), dev_ctx.GetPlace());
+      output, phi::funcs::GetOneDNNMemDesc(input), dev_ctx.GetPlace());
 
   auto reorder_p = reorder_handler.AcquireReorder(
       reorder_dst_memory_p, reorder_src_memory_p, attrs);
@@ -108,7 +109,7 @@ void QuantOpKernel(const Context& dev_ctx,
   reorder_p->execute(astream, reorder_args);
   astream.wait();
 
-  output->set_mem_desc(reorder_dst_memory_p->get_desc());
+  phi::funcs::SetOneDNNMemDesc(output, reorder_dst_memory_p->get_desc());
 }
 }  // namespace phi
 

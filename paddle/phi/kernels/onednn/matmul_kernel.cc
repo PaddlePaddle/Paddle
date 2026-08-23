@@ -17,6 +17,7 @@
 #include "paddle/phi/kernels/matmul_kernel.h"
 
 #include "paddle/phi/backends/onednn/matmul_utils.h"
+#include "paddle/phi/backends/onednn/onednn_helper.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/scale_kernel.h"
 
@@ -333,7 +334,7 @@ class MulPrimitiveFactory {
     DenseTensor data_matrix;
     // This code is enforcing plain (non-blocked) memory arrangement
     // in order to flatten (reduce dimensionality) of DenseTensor later
-    auto src_mdesc = data->mem_desc();
+    auto src_mdesc = phi::funcs::GetOneDNNMemDesc(*data);
     auto dst_mdesc = data->dims().size() >= 4
                          ? (data->dims().size() == 5
                                 ? CreateMemDescriptor<T>(
@@ -351,7 +352,7 @@ class MulPrimitiveFactory {
               funcs::to_void_cast<T>(x_tmp.data<T>()));
 
       x_tmp.Resize(data->dims());
-      x_tmp.set_mem_desc(dst_mdesc);
+      phi::funcs::SetOneDNNMemDesc(&(x_tmp), dst_mdesc);
       data_matrix = ReshapeToMatrix(x_tmp, num_col_dims);
     } else {
       data_matrix = ReshapeToMatrix(*data, num_col_dims);
@@ -365,7 +366,7 @@ class MulPrimitiveFactory {
                           const DenseTensor *in) {
     x_input_->set_data_handle(funcs::to_void_cast<XT>(in->data<XT>()));
     output_->set_data_handle(dev_ctx.template Alloc<OT>(out));
-    out->set_mem_desc(output_->get_desc());
+    phi::funcs::SetOneDNNMemDesc(out, output_->get_desc());
   }
 
   template <typename T>
@@ -398,7 +399,7 @@ class MulPrimitiveFactory {
     auto buffer_size = dst_desc.get_size();
 
     OT *output_data = dev_ctx.template Alloc<OT>(output, buffer_size);
-    output->set_mem_desc(dst_desc);
+    phi::funcs::SetOneDNNMemDesc(output, dst_desc);
     return memory(dst_desc, engine_, funcs::to_void_cast<OT>(output_data));
   }
 
@@ -521,8 +522,8 @@ void MatmulWithFlattenKernelINT8(const Context &dev_ctx,
       mul.get_primitive_desc(), dnnl_query_dst_md, 0);
   dnnl_memory_desc_t cloned_in_md = nullptr;
   dnnl_memory_desc_clone(&cloned_in_md, in_md);
-  out->set_mem_desc(
-      memory::desc(cloned_in_md).reshape(vectorize<int64_t>(out->dims())));
+  phi::funcs::SetOneDNNMemDesc(
+      out, memory::desc(cloned_in_md).reshape(vectorize<int64_t>(out->dims())));
 }
 
 template <typename T, typename Context>

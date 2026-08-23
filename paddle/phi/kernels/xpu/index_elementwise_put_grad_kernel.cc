@@ -16,7 +16,9 @@
 
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/index_elementwise.h"
+#include "paddle/phi/kernels/funcs/index_elementwise_utils.h"
 #include "paddle/phi/kernels/funcs/index_put_utils.h"
 #include "paddle/phi/kernels/funcs/stride_utils.h"
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
@@ -75,6 +77,10 @@ void XPUIndexElementwisePutGradKernel(
                            &strides_array,
                            &numel,
                            strides_vec);
+
+  if (numel == 0 || funcs::HasEmptyIndex(index)) {
+    return;
+  }
 
   if (value_grad != nullptr) {
     const int64_t N = value_grad->numel();
@@ -274,6 +280,16 @@ void IndexElementwisePutGradKernel(
     const std::vector<int64_t>& index_strides,
     const int64_t slice_offset,
     DenseTensor* x_grad) {
+  if (indices.empty()) {
+    if (x_grad) {
+      if (x.numel() == 0) {
+        Full<T, Context>(dev_ctx, x_grad->dims(), 0.0f, x_grad);
+      } else {
+        Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
+      }
+    }
+    return;
+  }
   const auto& index_type = indices[0]->dtype();
   PADDLE_ENFORCE_EQ(index_type == DataType::INT64 ||
                         (index_type == DataType::BOOL && indices.size() == 1),
@@ -284,7 +300,13 @@ void IndexElementwisePutGradKernel(
                         index_type,
                         DataType::INT64));
   std::vector<DenseTensor> tmp_args;
-  if (indices.empty()) {
+  if (x.numel() == 0) {
+    if (x_grad) {
+      Full<T, Context>(dev_ctx, x_grad->dims(), 0.0f, x_grad);
+    }
+    return;
+  }
+  if (funcs::HasEmptyIndex(indices)) {
     if (x_grad) {
       Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
     }
@@ -316,6 +338,19 @@ void IndexElementwisePutWithTensorGradKernel(
     const int64_t slice_offset,
     DenseTensor* x_grad,
     DenseTensor* value_grad) {
+  if (indices.empty()) {
+    if (x_grad) {
+      if (x.numel() == 0) {
+        Full<T, Context>(dev_ctx, x_grad->dims(), 0.0f, x_grad);
+      } else {
+        Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
+      }
+    }
+    if (value_grad) {
+      Full<T, Context>(dev_ctx, value_grad->dims(), 0.0f, value_grad);
+    }
+    return;
+  }
   const auto& index_type = indices[0]->dtype();
   PADDLE_ENFORCE_EQ(index_type == DataType::INT64,
                     true,
@@ -326,7 +361,16 @@ void IndexElementwisePutWithTensorGradKernel(
                         DataType::INT64));
 
   std::vector<DenseTensor> tmp_args;
-  if (indices.empty()) {
+  if (x.numel() == 0) {
+    if (x_grad) {
+      Full<T, Context>(dev_ctx, x_grad->dims(), 0.0f, x_grad);
+    }
+    if (value_grad) {
+      Full<T, Context>(dev_ctx, value_grad->dims(), 0.0f, value_grad);
+    }
+    return;
+  }
+  if (funcs::HasEmptyIndex(indices)) {
     if (x_grad) {
       Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
     }

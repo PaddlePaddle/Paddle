@@ -85,7 +85,7 @@ void eltwise_grad(const OneDNNContext& dev_ctx,
                                   {DNNL_ARG_DIFF_SRC, *diff_src_memory_p}});
   astream.wait();
 
-  dx->set_mem_desc(diff_src_memory_p->get_desc());
+  phi::funcs::SetOneDNNMemDesc(dx, diff_src_memory_p->get_desc());
 }
 
 template <typename T>
@@ -116,7 +116,7 @@ void eltwise_grad_use_out(const OneDNNContext& dev_ctx,
                                   {DNNL_ARG_DIFF_SRC, *diff_src_memory_p}});
   astream.wait();
 
-  dx->set_mem_desc(diff_src_memory_p->get_desc());
+  phi::funcs::SetOneDNNMemDesc(dx, diff_src_memory_p->get_desc());
 }
 
 template <typename T, dnnl::algorithm algorithm>

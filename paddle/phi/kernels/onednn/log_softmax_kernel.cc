@@ -35,8 +35,8 @@ class LogSoftmaxOneDNNHandler
     const int canonical_axis = funcs::CanonicalAxis(axis, rank);
     this->AcquireForwardPrimitiveDescriptor(dnnl::prop_kind::forward_inference,
                                             dnnl::algorithm::softmax_log,
-                                            x.mem_desc(),
-                                            x.mem_desc(),
+                                            phi::funcs::GetOneDNNMemDesc(x),
+                                            phi::funcs::GetOneDNNMemDesc(x),
                                             canonical_axis);
   }
 };
@@ -61,7 +61,7 @@ void LogSoftmaxKernel(const Context& dev_ctx,
       astream, {{DNNL_ARG_SRC, *src_memory_p}, {DNNL_ARG_DST, *dst_memory_p}});
   astream.wait();
 
-  out->set_mem_desc(dst_memory_p->get_desc());
+  phi::funcs::SetOneDNNMemDesc(out, dst_memory_p->get_desc());
 }
 
 }  // namespace phi

@@ -84,7 +84,7 @@ void Pool2dGradKernel(const Context& dev_ctx,
   }
   astream.wait();
 
-  dx->set_mem_desc(diff_src_memory->get_desc());
+  phi::funcs::SetOneDNNMemDesc(dx, diff_src_memory->get_desc());
 }
 
 phi::KernelKey PoolOpGradGetKernelTypeForVar(
