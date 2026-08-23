@@ -25,6 +25,12 @@ endif()
 set(EIGEN_INCLUDE_DIR ${EIGEN_SOURCE_DIR})
 # Use SYSTEM include to suppress warnings from Eigen third-party headers.
 include_directories(SYSTEM ${EIGEN_INCLUDE_DIR})
+# Backport upstream guard for std::ssize, which is missing on older libstdc++
+# (e.g. the DCU toolchain). Drop this patch when Eigen is upgraded past 3.4.1.
+file(TO_NATIVE_PATH ${PADDLE_SOURCE_DIR}/patches/eigen/Meta.h.patch
+     eigen_meta_patch)
+set(EIGEN_PATCH_COMMAND git checkout -- Eigen/src/Core/util/Meta.h && git apply
+                        ${eigen_meta_patch})
 ExternalProject_Add(
   extern_eigen3
   ${EXTERNAL_PROJECT_LOG_ARGS}
@@ -33,7 +39,7 @@ ExternalProject_Add(
   CMAKE_ARGS -DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}
              -DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}
   UPDATE_COMMAND ""
-  PATCH_COMMAND ""
+  PATCH_COMMAND ${EIGEN_PATCH_COMMAND}
   CONFIGURE_COMMAND ""
   BUILD_COMMAND ""
   INSTALL_COMMAND ""

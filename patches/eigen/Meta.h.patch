@@ -1,0 +1,14 @@
+diff --git a/Eigen/src/Core/util/Meta.h b/Eigen/src/Core/util/Meta.h
+index de1a6380f..933488aeb 100755
+--- a/Eigen/src/Core/util/Meta.h
++++ b/Eigen/src/Core/util/Meta.h
+@@ -466,7 +466,8 @@ template<typename T, std::size_t N> struct array_size<std::array<T,N> > {
+   *
+   * For C++20, this function just forwards to `std::ssize`, or any ADL discoverable `ssize` function.
+   */
+-#if EIGEN_COMP_CXXVER < 20
++#if EIGEN_COMP_CXXVER < 20 || !defined(__cpp_lib_ssize) || \
++    __cpp_lib_ssize < 201902L
+ template <typename T>
+ EIGEN_CONSTEXPR std::ptrdiff_t index_list_size(const T& x) {
+   return static_cast<std::ptrdiff_t>(x.size());
