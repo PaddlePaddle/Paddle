@@ -25,13 +25,11 @@
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
-#define INT_MAX_VALUE 2147483647
-
 namespace phi {
 namespace funcs {
 
 namespace detail {
-inline int to_blas_int(int64_t value, const char *name) {
+inline void check_blas_int64(int64_t value, const char *name) {
   PADDLE_ENFORCE_GE(
       value,
       0,
@@ -39,6 +37,10 @@ inline int to_blas_int(int64_t value, const char *name) {
                                       "but received %ld.",
                                       name,
                                       value));
+}
+
+inline int to_blas_int(int64_t value, const char *name) {
+  check_blas_int64(value, name);
   PADDLE_ENFORCE_LE_INT_MAX(value, name);
   return static_cast<int>(value);
 }
@@ -1283,20 +1285,18 @@ void Blas<CPUContext>::GEMM(CBLAS_TRANSPOSE transA,
                             const T *B,
                             T beta,
                             T *C) const {
-  if (M > INT_MAX_VALUE || N > INT_MAX_VALUE || K > INT_MAX_VALUE) {
-    PADDLE_THROW(
-        common::errors::Unimplemented("GEMM not supported for large tensor "
-                                      "size on CPU, please check your code!"));
-  }
-  int lda = (transA == CblasNoTrans) ? K : M;
-  int ldb = (transB == CblasNoTrans) ? N : K;
-  int ldc = N;
+  const int m = detail::to_blas_int(M, "GEMM M");
+  const int n = detail::to_blas_int(N, "GEMM N");
+  const int k = detail::to_blas_int(K, "GEMM K");
+  const int lda = (transA == CblasNoTrans) ? k : m;
+  const int ldb = (transB == CblasNoTrans) ? n : k;
+  const int ldc = n;
   CBlas<T>::GEMM(CblasRowMajor,
                  transA,
                  transB,
-                 static_cast<int>(M),
-                 static_cast<int>(N),
-                 static_cast<int>(K),
+                 m,
+                 n,
+                 k,
                  alpha,
                  A,
                  lda,
@@ -1319,20 +1319,18 @@ void Blas<CPUContext>::GEMM(CBLAS_TRANSPOSE transA,
                             const T *B,
                             U beta,
                             T *C) const {
-  if (M > INT_MAX_VALUE || N > INT_MAX_VALUE || K > INT_MAX_VALUE) {
-    PADDLE_THROW(
-        common::errors::Unimplemented("GEMM not supported for large tensor "
-                                      "size on CPU, please check your code!"));
-  }
-  int lda = (transA == CblasNoTrans) ? K : M;
-  int ldb = (transB == CblasNoTrans) ? N : K;
-  int ldc = N;
+  const int m = detail::to_blas_int(M, "GEMM M");
+  const int n = detail::to_blas_int(N, "GEMM N");
+  const int k = detail::to_blas_int(K, "GEMM K");
+  const int lda = (transA == CblasNoTrans) ? k : m;
+  const int ldb = (transB == CblasNoTrans) ? n : k;
+  const int ldc = n;
   CBlas<T>::GEMM(CblasRowMajor,
                  transA,
                  transB,
-                 static_cast<int>(M),
-                 static_cast<int>(N),
-                 static_cast<int>(K),
+                 m,
+                 n,
+                 k,
                  alpha,
                  A,
                  lda,
@@ -1347,62 +1345,74 @@ template <>
 template <typename T>
 void Blas<CPUContext>::GEMM(bool transA,
                             bool transB,
-                            int M,
-                            int N,
-                            int K,
+                            int64_t M,
+                            int64_t N,
+                            int64_t K,
                             T alpha,
                             const T *A,
-                            int lda,
+                            int64_t lda,
                             const T *B,
-                            int ldb,
+                            int64_t ldb,
                             T beta,
                             T *C,
-                            int ldc) const {
+                            int64_t ldc) const {
+  const int m = detail::to_blas_int(M, "GEMM M");
+  const int n = detail::to_blas_int(N, "GEMM N");
+  const int k = detail::to_blas_int(K, "GEMM K");
+  const int lda_int = detail::to_blas_int(lda, "GEMM lda");
+  const int ldb_int = detail::to_blas_int(ldb, "GEMM ldb");
+  const int ldc_int = detail::to_blas_int(ldc, "GEMM ldc");
   CBlas<T>::GEMM(CblasRowMajor,
                  transA == false ? CblasNoTrans : CblasTrans,
                  transB == false ? CblasNoTrans : CblasTrans,
-                 M,
-                 N,
-                 K,
+                 m,
+                 n,
+                 k,
                  alpha,
                  A,
-                 lda,
+                 lda_int,
                  B,
-                 ldb,
+                 ldb_int,
                  beta,
                  C,
-                 ldc);
+                 ldc_int);
 }
 
 template <>
 template <typename T>
 void Blas<CPUContext>::GEMM(CBLAS_TRANSPOSE transA,
                             CBLAS_TRANSPOSE transB,
-                            int M,
-                            int N,
-                            int K,
+                            int64_t M,
+                            int64_t N,
+                            int64_t K,
                             T alpha,
                             const T *A,
-                            int lda,
+                            int64_t lda,
                             const T *B,
-                            int ldb,
+                            int64_t ldb,
                             T beta,
                             T *C,
-                            int ldc) const {
+                            int64_t ldc) const {
+  const int m = detail::to_blas_int(M, "GEMM M");
+  const int n = detail::to_blas_int(N, "GEMM N");
+  const int k = detail::to_blas_int(K, "GEMM K");
+  const int lda_int = detail::to_blas_int(lda, "GEMM lda");
+  const int ldb_int = detail::to_blas_int(ldb, "GEMM ldb");
+  const int ldc_int = detail::to_blas_int(ldc, "GEMM ldc");
   CBlas<T>::GEMM(CblasRowMajor,
                  transA,
                  transB,
-                 M,
-                 N,
-                 K,
+                 m,
+                 n,
+                 k,
                  alpha,
                  A,
-                 lda,
+                 lda_int,
                  B,
-                 ldb,
+                 ldb_int,
                  beta,
                  C,
-                 ldc);
+                 ldc_int);
 }
 
 template <typename DeviceContext>
@@ -1434,9 +1444,13 @@ void Blas<DeviceContext>::MatMul(const DenseTensor &mat_a,
                                       "should be same, please check your "
                                       "code."));
 
-  int M = dim_out[0];
-  int N = dim_out[1];
-  int K = !trans_a ? dim_a[1] : dim_a[0];
+  const int64_t K_64 = !trans_a ? dim_a[1] : dim_a[0];
+  PADDLE_ENFORCE_LE_INT_MAX(dim_out[0], "dim_out[0]");
+  PADDLE_ENFORCE_LE_INT_MAX(dim_out[1], "dim_out[1]");
+  PADDLE_ENFORCE_LE_INT_MAX(K_64, "cblas GEMM K");
+  int M = static_cast<int>(dim_out[0]);
+  int N = static_cast<int>(dim_out[1]);
+  int K = static_cast<int>(K_64);
 
   CBLAS_TRANSPOSE transA = !trans_a ? CblasNoTrans : CblasTrans;
   CBLAS_TRANSPOSE transB = !trans_b ? CblasNoTrans : CblasTrans;
@@ -1469,15 +1483,17 @@ T Blas<CPUContext>::DOT(
 template <>
 template <typename T>
 void Blas<CPUContext>::GEMV(bool trans_a,
-                            int M,
-                            int N,
+                            int64_t M,
+                            int64_t N,
                             T alpha,
                             const T *A,
                             const T *B,
                             T beta,
                             T *C) const {
+  const int m = detail::to_blas_int(M, "GEMV M");
+  const int n = detail::to_blas_int(N, "GEMV N");
   CBLAS_TRANSPOSE transA = !trans_a ? CblasNoTrans : CblasTrans;
-  CBlas<T>::GEMV(CblasRowMajor, transA, M, N, alpha, A, N, B, 1, beta, C, 1);
+  CBlas<T>::GEMV(CblasRowMajor, transA, m, n, alpha, A, n, B, 1, beta, C, 1);
 }
 
 template <>
@@ -1502,20 +1518,33 @@ void Blas<CPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
   PADDLE_ENFORCE_NOT_NULL(
       C, common::errors::InvalidArgument("Pointer C should not be null."));
 
-  if (M > INT_MAX_VALUE || N > INT_MAX_VALUE || K > INT_MAX_VALUE) {
-    PADDLE_THROW(
-        common::errors::Unimplemented("CPU GEMM not supported for large tensor "
-                                      "size."));
+  if (M > std::numeric_limits<int>::max() ||
+      N > std::numeric_limits<int>::max() ||
+      K > std::numeric_limits<int>::max() ||
+      batchCount > std::numeric_limits<int>::max()) {
+    PADDLE_THROW(common::errors::Unimplemented(
+        "CPU BatchedGEMM only supports M, N, K and batchCount not larger "
+        "than INT_MAX. Expected M <= %d, N <= %d, K <= %d and "
+        "batchCount <= %d, but received M = %ld, N = %ld, K = %ld, "
+        "batchCount = %ld.",
+        std::numeric_limits<int>::max(),
+        std::numeric_limits<int>::max(),
+        std::numeric_limits<int>::max(),
+        std::numeric_limits<int>::max(),
+        M,
+        N,
+        K,
+        batchCount));
   }
 
 #if defined(PADDLE_WITH_MKLML) || defined(PADDLE_WITH_HML)
-  if (batchCount > INT_MAX_VALUE) {
-    PADDLE_THROW(common::errors::Unimplemented(
-        "CPU GEMM not supported for large batch size in MKLML."));
-  }
-  int lda = (transA == CblasNoTrans) ? K : M;
-  int ldb = (transB == CblasNoTrans) ? N : K;
-  int ldc = N;
+  int M_int = static_cast<int>(M);
+  int N_int = static_cast<int>(N);
+  int K_int = static_cast<int>(K);
+  int batch_count_int = static_cast<int>(batchCount);
+  int lda = (transA == CblasNoTrans) ? K_int : M_int;
+  int ldb = (transB == CblasNoTrans) ? N_int : K_int;
+  int ldc = N_int;
   auto a_array = std::vector<const T *>(batchCount);
   auto b_array = std::vector<const T *>(batchCount);
   auto c_array = std::vector<T *>(batchCount);
@@ -1527,9 +1556,9 @@ void Blas<CPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
   CBlas<T>::GEMM_BATCH(CblasRowMajor,
                        &transA,
                        &transB,
-                       reinterpret_cast<int *>(&M),
-                       reinterpret_cast<int *>(&N),
-                       reinterpret_cast<int *>(&K),
+                       &M_int,
+                       &N_int,
+                       &K_int,
                        &alpha,
                        a_array.data(),
                        &lda,
@@ -1539,7 +1568,7 @@ void Blas<CPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
                        c_array.data(),
                        &ldc,
                        1 /* group_count */,
-                       reinterpret_cast<int *>(&batchCount));
+                       &batch_count_int);
 #else
   for (int64_t k = 0; k < batchCount; ++k) {
     auto *Ak = &A[k * strideA];
@@ -1580,19 +1609,23 @@ void Blas<CPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
       B, common::errors::InvalidArgument("Pointer B should not be null."));
   PADDLE_ENFORCE_NOT_NULL(
       C, common::errors::InvalidArgument("Pointer C should not be null."));
-  if (M > INT_MAX_VALUE || N > INT_MAX_VALUE || K > INT_MAX_VALUE) {
+  if (M > std::numeric_limits<int>::max() ||
+      N > std::numeric_limits<int>::max() ||
+      K > std::numeric_limits<int>::max() ||
+      batchCount > std::numeric_limits<int>::max()) {
     PADDLE_THROW(common::errors::Unimplemented(
-        "CPU GEMM not supported for large tensor size"));
+        "CPU BatchedGEMM does not support M, N, K or batchCount larger than "
+        "INT_MAX."));
   }
 
 #if defined(PADDLE_WITH_MKLML) || defined(PADDLE_WITH_HML)
-  if (batchCount > INT_MAX_VALUE) {
-    PADDLE_THROW(common::errors::Unimplemented(
-        "CPU GEMM not supported for large batch size in MKLML."));
-  }
-  int lda = (transA == CblasNoTrans) ? K : M;
-  int ldb = (transB == CblasNoTrans) ? N : K;
-  int ldc = N;
+  int M_int = static_cast<int>(M);
+  int N_int = static_cast<int>(N);
+  int K_int = static_cast<int>(K);
+  int batch_count_int = static_cast<int>(batchCount);
+  int lda = (transA == CblasNoTrans) ? K_int : M_int;
+  int ldb = (transB == CblasNoTrans) ? N_int : K_int;
+  int ldc = N_int;
   auto a_array = std::vector<const T *>(batchCount);
   auto b_array = std::vector<const T *>(batchCount);
   auto c_array = std::vector<T *>(batchCount);
@@ -1605,9 +1638,9 @@ void Blas<CPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
   CBlas<T>::GEMM_BATCH(CblasRowMajor,
                        &transA,
                        &transB,
-                       reinterpret_cast<int *>(&M),
-                       reinterpret_cast<int *>(&N),
-                       reinterpret_cast<int *>(&K),
+                       &M_int,
+                       &N_int,
+                       &K_int,
                        &alpha,
                        a_array.data(),
                        &lda,
@@ -1617,7 +1650,7 @@ void Blas<CPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
                        c_array.data(),
                        &ldc,
                        1 /* group_count */,
-                       reinterpret_cast<int *>(&batchCount));
+                       &batch_count_int);
 #else
   for (int64_t k = 0; k < batchCount; ++k) {
     auto *Ak = &A[k * strideA];
