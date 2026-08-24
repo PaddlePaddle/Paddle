@@ -135,25 +135,6 @@ PHI_DEFINE_EXPORTED_bool(
 
 /**
  * CUDA related related FLAG
- * Name: FLAGS_enable_cublas_tensor_op_math
- * Since Version: 1.2.0
- * Value Range: bool, default=false
- * Example:
- * Note: whether to use Tensor Core, faster but it may loss precision.
- */
-PHI_DEFINE_EXPORTED_bool(
-    enable_cublas_tensor_op_math,
-    false,
-    "The enable_cublas_tensor_op_math indicate whether to use Tensor Core, "
-    "but it may loss precision. Currently, There are two CUDA libraries that"
-    " use Tensor Cores, cuBLAS and cuDNN. cuBLAS uses Tensor Cores to speed up"
-    " GEMM computations(the matrices must be either half precision or single "
-    "precision); cuDNN uses Tensor Cores to speed up both convolutions(the "
-    "input and output must be half precision) and recurrent neural networks "
-    "(RNNs).");
-
-/**
- * CUDA related related FLAG
  * Name: FLAGS_gemm_use_half_precision_compute_type
  * Since Version: 2.4
  * Value Range: bool, default=false
@@ -341,22 +322,37 @@ PHI_DEFINE_EXPORTED_bool(
     "convolution operators in cuDNN on Ampere or newer GPUs. "
     "Default is true.");
 
+#endif
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_CUSTOM_DEVICE)
 /**
  * CUBLAS related FLAG
  * Name: FLAGS_cublas_allow_tf32
  * Since Version: 3.3.0
- * Value Range: bool, default=false
+ * Value Range: bool, default=false for CUDA/HIP and true for Custom Device-only
  * Example:
  * Note: whether to allow using TensorFloat-32 (TF32) in cublas matmul.
  * TF32 is only available on Ampere or newer GPUs.
  * It provides better performance but lower precision than FP32.
  */
+#if defined(PADDLE_WITH_CUSTOM_DEVICE) && !defined(PADDLE_WITH_CUDA) && \
+    !defined(PADDLE_WITH_HIP)
+constexpr bool kCublasAllowTF32Default = true;
+#else
+constexpr bool kCublasAllowTF32Default = false;
+#endif
+
 PHI_DEFINE_EXPORTED_bool(
     cublas_allow_tf32,
-    false,
+    kCublasAllowTF32Default,
     "Whether to allow using TensorFloat-32 (TF32) tensor cores for "
-    "matrix multiplication operators in cuBLAS on Ampere or newer GPUs. "
-    "Default is false.");
+    "BLAS matrix multiplication. Default is true for Custom Device-only "
+    "builds and false otherwise.");
+
+#endif
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
 #ifdef PADDLE_WITH_HIP
 /**
