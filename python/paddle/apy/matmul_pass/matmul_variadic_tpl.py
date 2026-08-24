@@ -221,7 +221,7 @@ class MatmulVariadicTemplate:
     ):
         code_template = """
 // auto generated codes
-#include "matmul.h"
+#include "kernels.h"
 #include <vector>
 
 namespace ap {
@@ -253,8 +253,8 @@ static void RunMatmulWithVariadicKernel(const GemmEpilogueParams &params, ${AP_K
   constexpr int AlignA = Alignment<ElementT, ${k_value}>::kValue;
   constexpr int AlignB = Alignment<ElementT, ${n_value}>::kValue;
 
-  MatmulAddVariadic<ElementT, ElementComputeT, VariadicEpilogueFunctor,
-                           AlignA, AlignB, TuningConfigId>(params, epilogue_args);
+  MatmulVariadicFusion<ElementT, ElementComputeT, VariadicEpilogueFunctor,
+                       AlignA, AlignB, TuningConfigId>(params, epilogue_args);
 }
 
 } // namespace ap
@@ -326,7 +326,7 @@ void ${kernel_name}(void* stream_ptr, ${AP_KERNEL_ARGS_DECLARE}) {
 
         dir_name = ap.dirname(__file__)
         compile_command_generator = (
-            compile_command_util.CompileCommandGenerator()
+            compile_command_util.CompileCommandGenerator(enable_autotune=True)
         )
         matmul_source_dir = f"{dir_name}/matmul"
         compile_cmd = compile_command_generator(

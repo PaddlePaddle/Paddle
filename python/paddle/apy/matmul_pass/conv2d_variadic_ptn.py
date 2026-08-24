@@ -68,7 +68,13 @@ class Conv2dEpilogueFusion(abstract_drr.DrrPass):
             number_of_inputs=self.number_of_inputs(),
             number_of_outputs=self.number_of_outputs(),
         )
-        return program.empty()
+        # The cutlass implicit gemm backend only supports the NHWC activation,
+        # there is no NCHW conv2d fprop iterator in cutlass.
+        return (
+            program.empty()
+            if o.conv2d_op.data_format.match(a_str=lambda x: x) == "NHWC"
+            else False
+        )
 
     def _insert_load_from_global(self, program, input_names):
         init_pass_manager = ir_tools.create_pass_manager()
@@ -96,6 +102,15 @@ class Conv2dEpilogueFusion(abstract_drr.DrrPass):
 
     def _make_kernel_arg_translator(self):
         return conv2d_variadic_tpl.make_kernel_arg_translator()
+
+    def _get_int_attr(self, attr):
+        return attr.match(a_i32=lambda x: int(x))
+
+    def _get_int_list_attr(self, attr):
+        # `int[]` of pd_op.conv2d is ArrayAttribute<Int32Attribute>.
+        return attr.match(
+            a_array=lambda values: ap.map(self._get_int_attr, values)
+        )
 
     def _apply_topo_access_passes(self, mut_program, anchor_data_op_name):
         init_pass_manager = ir_tools.create_pass_manager()
@@ -320,6 +335,11 @@ class Conv2dEpilogueFusion(abstract_drr.DrrPass):
             output_karg=ctx.out_tensor_data_ptr_kernel_arg_id(t.output0),
             input0_shape_kargs=input0_shape_kargs,
             input1_shape_kargs=input1_shape_kargs,
+            strides=self._get_int_list_attr(o.conv2d_op.strides),
+            paddings=self._get_int_list_attr(o.conv2d_op.paddings),
+            dilations=self._get_int_list_attr(o.conv2d_op.dilations),
+            groups=self._get_int_attr(o.conv2d_op.groups),
+            data_format=o.conv2d_op.data_format.match(a_str=lambda x: x),
         )
 
 

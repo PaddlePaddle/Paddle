@@ -68,6 +68,11 @@ class Conv2dVariadicTemplate:
         output_karg,
         input0_shape_kargs,
         input1_shape_kargs,
+        strides,
+        paddings,
+        dilations,
+        groups,
+        data_format,
     ):
         kargs_name_pair_list = [
             [input0_karg, "input0"],
@@ -106,6 +111,11 @@ class Conv2dVariadicTemplate:
             output_karg,
             input0_shape_kargs,
             input1_shape_kargs,
+            strides,
+            paddings,
+            dilations,
+            groups,
+            data_format,
         )
         return CodeGenResult(  # noqa: F821
             module=project_module,
@@ -191,26 +201,27 @@ class Conv2dVariadicTemplate:
         )
 
     def get_params_input_shape_init_str(
-        self, input_name, input_shape_kargs, indent
+        self, input_name, input_shape_kargs, perm, indent
     ):
         def init_input_shape_with_args(i):
             def get_creator():
                 return f"{input_name}_shape[{i}]"
 
             karg_var_name = self.get_kernel_arg_id_var_name(
-                input_shape_kargs[i]
+                input_shape_kargs[perm[i]]
             )
             self.input_dim_karg_to_shape_access.get_or_create(
                 karg_var_name, get_creator
             )
             return f"{indent}{input_name}_shape[{i}] = {karg_var_name};"
 
-        shape_vector_init_str = (
-            f"{input_name}_shape.resize({len(input_shape_kargs)});\n"
-        )
+        shape_vector_init_str = f"{input_name}_shape.resize({len(perm)});\n"
         return shape_vector_init_str + "\n".join(
-            ap.map(init_input_shape_with_args, range(len(input_shape_kargs)))
+            ap.map(init_input_shape_with_args, range(len(perm)))
         )
+
+    def get_cpp_int_list_str(self, values):
+        return "{" + ", ".join(ap.map(lambda v: f"{v}", values)) + "}"
 
     def make_project(
         self,
@@ -220,10 +231,15 @@ class Conv2dVariadicTemplate:
         output_karg,
         input0_shape_kargs,
         input1_shape_kargs,
+        strides,
+        paddings,
+        dilations,
+        groups,
+        data_format,
     ):
         code_template = """
 // auto generated codes
-#include "conv2d.h"
+#include "kernels.h"
 #include <vector>
 
 namespace ap {
@@ -245,7 +261,23 @@ struct VariadicEpilogueFunctor {
 
 template <int TuningConfigId>
 static void RunConv2dWithVariadicKernel(const Conv2dEpilogueParams &params, ${AP_KERNEL_ARGS_DECLARE}) {
-  // TODO(Xreki): implement conv2d variadic kernel launch
+  using ElementT = ${output_dtype};
+  using ElementComputeT = float;
+
+  typename VariadicEpilogueFunctor<ElementComputeT>::Arguments epilogue_args;
+
+  ${AP_EPILOGUE_ARGUMENTS_INIT}
+
+  // The activation and the filter are both indexed along the channel dimension,
+  // while the output is indexed along the output channel dimension.
+  constexpr int AlignA = Alignment<ElementT, ${c_value}>::kValue;
+  constexpr int AlignB = AlignA;
+  constexpr int AlignC = Alignment<ElementT, ${k_value}>::kValue;
+
+  // TODO(Xreki): forward `epilogue_args` to a variadic conv2d epilogue. The
+  // cutlass backend fuses relu only for now.
+  Conv2dAddRelu<ElementT, ElementComputeT, AlignA, AlignB, AlignC,
+                TuningConfigId>(params);
 }
 
 } // namespace ap
@@ -253,12 +285,38 @@ static void RunConv2dWithVariadicKernel(const Conv2dEpilogueParams &params, ${AP
 extern "C" {
 
 void ${kernel_name}(void* stream_ptr, ${AP_KERNEL_ARGS_DECLARE}) {
-  // TODO(Xreki): implement conv2d variadic kernel entry
+  // Shapes are permuted to the NHWC activation and the KRSC filter expected by
+  // the cutlass implicit gemm. Note that only the logical shapes are permuted,
+  // the memory layout of ${input0} and ${input1} is required to be NHWC / KRSC
+  // already.
+  std::vector<int64_t> ${input0}_shape;
+  ${AP_PARAMS_INPUT0_SHAPE_INIT}
+
+  std::vector<int64_t> ${input1}_shape;
+  ${AP_PARAMS_INPUT1_SHAPE_INIT}
+
+  ap::Conv2dEpilogueParams params(stream_ptr,
+                                  ${input0},
+                                  ${input1},
+                                  /*bias=*/nullptr,
+                                  ${output},
+                                  ${input0}_shape,
+                                  ${input1}_shape,
+                                  std::vector<int64_t>{},
+                                  std::vector<int>${strides},
+                                  std::vector<int>${paddings},
+                                  std::vector<int>${dilations},
+                                  ${groups});
+
+  ap::RunConv2dWithVariadicKernel<ap::DefaultConfig::kConfigId>(params, ${AP_KERNEL_ARGS_CALL});
 }
 }
   """
 
         output_dtype = self.dtype2type_name[output_karg.type.data_type]
+        # pd_op.conv2d keeps the filter in the KCRS order for both data formats.
+        input0_perm = [0, 1, 2, 3] if data_format == "NHWC" else [0, 2, 3, 1]
+        input1_perm = [0, 2, 3, 1]
         code = (
             code_template.replace(
                 "${AP_EPILOGUE_COMPUTATION_STATEMENTS}", trivial_code_str
@@ -274,13 +332,13 @@ void ${kernel_name}(void* stream_ptr, ${AP_KERNEL_ARGS_DECLARE}) {
             .replace(
                 "${AP_PARAMS_INPUT0_SHAPE_INIT}",
                 self.get_params_input_shape_init_str(
-                    "${input0}", input0_shape_kargs, indent="  "
+                    "${input0}", input0_shape_kargs, input0_perm, indent="  "
                 ),
             )
             .replace(
                 "${AP_PARAMS_INPUT1_SHAPE_INIT}",
                 self.get_params_input_shape_init_str(
-                    "${input1}", input1_shape_kargs, indent="  "
+                    "${input1}", input1_shape_kargs, input1_perm, indent="  "
                 ),
             )
             .replace(
@@ -298,11 +356,18 @@ void ${kernel_name}(void* stream_ptr, ${AP_KERNEL_ARGS_DECLARE}) {
             .replace("${input1}", self.get_kernel_arg_id_var_name(input1_karg))
             .replace("${output}", self.get_kernel_arg_id_var_name(output_karg))
             .replace("${output_dtype}", output_dtype)
+            .replace("${strides}", self.get_cpp_int_list_str(strides))
+            .replace("${paddings}", self.get_cpp_int_list_str(paddings))
+            .replace("${dilations}", self.get_cpp_int_list_str(dilations))
+            .replace("${groups}", f"{groups}")
+            .replace("${c_value}", f"{input1_shape_kargs[1].value}")
+            .replace("${k_value}", f"{input1_shape_kargs[0].value}")
         )
 
         dir_name = ap.dirname(__file__)
+        # Autotune is not supported by the conv2d backend yet.
         compile_command_generator = (
-            compile_command_util.CompileCommandGenerator()
+            compile_command_util.CompileCommandGenerator(enable_autotune=False)
         )
         conv2d_source_dir = f"{dir_name}/matmul"
         compile_cmd = compile_command_generator(

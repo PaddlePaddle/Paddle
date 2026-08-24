@@ -16,8 +16,9 @@ import ap
 
 
 class CompileCommandGenerator:
-    def __init__(self):
+    def __init__(self, enable_autotune):
         self.file_ext = "cu"
+        self.enable_autotune = enable_autotune
         self.op_type2generate_func = ap.OrderedDict(
             [
                 ['matmul', self.generate_compile_command_with_cutlass],
@@ -29,6 +30,7 @@ class CompileCommandGenerator:
         return self.op_type2generate_func[op_type](source_dir, library_name)
 
     def generate_compile_command_with_cutlass(self, source_dir, library_name):
+        autotune_flag = 1 if self.enable_autotune else 0
         compile_cmd = "nvcc -std=c++20 -O3 -Xcompiler=-fPIC -arch=sm_80 --expt-relaxed-constexpr"
         compile_cmd = compile_cmd + " -I ${AP_CUTLASS_DIR}/include"
         compile_cmd = compile_cmd + " -I ${AP_CUTLASS_DIR}/tools/util/include"
@@ -38,7 +40,8 @@ class CompileCommandGenerator:
             + " -DCUTLASS_ENABLE_TENSOR_CORE_MMA=1 -DCUTLASS_DEBUG_TRACE_LEVEL=0"
         )
         compile_cmd = (
-            compile_cmd + " -DAP_ENABLE_AUTOTUNE=1 -DAP_ENABLE_DEBUG=0"
+            compile_cmd
+            + f" -DAP_ENABLE_AUTOTUNE={autotune_flag} -DAP_ENABLE_DEBUG=0"
         )
         compile_cmd = (
             compile_cmd
