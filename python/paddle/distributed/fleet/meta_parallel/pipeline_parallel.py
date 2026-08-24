@@ -2386,6 +2386,8 @@ class PipelineParallelWithInterleave(PipelineParallel):
 
             if p2p_async_handle is not None:
                 p2p_async_handle.forward_async_comm(output_tensor)
+
+                self._release_output(output_tensor)
                 p2p_async_handle.backward_handle_wait()
 
             # backward
