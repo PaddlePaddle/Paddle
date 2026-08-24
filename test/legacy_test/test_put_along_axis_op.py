@@ -1645,6 +1645,94 @@ class TestPutAlongAxisZeroSizeIndex(unittest.TestCase):
             out.numpy(), arr.numpy(), rtol=1e-6, atol=1e-6
         )
 
+    def test_invalid_parameters_are_checked_before_early_return(self):
+        arr = paddle.ones([2, 3], dtype='float32')
+        idx = paddle.zeros([2, 0], dtype='int64')
+        val = paddle.ones([2, 0], dtype='float32')
+
+        for api in (paddle.put_along_axis, paddle.tensor.put_along_axis_):
+            invalid_idx = paddle.zeros([2, 0], dtype='float32')
+            with self.assertRaises(TypeError):
+                api(arr, invalid_idx, val, axis=1)
+            with self.assertRaises(TypeError):
+                api(arr, idx, val, axis=1, reduce=1)
+            with self.assertRaises(ValueError):
+                api(arr, idx, val, axis=1, reduce='invalid')
+            with self.assertRaises(TypeError):
+                api(arr, idx, val, axis=1, include_self='invalid')
+
+        bool_arr = paddle.ones([2, 3], dtype='bool')
+        with self.assertRaises(TypeError):
+            paddle.put_along_axis(bool_arr, idx, val, axis=1)
+
+    def test_zero_index_xpu(self):
+        if not paddle.device.is_compiled_with_xpu():
+            return
+        place = paddle.XPUPlace(0)
+        arr = paddle.to_tensor(
+            np.random.random([2, 60]).astype('float32'), place=place
+        )
+        idx = paddle.to_tensor(np.zeros([2, 0], dtype='int64'), place=place)
+        val = paddle.to_tensor(
+            np.random.random([2, 4]).astype('float32'), place=place
+        )
+        out = paddle._C_ops.put_along_axis(arr, idx, val, 1, 'assign', True)
+        np.testing.assert_equal(list(out.shape), [2, 60])
+        np.testing.assert_allclose(
+            out.numpy(), arr.numpy(), rtol=1e-6, atol=1e-6
+        )
+
+
+class TestPutAlongAxisZeroIndexGrad(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static()
+
+    def _check(self, place):
+        arr = paddle.to_tensor(
+            np.random.rand(2, 3).astype('float32'), place=place
+        )
+        arr.stop_gradient = False
+        index = paddle.to_tensor(np.zeros((2, 0), dtype='int64'), place=place)
+        values = paddle.to_tensor(
+            np.zeros((2, 0), dtype='float32'), place=place
+        )
+        values.stop_gradient = False
+        out = paddle._C_ops.put_along_axis(
+            arr, index, values, 1, 'assign', True
+        )
+        out.sum().backward()
+        np.testing.assert_allclose(
+            arr.grad.numpy(), np.ones((2, 3), dtype='float32')
+        )
+        self.assertIsNotNone(values.grad)
+        self.assertEqual(list(values.grad.shape), [2, 0])
+
+    def test_cpu(self):
+        self._check(paddle.CPUPlace())
+
+    def test_empty_input_cpu(self):
+        place = paddle.CPUPlace()
+        arr = paddle.to_tensor(np.zeros([0, 3], dtype='float32'), place=place)
+        arr.stop_gradient = False
+        index = paddle.to_tensor(np.zeros([0, 3], dtype='int64'), place=place)
+        values = paddle.to_tensor(
+            np.zeros([0, 3], dtype='float32'), place=place
+        )
+        values.stop_gradient = False
+
+        out = paddle._C_ops.put_along_axis(
+            arr, index, values, 1, 'assign', True
+        )
+        out.sum().backward()
+
+        self.assertEqual(list(arr.grad.shape), [0, 3])
+        self.assertIsNotNone(values.grad)
+        self.assertEqual(list(values.grad.shape), [0, 3])
+
+    def test_gpu(self):
+        if core.is_compiled_with_cuda() or is_custom_device():
+            self._check(get_device_place())
+
 
 class TestPutAlongAxisMulIntegerDivByZero(unittest.TestCase):
     """
@@ -1700,15 +1788,20 @@ class TestPutAlongAxisZeroSizeInputGrad(unittest.TestCase):
     def setUp(self):
         paddle.disable_static()
 
-    def _run_zero_size_input(self, x_shape, idx_shape, val_shape, axis, reduce):
-        cpu = paddle.CPUPlace()
+    def _run_zero_size_input(
+        self, x_shape, idx_shape, val_shape, axis, reduce, place=None
+    ):
+        if place is None:
+            place = paddle.CPUPlace()
         x = paddle.to_tensor(
-            np.random.rand(*x_shape).astype('float32'), place=cpu
+            np.random.rand(*x_shape).astype('float32'), place=place
         )
         x.stop_gradient = False
-        index = paddle.to_tensor(np.zeros(idx_shape, dtype='int64'), place=cpu)
+        index = paddle.to_tensor(
+            np.zeros(idx_shape, dtype='int64'), place=place
+        )
         value = paddle.to_tensor(
-            np.random.rand(*val_shape).astype('float32'), place=cpu
+            np.random.rand(*val_shape).astype('float32'), place=place
         )
         value.stop_gradient = False
         out = paddle.put_along_axis(
@@ -1717,6 +1810,13 @@ class TestPutAlongAxisZeroSizeInputGrad(unittest.TestCase):
         self.assertEqual(list(out.shape), x_shape)
         loss = out.sum()
         loss.backward()
+        if np.prod(idx_shape) == 0:
+            self.assertIsNone(value.grad)
+        else:
+            self.assertIsNotNone(value.grad)
+            np.testing.assert_array_equal(
+                value.grad.numpy(), np.zeros(idx_shape, dtype='float32')
+            )
 
     def test_input_first_dim_zero_assign(self):
         self._run_zero_size_input(
@@ -1744,6 +1844,29 @@ class TestPutAlongAxisZeroSizeInputGrad(unittest.TestCase):
         self._run_zero_size_input(
             [2, 0, 3], [2, 1, 3], [2, 1, 3], axis=1, reduce='assign'
         )
+
+    def test_first_dim_zero_nonempty_index(self):
+        self._run_zero_size_input(
+            [0, 20], [1024, 6], [1024, 6], axis=1, reduce='assign'
+        )
+        if core.is_compiled_with_cuda() or is_custom_device():
+            self._run_zero_size_input(
+                [0, 20],
+                [1024, 6],
+                [1024, 6],
+                axis=1,
+                reduce='assign',
+                place=get_device_place(),
+            )
+        if paddle.device.is_compiled_with_xpu():
+            self._run_zero_size_input(
+                [0, 20],
+                [1024, 6],
+                [1024, 6],
+                axis=1,
+                reduce='assign',
+                place=paddle.XPUPlace(0),
+            )
 
 
 class TestPutAlongAxisMulFloat32DivByZeroGrad(unittest.TestCase):

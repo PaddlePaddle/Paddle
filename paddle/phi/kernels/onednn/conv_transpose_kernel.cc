@@ -210,7 +210,7 @@ class ConvTransposeOneDNNHandlerT
       const DenseTensor* x) {
     const T* input_data = x->data<T>();
     return funcs::OneDNNHandlerNoCachingT<T, dnnl::deconvolution_forward>::
-        AcquireMemoryWithReorder(x->mem_desc(),
+        AcquireMemoryWithReorder(phi::funcs::GetOneDNNMemDesc(*x),
                                  this->fwd_pd_->src_desc(),
                                  funcs::to_void_cast<T>(input_data));
   }
@@ -345,7 +345,8 @@ void PrepareSrcMem(const std::shared_ptr<dnnl::deconvolution_forward>& fc_p
                    const std::shared_ptr<dnnl::memory>& src_mem,
                    const DenseTensor* x,
                    const dnnl::engine& engine) {
-  auto x_md = x->mem_desc().reshape(src_mem->get_desc().get_dims());
+  auto x_md =
+      phi::funcs::GetOneDNNMemDesc(*x).reshape(src_mem->get_desc().get_dims());
   if (x_md != src_mem->get_desc()) {
     dnnl::memory x_mem(x_md, engine, funcs::to_void_cast<T>(x->data<T>()));
     auto reorder_p = dnnl::reorder(x_mem, *src_mem);
@@ -483,7 +484,7 @@ void Execute(const OneDNNContext& dev_ctx,
   auto& astream = OneDNNContext::tls().get_stream();
   conv_p->execute(astream, args);
   astream.wait();
-  out->set_mem_desc(dst_memory_p->get_desc());
+  phi::funcs::SetOneDNNMemDesc(out, dst_memory_p->get_desc());
 }
 
 template <typename T, typename Context>

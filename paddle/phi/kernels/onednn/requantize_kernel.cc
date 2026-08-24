@@ -59,7 +59,7 @@ void ReQuantOpKernel(const Context& dev_ctx,
   auto src_paddle_dt = input.dtype();
   auto dst_paddle_dt = with_shift ? DataType::UINT8 : src_paddle_dt;
 
-  auto xstrides = input.mem_desc().get_strides();
+  auto xstrides = phi::funcs::GetOneDNNMemDesc(input).get_strides();
 
   dnnl::primitive_attr attrs;
   int mask = 0;
@@ -87,8 +87,9 @@ void ReQuantOpKernel(const Context& dev_ctx,
       funcs::ToOneDNNDataType(dst_paddle_dt),
       dev_ctx.GetEngine());
 
-  auto src_memory_p = reorder_handler.AcquireSrcMemory(
-      input.mem_desc(), funcs::to_void_cast(input.data<T>()));
+  auto src_memory_p =
+      reorder_handler.AcquireSrcMemory(phi::funcs::GetOneDNNMemDesc(input),
+                                       funcs::to_void_cast(input.data<T>()));
   auto dst_memory_p = reorder_handler.AcquireDstMemory(
       output, src_tz, xstrides, dev_ctx.GetPlace());
 
@@ -115,7 +116,7 @@ void ReQuantOpKernel(const Context& dev_ctx,
   reorder_p->execute(astream, reorder_args);
   astream.wait();
 
-  output->set_mem_desc(dst_memory_p->get_desc());
+  phi::funcs::SetOneDNNMemDesc(output, dst_memory_p->get_desc());
 }
 
 }  // namespace phi

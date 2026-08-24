@@ -434,7 +434,6 @@ from .tensor.creation import (
 from .tensor.einsum import einsum
 from .tensor.linalg import (  # noqa: F401
     bincount,
-    bmm,
     cdist,
     cholesky,
     cross,
@@ -623,6 +622,7 @@ from .tensor.math import (  # noqa: F401
     bitwise_left_shift_,
     bitwise_right_shift,
     bitwise_right_shift_,
+    bmm,
     broadcast_shape,
     broadcast_shapes,
     cartesian_prod,
@@ -975,6 +975,16 @@ if (
             site_cuda_base_path = os.path.join(
                 os.path.dirname(__file__), '..', 'nvidia'
             )
+            site_cuda_paths = []
+            if cuda_major >= 13:
+                site_cuda_paths.append(
+                    os.path.join(
+                        site_cuda_base_path,
+                        f'cu{cuda_major}',
+                        'bin',
+                        'x86_64',
+                    )
+                )
             site_cuda_list = [
                 "cublas",
                 "cuda_nvrtc",
@@ -999,10 +1009,11 @@ if (
                     os.path.exists, [th_dll_path, py_dll_path, base_py_dll_path]
                 )
             )
-            for site_cuda_package in site_cuda_list:
-                site_cuda_path = os.path.join(
-                    site_cuda_base_path, site_cuda_package, 'bin'
-                )
+            site_cuda_paths.extend(
+                os.path.join(site_cuda_base_path, package, 'bin')
+                for package in site_cuda_list
+            )
+            for site_cuda_path in site_cuda_paths:
                 if os.path.exists(site_cuda_path):
                     dll_paths.append(site_cuda_path)
 
@@ -1033,10 +1044,7 @@ if (
             import glob
 
             dlls = glob.glob(os.path.join(th_dll_path, '*.dll'))
-            for site_cuda_package in site_cuda_list:
-                site_cuda_path = os.path.join(
-                    site_cuda_base_path, site_cuda_package, 'bin'
-                )
+            for site_cuda_path in site_cuda_paths:
                 if os.path.exists(site_cuda_path):
                     dlls.extend(
                         glob.glob(os.path.join(site_cuda_path, '*.dll'))

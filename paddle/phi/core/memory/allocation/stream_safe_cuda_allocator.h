@@ -115,6 +115,9 @@ class StreamSafeCUDAAllocator
 
   std::shared_ptr<Allocator> underlying_allocator_;
   VMMAutoGrowthBestFitMultiPoolAllocatorV2 *vmm_v2_allocator_{nullptr};
+  // True iff the underlying stack is VMM V1 (MultiScalePoolAllocator), the only
+  // one emitting kAlloc / kFreeCompleted. Resolved once at construction.
+  bool underlying_records_mem_history_{false};
   GPUPlace place_;
   gpuStream_t default_stream_;
   std::list<StreamSafeCUDAAllocation *> unfreed_allocations_;

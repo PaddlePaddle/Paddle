@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/phi/backends/all_context.h"
+#include "paddle/phi/backends/onednn/onednn_helper.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/visit_type.h"
 #include "paddle/phi/kernels/funcs/data_layout_transform.h"
@@ -134,7 +135,7 @@ void ComputeFP32(const OneDNNContext& dev_ctx,
         auto& astream = OneDNNContext::tls().get_stream();
         conv_p->execute(astream, args);
         astream.wait();
-        output->set_mem_desc(dst_memory_p->get_desc());
+        phi::funcs::SetOneDNNMemDesc(output, dst_memory_p->get_desc());
       }));
 }
 
@@ -264,7 +265,7 @@ void ComputeINT8(const OneDNNContext& dev_ctx,
           dev_ctx.Alloc<uint8_t>(output);
         }
 
-        output->set_mem_desc(dst_memory_p->get_desc());
+        phi::funcs::SetOneDNNMemDesc(output, dst_memory_p->get_desc());
       }));
 }
 

@@ -127,11 +127,11 @@ __global__ void FusedRopeKernelImpl(const T* src,
   // copy the rest
   if (d > d2) {
 #pragma unroll
-    for (int d_id = d2 + threadIdx.x; d_id < d; d_id += blockDim.x) {
+    for (IndexT d_id = d2 + threadIdx.x; d_id < d; d_id += blockDim.x) {
 #pragma unroll
-      for (int h_id = threadIdx.y; h_id < h; h_id += blockDim.y) {
-        int offset_src = offset_block + h_id * stride_h + d_id * stride_d;
-        int offset_dst =
+      for (IndexT h_id = threadIdx.y; h_id < h; h_id += blockDim.y) {
+        IndexT offset_src = offset_block + h_id * stride_h + d_id * stride_d;
+        IndexT offset_dst =
             offset_block_dst + h_id * o_stride_h + d_id * o_stride_d;
         dst[offset_dst] = src[offset_src];
       }
@@ -219,11 +219,11 @@ __global__ void FusedRopeGradKernelImpl(const T* src,
   // copy the rest
   if (d > d2) {
 #pragma unroll
-    for (int d_id = d2 + threadIdx.x; d_id < d; d_id += blockDim.x) {
+    for (IndexT d_id = d2 + threadIdx.x; d_id < d; d_id += blockDim.x) {
 #pragma unroll
-      for (int h_id = threadIdx.y; h_id < h; h_id += blockDim.y) {
-        int offset_src = offset_block + h_id * stride_h + d_id * stride_d;
-        int offset_dst =
+      for (IndexT h_id = threadIdx.y; h_id < h; h_id += blockDim.y) {
+        IndexT offset_src = offset_block + h_id * stride_h + d_id * stride_d;
+        IndexT offset_dst =
             offset_block_dst + h_id * o_stride_h + d_id * o_stride_d;
         dst[offset_dst] = src[offset_src];
       }
@@ -287,7 +287,11 @@ void FusedRopeKernelLauncher(const T* src,
   dim3 block(32, warps_per_block);  // 32 threads per warp
   size_t shared_mem_size = 2 * d2 * sizeof(float);
 
-  if (numel <= std::numeric_limits<int>::max()) {
+  // Conservative guard: the index in kernel's loop overshoot the bound (d or h,
+  // both <= numel) by up to one stride(block.x or block.y) before exiting, so
+  // the int32 path needs one stride of headroom on top of numel.
+  int64_t block_stride = std::max(block.x, block.y);
+  if (numel + block_stride <= std::numeric_limits<int>::max()) {
     kernel_int32<<<grid, block, shared_mem_size, stream>>>(
         src,
         sin,

@@ -113,9 +113,6 @@ jobs:
             else
               md5_value=`md5sum tools/dockerfile/${docker_files[$name]} | awk '{print $1}'`
             fi
-            if [ $name == "docker_dcu" ]; then
-                md5_value="76937a563116f6008c8ca4cb4f592759"
-            fi
             docker_image="ccr-2vdh3abv-pub.cnc.bj.baidubce.com/ci/paddle:${md5_value}"
             declare "${name}_image=${docker_image}"
             echo "${name}_image=${docker_image}" >> $GITHUB_OUTPUT

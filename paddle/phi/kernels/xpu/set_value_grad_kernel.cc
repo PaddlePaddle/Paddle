@@ -315,8 +315,12 @@ void SetValueGradKernel(const Context& dev_ctx,
                         DenseTensor* x_grad,
                         DenseTensor* value_grad) {
   if (out_grad.numel() == 0) {
-    if (x_grad) dev_ctx.template Alloc<T>(x_grad);
-    if (value_grad) dev_ctx.template Alloc<T>(value_grad);
+    if (x_grad) {
+      Full<T, Context>(dev_ctx, x_grad->dims(), Scalar(0), x_grad);
+    }
+    if (value_grad) {
+      Full<T, Context>(dev_ctx, value_grad->dims(), Scalar(0), value_grad);
+    }
     return;
   }
   const int rank = out_grad.dims().size();

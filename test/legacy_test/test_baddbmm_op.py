@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import inspect
 import unittest
 
 import numpy as np
@@ -28,13 +29,17 @@ from paddle.base import Program, core, program_guard
 from paddle.framework import in_pir_mode
 
 
+def baddbmm_api_for_op_test(input, x, y, beta=1.0, alpha=1.0):
+    return paddle.baddbmm(input, x, y, beta=beta, alpha=alpha)
+
+
 class TestBaddBmmOp(OpTest):
     # test basic
     def setUp(self):
         self.op_type = "baddbmm"
         self.prim_op_type = "comp"
-        self.python_api = paddle.baddbmm
-        self.public_python_api = paddle.baddbmm
+        self.python_api = baddbmm_api_for_op_test
+        self.public_python_api = baddbmm_api_for_op_test
         self.init_dtype_type()
         self.inputs = {
             'Input': np.random.random((2, 10, 5)).astype(self.dtype),
@@ -96,7 +101,7 @@ class TestBaddBmmOp(OpTest):
 class TestBaddBmmFP16Op(OpTest):
     def setUp(self):
         self.op_type = "baddbmm"
-        self.python_api = paddle.baddbmm
+        self.python_api = baddbmm_api_for_op_test
         self.init_dtype_type()
         self.inputs = {
             'Input': np.random.random((1, 10, 10)).astype(self.dtype),
@@ -139,7 +144,7 @@ class TestBaddBmmFP16Op(OpTest):
 class TestBaddBmmBF16Op(OpTest):
     def setUp(self):
         self.op_type = "baddbmm"
-        self.python_api = paddle.baddbmm
+        self.python_api = baddbmm_api_for_op_test
         self.init_dtype_type()
         self.inputs = {
             'Input': np.random.random((2, 50, 1)).astype(self.dtype),
@@ -206,15 +211,34 @@ class TestBaddBmmOpError(unittest.TestCase):
             )
 
             paddle.enable_static()
-            # The input dtype of baddbmm_op must be float32 or float64.
+            # The legacy static API rejects unsupported dtypes before appending
+            # the operator.
+            with paddle.pir_utils.OldIrGuard():
+                main = paddle.static.Program()
+                startup = paddle.static.Program()
+                with paddle.static.program_guard(main, startup):
+                    int_input = paddle.static.data(
+                        name='int_input',
+                        shape=[2, 4, 4],
+                        dtype="int32",
+                    )
+                    x3 = paddle.static.data(
+                        name='x3', shape=[2, 4, 4], dtype="int32"
+                    )
+                    x4 = paddle.static.data(
+                        name='x4', shape=[2, 4, 4], dtype="int32"
+                    )
+                    self.assertRaises(
+                        TypeError, paddle.baddbmm, int_input, x3, x4
+                    )
+
+            # Shape errors are validated by InferMeta with otherwise valid
+            # input dtypes.
             input = paddle.static.data(
                 name='input',
                 shape=[2, 4, 4],
-                dtype="int32",
+                dtype="float32",
             )
-            x3 = paddle.static.data(name='x3', shape=[2, 4, 4], dtype="int32")
-            x4 = paddle.static.data(name='x4', shape=[2, 4, 4], dtype="int32")
-            self.assertRaises(TypeError, paddle.baddbmm, input, x3, x4)
             # x and y dimension mismatch
             x5 = paddle.static.data(
                 name='x5',
@@ -298,8 +322,8 @@ class TestBaddBmmOp2(TestBaddBmmOp):
     def setUp(self):
         self.op_type = "baddbmm"
         self.prim_op_type = "comp"
-        self.python_api = paddle.baddbmm
-        self.public_python_api = paddle.baddbmm
+        self.python_api = baddbmm_api_for_op_test
+        self.public_python_api = baddbmm_api_for_op_test
         self.dtype = np.float64
         self.init_dtype_type()
         self.inputs = {
@@ -322,8 +346,8 @@ class TestBaddBmmOp3(OpTest):
     def setUp(self):
         self.op_type = "baddbmm"
         self.prim_op_type = "comp"
-        self.python_api = paddle.baddbmm
-        self.public_python_api = paddle.baddbmm
+        self.python_api = baddbmm_api_for_op_test
+        self.public_python_api = baddbmm_api_for_op_test
         self.dtype = np.float64
         self.init_dtype_type()
         self.inputs = {
@@ -377,14 +401,14 @@ class TestBaddBmmOp4(OpTest):
     def setUp(self):
         self.op_type = "baddbmm"
         self.prim_op_type = "comp"
-        self.python_api = paddle.baddbmm
-        self.public_python_api = paddle.baddbmm
+        self.python_api = baddbmm_api_for_op_test
+        self.public_python_api = baddbmm_api_for_op_test
         self.dtype = np.float64
         self.init_dtype_type()
         self.inputs = {
-            'Input': np.random.random((1, 15)).astype(self.dtype),
-            'X': np.random.random((1, 50, 10)).astype(self.dtype),
-            'Y': np.random.random((1, 10, 15)).astype(self.dtype),
+            'Input': np.random.random((1, 100)).astype(self.dtype),
+            'X': np.random.random((1, 10, 10)).astype(self.dtype),
+            'Y': np.random.random((1, 10, 100)).astype(self.dtype),
         }
         self.attrs = {
             'Alpha': 0.5,
@@ -394,7 +418,7 @@ class TestBaddBmmOp4(OpTest):
         self.outputs = {
             'Out': self.attrs['Beta']
             * np.broadcast_to(
-                self.inputs['Input'][:, np.newaxis, :], (1, 50, 15)
+                self.inputs['Input'][:, np.newaxis, :], (1, 10, 100)
             )
             + self.attrs['Alpha']
             * np.matmul(self.inputs['X'], self.inputs['Y'])
@@ -407,9 +431,6 @@ class TestBaddBmmOp4(OpTest):
         self.check_output(check_pir=True, check_prim_pir=True)
 
     def test_check_grad_normal(self):
-        self.inputs['Input'] = np.broadcast_to(
-            self.inputs['Input'][:, np.newaxis, :], (1, 50, 15)
-        )
         self.check_grad(
             ['Input', 'X', 'Y'], 'Out', check_pir=True, check_prim_pir=True
         )
@@ -421,9 +442,6 @@ class TestBaddBmmOp4(OpTest):
         self.check_grad(['Y'], 'Out', no_grad_set=None, check_pir=True)
 
     def test_check_grad_input(self):
-        self.inputs['Input'] = np.broadcast_to(
-            self.inputs['Input'][:, np.newaxis, :], (1, 50, 15)
-        )
         self.check_grad(
             ['Input'],
             'Out',
@@ -638,6 +656,47 @@ class TestBaddBmmAPI(unittest.TestCase):
 
         paddle.enable_static()
 
+    def test_legacy_static_api(self):
+        paddle.enable_static()
+        input_data = np.ones([2, 2, 2], dtype=np.float32)
+        x_data = np.ones([2, 2, 3], dtype=np.float32)
+        y_data = np.ones([2, 3, 2], dtype=np.float32)
+
+        with paddle.pir_utils.OldIrGuard():
+            main = paddle.static.Program()
+            startup = paddle.static.Program()
+            with paddle.static.program_guard(main, startup):
+                input = paddle.static.data(
+                    'legacy_input', [2, 2, 2], dtype='float32'
+                )
+                x = paddle.static.data('legacy_x', [2, 2, 3], dtype='float32')
+                y = paddle.static.data('legacy_y', [2, 3, 2], dtype='float32')
+                result = paddle.baddbmm(input, x, y, beta=0.5, alpha=2.0)
+
+                out = main.global_block().create_var(
+                    name='legacy_out', shape=[2, 2, 2], dtype='float32'
+                )
+                out.stop_gradient = True
+                returned = paddle.baddbmm(
+                    input, x, y, beta=0.5, alpha=2.0, out=out
+                )
+                self.assertIs(returned, out)
+
+            executor = base.Executor(base.CPUPlace())
+            result_value, out_value = executor.run(
+                main,
+                feed={
+                    'legacy_input': input_data,
+                    'legacy_x': x_data,
+                    'legacy_y': y_data,
+                },
+                fetch_list=[result, out],
+            )
+
+        expected = 0.5 * input_data + 2.0 * np.matmul(x_data, y_data)
+        np.testing.assert_allclose(result_value, expected)
+        np.testing.assert_allclose(out_value, expected)
+
     def test_api_out(self):
         if in_pir_mode():
             self.skipTest("PIR not support out tensor")
@@ -699,126 +758,511 @@ class TestBaddBmmAPI(unittest.TestCase):
 
         paddle.enable_static()
 
-    def test_api_out_dtype(self):
-        """Test out_dtype parameter for baddbmm"""
-        data_x = np.ones((2, 2, 2)).astype(np.float32)
-        data_y = np.ones((2, 2, 2)).astype(np.float32)
-        data_input = np.ones((2, 2, 2)).astype(np.float32)
-        data_alpha = 0.1
-        data_beta = 1.0
-
+    def test_normal_backward_without_out_dtype(self):
         paddle.disable_static()
+        try:
+            input = paddle.ones([2, 2, 2], requires_grad=True)
+            x = paddle.ones([2, 2, 2], requires_grad=True)
+            y = paddle.ones([2, 2, 2], requires_grad=True)
 
-        x = paddle.to_tensor(data_x, stop_gradient=False)
-        y = paddle.to_tensor(data_y, stop_gradient=False)
-        input = paddle.to_tensor(data_input, stop_gradient=False)
+            result = paddle.baddbmm(input, x, y, beta=0.5, alpha=2.0)
+            self.assertEqual(result.dtype, paddle.float32)
+            self.assertFalse(result.stop_gradient)
+            result.sum().backward()
+            np.testing.assert_array_equal(input.grad.numpy(), 0.5)
+            np.testing.assert_array_equal(x.grad.numpy(), 4.0)
+            np.testing.assert_array_equal(y.grad.numpy(), 4.0)
 
-        # Test with out_dtype=float64
-        paddle_output = paddle.tensor.baddbmm(
-            input=input,
-            x=x,
-            y=y,
-            beta=data_beta,
-            alpha=data_alpha,
-            out_dtype=paddle.float64,
-        )
-        numpy_output = data_beta * data_input + data_alpha * np.matmul(
-            data_x, data_y
-        )
+            method_result = input.detach().baddbmm(x.detach(), y.detach())
+            np.testing.assert_array_equal(method_result.numpy(), 3.0)
+        finally:
+            paddle.enable_static()
 
-        # Check that output dtype is float64
-        self.assertEqual(paddle_output.dtype, paddle.float64)
-        # Check that the values are correct
-        np.testing.assert_allclose(
-            numpy_output, paddle_output.numpy(), rtol=1e-05
-        )
+    def test_out_dtype_rejects_unsupported_conversion(self):
+        paddle.disable_static()
+        try:
+            input = paddle.ones([2, 2, 2])
+            x = paddle.ones([2, 2, 2])
+            y = paddle.ones([2, 2, 2])
+            with self.assertRaisesRegex(TypeError, "float16 or bfloat16 x"):
+                paddle.baddbmm(input, x, y, out_dtype=paddle.float64)
+        finally:
+            paddle.enable_static()
 
-        paddle_output.sum().backward()
-        self.assertEqual(input.grad.dtype, paddle.float32)
-        self.assertEqual(x.grad.dtype, paddle.float32)
-        self.assertEqual(y.grad.dtype, paddle.float32)
-        np.testing.assert_allclose(input.grad.numpy(), data_beta)
-        np.testing.assert_allclose(x.grad.numpy(), data_alpha * 2)
-        np.testing.assert_allclose(y.grad.numpy(), data_alpha * 2)
+    def test_normal_and_out_without_out_dtype(self):
+        paddle.disable_static()
+        try:
+            input = paddle.ones([2, 2, 2])
+            x = paddle.ones([2, 2, 2])
+            y = paddle.ones([2, 2, 2])
+            out = paddle.empty([2, 2, 2], dtype=paddle.float32)
+            result = paddle.baddbmm(input, x, y, out=out)
+            self.assertIs(result, out)
+            np.testing.assert_array_equal(out.numpy(), 3.0)
+        finally:
+            paddle.enable_static()
 
-        # Test with out_dtype=None (should use input dtype)
-        paddle_output_none = paddle.tensor.baddbmm(
-            input=input,
-            x=x,
-            y=y,
-            beta=data_beta,
-            alpha=data_alpha,
-            out_dtype=None,
-        )
-        self.assertEqual(paddle_output_none.dtype, paddle.float32)
+    def test_out_rejects_autograd(self):
+        paddle.disable_static()
+        try:
+            input = paddle.ones([2, 2, 2], requires_grad=True)
+            x = paddle.ones([2, 2, 2])
+            y = paddle.ones([2, 2, 2])
+            out = paddle.empty([2, 2, 2])
+            with self.assertRaisesRegex(RuntimeError, "don't support"):
+                paddle.baddbmm(input, x, y, out=out)
+
+            with paddle.no_grad():
+                result = paddle.baddbmm(input, x, y, out=out)
+            self.assertIs(result, out)
+        finally:
+            paddle.enable_static()
+
+    def test_scalar_and_vector_input_backward(self):
+        paddle.disable_static()
+        try:
+            x = paddle.ones([2, 3, 4])
+            y = paddle.ones([2, 4, 5])
+            for shape, expected_grad in [((), 60.0), ((5,), 12.0)]:
+                input = paddle.ones(shape, requires_grad=True)
+                result = paddle.baddbmm(input, x, y, beta=2.0)
+                self.assertEqual(result.shape, [2, 3, 5])
+                result.sum().backward()
+                self.assertEqual(input.grad.shape, list(shape))
+                np.testing.assert_array_equal(input.grad.numpy(), expected_grad)
+        finally:
+            paddle.enable_static()
+
+    def test_inplace_requires_exact_shape_and_dtype(self):
+        paddle.disable_static()
+        try:
+            x = paddle.ones([2, 3, 4])
+            y = paddle.ones([2, 4, 5])
+
+            input = paddle.ones([2, 3, 5])
+            result = paddle.baddbmm_(input, x, y)
+            self.assertIs(result, input)
+
+            with self.assertRaises(ValueError):
+                paddle.baddbmm_(paddle.ones([3, 5]), x, y)
+            with self.assertRaises(ValueError):
+                paddle.baddbmm_(paddle.ones([1, 3, 5]), x, y)
+            with self.assertRaises((TypeError, ValueError)):
+                paddle.baddbmm_(
+                    paddle.ones([2, 3, 5], dtype=paddle.float64), x, y
+                )
+            with self.assertRaises((TypeError, ValueError)):
+                paddle.baddbmm_(input, x, y, out_dtype=paddle.float32)
+        finally:
+            paddle.enable_static()
+
+    def test_inplace_infer_symbolic_shape(self):
+        from paddle.base.libpaddle import pir
+
+        input_data = np.ones([2, 3, 5], dtype=np.float32)
+        x_data = np.ones([2, 3, 4], dtype=np.float32)
+        y_data = np.ones([2, 4, 5], dtype=np.float32)
 
         paddle.enable_static()
+        with paddle.pir_utils.IrGuard():
+            main = paddle.static.Program()
+            startup = paddle.static.Program()
+            with paddle.static.program_guard(main, startup):
+                input = paddle.static.data(
+                    'symbolic_input', [None, None, None], dtype='float32'
+                )
+                x = paddle.static.data(
+                    'symbolic_x', [None, None, 4], dtype='float32'
+                )
+                y = paddle.static.data(
+                    'symbolic_y', [None, 4, None], dtype='float32'
+                )
+                out = paddle.baddbmm_(input, x, y, beta=0.5, alpha=2.0)
 
-    def test_api_out_dtype_fp16(self):
-        """Test out_dtype parameter with float16"""
-        if not (core.is_compiled_with_cuda() or is_custom_device()):
-            self.skipTest("CUDA is not available")
+            op_names = [op.name() for op in main.global_block().ops]
+            self.assertIn('pd_op.baddbmm_', op_names)
+
+            pm = pir.PassManager()
+            pir.infer_symbolic_shape_pass(pm, main)
+            pm.run(main)
+
+            executor = paddle.static.Executor(paddle.CPUPlace())
+            (actual,) = executor.run(
+                main,
+                feed={
+                    'symbolic_input': input_data,
+                    'symbolic_x': x_data,
+                    'symbolic_y': y_data,
+                },
+                fetch_list=[out],
+            )
+
+        expected = 0.5 * input_data + 2.0 * np.matmul(x_data, y_data)
+        np.testing.assert_allclose(actual, expected, rtol=1e-6)
+
+    def test_signature_and_tensor_method(self):
+        parameters = inspect.signature(paddle.baddbmm).parameters
+        self.assertEqual(
+            list(parameters),
+            [
+                'input',
+                'x',
+                'y',
+                'out_dtype',
+                'name',
+                'beta',
+                'alpha',
+                'out',
+            ],
+        )
+        for parameter in ('out_dtype', 'name'):
+            self.assertEqual(
+                parameters[parameter].kind,
+                inspect.Parameter.POSITIONAL_OR_KEYWORD,
+            )
+        for parameter in ('beta', 'alpha', 'out'):
+            self.assertEqual(
+                parameters[parameter].kind,
+                inspect.Parameter.KEYWORD_ONLY,
+            )
+
+        paddle.disable_static()
+        try:
+            input = paddle.ones([2, 2, 2])
+            x = paddle.ones([2, 2, 2])
+            y = paddle.ones([2, 2, 2])
+            result = input.baddbmm(batch1=x, batch2=y)
+            np.testing.assert_array_equal(result.numpy(), 3.0)
+
+            legacy_result = paddle.baddbmm(input, x, y, 0.5, 2.0)
+            expected = paddle.baddbmm(input, x, y, beta=0.5, alpha=2.0)
+            np.testing.assert_array_equal(
+                legacy_result.numpy(), expected.numpy()
+            )
+        finally:
+            paddle.enable_static()
+
+    def test_legacy_positional_arg_errors(self):
+        paddle.disable_static()
+        try:
+            input = paddle.ones([2, 2, 2])
+            x = paddle.ones([2, 2, 2])
+            y = paddle.ones([2, 2, 2])
+
+            with self.assertRaisesRegex(
+                TypeError, "received too many positional arguments"
+            ):
+                paddle.baddbmm(
+                    input,
+                    x,
+                    y,
+                    0.5,
+                    2.0,
+                    None,
+                    'legacy_baddbmm',
+                    'extra',
+                )
+
+            conflict_cases = (
+                ('beta', (0.5,), 1.0),
+                ('alpha', (0.5, 2.0), 1.0),
+                ('out_dtype', (0.5, 2.0, paddle.float32), paddle.float32),
+                (
+                    'name',
+                    (0.5, 2.0, None, 'legacy_baddbmm'),
+                    'duplicate_name',
+                ),
+            )
+            for name, legacy_args, keyword_value in conflict_cases:
+                with (
+                    self.subTest(name=name),
+                    self.assertRaisesRegex(
+                        TypeError,
+                        rf"multiple values for argument '{name}'",
+                    ),
+                ):
+                    paddle.baddbmm(
+                        input,
+                        x,
+                        y,
+                        *legacy_args,
+                        **{name: keyword_value},
+                    )
+        finally:
+            paddle.enable_static()
+
+    def _check_mixed_out_dtype(self, dtype):
+        for batch_size in (1, 2):
+            x = paddle.ones([batch_size, 4, 3], dtype=dtype).transpose(
+                [0, 2, 1]
+            )
+            y = paddle.ones([batch_size, 5, 4], dtype=dtype).transpose(
+                [0, 2, 1]
+            )
+
+            for input_dtype in (dtype, paddle.float32):
+                input = paddle.ones([5], dtype=input_dtype)
+                result = paddle.baddbmm(
+                    input,
+                    x,
+                    y,
+                    beta=0.5,
+                    alpha=2.0,
+                    out_dtype=paddle.float32,
+                )
+                self.assertEqual(result.dtype, paddle.float32)
+                np.testing.assert_allclose(
+                    result.numpy(), 8.5, rtol=1e-5, atol=1e-5
+                )
+
+        x = paddle.ones([2, 3, 4], dtype=dtype)
+        y = paddle.ones([2, 4, 5], dtype=dtype)
+        input = paddle.ones([5], dtype=paddle.float32)
+        out = paddle.empty([2, 3, 5], dtype=paddle.float32)
+        returned = paddle.baddbmm(
+            input,
+            x.detach(),
+            y.detach(),
+            beta=0.5,
+            alpha=2.0,
+            out_dtype=paddle.float32,
+            out=out,
+        )
+        self.assertIs(returned, out)
+        np.testing.assert_allclose(out.numpy(), 8.5, rtol=1e-5, atol=1e-5)
+
+        positional_result = paddle.baddbmm(
+            input,
+            x,
+            y,
+            paddle.float32,
+            'baddbmm_positional',
+            beta=0.5,
+            alpha=2.0,
+        )
+        legacy_result = paddle.baddbmm(
+            input,
+            x,
+            y,
+            0.5,
+            2.0,
+            paddle.float32,
+            'legacy_baddbmm',
+        )
+        for result in (positional_result, legacy_result):
+            self.assertEqual(result.dtype, paddle.float32)
+            np.testing.assert_allclose(
+                result.numpy(), 8.5, rtol=1e-5, atol=1e-5
+            )
+
+    @unittest.skipIf(
+        not core.is_compiled_with_cuda() or paddle.is_compiled_with_rocm(),
+        "CUDA is required for baddbmm out_dtype",
+    )
+    def test_mixed_out_dtype_fp16(self):
         if not core.is_float16_supported(paddle.CUDAPlace(0)):
             self.skipTest("Float16 is not supported")
-
-        data_x = np.ones((2, 2, 2)).astype(np.float32)
-        data_y = np.ones((2, 2, 2)).astype(np.float32)
-        data_input = np.ones((2, 2, 2)).astype(np.float32)
-        data_alpha = 0.5
-        data_beta = 1.0
-
         paddle.disable_static()
-        paddle.set_device('gpu')
+        try:
+            paddle.set_device('gpu')
+            self._check_mixed_out_dtype(paddle.float16)
+        finally:
+            paddle.enable_static()
 
-        x = paddle.to_tensor(data_x, stop_gradient=False)
-        y = paddle.to_tensor(data_y, stop_gradient=False)
-        input = paddle.to_tensor(data_input, stop_gradient=False)
+    @unittest.skipIf(
+        not core.is_compiled_with_cuda() or paddle.is_compiled_with_rocm(),
+        "CUDA is required for baddbmm out_dtype",
+    )
+    def test_out_dtype_rejects_autograd(self):
+        if not core.is_float16_supported(paddle.CUDAPlace(0)):
+            self.skipTest("Float16 is not supported")
+        paddle.disable_static()
+        try:
+            paddle.set_device('gpu')
+            for grad_input in ('input', 'x', 'y'):
+                tensors = {
+                    'input': paddle.ones([5], dtype=paddle.float16),
+                    'x': paddle.ones([2, 3, 4], dtype=paddle.float16),
+                    'y': paddle.ones([2, 4, 5], dtype=paddle.float16),
+                }
+                tensors[grad_input].stop_gradient = False
+                with (
+                    self.subTest(grad_input=grad_input),
+                    self.assertRaisesRegex(
+                        RuntimeError,
+                        "out_dtype does not support automatic differentiation",
+                    ),
+                ):
+                    paddle.baddbmm(
+                        tensors['input'],
+                        tensors['x'],
+                        tensors['y'],
+                        out_dtype=paddle.float32,
+                    )
 
-        # Test with out_dtype=float16
-        paddle_output = paddle.tensor.baddbmm(
-            input=input,
-            x=x,
-            y=y,
-            beta=data_beta,
-            alpha=data_alpha,
-            out_dtype=paddle.float16,
-        )
+            input = paddle.ones([5], dtype=paddle.float16, requires_grad=True)
+            x = paddle.ones([2, 3, 4], dtype=paddle.float16, requires_grad=True)
+            y = paddle.ones([2, 4, 5], dtype=paddle.float16, requires_grad=True)
+            with paddle.no_grad():
+                result = paddle.baddbmm(input, x, y, out_dtype=paddle.float32)
+            self.assertTrue(result.stop_gradient)
+            np.testing.assert_array_equal(result.numpy(), 5.0)
+        finally:
+            paddle.enable_static()
 
-        # Check that output dtype is float16
-        self.assertEqual(paddle_output.dtype, paddle.float16)
+    @unittest.skipIf(
+        not core.is_compiled_with_cuda() or paddle.is_compiled_with_rocm(),
+        "CUDA is required for baddbmm out_dtype",
+    )
+    def test_mixed_out_dtype_bf16(self):
+        if not core.is_bfloat16_supported(paddle.CUDAPlace(0)):
+            self.skipTest("BFloat16 is not supported")
+        paddle.disable_static()
+        try:
+            paddle.set_device('gpu')
+            self._check_mixed_out_dtype(paddle.bfloat16)
+        finally:
+            paddle.enable_static()
 
-        numpy_output = data_beta * data_input + data_alpha * np.matmul(
-            data_x, data_y
-        )
-        np.testing.assert_allclose(
-            numpy_output, paddle_output.numpy(), rtol=1e-02, atol=1e-02
-        )
+    @unittest.skipIf(
+        not core.is_compiled_with_cuda() or paddle.is_compiled_with_rocm(),
+        "CUDA is required for baddbmm out_dtype",
+    )
+    def test_out_dtype_infermeta_validation(self):
+        if not core.is_float16_supported(paddle.CUDAPlace(0)):
+            self.skipTest("Float16 is not supported")
+        paddle.disable_static()
+        try:
+            paddle.set_device('gpu')
+            input = paddle.ones([2, 3, 5], dtype=paddle.float16)
+            x = paddle.ones([2, 3, 4], dtype=paddle.float16)
+            y = paddle.ones([2, 4, 5], dtype=paddle.float16)
 
-        paddle_output.sum().backward()
-        self.assertEqual(input.grad.dtype, paddle.float32)
-        self.assertEqual(x.grad.dtype, paddle.float32)
-        self.assertEqual(y.grad.dtype, paddle.float32)
+            with self.assertRaisesRegex(ValueError, "only supports float32"):
+                paddle.baddbmm(input, x, y, out_dtype=paddle.float16)
+            with self.assertRaisesRegex(ValueError, "must have the same dtype"):
+                paddle.baddbmm(
+                    input,
+                    x,
+                    y.astype('float32'),
+                    out_dtype=paddle.float32,
+                )
+            with self.assertRaisesRegex(ValueError, "must match Input\\(X\\)"):
+                paddle.baddbmm(
+                    input.astype('float64'),
+                    x,
+                    y,
+                    out_dtype=paddle.float32,
+                )
+            with self.assertRaisesRegex(ValueError, "dimension must be 3"):
+                paddle.baddbmm(
+                    input,
+                    x,
+                    paddle.ones([4, 5], dtype=paddle.float16),
+                    out_dtype=paddle.float32,
+                )
+        finally:
+            paddle.enable_static()
 
-        fp16_input = paddle.ones([2, 2, 2], dtype=paddle.float16)
-        fp16_x = paddle.ones([2, 2, 2], dtype=paddle.float16)
-        fp16_y = paddle.ones([2, 2, 2], dtype=paddle.float16)
-        fp16_input.stop_gradient = False
-        fp16_x.stop_gradient = False
-        fp16_y.stop_gradient = False
-        fp32_output = paddle.tensor.baddbmm(
-            input=fp16_input,
-            x=fp16_x,
-            y=fp16_y,
-            beta=data_beta,
-            alpha=data_alpha,
-            out_dtype=paddle.float32,
-        )
-        fp32_output.sum().backward()
-        self.assertEqual(fp16_input.grad.dtype, paddle.float16)
-        self.assertEqual(fp16_x.grad.dtype, paddle.float16)
-        self.assertEqual(fp16_y.grad.dtype, paddle.float16)
+    @unittest.skipIf(
+        not core.is_compiled_with_cuda() or paddle.is_compiled_with_rocm(),
+        "CUDA is required for baddbmm out_dtype",
+    )
+    def test_mixed_out_dtype_zero_k(self):
+        if not core.is_float16_supported(paddle.CUDAPlace(0)):
+            self.skipTest("Float16 is not supported")
+        paddle.disable_static()
+        try:
+            paddle.set_device('gpu')
+            input = paddle.full([5], float('nan'), dtype=paddle.float32)
+            x = paddle.empty([2, 3, 0], dtype=paddle.float16)
+            y = paddle.empty([2, 0, 5], dtype=paddle.float16)
+            result = paddle.baddbmm(
+                input, x, y, beta=0.0, out_dtype=paddle.float32
+            )
+            np.testing.assert_array_equal(result.numpy(), 0.0)
+        finally:
+            paddle.enable_static()
 
+    @unittest.skipIf(
+        not core.is_compiled_with_cuda() or paddle.is_compiled_with_rocm(),
+        "CUDA is required for baddbmm out_dtype",
+    )
+    def test_mixed_out_dtype_empty_output(self):
+        if not core.is_float16_supported(paddle.CUDAPlace(0)):
+            self.skipTest("Float16 is not supported")
+        paddle.disable_static()
+        try:
+            paddle.set_device('gpu')
+            cases = [
+                ([0, 3, 5], [0, 3, 4], [0, 4, 5]),
+                ([2, 0, 5], [2, 0, 4], [2, 4, 5]),
+                ([2, 3, 0], [2, 3, 4], [2, 4, 0]),
+            ]
+            for input_shape, x_shape, y_shape in cases:
+                for input_dtype in (paddle.float16, paddle.float32):
+                    with self.subTest(
+                        input_shape=input_shape, input_dtype=input_dtype
+                    ):
+                        input = paddle.empty(input_shape, dtype=input_dtype)
+                        x = paddle.empty(x_shape, dtype=paddle.float16)
+                        y = paddle.empty(y_shape, dtype=paddle.float16)
+                        result = paddle.baddbmm(
+                            input,
+                            x,
+                            y,
+                            out_dtype=paddle.float32,
+                        )
+                        self.assertEqual(result.shape, input_shape)
+                        self.assertEqual(result.dtype, paddle.float32)
+                        self.assertEqual(result.numel(), 0)
+        finally:
+            paddle.enable_static()
+
+    def test_out_dtype_rejects_invalid_out(self):
+        paddle.disable_static()
+        try:
+            input = paddle.ones([2, 3, 5], dtype=paddle.float16)
+            x = paddle.ones([2, 3, 4], dtype=paddle.float16)
+            y = paddle.ones([2, 4, 5], dtype=paddle.float16)
+            out = paddle.empty([2, 3, 5], dtype=paddle.float16)
+            with self.assertRaisesRegex(TypeError, "must be paddle.float32"):
+                paddle.baddbmm(input, x, y, out_dtype=paddle.float32, out=out)
+        finally:
+            paddle.enable_static()
+
+    def test_out_dtype_rejects_cpu(self):
+        paddle.disable_static()
+        try:
+            place = paddle.CPUPlace()
+            input = paddle.to_tensor(
+                np.ones([2, 3, 5], dtype=np.float16), place=place
+            )
+            x = paddle.to_tensor(
+                np.ones([2, 3, 4], dtype=np.float16), place=place
+            )
+            y = paddle.to_tensor(
+                np.ones([2, 4, 5], dtype=np.float16), place=place
+            )
+            with self.assertRaisesRegex(
+                NotImplementedError, "only supports CUDA tensors"
+            ):
+                paddle.baddbmm(input, x, y, out_dtype=paddle.float32)
+        finally:
+            paddle.enable_static()
+
+    def test_static_out_dtype_fails_closed(self):
         paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            input = paddle.static.data(
+                'mixed_input', [2, 3, 5], dtype='float16'
+            )
+            x = paddle.static.data('mixed_x', [2, 3, 4], dtype='float16')
+            y = paddle.static.data('mixed_y', [2, 4, 5], dtype='float16')
+            with self.assertRaises(NotImplementedError):
+                paddle.baddbmm(input, x, y, out_dtype=paddle.float32)
 
     def test_2d_input_without_input_grad(self):
         paddle.disable_static()
@@ -932,8 +1376,8 @@ class TestBaddBmmBatch1Op(OpTest):
     def setUp(self):
         self.op_type = "baddbmm"
         self.prim_op_type = "comp"
-        self.python_api = paddle.baddbmm
-        self.public_python_api = paddle.baddbmm
+        self.python_api = baddbmm_api_for_op_test
+        self.public_python_api = baddbmm_api_for_op_test
         self.init_dtype_type()
         self.inputs = {
             'Input': np.random.random((1, 10, 10)).astype(self.dtype),
@@ -1000,8 +1444,8 @@ class TestBaddBmmBatch1Op2(TestBaddBmmBatch1Op):
     def setUp(self):
         self.op_type = "baddbmm"
         self.prim_op_type = "comp"
-        self.python_api = paddle.baddbmm
-        self.public_python_api = paddle.baddbmm
+        self.python_api = baddbmm_api_for_op_test
+        self.public_python_api = baddbmm_api_for_op_test
         self.dtype = np.float64
         self.init_dtype_type()
         self.inputs = {
