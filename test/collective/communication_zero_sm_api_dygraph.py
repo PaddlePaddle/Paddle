@@ -145,35 +145,23 @@ class ZeroSMTestCase:
         gathered = [float(out[i * _CHUNK, 0]) for i in range(self._world)]
         assert gathered == self._expected, gathered
 
-    def test_asymmetric_dynamic_shapes(self):
-        # A dynamic shape (MoE token counts, for instance) puts the ranks in
-        # different buckets, and registration is collective: the pool has to
-        # negotiate one byte size for the whole group instead of following the
-        # local request. Doing it locally deadlocks right here.
+    def test_bucketed_dynamic_shapes(self):
+        # A shape that changes between steps (MoE token counts, for instance)
+        # must not register a new window every time: two sizes landing in the
+        # same power-of-two bucket share one block. Every rank asks for the same
+        # shapes in the same order, which is what the pool requires from its
+        # caller now that it decides locally.
         pool = _ZeroSMPool.instance(self._group)
-        local = pool.empty([(self._rank + 1) * 48, _HIDDEN], _DTYPE)
-        assert pool.owns(local)
+        first = pool.empty([48, _HIDDEN], _DTYPE)
+        assert pool.owns(first)
+        address = first.data_ptr()
+        windows = len(pool._spans)
+        del first
+        gc.collect()
 
-        # Whatever each rank asked for, the block it registered has the same
-        # byte size everywhere.
-        span = pool._spans[-1]
-        sizes = []
-        dist.all_gather(
-            sizes,
-            paddle.to_tensor([span[1] - span[0]], dtype="int64"),
-            group=self._group,
-        )
-        nbytes = [int(size[0]) for size in sizes]
-        assert len(set(nbytes)) == 1, nbytes
-
-        # Now make the free lists disagree on purpose: only rank 0 hands its
-        # block back before the next allocation. Deciding on the local cache
-        # state would make the ranks register a different number of windows.
-        if self._rank == 0:
-            del local
-            gc.collect()
-        spare = pool.empty([(self._rank + 1) * 48, _HIDDEN], _DTYPE)
-        assert pool.owns(spare)
+        spare = pool.empty([60, _HIDDEN], _DTYPE)
+        assert spare.data_ptr() == address, "the pool did not reuse the block"
+        assert len(pool._spans) == windows, "a redundant window was registered"
 
         # The group is still usable, so the registrations stayed in step.
         source = pool.empty([_CHUNK, _HIDDEN], _DTYPE)
@@ -332,6 +320,86 @@ class ZeroSMTestCase:
             out, self._full(_CHUNK * self._world), group=self._group
         )
         assert self._gathered(out) == self._expected
+
+    def test_all_gather_list_settles_on_is_completed(self):
+        # A caller is entitled to poll is_completed() and read the output as
+        # soon as it returns True, so completion has to cover the write-back
+        # into the list, not just the collective landing.
+        out = [
+            paddle.zeros([_CHUNK, _HIDDEN], dtype=_DTYPE)
+            for _ in range(self._world)
+        ]
+        task = zero_sm.all_gather(
+            out, self._full(_CHUNK), group=self._group, sync_op=False
+        )
+        assert isinstance(task, zero_sm._StagedTask), type(task)
+        for _ in range(1000000):
+            if task.is_completed():
+                break
+        else:
+            raise AssertionError("the task never reported completion")
+
+        # Deliberately no wait() here: is_completed() has to have settled it.
+        paddle.device.synchronize()
+        values = [float(item[0, 0]) for item in out]
+        assert values == self._expected, values
+
+    def test_all_gather_scalar_list(self):
+        # A 0-D tensor is a legal input to the list form: stream.all_gather
+        # answers it with one scalar per rank, so this must too rather than
+        # indexing an empty shape.
+        scalar = paddle.to_tensor(float(self._rank + 1), dtype=_DTYPE)
+        assert scalar.shape == [], scalar.shape
+
+        out = []
+        zero_sm.all_gather(out, scalar, group=self._group, use_calc_stream=True)
+        paddle.device.synchronize()
+        assert len(out) == self._world, len(out)
+        assert [item.shape for item in out] == [[]] * self._world
+        assert [float(item) for item in out] == self._expected
+
+        # A list that already holds scalars is written back element by element.
+        out = [paddle.zeros([], dtype=_DTYPE) for _ in range(self._world)]
+        zero_sm.all_gather(out, scalar, group=self._group, use_calc_stream=True)
+        paddle.device.synchronize()
+        assert [float(item) for item in out] == self._expected
+
+    def test_alltoall_single_uneven_registered(self):
+        # A legal all-to-all whose splits are uniform on rank 0 and uneven on
+        # every other rank: rank r sends one row to each peer plus r extra rows
+        # to itself. Picking the symmetric ncclAlltoAll from the local splits
+        # would make rank 0 take it alone while the others run Send/Recv, and
+        # hang the group, so an explicitly split call must never take it.
+        rows = self._world + self._rank
+        splits = [1] * self._world
+        splits[self._rank] += self._rank
+
+        # Registration has to stay rank-symmetric, so every rank registers the
+        # same byte size and slices its own rows out of that window.
+        capacity = 2 * self._world * _HIDDEN
+        send = _nccl_symmetric_empty([capacity], _DTYPE)
+        recv = _nccl_symmetric_empty([capacity], _DTYPE)
+        assert _register_comm_buffer(send, group=self._group) != 0
+        assert _register_comm_buffer(recv, group=self._group) != 0
+        in_tensor = send[: rows * _HIDDEN].reshape([rows, _HIDDEN])
+        out_tensor = recv[: rows * _HIDDEN].reshape([rows, _HIDDEN])
+        in_tensor[:] = float(self._rank + 1)
+        out_tensor[:] = -1.0
+
+        dist.alltoall_single(
+            out_tensor, in_tensor, splits, splits, group=self._group
+        )
+        paddle.device.synchronize()
+
+        # Rank j receives splits[i] rows of value i + 1 from rank i.
+        offset = 0
+        for peer in range(self._world):
+            received = float(out_tensor[offset, 0])
+            assert received == float(peer + 1), (self._rank, peer, received)
+            offset += splits[peer]
+
+        _deregister_comm_buffer(send, group=self._group)
+        _deregister_comm_buffer(recv, group=self._group)
 
     def run_test_case(self):
         for name in sorted(n for n in dir(self) if n.startswith("test_")):

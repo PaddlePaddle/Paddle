@@ -55,26 +55,6 @@ uint64_t ProcessGroupNCCL::s_group_call_counter = 0;
 
 namespace {
 
-// True when every rank sends and receives the same number of rows, the only
-// shape ncclAlltoAll can express (it takes a single count for all peers).
-bool IsUniformSplit(const std::vector<int64_t>& in_split_sizes,
-                    const std::vector<int64_t>& out_split_sizes) {
-  if (in_split_sizes.empty() ||
-      in_split_sizes.size() != out_split_sizes.size()) {
-    return false;
-  }
-  const int64_t split = in_split_sizes[0];
-  if (split <= 0) {
-    return false;
-  }
-  for (size_t i = 0; i < in_split_sizes.size(); ++i) {
-    if (in_split_sizes[i] != split || out_split_sizes[i] != split) {
-      return false;
-    }
-  }
-  return true;
-}
-
 bool IsCommBufferRegistered(phi::distributed::NCCLCommContext* comm_context,
                             const phi::DenseTensor& tensor) {
   return comm_context->IsRegistered(
@@ -362,7 +342,12 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllToAll(
 
   std::vector<int64_t> out_split_sizes;
   std::vector<int64_t> in_split_sizes;
-  if (out_size_each_rank.empty() && in_size_each_rank.empty()) {
+  // Whether the caller asked for the even split. Unlike the split sizes it
+  // yields, this is a rank-symmetric property of a legal all-to-all, which is
+  // what lets the symmetric path below be chosen without asking the group.
+  const bool even_split =
+      out_size_each_rank.empty() && in_size_each_rank.empty();
+  if (even_split) {
     out_split_sizes =
         std::vector<int64_t>(size_, out_tensor->dims()[0] / size_);
     in_split_sizes = std::vector<int64_t>(size_, in_tensor.dims()[0] / size_);
@@ -396,11 +381,15 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllToAll(
         // A single ncclAlltoAll is a symmetric collective, so it can run on the
         // zero-SM path (Copy Engines intra-node, RMA proxy inter-node), while
         // the group of Send/Recv calls below always launches a point-to-point
-        // device kernel and therefore occupies SMs. It needs one uniform count
-        // per rank and registered buffers, which is exactly what the zero-SM
-        // buffer pool hands out; anything else keeps using Send/Recv.
-        if (IsUniformSplit(in_split_sizes, out_split_sizes) &&
-            in_row_size == out_row_size &&
+        // device kernel and therefore occupies SMs. It needs one count shared
+        // by the whole group, which the even split is the only form to
+        // guarantee: with a per-peer count of in_dim[0] / size_ on every rank
+        // and out_dim[0] / size_ received from every rank, a legal all-to-all
+        // forces all those counts to be the same number group-wide. Explicit
+        // split sizes cannot be judged here, since a rank whose own splits are
+        // uniform says nothing about what its peers send to each other, and
+        // taking this path on one rank only would hang the group.
+        if (even_split && in_row_size == out_row_size &&
             in_tensor.numel() == out_tensor->numel() &&
             in_tensor.dtype() == out_tensor->dtype() &&
             comm_context->IsAllToAllAvailable() &&

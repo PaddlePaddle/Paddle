@@ -23,8 +23,6 @@ from typing import (
     TypeAlias,
 )
 
-import numpy as np
-
 import paddle
 
 # (TODO: GhostScreaming) It will be removed later.
@@ -50,8 +48,6 @@ from .fleet.layers.mpu.mp_ops import (  # noqa: F401
 
 if TYPE_CHECKING:
     _BackendList: TypeAlias = Literal["gloo", "nccl", "xccl", "bkcl", "flagcx"]
-
-    import numpy.typing as npt
 
     from paddle._typing import DTypeLike, ShapeLike
     from paddle.base.libpaddle import NCCLConfig
@@ -538,21 +534,20 @@ class _ZeroSMPool:
     to the free list once the tensor slicing it is collected. Blocks are bucketed
     to powers of two so that a varying shape (MoE token counts, for instance)
     reuses one block instead of registering a new window every step.
+
+    Every decision is taken locally, which leaves the caller owing the pool a
+    rank-symmetric call sequence: all ranks have to reach the same allocations,
+    for the same byte sizes, in the same order, and to agree on whether an input
+    needs staging. Registration is collective, so a rank that registers a window
+    the others do not hangs the group rather than failing.
     """
 
     _instances: dict[str, _ZeroSMPool] = {}
-    # Blocks are bucketed by the base-two logarithm of their byte size, so a
-    # bucket doubles as an index into the free-list bitmap the group votes on.
-    # An int64 byte count cannot reach further than this.
-    _VOTE_BUCKET_BITS = 64
 
     def __init__(self, group: Group) -> None:
         self._group = group
         self._free: dict[tuple, list] = {}
         self._spans: list[tuple[int, int]] = []
-        # Reused so that a vote on the critical path of every zero-SM call does
-        # not also pay for an allocation: [needs_block, nbytes, miss per bucket].
-        self._vote = np.ones(2 + self._VOTE_BUCKET_BITS, dtype="int64")
 
     @classmethod
     def instance(cls, group: Group) -> _ZeroSMPool:
@@ -574,76 +569,28 @@ class _ZeroSMPool:
         """
         cls._instances.pop(group.name, None)
 
-    def _agree(self, values: npt.NDArray[np.int64]) -> npt.NDArray[np.int64]:
-        """Return the group-wide maximum of ``values``.
-
-        Registration is collective: every rank has to create a window of the
-        same byte size, the same number of times, in the same order. None of
-        that can be decided locally. A dynamic shape (MoE token counts) puts
-        the ranks in different buckets, and even a fixed shape lets their free
-        lists drift apart, because a block only returns to the list once the
-        tensor slicing it is collected, which is a local garbage-collection
-        event. So the ranks vote instead of guessing, and a disagreement costs
-        an extra window rather than a hang. The vote itself runs on a plain
-        unregistered buffer, so it keeps using the SM-based path.
-
-        It goes through numpy rather than a Python list: the conversion is what
-        dominates a vote this small, and it is paid on every zero-SM call.
-        """
-        vote = paddle.to_tensor(values)
-        paddle.distributed.all_reduce(
-            vote,
-            op=paddle.distributed.ReduceOp.MAX,
-            group=self._group,
-            sync_op=True,
-        )
-        return vote.numpy()
+    @staticmethod
+    def _bucket(numel: int, element_size: int) -> int:
+        """Index of the power-of-two byte size that fits ``numel`` elements."""
+        return max(0, (numel * element_size - 1).bit_length())
 
     @staticmethod
     def _capacity(bucket: int, element_size: int) -> int:
         """Elements a block of the ``bucket``-th power-of-two byte size holds."""
         return max((1 << bucket) // element_size, 1)
 
-    def _plan(
-        self, dtype: DTypeLike, numel: int, needs_block: bool
-    ) -> tuple[bool, int, bool]:
-        """Agree with the group on the block to take: whether one is needed at
-        all, which bucket it comes from, and whether the free list has one.
-
-        The three answers are settled by a single vote, because each vote is a
-        full SM-based collective sitting on the critical path of a zero-SM call.
-        The bucket is negotiated in bytes because that is what a window is made
-        of: ranks that disagree on the dtype would otherwise register different
-        sizes for the same element count. The free-list answer has to ride along
-        with it, since a rank that can reuse a block still has to register one
-        when any other rank has to, or the two disagree on the number of
-        registration calls.
-        """
-        bucket = max(0, (numel * core.size_of_dtype(dtype) - 1).bit_length())
-        if self._group.nranks == 1:
-            return needs_block, bucket, bool(self._free.get((dtype, bucket)))
-        # A 1 means "this rank has no free block for that bucket", so the same
-        # MAX that settles the bucket also answers "must anyone register one"
-        # for whichever bucket wins, which is only known once the vote lands.
-        # The bitmap is read after the vote, never used to skip it: skipping on
-        # one rank is the very asymmetry this is here to remove.
-        vote = self._vote
-        vote[0] = needs_block
-        vote[1] = 1 << bucket
-        vote[2:] = 1
-        for (cached_dtype, cached_bucket), blocks in self._free.items():
-            if blocks and cached_dtype == dtype:
-                vote[2 + cached_bucket] = 0
-        agreed = self._agree(vote)
-        bucket = int(agreed[1]).bit_length() - 1
-        return bool(agreed[0]), bucket, not agreed[2 + bucket]
-
     def _block(
-        self, dtype: DTypeLike, bucket: int, reuse: bool
+        self, dtype: DTypeLike, bucket: int
     ) -> tuple[paddle.Tensor, tuple]:
+        """Take a block of ``bucket`` off the free list, or register a new one.
+
+        Bucketing in bytes is what keeps a varying shape on one window: it is
+        also the unit a window is made of, so ranks that disagreed on the dtype
+        would register different sizes for the same element count.
+        """
         key = (dtype, bucket)
         cached = self._free.setdefault(key, [])
-        if reuse:
+        if cached:
             return cached.pop(), key
         capacity = self._capacity(bucket, core.size_of_dtype(dtype))
         block = _nccl_symmetric_empty([capacity], dtype)
@@ -657,19 +604,23 @@ class _ZeroSMPool:
         self._spans.append((start, start + capacity * block.element_size()))
         return block, key
 
-    def _take(
-        self, shape: ShapeLike, dtype: DTypeLike, bucket: int, reuse: bool
-    ) -> paddle.Tensor:
-        block, key = self._block(dtype, bucket, reuse)
-        out = block[: math.prod(shape)].reshape(shape)
+    def _take(self, shape: ShapeLike, dtype: DTypeLike) -> paddle.Tensor:
+        numel = math.prod(shape)
+        block, key = self._block(
+            dtype, self._bucket(numel, core.size_of_dtype(dtype))
+        )
+        out = block[:numel].reshape(shape)
         # Keep the block alive through the view and recycle it afterwards.
         weakref.finalize(out, self._free[key].append, block)
         return out
 
     def empty(self, shape: ShapeLike, dtype: DTypeLike) -> paddle.Tensor:
-        """Return an uninitialized registered tensor of ``shape``."""
-        _, bucket, reuse = self._plan(dtype, math.prod(shape), True)
-        return self._take(shape, dtype, bucket, reuse)
+        """Return an uninitialized registered tensor of ``shape``.
+
+        All ranks of the group must reach this with the same shape, in the same
+        order: a registration one rank does not make hangs the others.
+        """
+        return self._take(shape, dtype)
 
     def owns(self, tensor: paddle.Tensor) -> bool:
         ptr = tensor.data_ptr()
@@ -679,15 +630,12 @@ class _ZeroSMPool:
         """Return a registered tensor holding ``tensor``'s data.
 
         A tensor already backed by the pool is returned as is, so a caller that
-        allocates its input from this pool pays no copy. Whether the copy is
-        needed is a group-wide decision: one rank staging while another does not
-        would make the registration counts diverge.
+        allocates its input from this pool pays no copy. All ranks have to agree
+        on whether the copy is needed: one rank staging while another does not
+        makes the registration counts diverge.
         """
-        needs, bucket, reuse = self._plan(
-            tensor.dtype, math.prod(tensor.shape), not self.owns(tensor)
-        )
-        if not needs:
+        if self.owns(tensor):
             return tensor
-        staged = self._take(tensor.shape, tensor.dtype, bucket, reuse)
+        staged = self._take(tensor.shape, tensor.dtype)
         staged.copy_(tensor, False)
         return staged
