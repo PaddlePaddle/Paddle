@@ -33,7 +33,10 @@ caller owes it a rank-symmetric call sequence: every rank has to reach the same
 :func:`empty` calls with the same shapes in the same order, and to pass inputs
 that all need staging or all do not. Size the buffers from a value the whole
 group agrees on rather than from a local split. Breaking that makes one rank
-register a window the others do not, which hangs the group.
+register a window the others do not, which hangs the group. A buffer stays valid
+until its block comes back around the pool's ring, that is until a few more
+allocations of the same size have happened; keeping it referenced past that
+raises rather than overwriting it.
 """
 
 from __future__ import annotations
@@ -58,10 +61,11 @@ __all__ = []
 class _StagedTask:
     """Wraps a communication task to keep staged buffers alive until it lands.
 
-    The pool recycles a block once the tensors referencing it are collected. For
-    a collective running on the comm stream that is too early: a later staging
-    copy on the compute stream could overwrite the block while NCCL is still
-    reading it, and nothing orders the two streams.
+    The pool reissues a block once a few further allocations of its size have
+    happened, and refuses to do so while the tensor it handed out is still
+    referenced. Holding that reference until the collective lands is therefore
+    what stops a later staging copy on the compute stream from overwriting a
+    block NCCL is still reading on the comm stream, which nothing else orders.
     """
 
     def __init__(
@@ -112,8 +116,9 @@ def _keep(_owner: Tensor) -> None:
 def _pin(view: Tensor, owner: Tensor) -> Tensor:
     """Tie ``owner``'s lifetime to ``view``'s and return ``view``.
 
-    The pool recycles a block once the tensor handed out for it is collected, so
-    views carved out of that tensor must keep it alive.
+    The pool tracks what it handed out, not the views carved out of it, and
+    reissues a block once the tensor it handed out is gone. So a view has to keep
+    that tensor referenced, or the block could be reissued under it.
     """
     weakref.finalize(view, _keep, owner)
     return view
@@ -252,9 +257,13 @@ def alltoall_single(
 ) -> task | _StagedTask:
     """Zero-SM all-to-all with the signature of ``stream.alltoall_single``.
 
-    Uneven splits are supported, but :func:`empty` must still be reached in the
-    same order with the same shapes on every rank, so size the buffers from a
-    value all ranks agree on rather than from the local split.
+    Uneven splits are supported, but then both buffers have to come from
+    :func:`empty`, because the pool sizes a window from the shape it is handed:
+    with a row count that differs per rank, staging the input here would register
+    windows of different sizes, and registration is collective. Allocate from a
+    capacity the whole group agrees on and slice the local rows out of it, as
+    slices of a pooled buffer stay pooled. The even split needs no such care: a
+    legal all-to-all then gives every rank the same row count anyway.
     """
     pool, group = _pool(group)
     if not pool.owns(out_tensor):
@@ -262,6 +271,15 @@ def alltoall_single(
             "the output of zero_sm.alltoall_single must come from "
             "zero_sm.empty(); NCCL requires all buffers of a call to be "
             "registered"
+        )
+    if (
+        out_split_sizes is not None or in_split_sizes is not None
+    ) and not pool.owns(in_tensor):
+        raise ValueError(
+            "with explicit split sizes the input of zero_sm.alltoall_single "
+            "must come from zero_sm.empty() as well: staging it would size a "
+            "window from this rank's row count, which the other ranks do not "
+            "have to share"
         )
 
     staged = pool.stage(in_tensor)

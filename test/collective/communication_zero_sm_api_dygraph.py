@@ -112,19 +112,11 @@ class ZeroSMTestCase:
             assert _register_comm_buffer(spare, group=solo) == 0
             _deregister_comm_buffer(spare, group=solo)
 
-    def test_pool_recycles_blocks(self):
+    def test_pool_stages_foreign_input(self):
         pool = _ZeroSMPool.instance(self._group)
-        first = pool.empty([100], _DTYPE)
-        address = first.data_ptr()
-        assert pool.owns(first)
-        del first
-        gc.collect()
-
-        # Capacities are bucketed to powers of two, so a different but
-        # same-bucket shape reuses the block instead of registering a new one.
-        second = pool.empty([120], _DTYPE)
-        assert second.data_ptr() == address, "the pool did not reuse the block"
-        assert pool.stage(second) is second, "a pooled input was copied"
+        pooled = pool.empty([120], _DTYPE)
+        assert pool.owns(pooled)
+        assert pool.stage(pooled) is pooled, "a pooled input was copied"
 
         foreign = paddle.arange(120, dtype=_DTYPE)
         staged = pool.stage(foreign)
@@ -145,23 +137,62 @@ class ZeroSMTestCase:
         gathered = [float(out[i * _CHUNK, 0]) for i in range(self._world)]
         assert gathered == self._expected, gathered
 
-    def test_bucketed_dynamic_shapes(self):
+    def test_ring_reuse_ignores_local_state(self):
         # A shape that changes between steps (MoE token counts, for instance)
-        # must not register a new window every time: two sizes landing in the
-        # same power-of-two bucket share one block. Every rank asks for the same
-        # shapes in the same order, which is what the pool requires from its
-        # caller now that it decides locally.
+        # must not register a new window every time. Sizes landing in the same
+        # power-of-two bucket share one ring, and the ring comes back around
+        # after _RING_SIZE allocations, so the number of windows a bucket
+        # registers depends on the allocation sequence and nothing else.
         pool = _ZeroSMPool.instance(self._group)
-        first = pool.empty([48, _HIDDEN], _DTYPE)
+        ring = _ZeroSMPool._RING_SIZE
+        # Row counts no other case touches, all in one bucket, so the ring
+        # starts out empty and stays a single one.
+        rows = tuple(600 + 40 * step for step in range(ring))
+        element_size = core.size_of_dtype(_DTYPE)
+        buckets = {
+            _ZeroSMPool._bucket(taken * _HIDDEN, element_size) for taken in rows
+        }
+        assert len(buckets) == 1, buckets
+        windows = len(pool._spans)
+
+        first = pool.empty([rows[0], _HIDDEN], _DTYPE)
         assert pool.owns(first)
         address = first.data_ptr()
-        windows = len(pool._spans)
         del first
-        gc.collect()
+        for taken in rows[1:]:
+            spare = pool.empty([taken, _HIDDEN], _DTYPE)
+            del spare
+        assert len(pool._spans) == windows + ring, len(pool._spans)
 
-        spare = pool.empty([60, _HIDDEN], _DTYPE)
-        assert spare.data_ptr() == address, "the pool did not reuse the block"
-        assert len(pool._spans) == windows, "a redundant window was registered"
+        # One turn later the first block comes back, and no rank had to consult
+        # its garbage collector to know that.
+        again = pool.empty([rows[0], _HIDDEN], _DTYPE)
+        assert again.data_ptr() == address, "the ring did not come back around"
+        assert len(pool._spans) == windows + ring, len(pool._spans)
+        del again
+
+    def test_registration_survives_one_sided_release(self):
+        # Only rank 0 drops its reference and collects before the next
+        # allocation. Registration must not depend on that: a free list would
+        # let rank 0 reuse its block while rank 1 registers a new window, and
+        # the next collective would hang.
+        pool = _ZeroSMPool.instance(self._group)
+        held = pool.empty([5000, _HIDDEN], _DTYPE)
+        assert pool.owns(held)
+        if self._rank == 0:
+            del held
+            gc.collect()
+        spare = pool.empty([5100, _HIDDEN], _DTYPE)
+        assert pool.owns(spare)
+
+        counts = []
+        dist.all_gather(
+            counts,
+            paddle.to_tensor([len(pool._spans)], dtype="int64"),
+            group=self._group,
+        )
+        windows = [int(count[0]) for count in counts]
+        assert len(set(windows)) == 1, windows
 
         # The group is still usable, so the registrations stayed in step.
         source = pool.empty([_CHUNK, _HIDDEN], _DTYPE)
@@ -283,15 +314,19 @@ class ZeroSMTestCase:
         )
 
     def test_alltoall_single(self):
-        # The split sizes have to be identical on every rank: the pool
-        # registers its blocks collectively, so all ranks must ask for the
-        # same shapes in the same order.
+        # With explicit splits both buffers have to be pooled, so the input is
+        # allocated here rather than handed over unregistered: the pool would
+        # otherwise size a window from the local row count.
         splits = [_CHUNK] * self._world
         for sync_op, use_calc_stream in ((True, True), (False, False)):
             out = self._out()
+            source = zero_sm.empty(
+                [_CHUNK * self._world, _HIDDEN], _DTYPE, group=self._group
+            )
+            source[:] = float(self._rank + 1)
             task = zero_sm.alltoall_single(
                 out,
-                self._full(_CHUNK * self._world),
+                source,
                 splits,
                 splits,
                 group=self._group,
@@ -303,7 +338,8 @@ class ZeroSMTestCase:
                 task.wait()
             assert self._gathered(out) == self._expected
 
-        # Without explicit splits the input is spread evenly.
+        # Without explicit splits the input is spread evenly, and a legal call
+        # gives every rank the same row count, so staging it is safe.
         out = self._out()
         zero_sm.alltoall_single(
             out,
@@ -313,6 +349,17 @@ class ZeroSMTestCase:
         )
         assert self._gathered(out) == self._expected
 
+        # An unregistered input cannot be staged behind explicit splits.
+        _rejects(
+            zero_sm.alltoall_single,
+            self._out(),
+            self._full(_CHUNK * self._world),
+            splits,
+            splits,
+            group=self._group,
+            use_calc_stream=True,
+        )
+
         # Buffers that are not registered windows cannot take the symmetric
         # ncclAlltoAll path; the Send/Recv implementation must still be correct.
         out = self._out(pooled=False)
@@ -320,6 +367,41 @@ class ZeroSMTestCase:
             out, self._full(_CHUNK * self._world), group=self._group
         )
         assert self._gathered(out) == self._expected
+
+    def test_alltoall_single_uneven_pooled(self):
+        # Uneven splits through zero_sm.alltoall_single itself: rank r sends one
+        # row to each peer plus r extra rows to itself, which is legal and gives
+        # every rank a different row count. Both buffers are carved out of a
+        # capacity the whole group agrees on, so the pool registers the same
+        # window everywhere and the local shapes stay a private matter.
+        splits = [1] * self._world
+        splits[self._rank] += self._rank
+        rows = sum(splits)
+        capacity = [2 * self._world, _HIDDEN]
+
+        source = zero_sm.empty(capacity, _DTYPE, group=self._group)
+        out = zero_sm.empty(capacity, _DTYPE, group=self._group)
+        in_tensor = source[:rows]
+        out_tensor = out[:rows]
+        in_tensor[:] = float(self._rank + 1)
+        out_tensor[:] = -1.0
+
+        zero_sm.alltoall_single(
+            out_tensor,
+            in_tensor,
+            splits,
+            splits,
+            group=self._group,
+            use_calc_stream=True,
+        )
+        paddle.device.synchronize()
+
+        # Rank j receives splits[i] rows of value i + 1 from rank i.
+        offset = 0
+        for peer in range(self._world):
+            received = float(out_tensor[offset, 0])
+            assert received == float(peer + 1), (self._rank, peer, received)
+            offset += splits[peer]
 
     def test_all_gather_list_settles_on_is_completed(self):
         # A caller is entitled to poll is_completed() and read the output as

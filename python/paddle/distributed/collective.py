@@ -530,23 +530,40 @@ class _ZeroSMPool:
     Window registration is a setup-time, collective, rank-symmetric operation, so
     it cannot be applied per call to activations from Paddle's own allocator:
     their addresses change every step. The pool instead owns a small set of
-    long-lived registered blocks and hands out slices of them, returning a block
-    to the free list once the tensor slicing it is collected. Blocks are bucketed
-    to powers of two so that a varying shape (MoE token counts, for instance)
-    reuses one block instead of registering a new window every step.
+    long-lived registered blocks and hands out slices of them. Blocks are
+    bucketed to powers of two so that a varying shape (MoE token counts, for
+    instance) reuses one block instead of registering a new window every step.
 
-    Every decision is taken locally, which leaves the caller owing the pool a
-    rank-symmetric call sequence: all ranks have to reach the same allocations,
-    for the same byte sizes, in the same order, and to agree on whether an input
-    needs staging. Registration is collective, so a rank that registers a window
-    the others do not hangs the group rather than failing.
+    Which block an allocation gets is decided by a counter, not by a free list: a
+    bucket owns a ring of :attr:`_RING_SIZE` blocks and the n-th allocation takes
+    slot ``n % _RING_SIZE``, registering it if it is not there yet. Registration
+    therefore depends on the sequence of allocations and nothing else, which is
+    what the caller can keep rank-symmetric. A free list cannot be used for this:
+    a block would return to it when the tensor slicing it is collected, and that
+    is a local garbage-collection event, so the ranks would disagree on how many
+    windows to register and hang inside NCCL.
+
+    What the caller owes the pool is therefore the allocation sequence: all ranks
+    have to reach the same allocations, for the same byte sizes, in the same
+    order, and to agree on whether an input needs staging. A block is reissued
+    once ``_RING_SIZE`` further allocations of its bucket have happened, and a
+    handed-out tensor that is still referenced by then is refused rather than
+    silently overwritten.
     """
 
     _instances: dict[str, _ZeroSMPool] = {}
+    # Blocks a bucket keeps in rotation. It bounds the windows a bucket
+    # registers, and it is how long a handed-out tensor stays valid: the ring
+    # comes back around after this many allocations of the same bucket. A
+    # collective usually needs two buffers of the same size at once, so leave
+    # room for a few steps of those.
+    _RING_SIZE = 8
 
     def __init__(self, group: Group) -> None:
         self._group = group
-        self._free: dict[tuple, list] = {}
+        self._rings: dict[tuple, list[paddle.Tensor]] = {}
+        self._handed: dict[tuple, list[weakref.ref | None]] = {}
+        self._served: dict[tuple, int] = {}
         self._spans: list[tuple[int, int]] = []
 
     @classmethod
@@ -579,19 +596,13 @@ class _ZeroSMPool:
         """Elements a block of the ``bucket``-th power-of-two byte size holds."""
         return max((1 << bucket) // element_size, 1)
 
-    def _block(
-        self, dtype: DTypeLike, bucket: int
-    ) -> tuple[paddle.Tensor, tuple]:
-        """Take a block of ``bucket`` off the free list, or register a new one.
+    def _register(self, dtype: DTypeLike, bucket: int) -> paddle.Tensor:
+        """Allocate and register one block of ``bucket``.
 
         Bucketing in bytes is what keeps a varying shape on one window: it is
         also the unit a window is made of, so ranks that disagreed on the dtype
         would register different sizes for the same element count.
         """
-        key = (dtype, bucket)
-        cached = self._free.setdefault(key, [])
-        if cached:
-            return cached.pop(), key
         capacity = self._capacity(bucket, core.size_of_dtype(dtype))
         block = _nccl_symmetric_empty([capacity], dtype)
         if _register_comm_buffer(block, group=self._group) == 0:
@@ -602,16 +613,32 @@ class _ZeroSMPool:
             )
         start = block.data_ptr()
         self._spans.append((start, start + capacity * block.element_size()))
-        return block, key
+        return block
 
     def _take(self, shape: ShapeLike, dtype: DTypeLike) -> paddle.Tensor:
         numel = math.prod(shape)
-        block, key = self._block(
-            dtype, self._bucket(numel, core.size_of_dtype(dtype))
-        )
-        out = block[:numel].reshape(shape)
-        # Keep the block alive through the view and recycle it afterwards.
-        weakref.finalize(out, self._free[key].append, block)
+        bucket = self._bucket(numel, core.size_of_dtype(dtype))
+        key = (dtype, bucket)
+        ring = self._rings.setdefault(key, [])
+        handed = self._handed.setdefault(key, [])
+        served = self._served.get(key, 0)
+        self._served[key] = served + 1
+        slot = served % self._RING_SIZE
+        if slot == len(ring):
+            ring.append(self._register(dtype, bucket))
+            handed.append(None)
+        previous = handed[slot]
+        if previous is not None and previous() is not None:
+            raise RuntimeError(
+                f"a tensor of {1 << bucket} bytes handed out by the zero-SM "
+                f"pool is still referenced after {self._RING_SIZE} further "
+                f"allocations of that size, so its block cannot be reissued. "
+                f"Release it earlier, or raise _ZeroSMPool._RING_SIZE."
+            )
+        out = ring[slot][:numel].reshape(shape)
+        # The ring owns the block, so this only records what was handed out:
+        # reissuing the slot has to be able to tell whether it is still in use.
+        handed[slot] = weakref.ref(out)
         return out
 
     def empty(self, shape: ShapeLike, dtype: DTypeLike) -> paddle.Tensor:
