@@ -615,9 +615,20 @@ class _ZeroSMPool:
         self._spans.append((start, start + capacity * block.element_size()))
         return block
 
-    def _take(self, shape: ShapeLike, dtype: DTypeLike) -> paddle.Tensor:
+    def _take(
+        self,
+        shape: ShapeLike,
+        dtype: DTypeLike,
+        capacity: ShapeLike | None = None,
+    ) -> paddle.Tensor:
         numel = math.prod(shape)
-        bucket = self._bucket(numel, core.size_of_dtype(dtype))
+        room = numel if capacity is None else math.prod(capacity)
+        if room < numel:
+            raise ValueError(
+                f"a zero-SM buffer of {numel} elements does not fit the "
+                f"capacity of {room} it was asked to come from"
+            )
+        bucket = self._bucket(room, core.size_of_dtype(dtype))
         key = (dtype, bucket)
         ring = self._rings.setdefault(key, [])
         handed = self._handed.setdefault(key, [])
@@ -641,17 +652,41 @@ class _ZeroSMPool:
         handed[slot] = weakref.ref(out)
         return out
 
-    def empty(self, shape: ShapeLike, dtype: DTypeLike) -> paddle.Tensor:
+    def empty(
+        self,
+        shape: ShapeLike,
+        dtype: DTypeLike,
+        capacity: ShapeLike | None = None,
+    ) -> paddle.Tensor:
         """Return an uninitialized registered tensor of ``shape``.
 
-        All ranks of the group must reach this with the same shape, in the same
-        order: a registration one rank does not make hangs the others.
+        All ranks of the group must reach this with the same byte size, in the
+        same order: a registration one rank does not make hangs the others. When
+        the local shape is not that size, pass the size the whole group agreed on
+        as ``capacity`` and get a tensor of the local ``shape`` carved out of it,
+        rather than slicing the result afterwards: the pool tracks what it hands
+        out, and a slice it never saw would not stop the block being reissued.
         """
-        return self._take(shape, dtype)
+        return self._take(shape, dtype, capacity)
 
     def owns(self, tensor: paddle.Tensor) -> bool:
+        """Whether ``tensor``'s memory sits in one of the registered windows."""
         ptr = tensor.data_ptr()
         return any(lo <= ptr < hi for lo, hi in self._spans)
+
+    def handed_out(self, tensor: paddle.Tensor) -> bool:
+        """Whether ``tensor`` is one the pool handed out and still tracks.
+
+        Stricter than :meth:`owns`, which only answers whether the memory is
+        registered: a tensor sliced out of a pooled one passes that while being
+        invisible to the ring, so the block underneath it could be reissued
+        while it is still in use.
+        """
+        return any(
+            ref is not None and ref() is tensor
+            for handed in self._handed.values()
+            for ref in handed
+        )
 
     def stage(self, tensor: paddle.Tensor) -> paddle.Tensor:
         """Return a registered tensor holding ``tensor``'s data.

@@ -36,7 +36,9 @@ group agrees on rather than from a local split. Breaking that makes one rank
 register a window the others do not, which hangs the group. A buffer stays valid
 until its block comes back around the pool's ring, that is until a few more
 allocations of the same size have happened; keeping it referenced past that
-raises rather than overwriting it.
+raises rather than overwriting it. That guard works on the tensors the pool
+handed out, so let :func:`empty` carve the local shape out of a group-wide
+``capacity`` instead of slicing its result afterwards.
 """
 
 from __future__ import annotations
@@ -133,16 +135,25 @@ def _pool(group: Group | None) -> tuple[_ZeroSMPool, Group]:
 
 
 def empty(
-    shape: ShapeLike, dtype: DTypeLike, group: Group | None = None
+    shape: ShapeLike,
+    dtype: DTypeLike,
+    group: Group | None = None,
+    capacity: ShapeLike | None = None,
 ) -> Tensor:
     """Allocate an uninitialized tensor usable by the collectives below.
 
     Drop-in replacement for ``paddle.empty`` at a zero-SM call site: the buffer
     comes from a registered symmetric window, so it needs no staging copy. All
-    ranks of ``group`` must allocate the same shapes in the same order.
+    ranks of ``group`` must allocate the same byte sizes in the same order.
+
+    When the local shape is not the same on every rank, pass the size the group
+    agreed on as ``capacity`` and get a tensor of the local ``shape`` out of it.
+    Do that rather than slicing the result: the pool tracks the tensors it hands
+    out to know when a block may be reused, and a slice it never saw would not
+    hold that block.
     """
     pool, _ = _pool(group)
-    return pool.empty(shape, dtype)
+    return pool.empty(shape, dtype, capacity)
 
 
 def all_gather(
@@ -216,10 +227,12 @@ def all_gather(
         task._keepalive = (*task._keepalive, buffer)
         return task
 
-    if not pool.owns(out):
+    if not pool.handed_out(out):
         raise ValueError(
-            "the output of zero_sm.all_gather must come from zero_sm.empty(); "
-            "NCCL requires all buffers of a call to be registered"
+            "the output of zero_sm.all_gather must be a tensor returned by "
+            "zero_sm.empty(); NCCL requires all buffers of a call to be "
+            "registered, and a tensor sliced out of a pooled one afterwards is "
+            "not tracked by the pool"
         )
     return _all_gather_into(pool, group, out, tensor, sync_op, use_calc_stream)
 
@@ -266,20 +279,23 @@ def alltoall_single(
     legal all-to-all then gives every rank the same row count anyway.
     """
     pool, group = _pool(group)
-    if not pool.owns(out_tensor):
+    if not pool.handed_out(out_tensor):
         raise ValueError(
-            "the output of zero_sm.alltoall_single must come from "
-            "zero_sm.empty(); NCCL requires all buffers of a call to be "
-            "registered"
+            "the output of zero_sm.alltoall_single must be a tensor returned "
+            "by zero_sm.empty(); NCCL requires all buffers of a call to be "
+            "registered, and a tensor sliced out of a pooled one afterwards is "
+            "not tracked by the pool. Pass the group-wide size as the capacity "
+            "argument of zero_sm.empty() instead"
         )
     if (
         out_split_sizes is not None or in_split_sizes is not None
-    ) and not pool.owns(in_tensor):
+    ) and not pool.handed_out(in_tensor):
         raise ValueError(
             "with explicit split sizes the input of zero_sm.alltoall_single "
             "must come from zero_sm.empty() as well: staging it would size a "
             "window from this rank's row count, which the other ranks do not "
-            "have to share"
+            "have to share. Use the capacity argument of zero_sm.empty() when "
+            "the local shape differs per rank"
         )
 
     staged = pool.stage(in_tensor)

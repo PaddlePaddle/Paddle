@@ -371,18 +371,21 @@ class ZeroSMTestCase:
     def test_alltoall_single_uneven_pooled(self):
         # Uneven splits through zero_sm.alltoall_single itself: rank r sends one
         # row to each peer plus r extra rows to itself, which is legal and gives
-        # every rank a different row count. Both buffers are carved out of a
+        # every rank a different row count. Both buffers are asked for with a
         # capacity the whole group agrees on, so the pool registers the same
-        # window everywhere and the local shapes stay a private matter.
+        # window everywhere while handing out the local rows, and the shapes
+        # stay a private matter.
         splits = [1] * self._world
         splits[self._rank] += self._rank
         rows = sum(splits)
         capacity = [2 * self._world, _HIDDEN]
 
-        source = zero_sm.empty(capacity, _DTYPE, group=self._group)
-        out = zero_sm.empty(capacity, _DTYPE, group=self._group)
-        in_tensor = source[:rows]
-        out_tensor = out[:rows]
+        in_tensor = zero_sm.empty(
+            [rows, _HIDDEN], _DTYPE, group=self._group, capacity=capacity
+        )
+        out_tensor = zero_sm.empty(
+            [rows, _HIDDEN], _DTYPE, group=self._group, capacity=capacity
+        )
         in_tensor[:] = float(self._rank + 1)
         out_tensor[:] = -1.0
 
@@ -402,6 +405,54 @@ class ZeroSMTestCase:
             received = float(out_tensor[offset, 0])
             assert received == float(peer + 1), (self._rank, peer, received)
             offset += splits[peer]
+
+    def test_rejects_untracked_slice(self):
+        # The pool tracks the tensors it hands out, not slices taken from them
+        # afterwards: such a slice keeps pointing into a registered window while
+        # letting the ring believe the block is idle, so a caller that dropped
+        # the parent and kept the slice would have it overwritten once the ring
+        # comes back around. The collectives refuse it and point at the capacity
+        # argument, which carves the local shape out without a stray slice.
+        pool = _ZeroSMPool.instance(self._group)
+        buffer = zero_sm.empty(
+            [2 * self._world, _HIDDEN], _DTYPE, group=self._group
+        )
+        sliced = buffer[: self._world]
+        del buffer
+        gc.collect()
+
+        # Registered memory, but nothing the pool would hold a block for.
+        assert pool.owns(sliced)
+        assert not pool.handed_out(sliced)
+
+        splits = [1] * self._world
+        _rejects(
+            zero_sm.alltoall_single,
+            sliced,
+            sliced,
+            splits,
+            splits,
+            group=self._group,
+            use_calc_stream=True,
+        )
+        _rejects(
+            zero_sm.all_gather,
+            sliced,
+            self._full(1),
+            group=self._group,
+            use_calc_stream=True,
+        )
+
+        # The capacity argument is the supported way to get there, and what it
+        # returns is tracked.
+        local = zero_sm.empty(
+            [self._world, _HIDDEN],
+            _DTYPE,
+            group=self._group,
+            capacity=[2 * self._world, _HIDDEN],
+        )
+        assert pool.handed_out(local)
+        assert local.shape == [self._world, _HIDDEN], local.shape
 
     def test_all_gather_list_settles_on_is_completed(self):
         # A caller is entitled to poll is_completed() and read the output as
