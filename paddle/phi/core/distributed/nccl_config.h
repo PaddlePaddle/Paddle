@@ -33,7 +33,8 @@ class NCCLConfig {
       const int buffsize_align = -1,
       const int nchannels = -1,
       const std::string& algoStr = "",
-      const std::string& protoStr = "");
+      const std::string& protoStr = "",
+      const int cta_policy = -1);
   ncclConfig_t* GetOrigin();
   ncclMemOptConfig_t* GetMemOpt();
 
@@ -44,7 +45,8 @@ class NCCLConfig {
              const int buffsize_align,
              const int nchannels,
              const std::string& algoStr,
-             const std::string& protoStr);
+             const std::string& protoStr,
+             const int cta_policy = -1);
   ~NCCLConfig();
 
  private:
@@ -56,8 +58,21 @@ class NCCLConfig {
   const int nchannels_;
   const std::string algoStr_;
   const std::string protoStr_;
+  // One of NCCL_CTA_POLICY_DEFAULT / _EFFICIENCY / _ZERO, or -1 to leave the
+  // decision to NCCL. _ZERO selects the zero-SM communication path, which needs
+  // NCCL 2.30.7 or newer and only takes effect for buffers registered as
+  // symmetric memory windows.
+  const int cta_policy_;
 
   ncclMemOptConfig_t* nccl_memopt_config_ptr{nullptr};
+
+#if defined(PADDLE_WITH_NCCL) && NCCL_VERSION_CODE >= 23007
+  ncclConfig_t nccl_config_ = NCCL_CONFIG_INITIALIZER;
+  // GetOrigin() only hands a non-null config to ncclCommInitRankConfig* when at
+  // least one field was explicitly requested, so the default code path keeps
+  // its previous behaviour of passing nullptr.
+  bool has_origin_config_{false};
+#endif
 };
 
 }  // namespace distributed
