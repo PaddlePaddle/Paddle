@@ -2832,6 +2832,18 @@ class PipelineParallelWithInterleave(PipelineParallel):
         if forward_only:
             self.overlap_schedule_mode = False
 
+        # Reset the recompute bookkeeping at the batch boundary, unconditionally:
+        # _forward_step_helper bumps _rc_forward_count on every forward, including
+        # eval_batch's forward_only pass, while the counters used to be cleared
+        # only on the training path. One eval then left the forward counter
+        # non-zero while the backward counter restarted at 0, so the next training
+        # batch built rc_keys that could never match and its recompute overlap was
+        # silently off. Clearing on the way *in* rather than on the way out also
+        # covers a batch that raised partway through.
+        RecomputeStore.clear()
+        self._rc_forward_count.clear()
+        self._rc_backward_count.clear()
+
         # init some attributes for this batch run
         self.scaler = scaler
         self.total_loss = None
@@ -3615,10 +3627,6 @@ class PipelineParallelWithInterleave(PipelineParallel):
                 )
             WeightGradStore.clear()
 
-            RecomputeStore.clear()
-            self._rc_forward_count.clear()
-            self._rc_backward_count.clear()
-
             self._sync_overlap_grads()
 
             for _ in range(self.stage_id):
@@ -4108,6 +4116,14 @@ class VPPFhenBInBalancedMemory(PipelineParallelWithInterleaveFthenB):
                 return_micro_batch_loss,
             )
 
+        # Reset the recompute bookkeeping at the batch boundary, unconditionally.
+        # See the same block in PipelineParallelWithInterleave: an eval_batch pass
+        # bumps _rc_forward_count without ever clearing it, which used to leave the
+        # next training batch building rc_keys that could not match.
+        RecomputeStore.clear()
+        self._rc_forward_count.clear()
+        self._rc_backward_count.clear()
+
         if self.processed_steps < g_profile_pipeline_details_steps:
             profile_pipeline_details(
                 "[Pipeline details] Start_forward_backward_step"
@@ -4518,10 +4534,6 @@ class VPPFhenBInBalancedMemory(PipelineParallelWithInterleaveFthenB):
         assert backward_send_recv_buffer_queue.empty(), (
             "send_recv buffer should be empty"
         )
-
-        RecomputeStore.clear()
-        self._rc_forward_count.clear()
-        self._rc_backward_count.clear()
 
         # Bubbles after cooldown
         for _ in range(self.stage_id):
