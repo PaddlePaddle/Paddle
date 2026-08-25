@@ -44,8 +44,8 @@ PADDLE_API void GaussianKernel(const Context& dev_ctx,
 template <typename T, typename Context>
 void GaussianInplaceKernel(const Context& dev_ctx,
                            const DenseTensor& x,
-                           float mean,
-                           float std,
+                           double mean,
+                           double std,
                            int seed,
                            DenseTensor* out) {
   T* data = dev_ctx.template Alloc<T>(out);
@@ -59,7 +59,8 @@ void GaussianInplaceKernel(const Context& dev_ctx,
     engine = dev_ctx.GetGenerator()->GetCPUEngine();
   }
 
-  NormalDistribution<T>(data, size, mean, std, engine);
+  NormalDistribution<T>(
+      data, size, static_cast<float>(mean), static_cast<float>(std), engine);
 }
 
 }  // namespace phi

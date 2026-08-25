@@ -1964,8 +1964,8 @@ void TransLayoutGradInferMeta(const MetaTensor& x,
 }
 
 void UniformRandomInplaceGradInferMeta(const MetaTensor& out_grad,
-                                       float min,
-                                       float max,
+                                       double min,
+                                       double max,
                                        int seed,
                                        int diag_num,
                                        int diag_step,

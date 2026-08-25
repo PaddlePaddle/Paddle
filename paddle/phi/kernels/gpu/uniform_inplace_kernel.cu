@@ -57,8 +57,8 @@ struct UniformGenerator {
 template <typename T, typename Context>
 void UniformInplaceKernel(const Context& dev_ctx,
                           const DenseTensor& x,
-                          float min,
-                          float max,
+                          double min,
+                          double max,
                           int seed,
                           int diag_num,
                           int diag_step,
@@ -69,7 +69,10 @@ void UniformInplaceKernel(const Context& dev_ctx,
     // Use global Generator seed
     using MT = typename MPTypeTrait<T>::Type;
     funcs::uniform_distribution<MT> dist;
-    funcs::uniform_real_transform<MT> trans(min, max);
+    // `range = MT(T(max)) - MT(T(min))`
+    MT min_val = static_cast<MT>(static_cast<T>(min));
+    MT max_val = static_cast<MT>(static_cast<T>(max));
+    funcs::uniform_real_transform<MT, T> trans(min_val, max_val);
     funcs::distribution_and_transform<T>(dev_ctx, out, dist, trans);
   } else {
     // Use OP seed

@@ -21,8 +21,8 @@ namespace phi {
 template <typename T, typename Context>
 void XPUUniformRandomInplaceKernel(const Context& dev_ctx,
                                    const DenseTensor& x,
-                                   float min,
-                                   float max,
+                                   double min,
+                                   double max,
                                    int seed_in,
                                    int diag_num_in,
                                    int diag_step_in,

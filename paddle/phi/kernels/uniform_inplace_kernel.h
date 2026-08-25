@@ -21,8 +21,8 @@ namespace phi {
 template <typename T, typename Context>
 void UniformInplaceKernel(const Context& dev_ctx,
                           const DenseTensor& x,
-                          float min,
-                          float max,
+                          double min,
+                          double max,
                           int seed,
                           int diag_num,
                           int diag_step,

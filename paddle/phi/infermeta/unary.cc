@@ -6280,8 +6280,8 @@ void UnfoldInferMeta(const MetaTensor& x,
 }
 
 void UniformRandomInplaceInferMeta(const MetaTensor& x,
-                                   float min,
-                                   float max,
+                                   double min,
+                                   double max,
                                    int seed,
                                    int diag_num,
                                    int diag_step,

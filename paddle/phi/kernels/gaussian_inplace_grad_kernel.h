@@ -21,8 +21,8 @@ namespace phi {
 template <typename T, typename Context>
 void GaussianInplaceGradKernel(const Context& dev_ctx,
                                const DenseTensor& out_grad,
-                               float mean,
-                               float std,
+                               double mean,
+                               double std,
                                int seed,
                                DenseTensor* x_grad);
 

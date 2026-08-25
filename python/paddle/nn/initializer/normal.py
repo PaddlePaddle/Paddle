@@ -254,6 +254,20 @@ class TruncatedNormalInitializer(Initializer):
         assert isinstance(var, expected)
         assert isinstance(block, (framework.Block, pir.Block))
 
+        if in_dygraph_mode():
+            # Rejection sampling composed of aligned `normal_`/`uniform_`, so
+            # the tail values follow the truncated normal distribution instead
+            # of piling up on the cutoff bounds. `var` may still be an
+            # unallocated parameter here, so sample into a fresh tensor.
+            from ..init import _no_grad_trunc_normal_
+
+            out_var = paddle.empty(var.shape, dtype=var.dtype)
+            _no_grad_trunc_normal_(
+                out_var, self._mean, self._std_dev, self._a, self._b
+            )
+            out_var._share_underline_tensor_to(var)
+            return None
+
         if self._seed == 0:
             self._seed = block.program.random_seed
 
@@ -273,28 +287,7 @@ class TruncatedNormalInitializer(Initializer):
             out_dtype = var.dtype
             out_var = var
 
-        if in_dygraph_mode():
-            out_var = _C_ops.truncated_gaussian_random(
-                var.shape,
-                self._mean,
-                self._std_dev,
-                self._seed,
-                self._a,
-                self._b,
-                out_dtype,
-                _current_expected_place(),
-            )
-            if var.dtype in [
-                core.VarDesc.VarType.FP16,
-                core.VarDesc.VarType.BF16,
-            ]:
-                var_tmp = _C_ops.cast(out_var, var.dtype)
-                var_tmp._share_underline_tensor_to(var)
-            else:
-                out_var._share_underline_tensor_to(var)
-            return None
-
-        elif in_pir_mode():
+        if in_pir_mode():
             out_var = _C_ops.truncated_gaussian_random(
                 var.shape,
                 self._mean,

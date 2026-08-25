@@ -246,6 +246,118 @@ def normal_(
     return init(tensor)
 
 
+def _no_grad_trunc_normal_(
+    tensor: paddle.Tensor,
+    mean: float,
+    std: float,
+    a: float,
+    b: float,
+) -> paddle.Tensor:
+    """Fill ``tensor`` in place with samples from a truncated normal distribution.
+
+    The truncation is done by rejection sampling, so the returned values follow
+    the exact truncated normal distribution instead of being clipped to
+    ``[a, b]``. Two sampling schemes are used depending on how much probability
+    mass the normal distribution puts inside ``[a, b]``:
+
+    - the interval covers enough mass (``p > 0.3``): draw from the normal
+      distribution and resample the out-of-range elements until none is left;
+    - otherwise: draw uniformly from ``[a, b]`` and accept each sample with
+      probability proportional to the normal density, which stays efficient for
+      narrow or far-out intervals.
+
+    Args:
+        tensor (Tensor): Paddle Tensor to be filled in place.
+        mean (float): mean of the normal distribution.
+        std (float): standard deviation of the normal distribution.
+        a (float): The minimum cutoff value.
+        b (float): The maximum cutoff value.
+
+    Returns:
+        Tensor: ``tensor`` itself.
+    """
+
+    def norm_cdf(x: float) -> float:
+        return (1.0 + math.erf(x / math.sqrt(2.0))) / 2.0
+
+    if (mean < a - 2 * std) or (mean > b + 2 * std):
+        warnings.warn(
+            "mean is more than 2 std from [a, b] in nn.init.trunc_normal_. "
+            "The distribution of values may be incorrect.",
+            stacklevel=2,
+        )
+
+    with paddle.no_grad():
+        p = norm_cdf((b - mean) / std) - norm_cdf((a - mean) / std)
+
+        if p > 0.3:
+            # Cast bounds to tensor dtype so the rejection mask is consistent
+            # with the tensor's representable values.
+            lo = paddle.to_tensor(
+                a, dtype=tensor.dtype, place=paddle.CPUPlace()
+            ).item()
+            hi = paddle.to_tensor(
+                b, dtype=tensor.dtype, place=paddle.CPUPlace()
+            ).item()
+            tensor.normal_(mean, std)
+            result = tensor
+            while True:
+                mask = (result < lo) | (result > hi)
+                if not bool(mask.any()):
+                    break
+                result = paddle.where(
+                    mask,
+                    paddle.empty_like(result).normal_(mean, std),
+                    result,
+                )
+            if tensor is not result:
+                paddle.assign(result, tensor)
+        else:
+            mode = max(a, min(mean, b))
+            log_peak = -0.5 * ((mode - mean) / std) ** 2
+            # Dividing by a scalar is a multiplication by its reciprocal, and
+            # the reciprocal is taken before narrowing to the tensor dtype.
+            inv_std = 1.0 / std
+
+            def log_accept_ratio(x: paddle.Tensor) -> paddle.Tensor:
+                # log_pdf - log_peak, with log_pdf = -0.5 * ((x - mean) / std) ** 2
+                return ((x - mean) * inv_std) ** 2 * (-0.5) - log_peak
+
+            def uniform_ab_(x: paddle.Tensor) -> paddle.Tensor:
+                if a == b:
+                    # `uniform_` rejects an empty range, but the degenerate
+                    # interval still has to draw (and therefore consume) one
+                    # sample per element.
+                    x.uniform_(0.0, 1.0)
+                    return x.fill_(a)
+                return x.uniform_(a, b)
+
+            accept_buf = paddle.empty_like(tensor)
+
+            # First iteration: sample directly into tensor to avoid a where()
+            # plus an assign() if all samples are accepted.
+            uniform_ab_(tensor)
+            threshold = log_accept_ratio(tensor)
+            pending = accept_buf.uniform_(0.0, 1.0).log_() > threshold
+            if bool(pending.any()):
+                result = tensor
+                candidates = paddle.empty_like(tensor)
+                while True:
+                    uniform_ab_(candidates)
+                    result = paddle.where(pending, candidates, result)
+                    threshold = log_accept_ratio(candidates)
+                    pending = paddle.where(
+                        pending,
+                        accept_buf.uniform_(0.0, 1.0).log_() > threshold,
+                        pending,
+                    )
+                    if not bool(pending.any()):
+                        break
+                paddle.assign(result, tensor)
+
+        return tensor
+
+
 def trunc_normal_(
     tensor: paddle.Tensor,
     mean: float = 0.0,
@@ -265,11 +377,10 @@ def trunc_normal_(
     Returns:
         Tensor: Initialized tensor.
     """
-    init = TruncatedNormal(mean=mean, std=std, a=a, b=b)
-
     if in_dygraph_mode():
-        init(tensor)
-        return tensor
+        return _no_grad_trunc_normal_(tensor, mean, std, a, b)
+
+    init = TruncatedNormal(mean=mean, std=std, a=a, b=b)
     return init(tensor)
 
 

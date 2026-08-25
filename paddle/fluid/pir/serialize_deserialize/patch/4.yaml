@@ -162,3 +162,35 @@ op_patches:
       - action : modify_attr
         object : alpha
         type : pir::DoubleAttribute
+  - op_name : pd_op.gaussian_inplace
+    actions:
+      - action : modify_attr
+        object : mean
+        type : pir::DoubleAttribute
+      - action : modify_attr
+        object : std
+        type : pir::DoubleAttribute
+  - op_name : pd_op.gaussian_inplace_grad
+    actions:
+      - action : modify_attr
+        object : mean
+        type : pir::DoubleAttribute
+      - action : modify_attr
+        object : std
+        type : pir::DoubleAttribute
+  - op_name : pd_op.uniform_inplace
+    actions:
+      - action : modify_attr
+        object : min
+        type : pir::DoubleAttribute
+      - action : modify_attr
+        object : max
+        type : pir::DoubleAttribute
+  - op_name : pd_op.uniform_inplace_grad
+    actions:
+      - action : modify_attr
+        object : min
+        type : pir::DoubleAttribute
+      - action : modify_attr
+        object : max
+        type : pir::DoubleAttribute

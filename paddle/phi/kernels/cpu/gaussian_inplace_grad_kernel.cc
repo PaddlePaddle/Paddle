@@ -50,8 +50,8 @@ void GaussianInplaceGrad(const Context& dev_ctx, DenseTensor* x_grad) {
 template <typename T, typename Context>
 void GaussianInplaceGradKernel(const Context& dev_ctx,
                                const DenseTensor& out_grad UNUSED,
-                               float mean UNUSED,
-                               float std UNUSED,
+                               double mean UNUSED,
+                               double std UNUSED,
                                int seed UNUSED,
                                DenseTensor* x_grad) {
   GaussianInplaceGrad<T>(dev_ctx, x_grad);

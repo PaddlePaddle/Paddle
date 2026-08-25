@@ -23,8 +23,8 @@ namespace phi {
 template <typename T, typename Context>
 void UniformInplaceGradKernel(const Context& dev_ctx,
                               const DenseTensor& out_grad,
-                              float min,
-                              float max,
+                              double min,
+                              double max,
                               int seed,
                               int diag_num,
                               int diag_step,

@@ -1504,8 +1504,8 @@
   backward : gather_nd_double_grad
 
 - backward_op : gaussian_inplace_grad
-  forward : gaussian_inplace(Tensor x, float mean=0, float std=1.0, int seed=0) -> Tensor(out)
-  args : (Tensor out_grad, float mean=0, float std=1.0, int seed=0)
+  forward : gaussian_inplace(Tensor x, double mean=0, double std=1.0, int seed=0) -> Tensor(out)
+  args : (Tensor out_grad, double mean=0, double std=1.0, int seed=0)
   output : Tensor(x_grad)
   infer_meta :
     func : UnchangedInferMeta
@@ -4115,8 +4115,8 @@
   no_need_buffer : x
 
 - backward_op : uniform_inplace_grad
-  forward : uniform_inplace(Tensor x, float min = -1.0, float max = 1.0, int seed = 0, int diag_num = 0, int diag_step = 0, float diag_val = 1.0) -> Tensor(out)
-  args : (Tensor out_grad, float min = -1.0, float max = 1.0, int seed = 0, int diag_num = 0, int diag_step = 0, float diag_val = 1.0)
+  forward : uniform_inplace(Tensor x, double min = -1.0, double max = 1.0, int seed = 0, int diag_num = 0, int diag_step = 0, float diag_val = 1.0) -> Tensor(out)
+  args : (Tensor out_grad, double min = -1.0, double max = 1.0, int seed = 0, int diag_num = 0, int diag_step = 0, float diag_val = 1.0)
   output : Tensor(x_grad)
   infer_meta :
     func : UniformRandomInplaceGradInferMeta

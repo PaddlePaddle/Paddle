@@ -161,8 +161,8 @@ template <typename T,
                            bool> = true>
 void GaussianRandomInplace(const Context& dev_ctx,
                            const DenseTensor& x,
-                           float mean,
-                           float std,
+                           double mean,
+                           double std,
                            int seed,
                            DenseTensor* out) {
   dev_ctx.template Alloc<T>(out);
@@ -189,12 +189,14 @@ template <typename T,
                            bool> = true>
 void GaussianRandomInplace(const Context& dev_ctx,
                            const DenseTensor& x,
-                           float mean,
-                           float std,
+                           double mean,
+                           double std,
                            int seed,
                            DenseTensor* out) {
   dev_ctx.template Alloc<T>(out);
-  float std_of_real_or_imag = std::sqrt(std::pow(std, 2) / 2);
+  using RealT = dtype::Real<T>;
+  RealT std_of_real_or_imag = static_cast<RealT>(std::sqrt(std * std / 2.0));
+  RealT mean_real = static_cast<RealT>(mean);
   if (seed == 0) {
     // use global Generator seed
     DenseTensor out_real;
@@ -203,17 +205,16 @@ void GaussianRandomInplace(const Context& dev_ctx,
     out_imag.Resize(x.dims());
     dev_ctx.template Alloc<T>(&out_real);
     dev_ctx.template Alloc<T>(&out_imag);
-    funcs::normal_distribution<dtype::Real<T>> dist;
-    funcs::normal_distribution<dtype::Real<T>> dist_imag;
-    funcs::normal_transform<dtype::Real<T>> trans(mean, std_of_real_or_imag);
-    funcs::distribution_and_transform<dtype::Real<T>>(
-        dev_ctx, &out_real, dist, trans);
-    funcs::distribution_and_transform<dtype::Real<T>>(
+    funcs::normal_distribution<RealT> dist;
+    funcs::normal_distribution<RealT> dist_imag;
+    funcs::normal_transform<RealT> trans(mean_real, std_of_real_or_imag);
+    funcs::distribution_and_transform<RealT>(dev_ctx, &out_real, dist, trans);
+    funcs::distribution_and_transform<RealT>(
         dev_ctx, &out_imag, dist_imag, trans);
-    ComplexKernel<dtype::Real<T>>(dev_ctx, out_real, out_imag, out);
+    ComplexKernel<RealT>(dev_ctx, out_real, out_imag, out);
   } else {
     // use OP seed
-    auto func = GaussianGenerator<T>(mean, std_of_real_or_imag, seed);
+    auto func = GaussianGenerator<T>(mean_real, std_of_real_or_imag, seed);
     IndexKernel<T, GaussianGenerator<T>>(dev_ctx, out, func);
   }
 }
@@ -232,8 +233,8 @@ PADDLE_API void GaussianKernel(const Context& dev_ctx,
 template <typename T, typename Context>
 void GaussianInplaceKernel(const Context& dev_ctx,
                            const DenseTensor& x,
-                           float mean,
-                           float std,
+                           double mean,
+                           double std,
                            int seed,
                            DenseTensor* out) {
   GaussianRandomInplace<T>(dev_ctx, x, mean, std, seed, out);
