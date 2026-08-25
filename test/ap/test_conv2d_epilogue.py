@@ -44,18 +44,30 @@ def IsSupportDevice():
 
 class TestConv2dEpilogue(unittest.TestCase):
     def setUp(self):
+        self.origin_flags = paddle.get_flags(
+            ['FLAGS_manually_trans_conv_filter', 'FLAGS_deny_cinn_ops']
+        )
+        paddle.set_flags(
+            {
+                'FLAGS_manually_trans_conv_filter': True,
+                'FLAGS_deny_cinn_ops': "transpose",
+            }
+        )
+
         dtype = 'float16'
+
         # The cutlass implicit gemm backend requires an NHWC activation.
         x_shape = [32, 8, 8, 16]
         self.x = paddle.randn(x_shape, dtype=dtype)
         self.x.stop_gradient = False
 
-        # Paddle always keeps the filter in the KCRS order while cutlass
-        # requires KRSC. Both layouts coincide for a 1x1 filter, so the
-        # accuracy check below does not need an extra transpose.
-        w_shape = [16, 16, 1, 1]
+        # Native paddle (KCRS) filter, transposed to KRSC inside the model.
+        w_shape = [16, 16, 3, 3]
         self.w = paddle.randn(w_shape, dtype=dtype)
         self.w.stop_gradient = False
+
+    def tearDown(self):
+        paddle.set_flags(self.origin_flags)
 
     def getSubGraph(self):
         N = pct.DimVar(32)
@@ -63,17 +75,17 @@ class TestConv2dEpilogue(unittest.TestCase):
         W = pct.DimVar(8)
         C = pct.DimVar(16)
         O = pct.DimVar(16)
-        KH = pct.DimVar(1)
-        KW = pct.DimVar(1)
+        KH = pct.DimVar(3)
+        KW = pct.DimVar(3)
         DType = pct.DTypeVar("T", "float16")
 
         def foo(
             x: pct.Tensor([N, H, W, C], DType),
             w: pct.Tensor([O, C, KH, KW], DType),
         ):
-            # The epilogue is limited to relu, the cutlass backend fuses
-            # LinearCombinationRelu only for now.
-            y = paddle.nn.functional.conv2d(x, w, data_format="NHWC")
+            # KCRS -> KRSC
+            w = paddle.transpose(w, [0, 2, 3, 1])
+            y = paddle.nn.functional.conv2d(x, w, padding=1, data_format="NHWC")
             return paddle.nn.functional.relu(y)
 
         return foo

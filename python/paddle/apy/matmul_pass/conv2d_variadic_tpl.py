@@ -285,10 +285,7 @@ static void RunConv2dWithVariadicKernel(const Conv2dEpilogueParams &params, ${AP
 extern "C" {
 
 void ${kernel_name}(void* stream_ptr, ${AP_KERNEL_ARGS_DECLARE}) {
-  // Shapes are permuted to the NHWC activation and the KRSC filter expected by
-  // the cutlass implicit gemm. Note that only the logical shapes are permuted,
-  // the memory layout of ${input0} and ${input1} is required to be NHWC / KRSC
-  // already.
+  // The activation is NHWC (data_format) and the filter is KRSC.
   std::vector<int64_t> ${input0}_shape;
   ${AP_PARAMS_INPUT0_SHAPE_INIT}
 
@@ -314,9 +311,10 @@ void ${kernel_name}(void* stream_ptr, ${AP_KERNEL_ARGS_DECLARE}) {
   """
 
         output_dtype = self.dtype2type_name[output_karg.type.data_type]
-        # pd_op.conv2d keeps the filter in the KCRS order for both data formats.
+        # The filter is already channel-last (KRSC), only the NCHW activation
+        # needs its logical shape permuted.
         input0_perm = [0, 1, 2, 3] if data_format == "NHWC" else [0, 2, 3, 1]
-        input1_perm = [0, 2, 3, 1]
+        input1_perm = [0, 1, 2, 3]
         code = (
             code_template.replace(
                 "${AP_EPILOGUE_COMPUTATION_STATEMENTS}", trivial_code_str
@@ -360,7 +358,7 @@ void ${kernel_name}(void* stream_ptr, ${AP_KERNEL_ARGS_DECLARE}) {
             .replace("${paddings}", self.get_cpp_int_list_str(paddings))
             .replace("${dilations}", self.get_cpp_int_list_str(dilations))
             .replace("${groups}", f"{groups}")
-            .replace("${c_value}", f"{input1_shape_kargs[1].value}")
+            .replace("${c_value}", f"{input1_shape_kargs[3].value}")
             .replace("${k_value}", f"{input1_shape_kargs[0].value}")
         )
 

@@ -59,6 +59,33 @@ class Conv2dEpilogueFusion(abstract_drr.DrrPass):
         )
 
     def constraint(self, o, t):
+        return self._is_supported_by_backend(o) and self._epilogue_can_fuse(
+            o, t
+        )
+
+    def _is_supported_by_backend(self, o):
+        # Limitations of the cutlass conv2d backend:
+        # - groups == 1: grouped conv needs a different cutlass kernel (GroupMode).
+        # - NHWC: cutlass conv fprop only has TensorNHWC and
+        #   TensorNCxHWx<Interleave> iterators, no plain NCHW.
+        # - EXPLICIT and symmetric padding: `paddings` is forwarded as-is while
+        #   cutlass takes a single pad value per spatial axis, and SAME / VALID
+        #   derive the effective padding at runtime.
+        paddings = self._get_int_list_attr(o.conv2d_op.paddings)
+        symmetric_padding = (
+            True
+            if len(paddings) == 2
+            else (paddings[0] == paddings[1] and paddings[2] == paddings[3])
+        )
+        supported_attrs = (self._get_int_attr(o.conv2d_op.groups) == 1) and (
+            o.conv2d_op.data_format.match(a_str=lambda x: x) == "NHWC"
+        )
+        explicit_padding = (
+            o.conv2d_op.padding_algorithm.match(a_str=lambda x: x) == "EXPLICIT"
+        ) and symmetric_padding
+        return supported_attrs and explicit_padding
+
+    def _epilogue_can_fuse(self, o, t):
         program = ir_tools.copy_fused_ops_to_program(
             o.trivial_op, tensor_match_ctx=t
         )
@@ -68,13 +95,7 @@ class Conv2dEpilogueFusion(abstract_drr.DrrPass):
             number_of_inputs=self.number_of_inputs(),
             number_of_outputs=self.number_of_outputs(),
         )
-        # The cutlass implicit gemm backend only supports the NHWC activation,
-        # there is no NCHW conv2d fprop iterator in cutlass.
-        return (
-            program.empty()
-            if o.conv2d_op.data_format.match(a_str=lambda x: x) == "NHWC"
-            else False
-        )
+        return program.empty()
 
     def _insert_load_from_global(self, program, input_names):
         init_pass_manager = ir_tools.create_pass_manager()

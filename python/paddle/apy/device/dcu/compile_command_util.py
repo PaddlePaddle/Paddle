@@ -22,7 +22,6 @@ class CompileCommandGenerator:
         self.op_type2generate_func = ap.OrderedDict(
             [
                 ['matmul', self.generate_compile_command_with_cutlass],
-                ['conv2d', self.generate_compile_command_with_cutlass],
             ]
         )
 
