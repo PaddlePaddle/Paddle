@@ -258,7 +258,7 @@ constexpr inline Integer GetLogNumThreadsX(Integer num_rows, Integer row_size) {
   return log_num_threads_x;
 }
 
-template <typename T, typename index_t, class BinaryFunction>
+template <typename T, typename index_t, bool Reverse, class BinaryFunction>
 __device__ void InclusiveScanInnerDimSklanskyImpl(
     T *row_buf,
     T *tgt_,
@@ -282,8 +282,14 @@ __device__ void InclusiveScanInnerDimSklanskyImpl(
 
     for (index_t block_col = 0; block_col < row_size;
          block_col += 2 * num_threads_x) {
-      index_t col1 = block_col + (index_t)threadIdx.x;
-      index_t col2 = block_col + num_threads_x + (index_t)threadIdx.x;
+      index_t col1, col2;
+      if (Reverse) {
+        col1 = row_size - 1 - block_col - (index_t)threadIdx.x;
+        col2 = row_size - 1 - block_col - (index_t)threadIdx.x - num_threads_x;
+      } else {
+        col1 = block_col + (index_t)threadIdx.x;
+        col2 = block_col + num_threads_x + (index_t)threadIdx.x;
+      }
 
       if (row_exists) {
         if (col1 < row_size) {
@@ -328,7 +334,7 @@ __device__ void InclusiveScanInnerDimSklanskyImpl(
   }
 }
 
-template <typename T, class BinaryFunction>
+template <typename T, bool Reverse, class BinaryFunction>
 __global__ void InclusiveScanInnerDimSklanskyKernel(
     T *tgt_,
     const T *src_,
@@ -345,23 +351,23 @@ __global__ void InclusiveScanInnerDimSklanskyKernel(
 
   if (static_cast<size_t>(num_rows) * static_cast<size_t>(row_size) <=
       UINT_MAX) {
-    InclusiveScanInnerDimSklanskyImpl<T, uint32_t>(row_buf,
-                                                   tgt_,
-                                                   src_,
-                                                   num_rows,
-                                                   row_size,
-                                                   log_num_threads_x,
-                                                   init,
-                                                   binary_op);
+    InclusiveScanInnerDimSklanskyImpl<T, uint32_t, Reverse>(row_buf,
+                                                            tgt_,
+                                                            src_,
+                                                            num_rows,
+                                                            row_size,
+                                                            log_num_threads_x,
+                                                            init,
+                                                            binary_op);
   } else {
-    InclusiveScanInnerDimSklanskyImpl<T, size_t>(row_buf,
-                                                 tgt_,
-                                                 src_,
-                                                 num_rows,
-                                                 row_size,
-                                                 log_num_threads_x,
-                                                 init,
-                                                 binary_op);
+    InclusiveScanInnerDimSklanskyImpl<T, size_t, Reverse>(row_buf,
+                                                          tgt_,
+                                                          src_,
+                                                          num_rows,
+                                                          row_size,
+                                                          log_num_threads_x,
+                                                          init,
+                                                          binary_op);
   }
 }
 
@@ -372,6 +378,7 @@ void InclusiveScanInnerDimSklansky(const T *src,
                                    size_t inner_dim,
                                    T init,
                                    BinaryOp op,
+                                   bool reverse,
                                    const GPUContext &dev_ctx) {
   int64_t num_rows = outer_dim;
   int64_t row_size = inner_dim;
@@ -389,15 +396,27 @@ void InclusiveScanInnerDimSklansky(const T *src,
 
   size_t shared_mem_bytes = num_threads_y * (num_threads_x * 2) * sizeof(T);
 
-  InclusiveScanInnerDimSklanskyKernel<T, BinaryOp>
-      <<<grid, threads, shared_mem_bytes, dev_ctx.stream()>>>(
-          tgt,
-          src,
-          static_cast<uint32_t>(num_rows),
-          static_cast<uint32_t>(row_size),
-          log_num_threads_x,
-          init,
-          op);
+  if (reverse) {
+    InclusiveScanInnerDimSklanskyKernel<T, true, BinaryOp>
+        <<<grid, threads, shared_mem_bytes, dev_ctx.stream()>>>(
+            tgt,
+            src,
+            static_cast<uint32_t>(num_rows),
+            static_cast<uint32_t>(row_size),
+            log_num_threads_x,
+            init,
+            op);
+  } else {
+    InclusiveScanInnerDimSklanskyKernel<T, false, BinaryOp>
+        <<<grid, threads, shared_mem_bytes, dev_ctx.stream()>>>(
+            tgt,
+            src,
+            static_cast<uint32_t>(num_rows),
+            static_cast<uint32_t>(row_size),
+            log_num_threads_x,
+            init,
+            op);
+  }
 }
 
 template <typename T, typename BinaryOp>
@@ -432,9 +451,9 @@ void InclusiveScan(const T *x,
               x, y, mid_dim, inner_dim, init, op));
     }
   } else {
-    if (FLAGS_use_accuracy_compatible_kernel && !reverse) {
+    if (FLAGS_use_accuracy_compatible_kernel) {
       InclusiveScanInnerDimSklansky<T, BinaryOp>(
-          x, y, outer_dim, mid_dim, init, op, dev_ctx);
+          x, y, outer_dim, mid_dim, init, op, reverse, dev_ctx);
     } else {
       InclusiveScanInnerDim<T, BinaryOp>(
           x, y, outer_dim, mid_dim, init, op, reverse, dev_ctx);
