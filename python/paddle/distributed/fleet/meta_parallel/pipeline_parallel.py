@@ -414,6 +414,27 @@ def register_global_pipeline_parallel_hook(
     pipeline_parallel_callbacks_.register_hook(location, hook)
 
 
+def _raise_p2p_issued_and_wait(callbacks, wait_handles, output_tensor, step_id):
+    """Raise ``P2P_ISSUED`` between issuing the forward p2p ops and waiting.
+
+    Hooks registered at this location are enqueued on the calculation stream
+    after ``isend`` / ``irecv`` have recorded their cross-stream event, so their
+    kernels can overlap the NCCL send/recv. ``wait_handles`` is None when
+    ``batch_p2p_comm=True``, because ``_batched_p2p_ops`` already ran the
+    communication on the calculation stream: no overlap is possible there, but
+    the location is still raised so that hooks relying on it for correctness
+    are not silently skipped.
+    """
+    callbacks.on_location(
+        PipelineParallelMicroStepLocations.P2P_ISSUED,
+        output_tensor=output_tensor,
+        step_id=step_id,
+    )
+    if wait_handles is not None:
+        for wait_handle in wait_handles:
+            wait_handle.wait()
+
+
 class NoPipelineParallel(MetaParallelBase):
     def __init__(self, layers, strategy, hcg=None):
         assert isinstance(layers, PipelineLayer)
@@ -4125,41 +4146,23 @@ class VPPFhenBInBalancedMemory(PipelineParallelWithInterleaveFthenB):
             # `isend`/`irecv` records on the calculation stream at issue time.
             # Deferring the wait and raising P2P_ISSUED here lets hook kernels
             # be enqueued *after* that event, so they overlap the send/recv.
-            if not self._use_batch_p2p_comm:
-                input_tensor, fw_wait_handles = (
-                    self._p2p_helper.send_forward_recv_forward(
-                        output_tensor,
-                        recv_prev=recv_prev,
-                        batch_p2p_comm=False,
-                        overlap_p2p_comm=True,
-                        skip_check_meta=not self.training,
-                        block_cache_meta=meta_to_send,
-                    )
-                )
-                self.callbacks.on_location(
-                    PipelineParallelMicroStepLocations.P2P_ISSUED,
-                    output_tensor=output_tensor,
-                    step_id=micro_step,
-                )
-                if fw_wait_handles is not None:
-                    for fw_wait_handle in fw_wait_handles:
-                        fw_wait_handle.wait()
-            else:
-                input_tensor = self._p2p_helper.send_forward_recv_forward(
+            # `overlap_p2p_comm=True` is safe for both paths: with
+            # batch_p2p_comm=True the ops run on the calculation stream and no
+            # wait handle comes back, so this degrades to raising the location
+            # without any deferral.
+            input_tensor, fw_wait_handles = (
+                self._p2p_helper.send_forward_recv_forward(
                     output_tensor,
                     recv_prev=recv_prev,
-                    batch_p2p_comm=True,
+                    batch_p2p_comm=self._use_batch_p2p_comm,
+                    overlap_p2p_comm=True,
                     skip_check_meta=not self.training,
                     block_cache_meta=meta_to_send,
                 )
-                # `_batched_p2p_ops` runs on the calc stream, so no overlap is
-                # possible; still raise the location so hooks that rely on it
-                # for correctness (e.g. deferred grad drains) are not skipped.
-                self.callbacks.on_location(
-                    PipelineParallelMicroStepLocations.P2P_ISSUED,
-                    output_tensor=output_tensor,
-                    step_id=micro_step,
-                )
+            )
+            _raise_p2p_issued_and_wait(
+                self.callbacks, fw_wait_handles, output_tensor, micro_step
+            )
             # the meta is exchanged before the tensor p2p ops are issued, so it
             # is already available even when the wait handles are deferred
             recv_meta = (
@@ -4229,16 +4232,14 @@ class VPPFhenBInBalancedMemory(PipelineParallelWithInterleaveFthenB):
                 self.is_pipeline_last_stage(ignore_virtual=True),
                 batch_p2p_comm=self._use_batch_p2p_comm,
                 block_cache_meta=meta_to_send,
-                overlap_p2p_comm=not self._use_batch_p2p_comm,
+                overlap_p2p_comm=True,
             )
-            self.callbacks.on_location(
-                PipelineParallelMicroStepLocations.P2P_ISSUED,
-                output_tensor=output_tensor,
-                step_id=forward_micro_step_id,
+            _raise_p2p_issued_and_wait(
+                self.callbacks,
+                fw_send_wait_handles,
+                output_tensor,
+                forward_micro_step_id,
             )
-            if fw_send_wait_handles is not None:
-                for fw_send_wait_handle in fw_send_wait_handles:
-                    fw_send_wait_handle.wait()
             output_tensor_grad = self._p2p_helper.recv_backward(
                 self.is_pipeline_last_stage(ignore_virtual=True),
                 batch_p2p_comm=self._use_batch_p2p_comm,

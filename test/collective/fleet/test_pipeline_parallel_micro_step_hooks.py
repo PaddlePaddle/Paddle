@@ -18,6 +18,7 @@ from paddle.distributed.fleet.meta_parallel import pipeline_parallel as pp_mod
 from paddle.distributed.fleet.meta_parallel.pipeline_parallel import (
     PipelineParallelMicroStepCallback,
     PipelineParallelMicroStepLocations,
+    _raise_p2p_issued_and_wait,
     register_global_pipeline_parallel_hook,
 )
 from paddle.distributed.fleet.meta_parallel.pp_utils import (
@@ -227,6 +228,56 @@ class TestSendForwardOverlapP2pComm(unittest.TestCase):
             overlap_p2p_comm=True,
         )
         self.assertEqual(self.meta_sent[0][1].get('skip_check_meta'), True)
+
+
+class TestRaiseP2pIssuedAndWait(unittest.TestCase):
+    """The hook must run *before* the deferred wait handles are consumed.
+
+    This is the whole point of the location: if the wait happened first the
+    hook's kernels could no longer overlap the send/recv.
+    """
+
+    def setUp(self):
+        self.log = []
+        self.callbacks = PipelineParallelMicroStepCallback()
+        self.callbacks.register_hook(
+            PipelineParallelMicroStepLocations.P2P_ISSUED,
+            lambda **kw: self.log.append(('hook', kw)),
+        )
+
+    def test_hook_runs_before_every_wait(self):
+        handles = [_FakeReq(self.log, 'req0'), _FakeReq(self.log, 'req1')]
+        _raise_p2p_issued_and_wait(
+            self.callbacks, handles, PLACEHOLDER, step_id=5
+        )
+        self.assertEqual(
+            self.log,
+            [
+                ('hook', {'output_tensor': PLACEHOLDER, 'step_id': 5}),
+                'req0',
+                'req1',
+            ],
+        )
+
+    def test_no_handles_still_raises_the_location(self):
+        # the batch_p2p_comm=True path: communication already ran on the
+        # calculation stream, so `_p2p_helper` returns no requests
+        _raise_p2p_issued_and_wait(self.callbacks, None, PLACEHOLDER, step_id=0)
+        self.assertEqual(
+            self.log, [('hook', {'output_tensor': PLACEHOLDER, 'step_id': 0})]
+        )
+
+    def test_empty_handle_list(self):
+        _raise_p2p_issued_and_wait(self.callbacks, [], None, step_id=1)
+        self.assertEqual(
+            self.log, [('hook', {'output_tensor': None, 'step_id': 1})]
+        )
+
+    def test_without_hooks_only_waits(self):
+        callbacks = PipelineParallelMicroStepCallback()
+        handles = [_FakeReq(self.log, 'req0')]
+        _raise_p2p_issued_and_wait(callbacks, handles, PLACEHOLDER, step_id=2)
+        self.assertEqual(self.log, ['req0'])
 
 
 if __name__ == "__main__":
