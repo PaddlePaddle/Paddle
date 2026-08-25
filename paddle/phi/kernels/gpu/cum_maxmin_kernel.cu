@@ -14,12 +14,20 @@
 
 #include "paddle/phi/kernels/cum_maxmin_kernel.h"
 
+#include <thrust/iterator/counting_iterator.h>
+#include <thrust/iterator/zip_iterator.h>
+#include <thrust/tuple.h>
+
 #include <algorithm>
+#include <limits>
 #include <numeric>
 
 #include "paddle/common/hostdevice.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/memory_utils.h"
+#include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/cub.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace phi {
@@ -83,6 +91,59 @@ __device__ void binary_op_update_v(const T1 lhs,
   if (binary_op(lhs, *rhs)) {
     *rhs = lhs;
     *rhs_idx = lhs_idx;
+  }
+}
+
+// Combines two (value, index) pairs for a cummax/cummin scan. `lhs` must be the
+// pair that comes earlier in the scanned sequence, so that ties keep the larger
+// index, matching the semantics of `binary_op_update` above.
+template <typename T1, typename T2, class BinaryFunction>
+struct ScanWithIndicesOp {
+  BinaryFunction binary_op;
+
+  __device__ thrust::tuple<T1, T2> operator()(
+      const thrust::tuple<T1, T2>& lhs,
+      const thrust::tuple<T1, T2>& rhs) const {
+    T1 value = thrust::get<0>(rhs);
+    T2 index = thrust::get<1>(rhs);
+    binary_op_update(
+        thrust::get<0>(lhs), &value, thrust::get<1>(lhs), &index, binary_op);
+    return thrust::make_tuple(value, index);
+  }
+};
+
+// Single-pass device-wide scan for the 1D case. The blocked kernel below only
+// launches one block when there is a single row, leaving most of the GPU idle.
+template <typename T1, typename T2, class BinaryFunction, typename Context>
+void CubScanWithIndices(const Context& dev_ctx,
+                        const T1* x_data,
+                        T1* values_data,
+                        T2* indices_data,
+                        int64_t size,
+                        BinaryFunction binary_op) {
+  auto x_iter = thrust::make_zip_iterator(
+      thrust::make_tuple(x_data, thrust::counting_iterator<T2>(0)));
+  auto out_iter =
+      thrust::make_zip_iterator(thrust::make_tuple(values_data, indices_data));
+  ScanWithIndicesOp<T1, T2, BinaryFunction> op{binary_op};
+
+  phi::Allocator::AllocationPtr allocation;
+  void* temp_storage = nullptr;
+  size_t temp_storage_bytes = 0;
+  for (size_t i = 0; i < 2; ++i) {
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        cub::DeviceScan::InclusiveScan(temp_storage,
+                                       temp_storage_bytes,
+                                       x_iter,
+                                       out_iter,
+                                       op,
+                                       static_cast<int>(size),
+                                       dev_ctx.stream()));
+    if (i == 0 && temp_storage_bytes > 0) {
+      allocation =
+          phi::memory_utils::Alloc(dev_ctx.GetPlace(), temp_storage_bytes);
+      temp_storage = allocation->ptr();
+    }
   }
 }
 
@@ -307,10 +368,27 @@ void ScanWithIndicesKernel(const Context& dev_ctx,
   const T1* x_data = x.data<T1>();
   T1* values_data = out->data<T1>();
   T2* indices_data = indices->data<T2>();
+  const int64_t axis_size = x.dims()[axis];
+  if (axis_size == x.numel() &&
+      axis_size <= static_cast<int64_t>(std::numeric_limits<int>::max())) {
+    CubScanWithIndices<T1, T2, BinaryFunction, Context>(
+        dev_ctx, x_data, values_data, indices_data, axis_size, op);
+    return;
+  }
+
   if (axis == out_dims.size() - 1) {
     int ndim = x.dims().size();
     int64_t row_size = x.dims()[ndim - 1];
     int64_t num_rows = x.numel() / row_size;
+
+    // `cub::DeviceScan` takes `num_items` as `int`, so fall back to the blocked
+    // kernel when the row does not fit.
+    if (num_rows == 1 &&
+        row_size <= static_cast<int64_t>(std::numeric_limits<int>::max())) {
+      CubScanWithIndices<T1, T2, BinaryFunction, Context>(
+          dev_ctx, x_data, values_data, indices_data, row_size, op);
+      return;
+    }
 
     const uint32_t log_num_threads_x =
         GetLogNumThreadsXInnerScan(num_rows, row_size);
