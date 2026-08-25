@@ -691,12 +691,16 @@ class _ZeroSMPool:
     def stage(self, tensor: paddle.Tensor) -> paddle.Tensor:
         """Return a registered tensor holding ``tensor``'s data.
 
-        A tensor already backed by the pool is returned as is, so a caller that
-        allocates its input from this pool pays no copy. All ranks have to agree
-        on whether the copy is needed: one rank staging while another does not
-        makes the registration counts diverge.
+        A tensor the pool handed out and still tracks is returned as is, so a
+        caller that allocates its input from this pool pays no copy. Being merely
+        inside a registered window is not enough: a slice the pool never handed
+        out keeps no slot alive, so passing it through would let the ring reissue
+        the block underneath while the collective is still reading it. Such a
+        tensor is copied into a tracked block instead. All ranks have to agree on
+        whether the copy is needed: one rank staging while another does not makes
+        the registration counts diverge.
         """
-        if self.owns(tensor):
+        if self.handed_out(tensor):
             return tensor
         staged = self._take(tensor.shape, tensor.dtype)
         staged.copy_(tensor, False)

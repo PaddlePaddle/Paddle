@@ -454,6 +454,52 @@ class ZeroSMTestCase:
         assert pool.handed_out(local)
         assert local.shape == [self._world, _HIDDEN], local.shape
 
+    def test_stages_untracked_slice_input(self):
+        # Same hazard on the input side, where there is no need to refuse: an
+        # input that the pool does not track is copied into a block it does, so
+        # the collective never reads through a slice the ring believes is idle.
+        pool = _ZeroSMPool.instance(self._group)
+        buffer = zero_sm.empty([2 * _CHUNK, _HIDDEN], _DTYPE, group=self._group)
+        buffer[:] = float(self._rank + 1)
+        sliced = buffer[:_CHUNK]
+        del buffer
+        gc.collect()
+        assert pool.owns(sliced) and not pool.handed_out(sliced)
+
+        # Being inside a registered window is not enough to skip the copy.
+        staged = pool.stage(sliced)
+        assert staged is not sliced, "an untracked slice was passed through"
+        assert pool.handed_out(staged)
+        paddle.device.synchronize()
+        np.testing.assert_allclose(staged.numpy(), sliced.numpy())
+
+        # End to end, over both collectives that stage their input.
+        out = self._out()
+        zero_sm.all_gather(out, sliced, group=self._group, use_calc_stream=True)
+        paddle.device.synchronize()
+        gathered = [float(out[i * _CHUNK, 0]) for i in range(self._world)]
+        assert gathered == self._expected, gathered
+
+        rows = _CHUNK * self._world
+        out_tensor = zero_sm.empty([rows, _HIDDEN], _DTYPE, group=self._group)
+        even = zero_sm.empty([rows, _HIDDEN], _DTYPE, group=self._group)
+        even[:] = float(self._rank + 1)
+        untracked = even[:]
+        del even
+        gc.collect()
+        assert not pool.handed_out(untracked)
+        zero_sm.alltoall_single(
+            out_tensor,
+            untracked,
+            group=self._group,
+            use_calc_stream=True,
+        )
+        paddle.device.synchronize()
+        received = [
+            float(out_tensor[i * _CHUNK, 0]) for i in range(self._world)
+        ]
+        assert received == self._expected, received
+
     def test_all_gather_list_settles_on_is_completed(self):
         # A caller is entitled to poll is_completed() and read the output as
         # soon as it returns True, so completion has to cover the write-back

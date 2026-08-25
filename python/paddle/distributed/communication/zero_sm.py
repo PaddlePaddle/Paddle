@@ -273,10 +273,11 @@ def alltoall_single(
     Uneven splits are supported, but then both buffers have to come from
     :func:`empty`, because the pool sizes a window from the shape it is handed:
     with a row count that differs per rank, staging the input here would register
-    windows of different sizes, and registration is collective. Allocate from a
-    capacity the whole group agrees on and slice the local rows out of it, as
-    slices of a pooled buffer stay pooled. The even split needs no such care: a
-    legal all-to-all then gives every rank the same row count anyway.
+    windows of different sizes, and registration is collective. Allocate with the
+    capacity the whole group agrees on and let :func:`empty` carve the local rows
+    out of it; a slice taken afterwards is not tracked by the pool and is
+    rejected. The even split needs no such care: a legal all-to-all then gives
+    every rank the same row count anyway.
     """
     pool, group = _pool(group)
     if not pool.handed_out(out_tensor):
