@@ -78,3 +78,5 @@ test_layer_spec,,,,,test_runner.py,2,,http_proxy=;https_proxy=;PYTHONPATH=../..,
 test_schedule_node,,,,,test_runner.py,2,,http_proxy=;https_proxy=;PYTHONPATH=../..,
 test_muon_sharding_no_hook_overlap,,GPU,400,DIST,../../legacy_test/dist_test.sh,2,,http_proxy=;https_proxy=;PYTHONPATH=../..,WITH_NCCL
 test_parallel_dygraph_muon,,GPU,400,DIST,../../legacy_test/dist_test.sh,2,,http_proxy=;https_proxy=;PYTHONPATH=../..,WITH_NCCL
+test_pipeline_parallel_micro_step_hooks,,,,,test_runner.py,2,,http_proxy=;https_proxy=;PYTHONPATH=../..,
+test_pipeline_parallel_p2p_issued_hook,LINUX,GPU,500,HYBRID,test_runner.py,,,http_proxy=;https_proxy=;PYTHONPATH=../..,

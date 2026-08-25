@@ -327,6 +327,14 @@ class PipelineParallelMicroStepLocations(Enum):
     FORWARD_END = 'forward_end'
     BACKWARD_BEGIN = 'backward_begin'
     BACKWARD_END = 'backward_end'
+    # Raised after the P2P ops of a micro-step have been *issued* but before
+    # their wait handles are consumed. Hooks registered here run on the
+    # calculation stream after the isend/irecv have already recorded their
+    # cross-stream event, so their kernels can overlap the NCCL send/recv.
+    # Only raised when the schedule uses `_p2p_ops` (batch_p2p_comm=False),
+    # because `_batched_p2p_ops` runs the NCCL kernel on the calc stream and
+    # can never overlap with compute.
+    P2P_ISSUED = 'p2p_issued'
 
 
 # A callback class for managing hooks at different stages of a pipeline parallel process.
@@ -338,6 +346,7 @@ class PipelineParallelMicroStepCallback:
             PipelineParallelMicroStepLocations.FORWARD_END: [],
             PipelineParallelMicroStepLocations.BACKWARD_BEGIN: [],
             PipelineParallelMicroStepLocations.BACKWARD_END: [],
+            PipelineParallelMicroStepLocations.P2P_ISSUED: [],
         }
 
     def register_hook(
@@ -359,7 +368,7 @@ class PipelineParallelMicroStepCallback:
             AssertionError: If the specified location is not a valid micro-step location.
         """
         assert location in self.hooks, (
-            f"Invalid location '{location}'. Valid locations are 'forward_begin', 'forward_end', 'backward_begin', or 'backward_end'."
+            f"Invalid location '{location}'. Valid locations are 'forward_begin', 'forward_end', 'backward_begin', 'backward_end', or 'p2p_issued'."
         )
         self.hooks[location].append(hook)
 
@@ -377,7 +386,7 @@ class PipelineParallelMicroStepCallback:
             AssertionError: If the specified location is not a valid micro-step location.
         """
         assert location in self.hooks, (
-            f"Invalid location '{location}'. Valid locations are 'forward_begin', 'forward_end', 'backward_begin', or 'backward_end'."
+            f"Invalid location '{location}'. Valid locations are 'forward_begin', 'forward_end', 'backward_begin', 'backward_end', or 'p2p_issued'."
         )
         for hook in self.hooks[location]:
             hook(**kwargs)
@@ -397,6 +406,27 @@ def register_global_pipeline_parallel_hook(
     Registering global hooks for pipeline parallelism.
     """
     pipeline_parallel_callbacks_.register_hook(location, hook)
+
+
+def _raise_p2p_issued_and_wait(callbacks, wait_handles, output_tensor, step_id):
+    """Raise ``P2P_ISSUED`` between issuing the forward p2p ops and waiting.
+
+    Hooks registered at this location are enqueued on the calculation stream
+    after ``isend`` / ``irecv`` have recorded their cross-stream event, so their
+    kernels can overlap the NCCL send/recv. ``wait_handles`` is None when
+    ``batch_p2p_comm=True``, because ``_batched_p2p_ops`` already ran the
+    communication on the calculation stream: no overlap is possible there, but
+    the location is still raised so that hooks relying on it for correctness
+    are not silently skipped.
+    """
+    callbacks.on_location(
+        PipelineParallelMicroStepLocations.P2P_ISSUED,
+        output_tensor=output_tensor,
+        step_id=step_id,
+    )
+    if wait_handles is not None:
+        for wait_handle in wait_handles:
+            wait_handle.wait()
 
 
 class NoPipelineParallel(MetaParallelBase):
@@ -3873,11 +3903,26 @@ class VPPFhenBInBalancedMemory(PipelineParallelWithInterleaveFthenB):
             ):
                 recv_prev = False
 
-            input_tensor = self._p2p_helper.send_forward_recv_forward(
-                output_tensor,
-                recv_prev=recv_prev,
-                batch_p2p_comm=self._use_batch_p2p_comm,
-                skip_check_meta=not self.training,
+            # NOTE: when `_p2p_ops` is in use (batch_p2p_comm=False) the NCCL
+            # send/recv lives on its own comm stream, gated by an event that
+            # `isend`/`irecv` records on the calculation stream at issue time.
+            # Deferring the wait and raising P2P_ISSUED here lets hook kernels
+            # be enqueued *after* that event, so they overlap the send/recv.
+            # `overlap_p2p_comm=True` is safe for both paths: with
+            # batch_p2p_comm=True the ops run on the calculation stream and no
+            # wait handle comes back, so this degrades to raising the location
+            # without any deferral.
+            input_tensor, fw_wait_handles = (
+                self._p2p_helper.send_forward_recv_forward(
+                    output_tensor,
+                    recv_prev=recv_prev,
+                    batch_p2p_comm=self._use_batch_p2p_comm,
+                    overlap_p2p_comm=True,
+                    skip_check_meta=not self.training,
+                )
+            )
+            _raise_p2p_issued_and_wait(
+                self.callbacks, fw_wait_handles, output_tensor, micro_step
             )
             if self.is_pipeline_first_stage(ignore_virtual=True):
                 if input_tensor is not None:
@@ -3922,10 +3967,22 @@ class VPPFhenBInBalancedMemory(PipelineParallelWithInterleaveFthenB):
 
             # NOTE: `send_forward_recv_backward` is intentionally unused to
             # prevent hanging bugs in dynamic shape mode.
-            self._p2p_helper.send_forward(
+            # The P2P_ISSUED hook is raised between `send_forward` and
+            # `recv_backward` on purpose: `recv_backward` waits on a grad that
+            # only exists after the downstream stage finishes its backward, so
+            # its inline wait would stall the calc stream and any hook placed
+            # after it could not overlap the forward send.
+            fw_send_wait_handles = self._p2p_helper.send_forward(
                 output_tensor,
                 self.is_pipeline_last_stage(ignore_virtual=True),
                 batch_p2p_comm=self._use_batch_p2p_comm,
+                overlap_p2p_comm=True,
+            )
+            _raise_p2p_issued_and_wait(
+                self.callbacks,
+                fw_send_wait_handles,
+                output_tensor,
+                forward_micro_step_id,
             )
             output_tensor_grad = self._p2p_helper.recv_backward(
                 self.is_pipeline_last_stage(ignore_virtual=True),

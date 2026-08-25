@@ -886,14 +886,16 @@ class P2pHelper:
         pp_last_stage,
         batch_p2p_comm=True,
         skip_check_meta=False,
+        overlap_p2p_comm=False,
     ):
         global _timers
         if _timers is not None:
             _timers("send_forward").start()
 
+        wait_handles = None
         if not pp_last_stage:
             self._send_meta(output_tensor, skip_check_meta=skip_check_meta)
-            _p2p_helper(
+            _, _, wait_handles = _p2p_helper(
                 tensor_send_next=output_tensor,
                 tensor_send_prev=None,
                 recv_prev=False,
@@ -901,12 +903,16 @@ class P2pHelper:
                 send_recv_meta=self._send_recv_meta,
                 batch_p2p_comm=batch_p2p_comm,
                 dynamic_shape=self._dynamic_shape,
+                wait_on_reqs=(not overlap_p2p_comm),
             )
             if self._dynamic_shape:
                 self._dynamic_cnt += 1
 
         if _timers is not None:
             _timers("send_forward").stop()
+
+        if overlap_p2p_comm:
+            return wait_handles
 
     def send_backward(
         self,
