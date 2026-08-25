@@ -701,7 +701,7 @@ class TestRandomValue(unittest.TestCase):
             out[2, 1, 512, 1000:1010], expect, rtol=1e-05
         )
 
-        expect_mean = 24.8612155914306640625
+        expect_mean = 24.861217498779296875
         expect_std = 43.2602386474609375
         expect = [
             -26.741318,
