@@ -27,18 +27,21 @@ namespace phi {
 template <typename T, typename Context>
 void TruncatedGaussianRandomKernel(const Context& dev_ctx,
                                    const std::vector<int>& shape,
-                                   float mean,
-                                   float std,
+                                   double mean,
+                                   double std,
                                    int seed,
-                                   float a,
-                                   float b,
+                                   double a,
+                                   double b,
                                    DataType dtype,
                                    DenseTensor* out) {
   T* data = dev_ctx.template Alloc<T>(out);
 
   std::uniform_real_distribution<T> dist(std::numeric_limits<float>::min(),
                                          1.0);
-  TruncatedNormal<T> truncated_normal(mean, std, a, b);
+  TruncatedNormal<T> truncated_normal(static_cast<T>(mean),
+                                      static_cast<T>(std),
+                                      static_cast<T>(a),
+                                      static_cast<T>(b));
   int64_t size = out->numel();
   std::unique_ptr<T[]> data_cpu(new T[size]);
 

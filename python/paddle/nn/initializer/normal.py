@@ -17,7 +17,7 @@ from __future__ import annotations
 import paddle
 from paddle import _C_ops, pir
 
-from ...base import core, framework, unique_name
+from ...base import core, framework
 from ...base.data_feeder import check_variable_and_dtype
 from ...base.framework import (
     _current_expected_place,
@@ -257,21 +257,10 @@ class TruncatedNormalInitializer(Initializer):
         if self._seed == 0:
             self._seed = block.program.random_seed
 
-        # to be compatible of fp16 initializers
-        if var.dtype in [core.VarDesc.VarType.FP16, core.VarDesc.VarType.BF16]:
-            out_dtype = core.VarDesc.VarType.FP32
-            out_var = block.create_var(
-                name=unique_name.generate(
-                    ".".join(['truncated_gaussian_random', var.name, 'tmp'])
-                ),
-                shape=var.shape,
-                dtype=out_dtype,
-                type=core.VarDesc.VarType.DENSE_TENSOR,
-                persistable=False,
-            )
-        else:
-            out_dtype = var.dtype
-            out_var = var
+        # Sampling happens in `var.dtype` directly: torch draws and applies the
+        # truncation test in the target dtype, so an fp32 detour would round at
+        # a different point and change which samples get rejected.
+        out_dtype = var.dtype
 
         if in_dygraph_mode():
             out_var = _C_ops.truncated_gaussian_random(
@@ -284,18 +273,11 @@ class TruncatedNormalInitializer(Initializer):
                 out_dtype,
                 _current_expected_place(),
             )
-            if var.dtype in [
-                core.VarDesc.VarType.FP16,
-                core.VarDesc.VarType.BF16,
-            ]:
-                var_tmp = _C_ops.cast(out_var, var.dtype)
-                var_tmp._share_underline_tensor_to(var)
-            else:
-                out_var._share_underline_tensor_to(var)
+            out_var._share_underline_tensor_to(var)
             return None
 
         elif in_pir_mode():
-            out_var = _C_ops.truncated_gaussian_random(
+            return _C_ops.truncated_gaussian_random(
                 var.shape,
                 self._mean,
                 self._std_dev,
@@ -305,18 +287,11 @@ class TruncatedNormalInitializer(Initializer):
                 out_dtype,
                 _current_expected_place(),
             )
-            if var.dtype in [
-                core.VarDesc.VarType.FP16,
-                core.VarDesc.VarType.BF16,
-            ]:
-                var_tmp = _C_ops.cast(out_var, var.dtype)
-                var_tmp._share_underline_tensor_to(var)
-            return out_var
 
         else:
             op = block.append_op(
                 type="truncated_gaussian_random",
-                outputs={"Out": out_var},
+                outputs={"Out": var},
                 attrs={
                     "shape": var.shape,
                     "dtype": out_dtype,
@@ -328,17 +303,6 @@ class TruncatedNormalInitializer(Initializer):
                 },
                 stop_gradient=True,
             )
-
-            if var.dtype in [
-                core.VarDesc.VarType.FP16,
-                core.VarDesc.VarType.BF16,
-            ]:
-                block.append_op(
-                    type="cast",
-                    inputs={"X": out_var},
-                    outputs={"Out": var},
-                    attrs={"in_dtype": out_var.dtype, "out_dtype": var.dtype},
-                )
             var.op = op
             return op
 

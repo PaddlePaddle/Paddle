@@ -22,11 +22,11 @@ namespace phi {
 template <typename T, typename Context>
 void TruncatedGaussianRandomKernel(const Context& dev_ctx,
                                    const std::vector<int>& shape,
-                                   float mean,
-                                   float std,
+                                   double mean,
+                                   double std,
                                    int seed,
-                                   float a,
-                                   float b,
+                                   double a,
+                                   double b,
                                    DataType dtype,
                                    DenseTensor* out);
 

@@ -123,11 +123,11 @@ PADDLE_API void RecvV2InferMeta(const int ring_id,
 PADDLE_API void SeedInferMeta(int seed, MetaTensor* out);
 
 PADDLE_API void TruncatedGaussianRandomInferMeta(const std::vector<int>& shape,
-                                                 float mean,
-                                                 float std,
+                                                 double mean,
+                                                 double std,
                                                  int seed,
-                                                 float a,
-                                                 float b,
+                                                 double a,
+                                                 double b,
                                                  DataType dtype,
                                                  MetaTensor* out);
 
