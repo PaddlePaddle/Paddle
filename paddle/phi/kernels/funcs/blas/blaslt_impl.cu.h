@@ -566,8 +566,8 @@ struct CublasLtBase {
 
     int returned_results = 0;
     constexpr int requested_algo_count = 10;
-    std::vector<cublasLtMatmulHeuristicResult_t> heuristic_results(
-        requested_algo_count);
+    // NVCC 12.x ICEs on destroy_at<cublasLtMatmulHeuristicResult_t> in C++20.
+    cublasLtMatmulHeuristicResult_t heuristic_results[requested_algo_count]{};
     PADDLE_ENFORCE_GPU_SUCCESS(
         dynload::cublasLtMatmulAlgoGetHeuristic(lt_handle,
                                                 desc->op_desc,
@@ -577,7 +577,7 @@ struct CublasLtBase {
                                                 desc->out_desc,
                                                 preference,
                                                 requested_algo_count,
-                                                heuristic_results.data(),
+                                                heuristic_results,
                                                 &returned_results));
     PADDLE_ENFORCE_GT(
         returned_results,
@@ -852,8 +852,8 @@ struct CublasLtBase<int8_t, int32_t, MatmulDescriptor> {
 
     int returned_results = 0;
     constexpr int requested_algo_count = 10;
-    std::vector<cublasLtMatmulHeuristicResult_t> heuristic_results(
-        requested_algo_count);
+    // NVCC 12.x ICEs on destroy_at<cublasLtMatmulHeuristicResult_t> in C++20.
+    cublasLtMatmulHeuristicResult_t heuristic_results[requested_algo_count]{};
     PADDLE_ENFORCE_GPU_SUCCESS(
         dynload::cublasLtMatmulAlgoGetHeuristic(lt_handle,
                                                 desc->op_desc,
@@ -863,7 +863,7 @@ struct CublasLtBase<int8_t, int32_t, MatmulDescriptor> {
                                                 desc->out_desc,
                                                 preference,
                                                 requested_algo_count,
-                                                heuristic_results.data(),
+                                                heuristic_results,
                                                 &returned_results));
     PADDLE_ENFORCE_GT(
         returned_results,

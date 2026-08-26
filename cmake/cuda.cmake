@@ -323,7 +323,15 @@ message(STATUS "NVCC_FLAGS_EXTRA: ${NVCC_FLAGS_EXTRA}")
 set(CUDA_PROPAGATE_HOST_FLAGS OFF)
 # Release/Debug flags set by cmake. Such as -O3 -g -DNDEBUG etc.
 # So, don't set these flags here.
-set(CMAKE_CUDA_STANDARD 17)
+
+# Keep Windows CUDA builds on C++17 until its CI toolchain supports C++20.
+if(WIN32)
+  set(CMAKE_CUDA_STANDARD 17)
+  # CMake 3.18 does not add -std=c++17 for NVCC with an MSVC host compiler.
+  set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -std=c++17")
+else()
+  set(CMAKE_CUDA_STANDARD 20)
+endif()
 
 # (Note) For windows, if delete /W[1-4], /W1 will be added defaultly and conflict with -w
 # So replace /W[1-4] with /W0

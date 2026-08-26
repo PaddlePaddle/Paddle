@@ -351,6 +351,10 @@ set(cc_search_pattern
     "stride/*.cc"
     "fusion/cpu/*.cc")
 
+if(WITH_GPU OR WITH_ROCM)
+  list(APPEND cc_search_pattern "fusion/gpu/*.cc")
+endif()
+
 if(WITH_ONEDNN)
   set(cc_search_pattern ${cc_search_pattern} "legacy/onednn/*.cc" "onednn/*.cc"
                         "fusion/onednn/*.cc")
@@ -364,6 +368,16 @@ file(
   GLOB kernel_cc
   RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
   ${cc_search_pattern})
+
+if(WITH_ROCM)
+  list(
+    REMOVE_ITEM
+    kernel_cc
+    "fusion/gpu/fused_attention_kernel.cc"
+    "fusion/gpu/fused_attention_grad_kernel.cc"
+    "fusion/gpu/fused_feedforward_kernel.cc"
+    "fusion/gpu/fused_feedforward_grad_kernel.cc")
+endif()
 
 if(NOT
    (WITH_AVX
