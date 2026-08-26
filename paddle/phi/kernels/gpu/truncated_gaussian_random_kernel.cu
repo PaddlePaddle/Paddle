@@ -89,7 +89,7 @@ void TruncatedGaussianRandomKernel(const Context& dev_ctx,
                                    DenseTensor* out) {
   T* data = dev_ctx.template Alloc<T>(out);
 
-  using MT = typename MPTypeTrait<T>::Type;
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
 
   if (seed == 0) {
     funcs::uniform_distribution<MT> dist;
