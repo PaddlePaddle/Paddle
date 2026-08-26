@@ -1162,6 +1162,9 @@ void ReduceKernel(const KPDevice& dev_ctx,
     auto grid_num = config.grid;
     auto block_num = config.block;
 #endif
+    // Every index inside ReduceHigherDimKernel is bounded by numel
+    // and all the loop bounds are <= numel,
+    //  so `numel <= INT32_MAX` is sufficient.
     if (numel > std::numeric_limits<int32_t>::max()) {
       ReduceHigherDimKernel<Tx, Ty, MT, ReduceOp<MT>, TransformOp, int64_t>
           <<<grid_num, block_num, 0, stream>>>(
@@ -1210,6 +1213,7 @@ void ReduceKernel(const KPDevice& dev_ctx,
       auto grid_size = grid;
       auto block_size = block;
 #endif
+      // numel still bounds all the indices when reducing tmp_data.
       if (numel > std::numeric_limits<int32_t>::max()) {
         ReduceHigherDimKernel<MT,
                               Ty,
@@ -1258,6 +1262,8 @@ void ReduceKernel(const KPDevice& dev_ctx,
   // when reduce_dim.size() == 1 and reduce_dim[0] == x_dim.size() - 1, or
   // when reduce_dim.size() != 1 and reduce_dim.size() != x_dim.size(), this
   // function will be used
+  // All the indices in ReduceAnyKernel are bounded by numel,
+  // so `numel <= INT32_MAX` is safe for int32 indices.
   if (numel > std::numeric_limits<int32_t>::max()) {
     LaunchReduceKernel<Tx, Ty, MT, ReduceOp<MT>, TransformOp, int64_t>(
         x_data,

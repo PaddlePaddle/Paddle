@@ -1446,6 +1446,8 @@ inline void PermuteAndTranspose(
                                        phi::gpuMemcpyDeviceToDevice,
                                        dev_ctx.stream());
   } else {
+    // The guard is sufficient. The upper bound of index in grid-stride loop
+    // is `count - 1 + stride` and `stride = ceil(count / threads) * threads`
     if (count < std::numeric_limits<uint32_t>::max() / 2) {
       PermuteDispatch<T, uint32_t>(dev_ctx,
                                    static_cast<uint32_t>(count),
