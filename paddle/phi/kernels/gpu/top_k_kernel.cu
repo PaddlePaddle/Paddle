@@ -403,6 +403,7 @@ void TopkKernelCuda(const Context& dev_ctx,
   if (k == 1) {
     TopkKernel<T, Context>(
         dev_ctx, x, k_scalar, axis, largest, sorted, out, indices);
+    return;
   }
 
   // Handle k from tensor: output dims may contain -1, resize before Alloc
