@@ -654,6 +654,20 @@
         - add_attr : b
           comment : The maximum cutoff value.
           default: 2.0
+    - checkpoint : Upgrade truncated_gaussian_random, change the type of attributes [mean], [std], [a] and [b] from float to double to avoid float32 truncation that breaks float64 output precision.
+      action :
+        - modify_attr : mean
+          comment : "The type of attr 'mean' is changed from float to double, so that the caller's double-precision value is no longer truncated to float32 before being used by the kernel. The numeric default value is unchanged (0.0)."
+          default : 0.0
+        - modify_attr : std
+          comment : "The type of attr 'std' is changed from float to double, so that the caller's double-precision value is no longer truncated to float32 before being used by the kernel. The numeric default value is unchanged (1.0)."
+          default : 1.0
+        - modify_attr : a
+          comment : "The type of attr 'a' is changed from float to double, so that the caller's double-precision value is no longer truncated to float32 before being used by the kernel. The numeric default value is unchanged (-2.0)."
+          default : -2.0
+        - modify_attr : b
+          comment : "The type of attr 'b' is changed from float to double, so that the caller's double-precision value is no longer truncated to float32 before being used by the kernel. The numeric default value is unchanged (2.0)."
+          default : 2.0
 
 - op : unique_consecutive
   version :
