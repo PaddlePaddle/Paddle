@@ -327,6 +327,8 @@ set(CUDA_PROPAGATE_HOST_FLAGS OFF)
 # Keep Windows CUDA builds on C++17 until its CI toolchain supports C++20.
 if(WIN32)
   set(CMAKE_CUDA_STANDARD 17)
+  # CMake 3.18 does not add -std=c++17 for NVCC with an MSVC host compiler.
+  set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -std=c++17")
 else()
   set(CMAKE_CUDA_STANDARD 20)
 endif()
