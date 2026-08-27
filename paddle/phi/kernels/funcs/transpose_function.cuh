@@ -1446,8 +1446,16 @@ inline void PermuteAndTranspose(
                                        phi::gpuMemcpyDeviceToDevice,
                                        dev_ctx.stream());
   } else {
-    // The guard is sufficient. The upper bound of index in grid-stride loop
-    // is `count - 1 + stride` and `stride = ceil(count / threads) * threads`
+    // The guard is sufficient. Both kernels only dereference indices < count:
+    // the vectorized loop iterates `idx` over `[0, main_cnt_)` with
+    // `main_cnt_ = count / VecSize` (raw element bound is
+    // `idx * VecSize + VecSize - 1 <= count - 1`), and the tail is covered
+    // by `idx = tid + offset` for `tid < tail_cnt`,
+    // `offset = count - tail_cnt` (bound is `tail_cnt - 1 + offset =
+    // count - 1`). The grid is derived from `main_cnt_` by
+    // GetGpuLaunchConfig1D and capped at the device grid limit, so the
+    // grid-stride step `blockDim.x * gridDim.x` only controls loop
+    // progress and never extends the written index beyond `count - 1`.
     if (count < std::numeric_limits<uint32_t>::max() / 2) {
       PermuteDispatch<T, uint32_t>(dev_ctx,
                                    static_cast<uint32_t>(count),
