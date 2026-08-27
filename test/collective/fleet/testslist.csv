@@ -75,6 +75,7 @@ test_shutdown_process_group,,GPU,,DIST,../../legacy_test/dist_test.sh,2,,http_pr
 test_pp_send_recv_dict.py,,GPU,500,DIST,../../legacy_test/dist_test.sh,2,,http_proxy=;https_proxy=;PYTHONPATH=../..,
 test_pp_layers,,GPU,500,DIST,../../legacy_test/dist_test.sh,2,,http_proxy=;https_proxy=;PYTHONPATH=../..,
 test_pp_with_shared_weight,,GPU,500,DIST,../../legacy_test/dist_test.sh,2,,http_proxy=;https_proxy=;PYTHONPATH=../..,
+test_pp_dw_recompute_overlap,,GPU,800,DIST,../../legacy_test/dist_test.sh,4,,http_proxy=;https_proxy=;PYTHONPATH=../..,
 test_layer_spec,,,,,test_runner.py,2,,http_proxy=;https_proxy=;PYTHONPATH=../..,
 test_schedule_node,,,,,test_runner.py,2,,http_proxy=;https_proxy=;PYTHONPATH=../..,
 test_muon_sharding_no_hook_overlap,,GPU,400,DIST,../../legacy_test/dist_test.sh,2,,http_proxy=;https_proxy=;PYTHONPATH=../..,WITH_NCCL
