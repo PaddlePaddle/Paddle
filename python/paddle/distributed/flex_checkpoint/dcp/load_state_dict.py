@@ -65,6 +65,8 @@ if TYPE_CHECKING:
     from paddle import Tensor
     from paddle.distributed.collective import Group
 
+    from .load_transform import LoadTransform
+
 PATH_TO_CHECKPOINT_FILES: dict[str, tuple[list, list]] = {}
 
 # When using the communication mode described below, newly created tensors will not be allocated GPU memory.
@@ -72,6 +74,244 @@ PATH_TO_CHECKPOINT_FILES: dict[str, tuple[list, list]] = {}
 _UNINIT_TENSOR_MODES = ["send_recv", "grouped_send_recv"]
 
 _metadata_manager = MetadataManager()
+
+
+def _state_key_name(
+    state_key: str | tuple[str, tuple[int, ...]],
+) -> str:
+    return state_key[0] if isinstance(state_key, tuple) else state_key
+
+
+def _paddle_dtype(dtype_name: str) -> paddle.dtype:
+    normalized = dtype_name.removeprefix('paddle.')
+    dtype = getattr(paddle, normalized, None)
+    if dtype is None:
+        raise ValueError(
+            f"Unsupported transformed output dtype {dtype_name!r}."
+        )
+    return dtype
+
+
+def _target_shard_metadata(
+    target: Tensor | ShardedWeight,
+) -> LocalTensorMetadata:
+    if isinstance(target, ShardedWeight):
+        return LocalTensorMetadata(
+            global_shape=tuple(target.global_shape),
+            local_shape=tuple(target.local_shape),
+            global_offset=tuple(target.global_offset),
+            dtype=str(target.local_tensor.dtype).removeprefix('paddle.'),
+        )
+    shape = tuple(target.shape)
+    return LocalTensorMetadata(
+        global_shape=shape,
+        local_shape=shape,
+        global_offset=(0,) * len(shape),
+        dtype=str(target.dtype).removeprefix('paddle.'),
+    )
+
+
+def _get_transform_read_plan(
+    load_transform: LoadTransform,
+    logical_key: str,
+    target: Tensor | ShardedWeight,
+    force_global: bool = False,
+):
+    read_plan = getattr(load_transform, "read_plan", None)
+    if not callable(read_plan):
+        return None
+    return read_plan(
+        logical_key,
+        _target_shard_metadata(target),
+        force_global=force_global,
+    )
+
+
+def _build_transform_component_load_dict(
+    logical_load_dict: dict[
+        str | tuple[str, tuple[int, ...]], Tensor | ShardedWeight
+    ],
+    physical_metadata: Metadata,
+    load_transform: LoadTransform,
+    offload: bool,
+) -> dict[str | tuple[str, tuple[int, ...]], ShardedWeight]:
+    if load_transform is None:
+        return {}
+    use_tuple_keys = any(isinstance(key, tuple) for key in logical_load_dict)
+    targets_by_logical_key = defaultdict(list)
+    for state_key, target in logical_load_dict.items():
+        targets_by_logical_key[_state_key_name(state_key)].append(target)
+    logical_keys = set(targets_by_logical_key)
+    source_keys_by_logical_key = {
+        logical_key: tuple(load_transform.source_keys(logical_key))
+        for logical_key in logical_keys
+    }
+    required_source_keys = {
+        source_key
+        for logical_key in logical_keys
+        for source_key in source_keys_by_logical_key[logical_key]
+    }
+    source_metadata = physical_metadata.state_dict_metadata
+    plans = {}
+    for logical_key, targets in targets_by_logical_key.items():
+        target_metadata = [_target_shard_metadata(target) for target in targets]
+        force_global = any(
+            metadata != target_metadata[0] for metadata in target_metadata[1:]
+        )
+        plans[logical_key] = _get_transform_read_plan(
+            load_transform,
+            logical_key,
+            targets[0],
+            force_global=force_global,
+        )
+    local_source_slices = {
+        source_key: plan.source_slices[source_key]
+        for logical_key, plan in plans.items()
+        if getattr(plan, "mode", "global") == "local"
+        for source_key in source_keys_by_logical_key[logical_key]
+    }
+
+    component_load_dict = {}
+    for source_key in sorted(required_source_keys):
+        physical_tensor_metadata = source_metadata[source_key][0]
+        global_shape = tuple(physical_tensor_metadata.global_shape)
+        dtype = physical_tensor_metadata.dtype
+        local_shape = global_shape
+        global_offset = (0,) * len(global_shape)
+        candidate = local_source_slices.get(source_key)
+        if candidate is not None:
+            local_shape = tuple(candidate.local_shape)
+            global_offset = tuple(candidate.global_offset)
+        tensor = paddle.empty(local_shape, dtype=dtype)
+        if offload:
+            tensor = tensor.cpu()
+        state_key = (
+            (source_key, global_offset) if use_tuple_keys else source_key
+        )
+        if candidate is None:
+            component_load_dict[state_key] = make_replicated_sharded_weight(
+                source_key, tensor
+            )
+        else:
+            component_load_dict[state_key] = ShardedWeight(
+                key=source_key,
+                local_tensor=tensor,
+                local_shape=local_shape,
+                global_shape=global_shape,
+                global_offset=global_offset,
+            )
+    return component_load_dict
+
+
+def _apply_load_transform(
+    logical_load_dict: dict[
+        str | tuple[str, tuple[int, ...]], Tensor | ShardedWeight
+    ],
+    component_load_dict: dict[str | tuple[str, tuple[int, ...]], ShardedWeight],
+    load_transform: LoadTransform,
+) -> None:
+    if load_transform is None:
+        return
+    transform_metadata = load_transform.logical_metadata()
+    source_keys_by_logical_key = {
+        logical_key: tuple(load_transform.source_keys(logical_key))
+        for logical_key in transform_metadata
+    }
+    targets_by_logical_key = defaultdict(list)
+    for state_key, target in logical_load_dict.items():
+        logical_key = _state_key_name(state_key)
+        if logical_key in transform_metadata:
+            targets_by_logical_key[logical_key].append((state_key, target))
+
+    components_by_key = {
+        _state_key_name(state_key): value
+        for state_key, value in component_load_dict.items()
+    }
+    for logical_key in sorted(targets_by_logical_key):
+        logical_metadata = transform_metadata[logical_key]
+        read_plan = getattr(load_transform, "read_plan_for", lambda _key: None)(
+            logical_key
+        )
+        is_local = getattr(read_plan, "mode", "global") == "local"
+        source_keys = source_keys_by_logical_key[logical_key]
+        source_tensors = {
+            source_key: components_by_key[source_key].local_tensor
+            for source_key in source_keys
+        }
+        output_dtype = _paddle_dtype(logical_metadata.dtype)
+        output = load_transform.apply(logical_key, source_tensors, output_dtype)
+
+        for _state_key, target in targets_by_logical_key[logical_key]:
+            if isinstance(target, ShardedWeight):
+                target_tensor = target.local_tensor
+                local_shape = tuple(target.local_shape)
+                global_offset = tuple(target.global_offset)
+            else:
+                target_tensor = target
+                local_shape = tuple(target.shape)
+                global_offset = (0,) * len(local_shape)
+            if is_local:
+                piece = output
+            else:
+                ends = tuple(
+                    offset + size
+                    for offset, size in zip(global_offset, local_shape)
+                )
+                piece = paddle.slice(
+                    output,
+                    axes=list(range(len(logical_metadata.global_shape))),
+                    starts=list(global_offset),
+                    ends=list(ends),
+                )
+            if piece.place != target_tensor.place:
+                piece = piece.to(target_tensor.place)
+            paddle.assign(piece, target_tensor)
+
+
+def _load_checkpoint_data_file(
+    path: str,
+    safetensors: bool,
+    offload: bool,
+) -> dict[str, Tensor]:
+    if safetensors:
+        # Keep quantized one-byte payloads lossless. Paddle's native FP8
+        # tensor conversion would reinterpret the bytes before dequantization.
+        dtype_aliases = (
+            (paddle, 'float8_e4m3fn', paddle.uint8),
+            (paddle, 'float8_e8m0fnu', paddle.uint8),
+            (np, 'float8_e4m3fn', np.uint8),
+            (np, 'float8_e8m0fnu', np.uint8),
+        )
+        previous_dtypes = {
+            (module, name): getattr(module, name, None)
+            for module, name, _ in dtype_aliases
+        }
+        try:
+            for module, name, dtype in dtype_aliases:
+                setattr(module, name, dtype)
+            if offload:
+                state_dict_numpy = paddle.load(
+                    path, return_numpy=True, safetensors=True
+                )
+                return {
+                    key: paddle.to_tensor(value, place=paddle.CPUPlace())
+                    for key, value in state_dict_numpy.items()
+                }
+            else:
+                return paddle.load(path, safetensors=True)
+        finally:
+            for (module, name), dtype in previous_dtypes.items():
+                if dtype is None:
+                    delattr(module, name)
+                else:
+                    setattr(module, name, dtype)
+    if offload:
+        state_dict_numpy = paddle.load(path, return_numpy=True)
+        return {
+            key: paddle.to_tensor(value, place=paddle.CPUPlace())
+            for key, value in state_dict_numpy.items()
+        }
+    return paddle.load(path)
 
 
 def get_checkpoint_files(
@@ -583,6 +823,7 @@ def _handle_aoa(
     aoa_config,
     safetensors,
     comm_method,
+    load_transform=None,
 ):
     global _metadata_manager
 
@@ -600,6 +841,18 @@ def _handle_aoa(
         _metadata_manager.set_metadata_list([metadata])
     metadata = _metadata_manager.get_metadata_list()[0]
     state_dict_metadata = metadata.state_dict_metadata
+    transform_metadata = (
+        load_transform.logical_metadata() if load_transform is not None else {}
+    )
+    source_keys_by_logical_key = {
+        logical_key: tuple(load_transform.source_keys(logical_key))
+        for logical_key in transform_metadata
+    }
+    transform_component_keys = {
+        source_key
+        for source_keys in source_keys_by_logical_key.values()
+        for source_key in source_keys
+    }
     using_not_init_tensor = (
         True if comm_method in _UNINIT_TENSOR_MODES else False
     )
@@ -616,7 +869,22 @@ def _handle_aoa(
             for meta in local_tensor_metas
         ]
         for param_name, local_tensor_metas in state_dict_metadata.items()
+        if param_name not in transform_component_keys
     }
+    source_state_shard_info.update(
+        {
+            param_name: [
+                ShardedWeightDesc(
+                    key=param_name,
+                    local_shape=tuple(meta.global_shape),
+                    global_shape=tuple(meta.global_shape),
+                    global_offset=(0,) * len(meta.global_shape),
+                    dtype=meta.dtype,
+                )
+            ]
+            for param_name, meta in transform_metadata.items()
+        }
+    )
     aoa_engine = AOAEngine(
         source_state_shard_info=source_state_shard_info,
         destination_state_shard_info=destination_state_shard_info,
@@ -699,6 +967,7 @@ def _handle_aoa(
         worker_groups=worker_groups,
         comm_method=comm_method,
         skip_validation=True,
+        load_transform=load_transform,
     )
 
     for dst_desc, src_desc in dst_to_src_desc_mapping.items():
@@ -776,6 +1045,7 @@ def load_state_dict(
     safetensors: bool = False,
     worker_groups: list[Group] | None = None,
     comm_method: str = "broadcast",
+    load_transform: LoadTransform | None = None,
 ) -> None:
     r"""
     Load the state_dict inplace from a checkpoint path.
@@ -792,6 +1062,7 @@ def load_state_dict(
         safetensors(bool): Whether to use safetensors format. Default is False.
         worker_groups (list[paddle.distributed.collective.Group]): Communication groups used for tensor communications; if multiple are provided, an appropriate group is chosen; if None, the process_group group is used.
         comm_method (str): Communication method for resharding. Choices are "send_recv", "broadcast", "multi_group_broadcast", and "grouped_send_recv". Default is "broadcast".
+        load_transform (LoadTransform, optional): A format-independent callback that assembles one logical tensor from one or more physical checkpoint tensors before AOA postprocessing.
     Example:
         .. code-block:: pycon
 
@@ -838,7 +1109,7 @@ def load_state_dict(
     if use_dist:
         paddle.distributed.barrier(process_group)
 
-    if not safetensors and aoa_config is None:
+    if not safetensors and aoa_config is None and load_transform is None:
         metadata_files, _ = get_checkpoint_files(path, unique_id=unique_id)
         assert len(metadata_files) == 1, "Only support one metadata file now."
         metadata = paddle.load(os.path.join(path, metadata_files[0]))
@@ -873,6 +1144,7 @@ def load_state_dict(
             safetensors=safetensors,
             worker_groups=worker_groups,
             comm_method=comm_method,
+            load_transform=load_transform,
         )
         _metadata_manager.clear()
         gc.collect()
@@ -910,6 +1182,7 @@ def load_state_dict(
             aoa_config,
             safetensors,
             comm_method,
+            load_transform,
         )
     else:
         load_state_dict_impl(
@@ -923,6 +1196,7 @@ def load_state_dict(
             safetensors=safetensors,
             worker_groups=worker_groups,
             comm_method=comm_method,
+            load_transform=load_transform,
         )
     if use_dist:
         _finish_unflatten(flat_shards, padding_info)
@@ -1190,6 +1464,7 @@ def load_state_dict_impl(
     worker_groups: list[Group] | None = None,
     comm_method: str = 'broadcast',
     skip_validation: bool = False,
+    load_transform: LoadTransform | None = None,
 ) -> None:
     with paddle.base.dygraph.guard():
         global _metadata_manager
@@ -1237,10 +1512,50 @@ def load_state_dict_impl(
                 metadata_list.append(paddle.load(os.path.join(path, file)))
             _metadata_manager.set_metadata_list(metadata_list)
 
+        transform_metadata = (
+            load_transform.logical_metadata()
+            if load_transform is not None
+            else {}
+        )
+        if transform_metadata:
+            transformed_load_dict = {
+                key: value
+                for key, value in flat_state_dict.items()
+                if _state_key_name(key) in transform_metadata
+            }
+            passthrough_load_dict = {
+                key: value
+                for key, value in flat_state_dict.items()
+                if _state_key_name(key) not in transform_metadata
+            }
+            component_load_dict = _build_transform_component_load_dict(
+                transformed_load_dict,
+                _metadata_manager.get_metadata_list()[0],
+                load_transform,
+                offload,
+            )
+            collisions = {
+                _state_key_name(key) for key in passthrough_load_dict
+            } & {_state_key_name(key) for key in component_load_dict}
+            if collisions:
+                raise ValueError(
+                    "Physical load transform components conflict with "
+                    "passthrough target tensors: "
+                    f"{sorted(collisions)}."
+                )
+            file_load_dict = {
+                **passthrough_load_dict,
+                **component_load_dict,
+            }
+        else:
+            transformed_load_dict = {}
+            component_load_dict = {}
+            file_load_dict = flat_state_dict
+
         rank_to_files, mw_name_compatibility_mapping = get_rank_to_files(
             _metadata_manager.get_metadata_list(),
             local_data_files,
-            flat_state_dict,
+            file_load_dict,
             process_group,
             use_dist,
             mw_name_compatibility,
@@ -1252,7 +1567,7 @@ def load_state_dict_impl(
 
             state_dict_param_names = {
                 key if isinstance(key, str) else key[0]
-                for key in flat_state_dict.keys()
+                for key in file_load_dict.keys()
             }
             validate_and_report_keys_standard(
                 _metadata_manager.get_metadata_list(),
@@ -1260,7 +1575,7 @@ def load_state_dict_impl(
                 process_group,
                 use_dist,
                 path,
-                state_dict=flat_state_dict,
+                state_dict=file_load_dict,
             )
 
         cur_rank = paddle.distributed.get_rank()
@@ -1286,20 +1601,9 @@ def load_state_dict_impl(
 
         source_state_dict = {}
         for file in local_load_files:
-            if offload:
-                state_dict_numpy = paddle.load(
-                    os.path.join(path, file),
-                    return_numpy=True,
-                    safetensors=safetensors,
-                )
-                source_state_dict[file] = {
-                    key: paddle.to_tensor(value, place=paddle.CPUPlace())
-                    for key, value in state_dict_numpy.items()
-                }
-            else:
-                source_state_dict[file] = paddle.load(
-                    os.path.join(path, file), safetensors=safetensors
-                )
+            source_state_dict[file] = _load_checkpoint_data_file(
+                os.path.join(path, file), safetensors, offload
+            )
 
         metadata = _metadata_manager.get_metadata_list()[0]
         storage_metadata = metadata.storage_metadata
@@ -1353,7 +1657,7 @@ def load_state_dict_impl(
             logger.info("Restored unflattened state dict.")
 
         _load_state_dict(
-            flat_state_dict,
+            file_load_dict,
             source_state_dict,
             _metadata_manager.get_metadata_list(),
             process_group,
@@ -1362,6 +1666,13 @@ def load_state_dict_impl(
             worker_groups,
             comm_method,
         )
+
+        if transformed_load_dict:
+            _apply_load_transform(
+                transformed_load_dict,
+                component_load_dict,
+                load_transform,
+            )
 
         for file_name, file_tensors in source_state_dict.items():
             for key, value in file_tensors.items():
@@ -1379,7 +1690,10 @@ def load_state_dict_impl(
             tmp = state_dict
             for key in keys[:-1]:
                 tmp = tmp[key]
-            tmp[keys[-1]] = flat_state_dict[flat_key]
+            if flat_key in flat_state_dict:
+                tmp[keys[-1]] = flat_state_dict[flat_key]
+            else:
+                tmp[keys[-1]] = file_load_dict[flat_key]
 
 
 def _load_state_dict(

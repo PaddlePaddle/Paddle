@@ -22,12 +22,12 @@ class LocalTensorMetadata:
     The location of a local tensor in the global tensor.
     """
 
-    global_offset: tuple[int]
-    local_shape: tuple[int]
+    global_offset: tuple[int, ...]
+    local_shape: tuple[int, ...]
     dtype: str
-    global_shape: tuple[int] | None = None
+    global_shape: tuple[int, ...] | None = None
     is_flattened: bool = False
-    flattened_range: tuple[int] | None = None
+    flattened_range: tuple[int, int] | None = None
 
 
 @dataclass(frozen=True)
@@ -37,15 +37,15 @@ class LocalTensorIndex:
     """
 
     tensor_key: str
-    global_offset: tuple[int]
+    global_offset: tuple[int, ...]
     is_flattened: bool = False
-    flattened_range: tuple[int] | None = None
+    flattened_range: tuple[int, int] | None = None
     replica_id: int | None = None
-    local_shape: tuple[int] | None = None
+    local_shape: tuple[int, ...] | None = None
 
 
 @dataclass
 class Metadata:
-    state_dict_metadata: dict[str, list[LocalTensorMetadata]] = None
-    storage_metadata: dict[LocalTensorIndex, str] = None
-    flat_mapping: dict[str, tuple[str]] = None
+    state_dict_metadata: dict[str, list[LocalTensorMetadata]] | None = None
+    storage_metadata: dict[LocalTensorIndex, str] | None = None
+    flat_mapping: dict[str, tuple[str, ...]] | None = None

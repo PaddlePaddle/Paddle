@@ -44,6 +44,42 @@ if TYPE_CHECKING:
     from paddle.framework import core
 
 
+_SAFETENSORS_DTYPE_MAPPING = {
+    'U16': 'bfloat16',
+    'U8': 'uint8',
+    'I8': 'int8',
+    'I16': 'int16',
+    'BOOL': 'bool',
+    'F16': 'float16',
+    'F32': 'float32',
+    'F64': 'float64',
+    'BF16': 'bfloat16',
+    'I64': 'int64',
+}
+
+# These formats have one byte per element but do not all have an exact Paddle
+# dtype. FlexCheckpoint transports them losslessly as uint8; a caller-provided
+# LoadTransform owns their numerical interpretation.
+_SAFETENSORS_RAW_8BIT_FORMATS = {
+    'F8_E4M3',
+    'F8_E4M3FN',
+    'F8_E8M0',
+}
+
+
+def _safetensors_storage_dtype(storage_format: str) -> str:
+    """Return the Paddle dtype used to transport a safetensors value."""
+    if storage_format in _SAFETENSORS_DTYPE_MAPPING:
+        return _SAFETENSORS_DTYPE_MAPPING[storage_format]
+    if storage_format in _SAFETENSORS_RAW_8BIT_FORMATS:
+        return 'uint8'
+    raise ValueError(
+        f"Safetensors dtype {storage_format!r} is not supported. "
+        "Unknown formats are never treated as raw bytes unless their element "
+        "width and transport semantics are explicitly registered."
+    )
+
+
 def get_coordinator(mesh: np.array | list[list[int]], rank: int):
     mesh = paddle.to_tensor(mesh)
     rand_coordinator = (mesh == rank).nonzero()
@@ -598,20 +634,10 @@ def create_hf_ckpt_metadata(
     ckpt_path: str,
     process_group=None,
 ):
-    dtype_mapping = {
-        'U16': 'bfloat16',
-        'U8': 'uint8',
-        'I8': 'int8',
-        'I16': 'int16',
-        'BOOL': 'bool',
-        'F16': 'float16',
-        'F32': 'float32',
-        'F64': 'float64',
-        'BF16': 'bfloat16',
-        'I64': 'int64',
-    }
-
-    use_dist = paddle.distributed.get_world_size() > 1
+    use_dist = (
+        paddle.distributed.is_initialized()
+        and paddle.distributed.get_world_size() > 1
+    )
     cur_rank = paddle.distributed.get_rank() if use_dist else 0
 
     accessible_files = os.listdir(ckpt_path)
@@ -668,9 +694,8 @@ def create_hf_ckpt_metadata(
             for key in f.keys():
                 t_s = f.get_slice(key)
                 shape = tuple(t_s.get_shape())
-                dtype = t_s.get_dtype()
-                assert dtype in dtype_mapping, f"{dtype} is not supported yet."
-                dtype = dtype_mapping[dtype]
+                storage_format = t_s.get_dtype()
+                dtype = _safetensors_storage_dtype(storage_format)
                 ltm = LocalTensorMetadata(
                     global_offset=(0,) * len(shape),
                     local_shape=shape,
@@ -724,6 +749,8 @@ def create_hf_ckpt_metadata(
 
     if use_dist:
         paddle.distributed.barrier(process_group)
+
+    return metadata
 
 
 def get_target_tensor(target_state_dict, read_item):
