@@ -1,13 +1,13 @@
 ---
 name: paddle-cross-ecosystem-custom-op
-description: 将原生 PyTorch 自定义算子库、Torch extension、生态库（TorchCodec/FlashInfer/DeepEP 等）以及 Kernel DSL 生态（Triton/TileLang/TVM FFI 等）以最小修改方式接入 PaddlePaddle。遇到以下场景务必使用：迁移外部算子库到 Paddle；分析 PFCCLab fork 与上游的兼容差异；处理 paddle.enable_compat、paddle.utils.cpp_extension、TORCH_LIBRARY、torch.ops、at::Tensor/c10 compat 问题；为 compat gap 设计最小 workaround 并准备 Paddle issue 最小复现。
+description: 将原生 PyTorch 自定义算子库、Torch extension、生态库（TorchCodec/FlashInfer/DeepEP 等）以及 Kernel DSL 生态（Triton/TileLang/TVM FFI 等）以最小修改方式接入 PaddlePaddle。遇到以下场景务必使用：迁移外部算子库到 Paddle；分析 PFCCLab fork 与上游的兼容差异；处理 paddle.enable_compat、paddle.utils.cpp_extension、TORCH_LIBRARY、torch.ops、at::Tensor/c10 compat 问题；为 compat gap 设计最小 workaround 并准备 Paddle issue 最小复现；将已迁移的生态库集成进 PaddleFleet（paddlefleet_ops、eager import 约束）。
 ---
 
 # Paddle 跨生态自定义算子迁移
 
 ## 任务定义
 
-这个 skill 只做一件事：让上游 PyTorch 自定义算子仓库在 Paddle 上按原来的调用路径跑起来，同时保持后续 rebase / sync upstream 的能力。
+这个 skill 的主任务：让上游 PyTorch 自定义算子仓库在 Paddle 上按原来的调用路径跑起来，同时保持后续 rebase / sync upstream 的能力。迁移完成后，如果需要把库集成进 PaddleFleet，走 [PaddleFleet 集成](references/paddlefleet-integration.md)。
 
 一次完整的输出应该覆盖四个方面：
 
@@ -57,22 +57,24 @@ description: 将原生 PyTorch 自定义算子库、Torch extension、生态库�
 - `setup.py` / `pyproject.toml`：优先加 `paddle.enable_compat()`，保留原有 `from torch.utils import cpp_extension` 的写法；只有代理路径覆盖不到时，才最小化地切到 `paddle.utils.cpp_extension` 或局部调整 include / lib / flags。
 - `TORCH_LIBRARY` / `TORCH_LIBRARY_IMPL` / pybind11：默认先保持原样，等编译或运行时真正失败了再定位具体缺口。
 - `at::Tensor` / `c10::TensorOptions` / `torch::empty` 等 C++ API：优先依赖 compat headers；遇到缺口时只桥接单个 API 点。
-- Python 入口与测试：运行时优先使用 `paddle.enable_compat(scope={...})`；短生命周期的 build script 可以用全局 `paddle.enable_compat()`。
+- Python 入口与测试：优先用 `paddle.enable_compat(scope={...})` 限定代理范围；短生命周期的 build script 可以用全局 `paddle.enable_compat()`。PaddleFleet 集成场景按 [PaddleFleet 集成](references/paddlefleet-integration.md) 的既有模板写。
 - 分布式 / stream / device：先把运行时上下文边界接上，再看是否需要深入 `phi::GPUContext`、`ProcessGroup`、DLPack 或 stream wrapper。
 - 分析 PFCCLab fork：输出要提炼成可复用的模式，覆盖 build / C++ / Python / tests 四层。
 
 ## 按需读取参考材料
 
-不要一次性读取全部 reference。按当前任务只打开需要的文件：
+按当前任务选择参考材料：
 
 | 当前任务 | 读取文件 |
 |---|---|
 | 先理解跨生态机制和分层口径 | [机制总览](references/mechanism-overview.md) |
 | 实际迁移一个新仓库 | [迁移手册](references/migration-playbook.md) |
 | 把错误定位到 Paddle 仓库内部 | [Paddle 内部锚点](references/paddle-internals.md) |
-| 分析 PFCCLab fork 或复用既有迁移经验 | [生态库差异模式](references/ecosystem-diff-patterns.md) |
+| 分析清单内的 PFCCLab fork | 先读 [生态库案例索引](references/ecosystem-diff-patterns.md)，再只读索引指向的对应 case |
+| 为新仓库复用既有迁移经验 | 先读 [生态库案例索引](references/ecosystem-diff-patterns.md)，再按控制面最多选择一到两个相近 case |
 | 判断 compat gap、workaround、issue MRE | [compat 缺口处理](references/compat-gap-policy.md) |
 | build/import 已通但运行时行为不一致 | [运行时调试](references/runtime-debugging.md) |
+| 把已迁移的生态库集成进 PaddleFleet | [PaddleFleet 集成](references/paddlefleet-integration.md) |
 
 ## 输出要求
 

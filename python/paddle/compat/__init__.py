@@ -40,6 +40,7 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
 
     from paddle import Tensor
+    from paddle._typing import DTypeLike
 
 __all__ = [
     'allclose',
@@ -56,6 +57,26 @@ __all__ = [
 ]
 
 
+_TENSOR_TYPE_DTYPES = {
+    'HalfTensor': 'float16',
+    'FloatTensor': 'float32',
+    'DoubleTensor': 'float64',
+    'Float8_e4m3fnTensor': 'float8_e4m3fn',
+    'Float8_e5m2Tensor': 'float8_e5m2',
+    'BFloat16Tensor': 'bfloat16',
+    'ByteTensor': 'uint8',
+    'CharTensor': 'int8',
+    'ShortTensor': 'int16',
+    'IntTensor': 'int32',
+    'LongTensor': 'int64',
+    'BoolTensor': 'bool',
+    'ComplexFloatTensor': 'complex64',
+    'ComplexDoubleTensor': 'complex128',
+}
+
+_DTYPE_TENSOR_TYPES = {v: k for k, v in _TENSOR_TYPE_DTYPES.items()}
+
+
 def __getattr__(name):
     if name == "paddle_triton":
         return paddle_triton_fun()
@@ -64,6 +85,141 @@ def __getattr__(name):
         globals()[name] = module
         return module
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+
+def _tensor_numel(input: Tensor) -> int:
+    """
+    Returns the total number of elements in the tensor.
+
+    Args:
+        input (Tensor): The input tensor.
+
+    Returns:
+        int: The number of elements in ``input``.
+    """
+    return int(input.size)
+
+
+def _place_device(place) -> str:
+    """The paddle device name of ``place``"""
+    if place.is_gpu_place():
+        return "gpu"
+    if place.is_xpu_place():
+        return "xpu"
+    if place.is_custom_place():
+        return place.custom_device_type().lower()
+    return "cpu"
+
+
+def _tensor_type_devices() -> set[str]:
+    """Paddle device names that may appear in a tensor type string."""
+    customs = paddle.device.get_all_custom_device_type() or []
+    return {"cpu", "gpu", "xpu", *(custom.lower() for custom in customs)}
+
+
+def _tensor_type_name(input: Tensor) -> str:
+    """``torch.Tensor.type``-style name with a paddle prefix, e.g.
+    ``'paddle.cuda.sparse.FloatTensor'``. Dtypes without a tensor type name
+    fall back to the dtype string."""
+    dtype_name = str(input.dtype).removeprefix("paddle.")
+    tensor_type = _DTYPE_TENSOR_TYPES.get(dtype_name)
+    if tensor_type is None:
+        return str(input.dtype)
+    segments = ["paddle"]
+    device = _place_device(input.place)
+    if device != "cpu":
+        segments.append("cuda" if device == "gpu" else device)
+    if input.is_sparse_coo():
+        segments.append("sparse")
+    segments.append(tensor_type)
+    return ".".join(segments)
+
+
+def _tensor_type(
+    input: Tensor,
+    dtype: DTypeLike | str | type | None = None,
+    non_blocking: bool = False,
+    **kwargs: Any,
+) -> str | Tensor:
+    """
+    Returns the tensor type when ``dtype`` is not specified, otherwise casts
+    the tensor to the requested type.
+
+    Args:
+        input (Tensor): The input tensor.
+        dtype (DTypeLike|str|type|None, optional): The target tensor type or
+            data type. Qualified ``torch.*`` and ``paddle.*`` dtype or tensor
+            type strings are supported. When it is ``None``, returns the tensor
+            type name. Default: ``None``.
+        non_blocking (bool, optional): Whether the conversion may occur
+            asynchronously. Default: ``False``.
+
+    Returns:
+        str|Tensor: The tensor type name when ``dtype`` is ``None``, e.g.
+            ``'paddle.FloatTensor'``, ``'paddle.cuda.FloatTensor'`` or
+            ``'paddle.cuda.sparse.FloatTensor'``, encoding the dtype, the place
+            and the sparse COO layout as ``torch.Tensor.type`` does; otherwise,
+            a tensor with the requested type.
+    """
+    if "async" in kwargs:
+        non_blocking = kwargs.pop("async")
+    if kwargs:
+        key = next(iter(kwargs))
+        raise TypeError(f"type() got an unexpected keyword argument {key!r}")
+
+    if dtype is None:
+        return _tensor_type_name(input)
+
+    device = None
+    if getattr(dtype, "__name__", None) in _TENSOR_TYPE_DTYPES:
+        # tensor factory classes, e.g. paddle.DoubleTensor
+        dtype = _TENSOR_TYPE_DTYPES[dtype.__name__]
+        device = "cpu"
+    elif isinstance(dtype, str):
+        dtype_string = dtype
+        tensor_type = dtype_string.rsplit(".", 1)[-1]
+        if not dtype_string.startswith(("torch.", "paddle.")):
+            raise ValueError(f"invalid type: {dtype_string!r}")
+        if tensor_type in _TENSOR_TYPE_DTYPES:
+            dtype = _TENSOR_TYPE_DTYPES[tensor_type]
+            # the segments between the prefix and the tensor type name are the
+            # device, optionally followed by 'sparse'; no segment means cpu
+            middle = [s for s in dtype_string.split(".")[1:-1] if s != "sparse"]
+            device = middle[0] if middle else "cpu"
+            if device == "cuda":
+                device = "gpu"
+            if len(middle) > 1 or device not in _tensor_type_devices():
+                raise ValueError(f"invalid type: {dtype_string!r}")
+        elif tensor_type in _TENSOR_TYPE_DTYPES.values():
+            dtype = tensor_type
+        else:
+            raise ValueError(f"invalid type: {dtype_string!r}")
+
+    dtype_name = str(input.dtype).removeprefix("paddle.")
+    target_dtype_name = str(dtype).removeprefix("paddle.")
+    same_device = device is None or device == _place_device(input.place)
+    if dtype_name == target_dtype_name and same_device:
+        return input
+
+    return input.to(
+        device=device,
+        dtype=dtype,
+        blocking=not non_blocking,
+    )
+
+
+@property
+def _tensor_is_sparse(input: Tensor) -> bool:
+    """
+    Whether the tensor uses the sparse COO layout.
+
+    Args:
+        input (Tensor): The input tensor.
+
+    Returns:
+        bool: ``True`` for a sparse COO tensor, otherwise ``False``.
+    """
+    return input.is_sparse_coo()
 
 
 def allclose(
@@ -1132,3 +1288,21 @@ def split(
                     split_size_or_sections
                 )
             return tuple(_C_ops.split(tensor, split_size_or_sections, dim))
+
+
+# ``paddle.Tensor`` APIs routed to their ``paddle.compat`` implementations
+_TENSOR_API_OVERRIDES = {
+    'allclose': allclose,
+    'equal': equal,
+    'slogdet': slogdet,
+    'sort': sort,
+    'split': split,
+    'min': min,
+    'max': max,
+    'unique': unique,
+    'median': median,
+    'nanmedian': nanmedian,
+    'numel': _tensor_numel,
+    'type': _tensor_type,
+    'is_sparse': _tensor_is_sparse,
+}

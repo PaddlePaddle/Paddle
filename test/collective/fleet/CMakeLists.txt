@@ -196,6 +196,12 @@ if((WITH_GPU) AND LOCAL_ALL_PLAT)
     test_parallel_dygraph_pipeline_parallel_with_virtual_stage
     PROPERTIES TIMEOUT "500")
 endif()
+if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
+  py_test_modules(
+    test_pp_block_attn_res_cache MODULES test_pp_block_attn_res_cache ENVS
+    "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
+  set_tests_properties(test_pp_block_attn_res_cache PROPERTIES TIMEOUT "120")
+endif()
 if((WITH_GPU) AND LOCAL_ALL_PLAT)
   bash_test_modules(
     test_parallel_dygraph_pp_adaptor
@@ -978,4 +984,18 @@ if(WITH_NCCL)
     )
     set_tests_properties(test_parallel_dygraph_muon PROPERTIES TIMEOUT "400")
   endif()
+endif()
+if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
+  py_test_modules(
+    test_pipeline_parallel_micro_step_hooks MODULES
+    test_pipeline_parallel_micro_step_hooks ENVS
+    "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
+endif()
+if((WITH_GPU) AND (LINUX))
+  py_test_modules(
+    test_pipeline_parallel_p2p_issued_hook MODULES
+    test_pipeline_parallel_p2p_issued_hook ENVS
+    "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
+  set_tests_properties(test_pipeline_parallel_p2p_issued_hook
+                       PROPERTIES TIMEOUT "500" LABELS "RUN_TYPE=HYBRID")
 endif()

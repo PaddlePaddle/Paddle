@@ -27,9 +27,14 @@ limitations under the License. */
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #endif
-#include "paddle/phi/backends/onednn/onednn_context.h"
 #ifdef PADDLE_WITH_XPU
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #endif
 
-namespace phi {}  // namespace phi
+namespace phi {
+
+#ifdef PADDLE_WITH_DNNL
+class OneDNNContext;
+#endif
+
+}  // namespace phi

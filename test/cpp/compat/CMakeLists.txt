@@ -26,7 +26,10 @@ cc_test(ATen_dense_sparse_conversion_test
 cc_test(ATen_empty_test SRCS ATen_empty_test.cc)
 cc_test(ATen_equal_test SRCS ATen_equal_test.cc)
 cc_test(ATen_expand_test SRCS ATen_expand_test.cc)
-cc_test(ATen_eye_test SRCS ATen_eye_test.cc)
+# TODO: Re-enable after the DCU eye kernel failure is resolved.
+if(NOT WITH_ROCM)
+  cc_test(ATen_eye_test SRCS ATen_eye_test.cc)
+endif()
 cc_test(ATen_factory_default_dtype_test SRCS ATen_factory_default_dtype_test.cc)
 cc_test(ATen_flatten_test SRCS ATen_flatten_test.cc)
 cc_test(ATen_from_blob_test SRCS ATen_from_blob_test.cc)

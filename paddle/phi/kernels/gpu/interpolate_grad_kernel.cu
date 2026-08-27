@@ -1418,10 +1418,17 @@ static void Interpolate2DCUDABwd(
     if (data_layout == DataLayout::NCHW) {
       // get launch 3D config
       int64_t nc = n * c;
-      int64_t total_size = static_cast<int64_t>(n) * c * in_h * in_w;
       backends::gpu::GpuLaunchConfig config_3d =
           backends::gpu::GetGpuLaunchConfig3D(dev_ctx, nc, out_h, out_w);
-      if (static_cast<uint64_t>(total_size) > std::numeric_limits<int>::max()) {
+      int64_t input_size = nc * in_h * in_w;
+      int64_t output_size = nc * out_h * out_w;
+      int64_t nc_stride = static_cast<int64_t>(config_3d.thread_per_block.z) *
+                          config_3d.block_per_grid.z;
+      int64_t nc_peak = nc - 1 + nc_stride;
+
+      if (input_size > std::numeric_limits<int>::max() ||
+          output_size > std::numeric_limits<int>::max() ||
+          nc_peak > std::numeric_limits<int>::max()) {
         KeNearestNeighborInterpNCHWBw<T, MT, int64_t>
             <<<config_3d.block_per_grid,
                config_3d.thread_per_block,

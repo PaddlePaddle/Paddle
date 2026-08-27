@@ -54,7 +54,7 @@ void PReluKernel(const Context& dev_ctx,
                     {DNNL_ARG_DST, *dst_memory_p}});
   astream.wait();
 
-  out->set_mem_desc(dst_memory_p->get_desc());
+  phi::funcs::SetOneDNNMemDesc(out, dst_memory_p->get_desc());
 }
 }  // namespace phi
 

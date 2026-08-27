@@ -58,7 +58,7 @@ PyObject* ToPyObject(const paddle::Tensor& value,
 // Internal use only, switch tensor_operants_mode to phi
 void EnableTensorOperantsToPhiMode();
 
-PyObject* ToPyObject(const phi::DataType& dtype);
+PADDLE_API PyObject* ToPyObject(const phi::DataType& dtype);
 
 }  // namespace pybind
 }  // namespace paddle

@@ -43,6 +43,7 @@ static inline LayerNormGadKernelVariant LayerNormGradKernelDispatch(
 #if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP) && !defined(_WIN32)
   if (FLAGS_use_apex_layer_norm_kernel) {
     if (hidden_size <= std::numeric_limits<uint32_t>::max() &&
+        x_numel <= std::numeric_limits<uint32_t>::max() &&
         funcs::fast_ln_v2::has_fast_ln_v2_bwd_kernel(
             weight_type,
             input_type,

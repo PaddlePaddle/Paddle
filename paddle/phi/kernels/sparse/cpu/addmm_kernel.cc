@@ -24,8 +24,8 @@ void AddmmCooDenseKernel(const Context& dev_ctx UNUSED,
                          const DenseTensor& input UNUSED,
                          const SparseCooTensor& x UNUSED,
                          const DenseTensor& y UNUSED,
-                         float beta UNUSED,
-                         float alpha UNUSED,
+                         double beta UNUSED,
+                         double alpha UNUSED,
                          DenseTensor* out UNUSED) {
   PADDLE_THROW(common::errors::Unimplemented(
       "Not support CPU kernel of 'sparse.addmm' now."));
@@ -37,8 +37,8 @@ void AddmmCsrDenseKernel(const Context& dev_ctx UNUSED,
                          const DenseTensor& input UNUSED,
                          const SparseCsrTensor& x UNUSED,
                          const DenseTensor& y UNUSED,
-                         float beta UNUSED,
-                         float alpha UNUSED,
+                         double beta UNUSED,
+                         double alpha UNUSED,
                          DenseTensor* out UNUSED) {
   PADDLE_THROW(common::errors::Unimplemented(
       "Not support CPU kernel of 'sparse.addmm' now."));

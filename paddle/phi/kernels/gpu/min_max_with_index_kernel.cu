@@ -190,6 +190,11 @@ struct VisitDataCudaMinMaxWithIndexFunctor {
     if (x.numel() == 0) {
       dev_ctx.template Alloc<T>(val_out);
       dev_ctx.template Alloc<IndType>(ind_out);
+      T init = typeid(Reducer) == typeid(cub::ArgMax)
+                   ? std::numeric_limits<T>::lowest()
+                   : std::numeric_limits<T>::max();
+      funcs::set_constant(dev_ctx, val_out, init);
+      funcs::set_constant(dev_ctx, ind_out, static_cast<IndType>(0));
       return;
     }
     // For 0D Tensor
@@ -215,7 +220,20 @@ struct VisitDataCudaMinMaxWithIndexFunctor {
       post *= x_dims[i];
     }
 
-    if (numel > std::numeric_limits<int32_t>::max()) {
+    // height / width / grid_size must stay in sync with ComputeMinMaxWithIndex
+    int64_t max_grid_dimx = dev_ctx.GetCUDAMaxGridDimSize()[0];
+    int64_t height = pre * post;
+    int64_t width = n;
+    int64_t grid_size = height < max_grid_dimx ? height : max_grid_dimx;
+
+    // Largest possible block size `ComputeBlockSize` can return
+    int64_t max_block_size = 1024;
+
+    // outer grid-stride loop: `idx` peaks at `height - 1 + gridDim.x`
+    // inner reduction loop: `k` peaks at `width - 1 + blockDim.x`
+    if (numel > std::numeric_limits<int32_t>::max() ||
+        height - 1 + grid_size > std::numeric_limits<int32_t>::max() ||
+        width - 1 + max_block_size > std::numeric_limits<int32_t>::max()) {
       ComputeMinMaxWithIndex<T, IndType, Reducer, int64_t>(
           dev_ctx, x, val_out, ind_out, pre, post, n);
     } else {

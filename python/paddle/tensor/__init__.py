@@ -67,7 +67,6 @@ from .creation import (  # noqa: F401
 from .einsum import einsum  # noqa: F401
 from .linalg import (  # noqa: F401
     bincount,
-    bmm,
     cdist,
     cholesky,
     cholesky_inverse,
@@ -287,6 +286,7 @@ from .math import (  # noqa: F401
     bitwise_left_shift_,
     bitwise_right_shift,
     bitwise_right_shift_,
+    bmm,
     broadcast_shape,
     broadcast_shapes,
     cartesian_prod,

@@ -46,7 +46,7 @@ void SetInMemDescWithSqueeze2FuseSupport(
     squeezed_op_tz[j++] = x_vec_dims[i];
   }
 
-  in->set_mem_desc(in_md.reshape(squeezed_op_tz));
+  phi::funcs::SetOneDNNMemDesc(in, in_md.reshape(squeezed_op_tz));
   in->Resize(squeezed_op_tz);
 }
 
@@ -94,14 +94,15 @@ void FusedTransposeKernel(const Context& dev_ctx,
       errors::PreconditionNotMet("oneDNN Transpose kernel must use CPUPlace"));
 
   if (!(fused_squeeze2_axes.empty())) {
-    SetInMemDescWithSqueeze2FuseSupport(fused_squeeze2_axes,
-                                        const_cast<DenseTensor*>(&x),
-                                        x.mem_desc());  // NOLINT
+    SetInMemDescWithSqueeze2FuseSupport(
+        fused_squeeze2_axes,
+        const_cast<DenseTensor*>(&x),
+        phi::funcs::GetOneDNNMemDesc(x));  // NOLINT
   }
 
   if (axis.size() == 1) {
     Copy<Context>(dev_ctx, x, x.place(), false, out);
-    out->set_mem_desc(x.mem_desc());
+    phi::funcs::SetOneDNNMemDesc(out, phi::funcs::GetOneDNNMemDesc(x));
     return;
   }
 
@@ -138,7 +139,7 @@ void FusedTransposeKernel(const Context& dev_ctx,
       x_vec_dims, x.dtype(), x_type, out_dtype, out_type, dev_ctx.GetEngine());
 
   auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
-      x.mem_desc(), funcs::to_void_cast(x.data<T>()));
+      phi::funcs::GetOneDNNMemDesc(x), funcs::to_void_cast(x.data<T>()));
 
   auto fake_strides = funcs::FakeTransposeStrides(x_vec_dims, axis);
   auto dst_md = dnnl::memory::desc(x_vec_dims, out_type, fake_strides);
@@ -185,10 +186,10 @@ void FusedTransposeKernel(const Context& dev_ctx,
     funcs::SetOutMemDescWithReshape2FuseSupport(
         fused_reshape2_shape, out, out_md);
   } else if (!fused_squeeze2_axes.empty()) {
-    out->set_mem_desc(out_md);
+    phi::funcs::SetOneDNNMemDesc(out, out_md);
     out->Resize(out_md.get_dims());
   } else {
-    out->set_mem_desc(out_md);
+    phi::funcs::SetOneDNNMemDesc(out, out_md);
   }
 }
 

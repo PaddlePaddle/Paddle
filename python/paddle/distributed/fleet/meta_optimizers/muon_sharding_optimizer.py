@@ -1136,41 +1136,46 @@ class MuonShardingOptimizer:
             if len(params) == 0:
                 continue
 
+            dtype_groups = {}
+            for p in params:
+                dtype_groups.setdefault(p.dtype, []).append(p)
+
             with framework.no_grad():
-                # Calculate total size and build param-to-offset mapping
-                param_sizes = [np.prod(p.shape) for p in params]
-                total_size = sum(param_sizes)
-                dtype = params[0].dtype
+                for dtype, group_params in dtype_groups.items():
+                    # Calculate total size and build param-to-offset mapping
+                    param_sizes = [np.prod(p.shape) for p in group_params]
+                    total_size = sum(param_sizes)
 
-                param_buffer = paddle.empty(shape=[total_size], dtype=dtype)
-                offset = 0
-                for param in params:
-                    param_shape = param.shape
-                    stop_gradient = param.stop_gradient
-                    param.stop_gradient = True
-                    param.flatten_()
+                    param_buffer = paddle.empty(shape=[total_size], dtype=dtype)
+                    offset = 0
 
-                    paddle.assign(
-                        param,
+                    for param in group_params:
+                        param_shape = param.shape
+                        stop_gradient = param.stop_gradient
+                        param.stop_gradient = True
+                        param.flatten_()
+
+                        paddle.assign(
+                            param,
+                            param_buffer._slice(
+                                offset, offset + np.prod(param_shape)
+                            ),
+                        )
+
+                        param.get_tensor()._set_dims(param_shape)
+                        param.stop_gradient = stop_gradient
                         param_buffer._slice(
                             offset, offset + np.prod(param_shape)
-                        ),
+                        )._share_buffer_to(param)
+
+                        offset += np.prod(param_shape)
+                    task = paddle.distributed.broadcast(
+                        param_buffer,
+                        src=src_rank,
+                        group=comm_group,
+                        sync_op=False,
                     )
-
-                    param.get_tensor()._set_dims(param_shape)
-                    param.stop_gradient = stop_gradient
-                    param_buffer._slice(
-                        offset, offset + np.prod(param_shape)
-                    )._share_buffer_to(param)
-
-                    offset += np.prod(param_shape)
-                task = paddle.distributed.broadcast(
-                    param_buffer,
-                    src=src_rank,
-                    group=comm_group,
-                    sync_op=False,
-                )
-                broadcast_tasks.append(task)
+                    broadcast_tasks.append(task)
         return broadcast_tasks
 
     def reorder_params(self, comm_list):
@@ -1178,6 +1183,12 @@ class MuonShardingOptimizer:
 
         For each rank in the communication groups, flatten multiple parameters into a
         single contiguous buffer to enable efficient communication operations
+
+        Parameters of a rank are first split by dtype: a fused buffer aliases
+        its parameters' storage, so packing different dtypes into one buffer
+        would silently rewrite their dtype and corrupt the layout. Each dtype
+        therefore gets its own buffer, which means one src_rank may yield
+        several entries.
 
         Args:
             comm_list: List of tuples (rank2params, comm_group), where:
@@ -1196,44 +1207,48 @@ class MuonShardingOptimizer:
                 if len(params) == 0:
                     continue
 
+                dtype_groups = {}
+                for p in params:
+                    dtype_groups.setdefault(p.dtype, []).append(p)
+
                 with framework.no_grad():
-                    # Calculate total size and build param-to-offset mapping
-                    param_sizes = [np.prod(p.shape) for p in params]
-                    total_size = sum(param_sizes)
-                    dtype = params[0].dtype
+                    for dtype, group_params in dtype_groups.items():
+                        # Calculate total size and build param-to-offset mapping
+                        param_sizes = [np.prod(p.shape) for p in group_params]
+                        total_size = sum(param_sizes)
 
-                    if len(params) != 1:
-                        param_buffer = paddle.empty(
-                            shape=[total_size], dtype=dtype
-                        )
-                        offset = 0
-                        for param in params:
-                            param_shape = param.shape
-                            stop_gradient = param.stop_gradient
-                            param.stop_gradient = True
-                            param.flatten_()
+                        if len(group_params) != 1:
+                            param_buffer = paddle.empty(
+                                shape=[total_size], dtype=dtype
+                            )
+                            offset = 0
+                            for param in group_params:
+                                param_shape = param.shape
+                                stop_gradient = param.stop_gradient
+                                param.stop_gradient = True
+                                param.flatten_()
 
-                            paddle.assign(
-                                param,
+                                paddle.assign(
+                                    param,
+                                    param_buffer._slice(
+                                        offset, offset + np.prod(param_shape)
+                                    ),
+                                )
+
+                                param.get_tensor()._set_dims(param_shape)
+                                param.stop_gradient = stop_gradient
                                 param_buffer._slice(
                                     offset, offset + np.prod(param_shape)
-                                ),
-                            )
+                                )._share_buffer_to(param)
 
-                            param.get_tensor()._set_dims(param_shape)
-                            param.stop_gradient = stop_gradient
-                            param_buffer._slice(
-                                offset, offset + np.prod(param_shape)
-                            )._share_buffer_to(param)
-
-                            offset += np.prod(param_shape)
-                    else:
-                        param_buffer = params[0]
-                    reorder_params_item = {
-                        "param_buffer": param_buffer,
-                        "src_rank": src_rank,
-                    }
-                    reorder_params_list.append(reorder_params_item)
+                                offset += np.prod(param_shape)
+                        else:
+                            param_buffer = group_params[0]
+                        reorder_params_item = {
+                            "param_buffer": param_buffer,
+                            "src_rank": src_rank,
+                        }
+                        reorder_params_list.append(reorder_params_item)
         return reorder_params_list
 
     def _sharding_sync_parameters(self):

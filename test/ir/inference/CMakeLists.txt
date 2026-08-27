@@ -124,6 +124,13 @@ if(WITH_GPU AND TENSORRT_FOUND)
     py_test_modules(${target} MODULES ${target})
     set_tests_properties(${target} PROPERTIES TIMEOUT 300)
     set_tests_properties(${target} PROPERTIES LABELS "RUN_TYPE=INFER")
+    if(${target} STREQUAL "test_trt_convert_index_put")
+      set_property(
+        TEST ${target}
+        APPEND
+        PROPERTY ENVIRONMENT
+                 FLAGS_use_vmm_auto_growth_best_fit_allocator_v2=false)
+    endif()
   endforeach()
 endif()
 

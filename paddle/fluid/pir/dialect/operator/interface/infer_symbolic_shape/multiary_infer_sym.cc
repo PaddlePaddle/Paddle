@@ -241,10 +241,10 @@ bool BaddbmmOpInferSymbolicShape(
   auto ndim_x = x_shape.shape().size();
   auto ndim_y = y_shape.shape().size();
 
-  PADDLE_ENFORCE_EQ(ndim_input == 3 || ndim_input == 2,
-                    true,
+  PADDLE_ENFORCE_LE(ndim_input,
+                    3,
                     common::errors::InvalidArgument(
-                        "The input tensor input's dimension must be 3 or 2. "
+                        "The input tensor input's dimension must not exceed 3. "
                         "But received input's dimension = [%d].",
                         ndim_input));
   PADDLE_ENFORCE_EQ(ndim_x,
@@ -274,18 +274,9 @@ bool BaddbmmOpInferSymbolicShape(
                               y_shape.shape()[0]);  // batch size
   infer_context->AddEqualCstr(x_shape.shape()[2], y_shape.shape()[1]);
 
-  if (ndim_input == 3) {
-    infer_context->AddBroadcastableCstr(input_shape.shape()[0],
-                                        x_shape.shape()[0]);  // batch size
-    infer_context->AddBroadcastableCstr(input_shape.shape()[1],
-                                        x_shape.shape()[1]);
-    infer_context->AddBroadcastableCstr(input_shape.shape()[2],
-                                        y_shape.shape()[2]);
-  } else if (ndim_input == 2) {
-    infer_context->AddBroadcastableCstr(input_shape.shape()[0],
-                                        x_shape.shape()[0]);
-    infer_context->AddBroadcastableCstr(input_shape.shape()[1],
-                                        y_shape.shape()[2]);
+  for (size_t i = 0; i < ndim_input; ++i) {
+    infer_context->AddBroadcastableCstr(input_shape.shape()[i],
+                                        output_shape[3 - ndim_input + i]);
   }
 
   return true;
@@ -293,7 +284,22 @@ bool BaddbmmOpInferSymbolicShape(
 
 bool Baddbmm_OpInferSymbolicShape(
     pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
-  return BaddbmmOpInferSymbolicShape(op, infer_context);
+  const auto &input_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(0));
+  PADDLE_ENFORCE_EQ(
+      input_shape.shape().size(),
+      3,
+      common::errors::InvalidArgument(
+          "The input tensor input's dimension must be 3 for baddbmm_."));
+  BaddbmmOpInferSymbolicShape(op, infer_context);
+  const auto &x_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(1));
+  const auto &y_shape =
+      infer_context->GetShapeOrDataForValue(op->operand_source(2));
+  infer_context->AddEqualCstr(input_shape.shape()[0], x_shape.shape()[0]);
+  infer_context->AddEqualCstr(input_shape.shape()[1], x_shape.shape()[1]);
+  infer_context->AddEqualCstr(input_shape.shape()[2], y_shape.shape()[2]);
+  return true;
 }
 
 bool BatchFcOpInferSymbolicShape(

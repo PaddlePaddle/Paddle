@@ -14,6 +14,8 @@ limitations under the License. */
 
 #include "paddle/phi/infermeta/ternary.h"
 
+#include <array>
+
 #include "glog/logging.h"
 
 #include "paddle/common/ddim.h"
@@ -94,8 +96,8 @@ void AccuracyInferMeta(const MetaTensor& out,
 void AddmmInferMeta(const MetaTensor& input,
                     const MetaTensor& x,
                     const MetaTensor& y,
-                    float beta,
-                    float alpha,
+                    double beta,
+                    double alpha,
                     MetaTensor* out) {
   auto input_dims = input.dims();
   auto x_dims = x.dims();
@@ -130,6 +132,42 @@ void AddmmInferMeta(const MetaTensor& input,
                               "But received y's dimension = [%d].",
                               ndim_y));
 
+  if (x_dims[1] >= 0 && y_dims[0] >= 0) {
+    PADDLE_ENFORCE_EQ(
+        x_dims[1],
+        y_dims[0],
+        errors::InvalidArgument(
+            "Input(X)'s width must equal Input(Y)'s height, but received %d "
+            "and %d.",
+            x_dims[1],
+            y_dims[0]));
+  }
+
+  auto check_broadcast_dim =
+      [](int64_t actual, int64_t expected, const char* message) {
+        if (actual >= 0 && expected >= 0) {
+          PADDLE_ENFORCE_EQ(actual == 1 || actual == expected,
+                            true,
+                            errors::InvalidArgument(message, actual, expected));
+        }
+      };
+  if (ndim_input == 2) {
+    check_broadcast_dim(input_dims[0],
+                        x_dims[0],
+                        "Input(input)'s first dimension must be 1 or match "
+                        "Input(X)'s first dimension, but received %d and %d.");
+    check_broadcast_dim(input_dims[1],
+                        y_dims[1],
+                        "Input(input)'s second dimension must be 1 or match "
+                        "Input(Y)'s second dimension, but received %d and %d.");
+  } else {
+    check_broadcast_dim(input_dims[0],
+                        y_dims[1],
+                        "The dimension of one-dimensional Input(input) must be "
+                        "1 or match Input(Y)'s second dimension, but received "
+                        "%d and %d.");
+  }
+
   std::vector<int64_t> output_dims;
   output_dims.push_back(x_dims[0]);
   output_dims.push_back(y_dims[1]);
@@ -139,39 +177,247 @@ void AddmmInferMeta(const MetaTensor& input,
   out->set_dtype(input.dtype());
 }
 
+void AddmmOutDtypeInferMeta(const MetaTensor& input,
+                            const MetaTensor& x,
+                            const MetaTensor& y,
+                            DataType out_dtype,
+                            double beta,
+                            double alpha,
+                            MetaTensor* out) {
+  PADDLE_ENFORCE_EQ(
+      out_dtype,
+      DataType::FLOAT32,
+      errors::InvalidArgument(
+          "The out_dtype of paddle.addmm currently only supports float32."));
+  PADDLE_ENFORCE_EQ(
+      x.dtype() == DataType::FLOAT16 || x.dtype() == DataType::BFLOAT16,
+      true,
+      errors::InvalidArgument(
+          "The out_dtype of paddle.addmm currently only supports float16 or "
+          "bfloat16 Input(X), but received %s.",
+          x.dtype()));
+  PADDLE_ENFORCE_EQ(
+      y.dtype(),
+      x.dtype(),
+      errors::InvalidArgument(
+          "Input(X) and Input(Y) must have the same dtype when out_dtype is "
+          "specified for paddle.addmm, but received %s and %s.",
+          x.dtype(),
+          y.dtype()));
+  PADDLE_ENFORCE_EQ(
+      input.dtype() == x.dtype() || input.dtype() == out_dtype,
+      true,
+      errors::InvalidArgument(
+          "Input(input) must have the same dtype as Input(X) or out_dtype "
+          "when out_dtype is specified for paddle.addmm, but received %s, %s "
+          "and %s respectively.",
+          input.dtype(),
+          x.dtype(),
+          out_dtype));
+
+  AddmmInferMeta(input, x, y, beta, alpha, out);
+
+  out->set_dtype(DataType::FLOAT32);
+}
+
 void BaddbmmInferMeta(const MetaTensor& input,
                       const MetaTensor& x,
                       const MetaTensor& y,
-                      float beta,
-                      float alpha,
-                      phi::DataType out_dtype,
+                      double beta,
+                      double alpha,
                       MetaTensor* out) {
-  auto input_dims = input.dims();
-  auto x_dims = x.dims();
-  auto y_dims = y.dims();
+  const auto input_dims = input.dims();
+  const auto x_dims = x.dims();
+  const auto y_dims = y.dims();
 
-  auto ndim_input = input_dims.size();
-  auto ndim_x = x_dims.size();
-  auto ndim_y = y_dims.size();
+  PADDLE_ENFORCE_EQ(
+      input.dtype(),
+      x.dtype(),
+      errors::InvalidArgument(
+          "The dtypes of input, x, and y must be the same, but received "
+          "input dtype = %s and x dtype = %s.",
+          input.dtype(),
+          x.dtype()));
+  PADDLE_ENFORCE_EQ(
+      input.dtype(),
+      y.dtype(),
+      errors::InvalidArgument(
+          "The dtypes of input, x, and y must be the same, but received "
+          "input dtype = %s and y dtype = %s.",
+          input.dtype(),
+          y.dtype()));
 
-  VLOG(3) << "baddbmm operator input.shape=" << input_dims
-          << " x.shape=" << x_dims << " y.shape=" << y_dims << " beta=" << beta
-          << " alpha=" << alpha << " ndim_input=" << ndim_input
-          << " ndim_x=" << ndim_x << " ndim_y=" << ndim_y;
+  PADDLE_ENFORCE_LE(
+      input_dims.size(),
+      3,
+      errors::InvalidArgument(
+          "The input tensor input's dimension must not exceed 3, but "
+          "received %d.",
+          input_dims.size()));
+  PADDLE_ENFORCE_EQ(
+      x_dims.size(),
+      3,
+      errors::InvalidArgument(
+          "The input tensor x's dimension must be 3, but received %d.",
+          x_dims.size()));
+  PADDLE_ENFORCE_EQ(
+      y_dims.size(),
+      3,
+      errors::InvalidArgument(
+          "The input tensor y's dimension must be 3, but received %d.",
+          y_dims.size()));
 
-  std::vector<int64_t> output_dims;
-  output_dims.push_back(x_dims[0]);
-  output_dims.push_back(x_dims[1]);
-  output_dims.push_back(y_dims[2]);
-
-  out->set_dims(make_ddim(output_dims));
-  out->share_lod(input);
-  // Set output dtype based on out_dtype parameter
-  if (out_dtype != phi::DataType::UNDEFINED) {
-    out->set_dtype(out_dtype);
-  } else {
-    out->set_dtype(input.dtype());
+  if (x_dims[0] >= 0 && y_dims[0] >= 0) {
+    PADDLE_ENFORCE_EQ(
+        x_dims[0],
+        y_dims[0],
+        errors::InvalidArgument(
+            "Input(X) and Input(Y) must have the same batch size, but "
+            "received %d and %d.",
+            x_dims[0],
+            y_dims[0]));
   }
+  if (x_dims[2] >= 0 && y_dims[1] >= 0) {
+    PADDLE_ENFORCE_EQ(
+        x_dims[2],
+        y_dims[1],
+        errors::InvalidArgument(
+            "Input(X)'s width must equal Input(Y)'s height, but received %d "
+            "and %d.",
+            x_dims[2],
+            y_dims[1]));
+  }
+
+  const std::array<int64_t, 3> output_dims = {x_dims[0], x_dims[1], y_dims[2]};
+  const auto input_rank = input_dims.size();
+  for (int64_t i = 0; i < input_rank; ++i) {
+    const auto input_dim = input_dims[i];
+    const auto output_dim = output_dims[3 - input_rank + i];
+    if (input_dim >= 0 && output_dim >= 0) {
+      PADDLE_ENFORCE_EQ(
+          input_dim == 1 || input_dim == output_dim,
+          true,
+          errors::InvalidArgument(
+              "Input(input)'s dimension %d must be 1 or match output "
+              "dimension %d, but received %d and %d.",
+              i,
+              3 - input_rank + i,
+              input_dim,
+              output_dim));
+    }
+  }
+
+  out->set_dims(make_ddim({output_dims[0], output_dims[1], output_dims[2]}));
+  out->share_lod(input);
+  out->set_dtype(input.dtype());
+}
+
+void BaddbmmOutDtypeInferMeta(const MetaTensor& input,
+                              const MetaTensor& x,
+                              const MetaTensor& y,
+                              DataType out_dtype,
+                              double beta,
+                              double alpha,
+                              MetaTensor* out) {
+  const auto input_dims = input.dims();
+  const auto x_dims = x.dims();
+  const auto y_dims = y.dims();
+
+  PADDLE_ENFORCE_EQ(
+      x.dtype(),
+      y.dtype(),
+      errors::InvalidArgument(
+          "Input(X) and Input(Y) must have the same dtype when out_dtype is "
+          "specified for paddle.baddbmm, but received %s and %s.",
+          x.dtype(),
+          y.dtype()));
+  PADDLE_ENFORCE_EQ(
+      out_dtype,
+      DataType::FLOAT32,
+      errors::InvalidArgument(
+          "The mixed out_dtype path of paddle.baddbmm only supports float32, "
+          "but received %s.",
+          out_dtype));
+  PADDLE_ENFORCE_EQ(
+      x.dtype() == DataType::FLOAT16 || x.dtype() == DataType::BFLOAT16,
+      true,
+      errors::InvalidArgument(
+          "The mixed out_dtype path of paddle.baddbmm only supports float16 "
+          "or bfloat16 Input(X), but received %s.",
+          x.dtype()));
+  PADDLE_ENFORCE_EQ(
+      input.dtype() == x.dtype() || input.dtype() == out_dtype,
+      true,
+      errors::InvalidArgument(
+          "Input(input)'s dtype must match Input(X)'s dtype or out_dtype, "
+          "but received %s, %s and %s respectively.",
+          input.dtype(),
+          x.dtype(),
+          out_dtype));
+
+  PADDLE_ENFORCE_LE(
+      input_dims.size(),
+      3,
+      errors::InvalidArgument(
+          "The input tensor input's dimension must not exceed 3, but "
+          "received %d.",
+          input_dims.size()));
+  PADDLE_ENFORCE_EQ(
+      x_dims.size(),
+      3,
+      errors::InvalidArgument(
+          "The input tensor x's dimension must be 3, but received %d.",
+          x_dims.size()));
+  PADDLE_ENFORCE_EQ(
+      y_dims.size(),
+      3,
+      errors::InvalidArgument(
+          "The input tensor y's dimension must be 3, but received %d.",
+          y_dims.size()));
+
+  if (x_dims[0] >= 0 && y_dims[0] >= 0) {
+    PADDLE_ENFORCE_EQ(
+        x_dims[0],
+        y_dims[0],
+        errors::InvalidArgument(
+            "Input(X) and Input(Y) must have the same batch size, but "
+            "received %d and %d.",
+            x_dims[0],
+            y_dims[0]));
+  }
+  if (x_dims[2] >= 0 && y_dims[1] >= 0) {
+    PADDLE_ENFORCE_EQ(
+        x_dims[2],
+        y_dims[1],
+        errors::InvalidArgument(
+            "Input(X)'s width must equal Input(Y)'s height, but received %d "
+            "and %d.",
+            x_dims[2],
+            y_dims[1]));
+  }
+
+  const std::array<int64_t, 3> output_dims = {x_dims[0], x_dims[1], y_dims[2]};
+  const auto input_rank = input_dims.size();
+  for (int64_t i = 0; i < input_rank; ++i) {
+    const auto input_dim = input_dims[i];
+    const auto output_dim = output_dims[3 - input_rank + i];
+    if (input_dim >= 0 && output_dim >= 0) {
+      PADDLE_ENFORCE_EQ(
+          input_dim == 1 || input_dim == output_dim,
+          true,
+          errors::InvalidArgument(
+              "Input(input)'s dimension %d must be 1 or match output "
+              "dimension %d, but received %d and %d.",
+              i,
+              3 - input_rank + i,
+              input_dim,
+              output_dim));
+    }
+  }
+
+  out->set_dims(make_ddim({output_dims[0], output_dims[1], output_dims[2]}));
+  out->share_lod(input);
+  out->set_dtype(out_dtype);
 }
 
 void AffineChannelInferMeta(const MetaTensor& x,

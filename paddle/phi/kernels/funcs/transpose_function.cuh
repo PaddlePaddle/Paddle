@@ -111,8 +111,10 @@ __global__ void TilingSwapDim1And2(const T* __restrict__ input,
   // Align dim to Tiles
   Dim3<IndexType> tile_aligned_input_dim = {
       input_dims[0],
-      (input_dims[1] + TileX - 1) / TileX,
-      (input_dims[2] + TileY - 1) / TileY,
+      input_dims[1] / TileX +
+          static_cast<IndexType>(input_dims[1] % TileX != 0),
+      input_dims[2] / TileY +
+          static_cast<IndexType>(input_dims[2] % TileY != 0),
   };
 
   // Converts block idx to tile index, each block process a tile
@@ -506,8 +508,10 @@ void SwapDim1And2InNarrow(const GPUContext& d,
   // Here finally get proper long X short tile size.
   Dim3<IndexType> input_dims_aligned = {
       input_dims[0],
-      (input_dims[1] + select_tile_size_i - 1) / select_tile_size_i,
-      (input_dims[2] + select_tile_size_j - 1) / select_tile_size_j,
+      input_dims[1] / select_tile_size_i +
+          static_cast<IndexType>(input_dims[1] % select_tile_size_i != 0),
+      input_dims[2] / select_tile_size_j +
+          static_cast<IndexType>(input_dims[2] % select_tile_size_j != 0),
   };
 
   IndexType total_tiles_count = input_dims_aligned[0];
@@ -1009,8 +1013,9 @@ __global__ void VectorizedPermuteKernel(PermuteParams<IndexT, Rank> params,
       reinterpret_cast<const VecT* __restrict__>(src_data);
   VecT* vec_dst = reinterpret_cast<VecT*>(dst_data);
 
-  IndexT tid = blockIdx.x * blockDim.x + threadIdx.x;
-  for (IndexT i = tid; i < count; i += blockDim.x * gridDim.x) {
+  IndexT tid = static_cast<IndexT>(blockIdx.x) * blockDim.x + threadIdx.x;
+  IndexT stride = static_cast<IndexT>(blockDim.x) * gridDim.x;
+  for (IndexT i = tid; i < count; i += stride) {
     params.dst_index_helper.OffsetToIndex(i, dst_index);
 
 #pragma unroll
@@ -1036,8 +1041,9 @@ __global__ void GeneralPermuteKernel(PermuteParams<IndexT, Rank> params,
   IndexT dst_index[VecSize][Rank];
 
   // Vectorized load data.
-  IndexT tid = blockIdx.x * blockDim.x + threadIdx.x;
-  for (IndexT idx = tid; idx < main_cnt; idx += blockDim.x * gridDim.x) {
+  IndexT tid = static_cast<IndexT>(blockIdx.x) * blockDim.x + threadIdx.x;
+  IndexT stride = static_cast<IndexT>(blockDim.x) * gridDim.x;
+  for (IndexT idx = tid; idx < main_cnt; idx += stride) {
     VecT vec_data;
     IndexT vec_idx = idx * VecSize;
 
@@ -1101,7 +1107,9 @@ struct TransposeDataWriter {
         for (int i = 0; i < ReadSize; ++i) {
           int tile_tail = tile_y * ReadSize + i;
           int major_share_idx = share_tile + tile_tail;
-          IndexT row_in_mat = (blockIdx.x * kColTile + tile_tail) * col_stride;
+          IndexT row_in_mat =
+              (static_cast<IndexT>(blockIdx.x) * kColTile + tile_tail) *
+              col_stride;
 #pragma unroll
           for (int j = 0; j < WriteSize; ++j) {
             tmp_data[i].val[j] = s_data[j * kColStride + major_share_idx];
@@ -1127,7 +1135,8 @@ struct TransposeDataWriter<T, IndexT, ReadSize, 1> {
       const int cols_range = (blockIdx.x < round_tile_cols)
                                  ? kTileSize
                                  : (cols - round_tile_cols * kTileSize);
-      const IndexT row_tile = blockIdx.x * kTileSize * ReadSize;
+      const IndexT row_tile =
+          static_cast<IndexT>(blockIdx.x) * kTileSize * ReadSize;
       const IndexT write_offset = blockIdx.z * chs_stride + col_in_mat;
       const int shared_tile = threadIdx.x * kShareCol * ReadSize;
 #pragma unroll
@@ -1159,7 +1168,8 @@ struct TransposeDataReader {
         reinterpret_cast<const VecT* __restrict__>(src);
     VecT* v_shared = reinterpret_cast<VecT*>(s_shared);
 
-    const IndexT col_in_mat = blockIdx.x * kTileSize + threadIdx.x;
+    const IndexT col_in_mat =
+        static_cast<IndexT>(blockIdx.x) * kTileSize + threadIdx.x;
     if (col_in_mat < cols_thresh) {
       const int row_range = (blockIdx.y < round_tile_rows)
                                 ? RowTile
@@ -1436,7 +1446,7 @@ inline void PermuteAndTranspose(
                                        phi::gpuMemcpyDeviceToDevice,
                                        dev_ctx.stream());
   } else {
-    if (count < std::numeric_limits<uint32_t>::max()) {
+    if (count < std::numeric_limits<uint32_t>::max() / 2) {
       PermuteDispatch<T, uint32_t>(dev_ctx,
                                    static_cast<uint32_t>(count),
                                    &classifier,

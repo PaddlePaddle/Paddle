@@ -28,6 +28,13 @@ if((WITH_GPU) AND (LINUX))
 endif()
 if((WITH_GPU) AND (LINUX))
   py_test_modules(
+    test_high_dim_reshard MODULES test_high_dim_reshard ENVS
+    "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
+  set_tests_properties(test_high_dim_reshard PROPERTIES TIMEOUT "300" LABELS
+                                                        "RUN_TYPE=HYBRID")
+endif()
+if((WITH_GPU) AND (LINUX))
+  py_test_modules(
     test_semi_auto_parallel_c_cross_entropy MODULES
     test_semi_auto_parallel_c_cross_entropy ENVS
     "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")

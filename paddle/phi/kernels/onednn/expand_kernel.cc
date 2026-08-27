@@ -108,7 +108,7 @@ void ExpandKernel(const Context& dev_ctx,
   binary_p->execute(astream, args);
   astream.wait();
 
-  out->set_mem_desc(dst_memory_p->get_desc());
+  phi::funcs::SetOneDNNMemDesc(out, dst_memory_p->get_desc());
 }
 }  // namespace phi
 

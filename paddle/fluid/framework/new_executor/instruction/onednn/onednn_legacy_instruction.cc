@@ -303,7 +303,7 @@ void OneDNNLegacyKernelInstruction::Run() {
 
           dnnl::memory::desc out_mem_desc =
               phi::funcs::make_memory_desc(*input, from_layout);
-          transed_tensor->set_mem_desc(out_mem_desc);
+          phi::funcs::SetOneDNNMemDesc(transed_tensor, out_mem_desc);
         }
       }
     }

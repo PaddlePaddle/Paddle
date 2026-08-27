@@ -149,7 +149,7 @@ void ElementwiseKernel(const OneDNNContext& dev_ctx,
     out_md = out_md.reshape(dims);
   }
 
-  out->set_mem_desc(out_md);
+  phi::funcs::SetOneDNNMemDesc(out, out_md);
 }
 
 #define DEFINE_ONEDNN_ELEMENTWISE_KERNEL(name, algorithm)      \

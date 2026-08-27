@@ -125,29 +125,13 @@
   args_alias :
     use_default_mapping : True
 
-- op : addmm
-  name : [paddle.addmm, paddle.Tensor.addmm]
-  args_alias :
-    x : [mat1]
-    y : [mat2]
-  pre_process :
-    func : AddmmPreProcess(input, x, y)
-
 - op : addmm_
   name : [paddle.addmm_, paddle.Tensor.addmm_]
   args_alias :
     x : [mat1]
     y : [mat2]
   pre_process :
-    func : AddmmPreProcess(input, x, y)
-
-- op : baddbmm
-  name : [paddle.baddbmm, paddle.Tensor.baddbmm]
-  args_alias :
-    x : [batch1]
-    y : [batch2]
-  pre_process :
-    func : BaddbmmPreProcess(input, x, y)
+    func : AddmmInplacePreProcess(input, x, y)
 
 - op : baddbmm_
   name : [paddle.baddbmm_, paddle.Tensor.baddbmm_]
@@ -155,13 +139,7 @@
     x : [batch1]
     y : [batch2]
   pre_process :
-    func : BaddbmmPreProcess(input, x, y)
-
-- op : bmm
-  name : [paddle.bmm, paddle.Tensor.bmm]
-  args_alias :
-    x : [input]
-    y : [mat2]
+    func : BaddbmmInplacePreProcess(input, x, y)
 
 - op : cross
   name : [paddle.cross, paddle.Tensor.cross]
