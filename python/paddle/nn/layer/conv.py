@@ -188,7 +188,14 @@ class _ConvNd(Layer):
             fan_in = (self._in_channels // self._groups) * np.prod(
                 self._kernel_size
             )
-            bound = float(fan_in) ** -0.5
+            # Note: keep numpy scalar semantics here (do NOT cast fan_in to
+            # Python float before the power). For invalid configs such as an
+            # unknown static channel dim (in_channels=-1) or kernel_size=0,
+            # fan_in <= 0 then yields nan/inf, so Uniform's bound assert (or a
+            # downstream shape check) raises the same AssertionError/ValueError
+            # as the previous He-Normal default, instead of a new TypeError
+            # from Python's complex-result negative-base power.
+            bound = float(fan_in**-0.5)
             return Uniform(-bound, bound)
 
         self.weight = self.create_parameter(
