@@ -18,6 +18,7 @@ limitations under the License. */
 #include <random>
 
 #include "paddle/phi/backends/xpu/xpu_context.h"
+#include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/truncated_normal.h"
@@ -36,12 +37,17 @@ void TruncatedGaussianRandomKernel(const Context& dev_ctx,
                                    DenseTensor* out) {
   T* data = dev_ctx.template Alloc<T>(out);
 
-  std::uniform_real_distribution<T> dist(std::numeric_limits<float>::min(),
-                                         1.0);
-  TruncatedNormal<T> truncated_normal(static_cast<T>(mean),
-                                      static_cast<T>(std),
-                                      static_cast<T>(a),
-                                      static_cast<T>(b));
+  // Sampling always happens in float and is rounded to T on store, which keeps
+  // the half precision results identical to the historical behavior of
+  // generating a float32 tensor and appending a cast.
+  using MT = typename MPTypeTrait<T>::Type;
+
+  std::uniform_real_distribution<MT> dist(std::numeric_limits<float>::min(),
+                                          1.0);
+  TruncatedNormal<MT> truncated_normal(static_cast<MT>(mean),
+                                       static_cast<MT>(std),
+                                       static_cast<MT>(a),
+                                       static_cast<MT>(b));
   int64_t size = out->numel();
   std::unique_ptr<T[]> data_cpu(new T[size]);
 
@@ -54,7 +60,7 @@ void TruncatedGaussianRandomKernel(const Context& dev_ctx,
   }
 
   for (int64_t i = 0; i < size; ++i) {
-    data_cpu[i] = truncated_normal(dist(*engine));
+    data_cpu[i] = static_cast<T>(truncated_normal(dist(*engine)));
   }
 
   memory_utils::Copy(dev_ctx.GetPlace(),
@@ -70,4 +76,6 @@ PD_REGISTER_KERNEL(truncated_gaussian_random,
                    XPU,
                    ALL_LAYOUT,
                    phi::TruncatedGaussianRandomKernel,
-                   float) {}
+                   float,
+                   phi::float16,
+                   phi::bfloat16) {}
