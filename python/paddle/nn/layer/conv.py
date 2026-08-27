@@ -334,7 +334,8 @@ class Conv1D(_ConvNd):
             of conv1d. If it is set to None or one attribute of ParamAttr, conv1d
             will create ParamAttr as param_attr. If the Initializer of the param_attr
             is not set, the parameter is initialized with :math:`Uniform(-bound, bound)`,
-            and the :math:`bound` is :math:`(\frac{1}{filter\_elem\_num})^{0.5}`. Default: None.
+            and the :math:`bound` is :math:`(\frac{1}{fan\_in})^{0.5}`, where :math:`fan\_in`
+            is :math:`(\frac{in\_channels}{groups}) \times \prod(kernel\_size)`. Default: None.
         bias_attr (ParamAttr or bool, optional): The attribute for the bias of conv1d.
             If it is set to False, no bias will be added to the output units.
             If it is set to None or one attribute of ParamAttr, conv1d
@@ -775,7 +776,8 @@ class Conv2D(_ConvNd):
             of conv2d. If it is set to None or one attribute of ParamAttr, conv2d
             will create ParamAttr as param_attr. If it is set to None, the parameter
             is initialized with :math:`Uniform(-bound, bound)`, and the :math:`bound` is
-            :math:`(\frac{1}{filter\_elem\_num})^{0.5}`. The default value is None.
+            :math:`(\frac{1}{fan\_in})^{0.5}`, where :math:`fan\_in` is
+            :math:`(\frac{in\_channels}{groups}) \times \prod(kernel\_size)`. The default value is None.
         bias_attr(ParamAttr|bool, optional): The parameter attribute for the bias of conv2d.
             If it is set to False, no bias will be added to the output units.
             If it is set to None or one attribute of ParamAttr, conv2d
@@ -1218,7 +1220,8 @@ class Conv3D(_ConvNd):
             of conv3d. If it is set to None or one attribute of ParamAttr, conv3d
             will create ParamAttr as param_attr. If it is set to None, the parameter
             is initialized with :math:`Uniform(-bound, bound)`, and the :math:`bound` is
-            :math:`(\frac{1}{filter\_elem\_num})^{0.5}`. The default value is None.
+            :math:`(\frac{1}{fan\_in})^{0.5}`, where :math:`fan\_in` is
+            :math:`(\frac{in\_channels}{groups}) \times \prod(kernel\_size)`. The default value is None.
         bias_attr(ParamAttr|bool, optional): The parameter attribute for the bias of conv3d.
             If it is set to False, no bias will be added to the output units.
             If it is set to None or one attribute of ParamAttr, conv3d
