@@ -501,7 +501,7 @@ XPUOpMap& get_kl2_ops() {
        XPUKernelSet({FLOAT32, FLOAT16, BFLOAT16, INT64, INT32, BOOL})},
       {"transpose",
        XPUKernelSet({FLOAT32, FLOAT16, BFLOAT16, INT64, INT32, BOOL})},
-      {"truncated_gaussian_random", XPUKernelSet({FLOAT32})},
+      {"truncated_gaussian_random", XPUKernelSet({FLOAT32, FLOAT16, BFLOAT16})},
       {"top_k", XPUKernelSet({FLOAT32, FLOAT16})},
       {"top_k_v2", XPUKernelSet({FLOAT32, FLOAT16})},
       {"top_p_sampling", XPUKernelSet({FLOAT32, FLOAT16})},
