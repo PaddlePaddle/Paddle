@@ -21,6 +21,7 @@
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/pybind/eager.h"
 #include "paddle/fluid/pybind/eager_utils.h"
+#include "paddle/fluid/pybind/mem_py_stack.h"
 #include "paddle/phi/api/all.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/platform/device_context.h"
@@ -45,6 +46,11 @@ GradNodePyLayer::operator()(
     egr::CUDAErrorCheck("GradNodePyLayer begin");
   }
   pybind11::gil_scoped_acquire gil;
+  // Capture the Python stack (GIL held) so allocations during this PyLayer
+  // backward that don't flow through an eager _C_ops dispatch are attributed to
+  // the backward call site; inner _C_ops push/pop finer stacks on top.
+  paddle::memory::MemStackGuard __mem_stack_guard(
+      paddle::pybind::CaptureCurrentPyStack());
   if (VLOG_IS_ON(2)) egr::LogIndent::Instance().IncreaseIndentLevel();
   VLOG(3) << "Running Eager Backward Node: " << name();
   if (FLAGS_call_stack_level == 3) {

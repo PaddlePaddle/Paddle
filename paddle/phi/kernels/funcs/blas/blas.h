@@ -138,32 +138,32 @@ class Blas {
   template <typename T>
   void GEMM(bool transA,
             bool transB,
-            int M,
-            int N,
-            int K,
+            int64_t M,
+            int64_t N,
+            int64_t K,
             T alpha,
             const T* A,
-            int lda,
+            int64_t lda,
             const T* B,
-            int ldb,
+            int64_t ldb,
             T beta,
             T* C,
-            int ldc) const;
+            int64_t ldc) const;
 
   template <typename T>
   void GEMM(CBLAS_TRANSPOSE transA,
             CBLAS_TRANSPOSE transB,
-            int M,
-            int N,
-            int K,
+            int64_t M,
+            int64_t N,
+            int64_t K,
             T alpha,
             const T* A,
-            int lda,
+            int64_t lda,
             const T* B,
-            int ldb,
+            int64_t ldb,
             T beta,
             T* C,
-            int ldc) const;
+            int64_t ldc) const;
 
 #ifdef PADDLE_WITH_MKLML  // @{ Group MKLML: class Blas
   template <typename T>
@@ -272,8 +272,8 @@ class Blas {
 
   template <typename T>
   void GEMV(bool trans_a,
-            int M,
-            int N,
+            int64_t M,
+            int64_t N,
             T alpha,
             const T* A,
             const T* B,
@@ -322,6 +322,34 @@ class Blas {
                    const T* B,
                    U beta,
                    T* C,
+                   int64_t batchCount,
+                   int64_t strideA,
+                   int64_t strideB) const;
+
+  void BatchedGEMM(CBLAS_TRANSPOSE transA,
+                   CBLAS_TRANSPOSE transB,
+                   int64_t M,
+                   int64_t N,
+                   int64_t K,
+                   float alpha,
+                   const phi::bfloat16* A,
+                   const phi::bfloat16* B,
+                   float beta,
+                   float* C,
+                   int64_t batchCount,
+                   int64_t strideA,
+                   int64_t strideB) const;
+
+  void BatchedGEMM(CBLAS_TRANSPOSE transA,
+                   CBLAS_TRANSPOSE transB,
+                   int64_t M,
+                   int64_t N,
+                   int64_t K,
+                   float alpha,
+                   const phi::float16* A,
+                   const phi::float16* B,
+                   float beta,
+                   float* C,
                    int64_t batchCount,
                    int64_t strideA,
                    int64_t strideB) const;

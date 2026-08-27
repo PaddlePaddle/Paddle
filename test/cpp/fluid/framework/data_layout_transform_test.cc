@@ -17,6 +17,11 @@
 #include "gtest/gtest.h"
 #include "paddle/phi/common/bfloat16.h"
 
+#ifdef PADDLE_WITH_DNNL
+#include "paddle/phi/backends/onednn/onednn_helper.h"
+#include "paddle/phi/kernels/funcs/data_layout_transform.h"
+#endif
+
 TEST(DataTransform, DataLayoutFunction) {
   auto place = phi::CPUPlace();
   phi::DenseTensor in = phi::DenseTensor();
@@ -41,6 +46,50 @@ TEST(DataTransform, DataLayoutFunction) {
 }
 
 #ifdef PADDLE_WITH_DNNL
+TEST(DataTransformOneDNN, ReturnsUndefinedMemDescWhenAbsent) {
+  phi::DenseTensor tensor;
+  EXPECT_EQ(phi::funcs::GetOneDNNMemDesc(tensor), dnnl::memory::desc());
+}
+
+TEST(DataTransformOneDNN, MemDescWithoutAllocation) {
+  phi::DenseTensor tensor;
+  const dnnl::memory::desc mem_desc(
+      {1}, dnnl::memory::data_type::f32, dnnl::memory::format_tag::x);
+
+  phi::funcs::SetOneDNNMemDesc(&tensor, mem_desc);
+
+  EXPECT_FALSE(tensor.initialized());
+  EXPECT_EQ(tensor.layout(), phi::DataLayout::ONEDNN);
+  EXPECT_EQ(phi::funcs::GetOneDNNMemDesc(tensor), mem_desc);
+}
+
+TEST(DataTransformOneDNN, PreservesFormatWhenUpdatingMemDesc) {
+  phi::DenseTensor tensor;
+  auto properties = std::make_unique<phi::OneDNNStorageProperties>();
+  properties->format = dnnl::memory::format_tag::nchw;
+  tensor.set_storage_properties(std::move(properties));
+  const dnnl::memory::desc mem_desc(
+      {1}, dnnl::memory::data_type::f32, dnnl::memory::format_tag::x);
+
+  phi::funcs::SetOneDNNMemDesc(&tensor, mem_desc);
+
+  EXPECT_EQ(tensor.storage_properties<phi::OneDNNStorageProperties>().format,
+            dnnl::memory::format_tag::nchw);
+  EXPECT_EQ(phi::funcs::GetOneDNNMemDesc(tensor), mem_desc);
+}
+
+TEST(DataTransformOneDNN, RejectsOtherStorageProperties) {
+  phi::DenseTensor tensor;
+  tensor.set_storage_properties(std::make_unique<phi::StorageProperties>());
+  const dnnl::memory::desc mem_desc(
+      {1}, dnnl::memory::data_type::f32, dnnl::memory::format_tag::x);
+
+  EXPECT_THROW(phi::funcs::SetOneDNNMemDesc(&tensor, mem_desc),
+               common::enforce::EnforceNotMet);
+  EXPECT_THROW(phi::funcs::GetOneDNNMemDesc(tensor),
+               common::enforce::EnforceNotMet);
+}
+
 TEST(DataTransformBf16, GetDataFromTensorDNNL) {
   auto place = phi::CPUPlace();
   phi::DenseTensor in = phi::DenseTensor();

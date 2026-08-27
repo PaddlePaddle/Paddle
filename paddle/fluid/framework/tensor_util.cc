@@ -26,6 +26,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/dlpack_tensor.h"
 #include "paddle/phi/api/lib/data_transform.h"
+#include "paddle/phi/backends/onednn/onednn_helper.h"
 #include "paddle/phi/common/complex.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/platform/profiler/event_tracing.h"
@@ -54,7 +55,7 @@ void TensorCopyImpl(const TENSOR& src,
   auto src_place = src.place();
   auto src_ptr = src.data();
 #ifdef PADDLE_WITH_DNNL
-  dst->set_mem_desc(src.mem_desc());
+  phi::funcs::SetOneDNNMemDesc(dst, phi::funcs::GetOneDNNMemDesc(src));
   // oneDNN tensors due to padding may be of bigger size
   // than numel()*size(type())
   auto dst_ptr =
@@ -305,7 +306,7 @@ void TensorCopySync(const DenseTensor& src,
   dst->set_layout(src.layout());
 #ifdef PADDLE_WITH_DNNL
   if (src.layout() == DataLayout::ONEDNN) {
-    dst->set_mem_desc(src.mem_desc());
+    phi::funcs::SetOneDNNMemDesc(dst, phi::funcs::GetOneDNNMemDesc(src));
   }
 #endif
   auto src_place = src.place();

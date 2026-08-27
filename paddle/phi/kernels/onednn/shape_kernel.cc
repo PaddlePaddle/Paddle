@@ -45,7 +45,7 @@ void ShapeKernel(const Context& dev_ctx,
       vectorize(out->dims()),
       funcs::ToOneDNNDataType(out->dtype()),
       funcs::GetPlainOneDNNFormat(out->dims().size()));
-  out->set_mem_desc(out_mem_desc);
+  phi::funcs::SetOneDNNMemDesc(out, out_mem_desc);
 }
 }  // namespace phi
 

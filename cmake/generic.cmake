@@ -500,7 +500,7 @@ function(cc_test_run TARGET_NAME)
             FLAGS_init_allocated_mem=true
             FLAGS_cudnn_deterministic=true
             FLAGS_enable_pir_api=0
-            LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${PADDLE_BINARY_DIR}/python/paddle/libs:${PADDLE_BINARY_DIR}/python/paddle/base
+            LD_LIBRARY_PATH=$ENV{LD_LIBRARY_PATH}:${PADDLE_BINARY_DIR}/python/paddle/libs:${PADDLE_BINARY_DIR}/python/paddle/base
         )
       endif()
     else()
@@ -516,7 +516,7 @@ function(cc_test_run TARGET_NAME)
             ENVIRONMENT
             FLAGS_init_allocated_mem=true
             FLAGS_cudnn_deterministic=true
-            LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${PADDLE_BINARY_DIR}/python/paddle/libs:${PADDLE_BINARY_DIR}/python/paddle/base
+            LD_LIBRARY_PATH=$ENV{LD_LIBRARY_PATH}:${PADDLE_BINARY_DIR}/python/paddle/libs:${PADDLE_BINARY_DIR}/python/paddle/base
         )
       endif()
     endif()
@@ -884,7 +884,7 @@ function(hip_test TARGET_NAME)
       TEST ${TARGET_NAME}
       PROPERTY
         ENVIRONMENT
-        "LD_LIBRARY_PATH=${CMAKE_BINARY_DIR}/python/paddle/libs:$LD_LIBRARY_PATH"
+        "LD_LIBRARY_PATH=${CMAKE_BINARY_DIR}/python/paddle/libs:$ENV{LD_LIBRARY_PATH}"
     )
   endif()
 endfunction()

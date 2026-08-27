@@ -61,9 +61,9 @@ void DeQuantKernel(const Context& dev_ctx,
       x_tz, x.dtype(), x_type, out->dtype(), out_type, dev_ctx.GetEngine());
 
   auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
-      x.mem_desc(), funcs::to_void_cast(x.data<T>()));
-  auto reorder_dst_memory_p =
-      reorder_handler.AcquireDstMemory(out, x.mem_desc(), dev_ctx.GetPlace());
+      phi::funcs::GetOneDNNMemDesc(x), funcs::to_void_cast(x.data<T>()));
+  auto reorder_dst_memory_p = reorder_handler.AcquireDstMemory(
+      out, phi::funcs::GetOneDNNMemDesc(x), dev_ctx.GetPlace());
 
   auto reorder_p = reorder_handler.AcquireReorder(
       reorder_dst_memory_p, reorder_src_memory_p, attrs);
@@ -93,7 +93,7 @@ void DeQuantKernel(const Context& dev_ctx,
   reorder_p->execute(astream, reorder_args);
   astream.wait();
 
-  out->set_mem_desc(reorder_dst_memory_p->get_desc());
+  phi::funcs::SetOneDNNMemDesc(out, reorder_dst_memory_p->get_desc());
 }
 
 }  // namespace phi

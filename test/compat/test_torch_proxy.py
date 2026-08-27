@@ -127,6 +127,12 @@ class TestTorchProxyLocalEnabledModule(unittest.TestCase):
         paddle.compat.proxy.TORCH_PROXY_FINDER._local_enabled_scope = set()
         paddle.disable_compat()
 
+    def test_local_enabled_package_submodule(self):
+        with paddle.use_compat_guard(scope="torch_proxy_local_enabled_package"):
+            from torch_proxy_local_enabled_package import submodule
+
+            self.assertIs(submodule.use_torch_compat_api(), paddle.randn)
+
 
 class TestTorchProxyUseMockedModule(unittest.TestCase):
     def test_use_mocked_module(self):

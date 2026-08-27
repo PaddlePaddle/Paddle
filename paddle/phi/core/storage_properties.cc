@@ -14,6 +14,10 @@ limitations under the License. */
 
 #include "paddle/phi/core/storage_properties.h"
 
+#ifdef PADDLE_WITH_DNNL
+#include "paddle/phi/backends/onednn/onednn_storage_properties.h"
+#endif
+
 namespace phi {
 
 std::unique_ptr<StorageProperties> CopyStorageProperties(

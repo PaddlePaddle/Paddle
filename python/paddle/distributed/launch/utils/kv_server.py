@@ -15,13 +15,20 @@
 import http.server as SimpleHTTPServer
 import json
 import threading
-from http.server import HTTPServer
+from http.server import ThreadingHTTPServer
 from multiprocessing import Process
 
 from .topology import SingleNodeTopology
 
 
 class KVHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
+    # StreamRequestHandler.setup() applies this as a socket timeout, and
+    # BaseHTTPRequestHandler.handle_one_request() turns the resulting TimeoutError into a
+    # connection close. Without it a peer that connects but never finishes sending its
+    # request line blocks the handler in rfile.readline() forever; on a single-threaded
+    # server that wedges the whole KV store and no other node can ever register.
+    timeout = 30
+
     def do_GET(self):
         with self.server.kv_lock:
             ret = {}
@@ -67,7 +74,18 @@ class KVHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         return
 
 
-class KVServer(HTTPServer):
+class KVServer(ThreadingHTTPServer):
+    # The default socketserver.TCPServer.request_queue_size is 5, i.e. listen(5).
+    # At 768 nodes every launcher polls put()/get_prefix() every 0.5s over HTTP/1.0
+    # (one new TCP connection per request), which overflows a 5-deep accept queue.
+    # Overflowed SYNs are dropped, and because KVClient uses timeout=None the client
+    # then waits out the ~127s kernel SYN-retransmit timeout, so a few nodes can never
+    # register and sync_peers livelocks. Serve requests concurrently and give the
+    # accept queue enough room. kv is already guarded by kv_lock, so KVHandler is
+    # safe to run on multiple threads.
+    request_queue_size = 2048
+    daemon_threads = True
+
     def __init__(self, port):
         super().__init__(('', port), KVHandler)
         self.kv_lock = threading.Lock()

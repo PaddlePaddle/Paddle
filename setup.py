@@ -1263,14 +1263,14 @@ def get_paddle_extra_install_requirements():
                     "nvidia-cublas<=13.1.1.3,>=13.1.0.3; platform_system == 'Linux' | "
                     "nvidia-cudnn-cu13==9.20.0.48; platform_system == 'Linux' | "
                     "nvidia-cusparselt-cu13==0.8.1; platform_system == 'Linux' | "
-                    "nvidia-nccl-cu13==2.29.7; platform_system == 'Linux' | "
+                    "nvidia-nccl-cu13==2.30.7; platform_system == 'Linux' | "
                     "cuda-python==13.0.3; platform_system == 'Linux'"
                 ),
                 "13.2": (
                     "cuda-toolkit[cublas,cudart,cufft,cufile,cupti,curand,cusolver,cusparse,nvjitlink,nvrtc,nvtx]==13.2.1; platform_system == 'Linux' | "
                     "nvidia-cudnn-cu13==9.20.0.48; platform_system == 'Linux' | "
                     "nvidia-cusparselt-cu13==0.8.1; platform_system == 'Linux' | "
-                    "nvidia-nccl-cu13==2.29.7; platform_system == 'Linux' | "
+                    "nvidia-nccl-cu13==2.30.7; platform_system == 'Linux' | "
                     "cuda-python==13.2.0; platform_system == 'Linux'"
                 ),
             }
@@ -1345,13 +1345,12 @@ def get_paddle_extra_install_requirements():
                     "nvidia-cusparse-cu12==12.5.9.5 "
                 ),
                 "13.0": (
-                    "nvidia-cuda-runtime==13.0.88 | "
-                    "nvidia-cudnn-cu13==9.15.1.9 | "
-                    "nvidia-cublas==13.1.0.3 | "
-                    "nvidia-cufft==12.0.0.61 | "
-                    "nvidia-curand==10.4.0.35 | "
-                    "nvidia-cusolver==12.0.4.66 | "
-                    "nvidia-cusparse==12.6.3.3 "
+                    "cuda-toolkit[cublas,cudart,cufft,curand,cusolver,cusparse]==13.0.2 | "
+                    "nvidia-cudnn-cu13==9.20.0.48"
+                ),
+                "13.2": (
+                    "cuda-toolkit[cublas,cudart,cufft,curand,cusolver,cusparse]==13.2.1 | "
+                    "nvidia-cudnn-cu13==9.20.0.48"
                 ),
             }
         try:

@@ -19,6 +19,10 @@
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/inference/api/paddle_tensor.h"
 #include "paddle/fluid/platform/enforce.h"
+#ifdef PADDLE_WITH_DNNL
+#include "paddle/phi/backends/onednn/onednn_context.h"
+#include "paddle/phi/kernels/funcs/data_layout_transform.h"
+#endif
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/allocator.h"
