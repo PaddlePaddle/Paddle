@@ -12,8 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+import shutil
 import tempfile
 import unittest
+from dataclasses import replace
 
 import numpy as np
 
@@ -46,6 +49,38 @@ class TestNestedStateDictLoad(unittest.TestCase):
 
     def _save(self, state_dict):
         dist.save_state_dict(state_dict, self.ckpt_path)
+
+    def _rebuild_with_replica(self, replicated_key, relocated_key):
+        """Rewrite the checkpoint so one shard is recorded twice.
+
+        ``save_replicas=True`` keeps every copy of a shard, tagging the primary
+        with ``replica_id=0`` and the others with ``replica_id>=1``. Producing
+        that needs several ranks holding the same shard, so build the layout by
+        hand instead: duplicate the data file, record ``replicated_key`` in
+        both, and move ``relocated_key`` into the duplicate only. The rank then
+        has to read both files, which is what makes the load drop the redundant
+        copy of ``replicated_key`` instead of ignoring it.
+        """
+        primary, replica = "0_0.distcp", "1_0.distcp"
+        shutil.copyfile(
+            os.path.join(self.ckpt_path, primary),
+            os.path.join(self.ckpt_path, replica),
+        )
+
+        metadata_file = os.path.join(self.ckpt_path, "0.metadata")
+        metadata = paddle.load(metadata_file)
+        storage_metadata = {}
+        for index in metadata.storage_metadata:
+            if index.tensor_key == replicated_key:
+                storage_metadata[replace(index, replica_id=0)] = primary
+                storage_metadata[replace(index, replica_id=1)] = replica
+            elif index.tensor_key == relocated_key:
+                storage_metadata[replace(index, replica_id=0)] = replica
+            else:
+                storage_metadata[replace(index, replica_id=0)] = primary
+        metadata.storage_metadata = storage_metadata
+        paddle.save(metadata, metadata_file)
+        _metadata_manager.clear()
 
     def test_loads_into_nested_state_dict(self):
         expected = np.arange(32, dtype=np.float32).reshape(4, 8)
@@ -132,6 +167,58 @@ class TestNestedStateDictLoad(unittest.TestCase):
         np.testing.assert_array_equal(
             state_dict["layer.weight"].local_tensor.numpy(), expected
         )
+
+    def test_loads_checkpoint_with_replica_entries(self):
+        """A replica recorded in an already loaded file must be dropped.
+
+        With replicas in the storage metadata the load first evicts every
+        ``replica_id != 0`` shard from the files it read, so only the primary
+        copy reaches the reshard step. That eviction walks the per-file tensor
+        tables, which is the other place that used to shadow ``state_dict``.
+        """
+        expected_w1 = np.arange(8, dtype=np.float32).reshape(2, 4)
+        expected_w2 = np.arange(6, dtype=np.float32).reshape(2, 3)
+        self._save(
+            {
+                "layer": {
+                    "w1": make_replicated_sharded_weight(
+                        "layer.w1", paddle.to_tensor(expected_w1)
+                    ),
+                    "w2": make_replicated_sharded_weight(
+                        "layer.w2", paddle.to_tensor(expected_w2)
+                    ),
+                }
+            }
+        )
+        self._rebuild_with_replica("layer.w1", "layer.w2")
+
+        target_w1 = make_replicated_sharded_weight(
+            "layer.w1", paddle.zeros([2, 4], dtype="float32")
+        )
+        target_w2 = make_replicated_sharded_weight(
+            "layer.w2", paddle.zeros([2, 3], dtype="float32")
+        )
+        state_dict = {"layer": {"w1": target_w1, "w2": target_w2}}
+
+        dist.load_state_dict(
+            state_dict,
+            self.ckpt_path,
+            aoa_config={
+                "aoa_statements": [
+                    "layer.w1 -> layer.w1",
+                    "layer.w2 -> layer.w2",
+                ]
+            },
+        )
+
+        np.testing.assert_array_equal(
+            state_dict["layer"]["w1"].local_tensor.numpy(), expected_w1
+        )
+        np.testing.assert_array_equal(
+            state_dict["layer"]["w2"].local_tensor.numpy(), expected_w2
+        )
+        self.assertIs(state_dict["layer"]["w1"], target_w1)
+        self.assertIs(state_dict["layer"]["w2"], target_w2)
 
 
 if __name__ == "__main__":
