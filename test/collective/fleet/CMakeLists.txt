@@ -936,6 +936,20 @@ if((WITH_GPU) AND LOCAL_ALL_PLAT)
   )
   set_tests_properties(test_pp_with_shared_weight PROPERTIES TIMEOUT "500")
 endif()
+if((WITH_GPU) AND LOCAL_ALL_PLAT)
+  bash_test_modules(
+    test_pp_dw_recompute_overlap
+    START_BASH
+    ../../legacy_test/dist_test.sh
+    TIMEOUT
+    "800"
+    LABELS
+    "RUN_TYPE=DIST"
+    ENVS
+    "PADDLE_DIST_UT_PORT=21284;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
+  )
+  set_tests_properties(test_pp_dw_recompute_overlap PROPERTIES TIMEOUT "800")
+endif()
 if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
   py_test_modules(
     test_layer_spec MODULES test_layer_spec ENVS
