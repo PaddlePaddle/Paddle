@@ -30,9 +30,15 @@
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/aligned_vector.h"
 #include "paddle/phi/kernels/funcs/distribution_helper.h"
 
 namespace phi {
+
+// The scan/replace passes below are bandwidth bound, so they read and write
+// through `AlignedVector`. 4 is enough to reach a 128 bit access for float and
+// keeps the number of template instantiations small.
+constexpr int kTruncatedNormalMaxVecSize = 4;
 
 // Legacy generator, only used when the op carries a non-zero `seed` attribute.
 // It keeps the historical inverse-CDF behavior so that graphs pinning an op
@@ -66,50 +72,107 @@ struct GPUTruncatedNormal {
 
 // Marks `flag` when any element of `data` falls outside [lo, hi]. Concurrent
 // threads only ever store the same value, so the race on `flag` is benign.
-template <typename T, typename MT>
+template <typename T, typename MT, int VecSize>
 __global__ void MarkOutOfRangeKernel(
     const T* data, int64_t numel, MT lo, MT hi, int* flag) {
+  int64_t tid = static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
   int64_t stride = static_cast<int64_t>(blockDim.x) * gridDim.x;
-  for (int64_t i = static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
-       i < numel;
-       i += stride) {
-    MT value = static_cast<MT>(data[i]);
-    if (value < lo || value > hi) {
-      *flag = 1;
+  int64_t vec_numel = numel / VecSize;
+  bool out_of_range = false;
+
+  for (int64_t i = tid; i < vec_numel; i += stride) {
+    phi::AlignedVector<T, VecSize> values;
+    phi::Load<T, VecSize>(data + i * VecSize, &values);
+#pragma unroll
+    for (int j = 0; j < VecSize; ++j) {
+      MT value = static_cast<MT>(values[j]);
+      out_of_range |= (value < lo || value > hi);
     }
+  }
+  for (int64_t i = vec_numel * VecSize + tid; i < numel; i += stride) {
+    MT value = static_cast<MT>(data[i]);
+    out_of_range |= (value < lo || value > hi);
+  }
+
+  if (out_of_range) {
+    *flag = 1;
   }
 }
 
 // Fuses torch's `result = where(mask, fresh, result)` with the mask
 // recomputation of the next loop iteration: elements left untouched were
 // already inside [lo, hi], so `flag` ends up as `mask.any()` of the update.
-template <typename T, typename MT>
+template <typename T, typename MT, int VecSize>
 __global__ void ReplaceOutOfRangeKernel(
     T* data, const T* fresh, int64_t numel, MT lo, MT hi, int* flag) {
+  int64_t tid = static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
   int64_t stride = static_cast<int64_t>(blockDim.x) * gridDim.x;
-  for (int64_t i = static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
-       i < numel;
-       i += stride) {
+  int64_t vec_numel = numel / VecSize;
+  bool still_out_of_range = false;
+
+  for (int64_t i = tid; i < vec_numel; i += stride) {
+    phi::AlignedVector<T, VecSize> values;
+    phi::Load<T, VecSize>(data + i * VecSize, &values);
+
+    bool replace = false;
+#pragma unroll
+    for (int j = 0; j < VecSize; ++j) {
+      MT value = static_cast<MT>(values[j]);
+      replace |= (value < lo || value > hi);
+    }
+    if (!replace) {
+      continue;
+    }
+
+    phi::AlignedVector<T, VecSize> replacements;
+    phi::Load<T, VecSize>(fresh + i * VecSize, &replacements);
+#pragma unroll
+    for (int j = 0; j < VecSize; ++j) {
+      MT value = static_cast<MT>(values[j]);
+      if (value < lo || value > hi) {
+        values[j] = replacements[j];
+        MT new_value = static_cast<MT>(replacements[j]);
+        still_out_of_range |= (new_value < lo || new_value > hi);
+      }
+    }
+    phi::Store<T, VecSize>(values, data + i * VecSize);
+  }
+  for (int64_t i = vec_numel * VecSize + tid; i < numel; i += stride) {
     MT value = static_cast<MT>(data[i]);
     if (value < lo || value > hi) {
       T replacement = fresh[i];
       data[i] = replacement;
       MT new_value = static_cast<MT>(replacement);
-      if (new_value < lo || new_value > hi) {
-        *flag = 1;
-      }
+      still_out_of_range |= (new_value < lo || new_value > hi);
     }
+  }
+
+  if (still_out_of_range) {
+    *flag = 1;
   }
 }
 
-// Port of the `p <= 0.3` branch of torch's `_no_grad_trunc_normal_`: uniform
-// proposals on [a, b] accepted with probability pdf(x)/pdf(mode).
-//
-// The log-pdf is evaluated with the same per-op rounding as the chain
+// Evaluates the log-pdf with the same per-op rounding as torch's chain
 // `candidates.sub_(mean).div_(std).pow_(2).mul_(-0.5).sub_(log_peak)`, which
 // stores an intermediate of dtype T after every step. That rounding is
 // observable for float16/bfloat16, hence the casts.
 template <typename T, typename MT>
+__device__ __forceinline__ bool IsProposalRejected(
+    T candidate, T accept_rand, MT mean, MT std, MT log_peak) {
+  MT value = static_cast<MT>(candidate);
+  value = static_cast<MT>(static_cast<T>(value - mean));
+  value = static_cast<MT>(static_cast<T>(value / std));
+  value = static_cast<MT>(static_cast<T>(value * value));
+  value = static_cast<MT>(static_cast<T>(value * static_cast<MT>(-0.5)));
+  MT log_pdf = static_cast<MT>(static_cast<T>(value - log_peak));
+
+  MT log_u = static_cast<MT>(static_cast<T>(log(static_cast<MT>(accept_rand))));
+  return log_u > log_pdf;
+}
+
+// Port of the `p <= 0.3` branch of torch's `_no_grad_trunc_normal_`: uniform
+// proposals on [a, b] accepted with probability pdf(x)/pdf(mode).
+template <typename T, typename MT, int VecSize>
 __global__ void AcceptRejectKernel(T* result,
                                    const T* proposal,
                                    const T* accept_rand,
@@ -120,10 +183,68 @@ __global__ void AcceptRejectKernel(T* result,
                                    MT log_peak,
                                    bool is_first_round,
                                    int* flag) {
+  int64_t tid = static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
   int64_t stride = static_cast<int64_t>(blockDim.x) * gridDim.x;
-  for (int64_t i = static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
-       i < numel;
-       i += stride) {
+  int64_t vec_numel = numel / VecSize;
+  bool any_rejected = false;
+
+  for (int64_t i = tid; i < vec_numel; i += stride) {
+    int64_t offset = i * VecSize;
+    phi::AlignedVector<bool, VecSize> was_pending;
+    if (is_first_round) {
+#pragma unroll
+      for (int j = 0; j < VecSize; ++j) {
+        was_pending[j] = true;
+      }
+    } else {
+      phi::Load<bool, VecSize>(pending + offset, &was_pending);
+      bool any_pending = false;
+#pragma unroll
+      for (int j = 0; j < VecSize; ++j) {
+        any_pending |= was_pending[j];
+      }
+      if (!any_pending) {
+        continue;
+      }
+    }
+
+    // On the first round `result` already holds the proposal, so it is both the
+    // candidate source and the destination that must be left untouched.
+    phi::AlignedVector<T, VecSize> candidates;
+    phi::Load<T, VecSize>((is_first_round ? result : proposal) + offset,
+                          &candidates);
+    phi::AlignedVector<T, VecSize> accepts;
+    phi::Load<T, VecSize>(accept_rand + offset, &accepts);
+
+    phi::AlignedVector<bool, VecSize> now_pending;
+#pragma unroll
+    for (int j = 0; j < VecSize; ++j) {
+      if (!was_pending[j]) {
+        now_pending[j] = false;
+        continue;
+      }
+      bool rejected = IsProposalRejected<T, MT>(
+          candidates[j], accepts[j], mean, std, log_peak);
+      now_pending[j] = rejected;
+      any_rejected |= rejected;
+    }
+
+    if (!is_first_round) {
+      // torch's `result = where(pending, candidates, result)`.
+      phi::AlignedVector<T, VecSize> values;
+      phi::Load<T, VecSize>(result + offset, &values);
+#pragma unroll
+      for (int j = 0; j < VecSize; ++j) {
+        if (was_pending[j]) {
+          values[j] = candidates[j];
+        }
+      }
+      phi::Store<T, VecSize>(values, result + offset);
+    }
+    phi::Store<bool, VecSize>(now_pending, pending + offset);
+  }
+
+  for (int64_t i = vec_numel * VecSize + tid; i < numel; i += stride) {
     if (!is_first_round && !pending[i]) {
       continue;
     }
@@ -131,22 +252,14 @@ __global__ void AcceptRejectKernel(T* result,
     if (!is_first_round) {
       result[i] = candidate;
     }
-
-    MT value = static_cast<MT>(candidate);
-    value = static_cast<MT>(static_cast<T>(value - mean));
-    value = static_cast<MT>(static_cast<T>(value / std));
-    value = static_cast<MT>(static_cast<T>(value * value));
-    value = static_cast<MT>(static_cast<T>(value * static_cast<MT>(-0.5)));
-    MT log_pdf = static_cast<MT>(static_cast<T>(value - log_peak));
-
-    MT log_u =
-        static_cast<MT>(static_cast<T>(log(static_cast<MT>(accept_rand[i]))));
-
-    bool rejected = log_u > log_pdf;
+    bool rejected = IsProposalRejected<T, MT>(
+        candidate, accept_rand[i], mean, std, log_peak);
     pending[i] = rejected;
-    if (rejected) {
-      *flag = 1;
-    }
+    any_rejected |= rejected;
+  }
+
+  if (any_rejected) {
+    *flag = 1;
   }
 }
 
@@ -185,6 +298,41 @@ class OutOfRangeFlag {
   int* data_ = nullptr;
 };
 
+template <typename T>
+int GetTruncatedNormalVecSize(const T* first, const T* second = nullptr) {
+  int vec_size = phi::GetVectorizedSize<T>(first);
+  if (second != nullptr) {
+    vec_size = std::min(vec_size, phi::GetVectorizedSize<T>(second));
+  }
+  return std::min(vec_size, kTruncatedNormalMaxVecSize);
+}
+
+#define LAUNCH_WITH_VEC_SIZE(kernel, vec_size, ...)                         \
+  do {                                                                      \
+    auto config =                                                           \
+        phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel, vec_size); \
+    switch (vec_size) {                                                     \
+      case 4:                                                               \
+        kernel<T, MT, 4><<<config.block_per_grid,                           \
+                           config.thread_per_block,                         \
+                           0,                                               \
+                           dev_ctx.stream()>>>(__VA_ARGS__);                \
+        break;                                                              \
+      case 2:                                                               \
+        kernel<T, MT, 2><<<config.block_per_grid,                           \
+                           config.thread_per_block,                         \
+                           0,                                               \
+                           dev_ctx.stream()>>>(__VA_ARGS__);                \
+        break;                                                              \
+      default:                                                              \
+        kernel<T, MT, 1><<<config.block_per_grid,                           \
+                           config.thread_per_block,                         \
+                           0,                                               \
+                           dev_ctx.stream()>>>(__VA_ARGS__);                \
+        break;                                                              \
+    }                                                                       \
+  } while (0)
+
 // Rejection sampling on plain normal draws, matching the `p > 0.3` branch of
 // torch's `_no_grad_trunc_normal_`. Every round redraws a full-size tensor, so
 // the philox offsets consumed here line up with torch's sequence of
@@ -208,28 +356,34 @@ void RejectionSampleFromNormal(const Context& dev_ctx,
   MT lo = static_cast<MT>(static_cast<T>(a));
   MT hi = static_cast<MT>(static_cast<T>(b));
 
-  auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel);
   OutOfRangeFlag<Context> flag(dev_ctx);
+  T* out_data = out->data<T>();
 
   flag.Reset();
-  MarkOutOfRangeKernel<T, MT>
-      <<<config.block_per_grid, config.thread_per_block, 0, dev_ctx.stream()>>>(
-          out->data<T>(), numel, lo, hi, flag.data());
+  {
+    int vec_size = GetTruncatedNormalVecSize<T>(out_data);
+    LAUNCH_WITH_VEC_SIZE(
+        MarkOutOfRangeKernel, vec_size, out_data, numel, lo, hi, flag.data());
+  }
   if (!flag.Read()) {
     return;
   }
 
   DenseTensor fresh;
   fresh.Resize(out->dims());
-  dev_ctx.template Alloc<T>(&fresh);
+  T* fresh_data = dev_ctx.template Alloc<T>(&fresh);
+  int vec_size = GetTruncatedNormalVecSize<T>(out_data, fresh_data);
   while (true) {
     funcs::distribution_and_transform<T>(dev_ctx, &fresh, dist, trans);
     flag.Reset();
-    ReplaceOutOfRangeKernel<T, MT><<<config.block_per_grid,
-                                     config.thread_per_block,
-                                     0,
-                                     dev_ctx.stream()>>>(
-        out->data<T>(), fresh.data<T>(), numel, lo, hi, flag.data());
+    LAUNCH_WITH_VEC_SIZE(ReplaceOutOfRangeKernel,
+                         vec_size,
+                         out_data,
+                         fresh_data,
+                         numel,
+                         lo,
+                         hi,
+                         flag.data());
     if (!flag.Read()) {
       return;
     }
@@ -250,6 +404,9 @@ void RejectionSampleFromUniform(const Context& dev_ctx,
 
   double mode = std::max(a, std::min(mean, b));
   double log_peak = -0.5 * std::pow((mode - mean) / std, 2);
+  MT mean_mt = static_cast<MT>(mean);
+  MT std_mt = static_cast<MT>(std);
+  MT log_peak_mt = static_cast<MT>(log_peak);
 
   funcs::uniform_distribution<MT> dist;
   // Matches torch's `uniform_kernel`, which folds the bounds to the output
@@ -262,63 +419,69 @@ void RejectionSampleFromUniform(const Context& dev_ctx,
 
   DenseTensor accept_rand;
   accept_rand.Resize(out->dims());
-  dev_ctx.template Alloc<T>(&accept_rand);
+  T* accept_data = dev_ctx.template Alloc<T>(&accept_rand);
 
   DenseTensor pending;
   pending.Resize(out->dims());
   bool* pending_data = dev_ctx.template Alloc<bool>(&pending);
 
-  auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel);
   OutOfRangeFlag<Context> flag(dev_ctx);
+  T* out_data = out->data<T>();
 
   // First round proposes directly into `out`, as torch does.
   funcs::distribution_and_transform<T>(dev_ctx, out, dist, proposal_trans);
   funcs::distribution_and_transform<T>(
       dev_ctx, &accept_rand, dist, accept_trans);
   flag.Reset();
-  AcceptRejectKernel<T, MT>
-      <<<config.block_per_grid, config.thread_per_block, 0, dev_ctx.stream()>>>(
-          out->data<T>(),
-          nullptr,
-          accept_rand.data<T>(),
-          pending_data,
-          numel,
-          static_cast<MT>(mean),
-          static_cast<MT>(std),
-          static_cast<MT>(log_peak),
-          true,
-          flag.data());
+  {
+    int vec_size = GetTruncatedNormalVecSize<T>(out_data, accept_data);
+    LAUNCH_WITH_VEC_SIZE(AcceptRejectKernel,
+                         vec_size,
+                         out_data,
+                         static_cast<const T*>(nullptr),
+                         accept_data,
+                         pending_data,
+                         numel,
+                         mean_mt,
+                         std_mt,
+                         log_peak_mt,
+                         true,
+                         flag.data());
+  }
   if (!flag.Read()) {
     return;
   }
 
   DenseTensor proposal;
   proposal.Resize(out->dims());
-  dev_ctx.template Alloc<T>(&proposal);
+  T* proposal_data = dev_ctx.template Alloc<T>(&proposal);
+  int vec_size = std::min(GetTruncatedNormalVecSize<T>(out_data, accept_data),
+                          GetTruncatedNormalVecSize<T>(proposal_data));
   while (true) {
     funcs::distribution_and_transform<T>(
         dev_ctx, &proposal, dist, proposal_trans);
     funcs::distribution_and_transform<T>(
         dev_ctx, &accept_rand, dist, accept_trans);
     flag.Reset();
-    AcceptRejectKernel<T, MT><<<config.block_per_grid,
-                                config.thread_per_block,
-                                0,
-                                dev_ctx.stream()>>>(out->data<T>(),
-                                                    proposal.data<T>(),
-                                                    accept_rand.data<T>(),
-                                                    pending_data,
-                                                    numel,
-                                                    static_cast<MT>(mean),
-                                                    static_cast<MT>(std),
-                                                    static_cast<MT>(log_peak),
-                                                    false,
-                                                    flag.data());
+    LAUNCH_WITH_VEC_SIZE(AcceptRejectKernel,
+                         vec_size,
+                         out_data,
+                         proposal_data,
+                         accept_data,
+                         pending_data,
+                         numel,
+                         mean_mt,
+                         std_mt,
+                         log_peak_mt,
+                         false,
+                         flag.data());
     if (!flag.Read()) {
       return;
     }
   }
 }
+
+#undef LAUNCH_WITH_VEC_SIZE
 
 template <typename T, typename Context>
 void TruncatedGaussianRandomKernel(const Context& dev_ctx,
