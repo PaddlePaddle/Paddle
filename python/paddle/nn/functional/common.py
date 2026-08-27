@@ -2452,18 +2452,42 @@ def cosine_similarity(
     """
     if x1.shape[axis] == 0 or x2.shape[axis] == 0:
         return sum(paddle.multiply(x1, x2), axis=axis)
-    bs = paddle.broadcast_shape([x1.shape[axis]], [x2.shape[axis]])
-    w12 = sum(paddle.multiply(x1, x2), axis=axis)
-    w1 = sum(paddle.multiply(x1, x1), axis=axis)
-    w2 = sum(paddle.multiply(x2, x2), axis=axis)
-    m1, m2 = bs[0] / x1.shape[axis], bs[0] / x2.shape[axis]
-    if m1 != 1:
-        w1 = w1 * m1
-    if m2 != 1:
-        w2 = w2 * m2
-    n12 = sqrt(clip(w1 * w2, min=eps * eps))
-    cos_sim = w12 / n12
-    return cos_sim
+    if paddle.get_flags("FLAGS_use_accuracy_compatible_kernel")[
+        "FLAGS_use_accuracy_compatible_kernel"
+    ]:
+        # Note: aligning with torch 2.12
+        bs = paddle.broadcast_shape([x1.shape[axis]], [x2.shape[axis]])
+        x1_full, x2_full = x1, x2
+        if x1.shape[axis] != bs[0]:
+            shape = [-1] * len(x1.shape)
+            shape[axis] = bs[0]
+            x1_full = paddle.broadcast_to(x1, shape)
+        if x2.shape[axis] != bs[0]:
+            shape = [-1] * len(x2.shape)
+            shape[axis] = bs[0]
+            x2_full = paddle.broadcast_to(x2, shape)
+        n1 = clip(
+            paddle.linalg.vector_norm(x1_full, p=2, axis=axis, keepdim=True),
+            min=eps,
+        )
+        n2 = clip(
+            paddle.linalg.vector_norm(x2_full, p=2, axis=axis, keepdim=True),
+            min=eps,
+        )
+        return sum(paddle.multiply(x1 / n1, x2 / n2), axis=axis)
+    else:
+        bs = paddle.broadcast_shape([x1.shape[axis]], [x2.shape[axis]])
+        w12 = sum(paddle.multiply(x1, x2), axis=axis)
+        w1 = sum(paddle.multiply(x1, x1), axis=axis)
+        w2 = sum(paddle.multiply(x2, x2), axis=axis)
+        m1, m2 = bs[0] / x1.shape[axis], bs[0] / x2.shape[axis]
+        if m1 != 1:
+            w1 = w1 * m1
+        if m2 != 1:
+            w2 = w2 * m2
+        n12 = sqrt(clip(w1 * w2, min=eps * eps))
+        cos_sim = w12 / n12
+        return cos_sim
 
 
 def linear(
