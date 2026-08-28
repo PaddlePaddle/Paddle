@@ -341,7 +341,7 @@ class FSDPBufferManager:
                     group.fsdp_group,
                     group.dtype,
                     main_grad_dtype=paddle.float32
-                    if group.is_expert_param
+                    if group.is_expert_param or group.dtype == paddle.float32
                     else self.main_grad_dtype,
                 )
             group.grads_use_sum = len(params)
@@ -697,11 +697,11 @@ class FullyShardFusion:
                 # Share mem with grads_tmp_buffer
                 fusion_buffer = param._fusion_buffer
                 param.get_main_grad(grad.shape)
+                if grad.dtype != param.main_grad.dtype:
+                    grad = grad.astype(param.main_grad.dtype)
                 if fusion_buffer.is_sharded and overwrite_staging:
                     param.main_grad.copy_(grad)
                 else:
-                    if grad.dtype != param.main_grad.dtype:
-                        grad = grad.astype(param.main_grad.dtype)
                     param.main_grad.add_(grad)
                 grad._clear_data()
             comm_manager.shard_params([param], is_backward=True)
