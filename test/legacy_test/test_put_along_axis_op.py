@@ -1569,6 +1569,17 @@ class TestPutAlongAxisDynamicShape3(TestPutAlongAxisDynamicShape):
 
 
 class TestPutAlongAxisDynamicShape_ZeroSize(TestPutAlongAxisDynamicShape):
+    """``arr`` is 0-size while ``put_along_axis_net`` scatters a [1, 1, 1, 1]
+    index, which exceeds ``arr`` on dimension 0.
+
+    Dygraph rejects it. The to_static path cannot: ``arr`` is traced with a
+    fully dynamic ``(-1, -1, -1, -1)`` spec, so the shapes are unknown when the
+    check would run, and at execution time ``indices`` gets broadcast against
+    the runtime shape of ``arr``, which collapses it to 0-size. An empty index
+    scatters nothing, so returning ``arr`` unchanged is correct there -- the
+    same thing ``torch.scatter_`` does for an empty index.
+    """
+
     def setUp(self):
         np.random.seed(2024)
         self.net = put_along_axis_net
@@ -1584,6 +1595,13 @@ class TestPutAlongAxisDynamicShape_ZeroSize(TestPutAlongAxisDynamicShape):
             )
         ]
         self.arr = np.random.random([0, 10, 10, 10]).astype(self.dtype)
+
+    def test_dynamic_static(self):
+        with dygraph_guard():
+            with self.assertRaises(RuntimeError):
+                self.train(to_static=False)
+            res, _ = self.train(to_static=True)
+            self.assertEqual(list(res.shape), [0, 10, 10, 10])
 
 
 class TestPutAlongAxisZeroSizeIndex(unittest.TestCase):
@@ -1782,7 +1800,11 @@ class TestPutAlongAxisZeroSizeInputGrad(unittest.TestCase):
     the CPU grad kernel lacked a numel==0 early-return guard.
 
     Fixed in put_along_axis_grad_kernel.cc by adding the same guard
-    that the GPU grad kernel already had.
+    that the GPU grad kernel already had. The guard is kept as defense in
+    depth, but such shapes are now rejected up front: a 0-size input with a
+    non-empty index is always out of bounds, either because index exceeds
+    input on a non-axis dimension or because the scatter dimension has no
+    valid index value. See ``TestPutAlongAxisZeroSizeInputInvalidIndex``.
     """
 
     def setUp(self):
@@ -1839,34 +1861,256 @@ class TestPutAlongAxisZeroSizeInputGrad(unittest.TestCase):
             [4, 4, 0], [1, 1, 0], [1, 1, 0], axis=0, reduce='assign'
         )
 
-    def test_mid_dim_zero_nonempty_index(self):
-        """x.numel()==0 but indices.numel()!=0, so C++ grad kernel is called."""
-        self._run_zero_size_input(
-            [2, 0, 3], [2, 1, 3], [2, 1, 3], axis=1, reduce='assign'
+
+class TestPutAlongAxisZeroSizeInputInvalidIndex(unittest.TestCase):
+    """
+    A 0-size input combined with a non-empty index can never be valid, and
+    ``broadcast=True`` used to silently ignore it while ``broadcast=False``
+    and ``torch.scatter_`` both raise. Both flavours now agree.
+
+    Two distinct reasons to reject:
+
+    - the 0-size dimension is not ``axis``, so index exceeds input there and
+      the scatter would write out of bounds. Rejected up front from the shape
+      alone, mirroring the wording of the ``broadcast=False`` branch;
+    - the 0-size dimension *is* ``axis``, so no index value can be in range.
+      This one is reported by the kernel as an index out-of-bounds error, the
+      way ``torch.scatter_`` does, which surfaces as ``IndexError``. The
+      ``broadcast=False`` branch checks the index values in python first and
+      raises ``RuntimeError``, so both types are accepted.
+    """
+
+    def setUp(self):
+        paddle.disable_static()
+
+    def _places(self):
+        places = [paddle.CPUPlace()]
+        if core.is_compiled_with_cuda() or is_custom_device():
+            places.append(get_device_place())
+        if paddle.device.is_compiled_with_xpu():
+            places.append(paddle.XPUPlace(0))
+        return places
+
+    def _run(self, x_shape, idx_shape, val_shape, axis, place, broadcast):
+        x = paddle.to_tensor(
+            np.random.rand(*x_shape).astype('float32'), place=place
+        )
+        index = paddle.to_tensor(
+            np.zeros(idx_shape, dtype='int64'), place=place
+        )
+        value = paddle.to_tensor(
+            np.random.rand(*val_shape).astype('float32'), place=place
+        )
+        paddle.put_along_axis(
+            x,
+            index,
+            value,
+            axis=axis,
+            reduce='assign',
+            include_self=True,
+            broadcast=broadcast,
         )
 
-    def test_first_dim_zero_nonempty_index(self):
-        self._run_zero_size_input(
-            [0, 20], [1024, 6], [1024, 6], axis=1, reduce='assign'
+    def test_non_axis_dim_zero(self):
+        for place in self._places():
+            for broadcast in (True, False):
+                with self.assertRaisesRegex(
+                    RuntimeError, "apart from dimension"
+                ):
+                    self._run(
+                        [0, 20], [1024, 6], [1024, 6], 1, place, broadcast
+                    )
+
+    def test_axis_dim_zero(self):
+        for place in self._places():
+            for broadcast in (True, False):
+                with self.assertRaisesRegex(
+                    (RuntimeError, IndexError), "out of bounds"
+                ):
+                    self._run(
+                        [2, 0, 3], [2, 1, 3], [2, 1, 3], 1, place, broadcast
+                    )
+
+    def test_inplace_rejects_too(self):
+        x = paddle.zeros([0, 20], dtype='float32')
+        index = paddle.zeros([1024, 6], dtype='int64')
+        value = paddle.zeros([1024, 6], dtype='float32')
+        with self.assertRaisesRegex(RuntimeError, "apart from dimension"):
+            x.put_along_axis_(index, value, axis=1)
+
+
+class TestPutAlongAxisIndexLargerThanInput(unittest.TestCase):
+    """
+    ``indices`` may only exceed ``arr`` along ``axis``. On any other dimension
+    its coordinates address ``arr`` directly, so a larger size made the scatter
+    kernel write past the end of ``arr`` -- a segfault with a large enough
+    index, silently ignored when ``arr`` was 0-size. ``infer_broadcast_shape``
+    returns None for both situations, and the ``broadcast=True`` path used to
+    read that as "just skip broadcasting" without validating anything.
+    """
+
+    def setUp(self):
+        paddle.disable_static()
+
+    def test_index_rows_exceed_input_rows(self):
+        for broadcast in (True, False):
+            arr = paddle.zeros([3, 4], dtype='float32')
+            index = paddle.zeros([4096, 2], dtype='int64')
+            value = paddle.ones([4096, 2], dtype='float32')
+            with self.assertRaisesRegex(RuntimeError, "apart from dimension"):
+                paddle.put_along_axis(
+                    arr, index, value, axis=1, broadcast=broadcast
+                )
+
+    def test_index_longer_along_axis_is_allowed(self):
+        """Exceeding ``arr`` on ``axis`` itself stays legal."""
+        arr = paddle.zeros([3, 4], dtype='float32')
+        index = paddle.to_tensor(
+            [[0, 1, 2, 3, 0, 1], [0, 0, 0, 0, 0, 0], [3, 3, 3, 3, 3, 3]],
+            dtype='int64',
         )
-        if core.is_compiled_with_cuda() or is_custom_device():
-            self._run_zero_size_input(
-                [0, 20],
-                [1024, 6],
-                [1024, 6],
-                axis=1,
-                reduce='assign',
-                place=get_device_place(),
-            )
-        if paddle.device.is_compiled_with_xpu():
-            self._run_zero_size_input(
-                [0, 20],
-                [1024, 6],
-                [1024, 6],
-                axis=1,
-                reduce='assign',
-                place=paddle.XPUPlace(0),
-            )
+        value = paddle.arange(18).astype('float32').reshape([3, 6])
+        out = paddle.put_along_axis(arr, index, value, axis=1)
+        expected = np.array(
+            [[4.0, 5.0, 2.0, 3.0], [11.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 17.0]]
+        )
+        np.testing.assert_allclose(out.numpy(), expected)
+
+
+class TestPutAlongAxisInferMetaShapeCheck(unittest.TestCase):
+    """``PutAlongAxisInferMeta`` mirrors ``scatter_shape_check`` in torch.
+
+    The python wrapper rejects a rank mismatch and normalizes ``values`` by
+    broadcasting, so these constraints are only observable when the op is
+    called directly. Going through ``_C_ops`` covers the static graph, PIR and
+    custom-pass entries at the same time, since they all share the InferMeta.
+
+    Shape violations are reported as ``InvalidArgument``, which surfaces as
+    ``ValueError`` in python.
+    """
+
+    def setUp(self):
+        paddle.disable_static()
+
+    def _call(self, x_shape, idx_shape, val_shape, axis):
+        def make(shape, dtype):
+            if shape is None:  # 0-D tensor
+                return paddle.zeros([], dtype=dtype)
+            return paddle.zeros(shape, dtype=dtype)
+
+        return paddle._C_ops.put_along_axis(
+            make(x_shape, 'float32'),
+            make(idx_shape, 'int64'),
+            make(val_shape, 'float32'),
+            axis,
+            'assign',
+            True,
+        )
+
+    def test_index_rank_mismatch(self):
+        with self.assertRaisesRegex(
+            ValueError, "same number of dimensions as self"
+        ):
+            self._call([3, 4], [3], [3], 1)
+
+    def test_value_rank_mismatch(self):
+        with self.assertRaisesRegex(
+            ValueError, "same number of dimensions as value"
+        ):
+            self._call([3, 4], [3, 2], [3], 1)
+
+    def test_zero_dim_input_rank_mismatch(self):
+        """A 0-D tensor counts as a 1-D tensor holding a single element."""
+        with self.assertRaisesRegex(
+            ValueError, "same number of dimensions as self"
+        ):
+            self._call(None, [2, 3], [2, 3], 0)
+
+    def test_index_larger_than_value(self):
+        """Unlike ``x``, ``value`` is constrained on ``axis`` as well."""
+        with self.assertRaisesRegex(ValueError, "no larger than value"):
+            self._call([3, 4], [3, 2], [3, 1], 1)
+
+    def test_index_larger_than_input_off_axis(self):
+        with self.assertRaisesRegex(ValueError, "apart from dimension"):
+            self._call([3, 4], [4096, 2], [4096, 2], 1)
+
+    def test_axis_out_of_range(self):
+        with self.assertRaisesRegex(IndexError, "Dimension out of range"):
+            self._call([3, 4], [3, 2], [3, 2], 2)
+
+    def test_empty_index_skips_every_check(self):
+        """An empty index scatters nothing, so no shape constraint applies."""
+        out = self._call([8192, 32], [0, 10], [8192, 10], 1)
+        self.assertEqual(list(out.shape), [8192, 32])
+
+    def test_index_longer_along_axis_is_allowed(self):
+        out = self._call([3, 4], [3, 6], [3, 6], 1)
+        self.assertEqual(list(out.shape), [3, 4])
+
+
+class TestPutAlongAxisZeroDimOperands(unittest.TestCase):
+    """A 0-D operand counts as a 1-D operand holding a single element.
+
+    ``PutAlongAxisInferMeta`` accepts these shapes, so the kernel has to be
+    able to run them: it promotes the 0-D operands to rank 1 before entering
+    the scatter functor, which indexes ``dims()`` and ``strides()`` directly
+    and cannot address a rank-0 tensor.
+
+    The python wrapper rejects both combinations before they get this far, so
+    they are only reachable through ``_C_ops``.
+    """
+
+    def setUp(self):
+        paddle.disable_static()
+
+    def test_all_zero_dim(self):
+        out = paddle._C_ops.put_along_axis(
+            paddle.to_tensor(5.0),
+            paddle.to_tensor(0, dtype='int64'),
+            paddle.to_tensor(9.0),
+            0,
+            'assign',
+            True,
+        )
+        self.assertEqual(list(out.shape), [])
+        np.testing.assert_allclose(out.numpy(), np.array(9.0))
+
+    def test_zero_dim_input_with_rank_one_index(self):
+        out = paddle._C_ops.put_along_axis(
+            paddle.to_tensor(5.0),
+            paddle.to_tensor([0], dtype='int64'),
+            paddle.to_tensor([9.0]),
+            0,
+            'assign',
+            True,
+        )
+        self.assertEqual(list(out.shape), [])
+        np.testing.assert_allclose(out.numpy(), np.array(9.0))
+
+    def test_zero_dim_operands_reduce_add(self):
+        out = paddle._C_ops.put_along_axis(
+            paddle.to_tensor(5.0),
+            paddle.to_tensor(0, dtype='int64'),
+            paddle.to_tensor(9.0),
+            0,
+            'add',
+            True,
+        )
+        self.assertEqual(list(out.shape), [])
+        np.testing.assert_allclose(out.numpy(), np.array(14.0))
+
+    def test_negative_axis(self):
+        """``axis`` reaches the kernel exactly as written, so it normalizes it."""
+        x = paddle.zeros([3, 4], dtype='float32')
+        index = paddle.to_tensor([[0], [1], [2]], dtype='int64')
+        value = paddle.to_tensor([[1.0], [2.0], [3.0]])
+        out = paddle._C_ops.put_along_axis(x, index, value, -1, 'assign', True)
+        expected = np.zeros([3, 4], dtype='float32')
+        expected[0, 0] = 1.0
+        expected[1, 1] = 2.0
+        expected[2, 2] = 3.0
+        np.testing.assert_allclose(out.numpy(), expected)
 
 
 class TestPutAlongAxisMulFloat32DivByZeroGrad(unittest.TestCase):

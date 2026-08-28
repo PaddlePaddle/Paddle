@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/phi/infermeta/ternary.h"
 
+#include <algorithm>
 #include <array>
 
 #include "glog/logging.h"
@@ -2576,7 +2577,95 @@ void PutAlongAxisInferMeta(const MetaTensor& x,
                            int axis,
                            const std::string& reduce,
                            MetaTensor* out) {
-  out->set_dims(x.dims());
+  const auto& x_dims = x.dims();
+  const auto& index_dims = index.dims();
+  const auto& value_dims = value.dims();
+
+  // Mirrors ``scatter_shape_check`` in torch: an empty ``index`` performs no
+  // scatter at all, so no shape constraint applies to it.
+  if (common::product(index_dims) != 0) {
+    // 0-D tensors are handled as 1-D tensors holding a single element, the same
+    // way ``ensure_nonempty_dim`` / ``ensure_nonempty_size`` do in torch.
+    auto nonempty_rank = [](const DDim& dims) {
+      return std::max<int>(static_cast<int>(dims.size()), 1);
+    };
+    auto nonempty_size = [](const DDim& dims, int d) -> int64_t {
+      return dims.size() == 0 ? 1 : dims[d];
+    };
+
+    const int rank = nonempty_rank(x_dims);
+    PADDLE_ENFORCE_EQ(
+        nonempty_rank(index_dims),
+        rank,
+        common::errors::InvalidArgument(
+            "Index tensor must have the same number of dimensions as self "
+            "tensor, but got index %s and self %s.",
+            index_dims,
+            x_dims));
+    PADDLE_ENFORCE_EQ(
+        nonempty_rank(value_dims),
+        rank,
+        common::errors::InvalidArgument(
+            "Index tensor must have the same number of dimensions as value "
+            "tensor, but got index %s and value %s.",
+            index_dims,
+            value_dims));
+
+    const int dim = axis < 0 ? axis + rank : axis;
+    PADDLE_ENFORCE_EQ(
+        dim >= 0 && dim < rank,
+        true,
+        common::errors::OutOfRange(
+            "Dimension out of range, expected axis to be in [%d, %d), but got "
+            "%d.",
+            -rank,
+            rank,
+            axis));
+
+    for (int d = 0; d < rank; ++d) {
+      const int64_t index_d = nonempty_size(index_dims, d);
+      if (index_d < 0) {
+        // dynamic shape, nothing can be decided here.
+        continue;
+      }
+      // ``index`` addresses ``x`` with its own coordinates on every dimension
+      // but ``dim``, so being larger than ``x`` there would make the scatter
+      // kernel write out of bounds.
+      const int64_t x_d = nonempty_size(x_dims, d);
+      if (d != dim && x_d >= 0) {
+        PADDLE_ENFORCE_LE(
+            index_d,
+            x_d,
+            common::errors::InvalidArgument(
+                "Size does not match at dimension %d expected index %s to be "
+                "no larger than self %s apart from dimension %d and to be no "
+                "larger than value %s.",
+                d,
+                index_dims,
+                x_dims,
+                dim,
+                value_dims));
+      }
+      // Unlike ``x``, every coordinate of ``index`` also reads ``value``, so
+      // ``dim`` is constrained here as well.
+      const int64_t value_d = nonempty_size(value_dims, d);
+      if (value_d >= 0) {
+        PADDLE_ENFORCE_LE(
+            index_d,
+            value_d,
+            common::errors::InvalidArgument(
+                "Size does not match at dimension %d expected index %s to be "
+                "no larger than self %s apart from dimension %d and to be no "
+                "larger than value %s.",
+                d,
+                index_dims,
+                x_dims,
+                dim,
+                value_dims));
+      }
+    }
+  }
+  out->set_dims(x_dims);
   out->set_dtype(x.dtype());
 }
 
