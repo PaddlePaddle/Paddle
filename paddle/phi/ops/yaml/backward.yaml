@@ -3120,7 +3120,6 @@
     param : [grad_out]
   kernel :
     func : reshape_double_grad
-  no_need_buffer : grad_out
   composite: reshape_double_grad(grad_out, grad_x_grad, grad_out_grad)
   inplace : (grad_x_grad -> grad_out_grad)
 
@@ -3139,7 +3138,6 @@
     data_type: out_grad
     backend: out_grad
     layout: out_grad
-  no_need_buffer : x
   backward : reshape_double_grad
   inplace : (out_grad -> x_grad)
 
