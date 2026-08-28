@@ -1723,6 +1723,9 @@ static PyObject* tensor__getitem_dygraph(TensorObject* self,
           "tensor please init it first with numpy or other tensor.",
           self->tensor.name()));
 
+  if (!self->tensor.is_contiguous()) {
+    self->tensor = self->tensor.contiguous();
+  }
   auto tensor = self->tensor;
   const int rank = tensor.shape().size();
   std::vector<int64_t> slice_starts, slice_ends, slice_strides;
