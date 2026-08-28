@@ -927,7 +927,7 @@ void ReshardKernelOutputToApiOutput(
     const std::shared_ptr<phi::distributed::DistTensor>& src_tensor,
     Tensor* dst_tensor,
     const std::string& arg_name) {
-  if (dst_tensor) {
+  if (dst_tensor && dst_tensor->is_dist_tensor()) {
     auto tensor_out = dst_tensor->impl();
     PADDLE_ENFORCE_NE(
         tensor_out,
@@ -961,7 +961,7 @@ void ReshardKernelOutputToApiOutput(
       dist_tensor->unsafe_set_dist_attr(src_tensor->dist_attr());
     }
   } else {
-    VLOG(3) << "The output tensor is nullptr when call "
+    VLOG(3) << "The output tensor is nullptr or not dist_tensor when call "
                "ReshardKernelOutputToApiOutput.";
   }
 }
