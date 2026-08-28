@@ -2504,6 +2504,8 @@ def cosine_similarity(
     # 2. ||repeat(x,m)|| = sqrt(m) * |x|.
     # This replacement could save memory at vector_norm when x1.dims[axis] != x2.dims[axis]
     #  and broadcast happens at axis dim.
+    # The literal torch order, expand first and then take the norm, is kept behind
+    # FLAGS_use_accuracy_compatible_kernel at the cost of that extra memory.
     rank = max(len(x1.shape), len(x2.shape))
     if len(x1.shape) < rank:
         x1 = unsqueeze(x1, axis=list(range(rank - len(x1.shape))))
@@ -2511,13 +2513,27 @@ def cosine_similarity(
         x2 = unsqueeze(x2, axis=list(range(rank - len(x2.shape))))
     bs = paddle.broadcast_shape(x1.shape, x2.shape)
     dim = axis + rank if axis < 0 else axis
-    n1 = paddle.linalg.vector_norm(x1, p=2, axis=dim, keepdim=True)
-    n2 = paddle.linalg.vector_norm(x2, p=2, axis=dim, keepdim=True)
-    # A dynamic (-1) length fails both checks and is left uncorrected.
-    if x1.shape[dim] > 0 and bs[dim] > x1.shape[dim]:
-        n1 = n1 * math.sqrt(bs[dim] / x1.shape[dim])
-    if x2.shape[dim] > 0 and bs[dim] > x2.shape[dim]:
-        n2 = n2 * math.sqrt(bs[dim] / x2.shape[dim])
+    if paddle.get_flags(["FLAGS_use_accuracy_compatible_kernel"]).get(
+        "FLAGS_use_accuracy_compatible_kernel", False
+    ):
+        # Reproduce torch step by step: expand both inputs to the broadcast
+        # shape and take the norm of the expanded tensors. Unlike torch.expand,
+        # paddle.broadcast_to is not a 0-copy view, so each expanded input costs
+        # an extra O(prod(bs)) allocation that is also read back by vector_norm.
+        # For x1=[B, 1, D] against x2=[B, N, D] that is O(B * N * D) instead of
+        # the O(B * D) the data occupies, and it may OOM when N is large.
+        x1 = paddle.broadcast_to(x1, bs)
+        x2 = paddle.broadcast_to(x2, bs)
+        n1 = paddle.linalg.vector_norm(x1, p=2, axis=dim, keepdim=True)
+        n2 = paddle.linalg.vector_norm(x2, p=2, axis=dim, keepdim=True)
+    else:
+        n1 = paddle.linalg.vector_norm(x1, p=2, axis=dim, keepdim=True)
+        n2 = paddle.linalg.vector_norm(x2, p=2, axis=dim, keepdim=True)
+        # A dynamic (-1) length fails both checks and is left uncorrected.
+        if x1.shape[dim] > 0 and bs[dim] > x1.shape[dim]:
+            n1 = n1 * math.sqrt(bs[dim] / x1.shape[dim])
+        if x2.shape[dim] > 0 and bs[dim] > x2.shape[dim]:
+            n2 = n2 * math.sqrt(bs[dim] / x2.shape[dim])
     return sum(
         paddle.multiply(x1 / clip(n1, min=eps), x2 / clip(n2, min=eps)),
         axis=dim,

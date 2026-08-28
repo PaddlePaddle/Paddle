@@ -23,23 +23,22 @@ from paddle import nn, static
 from paddle.base import Executor
 
 
+def _np_cosine_similarity(x1, x2, axis=1, eps=1e-8):
+    """Reference following torch2.12.0: broadcast both inputs first, then divide
+    each of them by its own norm along ``axis`` clamped to ``eps``.
+    """
+    x1, x2 = np.broadcast_arrays(x1, x2)
+    n1 = np.maximum(np.sqrt(np.sum(x1 * x1, axis=axis, keepdims=True)), eps)
+    n2 = np.maximum(np.sqrt(np.sum(x2 * x2, axis=axis, keepdims=True)), eps)
+    return np.sum((x1 / n1) * (x2 / n2), axis=axis)
+
+
 class TestCosineSimilarityAPI(unittest.TestCase):
     def setUp(self):
         self.places = get_places()
 
     def _get_numpy_out(self, x1, x2, axis=1, eps=1e-8):
-        bs = np.broadcast_shapes([x1.shape[axis]], [x2.shape[axis]])
-        w12 = np.sum(x1 * x2, axis=axis)
-        w1 = np.sum(x1 * x1, axis=axis)
-        w2 = np.sum(x2 * x2, axis=axis)
-        m1, m2 = bs[0] / x1.shape[axis], bs[0] / x2.shape[axis]
-        if m1 != 1:
-            w1 = w1 * m1
-        if m2 != 1:
-            w2 = w2 * m2
-        n12 = np.sqrt(np.clip(w1 * w2, eps * eps, None))
-        cos_sim = w12 / n12
-        return cos_sim
+        return _np_cosine_similarity(x1, x2, axis=axis, eps=eps)
 
     def check_static_result(self, place):
         paddle.enable_static()
@@ -177,18 +176,7 @@ class TestCosineSimilarityAPI_ZeroSize(unittest.TestCase):
         self.places = get_places()
 
     def _get_numpy_out(self, x1, x2, axis=1, eps=1e-8):
-        bs = np.broadcast_shapes([x1.shape[axis]], [x2.shape[axis]])
-        w12 = np.sum(x1 * x2, axis=axis)
-        w1 = np.sum(x1 * x1, axis=axis)
-        w2 = np.sum(x2 * x2, axis=axis)
-        m1, m2 = bs[0] / x1.shape[axis], bs[0] / x2.shape[axis]
-        if m1 != 1:
-            w1 = w1 * m1
-        if m2 != 1:
-            w2 = w2 * m2
-        n12 = np.sqrt(np.clip(w1 * w2, eps * eps, None))
-        cos_sim = w12 / n12
-        return cos_sim
+        return _np_cosine_similarity(x1, x2, axis=axis, eps=eps)
 
     def test_dygraph_1(self):
         paddle.disable_static()
@@ -209,6 +197,225 @@ class TestCosineSimilarityAPI_ZeroSize(unittest.TestCase):
         np.testing.assert_allclose(y.numpy(), np_out, rtol=1e-05)
         y.sum().backward()
         np.testing.assert_allclose(tensor_x1.grad.shape, tensor_x1.shape)
+
+
+class TestCosineSimilarityAPI_RankMismatch(unittest.TestCase):
+    """x1 and x2 may have different ranks: they are broadcast first, so
+    ``axis`` indexes the common shape rather than each input's own shape.
+    """
+
+    def test_dygraph(self):
+        paddle.disable_static()
+        np.random.seed(1)
+        for shape1, shape2, axis in [
+            ([2, 3], [1, 2, 3], 1),
+            ([2, 3], [1, 2, 3], 2),
+            ([2, 3], [1, 2, 3], -1),
+            ([2, 3], [1, 2, 3], -2),
+            ([4, 5], [3, 4, 5], 0),
+            ([5], [3, 4, 5], 2),
+            ([1, 7], [2, 3, 7], 1),
+            ([3, 4, 5], [4, 5], 1),
+        ]:
+            np_x1 = np.random.rand(*shape1).astype(np.float32)
+            np_x2 = np.random.rand(*shape2).astype(np.float32)
+            np_out = _np_cosine_similarity(np_x1, np_x2, axis=axis)
+
+            y = F.cosine_similarity(
+                paddle.to_tensor(np_x1), paddle.to_tensor(np_x2), axis=axis
+            )
+            msg = f"x1={shape1} x2={shape2} axis={axis}"
+            self.assertEqual(list(y.shape), list(np_out.shape), msg)
+            np.testing.assert_allclose(
+                y.numpy(), np_out, rtol=1e-05, err_msg=msg
+            )
+
+    def test_static(self):
+        paddle.enable_static()
+        np.random.seed(1)
+        try:
+            for shape1, shape2, axis in [
+                ([2, 3], [1, 2, 3], 1),
+                ([4, 5], [3, 4, 5], 0),
+                ([5], [3, 4, 5], 2),
+                ([3, 4, 5], [4, 5], -1),
+            ]:
+                np_x1 = np.random.rand(*shape1).astype(np.float32)
+                np_x2 = np.random.rand(*shape2).astype(np.float32)
+                np_out = _np_cosine_similarity(np_x1, np_x2, axis=axis)
+                msg = f"x1={shape1} x2={shape2} axis={axis}"
+
+                main_program = static.Program()
+                startup_program = static.Program()
+                with static.program_guard(main_program, startup_program):
+                    x1 = static.data(name="x1", shape=shape1)
+                    x2 = static.data(name="x2", shape=shape2)
+                    result = F.cosine_similarity(x1, x2, axis=axis)
+                    for place in get_places():
+                        fetches = Executor(place).run(
+                            main_program,
+                            feed={"x1": np_x1, "x2": np_x2},
+                            fetch_list=[result],
+                        )
+                        np.testing.assert_allclose(
+                            fetches[0], np_out, rtol=1e-05, err_msg=msg
+                        )
+        finally:
+            paddle.disable_static()
+
+
+class TestCosineSimilarityAPI_LargeBroadcast(unittest.TestCase):
+    """Large inputs that broadcast along ``axis``: the reduction length is the
+    broadcast one, which is what the ||repeat(x, m)|| == sqrt(m) * ||x||
+    correction has to reproduce.
+    """
+
+    def test_dygraph(self):
+        paddle.disable_static()
+        np.random.seed(1)
+        b, n, d = 4, 512, 256
+        for shape1, shape2, axis in [
+            # broadcast on the reduced axis, so both norms need the correction
+            ([b, 1, d], [b, n, d], 1),
+            # broadcast on the reduced axis with mismatched ranks
+            ([1, d], [b, n, d], 1),
+            # broadcast off the reduced axis, no correction
+            ([b, 1, d], [b, n, d], 2),
+            ([d], [b, n, d], 2),
+        ]:
+            np_x1 = np.random.rand(*shape1).astype(np.float32)
+            np_x2 = np.random.rand(*shape2).astype(np.float32)
+            np_out = _np_cosine_similarity(np_x1, np_x2, axis=axis)
+
+            y = F.cosine_similarity(
+                paddle.to_tensor(np_x1), paddle.to_tensor(np_x2), axis=axis
+            )
+            msg = f"x1={shape1} x2={shape2} axis={axis}"
+            self.assertEqual(list(y.shape), list(np_out.shape), msg)
+            np.testing.assert_allclose(
+                y.numpy(), np_out, rtol=1e-05, err_msg=msg
+            )
+
+
+class TestCosineSimilarityAPI_Numerics(unittest.TestCase):
+    def test_small_but_valid_vectors(self):
+        # |x1| * |x2| is below eps while both norms are far above it, so
+        # clamping the product instead of each norm would attenuate the
+        # result to about zero
+        paddle.disable_static()
+        np_x1 = np.array([[1e-6, 0.0, 0.0]], dtype=np.float32)
+        np_x2 = np.array([[2e-6, 0.0, 0.0]], dtype=np.float32)
+        y = F.cosine_similarity(
+            paddle.to_tensor(np_x1), paddle.to_tensor(np_x2), axis=1
+        )
+        np.testing.assert_allclose(
+            y.numpy(), np.ones([1], dtype=np.float32), rtol=1e-06
+        )
+
+    def test_large_vectors_do_not_overflow(self):
+        # |x1|^2 * |x2|^2 overflows float32 here while each norm stays finite
+        paddle.disable_static()
+        np_x1 = np.full([1, 4], 1e10, dtype=np.float32)
+        np_x2 = np.full([1, 4], -1e10, dtype=np.float32)
+        y = F.cosine_similarity(
+            paddle.to_tensor(np_x1), paddle.to_tensor(np_x2), axis=1
+        )
+        np.testing.assert_allclose(
+            y.numpy(), -np.ones([1], dtype=np.float32), rtol=1e-06
+        )
+
+    def test_zero_vector(self):
+        paddle.disable_static()
+        np_x1 = np.zeros([2, 4], dtype=np.float32)
+        np_x2 = np.random.rand(2, 4).astype(np.float32)
+        x1 = paddle.to_tensor(np_x1)
+        x1.stop_gradient = False
+        y = F.cosine_similarity(x1, paddle.to_tensor(np_x2), axis=1)
+        np.testing.assert_allclose(
+            y.numpy(), np.zeros([2], dtype=np.float32), rtol=1e-06
+        )
+        y.sum().backward()
+        self.assertFalse(np.isnan(x1.grad.numpy()).any())
+
+
+class TestCosineSimilarityAPI_BroadcastMemory(unittest.TestCase):
+    """Taking the norm of a broadcast input must not materialize the expanded
+    copy: for x1=[B, 1, D] against x2=[B, N, D] that would be an extra
+    O(B * N * D) allocation. FLAGS_use_accuracy_compatible_kernel opts into that
+    allocation on purpose, so this only holds for the default path.
+    """
+
+    @unittest.skipIf(
+        not paddle.is_compiled_with_cuda(), "peak memory is queried from CUDA"
+    )
+    @unittest.skipIf(
+        paddle.get_flags(["FLAGS_use_accuracy_compatible_kernel"]).get(
+            "FLAGS_use_accuracy_compatible_kernel", False
+        ),
+        "the accuracy compatible path expands the inputs on purpose",
+    )
+    def test_no_expanded_copy(self):
+        paddle.disable_static()
+        origin_device = paddle.get_device()
+        paddle.set_device('gpu')
+        try:
+            B, N, D = 32, 256, 1024
+            x1 = paddle.randn([B, 1, D])
+            x2 = paddle.randn([B, N, D])
+            full_size = B * N * D * 4
+
+            paddle.device.cuda.empty_cache()
+            paddle.device.cuda.reset_max_memory_allocated()
+            base = paddle.device.cuda.max_memory_allocated()
+            F.cosine_similarity(x1, x2, axis=1).numpy()
+            extra = paddle.device.cuda.max_memory_allocated() - base
+
+            # x2 / n2 and their product are the only full size temporaries
+            self.assertLess(
+                extra,
+                2.5 * full_size,
+                f"{extra} bytes of temporaries for a {full_size} byte input, "
+                "the broadcast input is likely being expanded",
+            )
+        finally:
+            paddle.set_device(origin_device)
+
+
+class TestCosineSimilarityAPI_DtypePromotion(unittest.TestCase):
+    def test_integral_input_is_promoted(self):
+        paddle.disable_static()
+        np_x1 = np.array([[1, 2, 3]], dtype=np.int32)
+        np_x2 = np.array([[3.0, 2.0, 1.0]], dtype=np.float32)
+        y = F.cosine_similarity(
+            paddle.to_tensor(np_x1), paddle.to_tensor(np_x2), axis=1
+        )
+        self.assertEqual(y.dtype, paddle.float32)
+        np_out = _np_cosine_similarity(np_x1.astype(np.float32), np_x2)
+        np.testing.assert_allclose(y.numpy(), np_out, rtol=1e-06)
+
+    def test_mixed_float_dtypes(self):
+        paddle.disable_static()
+        np_x1 = np.random.rand(2, 5).astype(np.float32)
+        np_x2 = np.random.rand(2, 5).astype(np.float64)
+        y = F.cosine_similarity(
+            paddle.to_tensor(np_x1), paddle.to_tensor(np_x2), axis=1
+        )
+        self.assertEqual(y.dtype, paddle.float64)
+        np_out = _np_cosine_similarity(np_x1.astype(np.float64), np_x2)
+        np.testing.assert_allclose(y.numpy(), np_out, rtol=1e-06)
+
+    def test_non_floating_common_dtype(self):
+        paddle.disable_static()
+        for dtype in ('int32', 'int64', 'bool', 'complex64'):
+            x = paddle.ones([1, 3], dtype=dtype)
+            with self.assertRaises(TypeError):
+                F.cosine_similarity(x, x, axis=1)
+
+    def test_negative_eps(self):
+        paddle.disable_static()
+        x = paddle.ones([1, 3])
+        with self.assertRaises(ValueError):
+            F.cosine_similarity(x, x, axis=1, eps=-1e-8)
 
 
 if __name__ == '__main__':
