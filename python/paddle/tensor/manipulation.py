@@ -7263,6 +7263,39 @@ def infer_broadcast_shape(
     return broadcast_shape
 
 
+def check_put_along_axis_index_shape(
+    arr: Tensor, indices: Tensor, axis: int
+) -> None:
+    """Validate that ``indices`` can address ``arr`` in put_along_axis.
+
+    ``indices`` is only allowed to exceed ``arr`` along ``axis``. The remaining
+    dimensions of ``indices`` are used as coordinates into ``arr``, so a larger
+    size there would make the scatter kernel write out of bounds.
+
+    An empty ``arr.shape[axis]`` is deliberately *not* rejected here: it leaves
+    no valid index value, which the kernel reports as an index out-of-bounds
+    error, the same way ``torch.scatter_`` does.
+
+    ``broadcast=False`` and ``torch.scatter_`` already reject the case above;
+    this brings the ``broadcast=True`` path in line with them.
+    """
+    if 0 in indices.shape:
+        # No scatter to perform, nothing can go out of bounds.
+        return
+    for i in range(len(arr.shape)):
+        if i == axis:
+            continue
+        if arr.shape[i] < 0 or indices.shape[i] < 0:
+            # dynamic shape, cannot be checked at compile time.
+            continue
+        if arr.shape[i] < indices.shape[i]:
+            raise RuntimeError(
+                f"Size does not match at dimension {i} expected index "
+                f"{indices.shape} to be no larger than self {arr.shape} "
+                f"apart from dimension {axis}"
+            )
+
+
 def scatter_add(
     input: Tensor,
     dim: int,
@@ -7640,6 +7673,7 @@ def put_along_axis(
             indices = paddle.broadcast_to(indices, broadcast_shape)
             values = paddle.broadcast_to(values, broadcast_shape)
         else:
+            check_put_along_axis_index_shape(arr, indices, axis)
             broadcast_shape = infer_broadcast_shape(arr, indices, axis)
             values = (
                 paddle.to_tensor(values)
@@ -7748,6 +7782,7 @@ def put_along_axis_(
         )
         return arr
     if broadcast:
+        check_put_along_axis_index_shape(arr, indices, axis)
         broadcast_shape = infer_broadcast_shape(arr, indices, axis)
         values = (
             paddle.to_tensor(values)

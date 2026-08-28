@@ -274,9 +274,9 @@ struct cpu_gather_scatter_functor {
         method_name == "gather" || method_name == "assign";
 
     if (self_size == 0 || src_size == 0 || index_size == 0) {
+      // Nothing to read or write. Shape validation lives in the InferMeta of
+      // the calling op, not here.
       VLOG(3) << "zero size input found";
-      common::errors::InvalidArgument(
-          "self_size, src_size, index_size cannot be 0");
       return;
     }
     int self_select_dim_size = self_dims[dim];
