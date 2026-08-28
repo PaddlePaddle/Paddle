@@ -24,9 +24,9 @@ from paddle.distributed.fsdp.fully_shard import fully_shard
 HIDDEN = 16
 INTER = 32
 NUM_EXPERTS = 4
-NUM_LAYERS = 2
+NUM_LAYERS = 6
 STEPS = 10
-TOKENS = 8
+TOKENS = 64
 ACCUM_STEPS = 2
 
 
@@ -113,7 +113,7 @@ class MoEBlock(nn.Layer):
         return EPReduceScatter.apply(out, group=self.ep_group)
 
 
-class MoETransformerLayer(nn.Layer):
+class TransformerLayer(nn.Layer):
     def __init__(self, hidden, inter, num_experts, ep_group, ep_rank):
         super().__init__()
         self.attn = nn.Linear(hidden, hidden, bias_attr=False)
@@ -124,24 +124,41 @@ class MoETransformerLayer(nn.Layer):
         return x + self.moe(x)
 
 
+class SharedLinear(nn.Layer):
+    def __init__(self, weight):
+        super().__init__()
+        self.weight = weight
+
+    def forward(self, x):
+        return paddle.matmul(x, self.weight)
+
+
 class MoEModel(nn.Layer):
     def __init__(self, ep_group, ep_rank):
         super().__init__()
         self.embed = nn.Linear(HIDDEN, HIDDEN, bias_attr=False)
         self.layers = nn.LayerList(
             [
-                MoETransformerLayer(
-                    HIDDEN, INTER, NUM_EXPERTS, ep_group, ep_rank
-                )
+                TransformerLayer(HIDDEN, INTER, NUM_EXPERTS, ep_group, ep_rank)
                 for _ in range(NUM_LAYERS)
             ]
         )
         self.head = nn.Linear(HIDDEN, 2, bias_attr=False)
+        self.scale = self.create_parameter(
+            shape=[HIDDEN],
+            default_initializer=nn.initializer.Constant(1.0),
+        )
+        self.scale.stop_gradient = True
+        self.shared_head = SharedLinear(self.embed.weight)
+
+    def get_input_embeddings(self):
+        return self.embed
 
     def forward(self, x):
         x = self.embed(x)
         for layer in self.layers:
             x = layer(x)
+        x = self.shared_head(x)
         return self.head(x)
 
 
@@ -202,7 +219,7 @@ def build_moe_models(hcg):
 def build_moe_optimizer(model):
     optimizer = paddle.optimizer.AdamW(
         learning_rate=0.001,
-        parameters=model.parameters(),
+        parameters=[p for p in model.parameters() if p.trainable],
         weight_decay=0.0,
         multi_precision=True,
     )
@@ -247,22 +264,29 @@ def run_moe(ep_degree):
         accum_steps=ACCUM_STEPS,
     )
 
-    fsdp_model = fully_shard(fsdp_model, enable_tensor_fusion_and_overlap=True)
-    fsdp_model = mix_precision_utils.MixPrecisionLayer(
-        fsdp_model, dtype="bfloat16"
-    )
-    fsdp_loss_md5s = train_moe(
-        fsdp_model,
-        build_moe_optimizer(fsdp_model),
-        data,
-        accum_steps=ACCUM_STEPS,
-    )
+    for enable_overlap in (True, False):
+        if fsdp_model is None:
+            _, fsdp_model = build_moe_models(hcg)
+        fsdp_model = fully_shard(
+            fsdp_model, enable_tensor_fusion_and_overlap=enable_overlap
+        )
+        fsdp_model = mix_precision_utils.MixPrecisionLayer(
+            fsdp_model, dtype="bfloat16"
+        )
+        fsdp_loss_md5s = train_moe(
+            fsdp_model,
+            build_moe_optimizer(fsdp_model),
+            data,
+            accum_steps=ACCUM_STEPS,
+        )
+        fsdp_model = None
 
-    assert fsdp_loss_md5s == stage1_loss_md5s, (
-        f"loss MD5 sequence diverged (ep_degree={ep_degree}, "
-        f"accum_steps={ACCUM_STEPS}): "
-        f"stage1={stage1_loss_md5s}, fsdp={fsdp_loss_md5s}"
-    )
+        assert fsdp_loss_md5s == stage1_loss_md5s, (
+            f"loss MD5 sequence diverged (ep_degree={ep_degree}, "
+            f"accum_steps={ACCUM_STEPS}, "
+            f"enable_overlap={enable_overlap}): "
+            f"stage1={stage1_loss_md5s}, fsdp={fsdp_loss_md5s}"
+        )
 
 
 if __name__ == '__main__':

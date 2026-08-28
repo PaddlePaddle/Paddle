@@ -53,6 +53,7 @@ class BufferGroup:
     trainable: bool = None
     fsdp_unit_id: int = None
     is_expert_param: bool = False
+    is_tie: bool = False
     fsdp_group: object = None
     params_buffer: 'TensorFusionBuffer' = None
     grads_buffer: 'TensorFusionBuffer' = None
@@ -264,6 +265,12 @@ class FSDPBufferManager:
         ]
         # Get tie_param_name if using tie_weights
         self.tie_param_name = None
+        if hasattr(self.model, "get_input_embeddings"):
+            input_embeddings = self.model.get_input_embeddings()
+            if input_embeddings is not None and hasattr(
+                input_embeddings, "weight"
+            ):
+                self.tie_param_name = input_embeddings.weight.name
 
         param_to_unit_id = {}
         for unit_id, m in enumerate(self.model.modules()):
@@ -273,18 +280,30 @@ class FSDPBufferManager:
 
         keyed_params = OrderedDict()
         for param in self.model.parameters():
+            is_expert = getattr(param, "is_moe_param", False) or getattr(
+                param, "expert", False
+            )
+            color = getattr(param, "color", None)
+            if isinstance(color, dict) and color.get("group") is not None:
+                fsdp_group = color["group"]
+            elif is_expert:
+                fsdp_group = self._ep_fsdp_group
+            else:
+                fsdp_group = self._fsdp_group
             key = (
                 param.dtype,
                 param.trainable,
                 param_to_unit_id.get(param.name),
-                getattr(param, "is_moe_param", False),
+                is_expert,
+                fsdp_group,
+                param.name == self.tie_param_name,
             )
             keyed_params.setdefault(key, []).append(param)
 
         def sort_key(item):
-            _, trainable, unit_id, is_expert_param = item[0]
+            _, trainable, unit_id, is_expert_param, _, is_tie = item[0]
             return (
-                1 if not trainable else 2,
+                0 if is_tie else (1 if not trainable else 2),
                 unit_id if unit_id is not None else float('inf'),
                 is_expert_param,
             )
@@ -296,21 +315,22 @@ class FSDPBufferManager:
                 trainable=trainable,
                 fsdp_unit_id=unit_id,
                 is_expert_param=is_expert_param,
+                fsdp_group=fsdp_group,
+                is_tie=is_tie,
             )
-            for (dtype, trainable, unit_id, is_expert_param), params in sorted(
-                keyed_params.items(), key=sort_key
-            )
+            for (
+                dtype,
+                trainable,
+                unit_id,
+                is_expert_param,
+                fsdp_group,
+                is_tie,
+            ), params in sorted(keyed_params.items(), key=sort_key)
         ]
 
         self.param_to_buffer_id = {}
         for gid, group in enumerate(self.buffer_groups):
             params = group.params
-            # Use EP group for expert params, DP group for regular params
-            group.fsdp_group = (
-                self._ep_fsdp_group
-                if group.is_expert_param
-                else self._fsdp_group
-            )
             group.params_buffer = TensorFusionBuffer(
                 gid, params, group.fsdp_group, group.dtype, is_params=True
             )
