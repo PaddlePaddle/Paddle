@@ -3899,7 +3899,7 @@ class PipelineParallelWithInterleaveFthenB(PipelineParallelWithInterleave):
 
         assert (
             self.accumulate_steps == self.num_stages
-            or self.accumulate_steps % self.num_stages == 0
+            or self.accumulate_steps % self.num_stages != 0
         ), (
             f"accumulate_steps({self.accumulate_steps}) and num_stages({self.num_stages}) should be a multiple or accumulate_steps % num_stages == 0"
         )
