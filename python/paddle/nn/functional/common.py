@@ -41,8 +41,9 @@ from ...base.data_feeder import (
     check_dtype,
     check_type,
     check_variable_and_dtype,
+    promote_types,
 )
-from ...tensor import clip, concat, sqrt, sum
+from ...tensor import clip, concat, sum
 from ...tensor.creation import zeros
 
 # TODO: define the common functions to build a neural network
@@ -2450,44 +2451,77 @@ def cosine_similarity(
             [ 0.97689527,  0.99996042, -0.55138415])
 
     """
-    if x1.shape[axis] == 0 or x2.shape[axis] == 0:
-        return sum(paddle.multiply(x1, x2), axis=axis)
-    if paddle.get_flags("FLAGS_use_accuracy_compatible_kernel")[
-        "FLAGS_use_accuracy_compatible_kernel"
-    ]:
-        # Note: aligning with torch 2.12
-        bs = paddle.broadcast_shape([x1.shape[axis]], [x2.shape[axis]])
-        x1_full, x2_full = x1, x2
-        if x1.shape[axis] != bs[0]:
-            shape = [-1] * len(x1.shape)
-            shape[axis] = bs[0]
-            x1_full = paddle.broadcast_to(x1, shape)
-        if x2.shape[axis] != bs[0]:
-            shape = [-1] * len(x2.shape)
-            shape[axis] = bs[0]
-            x2_full = paddle.broadcast_to(x2, shape)
-        n1 = clip(
-            paddle.linalg.vector_norm(x1_full, p=2, axis=axis, keepdim=True),
-            min=eps,
+    # Note: aligning with torch 2.12, including:
+    # 1. Casting integral input dtypes to floating dtype and reject non-floating
+    # common dtype since vector_norm has no integer kernel.
+    # The inputs are promoted first and a non-floating common dtype is rejected;
+    # only the integral inputs are cast,
+    # because vector_norm has no integer kernel while a pair of floating inputs
+    # is promoted by the elementwise ops themselves.
+    float_dtypes = (
+        paddle.float16,
+        paddle.bfloat16,
+        paddle.float32,
+        paddle.float64,
+    )
+    common_dtype = promote_types(x1.dtype, x2.dtype)
+    if common_dtype not in float_dtypes:
+        raise TypeError(
+            "cosine_similarity expected common dtype to be floating point, "
+            f"yet common dtype is {common_dtype}"
         )
-        n2 = clip(
-            paddle.linalg.vector_norm(x2_full, p=2, axis=axis, keepdim=True),
-            min=eps,
-        )
-        return sum(paddle.multiply(x1 / n1, x2 / n2), axis=axis)
-    else:
-        bs = paddle.broadcast_shape([x1.shape[axis]], [x2.shape[axis]])
-        w12 = sum(paddle.multiply(x1, x2), axis=axis)
-        w1 = sum(paddle.multiply(x1, x1), axis=axis)
-        w2 = sum(paddle.multiply(x2, x2), axis=axis)
-        m1, m2 = bs[0] / x1.shape[axis], bs[0] / x2.shape[axis]
-        if m1 != 1:
-            w1 = w1 * m1
-        if m2 != 1:
-            w2 = w2 * m2
-        n12 = sqrt(clip(w1 * w2, min=eps * eps))
-        cos_sim = w12 / n12
-        return cos_sim
+    if eps < 0:
+        raise ValueError(f"eps must be non-negative, got: {eps}")
+    if x1.dtype not in float_dtypes:
+        x1 = x1.astype(common_dtype)
+    if x2.dtype not in float_dtypes:
+        x2 = x2.astype(common_dtype)
+
+    # Each input is divided by its own norm before the dot product, so the
+    # denominator is max(|x1|, eps) * max(|x2|, eps) instead of
+    # max(|x1| * |x2|, eps): clamping the product attenuates the result for
+    # small but perfectly valid vectors, and computing |x1| * |x2| overflows
+    # long before either norm alone does. vector_norm matches torch's
+    # linalg_vector_norm bitwise, including the float32 accumulation used for
+    # float16/bfloat16 inputs.
+    #
+    # torch broadcasts both inputs up front, so ``axis`` indexes the common shape and the
+    # reduction runs over the broadcast length of that axis, not the original one.
+    # expand_outplace() in torch.cosine_similarity both infers the broadcast shape and
+    # expands the tensors to it, so paddle.broadcast_shape(x1.shape, x2.shape), which only
+    # counts the shape, is not enough.
+    # torch.expand only sets the broadcast stride to 0 and keeps the original storage, so it
+    # is 0-copy, and TensorIterator reduces directly over that stride-0 input:
+    # linalg_vector_norm allocates nothing and re-reads the same O(BD) bytes out of cache.
+    # paddle.broadcast_to is a real kernel instead. For example, x1=[B,1,D] and x2=[B,N,D] it
+    # allocates O(BND) space and writes every element, so vector_norm then reads O(BND) from
+    # global memory instead of the O(BD) the data actually occupies. When N is super large,
+    # it will cause huge memory usage and maybe OOM.
+    # Instead of using paddle.broadcast_to, we implement with `unsqueeze` and `||repeat(x,m)||`.
+    # 1. unsqueeze x1 and x2 to the same rank as the broadcast shape. When x1.dims != x2.dims
+    # and input axis is larger than smaller dims, unsqueeze op ensures vector_norm is reduced
+    # at the correct dim.
+    # 2. ||repeat(x,m)|| = sqrt(m) * |x|.
+    # This replacement could save memory at vector_norm when x1.dims[axis] != x2.dims[axis]
+    #  and broadcast happens at axis dim.
+    rank = max(len(x1.shape), len(x2.shape))
+    if len(x1.shape) < rank:
+        x1 = unsqueeze(x1, axis=list(range(rank - len(x1.shape))))
+    if len(x2.shape) < rank:
+        x2 = unsqueeze(x2, axis=list(range(rank - len(x2.shape))))
+    bs = paddle.broadcast_shape(x1.shape, x2.shape)
+    dim = axis + rank if axis < 0 else axis
+    n1 = paddle.linalg.vector_norm(x1, p=2, axis=dim, keepdim=True)
+    n2 = paddle.linalg.vector_norm(x2, p=2, axis=dim, keepdim=True)
+    # A dynamic (-1) length fails both checks and is left uncorrected.
+    if x1.shape[dim] > 0 and bs[dim] > x1.shape[dim]:
+        n1 = n1 * math.sqrt(bs[dim] / x1.shape[dim])
+    if x2.shape[dim] > 0 and bs[dim] > x2.shape[dim]:
+        n2 = n2 * math.sqrt(bs[dim] / x2.shape[dim])
+    return sum(
+        paddle.multiply(x1 / clip(n1, min=eps), x2 / clip(n2, min=eps)),
+        axis=dim,
+    )
 
 
 def linear(
