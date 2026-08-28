@@ -51,6 +51,7 @@ from .utils import (
     check_resumable_locally,
     check_unique_id,
     create_hf_ckpt_metadata,
+    extract_tensor_metadata,
     flat_range_in_min_slice,
     flatten_state_dict,
     get_max_id,
@@ -92,29 +93,10 @@ def _paddle_dtype(dtype_name: str) -> paddle.dtype:
     return dtype
 
 
-def _target_shard_metadata(
-    target: Tensor | ShardedWeight,
-) -> LocalTensorMetadata:
-    if isinstance(target, ShardedWeight):
-        return LocalTensorMetadata(
-            global_shape=tuple(target.global_shape),
-            local_shape=tuple(target.local_shape),
-            global_offset=tuple(target.global_offset),
-            dtype=str(target.local_tensor.dtype).removeprefix('paddle.'),
-        )
-    shape = tuple(target.shape)
-    return LocalTensorMetadata(
-        global_shape=shape,
-        local_shape=shape,
-        global_offset=(0,) * len(shape),
-        dtype=str(target.dtype).removeprefix('paddle.'),
-    )
-
-
 def _get_transform_read_plan(
     load_transform: LoadTransform,
     logical_key: str,
-    target: Tensor | ShardedWeight,
+    target_metadata: LocalTensorMetadata,
     force_global: bool = False,
 ):
     read_plan = getattr(load_transform, "read_plan", None)
@@ -122,7 +104,7 @@ def _get_transform_read_plan(
         return None
     return read_plan(
         logical_key,
-        _target_shard_metadata(target),
+        target_metadata,
         force_global=force_global,
     )
 
@@ -134,9 +116,12 @@ def _build_transform_component_load_dict(
     physical_metadata: Metadata,
     load_transform: LoadTransform,
     offload: bool,
-) -> dict[str | tuple[str, tuple[int, ...]], ShardedWeight]:
+) -> tuple[
+    dict[str | tuple[str, tuple[int, ...]], ShardedWeight],
+    dict[str, object],
+]:
     if load_transform is None:
-        return {}
+        return {}, {}
     use_tuple_keys = any(isinstance(key, tuple) for key in logical_load_dict)
     targets_by_logical_key = defaultdict(list)
     for state_key, target in logical_load_dict.items():
@@ -154,14 +139,27 @@ def _build_transform_component_load_dict(
     source_metadata = physical_metadata.state_dict_metadata
     plans = {}
     for logical_key, targets in targets_by_logical_key.items():
-        target_metadata = [_target_shard_metadata(target) for target in targets]
-        force_global = any(
-            metadata != target_metadata[0] for metadata in target_metadata[1:]
+        # A distributed target reports its global shape, so the local shape and
+        # global offset have to come from its placements. None metadata means
+        # the target is not initialized on this rank.
+        target_metadata = [
+            extract_tensor_metadata(target)[1] for target in targets
+        ]
+        known_metadata = [
+            metadata for metadata in target_metadata if metadata is not None
+        ]
+        if not known_metadata:
+            plans[logical_key] = None
+            continue
+        # Several differing targets, or a target this rank cannot describe,
+        # cannot share one local read; fall back to reading the whole tensor.
+        force_global = len(known_metadata) != len(target_metadata) or any(
+            metadata != known_metadata[0] for metadata in known_metadata[1:]
         )
         plans[logical_key] = _get_transform_read_plan(
             load_transform,
             logical_key,
-            targets[0],
+            known_metadata[0],
             force_global=force_global,
         )
     local_source_slices = {
@@ -200,7 +198,7 @@ def _build_transform_component_load_dict(
                 global_shape=global_shape,
                 global_offset=global_offset,
             )
-    return component_load_dict
+    return component_load_dict, plans
 
 
 def _apply_load_transform(
@@ -209,6 +207,7 @@ def _apply_load_transform(
     ],
     component_load_dict: dict[str | tuple[str, tuple[int, ...]], ShardedWeight],
     load_transform: LoadTransform,
+    read_plans: dict[str, object],
 ) -> None:
     if load_transform is None:
         return
@@ -229,9 +228,10 @@ def _apply_load_transform(
     }
     for logical_key in sorted(targets_by_logical_key):
         logical_metadata = transform_metadata[logical_key]
-        read_plan = getattr(load_transform, "read_plan_for", lambda _key: None)(
-            logical_key
-        )
+        # Reuse the plan the components were built from: the physical sources
+        # were read according to it, so the transform output is already a local
+        # shard exactly when that plan asked for one.
+        read_plan = read_plans.get(logical_key)
         is_local = getattr(read_plan, "mode", "global") == "local"
         source_keys = source_keys_by_logical_key[logical_key]
         source_tensors = {
@@ -242,14 +242,13 @@ def _apply_load_transform(
         output = load_transform.apply(logical_key, source_tensors, output_dtype)
 
         for _state_key, target in targets_by_logical_key[logical_key]:
-            if isinstance(target, ShardedWeight):
-                target_tensor = target.local_tensor
-                local_shape = tuple(target.local_shape)
-                global_offset = tuple(target.global_offset)
-            else:
-                target_tensor = target
-                local_shape = tuple(target.shape)
-                global_offset = (0,) * len(local_shape)
+            target_tensor, target_metadata = extract_tensor_metadata(target)
+            if target_metadata is None:
+                # Not initialized on this rank: the target lives on a mesh that
+                # does not contain it, so there is nothing to write here.
+                continue
+            local_shape = target_metadata.local_shape
+            global_offset = target_metadata.global_offset
             if is_local:
                 piece = output
             else:
@@ -1528,11 +1527,13 @@ def load_state_dict_impl(
                 for key, value in flat_state_dict.items()
                 if _state_key_name(key) not in transform_metadata
             }
-            component_load_dict = _build_transform_component_load_dict(
-                transformed_load_dict,
-                _metadata_manager.get_metadata_list()[0],
-                load_transform,
-                offload,
+            component_load_dict, transform_read_plans = (
+                _build_transform_component_load_dict(
+                    transformed_load_dict,
+                    _metadata_manager.get_metadata_list()[0],
+                    load_transform,
+                    offload,
+                )
             )
             collisions = {
                 _state_key_name(key) for key in passthrough_load_dict
@@ -1550,6 +1551,7 @@ def load_state_dict_impl(
         else:
             transformed_load_dict = {}
             component_load_dict = {}
+            transform_read_plans = {}
             file_load_dict = flat_state_dict
 
         rank_to_files, mw_name_compatibility_mapping = get_rank_to_files(
@@ -1672,6 +1674,7 @@ def load_state_dict_impl(
                 transformed_load_dict,
                 component_load_dict,
                 load_transform,
+                transform_read_plans,
             )
 
         for file_name, file_tensors in source_state_dict.items():

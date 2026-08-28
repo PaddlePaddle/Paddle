@@ -27,10 +27,20 @@ class LoadTransform(Protocol):
 
     A transform exposes virtual logical tensors to AOA, lists the physical
     checkpoint tensors required to materialize each logical tensor, and runs
-    only after those physical tensors have been fully assembled. Implementers
-    may additionally provide read_plan() and read_plan_for() to request local
-    physical component shards; the three methods below form the required
-    contract.
+    only after those physical tensors have been fully assembled. The three
+    methods below form the required contract.
+
+    An implementer may additionally provide::
+
+        read_plan(logical_key, target_metadata, force_global=False)
+
+    to narrow the physical read to the shard a rank actually needs. When it
+    returns a plan whose ``mode`` is ``"local"``, ``source_tensors`` passed to
+    ``apply()`` hold only that shard and ``apply()`` must return the local
+    shard of the logical tensor; otherwise it receives whole physical tensors
+    and must return the whole logical tensor. ``target_metadata`` describes the
+    local shard of the target on this rank, so ``read_plan()`` must not assume
+    a target's ``shape`` is its local shape.
     """
 
     def logical_metadata(self) -> dict[str, LocalTensorMetadata]: ...

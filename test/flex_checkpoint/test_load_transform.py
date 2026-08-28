@@ -30,7 +30,6 @@ from paddle.distributed.flex_checkpoint.dcp.load_state_dict import (
     _load_checkpoint_data_file,
     _metadata_manager,
     _paddle_dtype,
-    _target_shard_metadata,
 )
 from paddle.distributed.flex_checkpoint.dcp.metadata import (
     LocalTensorMetadata,
@@ -74,6 +73,7 @@ class _LocalTransform:
         self.plan = None
         self.source_key_calls = 0
         self.force_global_calls = 0
+        self.seen_targets = []
 
     def logical_metadata(self):
         return _logical_metadata()
@@ -83,6 +83,7 @@ class _LocalTransform:
         return [_QUANT_KEY, _SCALE_KEY]
 
     def read_plan(self, logical_key, target, force_global=False):
+        self.seen_targets.append(target)
         if force_global:
             self.force_global_calls += 1
             self.plan = _ReadPlan("global", (4, 8), (0, 0), {})
@@ -100,9 +101,6 @@ class _LocalTransform:
                     ),
                 },
             )
-        return self.plan
-
-    def read_plan_for(self, logical_key):
         return self.plan
 
     def apply(self, logical_key, source_tensors, output_dtype):
@@ -205,9 +203,10 @@ def _fp8_checkpoint(directory, scale=2.0):
 
 class TestLoadTransformComponentPlan(unittest.TestCase):
     def _build(self, logical_load_dict, transform, offload=False):
-        return _build_transform_component_load_dict(
+        components, _plans = _build_transform_component_load_dict(
             logical_load_dict, _physical_metadata(), transform, offload
         )
+        return components
 
     def test_returns_nothing_without_transform(self):
         self.assertEqual(self._build({"weight": _target()}, None), {})
@@ -257,21 +256,40 @@ class TestLoadTransformComponentPlan(unittest.TestCase):
         for component in components.values():
             self.assertTrue(component.local_tensor.place.is_cpu_place())
 
-    def test_derives_metadata_from_plain_tensor_target(self):
-        metadata = _target_shard_metadata(paddle.zeros([4, 8], dtype="float32"))
+    def test_passes_plain_tensor_shard_metadata_to_read_plan(self):
+        transform = _LocalTransform()
+        self._build(
+            {"weight": paddle.zeros([4, 8], dtype="float32")}, transform
+        )
 
-        self.assertEqual(metadata.global_shape, (4, 8))
-        self.assertEqual(metadata.local_shape, (4, 8))
-        self.assertEqual(metadata.global_offset, (0, 0))
-        self.assertEqual(metadata.dtype, "float32")
+        (seen,) = transform.seen_targets
+        self.assertEqual(seen.global_shape, (4, 8))
+        self.assertEqual(seen.local_shape, (4, 8))
+        self.assertEqual(seen.global_offset, (0, 0))
+        self.assertEqual(seen.dtype, "float32")
 
-    def test_derives_metadata_from_sharded_weight_target(self):
-        metadata = _target_shard_metadata(_target())
+    def test_passes_sharded_weight_shard_metadata_to_read_plan(self):
+        transform = _LocalTransform()
+        self._build({"weight": _target()}, transform)
 
-        self.assertEqual(metadata.global_shape, (4, 8))
-        self.assertEqual(metadata.local_shape, (2, 8))
-        self.assertEqual(metadata.global_offset, (2, 0))
-        self.assertEqual(metadata.dtype, "float32")
+        (seen,) = transform.seen_targets
+        self.assertEqual(seen.global_shape, (4, 8))
+        self.assertEqual(seen.local_shape, (2, 8))
+        self.assertEqual(seen.global_offset, (2, 0))
+        self.assertEqual(seen.dtype, "float32")
+
+    def test_reads_globally_when_target_is_absent_on_this_rank(self):
+        transform = _LocalTransform()
+        target = paddle.zeros([4, 8], dtype="float32")
+        target._clear_to_zero_allocation()
+
+        components = self._build({"weight": target}, transform)
+
+        # The rank cannot describe a local shard of a target it does not hold,
+        # so read_plan() must not be consulted and the whole tensor is read.
+        self.assertEqual(transform.seen_targets, [])
+        self.assertEqual(components[_QUANT_KEY].local_shape, (4, 8))
+        self.assertEqual(components[_SCALE_KEY].local_shape, (2, 2))
 
 
 class TestApplyLoadTransform(unittest.TestCase):
@@ -282,7 +300,7 @@ class TestApplyLoadTransform(unittest.TestCase):
 
     def test_no_op_without_transform(self):
         target = _target()
-        _apply_load_transform({"weight": target}, {}, None)
+        _apply_load_transform({"weight": target}, {}, None, {})
 
         np.testing.assert_array_equal(
             target.local_tensor.numpy(), np.zeros([2, 8], dtype="float32")
@@ -294,13 +312,21 @@ class TestApplyLoadTransform(unittest.TestCase):
 
         self.assertEqual(transform.source_key_calls, 1)
 
-    def test_assigns_local_transform_output_directly(self):
+    def test_reuses_the_local_plan_the_components_were_built_from(self):
+        """A transform providing only read_plan() must not be re-planned.
+
+        The physical sources are already local shards, so the output is the
+        local shard of the logical tensor and must be assigned as is. Slicing
+        it a second time by the target's global offset silently yields an empty
+        tensor rather than raising.
+        """
         transform = _LocalTransform()
         target = _target()
-        components = self._build({"weight": target}, transform)
+        components, plans = self._build({"weight": target}, transform)
         components[_QUANT_KEY].local_tensor.fill_(1)
 
-        _apply_load_transform({"weight": target}, components, transform)
+        self.assertEqual(plans["weight"].mode, "local")
+        _apply_load_transform({"weight": target}, components, transform, plans)
 
         np.testing.assert_array_equal(
             target.local_tensor.numpy(), np.ones([2, 8], dtype="float32")
@@ -309,13 +335,13 @@ class TestApplyLoadTransform(unittest.TestCase):
     def test_legacy_transform_slices_global_output(self):
         transform = _LegacyTransform()
         target = _target()
-        components = self._build({"weight": target}, transform)
+        components, plans = self._build({"weight": target}, transform)
         values = paddle.arange(32, dtype="float32").reshape([4, 8])
         paddle.assign(
             values.astype("uint8"), components[_QUANT_KEY].local_tensor
         )
 
-        _apply_load_transform({"weight": target}, components, transform)
+        _apply_load_transform({"weight": target}, components, transform, plans)
 
         # The target owns rows [2, 4) of the logical tensor.
         np.testing.assert_array_equal(
@@ -325,23 +351,35 @@ class TestApplyLoadTransform(unittest.TestCase):
     def test_assigns_into_plain_tensor_target(self):
         transform = _LegacyTransform()
         target = paddle.zeros([4, 8], dtype="float32")
-        components = self._build({"weight": target}, transform)
+        components, plans = self._build({"weight": target}, transform)
         values = paddle.arange(32, dtype="float32").reshape([4, 8])
         paddle.assign(
             values.astype("uint8"), components[_QUANT_KEY].local_tensor
         )
 
-        _apply_load_transform({"weight": target}, components, transform)
+        _apply_load_transform({"weight": target}, components, transform, plans)
 
         np.testing.assert_array_equal(target.numpy(), values.numpy())
+
+    def test_skips_target_absent_on_this_rank(self):
+        transform = _LegacyTransform()
+        target = paddle.zeros([4, 8], dtype="float32")
+        target._clear_to_zero_allocation()
+        components, plans = self._build({"weight": target}, transform)
+        components[_QUANT_KEY].local_tensor.fill_(1)
+
+        _apply_load_transform({"weight": target}, components, transform, plans)
+
+        # A target placed on a mesh without this rank stays unallocated.
+        self.assertFalse(target._is_initialized())
 
     def test_copies_transform_output_across_places(self):
         transform = _LegacyTransform()
         target = paddle.zeros([4, 8], dtype="float32").cpu()
-        components = self._build({"weight": target}, transform)
+        components, plans = self._build({"weight": target}, transform)
         components[_QUANT_KEY].local_tensor.fill_(3)
 
-        _apply_load_transform({"weight": target}, components, transform)
+        _apply_load_transform({"weight": target}, components, transform, plans)
 
         # The transform output lives on the default device; the target does
         # not, so it must be moved before the assign.
@@ -353,10 +391,12 @@ class TestApplyLoadTransform(unittest.TestCase):
     def test_rejects_unsupported_logical_dtype(self):
         transform = _BadDtypeTransform()
         target = _target()
-        components = self._build({"weight": target}, transform)
+        components, plans = self._build({"weight": target}, transform)
 
         with self.assertRaisesRegex(ValueError, "not_a_dtype"):
-            _apply_load_transform({"weight": target}, components, transform)
+            _apply_load_transform(
+                {"weight": target}, components, transform, plans
+            )
 
     def test_paddle_dtype_accepts_prefixed_name(self):
         self.assertIs(_paddle_dtype("paddle.float32"), paddle.float32)
