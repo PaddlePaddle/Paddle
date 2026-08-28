@@ -2095,8 +2095,16 @@ void p_norm_grad(const Tensor& x,
         // dx = dy * (x / y)
         x_grad_tmp = x / expand_out;
         // fill zero to avoid division by zero
-        auto _zero_tensor =
-            full<T>(common::vectorize(x.dims()), 0.0, x.dtype(), x.place());
+
+
+        // Tensor _zero_tensor;
+        // if (x.is_dist_tensor()) {
+        //   _zero_tensor = full_like<T>(x, 0.0f);
+        // } else {
+        //   _zero_tensor = full<T>(common::vectorize(x.dims()), 0.0, x.dtype(), x.place());
+        // }
+        
+        auto _zero_tensor = x - x;
         auto finite_mask = isfinite<T>(x_grad_tmp);
         x_grad_tmp = where<T>(finite_mask, x_grad_tmp, _zero_tensor);
         x_grad_tmp = expand_out_grad * (x_grad_tmp);
