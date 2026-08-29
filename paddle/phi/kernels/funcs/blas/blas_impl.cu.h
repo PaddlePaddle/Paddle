@@ -31,7 +31,6 @@
 
 COMMON_DECLARE_bool(cublas_allow_tf32);
 COMMON_DECLARE_bool(gemm_use_half_precision_compute_type);
-COMMON_DECLARE_bool(use_legacy_gemm);
 
 namespace phi {
 namespace funcs {
@@ -178,8 +177,65 @@ inline void GemmEx64(phi::GPUContext *dev_ctx,
   });
 #else
   PADDLE_THROW(common::errors::Unimplemented(
-      "cublasGemmEx_64 is not supported on cuda < 12.3"));
-#endif
+      "64-bit cuBLAS GEMM requires CUDA 12.3 or later on Linux."));
+#endif  // CUDA_VERSION >= 12030 && defined(__linux__)
+}
+
+inline void GemmStridedBatchedEx64(const phi::GPUContext *dev_ctx,
+                                   cublasOperation_t transa,
+                                   cublasOperation_t transb,
+                                   int64_t m,
+                                   int64_t n,
+                                   int64_t k,
+                                   const void *alpha,
+                                   const void *A,
+                                   cudaDataType_t Atype,
+                                   int64_t lda,
+                                   int64_t strideA,
+                                   const void *B,
+                                   cudaDataType_t Btype,
+                                   int64_t ldb,
+                                   int64_t strideB,
+                                   const void *beta,
+                                   void *C,
+                                   cudaDataType_t Ctype,
+                                   int64_t ldc,
+                                   int64_t strideC,
+                                   int64_t batchCount,
+                                   cublasComputeType_t computeType,
+                                   cublasGemmAlgo_t algo) {
+#if CUDA_VERSION >= 12030 && defined(__linux__)
+  dev_ctx->TensorCoreCublasCallIfAvailable([&](cublasHandle_t handle) {
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        phi::dynload::cublasGemmStridedBatchedEx_64(handle,
+                                                    transa,
+                                                    transb,
+                                                    m,
+                                                    n,
+                                                    k,
+                                                    alpha,
+                                                    A,
+                                                    Atype,
+                                                    lda,
+                                                    strideA,
+                                                    B,
+                                                    Btype,
+                                                    ldb,
+                                                    strideB,
+                                                    beta,
+                                                    C,
+                                                    Ctype,
+                                                    ldc,
+                                                    strideC,
+                                                    batchCount,
+                                                    computeType,
+                                                    algo));
+  });
+#else
+  PADDLE_THROW(common::errors::Unimplemented(
+      "64-bit cuBLAS strided batched GEMM requires CUDA 12.3 or later on "
+      "Linux."));
+#endif  // CUDA_VERSION >= 12030 && defined(__linux__)
 }
 
 }  // namespace detail
@@ -235,6 +291,16 @@ struct CUBlas<float> {
   }
 
   template <typename... ARGS>
+  static void GEMM_BATCH_64(ARGS... args) {
+#if CUDA_VERSION >= 12030 && defined(__linux__)
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cublasSgemmBatched_64(args...));
+#else
+    PADDLE_THROW(common::errors::Unimplemented(
+        "64-bit cuBLAS batched GEMM requires CUDA 12.3 or later on Linux."));
+#endif
+  }
+
+  template <typename... ARGS>
   static void GEMM_STRIDED_BATCH(ARGS... args) {
 #if CUDA_VERSION >= 8000
     PADDLE_ENFORCE_GPU_SUCCESS(
@@ -246,8 +312,30 @@ struct CUBlas<float> {
   }
 
   template <typename... ARGS>
+  static void GEMM_STRIDED_BATCH_64(ARGS... args) {
+#if CUDA_VERSION >= 12030 && defined(__linux__)
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        phi::dynload::cublasSgemmStridedBatched_64(args...));
+#else
+    PADDLE_THROW(common::errors::Unimplemented(
+        "64-bit cuBLAS strided batched GEMM requires CUDA 12.3 or later on "
+        "Linux."));
+#endif
+  }
+
+  template <typename... ARGS>
   static void TRSM(ARGS... args) {
     PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cublasStrsm(args...));
+  }
+
+  template <typename... ARGS>
+  static void TRSM_64(ARGS... args) {
+#if CUDA_VERSION >= 12030 && defined(__linux__)
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cublasStrsm_v2_64(args...));
+#else
+    PADDLE_THROW(common::errors::Unimplemented(
+        "64-bit cuBLAS TRSM requires CUDA 12.3 or later on Linux."));
+#endif
   }
 
   template <typename... ARGS>
@@ -329,6 +417,16 @@ struct CUBlas<double> {
   }
 
   template <typename... ARGS>
+  static void GEMM_BATCH_64(ARGS... args) {
+#if CUDA_VERSION >= 12030 && defined(__linux__)
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cublasDgemmBatched_64(args...));
+#else
+    PADDLE_THROW(common::errors::Unimplemented(
+        "64-bit cuBLAS batched GEMM requires CUDA 12.3 or later on Linux."));
+#endif
+  }
+
+  template <typename... ARGS>
   static void GEMM_STRIDED_BATCH(ARGS... args) {
 #if CUDA_VERSION >= 8000
     PADDLE_ENFORCE_GPU_SUCCESS(
@@ -340,8 +438,30 @@ struct CUBlas<double> {
   }
 
   template <typename... ARGS>
+  static void GEMM_STRIDED_BATCH_64(ARGS... args) {
+#if CUDA_VERSION >= 12030 && defined(__linux__)
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        phi::dynload::cublasDgemmStridedBatched_64(args...));
+#else
+    PADDLE_THROW(common::errors::Unimplemented(
+        "64-bit cuBLAS strided batched GEMM requires CUDA 12.3 or later on "
+        "Linux."));
+#endif
+  }
+
+  template <typename... ARGS>
   static void TRSM(ARGS... args) {
     PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cublasDtrsm(args...));
+  }
+
+  template <typename... ARGS>
+  static void TRSM_64(ARGS... args) {
+#if CUDA_VERSION >= 12030 && defined(__linux__)
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cublasDtrsm_v2_64(args...));
+#else
+    PADDLE_THROW(common::errors::Unimplemented(
+        "64-bit cuBLAS TRSM requires CUDA 12.3 or later on Linux."));
+#endif
   }
 
   template <typename... ARGS>
@@ -469,6 +589,62 @@ struct CUBlas<phi::float16> {
         "cublasGemmBatchedEx is not supported on cuda <= 7.5"));
 #endif
   }
+
+  static void GEMM_BATCH_64(phi::GPUContext *dev_ctx,
+                            cublasOperation_t transa,
+                            cublasOperation_t transb,
+                            int64_t m,
+                            int64_t n,
+                            int64_t k,
+                            const float *alpha,
+                            const float16 **A,
+                            cudaDataType_t Atype,
+                            int64_t lda,
+                            const float16 **B,
+                            cudaDataType_t Btype,
+                            int64_t ldb,
+                            const float *beta,
+                            float16 **C,
+                            cudaDataType_t Ctype,
+                            int64_t ldc,
+                            int64_t batchCount,
+                            cudaDataType_t computeType) {
+#if CUDA_VERSION >= 12030 && defined(__linux__)
+    cublasGemmAlgo_t algo = CUBLAS_GEMM_DFALT;
+    if (dev_ctx->tensor_core_available()) {
+      algo = CUBLAS_GEMM_DFALT_TENSOR_OP;
+    }
+    thrust::device_vector<const void *> A_ptr(A, A + batchCount);
+    thrust::device_vector<const void *> B_ptr(B, B + batchCount);
+    thrust::device_vector<void *> C_ptr(C, C + batchCount);
+    dev_ctx->TensorCoreCublasCallIfAvailable([&](cublasHandle_t handle) {
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          phi::dynload::cublasGemmBatchedEx_64(handle,
+                                               transa,
+                                               transb,
+                                               m,
+                                               n,
+                                               k,
+                                               alpha,
+                                               A_ptr.data().get(),
+                                               Atype,
+                                               lda,
+                                               B_ptr.data().get(),
+                                               Btype,
+                                               ldb,
+                                               beta,
+                                               C_ptr.data().get(),
+                                               Ctype,
+                                               ldc,
+                                               batchCount,
+                                               computeType,
+                                               algo));
+    });
+#else
+    PADDLE_THROW(common::errors::Unimplemented(
+        "64-bit cuBLAS batched GEMM requires CUDA 12.3 or later on Linux."));
+#endif
+  }
 #endif
 
   static void GEMM_STRIDED_BATCH(cublasHandle_t handle,
@@ -513,6 +689,54 @@ struct CUBlas<phi::float16> {
     PADDLE_THROW(common::errors::Unimplemented(
         "HgemmStridedBatched is not supported on cuda <= 7.5"));
 #endif
+  }
+
+  static void GEMM_STRIDED_BATCH_64(const phi::GPUContext *dev_ctx,
+                                    cublasOperation_t transa,
+                                    cublasOperation_t transb,
+                                    int64_t m,
+                                    int64_t n,
+                                    int64_t k,
+                                    const void *alpha,
+                                    const void *A,
+                                    cudaDataType_t Atype,
+                                    int64_t lda,
+                                    int64_t strideA,
+                                    const void *B,
+                                    cudaDataType_t Btype,
+                                    int64_t ldb,
+                                    int64_t strideB,
+                                    const void *beta,
+                                    void *C,
+                                    cudaDataType_t Ctype,
+                                    int64_t ldc,
+                                    int64_t strideC,
+                                    int64_t batchCount,
+                                    cublasComputeType_t computeType,
+                                    cublasGemmAlgo_t algo) {
+    detail::GemmStridedBatchedEx64(dev_ctx,
+                                   transa,
+                                   transb,
+                                   m,
+                                   n,
+                                   k,
+                                   alpha,
+                                   A,
+                                   Atype,
+                                   lda,
+                                   strideA,
+                                   B,
+                                   Btype,
+                                   ldb,
+                                   strideB,
+                                   beta,
+                                   C,
+                                   Ctype,
+                                   ldc,
+                                   strideC,
+                                   batchCount,
+                                   computeType,
+                                   algo);
   }
 
   // NOTES: GEMM_EX can use Tensor Core to accelerate matrix multiply.
@@ -693,6 +917,54 @@ struct CUBlas<phi::bfloat16> {
                      ldc,
                      computeType);
   }
+
+  static void GEMM_STRIDED_BATCH_64(const phi::GPUContext *dev_ctx,
+                                    cublasOperation_t transa,
+                                    cublasOperation_t transb,
+                                    int64_t m,
+                                    int64_t n,
+                                    int64_t k,
+                                    const void *alpha,
+                                    const void *A,
+                                    cudaDataType_t Atype,
+                                    int64_t lda,
+                                    int64_t strideA,
+                                    const void *B,
+                                    cudaDataType_t Btype,
+                                    int64_t ldb,
+                                    int64_t strideB,
+                                    const void *beta,
+                                    void *C,
+                                    cudaDataType_t Ctype,
+                                    int64_t ldc,
+                                    int64_t strideC,
+                                    int64_t batchCount,
+                                    cublasComputeType_t computeType,
+                                    cublasGemmAlgo_t algo) {
+    detail::GemmStridedBatchedEx64(dev_ctx,
+                                   transa,
+                                   transb,
+                                   m,
+                                   n,
+                                   k,
+                                   alpha,
+                                   A,
+                                   Atype,
+                                   lda,
+                                   strideA,
+                                   B,
+                                   Btype,
+                                   ldb,
+                                   strideB,
+                                   beta,
+                                   C,
+                                   Ctype,
+                                   ldc,
+                                   strideC,
+                                   batchCount,
+                                   computeType,
+                                   algo);
+  }
 };
 
 template <>
@@ -773,6 +1045,50 @@ struct CUBlas<phi::complex64> {
         incY));
   }
 
+  static void GEMM_STRIDED_BATCH_64(cublasHandle_t handle,
+                                    cublasOperation_t transa,
+                                    cublasOperation_t transb,
+                                    int64_t m,
+                                    int64_t n,
+                                    int64_t k,
+                                    const phi::complex64 *alpha,
+                                    const phi::complex64 *A,
+                                    int64_t lda,
+                                    long long int strideA,  // NOLINT
+                                    const phi::complex64 *B,
+                                    int64_t ldb,
+                                    long long int strideB,  // NOLINT
+                                    const phi::complex64 *beta,
+                                    phi::complex64 *C,
+                                    int64_t ldc,
+                                    long long int strideC,  // NOLINT
+                                    int64_t batchCount) {
+#if CUDA_VERSION >= 12030 && defined(__linux__)
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cublasCgemmStridedBatched_64(
+        handle,
+        transa,
+        transb,
+        m,
+        n,
+        k,
+        reinterpret_cast<const cuFloatComplex *>(alpha),
+        reinterpret_cast<const cuFloatComplex *>(A),
+        lda,
+        strideA,
+        reinterpret_cast<const cuFloatComplex *>(B),
+        ldb,
+        strideB,
+        reinterpret_cast<const cuFloatComplex *>(beta),
+        reinterpret_cast<cuFloatComplex *>(C),
+        ldc,
+        strideC,
+        batchCount));
+#else
+    PADDLE_THROW(common::errors::Unimplemented(
+        "64-bit cuBLAS strided batched GEMM requires CUDA 12.3 or later on "
+        "Linux."));
+#endif
+  }
   static void GEMM_STRIDED_BATCH(cublasHandle_t handle,
                                  cublasOperation_t transa,
                                  cublasOperation_t transb,
@@ -919,6 +1235,38 @@ struct CUBlas<phi::complex64> {
         lda,
         reinterpret_cast<cuFloatComplex *>(B),
         ldb));
+  }
+
+  static void TRSM_64(cublasHandle_t handle,
+                      cublasSideMode_t side,
+                      cublasFillMode_t uplo,
+                      cublasOperation_t transa,
+                      cublasDiagType_t diag,
+                      int64_t m,
+                      int64_t n,
+                      const phi::complex64 *alpha,
+                      const phi::complex64 *A,
+                      int64_t lda,
+                      phi::complex64 *B,
+                      int64_t ldb) {
+#if CUDA_VERSION >= 12030 && defined(__linux__)
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cublasCtrsm_v2_64(
+        handle,
+        side,
+        uplo,
+        transa,
+        diag,
+        m,
+        n,
+        reinterpret_cast<const cuFloatComplex *>(alpha),
+        reinterpret_cast<const cuFloatComplex *>(A),
+        lda,
+        reinterpret_cast<cuFloatComplex *>(B),
+        ldb));
+#else
+    PADDLE_THROW(common::errors::Unimplemented(
+        "64-bit cuBLAS TRSM requires CUDA 12.3 or later on Linux."));
+#endif
   }
 
   static void TRSM_BATCH(cublasHandle_t handle,
@@ -1147,6 +1495,50 @@ struct CUBlas<phi::complex128> {
 #endif
   }
 
+  static void GEMM_STRIDED_BATCH_64(cublasHandle_t handle,
+                                    cublasOperation_t transa,
+                                    cublasOperation_t transb,
+                                    int64_t m,
+                                    int64_t n,
+                                    int64_t k,
+                                    const phi::complex128 *alpha,
+                                    const phi::complex128 *A,
+                                    int64_t lda,
+                                    long long int strideA,  // NOLINT
+                                    const phi::complex128 *B,
+                                    int64_t ldb,
+                                    long long int strideB,  // NOLINT
+                                    const phi::complex128 *beta,
+                                    phi::complex128 *C,
+                                    int64_t ldc,
+                                    long long int strideC,  // NOLINT
+                                    int64_t batchCount) {
+#if CUDA_VERSION >= 12030 && defined(__linux__)
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cublasZgemmStridedBatched_64(
+        handle,
+        transa,
+        transb,
+        m,
+        n,
+        k,
+        reinterpret_cast<const cuDoubleComplex *>(alpha),
+        reinterpret_cast<const cuDoubleComplex *>(A),
+        lda,
+        strideA,
+        reinterpret_cast<const cuDoubleComplex *>(B),
+        ldb,
+        strideB,
+        reinterpret_cast<const cuDoubleComplex *>(beta),
+        reinterpret_cast<cuDoubleComplex *>(C),
+        ldc,
+        strideC,
+        batchCount));
+#else
+    PADDLE_THROW(common::errors::Unimplemented(
+        "64-bit cuBLAS strided batched GEMM requires CUDA 12.3 or later on "
+        "Linux."));
+#endif
+  }
   static void GEMM(cublasHandle_t handle,
                    cublasOperation_t transa,
                    cublasOperation_t transb,
@@ -1249,6 +1641,38 @@ struct CUBlas<phi::complex128> {
         lda,
         reinterpret_cast<cuDoubleComplex *>(B),
         ldb));
+  }
+
+  static void TRSM_64(cublasHandle_t handle,
+                      cublasSideMode_t side,
+                      cublasFillMode_t uplo,
+                      cublasOperation_t transa,
+                      cublasDiagType_t diag,
+                      int64_t m,
+                      int64_t n,
+                      const phi::complex128 *alpha,
+                      const phi::complex128 *A,
+                      int64_t lda,
+                      phi::complex128 *B,
+                      int64_t ldb) {
+#if CUDA_VERSION >= 12030 && defined(__linux__)
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cublasZtrsm_v2_64(
+        handle,
+        side,
+        uplo,
+        transa,
+        diag,
+        m,
+        n,
+        reinterpret_cast<const cuDoubleComplex *>(alpha),
+        reinterpret_cast<const cuDoubleComplex *>(A),
+        lda,
+        reinterpret_cast<cuDoubleComplex *>(B),
+        ldb));
+#else
+    PADDLE_THROW(common::errors::Unimplemented(
+        "64-bit cuBLAS TRSM requires CUDA 12.3 or later on Linux."));
+#endif
   }
 
   static void TRSM_BATCH(cublasHandle_t handle,
@@ -1495,7 +1919,9 @@ inline void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
 
   // Use FP16 input/output with FP32 accumulation.
   auto &cuda_ctx = const_cast<phi::GPUContext &>(dev_ctx_);
-  if (M > INT_MAX_VALUE || N > INT_MAX_VALUE || K > INT_MAX_VALUE) {
+  const bool requires_64_bit_blas =
+      M > INT_MAX_VALUE || N > INT_MAX_VALUE || K > INT_MAX_VALUE;
+  if (requires_64_bit_blas) {
 #if CUDA_VERSION >= 12030 && defined(__linux__)
     CUBlas<phi::float16>::GEMM_EX_64(&cuda_ctx,
                                      cuTransB,
@@ -1517,8 +1943,8 @@ inline void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
                                      CUBLAS_COMPUTE_32F);
 #else
     PADDLE_THROW(common::errors::Unimplemented(
-        "GEMM_EX_64 is not supported on cuda < 12.3"));
-#endif  // CUDA_VERSION >= 12030
+        "64-bit cuBLAS GEMM requires CUDA 12.3 or later on Linux."));
+#endif  // CUDA_VERSION >= 12030 && defined(__linux__)
   } else {
     CheckGEMMNSize(N);
     CUBlas<phi::float16>::GEMM_EX(&cuda_ctx,
@@ -1707,7 +2133,9 @@ inline void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
 
   auto &cuda_ctx = const_cast<phi::GPUContext &>(dev_ctx_);
   // Use FP16 input/output with FP32 accumulation.
-  if (M > INT_MAX_VALUE || N > INT_MAX_VALUE || K > INT_MAX_VALUE) {
+  const bool requires_64_bit_blas =
+      M > INT_MAX_VALUE || N > INT_MAX_VALUE || K > INT_MAX_VALUE;
+  if (requires_64_bit_blas) {
 #if CUDA_VERSION >= 12030 && defined(__linux__)
     CUBlas<phi::float16>::GEMM_EX_64(&cuda_ctx,
                                      cuTransB,
@@ -1729,8 +2157,8 @@ inline void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
                                      CUBLAS_COMPUTE_32F);
 #else
     PADDLE_THROW(common::errors::Unimplemented(
-        "GEMM_EX_64 is not supported on cuda < 12.3"));
-#endif  // CUDA_VERSION >= 12030
+        "64-bit cuBLAS GEMM requires CUDA 12.3 or later on Linux."));
+#endif  // CUDA_VERSION >= 12030 && defined(__linux__)
   } else {
     CheckGEMMNSize(N);
     CUBlas<phi::float16>::GEMM_EX(&cuda_ctx,
@@ -1815,7 +2243,9 @@ inline void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
           dev_ctx_.GetComputeCapability()));
 
   auto &cuda_ctx = const_cast<phi::GPUContext &>(dev_ctx_);
-  if (M > INT_MAX_VALUE || N > INT_MAX_VALUE || K > INT_MAX_VALUE) {
+  const bool requires_64_bit_blas =
+      M > INT_MAX_VALUE || N > INT_MAX_VALUE || K > INT_MAX_VALUE;
+  if (requires_64_bit_blas) {
 #if CUDA_VERSION >= 12030 && defined(__linux__)
     CUBlas<phi::float16>::GEMM_EX_64(&cuda_ctx,
                                      cuTransB,
@@ -1837,8 +2267,8 @@ inline void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
                                      CUBLAS_COMPUTE_32F);
 #else
     PADDLE_THROW(common::errors::Unimplemented(
-        "64-bit FP16 GEMM_EX requires CUDA 12.3 or later on Linux."));
-#endif  // CUDA_VERSION >= 12030
+        "64-bit cuBLAS GEMM requires CUDA 12.3 or later on Linux."));
+#endif  // CUDA_VERSION >= 12030 && defined(__linux__)
   } else {
     CheckGEMMNSize(N);
     CUBlas<phi::float16>::GEMM_EX(&cuda_ctx,
@@ -1925,7 +2355,9 @@ inline void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
   float h_beta = static_cast<float>(beta);
   auto &cuda_ctx = const_cast<phi::GPUContext &>(dev_ctx_);
 
-  if (M > INT_MAX_VALUE || N > INT_MAX_VALUE || K > INT_MAX_VALUE) {
+  const bool requires_64_bit_blas =
+      M > INT_MAX_VALUE || N > INT_MAX_VALUE || K > INT_MAX_VALUE;
+  if (requires_64_bit_blas) {
 #if CUDA_VERSION >= 12030 && defined(__linux__)
     CUBlas<phi::bfloat16>::GEMM_EX_64(&cuda_ctx,
                                       cuTransB,
@@ -1947,8 +2379,8 @@ inline void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
                                       CUBLAS_COMPUTE_32F);
 #else
     PADDLE_THROW(common::errors::Unimplemented(
-        "cublasGemmEx_64 is not supported on cuda < 12.3"));
-#endif  // CUDA_VERSION >= 12030
+        "64-bit cuBLAS GEMM requires CUDA 12.3 or later on Linux."));
+#endif  // CUDA_VERSION >= 12030 && defined(__linux__)
   } else {
     CheckGEMMNSize(N);
     CUBlas<phi::bfloat16>::GEMM_EX(&cuda_ctx,
@@ -2012,7 +2444,9 @@ inline void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
           dev_ctx_.GetComputeCapability()));
 
   auto &cuda_ctx = const_cast<phi::GPUContext &>(dev_ctx_);
-  if (M > INT_MAX_VALUE || N > INT_MAX_VALUE || K > INT_MAX_VALUE) {
+  const bool requires_64_bit_blas =
+      M > INT_MAX_VALUE || N > INT_MAX_VALUE || K > INT_MAX_VALUE;
+  if (requires_64_bit_blas) {
 #if CUDA_VERSION >= 12030 && defined(__linux__)
     CUBlas<phi::bfloat16>::GEMM_EX_64(&cuda_ctx,
                                       cuTransB,
@@ -2034,8 +2468,8 @@ inline void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
                                       CUBLAS_COMPUTE_32F);
 #else
     PADDLE_THROW(common::errors::Unimplemented(
-        "cublasGemmEx_64 is not supported on cuda < 12.3"));
-#endif  // CUDA_VERSION >= 12030
+        "64-bit cuBLAS GEMM requires CUDA 12.3 or later on Linux."));
+#endif  // CUDA_VERSION >= 12030 && defined(__linux__)
   } else {
     CheckGEMMNSize(N);
     CUBlas<phi::bfloat16>::GEMM_EX(&cuda_ctx,
@@ -2100,7 +2534,9 @@ inline void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
   float h_beta = beta;
 
   auto &cuda_ctx = const_cast<phi::GPUContext &>(dev_ctx_);
-  if (M > INT_MAX_VALUE || N > INT_MAX_VALUE || K > INT_MAX_VALUE) {
+  const bool requires_64_bit_blas =
+      M > INT_MAX_VALUE || N > INT_MAX_VALUE || K > INT_MAX_VALUE;
+  if (requires_64_bit_blas) {
 #if CUDA_VERSION >= 12030 && defined(__linux__)
     CUBlas<phi::bfloat16>::GEMM_EX_64(&cuda_ctx,
                                       cuTransB,
@@ -2122,8 +2558,8 @@ inline void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
                                       CUBLAS_COMPUTE_32F);
 #else
     PADDLE_THROW(common::errors::Unimplemented(
-        "cublasGemmEx_64 is not supported on cuda < 12.3"));
-#endif  // CUDA_VERSION >= 12030
+        "64-bit cuBLAS GEMM requires CUDA 12.3 or later on Linux."));
+#endif  // CUDA_VERSION >= 12030 && defined(__linux__)
   } else {
     CheckGEMMNSize(N);
     CUBlas<phi::bfloat16>::GEMM_EX(&cuda_ctx,
@@ -2186,7 +2622,9 @@ inline void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
           "but received %d",
           dev_ctx_.GetComputeCapability()));
 
-  if (M > INT_MAX_VALUE || N > INT_MAX_VALUE || K > INT_MAX_VALUE) {
+  const bool requires_64_bit_blas =
+      M > INT_MAX_VALUE || N > INT_MAX_VALUE || K > INT_MAX_VALUE;
+  if (requires_64_bit_blas) {
 #if CUDA_VERSION >= 12030 && defined(__linux__)
     dev_ctx_.CublasCall([&](cublasHandle_t handle) {
       CUBlas<phi::complex64>::GEMM_64(handle,
@@ -2262,7 +2700,9 @@ inline void Blas<phi::GPUContext>::GEMM(CBLAS_TRANSPOSE transA,
           "but received %d",
           dev_ctx_.GetComputeCapability()));
 
-  if (M > INT_MAX_VALUE || N > INT_MAX_VALUE || K > INT_MAX_VALUE) {
+  const bool requires_64_bit_blas =
+      M > INT_MAX_VALUE || N > INT_MAX_VALUE || K > INT_MAX_VALUE;
+  if (requires_64_bit_blas) {
 #if CUDA_VERSION >= 12030 && defined(__linux__)
     dev_ctx_.CublasCall([&](cublasHandle_t handle) {
       CUBlas<phi::complex128>::GEMM_64(handle,
@@ -2687,7 +3127,8 @@ void Blas<phi::GPUContext>::GEMV(bool trans_a,
   detail::check_blas_int64(N, "GEMV N");
   cublasOperation_t cuTransA = !trans_a ? CUBLAS_OP_T : CUBLAS_OP_N;
 
-  if (M > INT_MAX_VALUE || N > INT_MAX_VALUE) {
+  const bool requires_64_bit_blas = M > INT_MAX_VALUE || N > INT_MAX_VALUE;
+  if (requires_64_bit_blas) {
 #if CUDA_VERSION >= 12030 && defined(__linux__)
     dev_ctx_.CublasCall([&](cublasHandle_t handle) {
       CUBlas<T>::GEMV_64(
@@ -2770,13 +3211,73 @@ void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
       (transA == CblasNoTrans) ? CUBLAS_OP_N : CUBLAS_OP_T;
   cublasOperation_t cuTransB =
       (transB == CblasNoTrans) ? CUBLAS_OP_N : CUBLAS_OP_T;
+  detail::check_blas_int64(M, "BatchedGEMM M");
+  detail::check_blas_int64(N, "BatchedGEMM N");
+  detail::check_blas_int64(K, "BatchedGEMM K");
+  detail::check_blas_int64(batchCount, "BatchedGEMM batchCount");
   const int64_t strideC = M * N;
+  const bool requires_64_bit_blas = M > INT_MAX_VALUE || N > INT_MAX_VALUE ||
+                                    K > INT_MAX_VALUE ||
+                                    batchCount > INT_MAX_VALUE;
 #if CUDA_VERSION >= 9010
-  if ((std::is_same<T, float>::value) || std::is_same<T, phi::float16>::value) {
+  if constexpr (std::is_same<T, float>::value) {
+    if (requires_64_bit_blas) {
+#if CUDA_VERSION >= 12030 && defined(__linux__)
+      detail::CublasCallWithTF32MathMode(&dev_ctx_, [&](cublasHandle_t handle) {
+        CUBlas<T>::GEMM_STRIDED_BATCH_64(handle,
+                                         cuTransB,
+                                         cuTransA,
+                                         N,
+                                         M,
+                                         K,
+                                         &alpha,
+                                         B,
+                                         ldb,
+                                         strideB,
+                                         A,
+                                         lda,
+                                         strideA,
+                                         &beta,
+                                         C,
+                                         ldc,
+                                         strideC,
+                                         batchCount);
+      });
+      return;
+#else
+      PADDLE_THROW(common::errors::Unimplemented(
+          "64-bit cuBLAS strided batched GEMM requires CUDA 12.3 or later "
+          "on Linux."));
+#endif  // CUDA_VERSION >= 12030 && defined(__linux__)
+    }
+    const int m = detail::to_blas_int(M, "BatchedGEMM M");
+    const int n = detail::to_blas_int(N, "BatchedGEMM N");
+    const int k = detail::to_blas_int(K, "BatchedGEMM K");
+    const int batch_count =
+        detail::to_blas_int(batchCount, "BatchedGEMM batchCount");
+    detail::CublasCallWithTF32MathMode(&dev_ctx_, [&](cublasHandle_t handle) {
+      CUBlas<T>::GEMM_STRIDED_BATCH(handle,
+                                    cuTransB,
+                                    cuTransA,
+                                    n,
+                                    m,
+                                    k,
+                                    &alpha,
+                                    B,
+                                    static_cast<int>(ldb),
+                                    strideB,
+                                    A,
+                                    static_cast<int>(lda),
+                                    strideA,
+                                    &beta,
+                                    C,
+                                    static_cast<int>(ldc),
+                                    strideC,
+                                    batch_count);
+    });
+  } else if constexpr (std::is_same<T, phi::float16>::value) {
     cublasGemmAlgo_t algo = CUBLAS_GEMM_DFALT;
-    bool use_tensor_op_math = std::is_same<T, float>::value
-                                  ? FLAGS_cublas_allow_tf32
-                                  : dev_ctx_.tensor_core_available();
+    bool use_tensor_op_math = dev_ctx_.tensor_core_available();
     if (use_tensor_op_math) {
       algo = CUBLAS_GEMM_DFALT_TENSOR_OP;
     }
@@ -2785,7 +3286,7 @@ void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
     VLOG(4) << "use_half_precision_compute_type: "
             << FLAGS_gemm_use_half_precision_compute_type;
 
-    auto fp = std::is_same<T, float>::value ? CUDA_R_32F : CUDA_R_16F;
+    auto fp = CUDA_R_16F;
 #if CUDA_VERSION >= 11000
     auto compute_type = CUBLAS_COMPUTE_32F;
 #else
@@ -2796,9 +3297,10 @@ void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
     float h_beta = static_cast<float>(beta);
     void *a = static_cast<void *>(&h_alpha);
     void *b = static_cast<void *>(&h_beta);
-    // set ComputeType as CUDA_R_32F for fp16, for better accuracy
-    if (FLAGS_gemm_use_half_precision_compute_type == true &&
-        std::is_same<T, phi::float16>::value) {
+    // Keep ComputeType at fp32 for better accuracy unless fp16 accumulation is
+    // requested. alpha/beta are already T here, so pass them directly.
+    if (FLAGS_gemm_use_half_precision_compute_type &&
+        dev_ctx_.GetComputeCapability() >= 70) {
       a = static_cast<void *>(&alpha);
       b = static_cast<void *>(&beta);
 #if CUDA_VERSION >= 11000
@@ -2807,38 +3309,36 @@ void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
       compute_type = CUDA_R_16F;
 #endif
     }
-    if (M > INT_MAX_VALUE || N > INT_MAX_VALUE || K > INT_MAX_VALUE) {
+    if (requires_64_bit_blas) {
 #if CUDA_VERSION >= 12030 && defined(__linux__)
-      detail::CublasCallForGemmEx<T>(&dev_ctx_, [&](cublasHandle_t handle) {
-        PADDLE_ENFORCE_GPU_SUCCESS(
-            phi::dynload::cublasGemmStridedBatchedEx_64(handle,
-                                                        cuTransB,
-                                                        cuTransA,
-                                                        N,
-                                                        M,
-                                                        K,
-                                                        a,
-                                                        B,
-                                                        fp,
-                                                        ldb,
-                                                        strideB,
-                                                        A,
-                                                        fp,
-                                                        lda,
-                                                        strideA,
-                                                        b,
-                                                        C,
-                                                        fp,
-                                                        ldc,
-                                                        strideC,
-                                                        batchCount,
-                                                        compute_type,
-                                                        algo));
-      });
+      CUBlas<T>::GEMM_STRIDED_BATCH_64(&dev_ctx_,
+                                       cuTransB,
+                                       cuTransA,
+                                       N,
+                                       M,
+                                       K,
+                                       a,
+                                       B,
+                                       fp,
+                                       ldb,
+                                       strideB,
+                                       A,
+                                       fp,
+                                       lda,
+                                       strideA,
+                                       b,
+                                       C,
+                                       fp,
+                                       ldc,
+                                       strideC,
+                                       batchCount,
+                                       compute_type,
+                                       algo);
 #else
       PADDLE_THROW(common::errors::Unimplemented(
-          "cublasGemmStridedBatchedEx_64 is not supported on cuda < 12.3"));
-#endif  // CUDA_VERSION >= 12030
+          "64-bit cuBLAS strided batched GEMM requires CUDA 12.3 or later "
+          "on Linux."));
+#endif  // CUDA_VERSION >= 12030 && defined(__linux__)
     } else {
       detail::CublasCallForGemmEx<T>(&dev_ctx_, [&](cublasHandle_t handle) {
         PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cublasGemmStridedBatchedEx(
@@ -2869,53 +3369,59 @@ void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
     }
   } else {
 #endif  // CUDA_VERSION >= 9010
+    if (requires_64_bit_blas) {
+#if CUDA_VERSION >= 12030 && defined(__linux__)
+      dev_ctx_.CublasCall([&](cublasHandle_t handle) {
+        CUBlas<T>::GEMM_STRIDED_BATCH_64(handle,
+                                         cuTransB,
+                                         cuTransA,
+                                         N,
+                                         M,
+                                         K,
+                                         &alpha,
+                                         B,
+                                         ldb,
+                                         strideB,
+                                         A,
+                                         lda,
+                                         strideA,
+                                         &beta,
+                                         C,
+                                         ldc,
+                                         strideC,
+                                         batchCount);
+      });
+      return;
+#else
+    PADDLE_THROW(common::errors::Unimplemented(
+        "64-bit cuBLAS strided batched GEMM requires CUDA 12.3 or later on "
+        "Linux."));
+#endif  // CUDA_VERSION >= 12030 && defined(__linux__)
+    }
+    const int m = detail::to_blas_int(M, "BatchedGEMM M");
+    const int n = detail::to_blas_int(N, "BatchedGEMM N");
+    const int k = detail::to_blas_int(K, "BatchedGEMM K");
+    const int batch_count =
+        detail::to_blas_int(batchCount, "BatchedGEMM batchCount");
     dev_ctx_.CublasCall([&](cublasHandle_t handle) {
-#if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP) && !defined(_WIN32)
-      if (N == 1 && ldc >= std::max<int64_t>(1, M) && !FLAGS_use_legacy_gemm) {
-        // No transpose result in these case, align with torch's behaviour.
-        // TODO(Pan Zhaowu): Integrate proper stride support for arbitrary input
-        // tensor.
-        CUBlas<T>::GEMM_STRIDED_BATCH(
-            handle,
-            (cuTransA == CUBLAS_OP_T) ? CUBLAS_OP_N : CUBLAS_OP_T,
-            (cuTransB == CUBLAS_OP_T) ? CUBLAS_OP_N : CUBLAS_OP_T,
-            static_cast<int>(M),
-            static_cast<int>(N),
-            static_cast<int>(K),
-            &alpha,
-            A,
-            static_cast<int>(lda),
-            strideA,
-            B,
-            static_cast<int>(ldb),
-            strideB,
-            &beta,
-            C,
-            static_cast<int>(ldc),
-            strideC,
-            static_cast<int>(batchCount));
-      } else  // NOLINT
-#endif
-      {
-        CUBlas<T>::GEMM_STRIDED_BATCH(handle,
-                                      cuTransB,
-                                      cuTransA,
-                                      static_cast<int>(N),
-                                      static_cast<int>(M),
-                                      static_cast<int>(K),
-                                      &alpha,
-                                      B,
-                                      static_cast<int>(ldb),
-                                      strideB,
-                                      A,
-                                      static_cast<int>(lda),
-                                      strideA,
-                                      &beta,
-                                      C,
-                                      static_cast<int>(ldc),
-                                      strideC,
-                                      static_cast<int>(batchCount));
-      }
+      CUBlas<T>::GEMM_STRIDED_BATCH(handle,
+                                    cuTransB,
+                                    cuTransA,
+                                    n,
+                                    m,
+                                    k,
+                                    &alpha,
+                                    B,
+                                    static_cast<int>(ldb),
+                                    strideB,
+                                    A,
+                                    static_cast<int>(lda),
+                                    strideA,
+                                    &beta,
+                                    C,
+                                    static_cast<int>(ldc),
+                                    strideC,
+                                    batch_count);
     });
 
 #if CUDA_VERSION >= 9010
@@ -2947,13 +3453,75 @@ void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
       (transA == CblasNoTrans) ? CUBLAS_OP_N : CUBLAS_OP_T;
   cublasOperation_t cuTransB =
       (transB == CblasNoTrans) ? CUBLAS_OP_N : CUBLAS_OP_T;
+  detail::check_blas_int64(M, "BatchedGEMM M");
+  detail::check_blas_int64(N, "BatchedGEMM N");
+  detail::check_blas_int64(K, "BatchedGEMM K");
+  detail::check_blas_int64(batchCount, "BatchedGEMM batchCount");
   const int64_t strideC = M * N;
+  const bool requires_64_bit_blas = M > INT_MAX_VALUE || N > INT_MAX_VALUE ||
+                                    K > INT_MAX_VALUE ||
+                                    batchCount > INT_MAX_VALUE;
 #if CUDA_VERSION >= 9010
-  if ((std::is_same<T, float>::value) || std::is_same<T, phi::float16>::value) {
+  if constexpr (std::is_same<T, float>::value) {
+    T h_alpha = static_cast<T>(alpha);
+    T h_beta = static_cast<T>(beta);
+    if (requires_64_bit_blas) {
+#if CUDA_VERSION >= 12030 && defined(__linux__)
+      detail::CublasCallWithTF32MathMode(&dev_ctx_, [&](cublasHandle_t handle) {
+        CUBlas<T>::GEMM_STRIDED_BATCH_64(handle,
+                                         cuTransB,
+                                         cuTransA,
+                                         N,
+                                         M,
+                                         K,
+                                         &h_alpha,
+                                         B,
+                                         ldb,
+                                         strideB,
+                                         A,
+                                         lda,
+                                         strideA,
+                                         &h_beta,
+                                         C,
+                                         ldc,
+                                         strideC,
+                                         batchCount);
+      });
+      return;
+#else
+      PADDLE_THROW(common::errors::Unimplemented(
+          "64-bit cuBLAS strided batched GEMM requires CUDA 12.3 or later "
+          "on Linux."));
+#endif  // CUDA_VERSION >= 12030 && defined(__linux__)
+    }
+    const int m = detail::to_blas_int(M, "BatchedGEMM M");
+    const int n = detail::to_blas_int(N, "BatchedGEMM N");
+    const int k = detail::to_blas_int(K, "BatchedGEMM K");
+    const int batch_count =
+        detail::to_blas_int(batchCount, "BatchedGEMM batchCount");
+    detail::CublasCallWithTF32MathMode(&dev_ctx_, [&](cublasHandle_t handle) {
+      CUBlas<T>::GEMM_STRIDED_BATCH(handle,
+                                    cuTransB,
+                                    cuTransA,
+                                    n,
+                                    m,
+                                    k,
+                                    &h_alpha,
+                                    B,
+                                    static_cast<int>(ldb),
+                                    strideB,
+                                    A,
+                                    static_cast<int>(lda),
+                                    strideA,
+                                    &h_beta,
+                                    C,
+                                    static_cast<int>(ldc),
+                                    strideC,
+                                    batch_count);
+    });
+  } else if constexpr (std::is_same<T, phi::float16>::value) {
     cublasGemmAlgo_t algo = CUBLAS_GEMM_DFALT;
-    bool use_tensor_op_math = std::is_same<T, float>::value
-                                  ? FLAGS_cublas_allow_tf32
-                                  : dev_ctx_.tensor_core_available();
+    bool use_tensor_op_math = dev_ctx_.tensor_core_available();
     if (use_tensor_op_math) {
       algo = CUBLAS_GEMM_DFALT_TENSOR_OP;
     }
@@ -2962,7 +3530,7 @@ void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
     VLOG(4) << "use_half_precision_compute_type: "
             << FLAGS_gemm_use_half_precision_compute_type;
 
-    auto fp = std::is_same<T, float>::value ? CUDA_R_32F : CUDA_R_16F;
+    auto fp = CUDA_R_16F;
 #if CUDA_VERSION >= 11000
     auto compute_type = CUBLAS_COMPUTE_32F;
 #else
@@ -2971,13 +3539,17 @@ void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
 
     float h_alpha = static_cast<float>(alpha);
     float h_beta = static_cast<float>(beta);
+    phi::float16 t_alpha = static_cast<phi::float16>(alpha);
+    phi::float16 t_beta = static_cast<phi::float16>(beta);
     void *a = static_cast<void *>(&h_alpha);
     void *b = static_cast<void *>(&h_beta);
-    // set ComputeType as CUDA_R_32F for fp16, for better accuracy
-    if (FLAGS_gemm_use_half_precision_compute_type == true &&
-        std::is_same<T, phi::float16>::value) {
-      a = static_cast<void *>(&alpha);
-      b = static_cast<void *>(&beta);
+    // Keep ComputeType at fp32 for better accuracy unless fp16 accumulation is
+    // requested. cuBLAS reads alpha/beta with the width of computeType, so the
+    // fp16 path must be handed fp16 scalars, not the U-typed originals.
+    if (FLAGS_gemm_use_half_precision_compute_type &&
+        dev_ctx_.GetComputeCapability() >= 70) {
+      a = static_cast<void *>(&t_alpha);
+      b = static_cast<void *>(&t_beta);
 #if CUDA_VERSION >= 11000
       compute_type = CUBLAS_COMPUTE_16F;
 #else
@@ -2985,39 +3557,36 @@ void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
 #endif
     }
 
-    if (M > INT_MAX_VALUE || N > INT_MAX_VALUE || K > INT_MAX_VALUE ||
-        batchCount > INT_MAX_VALUE) {
+    if (requires_64_bit_blas) {
 #if CUDA_VERSION >= 12030 && defined(__linux__)
-      detail::CublasCallForGemmEx<T>(&dev_ctx_, [&](cublasHandle_t handle) {
-        PADDLE_ENFORCE_GPU_SUCCESS(
-            phi::dynload::cublasGemmStridedBatchedEx_64(handle,
-                                                        cuTransB,
-                                                        cuTransA,
-                                                        N,
-                                                        M,
-                                                        K,
-                                                        a,
-                                                        B,
-                                                        fp,
-                                                        ldb,
-                                                        strideB,
-                                                        A,
-                                                        fp,
-                                                        lda,
-                                                        strideA,
-                                                        b,
-                                                        C,
-                                                        fp,
-                                                        ldc,
-                                                        strideC,
-                                                        batchCount,
-                                                        compute_type,
-                                                        algo));
-      });
+      CUBlas<T>::GEMM_STRIDED_BATCH_64(&dev_ctx_,
+                                       cuTransB,
+                                       cuTransA,
+                                       N,
+                                       M,
+                                       K,
+                                       a,
+                                       B,
+                                       fp,
+                                       ldb,
+                                       strideB,
+                                       A,
+                                       fp,
+                                       lda,
+                                       strideA,
+                                       b,
+                                       C,
+                                       fp,
+                                       ldc,
+                                       strideC,
+                                       batchCount,
+                                       compute_type,
+                                       algo);
 #else
       PADDLE_THROW(common::errors::Unimplemented(
-          "cublasGemmStridedBatchedEx_64 is not supported on cuda < 12.3"));
-#endif  // CUDA_VERSION >= 12030
+          "64-bit cuBLAS strided batched GEMM requires CUDA 12.3 or later "
+          "on Linux."));
+#endif  // CUDA_VERSION >= 12030 && defined(__linux__)
     } else {
       detail::CublasCallForGemmEx<T>(&dev_ctx_, [&](cublasHandle_t handle) {
         PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cublasGemmStridedBatchedEx(
@@ -3051,13 +3620,48 @@ void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
     T h_alpha = static_cast<T>(alpha);
     T h_beta = static_cast<T>(beta);
 
+    if (requires_64_bit_blas) {
+#if CUDA_VERSION >= 12030 && defined(__linux__)
+      dev_ctx_.CublasCall([&](cublasHandle_t handle) {
+        CUBlas<T>::GEMM_STRIDED_BATCH_64(handle,
+                                         cuTransB,
+                                         cuTransA,
+                                         N,
+                                         M,
+                                         K,
+                                         &h_alpha,
+                                         B,
+                                         ldb,
+                                         strideB,
+                                         A,
+                                         lda,
+                                         strideA,
+                                         &h_beta,
+                                         C,
+                                         ldc,
+                                         strideC,
+                                         batchCount);
+      });
+      return;
+#else
+    PADDLE_THROW(common::errors::Unimplemented(
+        "64-bit cuBLAS strided batched GEMM requires CUDA 12.3 or later on "
+        "Linux."));
+#endif  // CUDA_VERSION >= 12030 && defined(__linux__)
+    }
+    const int m = detail::to_blas_int(M, "BatchedGEMM M");
+    const int n = detail::to_blas_int(N, "BatchedGEMM N");
+    const int k = detail::to_blas_int(K, "BatchedGEMM K");
+    const int batch_count =
+        detail::to_blas_int(batchCount, "BatchedGEMM batchCount");
+
     dev_ctx_.CublasCall([&](cublasHandle_t handle) {
       CUBlas<T>::GEMM_STRIDED_BATCH(handle,
                                     cuTransB,
                                     cuTransA,
-                                    static_cast<int>(N),
-                                    static_cast<int>(M),
-                                    static_cast<int>(K),
+                                    n,
+                                    m,
+                                    k,
                                     &h_alpha,
                                     B,
                                     static_cast<int>(ldb),
@@ -3069,7 +3673,7 @@ void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
                                     C,
                                     static_cast<int>(ldc),
                                     strideC,
-                                    static_cast<int>(batchCount));
+                                    batch_count);
     });
 
 #if CUDA_VERSION >= 9010
@@ -3103,6 +3707,10 @@ inline void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
       (transA == CblasNoTrans) ? CUBLAS_OP_N : CUBLAS_OP_T;
   cublasOperation_t cuTransB =
       (transB == CblasNoTrans) ? CUBLAS_OP_N : CUBLAS_OP_T;
+  detail::check_blas_int64(M, "BatchedGEMM M");
+  detail::check_blas_int64(N, "BatchedGEMM N");
+  detail::check_blas_int64(K, "BatchedGEMM K");
+  detail::check_blas_int64(batchCount, "BatchedGEMM batchCount");
   const int64_t strideC = M * N;
 
   float h_alpha = static_cast<float>(alpha);
@@ -3114,39 +3722,39 @@ inline void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
     algo = CUBLAS_GEMM_DFALT_TENSOR_OP;
   }
   VLOG(5) << "use_tensor_op_math: " << (use_tensor_op_math ? "True" : "False");
-  if (M > INT_MAX_VALUE || N > INT_MAX_VALUE || K > INT_MAX_VALUE ||
-      batchCount > INT_MAX_VALUE) {
+  const bool requires_64_bit_blas = M > INT_MAX_VALUE || N > INT_MAX_VALUE ||
+                                    K > INT_MAX_VALUE ||
+                                    batchCount > INT_MAX_VALUE;
+  if (requires_64_bit_blas) {
 #if CUDA_VERSION >= 12030 && defined(__linux__)
-    dev_ctx_.TensorCoreCublasCallIfAvailable([&](cublasHandle_t handle) {
-      PADDLE_ENFORCE_GPU_SUCCESS(
-          phi::dynload::cublasGemmStridedBatchedEx_64(handle,
-                                                      cuTransB,
-                                                      cuTransA,
-                                                      N,
-                                                      M,
-                                                      K,
-                                                      &h_alpha,
-                                                      B,
-                                                      CUDA_R_16BF,
-                                                      ldb,
-                                                      strideB,
-                                                      A,
-                                                      CUDA_R_16BF,
-                                                      lda,
-                                                      strideA,
-                                                      &h_beta,
-                                                      C,
-                                                      CUDA_R_16BF,
-                                                      ldc,
-                                                      strideC,
-                                                      batchCount,
-                                                      CUBLAS_COMPUTE_32F,
-                                                      algo));
-    });
+    CUBlas<phi::bfloat16>::GEMM_STRIDED_BATCH_64(&dev_ctx_,
+                                                 cuTransB,
+                                                 cuTransA,
+                                                 N,
+                                                 M,
+                                                 K,
+                                                 &h_alpha,
+                                                 B,
+                                                 CUDA_R_16BF,
+                                                 ldb,
+                                                 strideB,
+                                                 A,
+                                                 CUDA_R_16BF,
+                                                 lda,
+                                                 strideA,
+                                                 &h_beta,
+                                                 C,
+                                                 CUDA_R_16BF,
+                                                 ldc,
+                                                 strideC,
+                                                 batchCount,
+                                                 CUBLAS_COMPUTE_32F,
+                                                 algo);
 #else
     PADDLE_THROW(common::errors::Unimplemented(
-        "cublasGemmStridedBatchedEx_64 is not supported on cuda < 12.3"));
-#endif  // CUDA_VERSION >= 12030
+        "64-bit cuBLAS strided batched GEMM requires CUDA 12.3 or later on "
+        "Linux."));
+#endif  // CUDA_VERSION >= 12030 && defined(__linux__)
   } else {
     dev_ctx_.TensorCoreCublasCallIfAvailable([&](cublasHandle_t handle) {
       PADDLE_ENFORCE_GPU_SUCCESS(
@@ -3208,6 +3816,10 @@ inline void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
       (transA == CblasNoTrans) ? CUBLAS_OP_N : CUBLAS_OP_T;
   cublasOperation_t cuTransB =
       (transB == CblasNoTrans) ? CUBLAS_OP_N : CUBLAS_OP_T;
+  detail::check_blas_int64(M, "BatchedGEMM M");
+  detail::check_blas_int64(N, "BatchedGEMM N");
+  detail::check_blas_int64(K, "BatchedGEMM K");
+  detail::check_blas_int64(batchCount, "BatchedGEMM batchCount");
   const int64_t strideC = M * N;
 
   float h_alpha = alpha;
@@ -3219,39 +3831,39 @@ inline void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
     algo = CUBLAS_GEMM_DFALT_TENSOR_OP;
   }
   VLOG(5) << "use_tensor_op_math: " << (use_tensor_op_math ? "True" : "False");
-  if (M > INT_MAX_VALUE || N > INT_MAX_VALUE || K > INT_MAX_VALUE ||
-      batchCount > INT_MAX_VALUE) {
+  const bool requires_64_bit_blas = M > INT_MAX_VALUE || N > INT_MAX_VALUE ||
+                                    K > INT_MAX_VALUE ||
+                                    batchCount > INT_MAX_VALUE;
+  if (requires_64_bit_blas) {
 #if CUDA_VERSION >= 12030 && defined(__linux__)
-    dev_ctx_.TensorCoreCublasCallIfAvailable([&](cublasHandle_t handle) {
-      PADDLE_ENFORCE_GPU_SUCCESS(
-          phi::dynload::cublasGemmStridedBatchedEx_64(handle,
-                                                      cuTransB,
-                                                      cuTransA,
-                                                      N,
-                                                      M,
-                                                      K,
-                                                      &h_alpha,
-                                                      B,
-                                                      CUDA_R_16BF,
-                                                      ldb,
-                                                      strideB,
-                                                      A,
-                                                      CUDA_R_16BF,
-                                                      lda,
-                                                      strideA,
-                                                      &h_beta,
-                                                      C,
-                                                      CUDA_R_16BF,
-                                                      ldc,
-                                                      strideC,
-                                                      batchCount,
-                                                      CUBLAS_COMPUTE_32F,
-                                                      algo));
-    });
+    CUBlas<phi::bfloat16>::GEMM_STRIDED_BATCH_64(&dev_ctx_,
+                                                 cuTransB,
+                                                 cuTransA,
+                                                 N,
+                                                 M,
+                                                 K,
+                                                 &h_alpha,
+                                                 B,
+                                                 CUDA_R_16BF,
+                                                 ldb,
+                                                 strideB,
+                                                 A,
+                                                 CUDA_R_16BF,
+                                                 lda,
+                                                 strideA,
+                                                 &h_beta,
+                                                 C,
+                                                 CUDA_R_16BF,
+                                                 ldc,
+                                                 strideC,
+                                                 batchCount,
+                                                 CUBLAS_COMPUTE_32F,
+                                                 algo);
 #else
     PADDLE_THROW(common::errors::Unimplemented(
-        "cublasGemmStridedBatchedEx_64 is not supported on cuda < 12.3"));
-#endif  // CUDA_VERSION >= 12030
+        "64-bit cuBLAS strided batched GEMM requires CUDA 12.3 or later on "
+        "Linux."));
+#endif  // CUDA_VERSION >= 12030 && defined(__linux__)
   } else {
     dev_ctx_.TensorCoreCublasCallIfAvailable([&](cublasHandle_t handle) {
       PADDLE_ENFORCE_GPU_SUCCESS(
@@ -3311,6 +3923,10 @@ inline void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
       (transA == CblasNoTrans) ? CUBLAS_OP_N : CUBLAS_OP_T;
   cublasOperation_t cuTransB =
       (transB == CblasNoTrans) ? CUBLAS_OP_N : CUBLAS_OP_T;
+  detail::check_blas_int64(M, "BatchedGEMM M");
+  detail::check_blas_int64(N, "BatchedGEMM N");
+  detail::check_blas_int64(K, "BatchedGEMM K");
+  detail::check_blas_int64(batchCount, "BatchedGEMM batchCount");
   const int64_t strideC = M * N;
 
   PADDLE_ENFORCE_GE(
@@ -3321,7 +3937,7 @@ inline void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
           "capability >= 53, but received %d",
           dev_ctx_.GetComputeCapability()));
 
-  cublasGemmAlgo_t algo = CUBLAS_GEMM_DEFAULT;
+  cublasGemmAlgo_t algo = CUBLAS_GEMM_DFALT;
 #if CUDA_VERSION >= 9000
   bool use_tensor_op_math = dev_ctx_.tensor_core_available();
   if (use_tensor_op_math) {
@@ -3335,38 +3951,38 @@ inline void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
   auto compute_type = CUDA_R_32F;
 #endif
 
-  if (M > INT_MAX_VALUE || N > INT_MAX_VALUE || K > INT_MAX_VALUE ||
-      batchCount > INT_MAX_VALUE) {
+  const bool requires_64_bit_blas = M > INT_MAX_VALUE || N > INT_MAX_VALUE ||
+                                    K > INT_MAX_VALUE ||
+                                    batchCount > INT_MAX_VALUE;
+  if (requires_64_bit_blas) {
 #if CUDA_VERSION >= 12030 && defined(__linux__)
-    dev_ctx_.TensorCoreCublasCallIfAvailable([&](cublasHandle_t handle) {
-      PADDLE_ENFORCE_GPU_SUCCESS(
-          phi::dynload::cublasGemmStridedBatchedEx_64(handle,
-                                                      cuTransB,
-                                                      cuTransA,
-                                                      N,
-                                                      M,
-                                                      K,
-                                                      &alpha,
-                                                      B,
-                                                      CUDA_R_16F,
-                                                      ldb,
-                                                      strideB,
-                                                      A,
-                                                      CUDA_R_16F,
-                                                      lda,
-                                                      strideA,
-                                                      &beta,
-                                                      C,
-                                                      CUDA_R_32F,
-                                                      ldc,
-                                                      strideC,
-                                                      batchCount,
-                                                      compute_type,
-                                                      algo));
-    });
+    CUBlas<phi::float16>::GEMM_STRIDED_BATCH_64(&dev_ctx_,
+                                                cuTransB,
+                                                cuTransA,
+                                                N,
+                                                M,
+                                                K,
+                                                &alpha,
+                                                B,
+                                                CUDA_R_16F,
+                                                ldb,
+                                                strideB,
+                                                A,
+                                                CUDA_R_16F,
+                                                lda,
+                                                strideA,
+                                                &beta,
+                                                C,
+                                                CUDA_R_32F,
+                                                ldc,
+                                                strideC,
+                                                batchCount,
+                                                compute_type,
+                                                algo);
 #else
     PADDLE_THROW(common::errors::Unimplemented(
-        "cublasGemmStridedBatchedEx_64 is not supported on cuda < 12.3"));
+        "64-bit cuBLAS strided batched GEMM requires CUDA 12.3 or later on "
+        "Linux."));
 #endif  // CUDA_VERSION >= 12030 && defined(__linux__)
   } else {
     dev_ctx_.TensorCoreCublasCallIfAvailable([&](cublasHandle_t handle) {
@@ -3426,6 +4042,10 @@ inline void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
       (transA == CblasNoTrans) ? CUBLAS_OP_N : CUBLAS_OP_T;
   cublasOperation_t cuTransB =
       (transB == CblasNoTrans) ? CUBLAS_OP_N : CUBLAS_OP_T;
+  detail::check_blas_int64(M, "BatchedGEMM M");
+  detail::check_blas_int64(N, "BatchedGEMM N");
+  detail::check_blas_int64(K, "BatchedGEMM K");
+  detail::check_blas_int64(batchCount, "BatchedGEMM batchCount");
   const int64_t strideC = M * N;
 
   PADDLE_ENFORCE_GE(
@@ -3436,45 +4056,45 @@ inline void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
           "capability >= 80, but received %d",
           dev_ctx_.GetComputeCapability()));
 
-  cublasGemmAlgo_t algo = CUBLAS_GEMM_DEFAULT;
+  cublasGemmAlgo_t algo = CUBLAS_GEMM_DFALT;
   bool use_tensor_op_math = dev_ctx_.tensor_core_available();
   if (use_tensor_op_math) {
     algo = CUBLAS_GEMM_DFALT_TENSOR_OP;
   }
   VLOG(5) << "use_tensor_op_math: " << (use_tensor_op_math ? "True" : "False");
 
-  if (M > INT_MAX_VALUE || N > INT_MAX_VALUE || K > INT_MAX_VALUE ||
-      batchCount > INT_MAX_VALUE) {
+  const bool requires_64_bit_blas = M > INT_MAX_VALUE || N > INT_MAX_VALUE ||
+                                    K > INT_MAX_VALUE ||
+                                    batchCount > INT_MAX_VALUE;
+  if (requires_64_bit_blas) {
 #if CUDA_VERSION >= 12030 && defined(__linux__)
-    dev_ctx_.TensorCoreCublasCallIfAvailable([&](cublasHandle_t handle) {
-      PADDLE_ENFORCE_GPU_SUCCESS(
-          phi::dynload::cublasGemmStridedBatchedEx_64(handle,
-                                                      cuTransB,
-                                                      cuTransA,
-                                                      N,
-                                                      M,
-                                                      K,
-                                                      &alpha,
-                                                      B,
-                                                      CUDA_R_16BF,
-                                                      ldb,
-                                                      strideB,
-                                                      A,
-                                                      CUDA_R_16BF,
-                                                      lda,
-                                                      strideA,
-                                                      &beta,
-                                                      C,
-                                                      CUDA_R_32F,
-                                                      ldc,
-                                                      strideC,
-                                                      batchCount,
-                                                      CUBLAS_COMPUTE_32F,
-                                                      algo));
-    });
+    CUBlas<phi::bfloat16>::GEMM_STRIDED_BATCH_64(&dev_ctx_,
+                                                 cuTransB,
+                                                 cuTransA,
+                                                 N,
+                                                 M,
+                                                 K,
+                                                 &alpha,
+                                                 B,
+                                                 CUDA_R_16BF,
+                                                 ldb,
+                                                 strideB,
+                                                 A,
+                                                 CUDA_R_16BF,
+                                                 lda,
+                                                 strideA,
+                                                 &beta,
+                                                 C,
+                                                 CUDA_R_32F,
+                                                 ldc,
+                                                 strideC,
+                                                 batchCount,
+                                                 CUBLAS_COMPUTE_32F,
+                                                 algo);
 #else
     PADDLE_THROW(common::errors::Unimplemented(
-        "cublasGemmStridedBatchedEx_64 is not supported on cuda < 12.3"));
+        "64-bit cuBLAS strided batched GEMM requires CUDA 12.3 or later on "
+        "Linux."));
 #endif  // CUDA_VERSION >= 12030 && defined(__linux__)
   } else {
     dev_ctx_.TensorCoreCublasCallIfAvailable([&](cublasHandle_t handle) {
@@ -3515,18 +4135,19 @@ template <>
 template <typename T>
 void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
                                         CBLAS_TRANSPOSE transB,
-                                        int M,
-                                        int N,
-                                        int K,
+                                        int64_t M,
+                                        int64_t N,
+                                        int64_t K,
                                         T alpha,
                                         const T **A,
                                         const T **B,
                                         T beta,
                                         T **C,
-                                        int batchCount) const {
-  for (int k = 0; k < batchCount; ++k) {
+                                        int64_t batchCount) const {
+  detail::check_blas_int64(batchCount, "BatchedGEMM batchCount");
+  for (int64_t i = 0; i < batchCount; ++i) {
     this->template GEMM<T>(
-        transA, transB, M, N, K, alpha, A[k], B[k], beta, C[k]);
+        transA, transB, M, N, K, alpha, A[i], B[i], beta, C[i]);
   }
 }
 
@@ -3535,20 +4156,24 @@ template <>
 template <>
 inline void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
                                                CBLAS_TRANSPOSE transB,
-                                               int M,
-                                               int N,
-                                               int K,
+                                               int64_t M,
+                                               int64_t N,
+                                               int64_t K,
                                                double alpha,
                                                const double **A,
                                                const double **B,
                                                double beta,
                                                double **C,
-                                               int batchCount) const {
+                                               int64_t batchCount) const {
+  detail::check_blas_int64(M, "BatchedGEMM M");
+  detail::check_blas_int64(N, "BatchedGEMM N");
+  detail::check_blas_int64(K, "BatchedGEMM K");
+  detail::check_blas_int64(batchCount, "BatchedGEMM batchCount");
   // Note that cublas follows fortran order, so the order is different from
   // the cblas convention.
-  int lda = (transA == CblasNoTrans) ? K : M;
-  int ldb = (transB == CblasNoTrans) ? N : K;
-  int ldc = N;
+  const int64_t lda = (transA == CblasNoTrans) ? K : M;
+  const int64_t ldb = (transB == CblasNoTrans) ? N : K;
+  const int64_t ldc = N;
   cublasOperation_t cuTransA =
       (transA == CblasNoTrans) ? CUBLAS_OP_N : CUBLAS_OP_T;
   cublasOperation_t cuTransB =
@@ -3557,22 +4182,50 @@ inline void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
   thrust::device_vector<const double *> B_ptr(B, B + batchCount);
   thrust::device_vector<double *> C_ptr(C, C + batchCount);
 
+  const bool requires_64_bit_blas = M > INT_MAX_VALUE || N > INT_MAX_VALUE ||
+                                    K > INT_MAX_VALUE ||
+                                    batchCount > INT_MAX_VALUE;
+  if (requires_64_bit_blas) {
+    dev_ctx_.CublasCall([&](cublasHandle_t handle) {
+      CUBlas<double>::GEMM_BATCH_64(handle,
+                                    cuTransB,
+                                    cuTransA,
+                                    N,
+                                    M,
+                                    K,
+                                    &alpha,
+                                    B_ptr.data().get(),
+                                    ldb,
+                                    A_ptr.data().get(),
+                                    lda,
+                                    &beta,
+                                    C_ptr.data().get(),
+                                    ldc,
+                                    batchCount);
+    });
+    return;
+  }
+  const int m = detail::to_blas_int(M, "BatchedGEMM M");
+  const int n = detail::to_blas_int(N, "BatchedGEMM N");
+  const int k = detail::to_blas_int(K, "BatchedGEMM K");
+  const int batch_count =
+      detail::to_blas_int(batchCount, "BatchedGEMM batchCount");
   dev_ctx_.CublasCall([&](cublasHandle_t handle) {
     CUBlas<double>::GEMM_BATCH(handle,
                                cuTransB,
                                cuTransA,
-                               N,
-                               M,
-                               K,
+                               n,
+                               m,
+                               k,
                                &alpha,
                                B_ptr.data().get(),
-                               ldb,
+                               static_cast<int>(ldb),
                                A_ptr.data().get(),
-                               lda,
+                               static_cast<int>(lda),
                                &beta,
                                C_ptr.data().get(),
-                               ldc,
-                               batchCount);
+                               static_cast<int>(ldc),
+                               batch_count);
   });
 }
 
@@ -3580,20 +4233,24 @@ template <>
 template <>
 inline void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
                                                CBLAS_TRANSPOSE transB,
-                                               int M,
-                                               int N,
-                                               int K,
+                                               int64_t M,
+                                               int64_t N,
+                                               int64_t K,
                                                float alpha,
                                                const float **A,
                                                const float **B,
                                                float beta,
                                                float **C,
-                                               int batchCount) const {
+                                               int64_t batchCount) const {
+  detail::check_blas_int64(M, "BatchedGEMM M");
+  detail::check_blas_int64(N, "BatchedGEMM N");
+  detail::check_blas_int64(K, "BatchedGEMM K");
+  detail::check_blas_int64(batchCount, "BatchedGEMM batchCount");
   // Note that cublas follows fortran order, so the order is different from
   // the cblas convention.
-  int lda = (transA == CblasNoTrans) ? K : M;
-  int ldb = (transB == CblasNoTrans) ? N : K;
-  int ldc = N;
+  const int64_t lda = (transA == CblasNoTrans) ? K : M;
+  const int64_t ldb = (transB == CblasNoTrans) ? N : K;
+  const int64_t ldc = N;
   cublasOperation_t cuTransA =
       (transA == CblasNoTrans) ? CUBLAS_OP_N : CUBLAS_OP_T;
   cublasOperation_t cuTransB =
@@ -3602,22 +4259,50 @@ inline void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
   thrust::device_vector<const float *> B_ptr(B, B + batchCount);
   thrust::device_vector<float *> C_ptr(C, C + batchCount);
 
+  const bool requires_64_bit_blas = M > INT_MAX_VALUE || N > INT_MAX_VALUE ||
+                                    K > INT_MAX_VALUE ||
+                                    batchCount > INT_MAX_VALUE;
+  if (requires_64_bit_blas) {
+    dev_ctx_.CublasCall([&](cublasHandle_t handle) {
+      CUBlas<float>::GEMM_BATCH_64(handle,
+                                   cuTransB,
+                                   cuTransA,
+                                   N,
+                                   M,
+                                   K,
+                                   &alpha,
+                                   B_ptr.data().get(),
+                                   ldb,
+                                   A_ptr.data().get(),
+                                   lda,
+                                   &beta,
+                                   C_ptr.data().get(),
+                                   ldc,
+                                   batchCount);
+    });
+    return;
+  }
+  const int m = detail::to_blas_int(M, "BatchedGEMM M");
+  const int n = detail::to_blas_int(N, "BatchedGEMM N");
+  const int k = detail::to_blas_int(K, "BatchedGEMM K");
+  const int batch_count =
+      detail::to_blas_int(batchCount, "BatchedGEMM batchCount");
   dev_ctx_.CublasCall([&](cublasHandle_t handle) {
     CUBlas<float>::GEMM_BATCH(handle,
                               cuTransB,
                               cuTransA,
-                              N,
-                              M,
-                              K,
+                              n,
+                              m,
+                              k,
                               &alpha,
                               B_ptr.data().get(),
-                              ldb,
+                              static_cast<int>(ldb),
                               A_ptr.data().get(),
-                              lda,
+                              static_cast<int>(lda),
                               &beta,
                               C_ptr.data().get(),
-                              ldc,
-                              batchCount);
+                              static_cast<int>(ldc),
+                              batch_count);
   });
 }
 
@@ -3625,20 +4310,24 @@ template <>
 template <>
 inline void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
                                                CBLAS_TRANSPOSE transB,
-                                               int M,
-                                               int N,
-                                               int K,
+                                               int64_t M,
+                                               int64_t N,
+                                               int64_t K,
                                                phi::float16 alpha,
                                                const phi::float16 **A,
                                                const phi::float16 **B,
                                                phi::float16 beta,
                                                phi::float16 **C,
-                                               int batchCount) const {
+                                               int64_t batchCount) const {
+  detail::check_blas_int64(M, "BatchedGEMM M");
+  detail::check_blas_int64(N, "BatchedGEMM N");
+  detail::check_blas_int64(K, "BatchedGEMM K");
+  detail::check_blas_int64(batchCount, "BatchedGEMM batchCount");
   // Note that cublas follows fortran order, so the order is different from
   // the cblas convention.
-  int lda = (transA == CblasNoTrans) ? K : M;
-  int ldb = (transB == CblasNoTrans) ? N : K;
-  int ldc = N;
+  const int64_t lda = (transA == CblasNoTrans) ? K : M;
+  const int64_t ldb = (transB == CblasNoTrans) ? N : K;
+  const int64_t ldc = N;
   cublasOperation_t cuTransA =
       (transA == CblasNoTrans) ? CUBLAS_OP_N : CUBLAS_OP_T;
   cublasOperation_t cuTransB =
@@ -3654,24 +4343,54 @@ inline void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
   float f_alpha = static_cast<float>(alpha);
   float f_beta = static_cast<float>(beta);
   auto &cuda_ctx = const_cast<phi::GPUContext &>(dev_ctx_);
+  const bool requires_64_bit_blas = M > INT_MAX_VALUE || N > INT_MAX_VALUE ||
+                                    K > INT_MAX_VALUE ||
+                                    batchCount > INT_MAX_VALUE;
+  if (requires_64_bit_blas) {
+    CUBlas<phi::float16>::GEMM_BATCH_64(&cuda_ctx,
+                                        cuTransB,
+                                        cuTransA,
+                                        N,
+                                        M,
+                                        K,
+                                        &f_alpha,
+                                        B,
+                                        CUDA_R_16F,
+                                        ldb,
+                                        A,
+                                        CUDA_R_16F,
+                                        lda,
+                                        &f_beta,
+                                        C,
+                                        CUDA_R_16F,
+                                        ldc,
+                                        batchCount,
+                                        CUDA_R_32F);
+    return;
+  }
+  const int m = detail::to_blas_int(M, "BatchedGEMM M");
+  const int n = detail::to_blas_int(N, "BatchedGEMM N");
+  const int k = detail::to_blas_int(K, "BatchedGEMM K");
+  const int batch_count =
+      detail::to_blas_int(batchCount, "BatchedGEMM batchCount");
   CUBlas<phi::float16>::GEMM_BATCH(&cuda_ctx,
                                    cuTransB,
                                    cuTransA,
-                                   N,
-                                   M,
-                                   K,
+                                   n,
+                                   m,
+                                   k,
                                    &f_alpha,
                                    B,
                                    CUDA_R_16F,
-                                   ldb,
+                                   static_cast<int>(ldb),
                                    A,
                                    CUDA_R_16F,
-                                   lda,
+                                   static_cast<int>(lda),
                                    &f_beta,
                                    C,
                                    CUDA_R_16F,
-                                   ldc,
-                                   batchCount,
+                                   static_cast<int>(ldc),
+                                   batch_count,
                                    CUDA_R_32F);
 }
 
@@ -3679,21 +4398,25 @@ template <>
 template <>
 inline void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
                                                CBLAS_TRANSPOSE transB,
-                                               int M,
-                                               int N,
-                                               int K,
+                                               int64_t M,
+                                               int64_t N,
+                                               int64_t K,
                                                phi::bfloat16 alpha,
                                                const phi::bfloat16 **A,
                                                const phi::bfloat16 **B,
                                                phi::bfloat16 beta,
                                                phi::bfloat16 **C,
-                                               int batchCount) const {
+                                               int64_t batchCount) const {
 #if CUDA_VERSION >= 11000
+  detail::check_blas_int64(M, "BatchedGEMM M");
+  detail::check_blas_int64(N, "BatchedGEMM N");
+  detail::check_blas_int64(K, "BatchedGEMM K");
+  detail::check_blas_int64(batchCount, "BatchedGEMM batchCount");
   // Note that cublas follows fortran order, so the order is different from
   // the cblas convention.
-  int lda = (transA == CblasNoTrans) ? K : M;
-  int ldb = (transB == CblasNoTrans) ? N : K;
-  int ldc = N;
+  const int64_t lda = (transA == CblasNoTrans) ? K : M;
+  const int64_t ldb = (transB == CblasNoTrans) ? N : K;
+  const int64_t ldc = N;
   cublasOperation_t cuTransA =
       (transA == CblasNoTrans) ? CUBLAS_OP_N : CUBLAS_OP_T;
   cublasOperation_t cuTransB =
@@ -3710,7 +4433,7 @@ inline void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
   float f_alpha = static_cast<float>(alpha);
   float f_beta = static_cast<float>(beta);
 
-  cublasGemmAlgo_t algo = CUBLAS_GEMM_DEFAULT;
+  cublasGemmAlgo_t algo = CUBLAS_GEMM_DFALT;
   bool use_tensor_op_math = dev_ctx_.tensor_core_available();
   if (use_tensor_op_math) {
     algo = CUBLAS_GEMM_DFALT_TENSOR_OP;
@@ -3720,26 +4443,65 @@ inline void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
   thrust::device_vector<const void *> A_ptr(A, A + batchCount);
   thrust::device_vector<const void *> B_ptr(B, B + batchCount);
   thrust::device_vector<void *> C_ptr(C, C + batchCount);
+  const bool requires_64_bit_blas = M > INT_MAX_VALUE || N > INT_MAX_VALUE ||
+                                    K > INT_MAX_VALUE ||
+                                    batchCount > INT_MAX_VALUE;
+  if (requires_64_bit_blas) {
+#if CUDA_VERSION >= 12030 && defined(__linux__)
+    dev_ctx_.TensorCoreCublasCallIfAvailable([&](cublasHandle_t handle) {
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          phi::dynload::cublasGemmBatchedEx_64(handle,
+                                               cuTransB,
+                                               cuTransA,
+                                               N,
+                                               M,
+                                               K,
+                                               &f_alpha,
+                                               B_ptr.data().get(),
+                                               CUDA_R_16BF,
+                                               ldb,
+                                               A_ptr.data().get(),
+                                               CUDA_R_16BF,
+                                               lda,
+                                               &f_beta,
+                                               C_ptr.data().get(),
+                                               CUDA_R_16BF,
+                                               ldc,
+                                               batchCount,
+                                               CUDA_R_32F,
+                                               algo));
+    });
+    return;
+#else
+    PADDLE_THROW(common::errors::Unimplemented(
+        "64-bit cuBLAS batched GEMM requires CUDA 12.3 or later on Linux."));
+#endif  // CUDA_VERSION >= 12030 && defined(__linux__)
+  }
+  const int m = detail::to_blas_int(M, "BatchedGEMM M");
+  const int n = detail::to_blas_int(N, "BatchedGEMM N");
+  const int k = detail::to_blas_int(K, "BatchedGEMM K");
+  const int batch_count =
+      detail::to_blas_int(batchCount, "BatchedGEMM batchCount");
   dev_ctx_.TensorCoreCublasCallIfAvailable([&](cublasHandle_t handle) {
     PADDLE_ENFORCE_GPU_SUCCESS(
         phi::dynload::cublasGemmBatchedEx(handle,
                                           cuTransB,
                                           cuTransA,
-                                          N,
-                                          M,
-                                          K,
+                                          n,
+                                          m,
+                                          k,
                                           &f_alpha,
                                           B_ptr.data().get(),
                                           CUDA_R_16BF,
-                                          ldb,
+                                          static_cast<int>(ldb),
                                           A_ptr.data().get(),
                                           CUDA_R_16BF,
-                                          lda,
+                                          static_cast<int>(lda),
                                           &f_beta,
                                           C_ptr.data().get(),
                                           CUDA_R_16BF,
-                                          ldc,
-                                          batchCount,
+                                          static_cast<int>(ldc),
+                                          batch_count,
                                           CUDA_R_32F,
                                           algo));
   });
@@ -3765,10 +4527,10 @@ void Blas<phi::GPUContext>::TRSM(CBLAS_SIDE side,
                                  int64_t lda,
                                  T *B,
                                  int64_t ldb) const {
-  const int m = detail::to_blas_int(M, "TRSM M");
-  const int n = detail::to_blas_int(N, "TRSM N");
-  const int lda_int = detail::to_blas_int(lda, "TRSM lda");
-  const int ldb_int = detail::to_blas_int(ldb, "TRSM ldb");
+  detail::check_blas_int64(M, "TRSM M");
+  detail::check_blas_int64(N, "TRSM N");
+  detail::check_blas_int64(lda, "TRSM lda");
+  detail::check_blas_int64(ldb, "TRSM ldb");
   // solve row major `op ( A ) X = α B` by taking it as `X' op ( A' )  =  α B'`
   // where ' stands for transpose
   cublasSideMode_t cuSide =
@@ -3781,6 +4543,29 @@ void Blas<phi::GPUContext>::TRSM(CBLAS_SIDE side,
   cublasDiagType_t cuDiag =
       (diag == CblasUnit) ? CUBLAS_DIAG_UNIT : CUBLAS_DIAG_NON_UNIT;
 
+  const bool requires_64_bit_blas = M > INT_MAX_VALUE || N > INT_MAX_VALUE ||
+                                    lda > INT_MAX_VALUE || ldb > INT_MAX_VALUE;
+  if (requires_64_bit_blas) {
+    dev_ctx_.CublasCall([&](cublasHandle_t handle) {
+      CUBlas<T>::TRSM_64(handle,
+                         cuSide,
+                         cuUplo,
+                         cuTransA,
+                         cuDiag,
+                         N,
+                         M,
+                         &alpha,
+                         A,
+                         lda,
+                         B,
+                         ldb);
+    });
+    return;
+  }
+  const int m = detail::to_blas_int(M, "TRSM M");
+  const int n = detail::to_blas_int(N, "TRSM N");
+  const int lda_int = detail::to_blas_int(lda, "TRSM lda");
+  const int ldb_int = detail::to_blas_int(ldb, "TRSM ldb");
   dev_ctx_.CublasCall([&](cublasHandle_t handle) {
     CUBlas<T>::TRSM(handle,
                     cuSide,
