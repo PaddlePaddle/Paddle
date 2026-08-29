@@ -290,4 +290,116 @@ inline void StridedTensorAccumulate(const DenseTensor& out_grad,
             input_grad);
 }
 
+// Backward of a strided view whose `input` is itself a non-contiguous view, or
+// whose window starts before `input` does.
+//
+// (dims, stride, offset) describe the view in the coordinate system of the
+// allocation shared with `input`, while `input_grad` is a dense row-major
+// buffer over `input`'s own logical indices. Those two coordinate systems only
+// differ by a constant when `input` is contiguous; in general the storage index
+// of an element is not its row-major index, so the gradient has to be routed
+// through a temporary buffer laid out in storage coordinates: scatter-add
+// `out_grad` into it through the out geometry, then gather it back through
+// `input`'s own geometry. This mirrors at::as_strided_backward.
+//
+// `input_grad` must already be allocated with `input`'s dims; its previous
+// contents are overwritten. Only the meta of `input` is read, never its data,
+// because the forward declares `no_need_buffer : input`.
+template <typename T>
+inline void StridedTensorAccumulateThroughStorage(
+    const DenseTensor& out_grad,
+    const std::vector<int64_t>& dims,
+    const std::vector<int64_t>& stride,
+    int64_t offset,
+    const DenseTensor& input,
+    DenseTensor* input_grad) {
+  const int64_t itemsize = static_cast<int64_t>(SizeOf(input_grad->dtype()));
+  PADDLE_ENFORCE_EQ(offset % itemsize,
+                    0,
+                    common::errors::InvalidArgument(
+                        "The byte offset(%d) of a strided view must be a "
+                        "multiple of its element size(%d).",
+                        offset,
+                        itemsize));
+  const std::vector<int64_t> input_dims =
+      common::vectorize<int64_t>(input.dims());
+  const std::vector<int64_t> input_stride =
+      common::vectorize<int64_t>(input.strides());
+  // The gradient with respect to a view that aliases itself is only defined
+  // once a convention is fixed for splitting a slot between the logical
+  // positions that share it (torch divides by an occurrence count). Refuse
+  // instead of silently picking one.
+  PADDLE_ENFORCE_EQ(
+      MaybeOverlappingStrides(input_dims, input_stride),
+      false,
+      common::errors::Unimplemented(
+          "as_strided_grad does not support an input whose own memory "
+          "overlaps (shape %s, stride %s): the gradient of such a view is "
+          "ambiguous. Make the input contiguous first.",
+          input.dims(),
+          input.strides()));
+
+  const int64_t out_base = offset / itemsize;
+  const int64_t input_base = static_cast<int64_t>(input.offset()) / itemsize;
+  const StridedViewRange out_range =
+      ComputeStridedViewRange(dims, stride, out_base);
+  const StridedViewRange input_range =
+      ComputeStridedViewRange(input_dims, input_stride, input_base);
+  if (out_range.empty || input_range.empty || out_grad.numel() == 0) {
+    return;
+  }
+  const int64_t shared_base =
+      std::min(out_range.min_index, input_range.min_index);
+  PADDLE_ENFORCE_GE(shared_base,
+                    0,
+                    common::errors::InvalidArgument(
+                        "The strided view reaches element %d of the shared "
+                        "allocation, which is before its beginning.",
+                        shared_base));
+  int64_t storage_numel = 0;
+  const int64_t shared_last =
+      std::max(out_range.max_index, input_range.max_index);
+  PADDLE_ENFORCE_EQ(
+      SafeAddInt64(shared_last - shared_base, 1, &storage_numel),
+      true,
+      common::errors::InvalidArgument(
+          "The element range spanned by the view described by shape %s, "
+          "stride %s and byte offset %d together with its input overflows "
+          "int64.",
+          common::make_ddim(dims),
+          common::make_ddim(stride),
+          offset));
+
+  auto& pool = DeviceContextPool::Instance();
+  auto* dev_ctx = pool.Get(input_grad->place());
+  DenseTensor storage;
+  storage.set_meta(
+      DenseTensorMeta(input_grad->dtype(),
+                      common::make_ddim(std::vector<int64_t>{storage_numel})));
+  dev_ctx->Alloc(&storage, storage.dtype());
+  StridedTensorFill<T>(storage, 0, &storage);
+
+  const int64_t out_byte_base = (out_base - shared_base) * itemsize;
+  if (MaybeOverlappingStrides(dims, stride)) {
+    StridedTensorAccumulate<T>(out_grad, dims, stride, out_byte_base, &storage);
+  } else {
+    // Distinct slots, so a plain scatter is enough and avoids the serial
+    // accumulate. Mirrors the copy_ branch of at::as_strided_backward.
+    DenseTensor window(storage);
+    StridedTensorCopy<T>(out_grad, dims, stride, out_byte_base, &window);
+  }
+
+  // Read the accumulated storage back through `input`'s geometry. Contiguous
+  // materialization is exactly the gather that turns storage indices into
+  // row-major ones, and it reuses the buffer `input_grad` already owns.
+  DenseTensor gathered(storage);
+  DenseTensorMeta gathered_meta = storage.meta();
+  gathered_meta.dims = input.dims();
+  gathered_meta.strides = input.strides();
+  gathered_meta.offset =
+      static_cast<size_t>((input_base - shared_base) * itemsize);
+  gathered.set_meta(gathered_meta);
+  StridedTensorContiguous<T>(gathered, input_grad);
+}
+
 }  // namespace phi

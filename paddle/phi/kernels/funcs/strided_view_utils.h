@@ -70,6 +70,42 @@ inline bool SafeAddInt64(int64_t a, int64_t b, int64_t* out) {
   return true;
 }
 
+// Turns a torch style storage offset, expressed in *elements* and relative to
+// the offset of the tensor being viewed, into the absolute *byte* offset that
+// DenseTensorMeta::offset and phi::AsStridedKernel expect. Do not call this on
+// an offset that is already a byte offset.
+//
+// The conversion needs its own helper because phi::SizeOf returns size_t, so
+// the obvious `static_cast<size_t>(offset) * SizeOf(dtype)` is unsigned
+// arithmetic that wraps around silently: a storage offset of 1 << 62 on a four
+// byte dtype becomes 0, and the range check below would then happily validate
+// a completely different view and let the out of range request through.
+inline int64_t ElementOffsetToByteOffset(int64_t base_byte_offset,
+                                         int64_t element_offset,
+                                         int64_t itemsize) {
+  PADDLE_ENFORCE_GE(element_offset,
+                    0,
+                    common::errors::InvalidArgument(
+                        "The storage offset of a view must be non-negative, "
+                        "but got %d.",
+                        element_offset));
+  int64_t byte_offset = 0;
+  bool ok = SafeMulInt64(element_offset, itemsize, &byte_offset);
+  if (ok) {
+    ok = SafeAddInt64(base_byte_offset, byte_offset, &byte_offset);
+  }
+  PADDLE_ENFORCE_EQ(ok,
+                    true,
+                    common::errors::InvalidArgument(
+                        "The byte offset of the view overflows int64: element "
+                        "offset %d of a %d byte dtype, relative to byte offset "
+                        "%d.",
+                        element_offset,
+                        itemsize,
+                        base_byte_offset));
+  return byte_offset;
+}
+
 // Element indices, relative to the start of the allocation, that a strided
 // view touches. `empty` marks a view with a zero sized dimension, which reads
 // and writes nothing at all.

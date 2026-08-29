@@ -46,22 +46,22 @@ void AsStridedGradKernel(const Context& dev_ctx,
   if (out_grad.numel() == 0) {
     return;
   }
-  // `offset` is a byte offset into the allocation of the forward *input*, but
-  // `input_grad` is a freshly allocated buffer that starts at element 0 of its
-  // own allocation. When `input` is itself a view (a nested as_strided), its
-  // own offset is already part of `offset` and has to be subtracted, otherwise
-  // the gradient is written at the wrong place or past the end of the buffer.
+  // `offset` is a byte offset into the allocation shared with the forward
+  // `input`, but `input_grad` is a dense row-major buffer over `input`'s own
+  // logical indices. The two coordinate systems differ by a constant only when
+  // `input` is contiguous, in which case subtracting `input.offset()` is enough
+  // -- otherwise a storage index is not a row-major index and the gradient has
+  // to be routed through a buffer laid out in storage coordinates. The same
+  // detour handles a view that starts before `input` does, whose leading
+  // contributions belong to no element of `input_grad` at all.
   const int64_t grad_offset = offset - static_cast<int64_t>(input.offset());
-  PADDLE_ENFORCE_GE(
-      grad_offset,
-      0,
-      common::errors::InvalidArgument(
-          "The offset(%d) of as_strided is an absolute byte offset into the "
-          "shared allocation, so it must not be smaller than the offset(%d) "
-          "of the tensor being viewed: the gradient of a view that starts "
-          "before its input has nowhere to go.",
-          offset,
-          input.offset()));
+  if (!input.meta().is_contiguous() || grad_offset < 0) {
+    PD_VISIT_ALL_TYPES(out_grad.dtype(), "AsStridedGradKernel", ([&] {
+                         phi::StridedTensorAccumulateThroughStorage<data_t>(
+                             out_grad, dims, stride, offset, input, input_grad);
+                       }));
+    return;
+  }
   if (MaybeOverlappingStrides(dims, stride)) {
     // Several elements of out_grad map to the same storage slot, so the
     // gradient has to be accumulated instead of copied.

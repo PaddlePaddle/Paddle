@@ -293,5 +293,92 @@ class TestAsStridedNestedViewBackward(unittest.TestCase):
         self._check((3, 3), (1, 1))
 
 
+class TestAsStridedNonContiguousInputBackward(unittest.TestCase):
+    """`dims` / `stride` / `offset` address the shared allocation, while the
+    gradient buffer is dense and row-major over the input's own logical
+    indices. When the input is not contiguous the two orders differ, so the
+    gradient has to be routed back through the input's own strides."""
+
+    def setUp(self):
+        self.places = get_places()
+
+    def _check(
+        self,
+        base_numel,
+        input_shape,
+        input_stride,
+        input_offset,
+        shape,
+        stride,
+        offset_elems=0,
+        dtype='float64',
+    ):
+        itemsize = np.dtype(dtype).itemsize
+        # Gradient per slot of the shared allocation.
+        storage_grad = np.zeros([base_numel], dtype=dtype)
+        for idx in np.ndindex(*shape):
+            storage_grad[offset_elems + int(np.dot(idx, stride))] += 1
+        # Read back through the input geometry: this is what distinguishes a
+        # storage index from a row-major one.
+        expected_input = np.zeros(input_shape, dtype=dtype)
+        expected_base = np.zeros([base_numel], dtype=dtype)
+        for idx in np.ndindex(*input_shape):
+            slot = input_offset + int(np.dot(idx, input_stride))
+            expected_input[idx] = storage_grad[slot]
+            expected_base[slot] += storage_grad[slot]
+        for place in self.places:
+            with base.dygraph.guard(place):
+                x = paddle.to_tensor(
+                    np.random.random([base_numel]).astype(dtype)
+                )
+                x.stop_gradient = False
+                inp = paddle.as_strided(
+                    x,
+                    shape=input_shape,
+                    stride=input_stride,
+                    offset=input_offset * itemsize,
+                )
+                inp.retain_grads()
+                y = paddle.as_strided(
+                    inp,
+                    shape=shape,
+                    stride=stride,
+                    offset=offset_elems * itemsize,
+                )
+                y.backward(paddle.ones_like(y))
+                np.testing.assert_allclose(inp.grad.numpy(), expected_input)
+                np.testing.assert_allclose(x.grad.numpy(), expected_base)
+
+    def test_transposed_input_overlapping_view(self):
+        # 2x2 transpose viewed with a repeated stride: storage slot 1 collects
+        # two contributions and belongs to input[1, 0], not to input[0, 1].
+        self._check(4, (2, 2), (1, 2), 0, (2, 2), (1, 1))
+
+    def test_transposed_input_non_overlapping_view(self):
+        self._check(6, (2, 3), (1, 2), 0, (3,), (2,))
+        self._check(6, (2, 3), (1, 2), 0, (2, 2), (1, 2))
+
+    def test_transposed_input_float32(self):
+        self._check(4, (2, 2), (1, 2), 0, (2, 2), (1, 1), dtype='float32')
+
+    def test_view_starting_before_input(self):
+        # The leading contributions land outside the input and are dropped;
+        # they belong to no element of its gradient.
+        self._check(8, (4,), (1,), 2, (4,), (1,), offset_elems=0)
+        self._check(8, (2, 2), (1, 2), 2, (3,), (1,), offset_elems=1)
+
+    def test_overlapping_input_is_rejected(self):
+        # The gradient of a view that aliases itself needs a convention for
+        # splitting a shared slot, so it is refused rather than guessed.
+        for place in self.places:
+            with base.dygraph.guard(place):
+                x = paddle.to_tensor(np.random.random([4]).astype('float32'))
+                x.stop_gradient = False
+                inp = paddle.as_strided(x, shape=(2, 2), stride=(1, 1))
+                y = paddle.as_strided(inp, shape=(2,), stride=(1,))
+                with self.assertRaises(NotImplementedError):
+                    y.backward(paddle.ones_like(y))
+
+
 if __name__ == '__main__':
     unittest.main()

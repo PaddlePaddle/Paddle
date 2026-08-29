@@ -56,17 +56,23 @@ inline at::Tensor Tensor::as_strided(
   phi::DenseTensorMeta meta(src_tensor->dtype(),
                             common::make_ddim(size_vec),
                             common::make_ddim(stride_vec));
-  // Calculate offset in bytes
+  // Calculate offset in bytes. `storage_offset` counts elements and is
+  // relative to the source tensor, so the conversion has to be checked: an
+  // unchecked multiplication wraps around and turns an out of range request
+  // into a silent alias of the first element.
   int64_t offset = storage_offset.has_value() ? storage_offset.value() : 0;
-  meta.offset = src_tensor->meta().offset +
-                static_cast<size_t>(offset) * phi::SizeOf(src_tensor->dtype());
+  int64_t byte_offset = phi::ElementOffsetToByteOffset(
+      static_cast<int64_t>(src_tensor->meta().offset),
+      offset,
+      static_cast<int64_t>(phi::SizeOf(src_tensor->dtype())));
+  meta.offset = static_cast<size_t>(byte_offset);
   // This entry builds the view by hand instead of going through
   // phi::AsStridedKernel, so it has to run the same storage range check;
   // otherwise a view reaching past the allocation corrupts neighbouring heap
   // memory on every read and write. torch does the same in setStrided ->
   // checkInBoundsForStorage.
   phi::ValidateStridedViewStorage(
-      size_vec, stride_vec, static_cast<int64_t>(meta.offset), *src_tensor);
+      size_vec, stride_vec, byte_offset, *src_tensor);
   new_tensor->set_meta(meta);
   PaddleTensor result;
   result.set_impl(new_tensor);
@@ -95,10 +101,13 @@ inline const at::Tensor& Tensor::as_strided_(
                             common::make_ddim(stride_vec));
   meta.layout = src_tensor->layout();
   int64_t offset = storage_offset.has_value() ? storage_offset.value() : 0;
-  meta.offset = src_tensor->meta().offset +
-                static_cast<size_t>(offset) * phi::SizeOf(src_tensor->dtype());
+  int64_t byte_offset = phi::ElementOffsetToByteOffset(
+      static_cast<int64_t>(src_tensor->meta().offset),
+      offset,
+      static_cast<int64_t>(phi::SizeOf(src_tensor->dtype())));
+  meta.offset = static_cast<size_t>(byte_offset);
   phi::ValidateStridedViewStorage(
-      size_vec, stride_vec, static_cast<int64_t>(meta.offset), *src_tensor);
+      size_vec, stride_vec, byte_offset, *src_tensor);
   src_tensor->set_meta(meta);
   return *this;
 }
