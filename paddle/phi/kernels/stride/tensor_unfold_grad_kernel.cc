@@ -15,6 +15,7 @@
 #include "paddle/common/flags.h"
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/strided_grad_utils.h"
 #include "paddle/phi/kernels/funcs/strided_utils.h"
 #include "paddle/phi/kernels/tensor_unfold_kernel.h"
 
@@ -43,12 +44,6 @@ void TensorUnfoldGradKernel(const Context& dev_ctx,
     return;
   }
   input_grad->set_strides(DenseTensorMeta::calc_strides(input_grad->dims()));
-  if (out_grad.numel() < input.numel()) {
-    PD_VISIT_ALL_TYPES(input_grad->dtype(), "TensorUnfoldGradKernel", ([&] {
-                         phi::StridedTensorFill<data_t>(
-                             *input_grad, 0, input_grad);
-                       }));
-  }
   DenseTensor tmp;
   tmp.set_layout(out_grad.layout());
   tmp.set_lod(out_grad.lod());
@@ -56,14 +51,35 @@ void TensorUnfoldGradKernel(const Context& dev_ctx,
   tmp.Resize(out_grad.dims());
 
   TensorUnfoldKernel<Context>(dev_ctx, *input_grad, axis, size, step, &tmp);
-  PD_VISIT_ALL_TYPES(out_grad.dtype(), "TensorUnfoldGradKernel", ([&] {
-                       phi::StridedTensorCopy<data_t>(
-                           out_grad,
-                           vectorize<int64_t>(tmp.dims()),
-                           vectorize<int64_t>(tmp.strides()),
-                           tmp.offset(),
-                           &tmp);
-                     }));
+  std::vector<int64_t> view_dims = vectorize<int64_t>(tmp.dims());
+  std::vector<int64_t> view_stride = vectorize<int64_t>(tmp.strides());
+  // step < size makes the unfolded windows overlap, so several elements of
+  // out_grad map to the same input element and must be summed.
+  const bool overlapping =
+      out_grad.numel() > 0 && MaybeOverlappingStrides(view_dims, view_stride);
+
+  if (overlapping || out_grad.numel() < input.numel()) {
+    PD_VISIT_ALL_TYPES(input_grad->dtype(), "TensorUnfoldGradKernel", ([&] {
+                         phi::StridedTensorFill<data_t>(
+                             *input_grad, 0, input_grad);
+                       }));
+  }
+  if (overlapping) {
+    PD_VISIT_ALL_TYPES(out_grad.dtype(), "TensorUnfoldGradKernel", ([&] {
+                         phi::StridedTensorAccumulate<data_t>(
+                             out_grad,
+                             view_dims,
+                             view_stride,
+                             static_cast<int64_t>(tmp.offset()),
+                             input_grad);
+                       }));
+    return;
+  }
+  PD_VISIT_ALL_TYPES(
+      out_grad.dtype(), "TensorUnfoldGradKernel", ([&] {
+        phi::StridedTensorCopy<data_t>(
+            out_grad, view_dims, view_stride, tmp.offset(), &tmp);
+      }));
 }
 
 }  // namespace phi

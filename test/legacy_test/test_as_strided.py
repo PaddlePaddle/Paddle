@@ -134,5 +134,105 @@ class TestAsStridedAlias(unittest.TestCase):
                 np.testing.assert_array_equal(out_ref.numpy(), out_both.numpy())
 
 
+class TestAsStridedOverlapBackward(unittest.TestCase):
+    """When a view maps several logical positions onto the same element, the
+    backward has to sum all the incoming contributions instead of letting the
+    writes overwrite each other."""
+
+    def setUp(self):
+        self.places = get_places()
+
+    def _check(self, numel, shape, stride, offset_elems=0, dtype='float64'):
+        itemsize = np.dtype(dtype).itemsize
+        expected = np.zeros([numel], dtype=dtype)
+        for idx in np.ndindex(*shape):
+            expected[offset_elems + int(np.dot(idx, stride))] += 1
+        for place in self.places:
+            with base.dygraph.guard(place):
+                x = paddle.to_tensor(np.random.random([numel]).astype(dtype))
+                x.stop_gradient = False
+                y = paddle.as_strided(
+                    x,
+                    shape=shape,
+                    stride=stride,
+                    offset=offset_elems * itemsize,
+                )
+                y.backward(paddle.ones_like(y))
+                np.testing.assert_allclose(x.grad.numpy(), expected)
+
+    def test_repeated_stride(self):
+        self._check(5, (3, 3), (1, 1))
+        self._check(64, (32, 32), (1, 1))
+
+    def test_zero_stride(self):
+        self._check(1, (4, 4), (0, 0))
+        self._check(3, (3, 4), (1, 0))
+
+    def test_offset(self):
+        self._check(8, (3, 3), (1, 1), offset_elems=2)
+
+    def test_float32(self):
+        self._check(5, (3, 3), (1, 1), dtype='float32')
+
+    def test_non_overlapping(self):
+        self._check(6, (2, 3), (3, 1))
+        self._check(6, (3, 2), (1, 3))
+        self._check(6, (2, 3), (3, 1), dtype='float32')
+
+
+class TestAsStridedStorageRange(unittest.TestCase):
+    """A view must stay inside the allocation of its input, otherwise reads and
+    writes through it corrupt unrelated memory."""
+
+    def setUp(self):
+        self.places = get_places()
+
+    def test_shape_out_of_range(self):
+        for place in self.places:
+            with base.dygraph.guard(place):
+                x = paddle.zeros([16], dtype='float32')
+                self.assertRaises(
+                    ValueError,
+                    paddle.as_strided,
+                    x=x,
+                    shape=(64, 64),
+                    stride=(64, 1),
+                )
+
+    def test_offset_out_of_range(self):
+        for place in self.places:
+            with base.dygraph.guard(place):
+                x = paddle.zeros([16], dtype='float32')
+                self.assertRaises(
+                    ValueError,
+                    paddle.as_strided,
+                    x=x,
+                    shape=(16,),
+                    stride=(1,),
+                    offset=4096 * 4,
+                )
+
+    def test_misaligned_offset(self):
+        for place in self.places:
+            with base.dygraph.guard(place):
+                x = paddle.zeros([16], dtype='float32')
+                self.assertRaises(
+                    ValueError,
+                    paddle.as_strided,
+                    x=x,
+                    shape=(2,),
+                    stride=(1,),
+                    offset=1,
+                )
+
+    def test_in_range_view_is_allowed(self):
+        for place in self.places:
+            with base.dygraph.guard(place):
+                x_np = np.random.random([16]).astype('float32')
+                x = paddle.to_tensor(x_np)
+                y = paddle.as_strided(x, shape=(4, 4), stride=(4, 1), offset=0)
+                np.testing.assert_allclose(y.numpy(), x_np.reshape(4, 4))
+
+
 if __name__ == '__main__':
     unittest.main()

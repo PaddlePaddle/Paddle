@@ -17,6 +17,7 @@
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/as_strided_kernel.h"
+#include "paddle/phi/kernels/funcs/strided_grad_utils.h"
 #include "paddle/phi/kernels/funcs/strided_utils.h"
 
 COMMON_DECLARE_bool(use_stride_kernel);
@@ -43,6 +44,15 @@ void AsStridedGradKernel(const Context& dev_ctx,
                            *input_grad, 0, input_grad);
                      }));
   if (out_grad.numel() == 0) {
+    return;
+  }
+  if (MaybeOverlappingStrides(dims, stride)) {
+    // Several elements of out_grad map to the same storage slot, so the
+    // gradient has to be accumulated instead of copied.
+    PD_VISIT_ALL_TYPES(out_grad.dtype(), "AsStridedGradKernel", ([&] {
+                         phi::StridedTensorAccumulate<data_t>(
+                             out_grad, dims, stride, offset, input_grad);
+                       }));
     return;
   }
   DenseTensor tmp;
