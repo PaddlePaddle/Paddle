@@ -314,6 +314,16 @@ void gpu_scatter_mul_min_max_value_grad_kernel(DenseTensor self,
                                                bool include_self,
                                                const DeviceContext& dev_ctx);
 
+// A 0-D operand becomes a 1-D operand holding a single element, the way
+// ``ensure_nonempty_*`` does in torch. ``Resize`` rewrites the metadata of the
+// tensor passed here and nothing else, so a shallow view can be promoted
+// without touching the caller's tensor or the underlying buffer.
+inline void PromoteZeroDimOperand(DenseTensor* tensor) {
+  if (tensor->dims().size() == 0) {
+    tensor->Resize(DDim({1}));
+  }
+}
+
 // Brings the operands of ``put_along_axis`` into the representation that the
 // gather/scatter functor below can actually address, and raises the diagnosis
 // that only the kernel is able to give.
@@ -349,16 +359,9 @@ inline void PreparePutAlongAxisOperands(DenseTensor* self,
   if (*axis < 0) {
     *axis += rank;
   }
-  const DDim single_element({1});
-  if (self->dims().size() == 0) {
-    self->Resize(single_element);
-  }
-  if (index->dims().size() == 0) {
-    index->Resize(single_element);
-  }
-  if (value->dims().size() == 0) {
-    value->Resize(single_element);
-  }
+  PromoteZeroDimOperand(self);
+  PromoteZeroDimOperand(index);
+  PromoteZeroDimOperand(value);
 
   // A 0-size scatter dimension leaves no valid index value at all, so every
   // element of a non-empty ``index`` is out of bounds. torch reports this from
@@ -381,6 +384,36 @@ inline void PreparePutAlongAxisOperands(DenseTensor* self,
           "to [0] and less than [0], which leaves no valid index value at all "
           "because dimension [%d] of the input has size 0.",
           *axis));
+}
+
+// Companion of ``PreparePutAlongAxisOperands`` for the backward pass.
+//
+// ``PutAlongAxisGradKernel`` reaches the same functor and forwards the shapes
+// and strides of every operand it is given: ``index`` sizes
+// ``CoordinateManager``, ``out_grad`` is the ``self`` of the value-grad
+// functors, and ``value`` is restrided by the mul/min/max input-grad functor.
+// A 0-D tensor has ``numel() == 1``, so it gets past both 0-size early returns
+// of the grad kernel and would reach the functor with rank 0.
+//
+// The 0-size diagnosis raised by the forward helper is not repeated here: by
+// the time this runs, both 0-size cases have already returned. ``axis`` is
+// normalized for the same reason as in the forward kernel -- the grad kernel
+// receives the attribute exactly as the caller wrote it.
+inline void PreparePutAlongAxisGradOperands(DenseTensor* x,
+                                            DenseTensor* index,
+                                            DenseTensor* value,
+                                            DenseTensor* out,
+                                            DenseTensor* out_grad,
+                                            int* axis) {
+  const int rank = std::max<int>(static_cast<int>(x->dims().size()), 1);
+  if (*axis < 0) {
+    *axis += rank;
+  }
+  PromoteZeroDimOperand(x);
+  PromoteZeroDimOperand(index);
+  PromoteZeroDimOperand(value);
+  PromoteZeroDimOperand(out);
+  PromoteZeroDimOperand(out_grad);
 }
 
 }  // namespace funcs

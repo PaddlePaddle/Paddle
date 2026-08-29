@@ -26,16 +26,26 @@ namespace phi {
 
 template <typename T, typename Context>
 void PutAlongAxisGradKernel(const Context& dev_ctx,
-                            const DenseTensor& x,
-                            const DenseTensor& index,
-                            const DenseTensor& value,
-                            const DenseTensor& out,
-                            const DenseTensor& out_grad,
+                            const DenseTensor& arr,
+                            const DenseTensor& indices,
+                            const DenseTensor& values,
+                            const DenseTensor& output,
+                            const DenseTensor& output_grad,
                             int axis,
                             const std::string& reduce,
                             bool include_self,
                             DenseTensor* x_grad,
                             DenseTensor* value_grad) {
+  // Shallow views sharing the caller's buffers, so the promotion below rewrites
+  // local metadata only. The two early returns are left to run on the shapes
+  // exactly as the caller wrote them: a 0-size operand must still be answered
+  // with a 0-size gradient.
+  DenseTensor x = arr;
+  DenseTensor index = indices;
+  DenseTensor value = values;
+  DenseTensor out = output;
+  DenseTensor out_grad = output_grad;
+
   if (x.numel() == 0) {
     if (x_grad) {
       dev_ctx.template Alloc<T>(x_grad);
@@ -56,8 +66,20 @@ void PutAlongAxisGradKernel(const Context& dev_ctx,
     }
     return;
   }
+  // Brings the operands into the representation the scatter functor can
+  // address: a 0-D operand becomes rank 1 and ``axis`` is normalized, the same
+  // way the forward kernel does. A 0-D tensor has ``numel() == 1``, so it gets
+  // here, and the functor would then read ``dims()`` and ``strides()`` slots
+  // that ``calc_strides`` never wrote and size ``CoordinateManager`` from
+  // ``index.dims().size() == 0``.
+  funcs::PreparePutAlongAxisGradOperands(
+      &x, &index, &value, &out, &out_grad, &axis);
+
   const auto& index_type = index.dtype();
   if (x_grad) {
+    // ``Copy`` gives ``x_grad`` the promoted shape of ``out_grad``, so the
+    // functor writes through a rank-1 buffer. The shape the caller expects is
+    // the one of ``arr``, restored once the scatter is done.
     Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
     if (include_self == false || reduce == "assign") {
       if (index_type == DataType::INT32) {
@@ -119,9 +141,12 @@ void PutAlongAxisGradKernel(const Context& dev_ctx,
             out_grad, axis, index, *x_grad, include_self, dev_ctx);
       }
     }
+    x_grad->Resize(arr.dims());
   }
 
   if (value_grad) {
+    // The gradient of ``value`` carries the shape of the index: the functor is
+    // given the promoted one, the caller gets back the one it wrote.
     value_grad->Resize(index.dims());
     dev_ctx.template Alloc<T>(value_grad);
     auto* grad_data = value_grad->data<T>();
@@ -187,6 +212,7 @@ void PutAlongAxisGradKernel(const Context& dev_ctx,
             dev_ctx);
       }
     }
+    value_grad->Resize(indices.dims());
   }
 }
 
