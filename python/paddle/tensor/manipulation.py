@@ -7226,25 +7226,33 @@ def infer_dynamic_broadcast_shape(
     Returns:
         Tensor: The shape tensor for later broadcasting
     """
+    # Outside ``axis`` the target is the larger of the two sizes, not ``arr``'s
+    # alone. Taking ``arr``'s size unconditionally silently overrides an
+    # ``indices`` dimension that exceeds it: for ``arr`` of shape [0, 10, 10, 10]
+    # and ``indices`` of shape [1, 1, 1, 1] the target used to be [0, 10, 1, 10],
+    # which expands a non-empty index into an empty one and turns the scatter
+    # into a silent no-op, where torch reports that the index is larger than self
+    # apart from ``axis``. Keeping the larger size leaves the violation visible
+    # to ``PutAlongAxisInferMeta``, which runs again with the runtime shapes.
     if axis == 0:
         new_shapes = [
             indices_shape[
                 :1
             ],  # use indices_shape[0] will error in concat after, because its shape is [], and shape of arr_shape[1:] is [1]
-            arr_shape[1:],
+            paddle.maximum(arr_shape[1:], indices_shape[1:]),
         ]
     elif axis == arr_shape_dim - 1:
         new_shapes = [
-            arr_shape[:axis],
+            paddle.maximum(arr_shape[:axis], indices_shape[:axis]),
             indices_shape[
                 axis:
             ],  # use indices_shape[axis] will error in concat after, because its shape is [], and shape of arr_shape[axis:] is [1]
         ]
     else:
         new_shapes = [
-            arr_shape[:axis],
+            paddle.maximum(arr_shape[:axis], indices_shape[:axis]),
             indices_shape[axis : axis + 1],
-            arr_shape[axis + 1 :],
+            paddle.maximum(arr_shape[axis + 1 :], indices_shape[axis + 1 :]),
         ]
     return paddle.concat(new_shapes)
 
