@@ -1105,20 +1105,32 @@ class TestPutAlongAxisAPICase4(unittest.TestCase):
         indices = paddle.to_tensor(
             [[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12]]
         ).astype("int32")
-        # indices too large
+        # ``indices`` too large. Which layer reports it depends on the mode this
+        # test runs in, and the preceding tests leave static mode enabled: there
+        # the wrapper's check is skipped -- it is guarded by
+        # ``in_dynamic_mode()`` -- and the diagnosis comes from
+        # ``PutAlongAxisInferMeta`` instead, as InvalidArgument, which surfaces
+        # in python as ``ValueError``. In dygraph the wrapper raises
+        # ``RuntimeError`` before the op is reached. Static mode used to raise
+        # nothing at all here, so both blocks below asserted nothing.
+        expected_error = (
+            RuntimeError if paddle.in_dynamic_mode() else ValueError
+        )
         try:
             res = paddle.put_along_axis(
                 tensorx, indices, 1.0, 0, 'assign', True, False
             )
         except Exception as error:
-            self.assertIsInstance(error, RuntimeError)
+            self.assertIsInstance(error, expected_error)
         # indices too large
         try:
             tensorx.put_along_axis_(indices, 1.0, 0, 'assign', True, False)
         except Exception as error:
-            self.assertIsInstance(error, RuntimeError)
+            self.assertIsInstance(error, expected_error)
         indices = paddle.to_tensor([[10]]).astype("int32")
-        # the element of indices out of range
+        # The element of indices is out of range. This is a value check, which
+        # only the wrapper performs and only in dygraph, so static mode still
+        # raises nothing here.
         try:
             res = paddle.put_along_axis(
                 tensorx, indices, 1.0, 0, 'assign', True, False
