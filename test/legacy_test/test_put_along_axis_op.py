@@ -1572,12 +1572,14 @@ class TestPutAlongAxisDynamicShape_ZeroSize(TestPutAlongAxisDynamicShape):
     """``arr`` is 0-size while ``put_along_axis_net`` scatters a [1, 1, 1, 1]
     index, which exceeds ``arr`` on dimension 0.
 
-    Dygraph rejects it. The to_static path cannot: ``arr`` is traced with a
-    fully dynamic ``(-1, -1, -1, -1)`` spec, so the shapes are unknown when the
-    check would run, and at execution time ``indices`` gets broadcast against
-    the runtime shape of ``arr``, which collapses it to 0-size. An empty index
-    scatters nothing, so returning ``arr`` unchanged is correct there -- the
-    same thing ``torch.scatter_`` does for an empty index.
+    Both paths reject it, from different places. Dygraph knows the shapes and
+    reports it in ``check_put_along_axis_index_shape``. The to_static path
+    traces ``arr`` with a fully dynamic ``(-1, -1, -1, -1)`` spec, so nothing
+    can be decided at compile time; the broadcast target keeps the larger of
+    the two sizes apart from ``axis``, which leaves the violation for
+    ``PutAlongAxisInferMeta`` to report when the executor runs it again with
+    the runtime shapes. Before, ``arr``'s 0 won, the index was collapsed to
+    0-size and the scatter became a silent no-op.
     """
 
     def setUp(self):
@@ -1598,10 +1600,57 @@ class TestPutAlongAxisDynamicShape_ZeroSize(TestPutAlongAxisDynamicShape):
 
     def test_dynamic_static(self):
         with dygraph_guard():
-            with self.assertRaises(RuntimeError):
-                self.train(to_static=False)
-            res, _ = self.train(to_static=True)
-            self.assertEqual(list(res.shape), [0, 10, 10, 10])
+            for to_static in (False, True):
+                with self.assertRaisesRegex(
+                    (RuntimeError, ValueError), "no larger than self"
+                ):
+                    self.train(to_static=to_static)
+
+
+class TestPutAlongAxisDynamicShapeIndexLargerThanInput(
+    TestPutAlongAxisDynamicShape
+):
+    """``indices`` exceeds ``arr`` on a dimension other than ``axis`` while
+    ``arr`` is traced with a dynamic shape.
+
+    The broadcast target keeps ``indices``' larger size instead of overriding
+    it with ``arr``'s, so the violation stays visible to
+    ``PutAlongAxisInferMeta`` and is reported the way torch does. Before, the
+    index was silently shrunk to fit ``arr``.
+    """
+
+    def setUp(self):
+        np.random.seed(2024)
+
+        def net(arr, axis=-1):
+            indices = paddle.to_tensor(
+                [[[[2]]]] * 5, dtype='int32', stop_gradient=False
+            )
+            return paddle.put_along_axis(
+                arr, indices=indices, values=-4.0, axis=axis, reduce='add'
+            )
+
+        self.net = net
+        self.enable_cinn = False
+        self.tol = 1e-6
+        self.dtype = "float32"
+        self.axis = -2
+        self.input_specs = [
+            InputSpec(
+                shape=(-1, -1, -1, -1),
+                dtype=self.dtype,
+                stop_gradient=False,
+            )
+        ]
+        self.arr = np.random.random([3, 10, 10, 10]).astype(self.dtype)
+
+    def test_dynamic_static(self):
+        with dygraph_guard():
+            for to_static in (False, True):
+                with self.assertRaisesRegex(
+                    (RuntimeError, ValueError), "no larger than self"
+                ):
+                    self.train(to_static=to_static)
 
 
 class TestPutAlongAxisZeroSizeIndex(unittest.TestCase):
