@@ -225,6 +225,20 @@ class TestAsStridedStorageRange(unittest.TestCase):
                     offset=1,
                 )
 
+    def test_overflowing_span_is_rejected(self):
+        # 4 * 2**62 wraps around to 0 in int64, so unchecked arithmetic would
+        # accept this view and let it read and write far outside the allocation.
+        for place in self.places:
+            with base.dygraph.guard(place):
+                x = paddle.zeros([16], dtype='float32')
+                self.assertRaises(
+                    ValueError,
+                    paddle.as_strided,
+                    x=x,
+                    shape=(5,),
+                    stride=(1 << 62,),
+                )
+
     def test_in_range_view_is_allowed(self):
         for place in self.places:
             with base.dygraph.guard(place):
@@ -232,6 +246,51 @@ class TestAsStridedStorageRange(unittest.TestCase):
                 x = paddle.to_tensor(x_np)
                 y = paddle.as_strided(x, shape=(4, 4), stride=(4, 1), offset=0)
                 np.testing.assert_allclose(y.numpy(), x_np.reshape(4, 4))
+
+
+class TestAsStridedNestedViewBackward(unittest.TestCase):
+    """`offset` is an absolute byte offset into the shared allocation, while the
+    gradient buffer of a view starts at its own element 0. Taking a view of a
+    view therefore has to relocate the offset before writing the gradient."""
+
+    def setUp(self):
+        self.places = get_places()
+
+    def _check(self, shape, stride, dtype='float32'):
+        itemsize = np.dtype(dtype).itemsize
+        base_numel = 8
+        outer_numel = 6
+        outer_offset = 2
+        expected = np.zeros([base_numel], dtype=dtype)
+        for idx in np.ndindex(*shape):
+            expected[outer_offset + int(np.dot(idx, stride))] += 1
+        for place in self.places:
+            with base.dygraph.guard(place):
+                x = paddle.to_tensor(
+                    np.random.random([base_numel]).astype(dtype)
+                )
+                x.stop_gradient = False
+                outer = paddle.as_strided(
+                    x,
+                    shape=(outer_numel,),
+                    stride=(1,),
+                    offset=outer_offset * itemsize,
+                )
+                inner = paddle.as_strided(
+                    outer,
+                    shape=shape,
+                    stride=stride,
+                    offset=outer_offset * itemsize,
+                )
+                inner.backward(paddle.ones_like(inner))
+                np.testing.assert_allclose(x.grad.numpy(), expected)
+
+    def test_nested_non_overlapping(self):
+        self._check((2,), (2,))
+        self._check((3,), (2,))
+
+    def test_nested_overlapping(self):
+        self._check((3, 3), (1, 1))
 
 
 if __name__ == '__main__':

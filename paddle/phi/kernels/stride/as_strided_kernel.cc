@@ -17,6 +17,7 @@
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/strided_view_utils.h"
 
 COMMON_DECLARE_bool(use_stride_kernel);
 
@@ -42,68 +43,6 @@ void ValidateZeroSizeTensorShape(const std::vector<int64_t>& dims,
       "zero-size."));
 }
 
-// Rejects views that would reach outside of the input's allocation. Without
-// this check a bad (shape, stride, offset) triple silently produces a tensor
-// whose reads and writes corrupt neighbouring heap memory.
-void ValidateStorageRange(const std::vector<int64_t>& dims,
-                          const std::vector<int64_t>& strides,
-                          int64_t offset,
-                          const DenseTensor& input) {
-  if (input.numel() == 0 || input.Holder() == nullptr) {
-    return;
-  }
-  PADDLE_ENFORCE_EQ(dims.size(),
-                    strides.size(),
-                    common::errors::InvalidArgument(
-                        "The size of dims and strides should be equal."));
-  const int64_t itemsize = static_cast<int64_t>(SizeOf(input.dtype()));
-  PADDLE_ENFORCE_EQ(offset % itemsize,
-                    0,
-                    common::errors::InvalidArgument(
-                        "The offset(%d) is a byte offset and must be a "
-                        "multiple of the element size(%d) of the input.",
-                        offset,
-                        itemsize));
-  // Element index range covered by the view, relative to `offset`.
-  int64_t min_index = 0;
-  int64_t max_index = 0;
-  for (size_t i = 0; i < dims.size(); ++i) {
-    if (dims[i] == 0) {
-      return;  // An empty view never touches the storage.
-    }
-    const int64_t span = strides[i] * (dims[i] - 1);
-    if (span > 0) {
-      max_index += span;
-    } else {
-      min_index += span;
-    }
-  }
-  const int64_t base = offset / itemsize;
-  const int64_t storage_numel =
-      static_cast<int64_t>(input.Holder()->size()) / itemsize;
-  PADDLE_ENFORCE_GE(base + min_index,
-                    0,
-                    common::errors::InvalidArgument(
-                        "The view described by shape %s, stride %s and offset "
-                        "%d reaches element %d, which is before the beginning "
-                        "of the input storage.",
-                        common::make_ddim(dims),
-                        common::make_ddim(strides),
-                        offset,
-                        base + min_index));
-  PADDLE_ENFORCE_LT(base + max_index,
-                    storage_numel,
-                    common::errors::InvalidArgument(
-                        "The view described by shape %s, stride %s and offset "
-                        "%d reaches element %d, but the input storage only "
-                        "holds %d elements.",
-                        common::make_ddim(dims),
-                        common::make_ddim(strides),
-                        offset,
-                        base + max_index,
-                        storage_numel));
-}
-
 template <typename Context>
 void AsStridedKernel(const Context& dev_ctx,
                      const DenseTensor& input,
@@ -126,7 +65,7 @@ void AsStridedKernel(const Context& dev_ctx,
       0,
       common::errors::InvalidArgument(
           "The offset must be non-negative, but got %d.", offset));
-  ValidateStorageRange(dims, stride, offset, input);
+  ValidateStridedViewStorage(dims, stride, offset, input);
   out->set_meta(meta);
   out->ResetHolder(input.Holder());
   out->ShareInplaceVersionCounterWith(input);

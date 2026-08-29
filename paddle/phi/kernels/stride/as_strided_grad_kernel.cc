@@ -46,18 +46,35 @@ void AsStridedGradKernel(const Context& dev_ctx,
   if (out_grad.numel() == 0) {
     return;
   }
+  // `offset` is a byte offset into the allocation of the forward *input*, but
+  // `input_grad` is a freshly allocated buffer that starts at element 0 of its
+  // own allocation. When `input` is itself a view (a nested as_strided), its
+  // own offset is already part of `offset` and has to be subtracted, otherwise
+  // the gradient is written at the wrong place or past the end of the buffer.
+  const int64_t grad_offset = offset - static_cast<int64_t>(input.offset());
+  PADDLE_ENFORCE_GE(
+      grad_offset,
+      0,
+      common::errors::InvalidArgument(
+          "The offset(%d) of as_strided is an absolute byte offset into the "
+          "shared allocation, so it must not be smaller than the offset(%d) "
+          "of the tensor being viewed: the gradient of a view that starts "
+          "before its input has nowhere to go.",
+          offset,
+          input.offset()));
   if (MaybeOverlappingStrides(dims, stride)) {
     // Several elements of out_grad map to the same storage slot, so the
     // gradient has to be accumulated instead of copied.
     PD_VISIT_ALL_TYPES(out_grad.dtype(), "AsStridedGradKernel", ([&] {
                          phi::StridedTensorAccumulate<data_t>(
-                             out_grad, dims, stride, offset, input_grad);
+                             out_grad, dims, stride, grad_offset, input_grad);
                        }));
     return;
   }
   DenseTensor tmp;
   tmp.set_meta(out_grad.meta());
-  AsStridedKernel<Context>(dev_ctx, *input_grad, dims, stride, offset, &tmp);
+  AsStridedKernel<Context>(
+      dev_ctx, *input_grad, dims, stride, grad_offset, &tmp);
   PD_VISIT_ALL_TYPES(out_grad.dtype(), "AsStridedGradKernel", ([&] {
                        phi::StridedTensorCopy<data_t>(
                            out_grad,

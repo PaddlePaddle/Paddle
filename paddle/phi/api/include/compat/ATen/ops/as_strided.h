@@ -21,6 +21,7 @@
 
 #include "paddle/common/ddim.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/kernels/funcs/strided_view_utils.h"
 
 namespace at {
 
@@ -59,6 +60,13 @@ inline at::Tensor Tensor::as_strided(
   int64_t offset = storage_offset.has_value() ? storage_offset.value() : 0;
   meta.offset = src_tensor->meta().offset +
                 static_cast<size_t>(offset) * phi::SizeOf(src_tensor->dtype());
+  // This entry builds the view by hand instead of going through
+  // phi::AsStridedKernel, so it has to run the same storage range check;
+  // otherwise a view reaching past the allocation corrupts neighbouring heap
+  // memory on every read and write. torch does the same in setStrided ->
+  // checkInBoundsForStorage.
+  phi::ValidateStridedViewStorage(
+      size_vec, stride_vec, static_cast<int64_t>(meta.offset), *src_tensor);
   new_tensor->set_meta(meta);
   PaddleTensor result;
   result.set_impl(new_tensor);
@@ -89,6 +97,8 @@ inline const at::Tensor& Tensor::as_strided_(
   int64_t offset = storage_offset.has_value() ? storage_offset.value() : 0;
   meta.offset = src_tensor->meta().offset +
                 static_cast<size_t>(offset) * phi::SizeOf(src_tensor->dtype());
+  phi::ValidateStridedViewStorage(
+      size_vec, stride_vec, static_cast<int64_t>(meta.offset), *src_tensor);
   src_tensor->set_meta(meta);
   return *this;
 }
