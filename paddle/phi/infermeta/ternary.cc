@@ -2581,19 +2581,33 @@ void PutAlongAxisInferMeta(const MetaTensor& x,
   const auto& index_dims = index.dims();
   const auto& value_dims = value.dims();
 
+  // 0-D tensors are handled as 1-D tensors holding a single element, the same
+  // way ``ensure_nonempty_dim`` / ``ensure_nonempty_size`` do in torch.
+  auto nonempty_rank = [](const DDim& dims) {
+    return std::max<int>(static_cast<int>(dims.size()), 1);
+  };
+  auto nonempty_size = [](const DDim& dims, int d) -> int64_t {
+    return dims.size() == 0 ? 1 : dims[d];
+  };
+
+  // torch normalizes ``dim`` and checks its range in ``scatter_meta_impl``
+  // before the empty-index short circuit of ``scatter_shape_check``, so an
+  // illegal axis is reported even when nothing would be scattered.
+  const int rank = nonempty_rank(x_dims);
+  const int dim = axis < 0 ? axis + rank : axis;
+  PADDLE_ENFORCE_EQ(
+      dim >= 0 && dim < rank,
+      true,
+      common::errors::OutOfRange(
+          "Dimension out of range, expected axis to be in [%d, %d), but got "
+          "%d.",
+          -rank,
+          rank,
+          axis));
+
   // Mirrors ``scatter_shape_check`` in torch: an empty ``index`` performs no
   // scatter at all, so no shape constraint applies to it.
   if (common::product(index_dims) != 0) {
-    // 0-D tensors are handled as 1-D tensors holding a single element, the same
-    // way ``ensure_nonempty_dim`` / ``ensure_nonempty_size`` do in torch.
-    auto nonempty_rank = [](const DDim& dims) {
-      return std::max<int>(static_cast<int>(dims.size()), 1);
-    };
-    auto nonempty_size = [](const DDim& dims, int d) -> int64_t {
-      return dims.size() == 0 ? 1 : dims[d];
-    };
-
-    const int rank = nonempty_rank(x_dims);
     PADDLE_ENFORCE_EQ(
         nonempty_rank(index_dims),
         rank,
@@ -2610,17 +2624,6 @@ void PutAlongAxisInferMeta(const MetaTensor& x,
             "tensor, but got index %s and value %s.",
             index_dims,
             value_dims));
-
-    const int dim = axis < 0 ? axis + rank : axis;
-    PADDLE_ENFORCE_EQ(
-        dim >= 0 && dim < rank,
-        true,
-        common::errors::OutOfRange(
-            "Dimension out of range, expected axis to be in [%d, %d), but got "
-            "%d.",
-            -rank,
-            rank,
-            axis));
 
     for (int d = 0; d < rank; ++d) {
       const int64_t index_d = nonempty_size(index_dims, d);

@@ -2048,6 +2048,19 @@ class TestPutAlongAxisInferMetaShapeCheck(unittest.TestCase):
         out = self._call([3, 4], [3, 6], [3, 6], 1)
         self.assertEqual(list(out.shape), [3, 4])
 
+    def test_empty_index_still_checks_axis(self):
+        """torch normalizes and range-checks ``dim`` in ``scatter_meta_impl``
+        before the empty-index short circuit of ``scatter_shape_check``, so an
+        illegal axis is reported even when nothing would be scattered."""
+        with self.assertRaisesRegex(IndexError, "Dimension out of range"):
+            self._call([3, 4], [0, 2], [3, 2], 2)
+
+    def test_zero_dim_input_allows_axis_minus_one(self):
+        """``maybe_wrap_dim(dim, 0)`` treats a 0-D self as rank 1, so both -1
+        and 0 are legal."""
+        out = self._call(None, None, None, -1)
+        self.assertEqual(list(out.shape), [])
+
 
 class TestPutAlongAxisZeroDimOperands(unittest.TestCase):
     """A 0-D operand counts as a 1-D operand holding a single element.
@@ -2111,6 +2124,52 @@ class TestPutAlongAxisZeroDimOperands(unittest.TestCase):
         expected[1, 1] = 2.0
         expected[2, 2] = 3.0
         np.testing.assert_allclose(out.numpy(), expected)
+
+
+class TestPutAlongAxisZeroDimOperandsGrad(unittest.TestCase):
+    """The backward pass promotes 0-D operands as well.
+
+    A 0-D tensor has ``numel() == 1``, so it gets past both 0-size early
+    returns of ``PutAlongAxisGradKernel`` and reaches the same scatter functor,
+    which indexes ``dims()`` and ``strides()`` directly. Reachable only through
+    ``_C_ops``, like the forward cases above.
+    """
+
+    def setUp(self):
+        paddle.disable_static()
+
+    def _run(self, reduce):
+        x = paddle.to_tensor(5.0)
+        x.stop_gradient = False
+        value = paddle.to_tensor(9.0)
+        value.stop_gradient = False
+        index = paddle.to_tensor(0, dtype='int64')
+        out = paddle._C_ops.put_along_axis(x, index, value, 0, reduce, True)
+        out.backward()
+        self.assertEqual(list(x.grad.shape), [])
+        self.assertEqual(list(value.grad.shape), [])
+        return x.grad.numpy(), value.grad.numpy()
+
+    def test_assign_grad(self):
+        """``scatter_input_grad_kernel`` + ``scatter_value_grad_kernel``."""
+        x_grad, value_grad = self._run('assign')
+        np.testing.assert_allclose(x_grad, np.array(0.0))
+        np.testing.assert_allclose(value_grad, np.array(1.0))
+
+    def test_add_grad(self):
+        """``scatter_mean_input_grad_kernel`` is skipped for ``add``, so this
+        covers ``scatter_add_mean_value_grad_kernel``."""
+        x_grad, value_grad = self._run('add')
+        np.testing.assert_allclose(x_grad, np.array(1.0))
+        np.testing.assert_allclose(value_grad, np.array(1.0))
+
+    def test_mul_grad(self):
+        """``scatter_mul_min_max_{input,value}_grad_kernel``, the pair that
+        also restrides ``value``."""
+        x_grad, value_grad = self._run('mul')
+        # out == x * value, so the gradient of each operand is the other one.
+        np.testing.assert_allclose(x_grad, np.array(9.0))
+        np.testing.assert_allclose(value_grad, np.array(5.0))
 
 
 class TestPutAlongAxisMulFloat32DivByZeroGrad(unittest.TestCase):
