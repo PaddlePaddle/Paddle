@@ -608,7 +608,7 @@ struct CUBlas<phi::float16> {
                             cudaDataType_t Ctype,
                             int64_t ldc,
                             int64_t batchCount,
-                            cudaDataType_t computeType) {
+                            cublasComputeType_t computeType) {
 #if CUDA_VERSION >= 12030 && defined(__linux__)
     cublasGemmAlgo_t algo = CUBLAS_GEMM_DFALT;
     if (dev_ctx->tensor_core_available()) {
@@ -4365,7 +4365,7 @@ inline void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
                                         CUDA_R_16F,
                                         ldc,
                                         batchCount,
-                                        CUDA_R_32F);
+                                        CUBLAS_COMPUTE_32F);
     return;
   }
   const int m = detail::to_blas_int(M, "BatchedGEMM M");
@@ -4468,7 +4468,7 @@ inline void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
                                                CUDA_R_16BF,
                                                ldc,
                                                batchCount,
-                                               CUDA_R_32F,
+                                               CUBLAS_COMPUTE_32F,
                                                algo));
     });
     return;
