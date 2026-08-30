@@ -19,6 +19,7 @@
 #include "paddle/phi/kernels/as_strided_kernel.h"
 #include "paddle/phi/kernels/funcs/strided_grad_utils.h"
 #include "paddle/phi/kernels/funcs/strided_utils.h"
+#include "paddle/phi/kernels/funcs/strided_view_utils.h"
 
 COMMON_DECLARE_bool(use_stride_kernel);
 
@@ -48,20 +49,29 @@ void AsStridedGradKernel(const Context& dev_ctx,
   }
   // `offset` is a byte offset into the allocation shared with the forward
   // `input`, but `input_grad` is a dense row-major buffer over `input`'s own
-  // logical indices. The two coordinate systems differ by a constant only when
-  // `input` is contiguous, in which case subtracting `input.offset()` is enough
-  // -- otherwise a storage index is not a row-major index and the gradient has
-  // to be routed through a buffer laid out in storage coordinates. The same
-  // detour handles a view that starts before `input` does, whose leading
-  // contributions belong to no element of `input_grad` at all.
-  const int64_t grad_offset = offset - static_cast<int64_t>(input.offset());
-  if (!input.meta().is_contiguous() || grad_offset < 0) {
+  // logical indices. Subtracting `input.offset()` lines the two up only when
+  // `input` is contiguous *and* the whole window of the view lands inside
+  // `input`. Otherwise a storage index is not a row-major index; and since the
+  // forward validates a view against the shared allocation rather than against
+  // the extent of `input`, a window may legally reach outside `input` on either
+  // side, where its contributions belong to no element of `input_grad` and have
+  // to be dropped instead of written past its end. Everything but the fast case
+  // is routed through a buffer laid out in storage coordinates.
+  const int64_t itemsize = static_cast<int64_t>(SizeOf(input_grad->dtype()));
+  const int64_t input_base = static_cast<int64_t>(input.offset()) / itemsize;
+  const StridedViewRange out_range =
+      ComputeStridedViewRange(dims, stride, offset / itemsize);
+  const bool inside_input = !out_range.empty &&
+                            out_range.min_index >= input_base &&
+                            out_range.max_index < input_base + input.numel();
+  if (!input.meta().is_contiguous() || !inside_input) {
     PD_VISIT_ALL_TYPES(out_grad.dtype(), "AsStridedGradKernel", ([&] {
                          phi::StridedTensorAccumulateThroughStorage<data_t>(
                              out_grad, dims, stride, offset, input, input_grad);
                        }));
     return;
   }
+  const int64_t grad_offset = offset - static_cast<int64_t>(input.offset());
   if (MaybeOverlappingStrides(dims, stride)) {
     // Several elements of out_grad map to the same storage slot, so the
     // gradient has to be accumulated instead of copied.

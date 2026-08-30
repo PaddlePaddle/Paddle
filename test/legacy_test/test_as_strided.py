@@ -293,10 +293,11 @@ class TestAsStridedNestedViewBackward(unittest.TestCase):
         self._check((3, 3), (1, 1))
 
 
-class TestAsStridedNonContiguousInputBackward(unittest.TestCase):
+class TestAsStridedStorageCoordinateBackward(unittest.TestCase):
     """`dims` / `stride` / `offset` address the shared allocation, while the
     gradient buffer is dense and row-major over the input's own logical
-    indices. When the input is not contiguous the two orders differ, so the
+    indices. The two orders coincide only when the input is contiguous and the
+    whole window of the view lands inside it, so in every other case the
     gradient has to be routed back through the input's own strides."""
 
     def setUp(self):
@@ -366,6 +367,20 @@ class TestAsStridedNonContiguousInputBackward(unittest.TestCase):
         # they belong to no element of its gradient.
         self._check(8, (4,), (1,), 2, (4,), (1,), offset_elems=0)
         self._check(8, (2, 2), (1, 2), 2, (3,), (1,), offset_elems=1)
+
+    def test_view_ending_after_input(self):
+        # A view may legally reach past the end of its input, because the
+        # forward validates it against the shared allocation and not against
+        # the extent of the input. Only storage slot 5 belongs to the input
+        # here, so its gradient is [0, 0, 0, 1].
+        self._check(8, (4,), (1,), 2, (3,), (1,), offset_elems=5)
+
+    def test_view_disjoint_from_input(self):
+        # No slot is shared, so nothing reaches the input's gradient at all.
+        self._check(8, (4,), (1,), 2, (2,), (1,), offset_elems=6)
+
+    def test_view_ending_after_input_overlapping(self):
+        self._check(8, (4,), (1,), 2, (2, 2), (1, 1), offset_elems=4)
 
     def test_overlapping_input_is_rejected(self):
         # The gradient of a view that aliases itself needs a convention for
