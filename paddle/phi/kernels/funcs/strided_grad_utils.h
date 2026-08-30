@@ -15,6 +15,7 @@
 #pragma once
 
 #include <algorithm>
+#include <cstring>
 #include <vector>
 
 #include "paddle/common/ddim.h"
@@ -119,7 +120,10 @@ inline void HostAccumulateStridedView(const T* values,
 // Unlike StridedTensorCopy, positions that the view hits more than once
 // receive the sum of all contributions. `input_grad` must already be
 // allocated, contiguous, zero filled, and start at element 0 of its
-// allocation.
+// allocation. Zero filling is a hard requirement and not just a convention:
+// the host path below relies on it to skip reading the destination back from
+// the device, so a non-zero buffer would be accumulated into on GPU but
+// overwritten everywhere else.
 template <typename T>
 inline void StridedTensorAccumulate(const DenseTensor& out_grad,
                                     const std::vector<int64_t>& dims,
@@ -271,18 +275,24 @@ inline void StridedTensorAccumulate(const DenseTensor& out_grad,
     return;
   }
 
-  // Any other backend: stage both operands on the host, accumulate there and
-  // copy the result back. Slow, but a correct scatter-add is worth more than a
-  // fast wrong one, and the device kernels needed to do better do not exist.
+  // Any other backend: accumulate on the host and copy the result back. Slow,
+  // but a correct scatter-add is worth more than a fast wrong one, and the
+  // device kernels needed to do better do not exist.
+  //
+  // Only the incoming gradient is staged with a device to host copy. The
+  // destination is required to be zero filled on entry, so reading it back
+  // would only reproduce zeros; allocating the host side zeroed instead saves
+  // a full copy of the gradient buffer.
   DenseTensor host_value;
   host_value.set_layout(value.layout());
   phi::Copy(*dev_ctx, value, CPUPlace(), /*blocking=*/true, &host_value);
   DenseTensor host_storage;
-  host_storage.set_layout(input_grad->layout());
-  phi::Copy(
-      *dev_ctx, *input_grad, CPUPlace(), /*blocking=*/true, &host_storage);
+  host_storage.set_meta(input_grad->meta());
+  T* host_ptr =
+      static_cast<T*>(dev_ctx->HostAlloc(&host_storage, host_storage.dtype()));
+  std::memset(host_ptr, 0, static_cast<size_t>(storage_numel) * sizeof(T));
   HostAccumulateStridedView<T>(
-      host_value.data<T>(), dims, stride, elem_base, host_storage.data<T>());
+      host_value.data<T>(), dims, stride, elem_base, host_ptr);
   phi::Copy(*dev_ctx,
             host_storage,
             input_grad->place(),

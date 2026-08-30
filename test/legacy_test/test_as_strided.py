@@ -180,6 +180,37 @@ class TestAsStridedOverlapBackward(unittest.TestCase):
         self._check(6, (2, 3), (3, 1), dtype='float32')
 
 
+@unittest.skipIf(
+    not base.core.is_compiled_with_xpu(), "core is not compiled with XPU"
+)
+class TestAsStridedOverlapBackwardXPU(unittest.TestCase):
+    """get_places() reports CPU, CUDA and CustomPlace but never XPU, so without
+    this class the serial host fallback of the overlapping backward -- the only
+    path an XPU takes, since the device scatter-add needs GPU atomics -- would
+    never run. It stages both operands on the host through phi::Copy, so it
+    also covers the XPU <-> CPU copies that path depends on."""
+
+    def test_repeated_stride(self):
+        with base.dygraph.guard(base.XPUPlace(0)):
+            x = paddle.to_tensor(np.random.random([5]).astype('float32'))
+            x.stop_gradient = False
+            y = paddle.as_strided(x, shape=(3, 3), stride=(1, 1))
+            y.backward(paddle.ones_like(y))
+            np.testing.assert_allclose(
+                x.grad.numpy(), np.array([1, 2, 3, 2, 1], dtype='float32')
+            )
+
+    def test_zero_stride(self):
+        with base.dygraph.guard(base.XPUPlace(0)):
+            x = paddle.to_tensor(np.random.random([1]).astype('float32'))
+            x.stop_gradient = False
+            y = paddle.as_strided(x, shape=(4, 4), stride=(0, 0))
+            y.backward(paddle.ones_like(y))
+            np.testing.assert_allclose(
+                x.grad.numpy(), np.array([16], dtype='float32')
+            )
+
+
 class TestAsStridedStorageRange(unittest.TestCase):
     """A view must stay inside the allocation of its input, otherwise reads and
     writes through it corrupt unrelated memory."""
