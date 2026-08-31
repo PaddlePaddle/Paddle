@@ -26,8 +26,8 @@ description: 分析当前仓库 Pull Request 的失败 CI，基于完整日志�
 
 ## Bot Approval/提交门禁
 
-- `Bot Approval Required` 必须依据 AI review 机器人（`Paddle-Bot`）针对当前 PR head 的最新 review 意见判定。
-- 机器人提出的每个问题都必须在代码、测试或配置中修复；修复后重新触发 AI review，并重新核对当前 head 和完整 diff。
-- 只要最新机器人 review 仍有未解决问题、`REQUEST_CHANGES` 或未明确 `APPROVE`，门禁就不能通过；CI 通过、人类 approve 或旧 head 的机器人 approve 都不能替代当前结论。
-- 只有所有机器人意见均已修复，且机器人明确 `APPROVE` 当前 head 后，才能将 `Bot Approval Required` 标记为通过。
+- `Bot Approval Required` 必须遵循 workflow 的 OR 逻辑：检查 `REQUIRED_BOT_LOGINS` 列表中每个机器人的当前 head 最新决定性状态；列表当前包含 `risemeup1111` 和 `Paddle-Bot`，任一机器人 `APPROVED` 即满足机器人审批条件。
+- 若没有机器人通过，workflow 仍允许 `APPROVERS` 列表中的 `sneaxiy` 或 `From00` 对当前 head `APPROVED` 作为人工审批条件；不得把人工审批误报为机器人审批失败。
+- 机器人或人工 review 的状态必须按当前 head 的最新决定性状态（`APPROVED`、`CHANGES_REQUESTED`、`DISMISSED`）判断；旧 head 的审批不能替代当前结论。
+- P0/P1 意见必须修复代码、测试或配置并提交新 commit；P2/P3 意见按 workflow 要求回复，已修改时回复 Done，不同意时给出理由，不得要求未规定的额外代码修改。
 - 每次新提交或 force-push 都会使旧 review 失去最终依据，必须等待机器人对新 head 的结论。
