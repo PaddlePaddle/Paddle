@@ -1,9 +1,9 @@
 name: Bot Approval Required
 
 # 合入门禁：满足以下任一条件本检查即通过（仅统计【当前 head commit】上的评审）——
-#   1) AI review 机器人 risemeup1111 对当前 head commit 提交了 APPROVED 评审；或
+#   1) AI review 机器人 risemeup1111 或 Paddle-Bot 对当前 head commit 提交了 APPROVED 评审；或
 #   2) APPROVERS 名单中任意一个账号对当前 head commit 提交了 APPROVED 评审。
-# 推送新 commit（synchronize）或重开 PR 时自动复检；旧 commit 上的审批在 push 新提交后自动失效。
+# PR 打开（opened）、推送新 commit（synchronize）或重开 PR（reopened）时自动复检；review 状态变化不会单独触发本 workflow，需通过这些事件重新运行；旧 commit 上的审批在 push 新提交后自动失效。
 # CI 团队成员可通过 check-bypass（skip-ci label / 评论）豁免本检查。
 on:
   pull_request:
@@ -14,8 +14,8 @@ permissions:
   pull-requests: read
 
 env:
-  # AI review 机器人的 GitHub login。
-  REQUIRED_BOT_LOGIN: risemeup1111
+  # AI review 机器人的 GitHub login（空格分隔）。
+  REQUIRED_BOT_LOGINS: "risemeup1111 Paddle-Bot"
   # 机器人未 approve 时，名单中任意一个账号 approve 即可放行（空格分隔）。
   APPROVERS: "sneaxiy From00"
 
@@ -43,7 +43,7 @@ jobs:
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           set -euo pipefail
-          echo "AI review 机器人账号: ${REQUIRED_BOT_LOGIN}"
+          echo "AI review 机器人账号: ${REQUIRED_BOT_LOGINS}"
 
           # 分页读取全部 reviews，避免超过 100 条时漏掉后续页面上的评审。
           reviews=$(gh api --paginate "repos/${REPO}/pulls/${PR_NUMBER}/reviews?per_page=100" | jq -s 'add')
@@ -64,10 +64,12 @@ jobs:
             '
           }
 
-          if [ "$(latest_state "${REQUIRED_BOT_LOGIN}")" = "APPROVED" ]; then
-            echo "::notice::AI review 机器人 ${REQUIRED_BOT_LOGIN} 已 approve，本 PR 通过审批门禁。"
-            exit 0
-          fi
+          for u in ${REQUIRED_BOT_LOGINS}; do
+            if [ "$(latest_state "$u")" = "APPROVED" ]; then
+              echo "::notice::AI review 机器人 ${u} 已 approve，本 PR 通过审批门禁。"
+              exit 0
+            fi
+          done
 
           for u in ${APPROVERS}; do
             if [ "$(latest_state "$u")" = "APPROVED" ]; then
@@ -77,8 +79,9 @@ jobs:
           done
 
           echo "==================================================================="
-          echo "本PR 尚未通过AI review机器人approve。"
+          echo "本PR 尚未通过AI review机器人（${REQUIRED_BOT_LOGINS}）approve。"
           echo "请研发同学按AI review机器人的review 意见修改代码并提交新的commit；或联系审批账号（${APPROVERS}）中任一人进行 approve。"
+          echo "当机器人长时间无响应时，可在GitHub评论区@Paddle-Bot重新触发。"
           echo ""
           echo "评审意见处理要求（按优先级）："
           echo "  - P0（阻塞）：必须修复问题并提交新的 commit，仅回复不算解决。"
@@ -86,5 +89,5 @@ jobs:
           echo "  - P2（中）：需针对评论进行回复（同意并已修改回复 Done，不同意请给出理由）。"
           echo "  - P3（低）：需针对评论进行回复（同意并已修改回复 Done，不同意请给出理由）。"
           echo "==================================================================="
-          echo "::error::本PR 尚未通过AI review机器人approve。请研发同学按AI review机器人的review 意见修改代码并提交新的commit（P0/P1 必须修复并提交新 commit；P2/P3 需针对评论回复）；或联系审批账号（${APPROVERS}）中任一人进行 approve。"
+          echo "::error::本PR 尚未通过AI review机器人（${REQUIRED_BOT_LOGINS}）approve。请研发同学按AI review机器人的review 意见修改代码并提交新的commit（P0/P1 必须修复并提交新 commit；P2/P3 需针对评论回复）；或联系审批账号（${APPROVERS}）中任一人进行 approve。当机器人长时间无响应时，可在GitHub评论区@Paddle-Bot重新触发。"
           exit 1
