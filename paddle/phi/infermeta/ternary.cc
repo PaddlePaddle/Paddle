@@ -1262,6 +1262,9 @@ void InstanceNormInferMeta(const MetaTensor& x,
   auto N = x_dims[0];
   auto C = x_dims[1];
   auto NxC = N * C;
+  auto need_check_dim = [&config](const DDim& dims) {
+    return config.is_runtime || !contain_unknown_dim(dims);
+  };
   if (scale) {
     auto scale_dim = scale.dims();
     PADDLE_ENFORCE_EQ(
@@ -1273,18 +1276,14 @@ void InstanceNormInferMeta(const MetaTensor& x,
             "of scale is [%d]",
             scale_dim,
             scale_dim.size()));
-    bool check = config.is_runtime || contain_unknown_dim(scale_dim);
-    if (check) {
-      if (C != 0) {
-        PADDLE_ENFORCE_EQ(
-            scale_dim[0],
-            C,
-            common::errors::InvalidArgument(
-                "ShapeError: the shape of scale must equal to [%d]"
-                "But received: the shape of scale is [%d]",
-                C,
-                scale_dim[0]));
-      }
+    if (C != 0 && need_check_dim({scale_dim[0], C})) {
+      PADDLE_ENFORCE_EQ(scale_dim[0],
+                        C,
+                        common::errors::InvalidArgument(
+                            "ShapeError: the shape of scale must equal to [%d]"
+                            "But received: the shape of scale is [%d]",
+                            C,
+                            scale_dim[0]));
     }
   }
   if (bias) {
@@ -1298,17 +1297,14 @@ void InstanceNormInferMeta(const MetaTensor& x,
             "of bias is [%d]",
             bias_dim,
             bias_dim.size()));
-    bool check = config.is_runtime || !contain_unknown_dim(bias_dim);
-    if (check) {
-      if (C != 0) {
-        PADDLE_ENFORCE_EQ(bias_dim[0],
-                          C,
-                          common::errors::InvalidArgument(
-                              "ShapeError: the shape of bias must equal to [%d]"
-                              "But received: the shape of bias is [%d]",
-                              C,
-                              bias_dim[0]));
-      }
+    if (C != 0 && need_check_dim({bias_dim[0], C})) {
+      PADDLE_ENFORCE_EQ(bias_dim[0],
+                        C,
+                        common::errors::InvalidArgument(
+                            "ShapeError: the shape of bias must equal to [%d]"
+                            "But received: the shape of bias is [%d]",
+                            C,
+                            bias_dim[0]));
     }
   }
   y->set_dims(x_dims);
@@ -1556,8 +1552,10 @@ void GroupNormInferMeta(const MetaTensor& x,
   const int64_t channel_num =
       (data_layout == DataLayout::NCHW ? x_dim[1] : x_dim[x_dim.size() - 1]);
   auto batch_size = x_dim[0];
-  bool need_check = channel_num != -1 || config.is_runtime;
-  if (need_check) {
+  auto need_check_dim = [&config](const DDim& dims) {
+    return config.is_runtime || !contain_unknown_dim(dims);
+  };
+  if (need_check_dim({channel_num})) {
     PADDLE_ENFORCE_LE(
         groups,
         channel_num,
@@ -1569,13 +1567,15 @@ void GroupNormInferMeta(const MetaTensor& x,
             groups,
             channel_num,
             data_layout_str));
-    PADDLE_ENFORCE_GE(
-        groups,
-        1,
-        common::errors::InvalidArgument(
-            "The Attr(groups) of Op(group_norm) must be "
-            "greater than or equal to 1. But received: groups is [%s].",
-            groups));
+  }
+  PADDLE_ENFORCE_GE(
+      groups,
+      1,
+      common::errors::InvalidArgument(
+          "The Attr(groups) of Op(group_norm) must be "
+          "greater than or equal to 1. But received: groups is [%s].",
+          groups));
+  if (need_check_dim({channel_num})) {
     PADDLE_ENFORCE_EQ(
         channel_num % groups,
         0,
@@ -1586,49 +1586,55 @@ void GroupNormInferMeta(const MetaTensor& x,
             groups));
   }
 
-  if (scale && need_check) {
+  if (scale) {
+    const auto scale_dim = scale.dims();
     PADDLE_ENFORCE_EQ(
-        scale.dims().size(),
+        scale_dim.size(),
         1UL,
         common::errors::InvalidArgument(
             "The Input(Scale) of Op(group_norm) should be 1-D Tensor. "
             "But received: %u-D Tensor, the shape of Input(Scale) is [%s].",
-            scale.dims().size(),
-            scale.dims()));
-    PADDLE_ENFORCE_EQ(
-        scale.dims()[0],
-        channel_num,
-        common::errors::InvalidArgument(
-            "The Input(Scale)'s first dimension size of Op(group_norm) must "
-            "be equal to the number of channels. But received: the "
-            "Input(Scale)'s first dimension size is [%s], the channels is "
-            "[%s], the Attr(data_layout) is [%s]. The error may come "
-            "from wrong data_layout setting.",
-            scale.dims()[0],
-            channel_num,
-            data_layout_str));
+            scale_dim.size(),
+            scale_dim));
+    if (need_check_dim({scale_dim[0], channel_num})) {
+      PADDLE_ENFORCE_EQ(
+          scale_dim[0],
+          channel_num,
+          common::errors::InvalidArgument(
+              "The Input(Scale)'s first dimension size of Op(group_norm) must "
+              "be equal to the number of channels. But received: the "
+              "Input(Scale)'s first dimension size is [%s], the channels is "
+              "[%s], the Attr(data_layout) is [%s]. The error may come "
+              "from wrong data_layout setting.",
+              scale_dim[0],
+              channel_num,
+              data_layout_str));
+    }
   }
-  if (bias && need_check) {
+  if (bias) {
+    const auto bias_dim = bias.dims();
     PADDLE_ENFORCE_EQ(
-        bias.dims().size(),
+        bias_dim.size(),
         1UL,
         common::errors::InvalidArgument(
             "The Input(Bias) of Op(group_norm) should be 1-D Tensor. "
             "But received: %u-D Tensor, the shape of Input(Bias) is [%s].",
-            bias.dims().size(),
-            bias.dims()));
-    PADDLE_ENFORCE_EQ(
-        bias.dims()[0],
-        channel_num,
-        common::errors::InvalidArgument(
-            "The Input(Bias)'s first dimension size of "
-            "Op(group_norm) must be equal to the number of channels. "
-            "But received: the Input(Bias)'s first dimension size is [%s], "
-            "the channels is [%s], the Attr(data_layout) is [%s]. The "
-            "error may come from wrong data_layout setting.",
-            bias.dims()[0],
-            channel_num,
-            data_layout_str));
+            bias_dim.size(),
+            bias_dim));
+    if (need_check_dim({bias_dim[0], channel_num})) {
+      PADDLE_ENFORCE_EQ(
+          bias_dim[0],
+          channel_num,
+          common::errors::InvalidArgument(
+              "The Input(Bias)'s first dimension size of "
+              "Op(group_norm) must be equal to the number of channels. "
+              "But received: the Input(Bias)'s first dimension size is [%s], "
+              "the channels is [%s], the Attr(data_layout) is [%s]. The "
+              "error may come from wrong data_layout setting.",
+              bias_dim[0],
+              channel_num,
+              data_layout_str));
+    }
   }
   DDim output_dims = x_dim;
   int64_t weight_channel = data_layout == DataLayout::NCHW
