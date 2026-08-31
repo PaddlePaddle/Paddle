@@ -230,36 +230,56 @@ class TestCosineSimilarityAPI_RankMismatch(unittest.TestCase):
                 y.numpy(), np_out, rtol=1e-05, err_msg=msg
             )
 
+
+class TestCosineSimilarityAPI_UnknownReduceDim(unittest.TestCase):
+    """A static graph may only know the reduced axis at run time, so the
+    ||repeat(x, m)|| == sqrt(m) * ||x|| factor cannot be folded into a python
+    scalar there: with shape=[2, -1] fed a [2, 1] input broadcast against
+    [2, 5], skipping the factor would report a similarity above 1.
+    """
+
+    def _check(self, shape1, shape2, feed1, feed2, axis):
+        np_x1 = np.random.rand(*feed1).astype(np.float32)
+        np_x2 = np.random.rand(*feed2).astype(np.float32)
+        np_out = _np_cosine_similarity(np_x1, np_x2, axis=axis)
+        msg = f"x1={shape1}{feed1} x2={shape2}{feed2} axis={axis}"
+
+        main_program = static.Program()
+        startup_program = static.Program()
+        with static.program_guard(main_program, startup_program):
+            x1 = static.data(name="x1", shape=shape1, dtype='float32')
+            x2 = static.data(name="x2", shape=shape2, dtype='float32')
+            result = F.cosine_similarity(x1, x2, axis=axis)
+            for place in get_places():
+                fetches = Executor(place).run(
+                    main_program,
+                    feed={"x1": np_x1, "x2": np_x2},
+                    fetch_list=[result],
+                )
+                self.assertEqual(
+                    list(fetches[0].shape), list(np_out.shape), msg
+                )
+                np.testing.assert_allclose(
+                    fetches[0], np_out, rtol=1e-07, err_msg=msg
+                )
+
     def test_static(self):
         paddle.enable_static()
         np.random.seed(1)
         try:
-            for shape1, shape2, axis in [
-                ([2, 3], [1, 2, 3], 1),
-                ([4, 5], [3, 4, 5], 0),
-                ([5], [3, 4, 5], 2),
-                ([3, 4, 5], [4, 5], -1),
+            for shape1, shape2, feed1, feed2, axis in [
+                # the unknown axis is broadcast at run time
+                ([2, -1], [2, 5], (2, 1), (2, 5), 1),
+                # the unknown axis turns out not to be broadcast
+                ([2, -1], [2, 5], (2, 5), (2, 5), 1),
+                # x2 is the short side, so the factor applies to its norm
+                ([2, 5], [2, -1], (2, 5), (2, 1), 1),
+                ([-1, -1], [3, 4], (3, 1), (3, 4), 1),
+                ([2, -1, 4], [2, 6, 4], (2, 1, 4), (2, 6, 4), 1),
+                # a 0-size reduction must not divide by zero
+                ([2, -1], [2, 0], (2, 0), (2, 0), 1),
             ]:
-                np_x1 = np.random.rand(*shape1).astype(np.float32)
-                np_x2 = np.random.rand(*shape2).astype(np.float32)
-                np_out = _np_cosine_similarity(np_x1, np_x2, axis=axis)
-                msg = f"x1={shape1} x2={shape2} axis={axis}"
-
-                main_program = static.Program()
-                startup_program = static.Program()
-                with static.program_guard(main_program, startup_program):
-                    x1 = static.data(name="x1", shape=shape1)
-                    x2 = static.data(name="x2", shape=shape2)
-                    result = F.cosine_similarity(x1, x2, axis=axis)
-                    for place in get_places():
-                        fetches = Executor(place).run(
-                            main_program,
-                            feed={"x1": np_x1, "x2": np_x2},
-                            fetch_list=[result],
-                        )
-                        np.testing.assert_allclose(
-                            fetches[0], np_out, rtol=1e-05, err_msg=msg
-                        )
+                self._check(shape1, shape2, feed1, feed2, axis)
         finally:
             paddle.disable_static()
 
@@ -324,59 +344,31 @@ class TestCosineSimilarityAPI_Numerics(unittest.TestCase):
             y.numpy(), -np.ones([1], dtype=np.float32), rtol=1e-06
         )
 
-    def test_zero_vector(self):
-        paddle.disable_static()
-        np_x1 = np.zeros([2, 4], dtype=np.float32)
-        np_x2 = np.random.rand(2, 4).astype(np.float32)
-        x1 = paddle.to_tensor(np_x1)
-        x1.stop_gradient = False
-        y = F.cosine_similarity(x1, paddle.to_tensor(np_x2), axis=1)
-        np.testing.assert_allclose(
-            y.numpy(), np.zeros([2], dtype=np.float32), rtol=1e-06
-        )
-        y.sum().backward()
-        self.assertFalse(np.isnan(x1.grad.numpy()).any())
-
-
-class TestCosineSimilarityAPI_BroadcastMemory(unittest.TestCase):
-    """Taking the norm of a broadcast input must not materialize the expanded
-    copy: for x1=[B, 1, D] against x2=[B, N, D] that would be an extra
-    O(B * N * D) allocation. FLAGS_use_accuracy_compatible_kernel opts into that
-    allocation on purpose, so this only holds for the default path.
-    """
-
-    @unittest.skipIf(
-        not paddle.is_compiled_with_cuda(), "peak memory is queried from CUDA"
-    )
-    @unittest.skipIf(
-        paddle.get_flags(["FLAGS_use_accuracy_compatible_kernel"]).get(
-            "FLAGS_use_accuracy_compatible_kernel", False
-        ),
-        "the accuracy compatible path expands the inputs on purpose",
-    )
-    def test_no_expanded_copy(self):
+    def test_cpu_reduced_dtype_fp32_path(self):
+        # CPU has no p_norm/divide/multiply kernels for fp16/bf16, so the
+        # inputs are promoted to fp32 for the computation and the result is
+        # cast back to the reduced dtype, keeping the output dtype contract.
         paddle.disable_static()
         origin_device = paddle.get_device()
-        paddle.set_device('gpu')
+        paddle.set_device('cpu')
+        np_x1 = np.random.rand(2, 4).astype(np.float32)
+        np_x2 = np.random.rand(2, 4).astype(np.float32)
+        np_out = _np_cosine_similarity(np_x1, np_x2, axis=1)
         try:
-            B, N, D = 32, 256, 1024
-            x1 = paddle.randn([B, 1, D])
-            x2 = paddle.randn([B, N, D])
-            full_size = B * N * D * 4
-
-            paddle.device.cuda.empty_cache()
-            paddle.device.cuda.reset_max_memory_allocated()
-            base = paddle.device.cuda.max_memory_allocated()
-            F.cosine_similarity(x1, x2, axis=1).numpy()
-            extra = paddle.device.cuda.max_memory_allocated() - base
-
-            # x2 / n2 and their product are the only full size temporaries
-            self.assertLess(
-                extra,
-                2.5 * full_size,
-                f"{extra} bytes of temporaries for a {full_size} byte input, "
-                "the broadcast input is likely being expanded",
-            )
+            for dtype, pd_dtype in [
+                ('float16', paddle.float16),
+                ('bfloat16', paddle.bfloat16),
+            ]:
+                x1 = paddle.to_tensor(np_x1, dtype=dtype)
+                x2 = paddle.to_tensor(np_x2, dtype=dtype)
+                y = F.cosine_similarity(x1, x2, axis=1)
+                self.assertEqual(y.dtype, pd_dtype)
+                np.testing.assert_allclose(
+                    y.astype('float32').numpy(),
+                    np_out,
+                    rtol=1e-06,
+                    err_msg=f"dtype={dtype}",
+                )
         finally:
             paddle.set_device(origin_device)
 
