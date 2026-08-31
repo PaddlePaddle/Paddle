@@ -8,8 +8,6 @@ name: Bot Approval Required
 on:
   pull_request:
     types: [opened, synchronize, reopened]
-  pull_request_review:
-    types: [submitted, edited, dismissed]
 
 permissions:
   contents: read
