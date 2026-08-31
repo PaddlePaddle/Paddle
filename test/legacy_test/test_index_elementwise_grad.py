@@ -247,6 +247,61 @@ class TestIndexElementwiseGetGradStride1(unittest.TestCase):
             paddle.enable_static()
 
 
+@unittest.skipUnless(
+    paddle.device.is_compiled_with_cuda()
+    and not paddle.device.is_compiled_with_rocm(),
+    'The sorted-index backward kernels are built for CUDA only.',
+)
+class TestIndexElementwiseGetGradSmallStride(unittest.TestCase):
+    """Duplicate indices with 1 < sliceSize <= 32 must reduce all duplicates in
+    float32 and round to the low-precision dtype only once. Rounding on every
+    duplicate would lose up to one ulp per accumulation step.
+
+    ROCm/DCU is excluded because ``IndexPutWithSortKernel`` is guarded by
+    ``PADDLE_WITH_CUDA``; those builds fall back to a bfloat16/float16
+    ``CudaAtomicAdd`` that rounds on every duplicate.
+    """
+
+    def _reference_grad(self, rows, index_np, out_grad_np, dtype):
+        expected = np.zeros([rows, out_grad_np.shape[1]], dtype=np.float32)
+        np.add.at(expected, index_np, out_grad_np)
+        return paddle.to_tensor(expected).astype(dtype).astype('float32')
+
+    def test_low_precision_accumulation(self):
+        paddle.disable_static(place=paddle.CUDAPlace(0))
+
+        try:
+            rows = 16
+            for dtype in ('float16', 'bfloat16'):
+                for slice_size in (2, 8, 32):
+                    with self.subTest(dtype=dtype, slice_size=slice_size):
+                        rng = np.random.default_rng(2025)
+                        index_np = rng.integers(
+                            0, rows, size=(64,), dtype=np.int64
+                        )
+                        out_grad = paddle.to_tensor(
+                            rng.uniform(-0.5, 0.5, (64, slice_size)),
+                            dtype=dtype,
+                        )
+                        x = paddle.zeros([rows, slice_size], dtype=dtype)
+                        x.stop_gradient = False
+
+                        x[paddle.to_tensor(index_np)].backward(out_grad)
+
+                        expected = self._reference_grad(
+                            rows,
+                            index_np,
+                            out_grad.astype('float32').numpy(),
+                            dtype,
+                        )
+                        np.testing.assert_array_equal(
+                            x.grad.astype('float32').numpy(),
+                            expected.numpy(),
+                        )
+        finally:
+            paddle.enable_static()
+
+
 if __name__ == '__main__':
     paddle.enable_static()
     unittest.main()
