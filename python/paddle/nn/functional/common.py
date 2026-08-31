@@ -2411,8 +2411,9 @@ def cosine_similarity(
 
     Parameters:
         x1 (Tensor): First input. float32/double. float16/bfloat16 are
-            supported on non-CPU devices (e.g. GPU, XPU); on CPU they are not
-            supported and an error is raised.
+            supported on non-CPU devices (e.g. GPU, XPU); on CPU they are
+            computed through a float32 accumulation path and the output keeps
+            the reduced input dtype.
         x2 (Tensor): Second input. Same data type requirement as ``x1``.
         axis (int, optional): Dimension of vectors to compute cosine similarity. Default is 1.
             Alias: ``dim``.
@@ -2481,17 +2482,14 @@ def cosine_similarity(
     if x2.dtype not in float_dtypes:
         x2 = x2.astype(common_dtype)
 
-    # p_norm/divide/multiply CPU kernels are not registered for fp16/bf16.
-    # Non-CPU devices (e.g. GPU/XPU) have these kernels so keep running.
+    # p_norm/divide/multiply CPU kernels are not registered for fp16/bf16,
+    # so the dtype are promoted to fp32.
     reduced_dtypes = (paddle.float16, paddle.bfloat16)
-    if x1.place.is_cpu_place() and (
-        x1.dtype in reduced_dtypes or x2.dtype in reduced_dtypes
-    ):
-        raise NotImplementedError(
-            "cosine_similarity does not support float16/bfloat16 on CPU, "
-            f"got x1.dtype={x1.dtype}, x2.dtype={x2.dtype}. Cast the inputs to "
-            "float32/float64 first."
-        )
+    # static graph: the device is unknown at construction time, assume CPU
+    maybe_cpu = not in_dynamic_mode() or x1.place.is_cpu_place()
+    if maybe_cpu and (x1.dtype in reduced_dtypes or x2.dtype in reduced_dtypes):
+        x1 = x1.astype(paddle.float32)
+        x2 = x2.astype(paddle.float32)
 
     # torch expand inputs to broadcast shape first then compute norm when need to broadcast.
     # torch.expand only sets the broadcast stride to 0 and keeps the original storage, so it
@@ -2539,10 +2537,15 @@ def cosine_similarity(
         if n2.dtype in reduced_dtypes
         else clip(n2, min=eps)
     )
-    return sum(
+    out = sum(
         paddle.multiply(x1 / n1, x2 / n2),
         axis=dim,
     )
+    # when the reduced inputs were promoted to fp32 on CPU, cast the result
+    # back to the common dtype to preserve the output dtype contract
+    if maybe_cpu and out.dtype != common_dtype:
+        return out.astype(common_dtype)
+    return out
 
 
 def linear(
