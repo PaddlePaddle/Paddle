@@ -2453,11 +2453,13 @@ def cosine_similarity(
     """
     # Note: aligning with torch 2.12, including:
     # 1. Casting integral input dtypes to floating dtype and reject non-floating
-    # common dtype since vector_norm has no integer kernel.
-    # The inputs are promoted first and a non-floating common dtype is rejected;
-    # only the integral inputs are cast,
-    # because vector_norm has no integer kernel while a pair of floating inputs
-    # is promoted by the elementwise ops themselves.
+    #   common dtype since vector_norm has no integer kernel.
+    # 2. Each input is divided by its own norm before the dot product to avoid
+    #   overflow.
+    # 3. Broadcast inputs front so axis indexes the common shape
+    # 4. Clamp the norms(||x1|| and ||x2||) against an eps scalar in float32
+    #   when dtype==bf16/fp16 to avoid clamping to zero in such rare cases.
+
     float_dtypes = (
         paddle.float16,
         paddle.bfloat16,
@@ -2477,35 +2479,19 @@ def cosine_similarity(
     if x2.dtype not in float_dtypes:
         x2 = x2.astype(common_dtype)
 
-    # Each input is divided by its own norm before the dot product, so the
-    # denominator is max(|x1|, eps) * max(|x2|, eps) instead of
-    # max(|x1| * |x2|, eps): clamping the product attenuates the result for
-    # small but perfectly valid vectors, and computing |x1| * |x2| overflows
-    # long before either norm alone does. vector_norm matches torch's
-    # linalg_vector_norm bitwise, including the float32 accumulation used for
-    # float16/bfloat16 inputs.
-    #
-    # torch broadcasts both inputs up front, so ``axis`` indexes the common shape and the
-    # reduction runs over the broadcast length of that axis, not the original one.
-    # expand_outplace() in torch.cosine_similarity both infers the broadcast shape and
-    # expands the tensors to it, so paddle.broadcast_shape(x1.shape, x2.shape), which only
-    # counts the shape, is not enough.
+    # torch expand inputs to broadcast shape first then compute norm when need to broadcast.
     # torch.expand only sets the broadcast stride to 0 and keeps the original storage, so it
-    # is 0-copy, and TensorIterator reduces directly over that stride-0 input:
-    # linalg_vector_norm allocates nothing and re-reads the same O(BD) bytes out of cache.
-    # paddle.broadcast_to is a real kernel instead. For example, x1=[B,1,D] and x2=[B,N,D] it
-    # allocates O(BND) space and writes every element, so vector_norm then reads O(BND) from
-    # global memory instead of the O(BD) the data actually occupies. When N is super large,
-    # it will cause huge memory usage and maybe OOM.
-    # Instead of using paddle.broadcast_to, we implement with `unsqueeze` and `||repeat(x,m)||`.
+    # is 0-copy, and TensorIterator runs linalg_vector_norm directly over that stride-0 input,
+    # allocating nothing and re-reading the same O(BD) bytes out of cache.
+    # paddle has no STRIDED p_norm kernel and p_norm only has a single reduction order for
+    # contiguous input, which has accuracy diff with torch when reducing over stride-0 view.
+
+    # So we implement torch's behavior of cosine_similarity with follow steps:
     # 1. unsqueeze x1 and x2 to the same rank as the broadcast shape. When x1.dims != x2.dims
-    # and input axis is larger than smaller dims, unsqueeze op ensures vector_norm is reduced
-    # at the correct dim.
-    # 2. ||repeat(x,m)|| = sqrt(m) * |x|.
-    # This replacement could save memory at vector_norm when x1.dims[axis] != x2.dims[axis]
-    #  and broadcast happens at axis dim.
-    # The literal torch order, expand first and then take the norm, is kept behind
-    # FLAGS_use_accuracy_compatible_kernel at the cost of that extra memory.
+    #   and input axis is larger than smaller dims, unsqueeze op ensures vector_norm is
+    #   reduced at the correct dim.
+    # 2. ||repeat(x,m)|| = sqrt(m) * ||x||.
+
     rank = max(len(x1.shape), len(x2.shape))
     if len(x1.shape) < rank:
         x1 = unsqueeze(x1, axis=list(range(rank - len(x1.shape))))
@@ -2513,29 +2499,25 @@ def cosine_similarity(
         x2 = unsqueeze(x2, axis=list(range(rank - len(x2.shape))))
     bs = paddle.broadcast_shape(x1.shape, x2.shape)
     dim = axis + rank if axis < 0 else axis
-    if paddle.get_flags(["FLAGS_use_accuracy_compatible_kernel"]).get(
-        "FLAGS_use_accuracy_compatible_kernel", False
-    ):
-        # Reproduce torch step by step: expand both inputs to the broadcast
-        # shape and take the norm of the expanded tensors. Unlike torch.expand,
-        # paddle.broadcast_to is not a 0-copy view, so each expanded input costs
-        # an extra O(prod(bs)) allocation that is also read back by vector_norm.
-        # For x1=[B, 1, D] against x2=[B, N, D] that is O(B * N * D) instead of
-        # the O(B * D) the data occupies, and it may OOM when N is large.
-        x1 = paddle.broadcast_to(x1, bs)
-        x2 = paddle.broadcast_to(x2, bs)
-        n1 = paddle.linalg.vector_norm(x1, p=2, axis=dim, keepdim=True)
-        n2 = paddle.linalg.vector_norm(x2, p=2, axis=dim, keepdim=True)
-    else:
-        n1 = paddle.linalg.vector_norm(x1, p=2, axis=dim, keepdim=True)
-        n2 = paddle.linalg.vector_norm(x2, p=2, axis=dim, keepdim=True)
-        # A dynamic (-1) length fails both checks and is left uncorrected.
-        if x1.shape[dim] > 0 and bs[dim] > x1.shape[dim]:
-            n1 = n1 * math.sqrt(bs[dim] / x1.shape[dim])
-        if x2.shape[dim] > 0 and bs[dim] > x2.shape[dim]:
-            n2 = n2 * math.sqrt(bs[dim] / x2.shape[dim])
+    n1 = paddle.linalg.vector_norm(x1, p=2, axis=dim, keepdim=True)
+    n2 = paddle.linalg.vector_norm(x2, p=2, axis=dim, keepdim=True)
+    if x1.shape[dim] > 0 and bs[dim] > x1.shape[dim]:
+        n1 = n1 * math.sqrt(bs[dim] / x1.shape[dim])
+    if x2.shape[dim] > 0 and bs[dim] > x2.shape[dim]:
+        n2 = n2 * math.sqrt(bs[dim] / x2.shape[dim])
+    reduced_dtypes = (paddle.float16, paddle.bfloat16)
+    n1 = (
+        clip(n1.astype(paddle.float32), min=eps).astype(n1.dtype)
+        if n1.dtype in reduced_dtypes
+        else clip(n1, min=eps)
+    )
+    n2 = (
+        clip(n2.astype(paddle.float32), min=eps).astype(n2.dtype)
+        if n2.dtype in reduced_dtypes
+        else clip(n2, min=eps)
+    )
     return sum(
-        paddle.multiply(x1 / clip(n1, min=eps), x2 / clip(n2, min=eps)),
+        paddle.multiply(x1 / n1, x2 / n2),
         axis=dim,
     )
 
