@@ -2410,8 +2410,10 @@ def cosine_similarity(
     Compute cosine similarity between x1 and x2 along axis.
 
     Parameters:
-        x1 (Tensor): First input. float32/double.
-        x2 (Tensor): Second input. float32/double.
+        x1 (Tensor): First input. float32/double. float16/bfloat16 are
+            supported on non-CPU devices (e.g. GPU, XPU); on CPU they are not
+            supported and an error is raised.
+        x2 (Tensor): Second input. Same data type requirement as ``x1``.
         axis (int, optional): Dimension of vectors to compute cosine similarity. Default is 1.
             Alias: ``dim``.
         eps(float, optional): Small value to avoid division by zero. Default is 1e-8.
@@ -2479,6 +2481,18 @@ def cosine_similarity(
     if x2.dtype not in float_dtypes:
         x2 = x2.astype(common_dtype)
 
+    # p_norm/divide/multiply CPU kernels are not registered for fp16/bf16.
+    # Non-CPU devices (e.g. GPU/XPU) have these kernels so keep running.
+    reduced_dtypes = (paddle.float16, paddle.bfloat16)
+    if x1.place.is_cpu_place() and (
+        x1.dtype in reduced_dtypes or x2.dtype in reduced_dtypes
+    ):
+        raise NotImplementedError(
+            "cosine_similarity does not support float16/bfloat16 on CPU, "
+            f"got x1.dtype={x1.dtype}, x2.dtype={x2.dtype}. Cast the inputs to "
+            "float32/float64 first."
+        )
+
     # torch expand inputs to broadcast shape first then compute norm when need to broadcast.
     # torch.expand only sets the broadcast stride to 0 and keeps the original storage, so it
     # is 0-copy, and TensorIterator runs linalg_vector_norm directly over that stride-0 input,
@@ -2515,7 +2529,6 @@ def cosine_similarity(
         common = paddle.where(len1 == 1, len2, len1)
         n1 = n1 * paddle.sqrt(common / clip(len1, min=1.0)).astype(n1.dtype)
         n2 = n2 * paddle.sqrt(common / clip(len2, min=1.0)).astype(n2.dtype)
-    reduced_dtypes = (paddle.float16, paddle.bfloat16)
     n1 = (
         clip(n1.astype(paddle.float32), min=eps).astype(n1.dtype)
         if n1.dtype in reduced_dtypes
