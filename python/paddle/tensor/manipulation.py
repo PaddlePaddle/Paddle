@@ -7286,15 +7286,16 @@ def check_put_along_axis_index_shape(
 
     ``broadcast=False`` and ``torch.scatter_`` already reject the case above;
     this brings the ``broadcast=True`` path in line with them.
+
+    Both callers reach here only with a non-empty ``indices`` and with both
+    shapes fully known, so neither case is handled again: they return early on
+    an empty ``indices``, and a dynamic shape either cannot occur (the inplace
+    API runs its body in dygraph only) or is routed to
+    ``infer_dynamic_broadcast_shape``, which leaves the same diagnosis to
+    ``PutAlongAxisInferMeta`` when the executor re-runs it with runtime shapes.
     """
-    if 0 in indices.shape:
-        # No scatter to perform, nothing can go out of bounds.
-        return
     for i in range(len(arr.shape)):
         if i == axis:
-            continue
-        if arr.shape[i] < 0 or indices.shape[i] < 0:
-            # dynamic shape, cannot be checked at compile time.
             continue
         if arr.shape[i] < indices.shape[i]:
             raise RuntimeError(
