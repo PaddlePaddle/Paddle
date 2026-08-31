@@ -382,10 +382,11 @@ inline void StridedTensorAccumulateThroughStorage(
 
   auto& pool = DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(input_grad->place());
-  DenseTensor storage;
-  storage.set_meta(
-      DenseTensorMeta(input_grad->dtype(),
-                      common::make_ddim(std::vector<int64_t>{storage_numel})));
+  // Resize rather than set_meta: the rvalue set_meta overload requires the
+  // destination meta to be invalid, and a default constructed DenseTensor
+  // already reports a valid one (float32, NCHW, rank -1 dims).
+  DenseTensor storage(input_grad->dtype());
+  storage.Resize(common::make_ddim(std::vector<int64_t>{storage_numel}));
   dev_ctx->Alloc(&storage, storage.dtype());
   StridedTensorFill<T>(storage, 0, &storage);
 

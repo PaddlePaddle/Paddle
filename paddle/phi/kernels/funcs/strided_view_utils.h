@@ -119,6 +119,15 @@ inline StridedViewRange ComputeStridedViewRange(
     const std::vector<int64_t>& dims,
     const std::vector<int64_t>& strides,
     int64_t base_index) {
+  // Every loop below indexes strides[i] for i < dims.size(). Callers that may
+  // be handed a mismatched pair have to filter it out beforehand.
+  PADDLE_ENFORCE_EQ(dims.size(),
+                    strides.size(),
+                    common::errors::InvalidArgument(
+                        "The size of dims(%d) and strides(%d) of a strided "
+                        "view should be equal.",
+                        dims.size(),
+                        strides.size()));
   StridedViewRange range;
   range.min_index = base_index;
   range.max_index = base_index;
@@ -165,10 +174,15 @@ inline void ValidateStridedViewStorage(const std::vector<int64_t>& dims,
   if (input.numel() == 0 || input.Holder() == nullptr) {
     return;
   }
-  PADDLE_ENFORCE_EQ(dims.size(),
-                    strides.size(),
-                    common::errors::InvalidArgument(
-                        "The size of dims and strides should be equal."));
+  // Outside of the zero-size case AsStridedKernel has never required dims and
+  // strides to have the same length, and callers rely on that: the
+  // TestDygraphInplaceSet case of test_inplace.py asks for a rank 2 shape with
+  // a rank 1 stride. Such a view is malformed and its element range is not
+  // even well defined, but rejecting it here would be a behaviour change
+  // unrelated to the out-of-range views this check is about, so leave it alone.
+  if (dims.size() != strides.size()) {
+    return;
+  }
   const int64_t itemsize = static_cast<int64_t>(SizeOf(input.dtype()));
   PADDLE_ENFORCE_EQ(offset % itemsize,
                     0,

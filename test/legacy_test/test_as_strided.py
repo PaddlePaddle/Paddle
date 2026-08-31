@@ -278,6 +278,18 @@ class TestAsStridedStorageRange(unittest.TestCase):
                 y = paddle.as_strided(x, shape=(4, 4), stride=(4, 1), offset=0)
                 np.testing.assert_allclose(y.numpy(), x_np.reshape(4, 4))
 
+    def test_stride_shorter_than_shape_is_allowed(self):
+        # Outside of the zero-size case the forward has never required shape and
+        # stride to have the same length, and callers rely on it: the
+        # TestDygraphInplaceSet case of test_inplace.py asks for a rank 2 shape
+        # with a rank 1 stride. The view is malformed, so nothing is read back
+        # from it here; the point is only that the range check keeps accepting
+        # it.
+        for place in self.places:
+            with base.dygraph.guard(place):
+                x = paddle.zeros([15, 3], dtype='float32')
+                paddle.as_strided(x, shape=[15, 3], stride=[2])
+
 
 class TestAsStridedNestedViewBackward(unittest.TestCase):
     """`offset` is an absolute byte offset into the shared allocation, while the

@@ -57,14 +57,25 @@ void AsStridedGradKernel(const Context& dev_ctx,
   // side, where its contributions belong to no element of `input_grad` and have
   // to be dropped instead of written past its end. Everything but the fast case
   // is routed through a buffer laid out in storage coordinates.
-  const int64_t itemsize = static_cast<int64_t>(SizeOf(input_grad->dtype()));
-  const int64_t input_base = static_cast<int64_t>(input.offset()) / itemsize;
-  const StridedViewRange out_range =
-      ComputeStridedViewRange(dims, stride, offset / itemsize);
-  const bool inside_input = !out_range.empty &&
-                            out_range.min_index >= input_base &&
-                            out_range.max_index < input_base + input.numel();
-  if (!input.meta().is_contiguous() || !inside_input) {
+  //
+  // A view whose stride is shorter than its shape is malformed, but the forward
+  // accepts it for a non-empty input, so it has to keep working here as well.
+  // Its element range is not well defined and every helper below indexes
+  // stride[i] for i < dims.size(), so such a view stays on the original copy
+  // path.
+  const bool ranked_alike = dims.size() == stride.size();
+  bool through_storage = false;
+  if (ranked_alike) {
+    const int64_t itemsize = static_cast<int64_t>(SizeOf(input_grad->dtype()));
+    const int64_t input_base = static_cast<int64_t>(input.offset()) / itemsize;
+    const StridedViewRange out_range =
+        ComputeStridedViewRange(dims, stride, offset / itemsize);
+    const bool inside_input = !out_range.empty &&
+                              out_range.min_index >= input_base &&
+                              out_range.max_index < input_base + input.numel();
+    through_storage = !input.meta().is_contiguous() || !inside_input;
+  }
+  if (through_storage) {
     PD_VISIT_ALL_TYPES(out_grad.dtype(), "AsStridedGradKernel", ([&] {
                          phi::StridedTensorAccumulateThroughStorage<data_t>(
                              out_grad, dims, stride, offset, input, input_grad);
@@ -72,7 +83,7 @@ void AsStridedGradKernel(const Context& dev_ctx,
     return;
   }
   const int64_t grad_offset = offset - static_cast<int64_t>(input.offset());
-  if (MaybeOverlappingStrides(dims, stride)) {
+  if (ranked_alike && MaybeOverlappingStrides(dims, stride)) {
     // Several elements of out_grad map to the same storage slot, so the
     // gradient has to be accumulated instead of copied.
     PD_VISIT_ALL_TYPES(out_grad.dtype(), "AsStridedGradKernel", ([&] {
