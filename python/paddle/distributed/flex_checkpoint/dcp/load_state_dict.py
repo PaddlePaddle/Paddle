@@ -1315,9 +1315,9 @@ def load_state_dict_impl(
             file_name = storage_metadata[local_tensor_index]
             if file_name in source_state_dict:
                 tensor_key = local_tensor_index.tensor_key
-                state_dict = source_state_dict[file_name]
-                if tensor_key in state_dict:
-                    state_dict.pop(tensor_key)
+                file_tensors = source_state_dict[file_name]
+                if tensor_key in file_tensors:
+                    file_tensors.pop(tensor_key)
 
         metadata_copy = deepcopy(metadata)
         storage_metadata_copy = metadata_copy.storage_metadata
@@ -1363,8 +1363,8 @@ def load_state_dict_impl(
             comm_method,
         )
 
-        for file_name, state_dict in source_state_dict.items():
-            for key, value in state_dict.items():
+        for file_name, file_tensors in source_state_dict.items():
+            for key, value in file_tensors.items():
                 # force GC
                 value._clear()
 
