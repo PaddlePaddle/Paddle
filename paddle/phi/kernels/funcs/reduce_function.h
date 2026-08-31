@@ -1162,10 +1162,13 @@ void ReduceKernel(const KPDevice& dev_ctx,
     auto grid_num = config.grid;
     auto block_num = config.block;
 #endif
-    // Every index inside ReduceHigherDimKernel is bounded by numel
-    // and all the loop bounds are <= numel,
-    //  so `numel <= INT32_MAX` is sufficient.
-    if (numel > std::numeric_limits<int32_t>::max()) {
+    // Data indices are bounded by numel, but the grid-stride loop over the left
+    // dim runs one more `idx += stride` before exiting, so the peak index value
+    // is `size + stride`. Guard against overflow explicitly here.
+    int64_t index_peak = (config.left_num - config.left_num % config.block.x) +
+                         static_cast<int64_t>(config.grid.x) * config.block.x;
+    if (numel > std::numeric_limits<int32_t>::max() ||
+        index_peak > std::numeric_limits<int32_t>::max()) {
       ReduceHigherDimKernel<Tx, Ty, MT, ReduceOp<MT>, TransformOp, int64_t>
           <<<grid_num, block_num, 0, stream>>>(
               x_data,
@@ -1213,8 +1216,10 @@ void ReduceKernel(const KPDevice& dev_ctx,
       auto grid_size = grid;
       auto block_size = block;
 #endif
-      // numel still bounds all the indices when reducing tmp_data.
-      if (numel > std::numeric_limits<int32_t>::max()) {
+      // The second pass walks tmp_data (numel of left_num * grid.y * grid.z <=
+      // numel) with the same left-dim stride, so `index_peak` still applies.
+      if (numel > std::numeric_limits<int32_t>::max() ||
+          index_peak > std::numeric_limits<int32_t>::max()) {
         ReduceHigherDimKernel<MT,
                               Ty,
                               MT,
