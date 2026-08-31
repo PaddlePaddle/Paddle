@@ -433,8 +433,6 @@ class FSDPCommManager:
             gid = self.buffer_manager.param_to_buffer_id[param.name]
             if gid not in req_gids:
                 req_gids.append(gid)
-        if not req_gids:
-            return
 
         if self.enable_overlap:
             keep = set(req_gids)
