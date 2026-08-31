@@ -511,17 +511,50 @@ void cpu_scatter_mul_min_max_input_grad_kernel(DenseTensor self UNUSED,
   // make sure that reduce in {'mul', 'multiply', 'amin', 'amax'}
   const bool is_mul = reduce == "multiply" || reduce == "mul";
   std::vector<int> num_elements(grad.numel(), 0);
+  // The derivative of a product is the product of the *other* factors. Once one
+  // factor is zero ``out`` no longer carries the others, so the zero factors
+  // are counted and the non-zero ones multiplied on the side.
+  std::vector<int> zero_count;
+  std::vector<tensor_t> masked_value_prod;
+  if (is_mul) {
+    zero_count.assign(grad_size, 0);
+    masked_value_prod.assign(grad_size, static_cast<tensor_t>(1));
+    // ``cm`` is stateful and must not be stepped more than index.numel()
+    // times, so the pre-pass needs its own walker.
+    CoordinateManager<true> pre_cm(
+        index.dims(), grad.strides(), ndim, dim, &value.strides());
+    for (int64_t i = 0; i < index_size; i++) {
+      int64_t index = index_data[i];
+      pre_cm.CalculateOffset(index);
+      const tensor_t value_i = value_data[pre_cm.offset2];
+      if (value_i == static_cast<tensor_t>(0)) {
+        zero_count[pre_cm.offset1] += 1;
+      } else {
+        masked_value_prod[pre_cm.offset1] =
+            masked_value_prod[pre_cm.offset1] * value_i;
+      }
+    }
+  }
   for (int64_t i = 0; i < index_size; i++) {
     int64_t index = index_data[i];
     cm.CalculateOffset(index);
     int64_t replace_index_grad = cm.offset1;
     if (is_mul && num_elements[replace_index_grad] == 0) {
-      if (x_data[replace_index_grad] != static_cast<tensor_t>(0)) {
+      const tensor_t x = x_data[replace_index_grad];
+      const int zeros = zero_count[replace_index_grad] +
+                        (x == static_cast<tensor_t>(0) ? 1 : 0);
+      if (zeros == 0) {
         tensor_t val = grad_data[replace_index_grad];
         val *= out_data[replace_index_grad];
-        val /= x_data[replace_index_grad];
+        val /= x;
         grad_data[replace_index_grad] = static_cast<tensor_t>(val);
+      } else if (zeros == 1 && x == static_cast<tensor_t>(0)) {
+        grad_data[replace_index_grad] =
+            static_cast<tensor_t>(grad_data[replace_index_grad] *
+                                  masked_value_prod[replace_index_grad]);
       } else {
+        // ``x`` is not the only zero factor, so the product stays zero whatever
+        // ``x`` becomes.
         grad_data[replace_index_grad] = static_cast<tensor_t>(0);
       }
       num_elements[replace_index_grad] += 1;
@@ -679,6 +712,28 @@ void cpu_scatter_mul_min_max_value_grad_kernel(DenseTensor self,
 
   const int ndim = index.dims().size();
   const int64_t index_size = index.numel();
+  // The derivative of a product is the product of the *other* factors. Once one
+  // factor is zero ``out`` no longer carries the others, so the zero factors
+  // are counted and the non-zero ones multiplied on the side.
+  std::vector<int> zero_count;
+  std::vector<tensor_t> masked_value_prod;
+  if (!is_min_max) {
+    zero_count.assign(self.numel(), 0);
+    masked_value_prod.assign(self.numel(), static_cast<tensor_t>(1));
+    CoordinateManager<true> pre_cm(
+        index.dims(), self.strides(), ndim, dim, &grad.strides());
+    for (int64_t i = 0; i < index_size; i++) {
+      int64_t index = index_data[i];
+      pre_cm.CalculateOffset(index);
+      const tensor_t value_i = value_data[pre_cm.offset2];
+      if (value_i == static_cast<tensor_t>(0)) {
+        zero_count[pre_cm.offset1] += 1;
+      } else {
+        masked_value_prod[pre_cm.offset1] =
+            masked_value_prod[pre_cm.offset1] * value_i;
+      }
+    }
+  }
   {  // `cm` should be destroyed once the computation is done, no reuse
     CoordinateManager<true> cm(
         index.dims(), self.strides(), ndim, dim, &grad.strides());
@@ -691,11 +746,22 @@ void cpu_scatter_mul_min_max_value_grad_kernel(DenseTensor self,
           out_data[replace_index_self] == value_data[replace_index_grad]) {
         num_elements[replace_index_self] += 1;
       } else if (!is_min_max) {
-        if (value_data[replace_index_grad] != static_cast<tensor_t>(0)) {
+        const tensor_t value_i = value_data[replace_index_grad];
+        const bool x_is_zero = include_self && x_data[replace_index_self] ==
+                                                   static_cast<tensor_t>(0);
+        const int zeros = zero_count[replace_index_self] + (x_is_zero ? 1 : 0);
+        if (zeros == 0) {
+          grad_data[replace_index_grad] = self_data[replace_index_self] *
+                                          out_data[replace_index_self] /
+                                          value_i;
+        } else if (zeros == 1 && value_i == static_cast<tensor_t>(0)) {
+          tensor_t others = masked_value_prod[replace_index_self];
+          if (include_self) others = others * x_data[replace_index_self];
           grad_data[replace_index_grad] =
-              self_data[replace_index_self] *
-              (out_data[replace_index_self] / value_data[replace_index_grad]);
+              self_data[replace_index_self] * others;
         } else {
+          // ``value`` is not the only zero factor, so the product stays zero
+          // whatever ``value`` becomes.
           grad_data[replace_index_grad] = static_cast<tensor_t>(0);
         }
       }
