@@ -23,7 +23,7 @@ from op_test import (
     get_places,
     is_custom_device,
 )
-from utils import dygraph_guard
+from utils import dygraph_guard, static_guard
 
 import paddle
 from paddle.framework import core
@@ -1078,70 +1078,72 @@ class TestPutAlongAxisAPICase4(unittest.TestCase):
         for place in self.place:
             run(place)
 
-    def test_error(self):
+    def _check_error(self, index_too_large_error):
+        """The body of ``test_error``, run once per mode.
+
+        ``index_too_large_error`` is what tells the two modes apart: in dygraph
+        the wrapper rejects the index itself and raises ``RuntimeError``, while
+        in static and PIR that check is skipped -- it is guarded by
+        ``in_dynamic_mode()`` -- and ``PutAlongAxisInferMeta`` reports the
+        violation as ``InvalidArgument``, which surfaces in python as
+        ``ValueError``.
+        """
         tensorx = paddle.to_tensor([[1, 2, 3], [4, 5, 6]]).astype("float32")
         indices = paddle.to_tensor([1]).astype("int32")
         values = paddle.to_tensor([2])
         # len(arr.shape) != len(indices.shape)
-        try:
-            res = paddle.put_along_axis(
+        with self.assertRaises(ValueError):
+            paddle.put_along_axis(
                 tensorx, indices, 1.0, 0, 'assign', True, False
             )
-        except Exception as error:
-            self.assertIsInstance(error, ValueError)
         indices = paddle.to_tensor([[1]]).astype("int32")
         # len(values.shape) != len(indices.shape)
-        try:
-            res = paddle.put_along_axis(
+        with self.assertRaises(ValueError):
+            paddle.put_along_axis(
                 tensorx, indices, values, 0, 'assign', True, False
             )
-        except Exception as error:
-            self.assertIsInstance(error, ValueError)
         # len(values.shape) != len(indices.shape)
-        try:
+        with self.assertRaises(ValueError):
             tensorx.put_along_axis_(indices, values, 0, 'assign', True, False)
-        except Exception as error:
-            self.assertIsInstance(error, ValueError)
         indices = paddle.to_tensor(
             [[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12]]
         ).astype("int32")
-        # ``indices`` too large. Which layer reports it depends on the mode this
-        # test runs in, and the preceding tests leave static mode enabled: there
-        # the wrapper's check is skipped -- it is guarded by
-        # ``in_dynamic_mode()`` -- and the diagnosis comes from
-        # ``PutAlongAxisInferMeta`` instead, as InvalidArgument, which surfaces
-        # in python as ``ValueError``. In dygraph the wrapper raises
-        # ``RuntimeError`` before the op is reached. Static mode used to raise
-        # nothing at all here, so both blocks below asserted nothing.
-        expected_error = (
-            RuntimeError if paddle.in_dynamic_mode() else ValueError
-        )
-        try:
-            res = paddle.put_along_axis(
-                tensorx, indices, 1.0, 0, 'assign', True, False
-            )
-        except Exception as error:
-            self.assertIsInstance(error, expected_error)
         # indices too large
-        try:
-            tensorx.put_along_axis_(indices, 1.0, 0, 'assign', True, False)
-        except Exception as error:
-            self.assertIsInstance(error, expected_error)
-        indices = paddle.to_tensor([[10]]).astype("int32")
-        # The element of indices is out of range. This is a value check, which
-        # only the wrapper performs and only in dygraph, so static mode still
-        # raises nothing here.
-        try:
-            res = paddle.put_along_axis(
+        with self.assertRaises(index_too_large_error):
+            paddle.put_along_axis(
                 tensorx, indices, 1.0, 0, 'assign', True, False
             )
-        except Exception as error:
-            self.assertIsInstance(error, RuntimeError)
-        # the element of indices out of range
-        try:
+        # indices too large
+        with self.assertRaises(index_too_large_error):
             tensorx.put_along_axis_(indices, 1.0, 0, 'assign', True, False)
-        except Exception as error:
-            self.assertIsInstance(error, RuntimeError)
+        if not paddle.in_dynamic_mode():
+            # What is left is a check on the index *values*, which only the
+            # wrapper performs and only in dygraph. Outside it there is nothing
+            # to assert: the shapes below are legal, so InferMeta accepts them
+            # and an out-of-range element would only be seen by the kernel, at
+            # a point this test never reaches.
+            return
+        indices = paddle.to_tensor([[10]]).astype("int32")
+        # the element of indices out of range
+        with self.assertRaises(RuntimeError):
+            paddle.put_along_axis(
+                tensorx, indices, 1.0, 0, 'assign', True, False
+            )
+        # the element of indices out of range
+        with self.assertRaises(RuntimeError):
+            tensorx.put_along_axis_(indices, 1.0, 0, 'assign', True, False)
+
+    def test_error(self):
+        # Pin the mode rather than inherit whichever one the previously run
+        # test left enabled: which layer rejects an illegal input depends on
+        # it, so an inherited mode would decide what this test asserts.
+        with dygraph_guard():
+            self._check_error(RuntimeError)
+        with (
+            static_guard(),
+            paddle.static.program_guard(paddle.static.Program()),
+        ):
+            self._check_error(ValueError)
 
     def test_index_type_error(self):
         tensorx = paddle.to_tensor([[1, 2, 3], [4, 5, 6]]).astype("float32")
@@ -2123,6 +2125,21 @@ class TestPutAlongAxisInferMetaShapeCheck(unittest.TestCase):
         self.assertEqual(list(out.shape), [])
 
 
+def zero_dim_operand_places():
+    """The places the 0-D promotion cases have to run on.
+
+    ``get_places`` leaves CPU out unless ``FLAGS_CI_both_cpu_and_gpu`` is set,
+    so on a GPU build these cases would only ever enter the ``.cu`` kernel. The
+    promotion they are about lives in ``gather_scatter_functor.h``, shared by
+    every backend, and only the CPU kernel is a host translation unit, so CPU
+    has to be in the list for the coverage build to record those lines as run.
+    """
+    places = get_places()
+    if not any(isinstance(place, paddle.CPUPlace) for place in places):
+        places.insert(0, paddle.CPUPlace())
+    return places
+
+
 class TestPutAlongAxisZeroDimOperands(unittest.TestCase):
     """A 0-D operand counts as a 1-D operand holding a single element.
 
@@ -2137,54 +2154,63 @@ class TestPutAlongAxisZeroDimOperands(unittest.TestCase):
 
     def setUp(self):
         paddle.disable_static()
+        self.places = zero_dim_operand_places()
 
     def test_all_zero_dim(self):
-        out = paddle._C_ops.put_along_axis(
-            paddle.to_tensor(5.0),
-            paddle.to_tensor(0, dtype='int64'),
-            paddle.to_tensor(9.0),
-            0,
-            'assign',
-            True,
-        )
-        self.assertEqual(list(out.shape), [])
-        np.testing.assert_allclose(out.numpy(), np.array(9.0))
+        for place in self.places:
+            out = paddle._C_ops.put_along_axis(
+                paddle.to_tensor(5.0, place=place),
+                paddle.to_tensor(0, dtype='int64', place=place),
+                paddle.to_tensor(9.0, place=place),
+                0,
+                'assign',
+                True,
+            )
+            self.assertEqual(list(out.shape), [])
+            np.testing.assert_allclose(out.numpy(), np.array(9.0))
 
     def test_zero_dim_input_with_rank_one_index(self):
-        out = paddle._C_ops.put_along_axis(
-            paddle.to_tensor(5.0),
-            paddle.to_tensor([0], dtype='int64'),
-            paddle.to_tensor([9.0]),
-            0,
-            'assign',
-            True,
-        )
-        self.assertEqual(list(out.shape), [])
-        np.testing.assert_allclose(out.numpy(), np.array(9.0))
+        for place in self.places:
+            out = paddle._C_ops.put_along_axis(
+                paddle.to_tensor(5.0, place=place),
+                paddle.to_tensor([0], dtype='int64', place=place),
+                paddle.to_tensor([9.0], place=place),
+                0,
+                'assign',
+                True,
+            )
+            self.assertEqual(list(out.shape), [])
+            np.testing.assert_allclose(out.numpy(), np.array(9.0))
 
     def test_zero_dim_operands_reduce_add(self):
-        out = paddle._C_ops.put_along_axis(
-            paddle.to_tensor(5.0),
-            paddle.to_tensor(0, dtype='int64'),
-            paddle.to_tensor(9.0),
-            0,
-            'add',
-            True,
-        )
-        self.assertEqual(list(out.shape), [])
-        np.testing.assert_allclose(out.numpy(), np.array(14.0))
+        for place in self.places:
+            out = paddle._C_ops.put_along_axis(
+                paddle.to_tensor(5.0, place=place),
+                paddle.to_tensor(0, dtype='int64', place=place),
+                paddle.to_tensor(9.0, place=place),
+                0,
+                'add',
+                True,
+            )
+            self.assertEqual(list(out.shape), [])
+            np.testing.assert_allclose(out.numpy(), np.array(14.0))
 
     def test_negative_axis(self):
         """``axis`` reaches the kernel exactly as written, so it normalizes it."""
-        x = paddle.zeros([3, 4], dtype='float32')
-        index = paddle.to_tensor([[0], [1], [2]], dtype='int64')
-        value = paddle.to_tensor([[1.0], [2.0], [3.0]])
-        out = paddle._C_ops.put_along_axis(x, index, value, -1, 'assign', True)
         expected = np.zeros([3, 4], dtype='float32')
         expected[0, 0] = 1.0
         expected[1, 1] = 2.0
         expected[2, 2] = 3.0
-        np.testing.assert_allclose(out.numpy(), expected)
+        for place in self.places:
+            x = paddle.to_tensor(np.zeros([3, 4], dtype='float32'), place=place)
+            index = paddle.to_tensor(
+                [[0], [1], [2]], dtype='int64', place=place
+            )
+            value = paddle.to_tensor([[1.0], [2.0], [3.0]], place=place)
+            out = paddle._C_ops.put_along_axis(
+                x, index, value, -1, 'assign', True
+            )
+            np.testing.assert_allclose(out.numpy(), expected)
 
 
 class TestPutAlongAxisZeroDimOperandsGrad(unittest.TestCase):
@@ -2198,14 +2224,15 @@ class TestPutAlongAxisZeroDimOperandsGrad(unittest.TestCase):
 
     def setUp(self):
         paddle.disable_static()
+        self.places = zero_dim_operand_places()
 
-    def _run(self, reduce):
-        x = paddle.to_tensor(5.0)
+    def _run(self, reduce, place, axis=0):
+        x = paddle.to_tensor(5.0, place=place)
         x.stop_gradient = False
-        value = paddle.to_tensor(9.0)
+        value = paddle.to_tensor(9.0, place=place)
         value.stop_gradient = False
-        index = paddle.to_tensor(0, dtype='int64')
-        out = paddle._C_ops.put_along_axis(x, index, value, 0, reduce, True)
+        index = paddle.to_tensor(0, dtype='int64', place=place)
+        out = paddle._C_ops.put_along_axis(x, index, value, axis, reduce, True)
         out.backward()
         self.assertEqual(list(x.grad.shape), [])
         self.assertEqual(list(value.grad.shape), [])
@@ -2213,24 +2240,40 @@ class TestPutAlongAxisZeroDimOperandsGrad(unittest.TestCase):
 
     def test_assign_grad(self):
         """``scatter_input_grad_kernel`` + ``scatter_value_grad_kernel``."""
-        x_grad, value_grad = self._run('assign')
-        np.testing.assert_allclose(x_grad, np.array(0.0))
-        np.testing.assert_allclose(value_grad, np.array(1.0))
+        for place in self.places:
+            x_grad, value_grad = self._run('assign', place)
+            np.testing.assert_allclose(x_grad, np.array(0.0))
+            np.testing.assert_allclose(value_grad, np.array(1.0))
 
     def test_add_grad(self):
         """``scatter_mean_input_grad_kernel`` is skipped for ``add``, so this
         covers ``scatter_add_mean_value_grad_kernel``."""
-        x_grad, value_grad = self._run('add')
-        np.testing.assert_allclose(x_grad, np.array(1.0))
-        np.testing.assert_allclose(value_grad, np.array(1.0))
+        for place in self.places:
+            x_grad, value_grad = self._run('add', place)
+            np.testing.assert_allclose(x_grad, np.array(1.0))
+            np.testing.assert_allclose(value_grad, np.array(1.0))
 
     def test_mul_grad(self):
         """``scatter_mul_min_max_{input,value}_grad_kernel``, the pair that
         also restrides ``value``."""
-        x_grad, value_grad = self._run('mul')
-        # out == x * value, so the gradient of each operand is the other one.
-        np.testing.assert_allclose(x_grad, np.array(9.0))
-        np.testing.assert_allclose(value_grad, np.array(5.0))
+        for place in self.places:
+            x_grad, value_grad = self._run('mul', place)
+            # out == x * value, so the gradient of each operand is the other
+            # one.
+            np.testing.assert_allclose(x_grad, np.array(9.0))
+            np.testing.assert_allclose(value_grad, np.array(5.0))
+
+    def test_negative_axis_grad(self):
+        """``axis`` is normalized in the grad kernel too, not only the forward
+        one: it arrives as the caller wrote it there as well.
+
+        ``-1`` is the only negative axis a 0-D ``x`` admits, and it has to
+        select the same element as ``0``.
+        """
+        for place in self.places:
+            x_grad, value_grad = self._run('add', place, axis=-1)
+            np.testing.assert_allclose(x_grad, np.array(1.0))
+            np.testing.assert_allclose(value_grad, np.array(1.0))
 
 
 class TestPutAlongAxisMulFloat32DivByZeroGrad(unittest.TestCase):
