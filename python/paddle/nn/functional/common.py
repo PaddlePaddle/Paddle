@@ -2501,10 +2501,20 @@ def cosine_similarity(
     dim = axis + rank if axis < 0 else axis
     n1 = paddle.linalg.vector_norm(x1, p=2, axis=dim, keepdim=True)
     n2 = paddle.linalg.vector_norm(x2, p=2, axis=dim, keepdim=True)
-    if x1.shape[dim] > 0 and bs[dim] > x1.shape[dim]:
-        n1 = n1 * math.sqrt(bs[dim] / x1.shape[dim])
-    if x2.shape[dim] > 0 and bs[dim] > x2.shape[dim]:
-        n2 = n2 * math.sqrt(bs[dim] / x2.shape[dim])
+    d1, d2 = x1.shape[dim], x2.shape[dim]
+    if d1 >= 0 and d2 >= 0:
+        if bs[dim] > d1:
+            n1 = n1 * math.sqrt(bs[dim] / d1)
+        if bs[dim] > d2:
+            n2 = n2 * math.sqrt(bs[dim] / d2)
+    else:
+        # For unknown(-1) reduced axis: compute the broadcast repeat factor from
+        # the run-time length, if len==1 -> taking the other side's len.
+        len1 = paddle.shape(x1)[dim].astype(paddle.float32)
+        len2 = paddle.shape(x2)[dim].astype(paddle.float32)
+        common = paddle.where(len1 == 1, len2, len1)
+        n1 = n1 * paddle.sqrt(common / clip(len1, min=1.0)).astype(n1.dtype)
+        n2 = n2 * paddle.sqrt(common / clip(len2, min=1.0)).astype(n2.dtype)
     reduced_dtypes = (paddle.float16, paddle.bfloat16)
     n1 = (
         clip(n1.astype(paddle.float32), min=eps).astype(n1.dtype)
