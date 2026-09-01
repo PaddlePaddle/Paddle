@@ -38,8 +38,13 @@ from paddle import pir
 from paddle.base.core import PassVersionChecker
 from paddle.static.log_helper import get_logger
 
-# windows and xpu not support tensorrt
-if os.name != 'nt' and (not os.getenv('WITH_XPU')):
+# TensorRT is available only when the corresponding Paddle
+# pybind interface was compiled into libpaddle.
+if (
+    os.name != 'nt'
+    and not os.getenv('WITH_XPU')
+    and hasattr(paddle.base.core, "register_paddle_plugin")
+):
     try:
         from paddle.tensorrt.export import (
             Input,
