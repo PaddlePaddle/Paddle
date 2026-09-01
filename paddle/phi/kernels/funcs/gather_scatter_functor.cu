@@ -183,16 +183,21 @@ __device__ __forceinline__ void ComputeOffset(
 // it, so every kernel that turns it into an offset has to reject it here.
 // Without this the offset arithmetic below silently addresses memory outside
 // the tensor.
-#define ENFORCE_SCATTER_INDEX_IN_BOUND(index, select_dim_size)                \
-  PADDLE_ENFORCE(                                                             \
-      (index) >= -(select_dim_size) && (index) < (select_dim_size),           \
-      "The index is out of bounds, "                                          \
-      "please check whether the index and "                                   \
-      "input's shape meet the requirements. It should "                       \
-      "be greater or equal to [%ld] and less than [%ld], but received [%ld]", \
-      static_cast<int64_t>(-(select_dim_size)),                               \
-      static_cast<int64_t>(select_dim_size),                                  \
-      static_cast<int64_t>(index));
+// The three arguments are 64 bit, so the conversion has to be ``%lld`` and the
+// cast has to name that type: ``long`` is 32 bit on Windows, where a ``%ld``
+// makes the formatter take four of the eight bytes and then read every later
+// argument from the wrong offset.
+#define ENFORCE_SCATTER_INDEX_IN_BOUND(index, select_dim_size)            \
+  PADDLE_ENFORCE(                                                         \
+      (index) >= -(select_dim_size) && (index) < (select_dim_size),       \
+      "The index is out of bounds, "                                      \
+      "please check whether the index and "                               \
+      "input's shape meet the requirements. It should "                   \
+      "be greater or equal to [%lld] and less than [%lld], but received " \
+      "[%lld]",                                                           \
+      static_cast<long long>(-(select_dim_size)), /* NOLINT */            \
+      static_cast<long long>(select_dim_size),    /* NOLINT */            \
+      static_cast<long long>(index));             /* NOLINT */
 
 // Both macros below normalize a negative subscript the same way the forward
 // kernels do, so they require ``self_select_dim_size`` -- the length along
