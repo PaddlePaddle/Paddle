@@ -141,7 +141,6 @@ class TensorFusionBuffer:
                 shape=[self.total_buffer_size // self.fsdp_degree],
                 dtype=self.main_grad_dtype,
             )
-
             # Register get_main_grad method for each param, returns view_slice of grad_buffer
             for param in params:
                 if param.trainable:
@@ -368,6 +367,7 @@ class FSDPCommManager:
         )
         self.buffer_cnt_in_using = 0
         self.need_zero_grads = True
+        self._last_backward_unit_id = None
 
     # ------------------------------------------------------------------
     # Params all_gather double buffer. Owns buffer_cnt_in_using /
@@ -433,6 +433,14 @@ class FSDPCommManager:
             gid = self.buffer_manager.param_to_buffer_id[param.name]
             if gid not in req_gids:
                 req_gids.append(gid)
+
+        if is_backward:
+            unit_id = self.buffer_manager.buffer_groups[
+                req_gids[0]
+            ].fsdp_unit_id
+            if unit_id != self._last_backward_unit_id:
+                self._last_backward_unit_id = unit_id
+                self._flush_expert_grads_after_unit(unit_id)
 
         if self.enable_overlap:
             keep = set(req_gids)
@@ -512,6 +520,7 @@ class FSDPCommManager:
                 group.params_buffer.status = BufferState.READY
 
     def reset_params_buffer_status(self):
+        self._last_backward_unit_id = None
         for group in self.buffer_manager.buffer_groups:
             params_buffer = group.params_buffer
             if params_buffer.status in (BufferState.READY, BufferState.USING):
@@ -560,14 +569,37 @@ class FSDPCommManager:
             return
 
         if group.grads_use_cnt == group.grads_use_sum:
-            group.grads_use_cnt = 0
-            grads_buffer = group.grads_buffer
-            # Grad queue mechanism: wait and release completed reduce_scatter async tasks
-            self._wait_for_grad_comm()
-            grads_buffer.comm_task = grads_buffer.do_reduce_scatter()
-            self.grad_reduce_queue.append(grads_buffer)
-            if not self.enable_overlap:
-                self._wait_for_grad_comm(queue_limit=0)
+            self._reduce_group_grads(group)
+
+    def _reduce_group_grads(self, group):
+        # Reduce-scatter one group's fused grad buffer over its own fsdp_group.
+        group.grads_use_cnt = 0
+        grads_buffer = group.grads_buffer
+        if (
+            grads_buffer is None
+            or not grads_buffer.is_sharded
+            or grads_buffer.tmp_data_buffer is None
+            or grads_buffer in self.grad_reduce_queue
+        ):
+            return
+        # Grad queue mechanism: wait and release completed reduce_scatter async tasks
+        self._wait_for_grad_comm()
+        grads_buffer.comm_task = grads_buffer.do_reduce_scatter()
+        self.grad_reduce_queue.append(grads_buffer)
+        if not self.enable_overlap:
+            self._wait_for_grad_comm(queue_limit=0)
+
+    def _flush_expert_grads_after_unit(self, unit_id):
+        # Backward walks the FSDP units from last to first, so every unit after
+        # `unit_id` is done and its expert grads are final. Reducing here gives
+        # expert params their overlap back on a structural trigger.
+        if unit_id is None:
+            return
+        for group in reversed(self.buffer_manager.buffer_groups):
+            if not group.is_expert_param or group.fsdp_unit_id is None:
+                continue
+            if group.fsdp_unit_id > unit_id:
+                self._reduce_group_grads(group)
 
     def _wait_for_grad_comm(self, queue_limit=2):
         while len(self.grad_reduce_queue) > queue_limit:
@@ -685,7 +717,6 @@ class FullyShardFusion:
             return
         param._fsdp_grad_hooked = True
         comm_manager = self.comm_manager
-        overwrite_staging = not getattr(param, "is_moe_param", False)
 
         @paddle.autograd.no_grad()
         def comm_hook(grad):
@@ -693,14 +724,10 @@ class FullyShardFusion:
             comm_manager._ensure_grads_writable(param)
             if grad is not None and grad._is_initialized():
                 # Share mem with grads_tmp_buffer
-                fusion_buffer = param._fusion_buffer
                 param.get_main_grad(grad.shape)
                 if grad.dtype != param.main_grad.dtype:
                     grad = grad.astype(param.main_grad.dtype)
-                if fusion_buffer.is_sharded and overwrite_staging:
-                    param.main_grad.copy_(grad)
-                else:
-                    param.main_grad.add_(grad)
+                param.main_grad.add_(grad)
                 grad._clear_data()
             comm_manager.shard_params([param], is_backward=True)
             comm_manager.reduce_scatter_grads(param)
