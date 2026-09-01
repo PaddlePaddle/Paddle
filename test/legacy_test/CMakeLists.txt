@@ -143,9 +143,15 @@ if(((NOT WITH_ROCM) AND (NOT WITH_GPU)) OR WIN32)
 endif()
 
 if(WITH_ROCM)
-  add_test(NAME test_hygon_llama_ops
-           COMMAND bash
-                   ${CMAKE_CURRENT_SOURCE_DIR}/hygon_dcu/test_hygon_llama_op.sh)
+  add_test(
+    NAME test_hygon_llama_ops
+    COMMAND
+      ${CMAKE_COMMAND} -E env
+      PADDLE_SOURCE_DIR=${PADDLE_SOURCE_DIR}
+      PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR}
+      PADDLE_PYTHON_EXECUTABLE=${PYTHON_EXECUTABLE}
+      WITH_ROCM_FLASHATTN=${WITH_ROCM_FLASHATTN}
+      bash ${CMAKE_CURRENT_SOURCE_DIR}/hygon_dcu/test_hygon_llama_op.sh)
   set_tests_properties(test_hygon_llama_ops PROPERTIES TIMEOUT 600)
 endif()
 

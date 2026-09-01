@@ -14,14 +14,41 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+set -u
+
+script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+source_dir="${PADDLE_SOURCE_DIR:-$(cd -- "${script_dir}/../../.." && pwd)}"
+binary_dir="${PADDLE_BINARY_DIR:-}"
+python_executable="${PADDLE_PYTHON_EXECUTABLE:-${PYTHON_EXECUTABLE:-python}}"
+flashattn_enabled="${WITH_ROCM_FLASHATTN:-OFF}"
+timeout_limit="${TEST_TIMEOUT:-300}"
+log_file="${PADDLE_HYGON_LOG_FILE:-}"
+
+if [[ -z "${binary_dir}" ]]; then
+    echo "PADDLE_BINARY_DIR is required for test_hygon_llama_ops" >&2
+    exit 2
+fi
+
+if [[ -n "${log_file}" ]]; then
+    mkdir -p -- "$(dirname -- "${log_file}")"
+    exec > >(tee "${log_file}") 2>&1
+fi
+
+build_test_dir="${binary_dir}/test"
+pythonpath="${binary_dir}/python:${binary_dir}/test/legacy_test:${source_dir}/test/legacy_test:${script_dir}"
+if [[ -n "${PYTHONPATH:-}" ]]; then
+    pythonpath="${pythonpath}:${PYTHONPATH}"
+fi
+
 pass_count=0
 fail_count=0
 timeout_count=0
 not_found_count=0
+capability_skip_count=0
 failed_tests=()
 timeout_tests=()
 not_found_tests=()
-timeout_limit=300
+capability_skipped_tests=()
 
 
 GREEN="\e[32m"
@@ -100,24 +127,40 @@ py_tests=(
     # mean, mean_grad, multiply, multiply_grad, rsqrt, rsqrt_grad, scale, silu, silu_grad
     # sin, sqrt, sum
     "hygon_llama_ops.py"
-    # flash_attn, flash_attn_grad
-    "flash_attention_hip.py"
-    )
+)
+
+case "${flashattn_enabled^^}" in
+    ON|TRUE|YES|1)
+        # flash_attn, flash_attn_grad
+        py_tests+=("flash_attention_hip.py")
+        ;;
+    *)
+        capability_skip_count=$((capability_skip_count + 1))
+        capability_skipped_tests+=("flash_attention_hip.py")
+        ;;
+esac
 
 run_ctest() {
     local test_name=$1
+    local output_file
+    local test_result
+    output_file=$(mktemp)
     echo -e "${BLUE}Running ctest: $test_name${RESET}"
-    output=$(ctest -R "$test_name" --timeout $timeout_limit --output-on-failure 2>&1)
-    local test_result=$?
+    (
+        cd "${build_test_dir}" &&
+        ctest -R "$test_name" --timeout "$timeout_limit" --output-on-failure
+    ) >"${output_file}" 2>&1
+    test_result=$?
+    cat "${output_file}"
 
-    if echo "$output" | grep -q "No tests were found!!!"; then
+    if grep -q "No tests were found!!!" "${output_file}"; then
         echo -e "${RED}Test $test_name NOT FOUND${RESET}"
         not_found_count=$((not_found_count + 1))
         not_found_tests+=("$test_name")
     elif [ $test_result -eq 0 ]; then
         echo -e "${GREEN}Test $test_name PASSED${RESET}"
         pass_count=$((pass_count + 1))
-    elif [ $test_result -eq 124 ]; then
+    elif [ $test_result -eq 124 ] || grep -qi "timeout" "${output_file}"; then
         echo -e "${RED}Test $test_name TIMEOUT${RESET}"
         timeout_count=$((timeout_count + 1))
         timeout_tests+=("$test_name")
@@ -127,16 +170,26 @@ run_ctest() {
         failed_tests+=("$test_name")
     fi
 
+    rm -f "${output_file}"
     echo
 }
 
 run_pytest(){
     for test_name in "${py_tests[@]}"; do
-        if [ -f "$test_name" ]; then
+        local test_path="${script_dir}/${test_name}"
+        local output_file
+        local test_result
+        if [ -f "${test_path}" ]; then
             echo -e "${BLUE}Running pytest: $test_name${RESET}"
 
-            PYTHONPATH=.. timeout $timeout_limit python -m unittest "$test_name" > /dev/null 2>&1
-            local test_result=$?
+            output_file=$(mktemp)
+            (
+                cd "${script_dir}" &&
+                PYTHONPATH="${pythonpath}" timeout "$timeout_limit" \
+                    "${python_executable}" -m unittest -v "${test_name}"
+            ) >"${output_file}" 2>&1
+            test_result=$?
+            cat "${output_file}"
 
             if [ $test_result -eq 0 ]; then
                 echo -e "${GREEN}Test $test_name PASSED${RESET}"
@@ -150,6 +203,7 @@ run_pytest(){
                 fail_count=$((fail_count + 1))
                 failed_tests+=("$test_name")
             fi
+            rm -f "${output_file}"
         else
             echo -e "${RED}Test $test_name NOT FOUND${RESET}"
             not_found_count=$((not_found_count + 1))
@@ -174,7 +228,16 @@ echo "Passed: $pass_count"
 echo "Failed: $fail_count"
 echo "Timeout: $timeout_count"
 echo "Not Found: $not_found_count"
-echo "Total: $((pass_count + fail_count + timeout_count + not_found_count))"
+echo "Capability-gated: $capability_skip_count"
+echo "Total Executed: $((pass_count + fail_count + timeout_count + not_found_count))"
+
+if [ $capability_skip_count -gt 0 ]; then
+    echo
+    echo -e "${BLUE}Capability-gated Test Cases:${RESET}"
+    for capability_skipped_test in "${capability_skipped_tests[@]}"; do
+        echo -e "${BLUE} - ${capability_skipped_test} (WITH_ROCM_FLASHATTN=${flashattn_enabled})${RESET}"
+    done
+fi
 
 if [ $not_found_count -gt 0 ]; then
     echo
@@ -199,3 +262,9 @@ if [ $timeout_count -gt 0 ]; then
         echo -e "${RED} - $timeout_test${RESET}"
     done
 fi
+
+if [ $fail_count -gt 0 ] || [ $timeout_count -gt 0 ] || [ $not_found_count -gt 0 ]; then
+    exit 1
+fi
+
+exit 0

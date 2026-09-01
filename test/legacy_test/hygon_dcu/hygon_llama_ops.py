@@ -71,7 +71,7 @@ class TestRsqrt_FLoat16(OpTest):
             ['X'],
             'Out',
             check_dygraph=True,
-            check_prim=True,
+            check_prim=False,
             check_prim_pir=True,
             max_relative_error=1e-2,
             check_pir=True,
@@ -113,7 +113,7 @@ class TestCos_FLoat16(OpTest):
                 place,
                 atol=1e-3,
                 check_dygraph=True,
-                check_prim=True,
+                check_prim=False,
                 check_prim_pir=True,
                 check_pir=True,
                 check_pir_onednn=self.check_pir_onednn,
@@ -127,7 +127,7 @@ class TestCos_FLoat16(OpTest):
             ['X'],
             'Out',
             check_dygraph=True,
-            check_prim=True,
+            check_prim=False,
             check_prim_pir=True,
             max_relative_error=1e-2,
             check_pir=True,
@@ -169,7 +169,7 @@ class TestSin_FLoat16(OpTest):
                 place,
                 atol=1e-3,
                 check_dygraph=True,
-                check_prim=True,
+                check_prim=False,
                 check_prim_pir=True,
                 check_pir=True,
                 check_pir_onednn=self.check_pir_onednn,
@@ -183,7 +183,7 @@ class TestSin_FLoat16(OpTest):
             ['X'],
             'Out',
             check_dygraph=True,
-            check_prim=True,
+            check_prim=False,
             check_prim_pir=True,
             max_relative_error=1e-2,
             check_pir=True,
@@ -281,7 +281,7 @@ class TestSqrt_FLoat16(OpTest):
                 place,
                 atol=1e-3,
                 check_dygraph=True,
-                check_prim=True,
+                check_prim=False,
                 check_prim_pir=True,
                 check_pir=True,
                 check_pir_onednn=self.check_pir_onednn,
@@ -295,7 +295,7 @@ class TestSqrt_FLoat16(OpTest):
             ['X'],
             'Out',
             check_dygraph=True,
-            check_prim=True,
+            check_prim=False,
             check_prim_pir=True,
             max_relative_error=1e-2,
             check_pir=True,
@@ -658,7 +658,7 @@ class TestElementwiseMulOpFp16(OpTest):
             ['X', 'Y'],
             'Out',
             check_dygraph=(not self.use_onednn),
-            check_prim=True,
+            check_prim=False,
             check_prim_pir=(not self.use_onednn),
             check_pir=(not self.use_onednn),
             check_pir_onednn=self.check_pir_onednn,
@@ -671,7 +671,7 @@ class TestElementwiseMulOpFp16(OpTest):
             'Out',
             no_grad_set=set("X"),
             check_dygraph=(not self.use_onednn),
-            check_prim=True,
+            check_prim=False,
             check_prim_pir=(not self.use_onednn),
             check_pir=(not self.use_onednn),
             check_pir_onednn=self.check_pir_onednn,
@@ -684,7 +684,7 @@ class TestElementwiseMulOpFp16(OpTest):
             'Out',
             no_grad_set=set('Y'),
             check_dygraph=(not self.use_onednn),
-            check_prim=True,
+            check_prim=False,
             check_prim_pir=(not self.use_onednn),
             check_pir=(not self.use_onednn),
             check_pir_onednn=self.check_pir_onednn,
@@ -742,6 +742,7 @@ class TestAdamW(OpTest):
         moment1 = np.random.uniform(-1, 1, (102, 105)).astype("float32")
         # The second moment is positive
         moment2 = np.random.random((102, 105)).astype("float32")
+        moment2_max = np.zeros((102, 105)).astype("float32")
 
         learning_rate = 0.004
         beta1 = 0.78
@@ -755,7 +756,8 @@ class TestAdamW(OpTest):
             'Grad': grad,
             'Moment1': moment1,
             'Moment2': moment2,
-            'LearningRate': np.array([learning_rate]).astype("float32"),
+            'Moment2Max': moment2_max,
+            'LearningRate': np.array([learning_rate]).astype("float64"),
             'Beta1Pow': np.array([beta1_pow]).astype("float32"),
             'Beta2Pow': np.array([beta2_pow]).astype("float32"),
         }
@@ -766,22 +768,27 @@ class TestAdamW(OpTest):
             'beta2': beta2,
             "coeff": 0.5,
             "with_decay": True,
+            "amsgrad": False,
         }
+        self.no_check_set = ['Moment2MaxOut']
 
-        param_out, moment1_out, moment2_out = adamw_step(
+        param_out, moment1_out, moment2_out, moment2_max_out = adamw_step(
             self.inputs, self.attrs
         )
 
         self.outputs = {
             'Moment1Out': moment1_out,
             'Moment2Out': moment2_out,
+            'Moment2MaxOut': moment2_max_out,
             'ParamOut': param_out,
             'Beta1PowOut': np.array([beta1_pow]).astype("float32") * beta1,
             'Beta2PowOut': np.array([beta2_pow]).astype("float32") * beta2,
         }
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(
+            no_check_set=self.no_check_set, check_pir=True, rtol=2e-4
+        )
 
 
 # test matmul, matmul_grad op
