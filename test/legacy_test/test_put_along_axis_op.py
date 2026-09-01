@@ -2547,6 +2547,106 @@ class TestPutAlongAxisMulInt16NegativeValue(unittest.TestCase):
             )
 
 
+class TestPutAlongAxisNegativeIndexGrad(unittest.TestCase):
+    """A negative subscript has to mean the same thing in the backward pass.
+
+    ``if (index < 0) index += size`` used to live in the forward gather/scatter
+    kernels only. The backward ones handed the raw subscript to the offset
+    arithmetic, so a negative one became a negative offset -- an access before
+    the start of the tensor. Both gradients came out wrong on CPU and on GPU,
+    and the GPU reduce kernels could fault outright.
+
+    The normalization needs the length along the axis of the tensor the
+    subscript addresses, which is never ``index`` itself: the ``index shorter
+    than arr`` case below is the one that tells the two apart.
+    """
+
+    REDUCES = ['assign', 'add', 'mean', 'mul', 'amin', 'amax']
+
+    # (note, arr, index, value). ``index`` holds negative subscripts only; the
+    # reference run replaces each of them with ``i + arr.shape[axis]``.
+    CASES = [
+        ("single element", [1.0, 2.0, 3.0], [-1], [10.0]),
+        ("every position", [1.0, 2.0, 3.0], [-1, -2, -3], [10.0, 20.0, 30.0]),
+        (
+            "index shorter than arr",
+            [1.0, 2.0, 3.0, 4.0],
+            [-1, -4],
+            [10.0, 20.0],
+        ),
+        ("duplicate subscripts", [1.0, 2.0, 3.0], [-2, -2], [10.0, 20.0]),
+    ]
+
+    def setUp(self):
+        paddle.disable_static()
+        self.places = zero_dim_operand_places()
+
+    def _run(self, place, include_self, reduce, arr, index, value):
+        a = paddle.to_tensor(arr, dtype='float32', place=place)
+        a.stop_gradient = False
+        v = paddle.to_tensor(value, dtype='float32', place=place)
+        v.stop_gradient = False
+        out = paddle.put_along_axis(
+            a,
+            paddle.to_tensor(index, dtype='int64', place=place),
+            v,
+            0,
+            reduce,
+            include_self=include_self,
+        )
+        out.backward(paddle.ones_like(out))
+        return out.numpy(), a.grad.numpy(), v.grad.numpy()
+
+    def test_matches_the_positive_subscript(self):
+        # The positive path is the reference: same offsets, so the two runs have
+        # to agree exactly, not just to a tolerance.
+        for place in self.places:
+            for include_self in (True, False):
+                for reduce in self.REDUCES:
+                    for note, arr, index, value in self.CASES:
+                        got = self._run(
+                            place, include_self, reduce, arr, index, value
+                        )
+                        want = self._run(
+                            place,
+                            include_self,
+                            reduce,
+                            arr,
+                            [i + len(arr) for i in index],
+                            value,
+                        )
+                        where = (
+                            f"'{note}' reduce={reduce} "
+                            f"include_self={include_self} on {place}"
+                        )
+                        for name, g, w in zip(
+                            ('out', 'x_grad', 'value_grad'), got, want
+                        ):
+                            np.testing.assert_array_equal(
+                                g, w, err_msg=f"{name} of {where}"
+                            )
+
+    def test_assign_grad_values(self):
+        # Anchors the comparison above: ``index=[-1]`` on a 3 element input has
+        # to zero the last position of ``x_grad`` and nothing else.
+        for place in self.places:
+            out, x_grad, v_grad = self._run(
+                place, True, 'assign', [1.0, 2.0, 3.0], [-1], [10.0]
+            )
+            where = f"on {place}"
+            np.testing.assert_array_equal(
+                out, np.array([1.0, 2.0, 10.0], dtype='float32'), err_msg=where
+            )
+            np.testing.assert_array_equal(
+                x_grad,
+                np.array([1.0, 1.0, 0.0], dtype='float32'),
+                err_msg=where,
+            )
+            np.testing.assert_array_equal(
+                v_grad, np.array([1.0], dtype='float32'), err_msg=where
+            )
+
+
 if __name__ == "__main__":
     paddle.enable_static()
     unittest.main()

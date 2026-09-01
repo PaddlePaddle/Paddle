@@ -245,6 +245,26 @@ class ReversedCoordinateManager {
   }
 };
 
+// The subscript read from ``index`` is runtime data: no shape check can bound
+// it, so every caller of ``CalculateOffset`` has to reject an out of range one
+// and fold a negative one into ``[0, dim_size)`` first. Neither coordinate
+// manager does it, and a raw negative subscript becomes a negative offset, that
+// is, an access before the start of the tensor. ``dim_size`` is the length
+// along ``dim`` of the tensor the subscript addresses -- never that of
+// ``index`` itself, which may differ.
+static int64_t NormalizeScatterIndex(int64_t index, int64_t dim_size) {
+  PADDLE_ENFORCE_EQ((index >= -dim_size) && (index < dim_size),
+                    true,
+                    common::errors::OutOfRange(
+                        "Variable value (index) of scatter grad cpu kernel, "
+                        "expected >= %ld and < %ld, but got %ld."
+                        "Please check the input value.",
+                        -dim_size,
+                        dim_size,
+                        index));
+  return index < 0 ? index + dim_size : index;
+}
+
 template <typename tensor_t,
           typename index_t = int64_t,
           bool is_scatter_like = true>
@@ -474,10 +494,12 @@ void cpu_scatter_input_grad_kernel(DenseTensor self UNUSED,
 
   const int ndim = index.dims().size();
   const int64_t index_size = index.numel();
+  // The subscript addresses the gradient of ``x``.
+  const int64_t self_select_dim_size = grad.dims()[dim];
   CoordinateManager<false> cm(index.dims(), grad.strides(), ndim, dim, nullptr);
 
   for (int64_t i = 0; i < index_size; i++) {
-    int64_t index = index_data[i];
+    int64_t index = NormalizeScatterIndex(index_data[i], self_select_dim_size);
     cm.CalculateOffset(index);
     int64_t replace_index = cm.offset1;
     grad_data[replace_index] = 0;
@@ -505,6 +527,8 @@ void cpu_scatter_mul_min_max_input_grad_kernel(DenseTensor self,
   const int ndim = index.dims().size();
   const int64_t index_size = index.numel();
   const int64_t grad_size = grad.numel();
+  // The subscript addresses the gradient of ``x``.
+  const int64_t self_select_dim_size = grad.dims()[dim];
   // only amin/amax needs the offset2, but we compute together anyway.
   CoordinateManager<true> cm(
       index.dims(), grad.strides(), ndim, dim, &value.strides());
@@ -525,7 +549,8 @@ void cpu_scatter_mul_min_max_input_grad_kernel(DenseTensor self,
     CoordinateManager<true> pre_cm(
         index.dims(), grad.strides(), ndim, dim, &value.strides());
     for (int64_t i = 0; i < index_size; i++) {
-      int64_t index = index_data[i];
+      int64_t index =
+          NormalizeScatterIndex(index_data[i], self_select_dim_size);
       pre_cm.CalculateOffset(index);
       const tensor_t value_i = value_data[pre_cm.offset2];
       if (value_i == static_cast<tensor_t>(0)) {
@@ -537,7 +562,7 @@ void cpu_scatter_mul_min_max_input_grad_kernel(DenseTensor self,
     }
   }
   for (int64_t i = 0; i < index_size; i++) {
-    int64_t index = index_data[i];
+    int64_t index = NormalizeScatterIndex(index_data[i], self_select_dim_size);
     cm.CalculateOffset(index);
     int64_t replace_index_grad = cm.offset1;
     if (is_mul && num_elements[replace_index_grad] == 0) {
@@ -597,10 +622,12 @@ void cpu_scatter_mean_input_grad_kernel(DenseTensor self UNUSED,
 
   const int ndim = index.dims().size();
   const int64_t index_size = index.numel();
+  // The subscript addresses the gradient of ``x``.
+  const int64_t self_select_dim_size = grad.dims()[dim];
   CoordinateManager<false> cm(index.dims(), grad.strides(), ndim, dim, nullptr);
   std::vector<int> num_elements(grad_size, 0);
   for (int64_t i = 0; i < index_size; i++) {
-    int64_t index = index_data[i];
+    int64_t index = NormalizeScatterIndex(index_data[i], self_select_dim_size);
     cm.CalculateOffset(index);
     int64_t replace_index = cm.offset1;
     num_elements[replace_index] += 1;
@@ -624,11 +651,14 @@ void cpu_scatter_value_grad_kernel(DenseTensor self,
   std::vector<bool> is_self_grad_used(self.numel(), false);
 
   const int ndim = index.dims().size();
+  // Here the subscript addresses ``out_grad``, the operand shaped like ``x``;
+  // ``grad`` is the gradient of ``value`` and carries the shape of ``index``.
+  const int64_t self_select_dim_size = self.dims()[dim];
   ReversedCoordinateManager<true> cm(
       index.dims(), self.strides(), ndim, dim, &grad.strides());
 
   for (int64_t i = index.numel() - 1; i >= 0; i--) {
-    int64_t index = index_data[i];
+    int64_t index = NormalizeScatterIndex(index_data[i], self_select_dim_size);
     cm.CalculateOffset(index);
     int64_t replace_index_self = cm.offset1;
     int64_t replace_index_grad = cm.offset2;
@@ -660,6 +690,9 @@ void cpu_scatter_add_mean_value_grad_kernel(DenseTensor self,
 
   std::vector<int> num_elements;
   const int ndim = index.dims().size();
+  // Here the subscript addresses ``out_grad``, the operand shaped like ``x``;
+  // ``grad`` is the gradient of ``value`` and carries the shape of ``index``.
+  const int64_t self_select_dim_size = self.dims()[dim];
 
   // Note: make sure that `reduce` in {'mean', 'add'}.
   const bool is_mean = reduce == "mean";
@@ -669,7 +702,8 @@ void cpu_scatter_add_mean_value_grad_kernel(DenseTensor self,
         index.dims(), self.strides(), ndim, dim, nullptr);
 
     for (int64_t i = index.numel() - 1; i >= 0; i--) {
-      int64_t index = index_data[i];
+      int64_t index =
+          NormalizeScatterIndex(index_data[i], self_select_dim_size);
       cm.CalculateOffset(index);
       int64_t replace_index_self = cm.offset1;
       num_elements[replace_index_self] += 1;
@@ -679,7 +713,7 @@ void cpu_scatter_add_mean_value_grad_kernel(DenseTensor self,
   ReversedCoordinateManager<true> cm(
       index.dims(), self.strides(), ndim, dim, &grad.strides());
   for (int64_t i = index.numel() - 1; i >= 0; i--) {
-    int64_t index = index_data[i];
+    int64_t index = NormalizeScatterIndex(index_data[i], self_select_dim_size);
     cm.CalculateOffset(index);
     int64_t replace_index_self = cm.offset1;
     int64_t replace_index_grad = cm.offset2;
@@ -717,6 +751,9 @@ void cpu_scatter_mul_min_max_value_grad_kernel(DenseTensor self,
 
   const int ndim = index.dims().size();
   const int64_t index_size = index.numel();
+  // Here the subscript addresses ``out_grad``, the operand shaped like ``x``;
+  // ``grad`` is the gradient of ``value`` and carries the shape of ``index``.
+  const int64_t self_select_dim_size = self.dims()[dim];
   // The derivative of a product is the product of the *other* factors. Once one
   // factor is zero ``out`` no longer carries the others, so the zero factors
   // are counted and the non-zero ones multiplied on the side.
@@ -728,7 +765,8 @@ void cpu_scatter_mul_min_max_value_grad_kernel(DenseTensor self,
     CoordinateManager<true> pre_cm(
         index.dims(), self.strides(), ndim, dim, &grad.strides());
     for (int64_t i = 0; i < index_size; i++) {
-      int64_t index = index_data[i];
+      int64_t index =
+          NormalizeScatterIndex(index_data[i], self_select_dim_size);
       pre_cm.CalculateOffset(index);
       const tensor_t value_i = value_data[pre_cm.offset2];
       if (value_i == static_cast<tensor_t>(0)) {
@@ -743,7 +781,8 @@ void cpu_scatter_mul_min_max_value_grad_kernel(DenseTensor self,
     CoordinateManager<true> cm(
         index.dims(), self.strides(), ndim, dim, &grad.strides());
     for (int64_t i = 0; i < index_size; i++) {
-      int64_t index = index_data[i];
+      int64_t index =
+          NormalizeScatterIndex(index_data[i], self_select_dim_size);
       cm.CalculateOffset(index);
       int64_t replace_index_self = cm.offset1;
       int64_t replace_index_grad = cm.offset2;
@@ -777,7 +816,8 @@ void cpu_scatter_mul_min_max_value_grad_kernel(DenseTensor self,
     CoordinateManager<true> cm(
         index.dims(), self.strides(), ndim, dim, &grad.strides());
     for (int64_t i = 0; i < index_size; i++) {
-      int64_t index = index_data[i];
+      int64_t index =
+          NormalizeScatterIndex(index_data[i], self_select_dim_size);
       cm.CalculateOffset(index);
       int64_t replace_index_self = cm.offset1;
       int64_t replace_index_grad = cm.offset2;
