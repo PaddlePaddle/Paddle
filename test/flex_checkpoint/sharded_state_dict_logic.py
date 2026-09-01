@@ -37,6 +37,8 @@ from paddle.distributed.fleet.utils.sequence_parallel_utils import (
     ColumnSequenceParallelLinear,
     RowSequenceParallelLinear,
 )
+from paddle.distributed.fsdp._fsdp_context import get_fsdp_context
+from paddle.distributed.fsdp.fully_shard import fully_shard
 
 
 class SimpleMLP(
@@ -59,6 +61,30 @@ class SimpleMLP(
         x = self.linear2(x)
         x = paddle.matmul(x, self.llm_head.weight, transpose_y=True)
         return x
+
+
+class TiedHead(nn.Layer):
+    def __init__(self, weight):
+        super().__init__()
+        self.weight = weight
+
+    def forward(self, x):
+        return paddle.matmul(x, self.weight, transpose_y=True)
+
+
+class FSDPMLP(nn.Layer):
+    def __init__(self, hidden_size=100, has_bias=False):
+        super().__init__()
+        self.embedding = nn.Embedding(24, hidden_size)
+        self.linear1 = nn.Linear(hidden_size, hidden_size, bias_attr=has_bias)
+        self.linear2 = nn.Linear(hidden_size, hidden_size, bias_attr=has_bias)
+        self.llm_head = TiedHead(self.embedding.weight)
+
+    def forward(self, x):
+        x = self.embedding(x)
+        x = self.linear1(x)
+        x = self.linear2(x)
+        return self.llm_head(x)
 
 
 class TestParallelLayersLogic:
@@ -523,6 +549,62 @@ class TestParallelLayersLogic:
                         assert tuple(
                             opt_sharded_state_dict[opt__var_name].global_offset
                         ) == tuple(value.global_offset)
+        elif self.layer_type == "FullyShard":
+            model = paddle.amp.decorate(
+                models=FSDPMLP(has_bias=self.has_bias),
+                optimizers=None,
+                level="O2",
+                dtype="float16",
+            )
+            opt = paddle.optimizer.AdamW(
+                learning_rate=0.01,
+                parameters=model.parameters(),
+                multi_precision=self.master_weight,
+            )
+            model = fully_shard(model)
+            fsdp_context = get_fsdp_context()
+            assert fsdp_context.owns_optimizer_params(opt)
+            assert not fsdp_context.owns_optimizer_params(
+                paddle.optimizer.AdamW(
+                    parameters=[paddle.create_parameter([2], "float32")]
+                )
+            )
+            fsdp_context.init_optimizer_state(opt)
+            model.train()
+            x = paddle.randint(
+                low=0,
+                high=self.vocab_size,
+                shape=[self.batch_size, self.seq_len, self.hidden_size],
+                dtype='int64',
+            )
+            y = model(x).mean()
+            y.backward()
+            opt.step()
+            opt.clear_grad()
+
+            opt_sharded_state_dict = fsdp_context.optimizer_sharded_state_dict(
+                opt
+            )
+            model_sharded_state_dict = model.sharded_state_dict()
+            checked = 0
+            for key, value in model_sharded_state_dict.items():
+                for state_name in self.optimizer_var_suffix:
+                    opt__var_name = key + state_name
+                    if opt__var_name in opt_sharded_state_dict:
+                        opt_var = opt_sharded_state_dict[opt__var_name]
+                        checked += 1
+                        # both sides must describe the very same slice
+                        assert opt_var.flattened_range == value.flattened_range
+                        assert tuple(opt_var.local_shape) == tuple(
+                            value.local_shape
+                        )
+                        assert tuple(opt_var.global_shape) == tuple(
+                            value.global_shape
+                        )
+                        assert tuple(opt_var.global_offset) == tuple(
+                            value.global_offset
+                        )
+            assert checked, "no optimizer state matched a model key"
         else:
             raise ValueError(f"Unknown layer_type: {self.layer_type}")
 

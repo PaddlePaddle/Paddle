@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import re
 from dataclasses import dataclass, field
 from enum import Enum
 
@@ -25,6 +26,7 @@ from paddle.distributed.fleet.utils.tensor_fusion_helper import (
     alignment,
     get_current_device_type,
 )
+from paddle.distributed.flex_checkpoint.dcp.sharded_weight import ShardedWeight
 from paddle.distributed.fsdp._fsdp_context import (
     register_fsdp_context,
 )
@@ -72,8 +74,10 @@ class TensorFusionBuffer:
     ):
         # Calculate total buffer size needed (with padding)
         self.unique_key = unique_key
+        self.fsdp_group = fsdp_group
         self.fsdp_degree = fsdp_group.nranks
         self.is_sharded = fsdp_group.nranks > 1
+        self.is_params = is_params
         self.dtype = dtype
         self.main_grad_dtype = (
             main_grad_dtype if main_grad_dtype is not None else dtype
@@ -88,6 +92,9 @@ class TensorFusionBuffer:
         for param in params:
             self.param_offsets[param.name] = self.total_buffer_size
             self.total_buffer_size += self.get_padded_size(param)
+
+        self.shard_start = 0
+        self.shard_end = self.total_buffer_size
 
         if is_params:
             # Create fused params_buffer
@@ -125,6 +132,8 @@ class TensorFusionBuffer:
                 ) // self.fsdp_degree
                 start = curr_rank * piece_len
                 end = min(start + piece_len, total_nums)
+                self.shard_start = start
+                self.shard_end = end
                 self.data_buffer = paddle.slice(
                     self.data_buffer, [0], [start], [end]
                 ).clone()
@@ -140,6 +149,13 @@ class TensorFusionBuffer:
                 shape=[self.total_buffer_size // self.fsdp_degree],
                 dtype=self.main_grad_dtype,
             )
+
+            if self.is_sharded:
+                shard_size = self.total_buffer_size // self.fsdp_degree
+                self.shard_start = (
+                    paddle.distributed.get_rank(fsdp_group) * shard_size
+                )
+                self.shard_end = self.shard_start + shard_size
 
             # Register get_main_grad method for each param, returns view_slice of grad_buffer
             for param in params:
@@ -167,6 +183,20 @@ class TensorFusionBuffer:
             * self.fsdp_degree
         )
         return ((size + align_size - 1) // align_size) * align_size
+
+    def param_shard(self, param):
+        """Intersect a param's slot in the fused buffer with this rank's shard, or None."""
+        offset = self.param_offsets[param.name]
+        numel = int(np.prod(param.shape))
+        begin = max(offset, self.shard_start)
+        end = min(offset + numel, self.shard_end)
+        if end <= begin:
+            return None
+        return (
+            begin - self.shard_start,
+            end - self.shard_start,
+            slice(begin - offset, end - offset),
+        )
 
     def get_tmp_buffer(self):
         if not self.is_sharded:
@@ -660,6 +690,220 @@ class FullyShardFusion:
         )
         self.register_tensor_fusion_hooks(self.model)
         register_fsdp_context(self)
+        # fused buffer name -> {structured param name: slice info in the local shard}
+        self._shard_descs = {}
+        # Redirect the model's own API; the original stays as our description base.
+        self._model_sharded_state_dict = self.model.sharded_state_dict
+        self.model.sharded_state_dict = self.sharded_state_dict
+
+    def _base_sharded_state_dict(self, structured_name_prefix):
+        """Model descriptions of every param; fused params get a scratch view since their storage is cleared."""
+        cleared = []
+        scratch = {}
+        for group in self.buffer_manager.buffer_groups:
+            for param in group.params:
+                if param._is_initialized():
+                    continue
+                numel = int(np.prod(param.shape))
+                cleared.append((param, param.shape, numel))
+                scratch[param.dtype] = max(scratch.get(param.dtype, 0), numel)
+
+        scratch = {
+            dtype: paddle.empty([numel], dtype=dtype)
+            for dtype, numel in scratch.items()
+        }
+        for param, shape, numel in cleared:
+            view = paddle._C_ops.view_slice(scratch[param.dtype], 0, numel)
+            view.get_tensor()._set_dims(shape)
+            param.get_tensor()._share_data_with(view.get_tensor())
+        try:
+            return self._model_sharded_state_dict(structured_name_prefix)
+        finally:
+            for param, shape, _ in cleared:
+                stop_gradient = param.stop_gradient
+                param._clear_data()
+                param.stop_gradient = stop_gradient
+                param.get_tensor()._set_dims(shape)
+
+    def _create_sharded_weight(self, key, tensor, slice_info):
+        """Wrap the ``slice_info`` piece of ``tensor`` as a flattened ShardedWeight."""
+        (
+            begin,
+            end,
+            flattened_range,
+            local_shape,
+            global_shape,
+            global_offset,
+        ) = slice_info
+        return ShardedWeight(
+            key=key,
+            local_tensor=tensor._slice(begin, end),
+            local_shape=local_shape,
+            global_shape=global_shape,
+            global_offset=global_offset,
+            is_flattened=True,
+            flattened_range=flattened_range,
+        )
+
+    def sharded_state_dict(self, structured_name_prefix=""):
+        """Describe every fused param as a flattened piece of this rank's shard, no all_gather."""
+        base = self._base_sharded_state_dict(structured_name_prefix)
+
+        static_to_struct = {}
+        for key, sharded_weight in sorted(base.items()):
+            static_to_struct.setdefault(
+                sharded_weight.local_tensor.name, []
+            ).append(key)
+
+        result = dict(base)
+        self._shard_descs = {}
+        hcg = self.buffer_manager.hcg
+        for group in self.buffer_manager.buffer_groups:
+            params_buffer = group.params_buffer
+            param_slice_info = {}
+            # (nranks, rank) of the expert parallel group, (1, 0) without EP.
+            ep_nranks, ep_rank = 1, 0
+            if group.is_expert_param and hasattr(
+                hcg, "get_expert_parallel_world_size"
+            ):
+                nranks = hcg.get_expert_parallel_world_size()
+                if nranks > 1:
+                    ep_nranks, ep_rank = nranks, hcg.get_expert_parallel_rank()
+            for param in group.params:
+                struct_names = static_to_struct.get(param.name)
+                if not struct_names:
+                    continue
+                # Tied weights share one shard; only the first key carries optimizer state.
+                ref = base[struct_names[0]]
+                local_shape = tuple(ref.local_shape)
+                global_shape = tuple(ref.global_shape)
+                global_offset = tuple(ref.global_offset)
+                if ep_nranks > 1 and global_shape == local_shape:
+                    # Expert described as replicated: fold EP into axis 0 to keep keys distinct.
+                    global_shape = (
+                        local_shape[0] * ep_nranks,
+                        *local_shape[1:],
+                    )
+                    global_offset = (
+                        ep_rank * local_shape[0],
+                        *(0 for _ in local_shape[1:]),
+                    )
+                shard = params_buffer.param_shard(param)
+                if shard is None:
+                    # Nothing of this param lives on this rank.
+                    for struct_name in struct_names:
+                        result.pop(struct_name, None)
+                    continue
+                begin, end, flattened_range = shard
+                slice_info = (
+                    begin,
+                    end,
+                    flattened_range,
+                    local_shape,
+                    global_shape,
+                    global_offset,
+                )
+                param_slice_info[struct_names[0]] = slice_info
+                for struct_name in struct_names:
+                    result[struct_name] = self._create_sharded_weight(
+                        struct_name, params_buffer.data_buffer, slice_info
+                    )
+            self._shard_descs[params_buffer.data_buffer.name] = param_slice_info
+        return result
+
+    def owns_optimizer_params(self, optimizer):
+        """Whether ``optimizer`` steps on the fused buffers of this context."""
+        # It still holds the model params; the fused buffers are substituted inside ``step``.
+        managed = self.buffer_manager.param_to_buffer_id
+        for param in optimizer._parameter_list:
+            if getattr(param, "name", None) in managed:
+                return True
+        return False
+
+    def init_optimizer_state(self, optimizer):
+        """Create optimizer accumulators on the fused buffers before load."""
+        parameter_list = [
+            group.params_buffer.data_buffer
+            for group in self.buffer_manager.buffer_groups
+            if not group.params_buffer.data_buffer.stop_gradient
+        ]
+        optimizer._create_accumulators(
+            paddle.base.framework.default_main_program().global_block(),
+            parameter_list,
+        )
+
+    def optimizer_sharded_state_dict(self, optimizer):
+        """Split the state keyed by ``fuse_params_<gid>`` into per-param flattened shards."""
+        if not self._shard_descs:
+            self.sharded_state_dict()
+
+        # Longer tags first so the name split does not stop at a prefix.
+        _optimizer_scalar_name = ("beta1_pow_acc", "beta2_pow_acc")
+        _optimizer_non_scaler_name = (
+            "moment2_max",
+            "moment1",
+            "moment2",
+            "velocity",
+        )
+        _master_weight_suffix = re.compile(r"^(.*)_fp32_master_\d+$")
+
+        def _split_optimizer_state_name(vname):
+            """``fuse_params_0_fp32_master_0_moment1_3`` -> ``("fuse_params_0", "moment1_0")``."""
+            for tag in _optimizer_non_scaler_name + _optimizer_scalar_name:
+                marker = "_" + tag + "_"
+                idx = vname.rfind(marker)
+                if idx < 0:
+                    continue
+                if not vname[idx + len(marker) :].isdigit():
+                    continue
+                base = vname[:idx]
+                matched = _master_weight_suffix.match(base)
+                if matched:
+                    base = matched.group(1)
+                return base, f"{tag}_0"
+            return None, None
+
+        def _replicated_scalar(key, tensor):
+            return ShardedWeight(
+                key=key,
+                local_tensor=tensor,
+                local_shape=tuple(tensor.shape),
+                global_shape=tuple(tensor.shape),
+                global_offset=tuple(0 for _ in tensor.shape),
+            )
+
+        state_dict = dict(optimizer.state_dict())
+        master_weights = state_dict.pop("master_weights", None)
+
+        sharded_state = {}
+        for vname, tensor in state_dict.items():
+            base_name, tag = _split_optimizer_state_name(vname)
+            param_slice_info = self._shard_descs.get(base_name)
+            if param_slice_info is None:
+                continue
+            if tag.startswith(_optimizer_scalar_name):
+                for struct_name in param_slice_info:
+                    key = f"{struct_name}.{tag}"
+                    sharded_state[key] = _replicated_scalar(key, tensor)
+            else:
+                for struct_name, slice_info in param_slice_info.items():
+                    key = f"{struct_name}.{tag}"
+                    sharded_state[key] = self._create_sharded_weight(
+                        key, tensor, slice_info
+                    )
+
+        if master_weights:
+            for base_name, tensor in master_weights.items():
+                param_slice_info = self._shard_descs.get(base_name)
+                if param_slice_info is None:
+                    continue
+                for struct_name, slice_info in param_slice_info.items():
+                    key = f"{struct_name}.w_0"
+                    sharded_state[key] = self._create_sharded_weight(
+                        key, tensor, slice_info
+                    )
+
+        return sharded_state
 
     def comm_sync_and_reset_status(self):
         self.comm_manager.finish_grads_sync()
