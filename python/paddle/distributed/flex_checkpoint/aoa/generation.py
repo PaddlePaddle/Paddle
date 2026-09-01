@@ -139,12 +139,16 @@ class AOANameScope:
 # Public to the component generators: ``join_name``, ``resolve_single_name``,
 # ``resolve_names``, ``resolve_checkpoint_name_from_anchor``,
 # ``resolve_dtype_cast_rule``, ``format_dtype_cast_attr``,
-# ``format_inv_dtype_cast_attr``, ``should_skip``, ``strip_name_suffix`` and
-# ``validate_checkpoint_name_mapping``; anything underscore-prefixed is internal
-# detail. The only non-trivial logic is root-relative template matching
-# (``_match_template`` / ``_render_template``). A re-rooted subtree passes an
-# ``AOANameScope`` so its checkpoint side is routed through the logical
-# normal-layer root (``_resolve_scoped_names``).
+# ``format_inv_dtype_cast_attr``, ``should_skip`` and ``strip_name_suffix``.
+#
+# ``validate_checkpoint_name_mapping`` is public as well but does not belong to
+# the component recursion: it is an entry-side static check the generation entry
+# runs once per context, before any component reads the mapping.
+#
+# Anything underscore-prefixed is internal detail. The only non-trivial logic is
+# root-relative template matching (``_match_template`` / ``_render_template``).
+# A re-rooted subtree passes an ``AOANameScope`` so its checkpoint side is
+# routed through the logical normal-layer root (``_resolve_scoped_names``).
 # --------------------------------------------------------------------------- #
 
 
@@ -710,7 +714,13 @@ def should_skip(source_name: str, target_name: str, cast: str) -> bool:
 def validate_checkpoint_name_mapping(
     checkpoint_name_mapping: Mapping[str, str],
 ) -> None:
-    """Validates ``checkpoint_name_mapping`` once, run from model ``__init__``.
+    """Validates ``checkpoint_name_mapping`` once, from the generation entry.
+
+    Called by the generation side while it builds an :class:`AOAContext` -- once
+    per context, so a multi-tower model validates each tower's mapping. Running
+    it there turns an invalid mapping into an error at the entry instead of a
+    later ambiguous match or an unrendered placeholder leaking into a
+    checkpoint name.
 
     Enforces three rules:
 
