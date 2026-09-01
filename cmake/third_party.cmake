@@ -31,6 +31,7 @@ set(THIRD_PARTY_CACHE_PATH
 
 set(THIRD_PARTY_BUILD_TYPE Release)
 set(third_party_deps)
+option(WITH_ROCM_FLASHATTN "Build FlashAttention for ROCm." OFF)
 
 include(ProcessorCount)
 ProcessorCount(NPROC)
@@ -575,10 +576,19 @@ if(WITH_CUSPARSELT)
   list(APPEND third_party_deps extern_cusparselt)
 endif()
 
-if(WITH_ROCM)
+if(WITH_ROCM AND WITH_ROCM_FLASHATTN)
   include(external/flashattn)
   list(APPEND third_party_deps extern_flashattn)
   set(WITH_FLASHATTN ON)
+elseif(WITH_ROCM)
+  message(STATUS "Skipping ROCm FlashAttention because WITH_ROCM_FLASHATTN=OFF")
+  set(WITH_FLASHATTN OFF)
+  set(WITH_FLASHATTN_V3 OFF)
+  set(FLASHATTN_INCLUDE_DIR "" CACHE PATH "flash-attn Directory" FORCE)
+  set(FLASHATTN_LIB_DIR "" CACHE PATH "flash-attn Library Directory" FORCE)
+  set(FLASHATTN_LIBRARIES "" CACHE FILEPATH "flash-attn Library" FORCE)
+  set(FLASHATTN_V3_LIBRARIES "" CACHE FILEPATH "flash-attn-v3 Library" FORCE)
+  set(FLASHMASK_V2_LIBRARIES "" CACHE FILEPATH "flash-mask-v2 Library" FORCE)
 endif()
 
 if(WITH_GPU
