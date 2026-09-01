@@ -74,10 +74,8 @@ class TensorFusionBuffer:
     ):
         # Calculate total buffer size needed (with padding)
         self.unique_key = unique_key
-        self.fsdp_group = fsdp_group
         self.fsdp_degree = fsdp_group.nranks
         self.is_sharded = fsdp_group.nranks > 1
-        self.is_params = is_params
         self.dtype = dtype
         self.main_grad_dtype = (
             main_grad_dtype if main_grad_dtype is not None else dtype
