@@ -2058,9 +2058,9 @@ class TestPutAlongAxisIncludeSelfFalseInvalidIndex(unittest.TestCase):
 
     def test_reduce_mul_checks_index_before_initialization(self):
         place = get_device_place()
-        x = paddle.zeros([2, 3], dtype='float32', place=place)
+        x = paddle.zeros([2, 3], dtype='float32', device=place)
         index = paddle.to_tensor([[10, 0, 0]], dtype='int64', place=place)
-        value = paddle.ones([1, 3], dtype='float32', place=place)
+        value = paddle.ones([1, 3], dtype='float32', device=place)
 
         with self.assertRaisesRegex(
             (RuntimeError, IndexError), "out of bounds"
