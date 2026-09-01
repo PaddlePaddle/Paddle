@@ -20,6 +20,7 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/full_kernel.h"
+#include "paddle/phi/kernels/funcs/for_range.h"
 #include "paddle/phi/kernels/funcs/gather_scatter_functor.h"
 
 namespace phi {
@@ -81,6 +82,20 @@ void PutAlongAxisGradKernel(const Context& dev_ctx,
     // functor writes through a rank-1 buffer. The shape the caller expects is
     // the one of ``arr``, restored once the scatter is done.
     Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
+    // torch derives the whole input gradient of a scatter-mul from a single
+    // expression over the tensor, and on every position no index reaches that
+    // expression collapses to a redundant ``(g * m) / m``. Replaying it here is
+    // what keeps the two frameworks bit for bit identical there; the positions
+    // an index does reach are overwritten below, from the untouched
+    // ``out_grad``.
+    if constexpr (funcs::MulInputGradNeedsRoundTrip<T>()) {
+      if (reduce == "mul" || reduce == "multiply") {
+        funcs::ForRange<Context> for_range(
+            dev_ctx, static_cast<size_t>(x_grad->numel()));
+        for_range(funcs::MulInputGradRoundTripFunctor<T>{x.data<T>(),
+                                                         x_grad->data<T>()});
+      }
+    }
     if (include_self == false || reduce == "assign") {
       if (index_type == DataType::INT32) {
         funcs::cpu_scatter_input_grad_kernel<T, int32_t>(
