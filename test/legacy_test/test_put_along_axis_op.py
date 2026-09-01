@@ -1821,7 +1821,8 @@ class TestPutAlongAxisMulIntegerDivByZero(unittest.TestCase):
     x or value contains zero, because the grad formula divides by x or value
     without a zero guard.
 
-    Fixed in gather_scatter_functor.cc/.cu by returning grad=0 when divisor is 0.
+    Fixed in gather_scatter_functor.cc/.cu: a zero factor is handled by the
+    zero-count path and never reaches the division.
 
     For integer dtypes (uint8/int32/int64), Paddle does not support autograd
     (no sum_grad kernel registered for these types), so we verify only that the
@@ -2040,6 +2041,34 @@ class TestPutAlongAxisIndexLargerThanInput(unittest.TestCase):
         np.testing.assert_allclose(out.numpy(), expected)
 
 
+@unittest.skipIf(
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
+)
+class TestPutAlongAxisIncludeSelfFalseInvalidIndex(unittest.TestCase):
+    """``include_self=False`` initializes scatter targets before reducing.
+
+    That initialization kernel has to reject index values before computing the
+    target offset, otherwise an invalid index can write out of bounds before
+    the main scatter kernel reports the error.
+    """
+
+    def setUp(self):
+        paddle.disable_static()
+
+    def test_reduce_mul_checks_index_before_initialization(self):
+        place = get_device_place()
+        x = paddle.zeros([2, 3], dtype='float32', place=place)
+        index = paddle.to_tensor([[10, 0, 0]], dtype='int64', place=place)
+        value = paddle.ones([1, 3], dtype='float32', place=place)
+
+        with self.assertRaisesRegex(
+            (RuntimeError, IndexError), "out of bounds"
+        ):
+            out = paddle._C_ops.put_along_axis(x, index, value, 0, 'mul', False)
+            out.numpy()
+
+
 class TestPutAlongAxisInferMetaShapeCheck(unittest.TestCase):
     """``PutAlongAxisInferMeta`` mirrors ``scatter_shape_check`` in torch.
 
@@ -2196,7 +2225,7 @@ class TestPutAlongAxisZeroDimOperands(unittest.TestCase):
             np.testing.assert_allclose(out.numpy(), np.array(14.0))
 
     def test_negative_axis(self):
-        """``axis`` reaches the kernel exactly as written, so it normalizes it."""
+        """``axis`` reaches the kernel as written, which normalizes it."""
         expected = np.zeros([3, 4], dtype='float32')
         expected[0, 0] = 1.0
         expected[1, 1] = 2.0
@@ -2277,23 +2306,21 @@ class TestPutAlongAxisZeroDimOperandsGrad(unittest.TestCase):
 
 
 class TestPutAlongAxisMulFloat32DivByZeroGrad(unittest.TestCase):
-    """
-    Bug A (float32 backward path): verify that the div-by-zero guard in
-    gather_scatter_functor.cc is exercised when x or value contains 0.
+    """``reduce='mul'`` never divides by zero, whichever factor vanishes.
 
-    - cpu_scatter_mul_min_max_input_grad_kernel: x==0 → grad=0 (line 524)
-      and x!=0 → normal division (line 520-522).
-    - cpu_scatter_mul_min_max_value_grad_kernel: value==0 → grad=0 (line 698)
-      and value!=0 → normal division (line 694-696).
-
-    Both tests must not crash and must return finite gradients.
+    The backward of a product is the product of the *other* factors, computed
+    as ``out / factor`` while every factor is non-zero. A zero factor takes the
+    zero-count path instead of the division, so the gradients stay finite.
+    ``TestPutAlongAxisMulZeroFactorGrad`` pins down their values; these two
+    only guard the multi-dimensional, non-contiguous-index shape against
+    crashes and infinities.
     """
 
     def setUp(self):
         paddle.disable_static()
 
     def test_x_grad_with_zero_in_x(self):
-        """x contains 0: covers x==0 branch (grad=0) and x!=0 branch."""
+        """x contains 0, so both the zero and the division path run."""
         cpu = paddle.CPUPlace()
         x = paddle.to_tensor(
             [[[1.0, 0.0, 3.0], [0.0, 5.0, 6.0]]],
@@ -2319,7 +2346,7 @@ class TestPutAlongAxisMulFloat32DivByZeroGrad(unittest.TestCase):
         self.assertTrue(paddle.isfinite(x.grad).all())
 
     def test_value_grad_with_zero_in_value(self):
-        """value contains 0: covers value==0 branch (grad=0) and value!=0 branch."""
+        """value contains 0, so both the zero and the division path run."""
         cpu = paddle.CPUPlace()
         x = paddle.to_tensor(
             [[[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]]],
@@ -2343,6 +2370,181 @@ class TestPutAlongAxisMulFloat32DivByZeroGrad(unittest.TestCase):
         loss.backward()
         self.assertIsNotNone(value.grad)
         self.assertTrue(paddle.isfinite(value.grad).all())
+
+
+class TestPutAlongAxisZeroDimPublicAPI(unittest.TestCase):
+    """The public API reaches the 0-D kernels instead of rejecting them.
+
+    ``non_negative_axis`` derives the legal ``axis`` range from
+    ``len(arr.shape)``, which is 0 here, so it used to leave no legal value at
+    all and the 0-D support of the kernel was reachable through ``_C_ops``
+    only. ``torch`` treats a 0-D tensor as holding a single element on one
+    dimension and accepts ``axis`` in ``[-1, 0]``.
+    """
+
+    def setUp(self):
+        paddle.disable_static()
+        self.places = zero_dim_operand_places()
+
+    def _operands(self, place):
+        return (
+            paddle.to_tensor(5.0, place=place),
+            paddle.to_tensor(0, dtype='int64', place=place),
+            paddle.to_tensor(3.0, place=place),
+        )
+
+    def test_put_along_axis(self):
+        for place in self.places:
+            for axis in (0, -1):
+                arr, index, value = self._operands(place)
+                out = paddle.put_along_axis(arr, index, value, axis, 'add')
+                self.assertEqual(list(out.shape), [])
+                np.testing.assert_allclose(out.numpy(), np.array(8.0))
+
+    def test_put_along_axis_no_broadcast(self):
+        """The ``broadcast=False`` path has no ``arr.shape[axis]`` to read."""
+        for place in self.places:
+            arr, index, value = self._operands(place)
+            out = paddle.put_along_axis(
+                arr, index, value, 0, 'add', broadcast=False
+            )
+            np.testing.assert_allclose(out.numpy(), np.array(8.0))
+
+    def test_put_along_axis_scalar_value(self):
+        """``values`` is turned into a tensor on the 0-D path as well."""
+        for place in self.places:
+            arr, index, _ = self._operands(place)
+            out = paddle.put_along_axis(arr, index, 3.0, 0, 'add')
+            np.testing.assert_allclose(out.numpy(), np.array(8.0))
+
+    def test_put_along_axis_inplace(self):
+        for place in self.places:
+            arr, index, value = self._operands(place)
+            paddle.put_along_axis_(arr, index, value, 0, 'add')
+            np.testing.assert_allclose(arr.numpy(), np.array(8.0))
+
+    def test_scatter_inplace(self):
+        """``Tensor.scatter_`` normalizes ``dim`` in its own wrapper."""
+        for place in self.places:
+            arr, index, value = self._operands(place)
+            arr.scatter_(0, index, value, reduce='add')
+            np.testing.assert_allclose(arr.numpy(), np.array(8.0))
+
+    def test_grad(self):
+        for place in self.places:
+            arr, index, value = self._operands(place)
+            arr.stop_gradient = False
+            value.stop_gradient = False
+            out = paddle.put_along_axis(arr, index, value, 0, 'add')
+            out.backward()
+            self.assertEqual(list(arr.grad.shape), [])
+            np.testing.assert_allclose(arr.grad.numpy(), np.array(1.0))
+            np.testing.assert_allclose(value.grad.numpy(), np.array(1.0))
+
+    def test_axis_out_of_range(self):
+        """``[-1, 1)`` is the only legal range, as ``torch`` reports too."""
+        arr, index, value = self._operands(paddle.CPUPlace())
+        for axis in (1, -2):
+            with self.assertRaises(IndexError):
+                paddle.put_along_axis(arr, index, value, axis)
+            with self.assertRaises(IndexError):
+                paddle.put_along_axis_(arr, index, value, axis)
+            with self.assertRaises(IndexError):
+                arr.scatter_(axis, index, value)
+
+
+class TestPutAlongAxisMulZeroFactorGrad(unittest.TestCase):
+    """The gradient of a product is the product of the *other* factors.
+
+    ``reduce='mul'`` used to compute it as ``out / factor``, which is only the
+    product of the others while none of them is zero: as soon as one factor is
+    zero ``out`` is zero too and no longer carries the rest. The old kernel
+    answered 0 for every factor in that case, but the derivative with respect to
+    the single zero factor is the (generally non-zero) product of the others.
+    Only two or more zeros make every gradient vanish.
+
+    Every expectation below is what ``torch.Tensor.scatter_reduce(...,
+    'prod')`` returns for the same inputs.
+    """
+
+    # (note, arr, index, value, x_grad, value_grad), include_self=True
+    CASES = [
+        ("no zeros", [2, 3], [0, 0], [5, 11], [55, 1], [22, 10]),
+        ("only x is zero", [0, 3], [0], [7], [7, 1], [0]),
+        ("only value is zero", [2, 3], [0, 0], [0, 11], [0, 1], [22, 0]),
+        ("x and value zero", [0, 3], [0], [0], [0, 1], [0]),
+        ("x and one value zero", [0, 3], [0, 0], [0, 11], [0, 1], [0, 0]),
+        ("two values zero", [2, 3], [0, 0], [0, 0], [0, 1], [0, 0]),
+    ]
+    # ``include_self=False`` drops ``x`` from the product, so a zero ``x`` must
+    # not be counted as a zero factor there.
+    CASES_NO_SELF = [
+        ("value is zero", [5, 3], [0], [0], [0, 1], [1]),
+        ("one value is zero", [5, 3], [0, 0], [0, 11], [0, 1], [11, 0]),
+    ]
+
+    def setUp(self):
+        paddle.disable_static()
+        self.places = zero_dim_operand_places()
+
+    def test_grad(self):
+        for place in self.places:
+            for inc, cases in ((True, self.CASES), (False, self.CASES_NO_SELF)):
+                for note, arr, index, value, x_grad, v_grad in cases:
+                    self._check(
+                        place, inc, note, arr, index, value, x_grad, v_grad
+                    )
+
+    def _check(self, place, inc, note, arr, index, value, x_grad, v_grad):
+        a = paddle.to_tensor(arr, dtype='float32', place=place)
+        a.stop_gradient = False
+        v = paddle.to_tensor(value, dtype='float32', place=place)
+        v.stop_gradient = False
+        out = paddle.put_along_axis(
+            a,
+            paddle.to_tensor(index, dtype='int64', place=place),
+            v,
+            0,
+            'mul',
+            include_self=inc,
+        )
+        out.backward(paddle.ones_like(out))
+        where = f"'{note}' with include_self={inc} on {place}"
+        np.testing.assert_allclose(
+            a.grad.numpy(),
+            np.array(x_grad, dtype='float32'),
+            err_msg=f"x_grad of {where}",
+        )
+        np.testing.assert_allclose(
+            v.grad.numpy(),
+            np.array(v_grad, dtype='float32'),
+            err_msg=f"value_grad of {where}",
+        )
+
+
+class TestPutAlongAxisMulInt16NegativeValue(unittest.TestCase):
+    """``mul`` on int16 must not corrupt the neighbouring element.
+
+    The GPU reduce is a sub-word ``atomicCAS`` that rebuilds the whole 4-byte
+    word around the element. Widening a negative ``int16_t`` result with a plain
+    ``static_cast<uint32_t>`` sign extends it, and OR-ing that in overwrites the
+    other half of the word with 0xFFFF. Only an even element offset is affected,
+    so element 0 is the one scattered into here and element 1 is the witness.
+    """
+
+    def setUp(self):
+        paddle.disable_static()
+        self.places = zero_dim_operand_places()
+
+    def test_negative_product_keeps_neighbour(self):
+        for place in self.places:
+            x = paddle.to_tensor([3, 7], dtype='int16', place=place)
+            index = paddle.to_tensor([0], dtype='int64', place=place)
+            value = paddle.to_tensor([-2], dtype='int16', place=place)
+            out = paddle.put_along_axis(x, index, value, 0, 'mul')
+            np.testing.assert_array_equal(
+                out.numpy(), np.array([-6, 7], dtype='int16')
+            )
 
 
 if __name__ == "__main__":
