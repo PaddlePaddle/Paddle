@@ -381,6 +381,7 @@ __global__ void ScatterAssignScalarValue(
   __syncthreads();
   if (tid >= numel) return;
   index_t index = index_data[tid];
+  ENFORCE_SCATTER_INDEX_IN_BOUND(index, self_select_dim_size);
   if (index < 0) index += static_cast<index_t>(self_select_dim_size);
 
   // some kernels might store input_strides differently! Be careful when dealing
@@ -1019,8 +1020,9 @@ void gpu_scatter_mul_min_max_input_grad_kernel(DenseTensor self,
     int64_t* host_data = shape_stride_host.data<int64_t>();
     for (int64_t i = 0; i < ndim; i++) {
       host_data[i] = index_dims[i];
-      // notice that the ordering is different from forward, since
-      // value.strides() is not used for mul
+      // notice that the ordering is different from forward: the grad strides
+      // come first here, since that is the only block the mul grad kernel
+      // itself reads. value.strides() is only needed by the pre-pass.
       host_data[i + ndim] = grad.strides()[i];
       host_data[i + (ndim << 1)] = value.strides()[i];
     }
