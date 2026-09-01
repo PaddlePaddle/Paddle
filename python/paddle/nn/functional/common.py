@@ -2482,14 +2482,21 @@ def cosine_similarity(
     if x2.dtype not in float_dtypes:
         x2 = x2.astype(common_dtype)
 
-    # p_norm/divide/multiply CPU kernels are not registered for fp16/bf16,
-    # so the dtype are promoted to fp32.
+    # p_norm/divide/multiply CPU kernels are not registered for fp16/bf16.
+    # Use fp32 as the accumulation_dtype when the common dtype is fp16/bf16;
+    # otherwise preserve the precision of the common dtype (in particular,
+    # do not demote a float64 input in a mixed reduced/float64 operation).
     reduced_dtypes = (paddle.float16, paddle.bfloat16)
     # static graph: the device is unknown at construction time, assume CPU
     maybe_cpu = not in_dynamic_mode() or x1.place.is_cpu_place()
     if maybe_cpu and (x1.dtype in reduced_dtypes or x2.dtype in reduced_dtypes):
-        x1 = x1.astype(paddle.float32)
-        x2 = x2.astype(paddle.float32)
+        accumulation_dtype = (
+            paddle.float32 if common_dtype in reduced_dtypes else common_dtype
+        )
+        if x1.dtype in reduced_dtypes:
+            x1 = x1.astype(accumulation_dtype)
+        if x2.dtype in reduced_dtypes:
+            x2 = x2.astype(accumulation_dtype)
 
     # torch expand inputs to broadcast shape first then compute norm when need to broadcast.
     # torch.expand only sets the broadcast stride to 0 and keeps the original storage, so it
