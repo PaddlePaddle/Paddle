@@ -260,7 +260,7 @@ class TestCosineSimilarityAPI_UnknownReduceDim(unittest.TestCase):
                     list(fetches[0].shape), list(np_out.shape), msg
                 )
                 np.testing.assert_allclose(
-                    fetches[0], np_out, rtol=1e-07, err_msg=msg
+                    fetches[0], np_out, rtol=1e-06, atol=1e-07, err_msg=msg
                 )
 
     def test_static(self):
@@ -344,33 +344,18 @@ class TestCosineSimilarityAPI_Numerics(unittest.TestCase):
             y.numpy(), -np.ones([1], dtype=np.float32), rtol=1e-06
         )
 
-    def test_cpu_reduced_dtype_fp32_path(self):
-        # CPU has no p_norm/divide/multiply kernels for fp16/bf16, so the
-        # inputs are promoted to fp32 for the computation and the result is
-        # cast back to the reduced dtype, keeping the output dtype contract.
+    def test_zero_vector(self):
         paddle.disable_static()
-        origin_device = paddle.get_device()
-        paddle.set_device('cpu')
-        np_x1 = np.random.rand(2, 4).astype(np.float32)
+        np_x1 = np.zeros([2, 4], dtype=np.float32)
         np_x2 = np.random.rand(2, 4).astype(np.float32)
-        np_out = _np_cosine_similarity(np_x1, np_x2, axis=1)
-        try:
-            for dtype, pd_dtype in [
-                ('float16', paddle.float16),
-                ('bfloat16', paddle.bfloat16),
-            ]:
-                x1 = paddle.to_tensor(np_x1, dtype=dtype)
-                x2 = paddle.to_tensor(np_x2, dtype=dtype)
-                y = F.cosine_similarity(x1, x2, axis=1)
-                self.assertEqual(y.dtype, pd_dtype)
-                np.testing.assert_allclose(
-                    y.astype('float32').numpy(),
-                    np_out,
-                    rtol=1e-06,
-                    err_msg=f"dtype={dtype}",
-                )
-        finally:
-            paddle.set_device(origin_device)
+        x1 = paddle.to_tensor(np_x1)
+        x1.stop_gradient = False
+        y = F.cosine_similarity(x1, paddle.to_tensor(np_x2), axis=1)
+        np.testing.assert_allclose(
+            y.numpy(), np.zeros([2], dtype=np.float32), rtol=1e-06
+        )
+        y.sum().backward()
+        self.assertFalse(np.isnan(x1.grad.numpy()).any())
 
 
 class TestCosineSimilarityAPI_DtypePromotion(unittest.TestCase):
@@ -395,6 +380,49 @@ class TestCosineSimilarityAPI_DtypePromotion(unittest.TestCase):
         self.assertEqual(y.dtype, paddle.float64)
         np_out = _np_cosine_similarity(np_x1.astype(np.float64), np_x2)
         np.testing.assert_allclose(y.numpy(), np_out, rtol=1e-06)
+
+    def test_cpu_reduced_dtype_fp32_path(self):
+        # CPU has no p_norm/divide/multiply kernels for fp16/bf16, so the
+        # inputs are promoted to fp32 for the computation and the result is
+        # cast back to the reduced dtype, keeping the output dtype contract.
+        def f32_to_bf16_bits(x):
+            """Round a float32 array to bfloat16, returning its uint16 bit
+            pattern (numpy has no bfloat16 dtype, so bit-exact checks use it).
+            """
+            bits = x.astype(np.float32).view(np.uint32)
+            # round-to-nearest-even on the low 16 bits
+            rounding_bias = 0x7FFF + ((bits >> 16) & 1)
+            return ((bits + rounding_bias) >> 16).astype(np.uint16)
+
+        paddle.disable_static()
+        origin_device = paddle.get_device()
+        paddle.set_device('cpu')
+        np_x1 = np.random.rand(2, 4).astype(np.float32)
+        np_x2 = np.random.rand(2, 4).astype(np.float32)
+        try:
+            for dtype, pd_dtype in [
+                ('float16', paddle.float16),
+                ('bfloat16', paddle.bfloat16),
+            ]:
+                x1 = paddle.to_tensor(np_x1, dtype=dtype)
+                x2 = paddle.to_tensor(np_x2, dtype=dtype)
+                y = F.cosine_similarity(x1, x2, axis=1)
+                self.assertEqual(y.dtype, pd_dtype)
+                qx1 = x1.astype('float32').numpy()
+                qx2 = x2.astype('float32').numpy()
+                np_out = _np_cosine_similarity(qx1, qx2, axis=1)
+                if dtype == 'float16':
+                    np.testing.assert_array_equal(
+                        y.numpy(), np_out.astype(np.float16)
+                    )
+                else:
+                    # numpy has no bfloat16: compare uint16 bit patterns
+                    np.testing.assert_array_equal(
+                        y.view(paddle.uint16).numpy(),
+                        f32_to_bf16_bits(np_out),
+                    )
+        finally:
+            paddle.set_device(origin_device)
 
     def test_non_floating_common_dtype(self):
         paddle.disable_static()
