@@ -176,8 +176,6 @@ class TensorFusionBuffer:
         main_grad = param.get_main_grad()
         if stale_grad is not None and stale_grad._is_initialized():
             if stale_grad.data_ptr() != main_grad.data_ptr():
-                if stale_grad.dtype != main_grad.dtype:
-                    stale_grad = stale_grad.astype(main_grad.dtype)
                 main_grad.add_(stale_grad)
                 stale_grad._clear_data()
 
@@ -725,8 +723,6 @@ class FullyShardFusion:
             if grad is not None and grad._is_initialized():
                 # Share mem with grads_tmp_buffer
                 param.get_main_grad(grad.shape)
-                if grad.dtype != param.main_grad.dtype:
-                    grad = grad.astype(param.main_grad.dtype)
                 param.main_grad.add_(grad)
                 grad._clear_data()
             comm_manager.shard_params([param], is_backward=True)
