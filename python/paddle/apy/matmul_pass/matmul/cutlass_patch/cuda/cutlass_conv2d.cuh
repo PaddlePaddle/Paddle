@@ -17,85 +17,34 @@
 #include "cutlass/conv/conv2d_problem_size.h"
 #include "cutlass/conv/convolution.h"
 #include "cutlass/conv/device/implicit_gemm_convolution.h"
-#include "cutlass/conv/kernel/default_conv2d_fprop.h"
-#include "cutlass/epilogue/thread/linear_combination_relu.h"
 #include "cutlass/layout/tensor.h"
 #include "cutlass/tensor_ref.h"
 
+#include "cutlass_patch/conv/kernel/default_conv2d_fprop_with_variadic.h"
 #include "cutlass_patch/cuda/cutlass_common.cuh"
 #include "cutlass_patch/cuda/default_config_id.h"
+#include "cutlass_patch/epilogue/thread/linear_combination_variadic.h"
 
 #include "params.h"  // NOLINT
 
 namespace ap {
 
-// Conv2d forward propagation fused with a per-channel bias add and relu:
-//   output = relu(conv2d(input, weight) + bias)
-//
-// Implemented as an implicit GEMM with the `kOptimized` activation iterator and
-// the stock cutlass `LinearCombinationRelu` epilogue.
-template <typename ElementT,
-          typename ElementComputeT,
-          int AlignA = 128 / cutlass::sizeof_bits<ElementT>::value,
-          int AlignB = 128 / cutlass::sizeof_bits<ElementT>::value,
-          int AlignC = 128 / cutlass::sizeof_bits<ElementT>::value,
-          int ConfigId = DefaultConfig::kConfigId,
-          int SwizzleFactor = DefaultConfig::kSwizzleFactor>
-void Conv2dAddRelu(const Conv2dEpilogueParams &params) {
-  using ElementAccumulator =
-      typename CutlassDataType<ElementComputeT>::Type;  // <- data type of
-                                                        // accumulator
-  using ElementComputeEpilogue =
-      ElementAccumulator;  // <- data type of epilogue operations
-  using ElementInputA =
-      typename CutlassDataType<ElementT>::Type;  // <- data type of activation
-  using ElementInputB =
-      typename CutlassDataType<ElementT>::Type;  // <- data type of filter
-  using ElementOutput =
-      typename CutlassDataType<ElementT>::Type;  // <- data type of output
+namespace detail {
 
-  using LayoutInputA = cutlass::layout::TensorNHWC;
-  using LayoutInputB = cutlass::layout::TensorNHWC;
-  using LayoutOutput = cutlass::layout::TensorNHWC;
-
-  // The threadblock/warp tile table is shared with matmul: conv2d is lowered to
-  // an implicit GEMM, so the same tiling applies.
-  using TuningConfig =
-      GemmTuningConfigs<ElementT, SwizzleFactor, /*Batched=*/false, ConfigId>;
-
-  // relu(alpha * accumulator + beta * source), `source` is the per-channel bias
-  // broadcast along N/P/Q by a zero-strided TensorRef.
-  using EpilogueOutputOp = cutlass::epilogue::thread::LinearCombinationRelu<
-      ElementOutput,
-      AlignC,
-      ElementAccumulator,
-      ElementComputeEpilogue,
-      cutlass::epilogue::thread::ScaleType::Default>;
-
-  using Conv2dFpropKernel = typename cutlass::conv::kernel::DefaultConv2dFprop<
-      ElementInputA,
-      LayoutInputA,
-      ElementInputB,
-      LayoutInputB,
-      ElementOutput,
-      LayoutOutput,
-      ElementAccumulator,
-      cutlass::arch::OpClassTensorOp,
-      cutlass::arch::Sm80,
-      typename TuningConfig::TShape,
-      typename TuningConfig::WShape,
-      typename TuningConfig::IShape,
-      EpilogueOutputOp,
-      typename TuningConfig::SwizzleThreadBlock,
-      TuningConfig::kNumStages,
-      typename GemmOperation<ElementT>::Type,
-      cutlass::conv::IteratorAlgorithm::kOptimized,
-      cutlass::conv::StrideSupport::kStrided,
-      AlignA,
-      AlignB>::Kernel;
-
-  using ImplicitGemmFunc =
-      cutlass::conv::device::ImplicitGemmConvolution<Conv2dFpropKernel>;
+// Builds the cutlass problem description out of `Conv2dEpilogueParams` and runs
+// the implicit GEMM. `output_op_params` is the host side parameter struct of
+// the epilogue output operator.
+template <typename ImplicitGemmFunc, typename OutputOpParams>
+void LaunchConv2dFprop(const Conv2dEpilogueParams &params,
+                       const OutputOpParams &output_op_params) {
+  using UnderlyingKernel = typename ImplicitGemmFunc::UnderlyingKernel;
+  using ElementInputA = typename UnderlyingKernel::ElementA;
+  using ElementInputB = typename UnderlyingKernel::ElementB;
+  using ElementOutput = typename UnderlyingKernel::ElementC;
+  using LayoutInputA = typename UnderlyingKernel::LayoutA;
+  using LayoutInputB = typename UnderlyingKernel::LayoutB;
+  using LayoutOutput = typename UnderlyingKernel::LayoutC;
+  using StrideOutput = typename LayoutOutput::Stride;
 
   cutlass::conv::Conv2dProblemSize problem_size{
       cutlass::Tensor4DCoord{params.N, params.H, params.W, params.C},
@@ -118,27 +67,22 @@ void Conv2dAddRelu(const Conv2dEpilogueParams &params) {
       reinterpret_cast<const ElementOutput *>(params.bias));
   ElementOutput *output = reinterpret_cast<ElementOutput *>(params.output);
 
-  ElementComputeEpilogue alpha = static_cast<ElementComputeEpilogue>(1);
-  ElementComputeEpilogue beta = bias ? static_cast<ElementComputeEpilogue>(1)
-                                     : static_cast<ElementComputeEpilogue>(0);
-
-  typename ImplicitGemmFunc::UnderlyingKernel::TensorRefA ref_A{
+  typename UnderlyingKernel::TensorRefA ref_A{
       input, LayoutInputA::packed(problem_size.activation_extent())};
-  typename ImplicitGemmFunc::UnderlyingKernel::TensorRefB ref_B{
+  typename UnderlyingKernel::TensorRefB ref_B{
       weight, LayoutInputB::packed(problem_size.filter_extent())};
   // Zero stride projects away the N, H, W dimensions of the bias.
-  typename ImplicitGemmFunc::UnderlyingKernel::TensorRefC ref_C{
-      bias, LayoutOutput::Stride(0)};
-  typename ImplicitGemmFunc::UnderlyingKernel::TensorRefC ref_D{
+  typename UnderlyingKernel::TensorRefC ref_C{bias, StrideOutput(0)};
+  typename UnderlyingKernel::TensorRefC ref_D{
       output, LayoutOutput::packed(problem_size.output_extent())};
 
   typename ImplicitGemmFunc::Arguments arguments{
       problem_size,
-      ref_A,           // <- input, activation, shape={N, H, W, C}
-      ref_B,           // <- input, filter, shape={K, R, S, C}
-      ref_C,           // <- input, bias, shape={K}
-      ref_D,           // <- output, shape={N, P, Q, K}
-      {alpha, beta}};  // <- epilogue params, alpha, beta
+      ref_A,              // <- input, activation, shape={N, H, W, C}
+      ref_B,              // <- input, filter, shape={K, R, S, C}
+      ref_C,              // <- input, bias, shape={K}
+      ref_D,              // <- output, shape={N, P, Q, K}
+      output_op_params};  // <- epilogue params
 
   size_t workspace_size = ImplicitGemmFunc::get_workspace_size(arguments);
   void *workspace = workspace_size > 0 ? GetWorkspace(workspace_size) : nullptr;
@@ -158,6 +102,100 @@ void Conv2dAddRelu(const Conv2dEpilogueParams &params) {
 #if AP_ENABLE_DEBUG
   CHECK_CUDA(cudaStreamSynchronize(*stream_ptr));
 #endif
+}
+
+}  // namespace detail
+
+// Conv2d forward propagation fused with an arbitrary elementwise epilogue:
+//   output = VariadicFunctor(conv2d(input, weight) + bias, variadic_args,
+//   coord)
+//
+// `VariadicFunctor` is generated by the template layer out of the fused
+// epilogue subgraph; the extra operands it reads are carried by
+// `variadic_args`, and `coord` locates the current output element.
+//
+// Coordinate semantics (differs from matmul, conv2d is an implicit GEMM):
+//   coord.row    = the GEMM_M index = n * P * Q + p * Q + q
+//   coord.column = the GEMM_N index = k, the output channel
+//   coord.batch  = the split-k slice index, always 0 here, *not* the batch
+// A functor that needs (n, p, q) has to decompose `coord.row` itself, using P
+// and Q passed through `variadic_args`.
+template <typename ElementT,
+          typename ElementComputeT,
+          template <typename T>
+          class VariadicFunctor,
+          int AlignA = 128 / cutlass::sizeof_bits<ElementT>::value,
+          int AlignB = 128 / cutlass::sizeof_bits<ElementT>::value,
+          int AlignC = 128 / cutlass::sizeof_bits<ElementT>::value,
+          int ConfigId = DefaultConfig::kConfigId,
+          int SwizzleFactor = DefaultConfig::kSwizzleFactor>
+void Conv2dVariadicFusion(
+    const Conv2dEpilogueParams &params,
+    const typename VariadicFunctor<ElementComputeT>::Arguments &variadic_args) {
+  using ElementAccumulator =
+      typename CutlassDataType<ElementComputeT>::Type;  // <- data type of
+                                                        // accumulator
+  using ElementComputeEpilogue =
+      ElementAccumulator;  // <- data type of epilogue operations
+  using ElementInputA =
+      typename CutlassDataType<ElementT>::Type;  // <- data type of activation
+  using ElementInputB =
+      typename CutlassDataType<ElementT>::Type;  // <- data type of filter
+  using ElementOutput =
+      typename CutlassDataType<ElementT>::Type;  // <- data type of output
+
+  using LayoutInputA = cutlass::layout::TensorNHWC;
+  using LayoutInputB = cutlass::layout::TensorNHWC;
+  using LayoutOutput = cutlass::layout::TensorNHWC;
+
+  // The threadblock/warp tile table is shared with matmul: conv2d is lowered to
+  // an implicit GEMM, so the same tiling applies.
+  using TuningConfig =
+      GemmTuningConfigs<ElementT, SwizzleFactor, /*Batched=*/false, ConfigId>;
+
+  // VariadicFunctor(alpha * accumulator + source), `source` is the optional
+  // per-channel bias broadcast along N/P/Q by a zero-strided TensorRef.
+  using EpilogueOutputOp =
+      cutlass_patch::epilogue::thread::LinearCombinationVariadic<
+          VariadicFunctor,
+          ElementOutput,
+          AlignC,
+          ElementAccumulator,
+          ElementComputeEpilogue,
+          cutlass::epilogue::thread::ScaleType::NoBetaScaling>;
+
+  using Conv2dFpropKernel =
+      typename cutlass_patch::conv::kernel::DefaultConv2dFpropWithVariadic<
+          ElementInputA,
+          LayoutInputA,
+          ElementInputB,
+          LayoutInputB,
+          ElementOutput,
+          LayoutOutput,
+          ElementAccumulator,
+          cutlass::arch::Sm80,
+          typename TuningConfig::TShape,
+          typename TuningConfig::WShape,
+          typename TuningConfig::IShape,
+          EpilogueOutputOp,
+          typename TuningConfig::SwizzleThreadBlock,
+          TuningConfig::kNumStages,
+          typename GemmOperation<ElementT>::Type,
+          cutlass::conv::IteratorAlgorithm::kOptimized,
+          cutlass::conv::StrideSupport::kStrided,
+          AlignA,
+          AlignB>::Kernel;
+
+  using ImplicitGemmFunc =
+      cutlass::conv::device::ImplicitGemmConvolution<Conv2dFpropKernel>;
+
+  ElementComputeEpilogue alpha = static_cast<ElementComputeEpilogue>(1);
+  ElementComputeEpilogue beta = params.bias
+                                    ? static_cast<ElementComputeEpilogue>(1)
+                                    : static_cast<ElementComputeEpilogue>(0);
+
+  detail::LaunchConv2dFprop<ImplicitGemmFunc>(
+      params, typename EpilogueOutputOp::Params{alpha, beta, variadic_args});
 }
 
 }  // namespace ap

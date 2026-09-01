@@ -25,7 +25,21 @@ def make_kernel_arg_translator():
 
 
 def get_anchor_iter_var_names():
-    return ["coord.batch", "coord.row", "coord.column"]
+    # The anchor `conv2d_out` is the 4-D NHWC output, so the epilogue index
+    # programs are written against (n, p, q, k). conv2d is lowered to an
+    # implicit GEMM whose epilogue only knows the GEMM coordinates:
+    #   coord.row    = n * P * Q + p * Q + q
+    #   coord.column = k
+    #   coord.batch  = the split-k slice index, always 0, *not* the batch
+    # so the row index has to be decomposed here. `args.P` / `args.Q` are the
+    # output spatial extents, forwarded to the epilogue functor by the template
+    # below.
+    return [
+        "(coord.row / (args.P * args.Q))",
+        "((coord.row / args.Q) % args.P)",
+        "(coord.row % args.Q)",
+        "coord.column",
+    ]
 
 
 class Conv2dVariadicTemplate:
@@ -94,14 +108,13 @@ class Conv2dVariadicTemplate:
                 compute_dtype=ap.DataType.float
             )
         )
-        # self.program_translator.translate(
-        #     mut_kernel_arg_id_registry=self.mut_kernel_arg_id_registry,
-        #     mut_lir_code_gen_ctx=mut_lir_code_gen_ctx,
-        # )
-        # trivial_code_str = mut_lir_code_gen_ctx.get_stmts_joined_str(
-        #     indent="    "
-        # )
-        trivial_code_str = ""
+        self.program_translator.translate(
+            mut_kernel_arg_id_registry=self.mut_kernel_arg_id_registry,
+            mut_lir_code_gen_ctx=mut_lir_code_gen_ctx,
+        )
+        trivial_code_str = mut_lir_code_gen_ctx.get_stmts_joined_str(
+            indent="    "
+        )
         print("trivial_code_str: ", trivial_code_str)
 
         project_module = self.make_project(
@@ -247,6 +260,11 @@ namespace ap {
 template <typename T>
 struct VariadicEpilogueFunctor {
   struct Arguments {
+    // Extents of the output spatial dimensions. The epilogue of an implicit
+    // GEMM only knows the GEMM_M index `coord.row`, these are what let the
+    // generated statements decompose it back into (n, p, q).
+    int P;
+    int Q;
     ${AP_EPILOGUE_ARGUMENTS_FIELDS}
   };
 
@@ -265,6 +283,8 @@ static void RunConv2dWithVariadicKernel(const Conv2dEpilogueParams &params, ${AP
   using ElementComputeT = float;
 
   typename VariadicEpilogueFunctor<ElementComputeT>::Arguments epilogue_args;
+  epilogue_args.P = params.P;
+  epilogue_args.Q = params.Q;
 
   ${AP_EPILOGUE_ARGUMENTS_INIT}
 
@@ -274,10 +294,9 @@ static void RunConv2dWithVariadicKernel(const Conv2dEpilogueParams &params, ${AP
   constexpr int AlignB = AlignA;
   constexpr int AlignC = Alignment<ElementT, ${k_value}>::kValue;
 
-  // TODO(Xreki): forward `epilogue_args` to a variadic conv2d epilogue. The
-  // cutlass backend fuses relu only for now.
-  Conv2dAddRelu<ElementT, ElementComputeT, AlignA, AlignB, AlignC,
-                TuningConfigId>(params);
+  Conv2dVariadicFusion<ElementT, ElementComputeT, VariadicEpilogueFunctor,
+                       AlignA, AlignB, AlignC, TuningConfigId>(params,
+                                                              epilogue_args);
 }
 
 } // namespace ap
