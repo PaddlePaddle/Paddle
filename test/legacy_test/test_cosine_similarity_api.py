@@ -385,15 +385,6 @@ class TestCosineSimilarityAPI_DtypePromotion(unittest.TestCase):
         # CPU has no p_norm/divide/multiply kernels for fp16/bf16, so the
         # inputs are promoted to fp32 for the computation and the result is
         # cast back to the reduced dtype, keeping the output dtype contract.
-        def f32_to_bf16_bits(x):
-            """Round a float32 array to bfloat16, returning its uint16 bit
-            pattern (numpy has no bfloat16 dtype, so bit-exact checks use it).
-            """
-            bits = x.astype(np.float32).view(np.uint32)
-            # round-to-nearest-even on the low 16 bits
-            rounding_bias = 0x7FFF + ((bits >> 16) & 1)
-            return ((bits + rounding_bias) >> 16).astype(np.uint16)
-
         paddle.disable_static()
         origin_device = paddle.get_device()
         paddle.set_device('cpu')
@@ -408,19 +399,52 @@ class TestCosineSimilarityAPI_DtypePromotion(unittest.TestCase):
                 x2 = paddle.to_tensor(np_x2, dtype=dtype)
                 y = F.cosine_similarity(x1, x2, axis=1)
                 self.assertEqual(y.dtype, pd_dtype)
-                qx1 = x1.astype('float32').numpy()
-                qx2 = x2.astype('float32').numpy()
-                np_out = _np_cosine_similarity(qx1, qx2, axis=1)
-                if dtype == 'float16':
-                    np.testing.assert_array_equal(
-                        y.numpy(), np_out.astype(np.float16)
-                    )
-                else:
-                    # numpy has no bfloat16: compare uint16 bit patterns
-                    np.testing.assert_array_equal(
-                        y.view(paddle.uint16).numpy(),
-                        f32_to_bf16_bits(np_out),
-                    )
+                expected = F.cosine_similarity(
+                    x1.astype('float32'),
+                    x2.astype('float32'),
+                    axis=1,
+                ).astype(pd_dtype)
+                np.testing.assert_array_equal(
+                    y.astype('float32').numpy(),
+                    expected.astype('float32').numpy(),
+                )
+        finally:
+            paddle.set_device(origin_device)
+
+    def test_cpu_mixed_reduced_and_float64_dtypes(self):
+        paddle.disable_static()
+        origin_device = paddle.get_device()
+        paddle.set_device('cpu')
+        np_x1 = np.array(
+            [[0.1234, -0.9876, 1.2345]],
+            dtype=np.float16,
+        )
+        np_x2 = np.array(
+            [
+                [
+                    3.141592653589793,
+                    1.4142135623730951,
+                    0.5772156649015329,
+                ]
+            ],
+            dtype=np.float64,
+        )
+        try:
+            x1 = paddle.to_tensor(np_x1, dtype='float16')
+            x2 = paddle.to_tensor(np_x2, dtype='float64')
+
+            y = F.cosine_similarity(x1, x2, axis=1)
+            expected = F.cosine_similarity(
+                x1.astype('float64'),
+                x2,
+                axis=1,
+            )
+
+            self.assertEqual(y.dtype, paddle.float64)
+            np.testing.assert_array_equal(
+                y.numpy(),
+                expected.numpy(),
+            )
         finally:
             paddle.set_device(origin_device)
 
@@ -436,6 +460,36 @@ class TestCosineSimilarityAPI_DtypePromotion(unittest.TestCase):
         x = paddle.ones([1, 3])
         with self.assertRaises(ValueError):
             F.cosine_similarity(x, x, axis=1, eps=-1e-8)
+
+
+class TestCosineSimilarityAPI_BroadcastMemory(unittest.TestCase):
+    @unittest.skipIf(
+        not paddle.is_compiled_with_cuda(), "peak memory is queried from CUDA"
+    )
+    def test_no_expanded_copy(self):
+        paddle.disable_static()
+        origin_device = paddle.get_device()
+        paddle.set_device('gpu')
+        try:
+            B, N, D = 32, 256, 1024
+            x1 = paddle.randn([B, 1, D])
+            x2 = paddle.randn([B, N, D])
+            full_size = B * N * D * 4
+
+            paddle.device.cuda.empty_cache()
+            paddle.device.cuda.reset_max_memory_allocated()
+            base = paddle.device.cuda.max_memory_allocated()
+            F.cosine_similarity(x1, x2, axis=1).numpy()
+            extra = paddle.device.cuda.max_memory_allocated() - base
+            # x2 / n2 and their product are the only full size temporaries
+            self.assertLess(
+                extra,
+                2.5 * full_size,
+                f"{extra} bytes of temporaries for a {full_size} byte input, "
+                "the broadcast input is likely being expanded",
+            )
+        finally:
+            paddle.set_device(origin_device)
 
 
 if __name__ == '__main__':
