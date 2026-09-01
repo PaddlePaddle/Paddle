@@ -38,6 +38,7 @@ class VersionTest(unittest.TestCase):
             base_version.patch,
             base_version.rc,
         ] = ['1', '4', '1', '0']
+        base_version.full_version = '1.4.1.0'
 
         base.require_version('1')
         base.require_version('1.4')
@@ -59,6 +60,7 @@ class VersionTest(unittest.TestCase):
             base_version.patch,
             base_version.rc,
         ] = ['0', '0', '0', '0']
+        base_version.full_version = '0.0.0.0'
         base.require_version('0.0.0')
 
         base_version.full_version = ori_full_version
@@ -134,20 +136,21 @@ class TestErrors(unittest.TestCase):
             base_version.patch,
             base_version.rc,
         ] = ['1', '4', '1', '0']
+        base_version.full_version = '1.4.1.0'
 
         self.assertRaisesRegex(
             Exception,
-            "VersionError: PaddlePaddle version 100 or higher is required, but 0.0.0 installed",
+            "VersionError: PaddlePaddle version 100 or higher is required, but 1.4.1.0 installed",
             test_version,
         )
         self.assertRaisesRegex(
             Exception,
-            r"VersionError: PaddlePaddle version in \[0.0.0, 1.4\] required, but 0.0.0 installed",
+            r"VersionError: PaddlePaddle version in \[0.0.0, 1.4\] required, but 1.4.1.0 installed",
             test_version_1,
         )
         self.assertRaisesRegex(
             Exception,
-            r"VersionError: PaddlePaddle version in \[1.4.0, 1.2\] required, but 0.0.0 installed.",
+            r"VersionError: PaddlePaddle version in \[1.4.0, 1.2\] required, but 1.4.1.0 installed.",
             test_version_2,
         )
 
