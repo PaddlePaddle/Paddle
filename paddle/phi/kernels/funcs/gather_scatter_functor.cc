@@ -485,7 +485,7 @@ void cpu_scatter_input_grad_kernel(DenseTensor self UNUSED,
 }
 
 template <typename tensor_t, typename index_t>
-void cpu_scatter_mul_min_max_input_grad_kernel(DenseTensor self UNUSED,
+void cpu_scatter_mul_min_max_input_grad_kernel(DenseTensor self,
                                                int dim,
                                                const DenseTensor& index,
                                                const DenseTensor& out,
@@ -500,6 +500,7 @@ void cpu_scatter_mul_min_max_input_grad_kernel(DenseTensor self UNUSED,
   auto* out_data = out.data<tensor_t>();
   auto* x_data = x.data<tensor_t>();
   auto* value_data = value.data<tensor_t>();
+  const auto* self_data = self.data<tensor_t>();
 
   const int ndim = index.dims().size();
   const int64_t index_size = index.numel();
@@ -541,17 +542,21 @@ void cpu_scatter_mul_min_max_input_grad_kernel(DenseTensor self UNUSED,
     int64_t replace_index_grad = cm.offset1;
     if (is_mul && num_elements[replace_index_grad] == 0) {
       const tensor_t x = x_data[replace_index_grad];
+      // The base gradient is read from ``out_grad`` and not from ``grad_data``:
+      // ``MulInputGradRoundTripFunctor`` has already rewritten the latter with
+      // torch's redundant ``(g * m) / m`` for the sake of the positions no
+      // index reaches, and this position is not one of them.
+      const tensor_t g = self_data[replace_index_grad];
       const int zeros = zero_count[replace_index_grad] +
                         (x == static_cast<tensor_t>(0) ? 1 : 0);
       if (zeros == 0) {
-        tensor_t val = grad_data[replace_index_grad];
+        tensor_t val = g;
         val *= out_data[replace_index_grad];
         val /= x;
         grad_data[replace_index_grad] = static_cast<tensor_t>(val);
       } else if (zeros == 1 && x == static_cast<tensor_t>(0)) {
         grad_data[replace_index_grad] =
-            static_cast<tensor_t>(grad_data[replace_index_grad] *
-                                  masked_value_prod[replace_index_grad]);
+            static_cast<tensor_t>(g * masked_value_prod[replace_index_grad]);
       } else {
         // ``x`` is not the only zero factor, so the product stays zero whatever
         // ``x`` becomes.

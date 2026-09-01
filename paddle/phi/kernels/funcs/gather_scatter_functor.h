@@ -13,7 +13,11 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <algorithm>
+#include <type_traits>
 
+#include "paddle/common/hostdevice.h"
+#include "paddle/phi/common/bfloat16.h"
+#include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/device_context.h"
 #include "paddle/phi/core/enforce.h"
@@ -263,7 +267,7 @@ void gpu_scatter_input_grad_kernel(DenseTensor self,
                                    const DeviceContext& dev_ctx);
 
 template <typename tensor_t, typename index_t>
-void gpu_scatter_mul_min_max_input_grad_kernel(DenseTensor self UNUSED,
+void gpu_scatter_mul_min_max_input_grad_kernel(DenseTensor self,
                                                int dim,
                                                const DenseTensor& index,
                                                const DenseTensor& out,
@@ -313,6 +317,50 @@ void gpu_scatter_mul_min_max_value_grad_kernel(DenseTensor self,
                                                const std::string& reduce,
                                                bool include_self,
                                                const DeviceContext& dev_ctx);
+
+// Only the floating-point instantiations need the round trip below. An integer
+// ``(g * m) / m`` is either exactly ``g`` or an overflow, and torch never takes
+// a gradient through an integer tensor to begin with.
+template <typename tensor_t>
+constexpr bool MulInputGradNeedsRoundTrip() {
+  return std::is_floating_point<tensor_t>::value ||
+         std::is_same<tensor_t, phi::dtype::float16>::value ||
+         std::is_same<tensor_t, phi::dtype::bfloat16>::value;
+}
+
+// Reproduces the rounding torch leaves on the positions of ``x_grad`` that no
+// index reaches, for ``reduce`` in {mul, multiply}.
+//
+// ``FunctionsManual.cpp::scatter_reduce_backward`` computes the input gradient
+// over the *whole* tensor at once:
+//
+//   masked_self = self.masked_fill(self == 0, 1)
+//   grad_self   = grad * masked_self.scatter_reduce(dim, index, src, "prod")
+//               / masked_self
+//
+// Where no index lands, the inner scatter leaves ``masked_self`` untouched and
+// the expression collapses to ``(grad * m) / m``. That is ``grad`` in exact
+// arithmetic, but it rounds twice, so it can land 1 ulp away from ``grad``.
+// Paddle used to hand ``out_grad`` straight through there -- the exact
+// derivative, yet not the value torch reports. Applying the same round trip
+// here is what makes the two frameworks agree bit for bit; the positions an
+// index does reach are overwritten afterwards, and take their base gradient
+// from the untouched ``out_grad`` rather than from this buffer.
+//
+// The zero mask is part of the contract: where ``x`` is zero torch divides by
+// one, which is exact and must not be turned into a division by zero.
+template <typename tensor_t>
+struct MulInputGradRoundTripFunctor {
+  const tensor_t* x_data;
+  tensor_t* grad_data;
+
+  HOSTDEVICE void operator()(size_t i) const {
+    const tensor_t m = x_data[i] == static_cast<tensor_t>(0)
+                           ? static_cast<tensor_t>(1)
+                           : x_data[i];
+    grad_data[i] = static_cast<tensor_t>(grad_data[i] * m) / m;
+  }
+};
 
 // A 0-D operand becomes a 1-D operand holding a single element, the way
 // ``ensure_nonempty_*`` does in torch. ``Resize`` rewrites the metadata of the

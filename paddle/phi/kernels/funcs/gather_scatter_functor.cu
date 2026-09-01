@@ -919,6 +919,7 @@ __global__ void ScatterMulInputGradGPUKernel(
     const index_t* __restrict__ index_data,
     const tensor_t* __restrict__ out_data,
     const tensor_t* __restrict__ x_data,
+    const tensor_t* __restrict__ self_data,
     const int64_t* __restrict__ shape_strides,
     int dim,
     int ndim,
@@ -929,16 +930,19 @@ __global__ void ScatterMulInputGradGPUKernel(
   COMPUTE_OFFSET_SINGLE_OUTPUT(replace_index, 1, tid, 2)
   if (tid != aux_buffer[replace_index]) return;
   const tensor_t x = x_data[replace_index];
+  // The base gradient is read from ``out_grad`` and not from ``grad_data``:
+  // ``MulInputGradRoundTripFunctor`` has already rewritten the latter with
+  // torch's redundant ``(g * m) / m`` for the sake of the positions no index
+  // reaches, and this position is not one of them.
+  const tensor_t g = self_data[replace_index];
   // ``out / x`` loses every factor once one of them is zero, so the derivative
   // has to be rebuilt from the product of the remaining factors instead.
   const int zero_count = aux_buffer[grad_numel + replace_index] +
                          (x == static_cast<tensor_t>(0) ? 1 : 0);
   if (zero_count == 0) {
-    grad_data[replace_index] =
-        grad_data[replace_index] * out_data[replace_index] / x;
+    grad_data[replace_index] = g * out_data[replace_index] / x;
   } else if (zero_count == 1 && x == static_cast<tensor_t>(0)) {
-    grad_data[replace_index] =
-        grad_data[replace_index] * masked_value_prod[replace_index];
+    grad_data[replace_index] = g * masked_value_prod[replace_index];
   } else {
     // ``x`` is not the only zero factor, so the product stays zero whatever
     // ``x`` becomes.
@@ -1069,6 +1073,7 @@ void gpu_scatter_mul_min_max_input_grad_kernel(DenseTensor self,
                                                     index_data,
                                                     out_data,
                                                     x_data,
+                                                    self_data,
                                                     shape_strides,
                                                     dim,
                                                     ndim,
