@@ -476,6 +476,27 @@ static bool DeriveSortedPathLayout(const std::vector<int64_t>& input_dims,
   for (int64_t s : view) numel *= s;
   if (numel <= 0 || numel > grad_numel) return false;
 
+  // Every element the sort based kernel touches sits at
+  //   slice_offset / elesize + sum_i i_k * view_strides[k]
+  // so the largest reachable position has to stay inside x_grad.  Checking the
+  // span rather than just numel also covers the strided cases, where the region
+  // is sparse and reaches further than its element count.
+  int64_t last = slice_offset / elesize;
+  for (size_t i = 0; i < view.size(); ++i) last += (view[i] - 1) * vstride[i];
+  PADDLE_ENFORCE_LT(
+      last,
+      grad_numel,
+      common::errors::InvalidArgument(
+          "The indexed view runs past the end of x_grad: its last element is "
+          "at "
+          "position %d but x_grad only holds %d elements. slice_offset is %d "
+          "bytes and the view is %s with strides %s.",
+          last,
+          grad_numel,
+          slice_offset,
+          make_ddim(view).to_str(),
+          make_ddim(vstride).to_str()));
+
   std::vector<int64_t> contig(view.size(), 1);
   for (int i = static_cast<int>(view.size()) - 2; i >= 0; --i) {
     contig[i] = contig[i + 1] * view[i + 1];
@@ -680,6 +701,25 @@ void IndexElementwiseGetGradKernel(const Context& dev_ctx,
                         "desires to be [%s].",
                         DataTypeToString(index_type),
                         DataTypeToString(DataType::INT64)));
+
+  // slice_offset is the byte offset of the indexed view inside x_grad's buffer,
+  // measured in the forward pass. Both the sort based path and the elementwise
+  // fallback add it to x_grad's base pointer, so a bogus value would turn into
+  // an out of bounds write. Reject it here instead.
+  const int64_t grad_bytes = x_grad->numel() * static_cast<int64_t>(sizeof(T));
+  PADDLE_ENFORCE_GE(
+      slice_offset,
+      0,
+      common::errors::InvalidArgument(
+          "slice_offset must be non-negative, but got %d.", slice_offset));
+  PADDLE_ENFORCE_LT(
+      slice_offset,
+      grad_bytes,
+      common::errors::InvalidArgument(
+          "slice_offset (%d bytes) must point inside x_grad, which only holds "
+          "%d bytes.",
+          slice_offset,
+          grad_bytes));
 
   if (accumulate) {
 #ifdef PADDLE_WITH_CUDA
