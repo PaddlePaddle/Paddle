@@ -302,6 +302,93 @@ class TestIndexElementwiseGetGradSmallStride(unittest.TestCase):
             paddle.enable_static()
 
 
+@unittest.skipUnless(
+    paddle.device.is_compiled_with_cuda(), 'CUDA is required for this test.'
+)
+class TestIndexElementwiseGetGradSlicedView(unittest.TestCase):
+    """Advanced indexing applied to a basic slice.
+
+    The slice is a view, so the backward kernel receives its byte offset inside
+    ``x_grad`` (``slice_offset``) plus the view's strides, and has to scatter
+    the reduced gradient back through them. A wrong offset or stride would move
+    the whole gradient block, which shows up both as wrong values inside the
+    slice and as non-zero gradient on rows the expression never read. The cases
+    below deliberately include non-zero offsets (``x[1::2]``, ``x[2:7:2]``) and
+    are run with ``FLAGS_use_stride_kernel`` both on and off, since only the
+    former reaches ``index_elementwise_get_grad`` at all.
+    """
+
+    SHAPE = (8, 6)
+
+    def _cases(self):
+        return [
+            ('x[::2, idx]', lambda t, i: t[::2, i], (slice(None, None, 2),)),
+            ('x[1::2, idx]', lambda t, i: t[1::2, i], (slice(1, None, 2),)),
+            ('x[2:7:2, idx]', lambda t, i: t[2:7:2, i], (slice(2, 7, 2),)),
+            ('x[1:5, idx]', lambda t, i: t[1:5, i], (slice(1, 5),)),
+            (
+                'x[1::2, idx, None]',
+                lambda t, i: t[1::2, i, None],
+                (slice(1, None, 2),),
+            ),
+        ]
+
+    def _expected(self, base_slice, index_np, out_grad_np, dtype):
+        """Reduce in float32 and round once, which is what the sorted-index
+        kernel does, then place the block back at the sliced rows."""
+        rows = out_grad_np.shape[0]
+        block = np.zeros([rows, self.SHAPE[1]], dtype=np.float32)
+        np.add.at(block, (slice(None), index_np), out_grad_np)
+        block = paddle.to_tensor(block).astype(dtype).astype('float32').numpy()
+        expected = np.zeros(self.SHAPE, dtype=np.float32)
+        expected[base_slice] = block
+        return expected
+
+    def _run(self, use_stride_kernel):
+        # 7 duplicates of column 2 exercise the duplicate reduction; the
+        # gradient of every untouched column stays exactly zero.  The gradient
+        # values are quarters so that every partial sum is exact in float16 and
+        # bfloat16 too, which keeps the comparison independent of the order the
+        # kernel reduces duplicates in.
+        index_np = np.array([2, 2, 2, 2, 2, 2, 2, 5], dtype=np.int64)
+        for dtype in ('float32', 'float16', 'bfloat16'):
+            for name, fn, base_slice in self._cases():
+                with self.subTest(
+                    use_stride_kernel=use_stride_kernel, dtype=dtype, expr=name
+                ):
+                    x = paddle.zeros(list(self.SHAPE), dtype=dtype)
+                    x.stop_gradient = False
+                    out = fn(x, paddle.to_tensor(index_np))
+
+                    rows = out.shape[0]
+                    steps = np.arange(rows * index_np.size, dtype=np.float32)
+                    out_grad_np = ((steps % 8) + 1).reshape(
+                        [rows, index_np.size]
+                    ) / 4
+                    out_grad = paddle.to_tensor(out_grad_np, dtype=dtype)
+                    out.backward(out_grad.reshape(out.shape))
+
+                    np.testing.assert_array_equal(
+                        x.grad.astype('float32').numpy(),
+                        self._expected(
+                            base_slice, index_np, out_grad_np, dtype
+                        ),
+                    )
+
+    def test_sliced_view_grad(self):
+        paddle.disable_static(place=paddle.CUDAPlace(0))
+        original = paddle.get_flags('FLAGS_use_stride_kernel')[
+            'FLAGS_use_stride_kernel'
+        ]
+        try:
+            for use_stride_kernel in (True, False):
+                paddle.set_flags({'FLAGS_use_stride_kernel': use_stride_kernel})
+                self._run(use_stride_kernel)
+        finally:
+            paddle.set_flags({'FLAGS_use_stride_kernel': original})
+            paddle.enable_static()
+
+
 if __name__ == '__main__':
     paddle.enable_static()
     unittest.main()
