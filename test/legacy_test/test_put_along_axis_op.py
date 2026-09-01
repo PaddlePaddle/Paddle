@@ -2041,30 +2041,31 @@ class TestPutAlongAxisIndexLargerThanInput(unittest.TestCase):
         np.testing.assert_allclose(out.numpy(), expected)
 
 
-@unittest.skipIf(
-    not (core.is_compiled_with_cuda() or is_custom_device()),
-    "core is not compiled with CUDA",
-)
 class TestPutAlongAxisIncludeSelfFalseInvalidIndex(unittest.TestCase):
     """``include_self=False`` initializes scatter targets before reducing.
 
-    That initialization kernel has to reject index values before computing the
-    target offset, otherwise an invalid index can write out of bounds before
-    the main scatter kernel reports the error.
+    That initialization has to reject index values before computing the target
+    offset, otherwise an invalid index writes out of bounds before the reduce
+    step ever looks at it.
+
+    Only the CPU place is exercised. On GPU the same check is a device-side
+    ``PADDLE_ENFORCE``, which prints and then traps; the trap destroys the CUDA
+    context, so the failure surfaces as ``CUDA error(719)`` instead of the
+    diagnostic, and every later CUDA call in the process fails as well. torch
+    reports an out-of-range scatter index the same way, and for the same
+    reason, so there is nothing in-process to assert there.
     """
 
     def setUp(self):
         paddle.disable_static()
 
     def test_reduce_mul_checks_index_before_initialization(self):
-        place = get_device_place()
-        x = paddle.zeros([2, 3], dtype='float32', device=place)
+        place = paddle.CPUPlace()
+        x = paddle.zeros([2, 3], dtype='float32').cpu()
         index = paddle.to_tensor([[10, 0, 0]], dtype='int64', place=place)
-        value = paddle.ones([1, 3], dtype='float32', device=place)
+        value = paddle.ones([1, 3], dtype='float32').cpu()
 
-        with self.assertRaisesRegex(
-            (RuntimeError, IndexError), "out of bounds"
-        ):
+        with self.assertRaisesRegex(IndexError, "expected >= -2 and < 2"):
             out = paddle._C_ops.put_along_axis(x, index, value, 0, 'mul', False)
             out.numpy()
 
