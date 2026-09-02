@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import re
+import warnings
 from collections import OrderedDict
 from dataclasses import dataclass, field
 from enum import Enum
@@ -56,6 +57,7 @@ class BufferGroup:
     fsdp_unit_id: int = None
     is_expert_param: bool = False
     is_tie: bool = False
+    no_decay: bool = False
     fsdp_group: object = None
     params_buffer: 'TensorFusionBuffer' = None
     grads_buffer: 'TensorFusionBuffer' = None
@@ -72,6 +74,7 @@ class TensorFusionBuffer:
         dtype,
         is_params=False,
         main_grad_dtype=None,
+        grad_div=None,
     ):
         # Calculate total buffer size needed (with padding)
         self.unique_key = unique_key
@@ -83,6 +86,13 @@ class TensorFusionBuffer:
         self.main_grad_dtype = (
             main_grad_dtype if main_grad_dtype is not None else dtype
         )
+        # Average over data replicas (sharding degree), not this buffer's own
+        # fsdp_degree: expert grads already cover every rank's tokens.
+        self.grad_scale = 1.0 / (
+            grad_div if grad_div is not None else self.fsdp_degree
+        )
+        # Set once per accumulation cycle; only unsharded buffers need it.
+        self.grad_scaled = False
         self.total_buffer_size = 0
         self.param_offsets = {}
         self.tmp_data_buffer = None
@@ -239,7 +249,7 @@ class TensorFusionBuffer:
     def do_reduce_scatter(self):
         tmp_buffer = self.get_tmp_buffer()
         shard = tmp_buffer._slice(0, self.data_buffer.shape[0])
-        tmp_buffer.scale_(1.0 / self.fsdp_degree)
+        tmp_buffer.scale_(self.grad_scale)
         return paddle.distributed.reduce_scatter(
             shard,
             tmp_buffer,
@@ -323,11 +333,13 @@ class FSDPBufferManager:
                 is_expert,
                 fsdp_group,
                 param.name == self.tie_param_name,
+                # A buffer must not mix params with and without weight decay.
+                bool(getattr(param, "no_weight_decay", False)),
             )
             keyed_params.setdefault(key, []).append(param)
 
         def sort_key(item):
-            _, trainable, unit_id, is_expert_param, _, is_tie = item[0]
+            _, trainable, unit_id, is_expert_param, _, is_tie, _ = item[0]
             return (
                 0 if is_tie else (1 if not trainable else 2),
                 unit_id if unit_id is not None else float('inf'),
@@ -343,6 +355,7 @@ class FSDPBufferManager:
                 is_expert_param=is_expert_param,
                 fsdp_group=fsdp_group,
                 is_tie=is_tie,
+                no_decay=no_decay,
             )
             for (
                 dtype,
@@ -351,6 +364,7 @@ class FSDPBufferManager:
                 is_expert_param,
                 fsdp_group,
                 is_tie,
+                no_decay,
             ), params in sorted(keyed_params.items(), key=sort_key)
         ]
 
@@ -369,6 +383,7 @@ class FSDPBufferManager:
                     main_grad_dtype=paddle.float32
                     if group.is_expert_param or group.dtype == paddle.float32
                     else self.main_grad_dtype,
+                    grad_div=self._fsdp_group.nranks,
                 )
             group.grads_use_sum = len(params)
             for param in params:
@@ -570,6 +585,7 @@ class FSDPCommManager:
         for group in self.buffer_manager.buffer_groups:
             if group.grads_buffer is not None:
                 group.grads_buffer.data_buffer.zero_()
+                group.grads_buffer.grad_scaled = False
 
     def _ensure_grads_writable(self, param):
         gid = self.buffer_manager.param_to_buffer_id.get(param.name)
@@ -647,6 +663,14 @@ class FSDPCommManager:
                 continue
             group.grads_use_cnt = 0
             if not grads_buffer.is_sharded:
+                # No reduce_scatter here, so apply the grad average once per
+                # accumulation cycle.
+                if (
+                    grads_buffer.grad_scale != 1.0
+                    and not grads_buffer.grad_scaled
+                ):
+                    grads_buffer.data_buffer.scale_(grads_buffer.grad_scale)
+                    grads_buffer.grad_scaled = True
                 continue
             if grads_buffer.tmp_data_buffer is None:
                 continue
@@ -835,6 +859,35 @@ class FullyShardFusion:
             self._shard_descs[params_buffer.data_buffer.name] = param_slice_info
         return result
 
+    def bind_decay_param_fun(self, optimizer):
+        """Answer ``apply_decay_param_fun`` for the fused buffers.
+
+        The callback matches model param names, so every ``fuse_params_*`` name
+        would answer False and weight decay would be dropped silently.
+        """
+        fun = getattr(optimizer, "_apply_decay_param_fun", None)
+        if fun is None or getattr(optimizer, "_fsdp_decay_fun_bound", False):
+            return
+        buffer_decay = {}
+        for group in self.buffer_manager.buffer_groups:
+            buffer_name = group.params_buffer.data_buffer.name
+            answers = {fun(param.name) for param in group.params}
+            if len(answers) > 1:
+                warnings.warn(
+                    f"FSDP: fused buffer {buffer_name} mixes params with and "
+                    "without weight decay; mark the exempt ones with "
+                    "`param.no_weight_decay = True` before fully_shard()."
+                )
+            buffer_decay[buffer_name] = any(answers) and not group.no_decay
+
+        def fsdp_apply_decay_param_fun(name):
+            if name in buffer_decay:
+                return buffer_decay[name]
+            return fun(name)
+
+        optimizer._apply_decay_param_fun = fsdp_apply_decay_param_fun
+        optimizer._fsdp_decay_fun_bound = True
+
     def owns_optimizer_params(self, optimizer):
         """Whether ``optimizer`` steps on the fused buffers of this context."""
         # It still holds the model params; the fused buffers are substituted inside ``step``.
@@ -861,19 +914,26 @@ class FullyShardFusion:
         if not self._shard_descs:
             self.sharded_state_dict()
 
-        # Longer tags first so the name split does not stop at a prefix.
-        _optimizer_scalar_name = ("beta1_pow_acc", "beta2_pow_acc")
-        _optimizer_non_scaler_name = (
-            "moment2_max",
-            "moment1",
-            "moment2",
-            "velocity",
+        inner = optimizer
+        while hasattr(inner, "_inner_opt"):
+            inner = inner._inner_opt
+        tags = sorted(
+            {
+                getattr(cls, attr).lstrip("_")
+                for cls in type(inner).__mro__
+                for attr in vars(cls)
+                if attr.endswith("_str")
+                and "_acc" in attr
+                and isinstance(getattr(cls, attr), str)
+            },
+            key=len,
+            reverse=True,
         )
         _master_weight_suffix = re.compile(r"^(.*)_fp32_master_\d+$")
 
         def _split_optimizer_state_name(vname):
             """``fuse_params_0_fp32_master_0_moment1_3`` -> ``("fuse_params_0", "moment1_0")``."""
-            for tag in _optimizer_non_scaler_name + _optimizer_scalar_name:
+            for tag in tags:
                 marker = "_" + tag + "_"
                 idx = vname.rfind(marker)
                 if idx < 0:
@@ -901,11 +961,27 @@ class FullyShardFusion:
 
         sharded_state = {}
         for vname, tensor in state_dict.items():
-            base_name, tag = _split_optimizer_state_name(vname)
-            param_slice_info = self._shard_descs.get(base_name)
-            if param_slice_info is None:
+            owner = next(
+                (
+                    name
+                    for name in self._shard_descs
+                    if vname.startswith(name + "_")
+                ),
+                None,
+            )
+            if owner is None:
                 continue
-            if tag.startswith(_optimizer_scalar_name):
+            base_name, tag = _split_optimizer_state_name(vname)
+            if base_name != owner:
+                raise NotImplementedError(
+                    f"FSDP cannot save optimizer state '{vname}' of "
+                    f"{type(inner).__name__} on fused buffer '{owner}': the "
+                    "accumulator is not declared through a '_*_acc*_str' "
+                    "attribute, and skipping it would silently reset the state "
+                    "on load."
+                )
+            param_slice_info = self._shard_descs[owner]
+            if int(tensor.numel()) == 1:
                 for struct_name in param_slice_info:
                     key = f"{struct_name}.{tag}"
                     sharded_state[key] = _replicated_scalar(key, tensor)
