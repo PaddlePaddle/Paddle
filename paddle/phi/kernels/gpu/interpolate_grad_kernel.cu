@@ -384,7 +384,13 @@ __global__ void KeBilinearInterpNCHWBw(T* in,
   // to avoid atomic contention overhead.
   // This threshold 0.5f is come up with extensive quantitative analysis,
   // corresponding to 2x or larger scale factor in W axis.
-  if (ratio_w < 0.5f) [[likely]] {  // NOLINT
+  // The reverse-mapping optimization computes 1 / ratio_h and
+  // 1 / ratio_w. When an output spatial dimension is 1 with
+  // align_corners=true, the corresponding ratio is 0. Fall back to the
+  // atomic forward-mapping branch instead of dividing by zero.
+  if (ratio_h > static_cast<MT>(0) &&
+      ratio_w > static_cast<MT>(0) &&
+      ratio_w < static_cast<MT>(0.5)) [[likely]] {  // NOLINT
     if (index < num_in) {
       int64_t index_tmp = index;
       const int64_t w1 = index_tmp % in_w;
@@ -1752,7 +1758,7 @@ static void InterpolateAA2DCUDABwd(
       int block_y = std::min(256 / block_x, 8);
       int grid_x = (out_w + block_x - 1) / block_x;
       int grid_y = (out_h + block_y - 1) / block_y;
-      int grid_z = std::min(static_cast<int>(nc), gpu_props.maxGridSize[2]);
+      int grid_z = std::min(static_cast<int>(nc), static_cast<int>(gpu_props.maxGridSize[2]));
       dim3 block_noshmem(block_x, block_y);
       dim3 grid_noshmem(grid_x, grid_y, grid_z);
 

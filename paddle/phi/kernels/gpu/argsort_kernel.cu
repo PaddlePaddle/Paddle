@@ -23,6 +23,18 @@
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
+#include <rocprim/type_traits.hpp>
+
+namespace rocprim {
+namespace detail {
+template <>
+struct float_bit_mask<phi::float16> : float_bit_mask<rocprim::half> {};
+
+template <>
+struct float_bit_mask<phi::bfloat16> : float_bit_mask<rocprim::bfloat16> {};
+}  // namespace detail
+}  // namespace rocprim
+
 #include "paddle/phi/kernels/funcs/cub.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/primitive/functor_primitives.h"
@@ -33,19 +45,11 @@ namespace rocprim {
 namespace detail {
 template <>
 struct radix_key_codec_base<phi::float16>
-    : radix_key_codec_integral<phi::float16, uint16_t> {};
+    : radix_key_codec_floating<phi::float16, uint16_t> {};
 
 template <>
 struct radix_key_codec_base<phi::bfloat16>
-    : radix_key_codec_integral<phi::bfloat16, uint16_t> {};
-
-#if HIP_VERSION >= 50400000
-template <>
-struct float_bit_mask<phi::float16> : float_bit_mask<rocprim::half> {};
-
-template <>
-struct float_bit_mask<phi::bfloat16> : float_bit_mask<rocprim::bfloat16> {};
-#endif
+    : radix_key_codec_floating<phi::bfloat16, uint16_t> {};
 }  // namespace detail
 }  // namespace rocprim
 #else

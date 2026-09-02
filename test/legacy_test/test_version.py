@@ -26,7 +26,10 @@ class VersionTest(unittest.TestCase):
         self._minor_regex = "[0-9]+"
         self._patch_regex = "[0-9]+(\\.(a|b|rc)\\.[0-9]+)?"
         self._rc_regex = "[0-9]+"
-        self._version_regex = "[0-9]+\\.[0-9]+\\.[0-9]+(\\.(a|b|rc)\\.[0-9]+)?"
+        self._version_regex = (
+            r"[0-9]+\.[0-9]+\.[0-9]+"
+            r"(?:\.(?:a|b|rc)\.[0-9]+|\.dev[0-9]+)?"
+        )
         self._commit_regex = "[0-9a-f]{5,49}"
 
     def test_check_output(self):
@@ -35,7 +38,10 @@ class VersionTest(unittest.TestCase):
         self.assertTrue(isinstance(base_version.is_tagged, bool))
 
         # check version format
-        if base_version.is_tagged:
+        if (
+            base_version.is_tagged
+            or base_version.full_version != "0.0.0"
+        ):
             self.assertTrue(re.match(self._major_regex, base_version.major))
             self.assertTrue(re.match(self._minor_regex, base_version.minor))
             self.assertTrue(re.match(self._patch_regex, base_version.patch))
