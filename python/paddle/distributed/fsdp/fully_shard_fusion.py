@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from collections import OrderedDict
 from dataclasses import dataclass, field
 from enum import Enum
 
@@ -51,8 +52,8 @@ class BufferGroup:
     dtype: object = None
     trainable: bool = None
     fsdp_unit_id: int = None
-    is_tie: bool = False
     is_expert_param: bool = False
+    is_tie: bool = False
     fsdp_group: object = None
     params_buffer: 'TensorFusionBuffer' = None
     grads_buffer: 'TensorFusionBuffer' = None
@@ -72,8 +73,10 @@ class TensorFusionBuffer:
     ):
         # Calculate total buffer size needed (with padding)
         self.unique_key = unique_key
+        self.fsdp_group = fsdp_group
         self.fsdp_degree = fsdp_group.nranks
         self.is_sharded = fsdp_group.nranks > 1
+        self.is_params = is_params
         self.dtype = dtype
         self.main_grad_dtype = (
             main_grad_dtype if main_grad_dtype is not None else dtype
@@ -82,7 +85,6 @@ class TensorFusionBuffer:
         self.param_offsets = {}
         self.tmp_data_buffer = None
         self.comm_task = None
-        self.reduce_pending = False
         self.trainable = params[0].trainable
 
         for param in params:
@@ -117,7 +119,7 @@ class TensorFusionBuffer:
                 param.get_tensor()._set_dims(_shape)
             paddle.device.cuda.empty_cache()
 
-            if self.fsdp_degree > 1:
+            if self.is_sharded:
                 curr_rank = paddle.distributed.get_rank(fsdp_group)
                 total_nums = self.data_buffer.shape[0]
                 piece_len = (
@@ -128,7 +130,6 @@ class TensorFusionBuffer:
                 self.data_buffer = paddle.slice(
                     self.data_buffer, [0], [start], [end]
                 ).clone()
-                paddle.device.cuda.empty_cache()
 
             # Init params_buffer attr
             self.data_buffer.name = "fuse_params_" + str(unique_key)
@@ -140,14 +141,14 @@ class TensorFusionBuffer:
                 shape=[self.total_buffer_size // self.fsdp_degree],
                 dtype=self.main_grad_dtype,
             )
-
             # Register get_main_grad method for each param, returns view_slice of grad_buffer
             for param in params:
                 if param.trainable:
                     param._fusion_buffer = self
                     param._param_offsets = self.param_offsets
+                    param._main_grad_addr = None
 
-                    def get_grad_from_tmp_buf(param):
+                    def get_grad_from_tmp_buf(param, shape=None):
                         tmp_buffer = param._fusion_buffer.get_tmp_buffer()
                         offset = param._param_offsets[param.name]
                         main_grad = paddle._C_ops.view_slice(
@@ -155,9 +156,28 @@ class TensorFusionBuffer:
                             offset,
                             offset + param._numel(),
                         )
+                        main_grad.get_tensor()._set_dims(
+                            param.shape if shape is None else shape
+                        )
+                        param.main_grad = main_grad
+                        param._main_grad_addr = main_grad.data_ptr()
                         return main_grad
 
                     param.get_main_grad = get_grad_from_tmp_buf.__get__(param)
+
+    def rebind_main_grad(self, param):
+        stale_grad = getattr(param, "main_grad", None)
+        if not (self.is_sharded and self.tmp_data_buffer is None):
+            if stale_grad is not None and stale_grad._is_initialized():
+                if stale_grad.data_ptr() == getattr(
+                    param, "_main_grad_addr", None
+                ):
+                    return
+        main_grad = param.get_main_grad()
+        if stale_grad is not None and stale_grad._is_initialized():
+            if stale_grad.data_ptr() != main_grad.data_ptr():
+                main_grad.add_(stale_grad)
+                stale_grad._clear_data()
 
     def get_padded_size(self, param):
         size = np.prod(param.shape)
@@ -174,33 +194,64 @@ class TensorFusionBuffer:
         # Reuse tmp_buffer if exists, else create
         if self.tmp_data_buffer is None:
             self.tmp_data_buffer = paddle.zeros(
-                shape=[self.total_buffer_size], dtype=self.dtype
+                shape=[self.total_buffer_size],
+                dtype=self.dtype if self.is_params else self.main_grad_dtype,
             )
         return self.tmp_data_buffer
+
+    def do_all_gather(self):
+        return paddle.distributed.all_gather(
+            self.get_tmp_buffer(),
+            self.data_buffer,
+            group=self.fsdp_group,
+            sync_op=False,
+        )
+
+    def do_reduce_scatter(self):
+        tmp_buffer = self.get_tmp_buffer()
+        shard = tmp_buffer._slice(0, self.data_buffer.shape[0])
+        tmp_buffer.scale_(1.0 / self.fsdp_degree)
+        return paddle.distributed.reduce_scatter(
+            shard,
+            tmp_buffer,
+            op=paddle.distributed.ReduceOp.SUM,
+            group=self.fsdp_group,
+            sync_op=False,
+        )
+
+    def accumulate_reduced_grad(self):
+        shard = self.get_tmp_buffer()._slice(0, self.data_buffer.shape[0])
+        self.data_buffer.add_(shard)
+        self.clear_tmp_buffer()
 
     def clear_tmp_buffer(self):
         if self.tmp_data_buffer is not None:
             self.tmp_data_buffer._clear_data()
             self.tmp_data_buffer = None
-            # paddle.device.cuda.empty_cache()
 
 
 class FSDPBufferManager:
-    def __init__(self, model, fsdp_unit_layers=None, moe_layers_name=None):
+    def __init__(
+        self,
+        model,
+        fsdp_unit_layers=None,
+        main_grad_dtype=None,
+    ):
         self.model = model
         self.hcg = fleet.get_hybrid_communicate_group()
-        self.dp_group = self.hcg.get_data_parallel_group()
         self._fsdp_group = self.hcg.get_sharding_parallel_group()
         use_ep = (
             hasattr(self.hcg, "get_expert_parallel_world_size")
             and self.hcg.get_expert_parallel_world_size() > 1
         )
-        self._expert_fsdp_group = (
-            self.hcg.get_moe_sharding_parallel_group() if use_ep else None
+        self._ep_fsdp_group = (
+            self.hcg.get_moe_sharding_parallel_group()
+            if use_ep
+            else self._fsdp_group
         )
-        self.main_grad_dtype = paddle.float32
-
-        paddle.device.cuda.empty_cache()
+        self.main_grad_dtype = (
+            main_grad_dtype if main_grad_dtype is not None else paddle.float32
+        )
 
         # Layer types to wrap as FSDP sharding layers
         # Note: 'Qwen3VLTextDecoderLayer' is temporary; fleet models all use 'TransformerLayer'
@@ -209,11 +260,6 @@ class FSDPBufferManager:
             'Qwen3VLTextDecoderLayer',
             'Qwen3MoeDecoderLayer',
         ]
-        self.moe_layers_name = moe_layers_name or [
-            'Qwen3MoeMLP',
-            'StandardMLPExpert',
-        ]
-
         # Get tie_param_name if using tie_weights
         self.tie_param_name = None
         if hasattr(self.model, "get_input_embeddings"):
@@ -223,107 +269,81 @@ class FSDPBufferManager:
             ):
                 self.tie_param_name = input_embeddings.weight.name
 
-        # Create buffer_groups
-        for m in self.model.modules():
-            if type(m).__name__ in self.moe_layers_name:
-                for p in m.parameters():
-                    p.is_moe_param = True
-        self.buffer_groups = self._build_groups()
-        self.param_to_buffer_id = {}
-
-        # Create params_buffer, grads_buffer with groups
-        for gid, group in enumerate(self.buffer_groups):
-            params = group.params
-            fsdp_group = group.fsdp_group
-
-            group.params_buffer = TensorFusionBuffer(
-                gid,
-                params,
-                fsdp_group,
-                params[0].dtype,
-                is_params=True,
-            )
-
-            if not params[0].stop_gradient:
-                group.grads_buffer = TensorFusionBuffer(
-                    gid,
-                    params,
-                    fsdp_group,
-                    params[0].dtype,
-                    main_grad_dtype=self.main_grad_dtype,
-                )
-            else:
-                group.grads_buffer = None
-
-            group.grads_use_sum = len(params)
-
-            for param in params:
-                self.param_to_buffer_id[param.name] = gid
-
-    def _build_groups(self):
         param_to_unit_id = {}
         for unit_id, m in enumerate(self.model.modules()):
             if type(m).__name__ in self.fsdp_unit_layers:
                 for p in m.parameters():
                     param_to_unit_id[p.name] = unit_id
 
-        param_groups = []
+        keyed_params = OrderedDict()
         for param in self.model.parameters():
-            name = param.name
-            is_tie = (
-                self.tie_param_name is not None and name == self.tie_param_name
-            )
             is_expert = getattr(param, "is_moe_param", False) or getattr(
                 param, "expert", False
             )
             color = getattr(param, "color", None)
             if isinstance(color, dict) and color.get("group") is not None:
                 fsdp_group = color["group"]
-            elif is_expert and self._expert_fsdp_group is not None:
-                fsdp_group = self._expert_fsdp_group
+            elif is_expert:
+                fsdp_group = self._ep_fsdp_group
             else:
                 fsdp_group = self._fsdp_group
+            key = (
+                param.dtype,
+                param.trainable,
+                param_to_unit_id.get(param.name),
+                is_expert,
+                fsdp_group,
+                param.name == self.tie_param_name,
+            )
+            keyed_params.setdefault(key, []).append(param)
 
-            param_attrs = {
-                "dtype": param.dtype,
-                "trainable": param.trainable,
-                "fsdp_unit_id": param_to_unit_id.get(name),
-                "is_tie": is_tie,
-                "is_expert_param": is_expert,
-                "fsdp_group": fsdp_group,
-            }
-
-            found_group = False
-            for param_group in param_groups:
-                if (
-                    param_group.dtype == param_attrs["dtype"]
-                    and param_group.trainable == param_attrs["trainable"]
-                    and param_group.fsdp_unit_id == param_attrs["fsdp_unit_id"]
-                    and param_group.is_tie == param_attrs["is_tie"]
-                    and param_group.is_expert_param
-                    == param_attrs["is_expert_param"]
-                    and param_group.fsdp_group is param_attrs["fsdp_group"]
-                ):
-                    param_group.params.append(param)
-                    found_group = True
-                    break
-
-            # Create new group if no matching
-            if not found_group:
-                param_groups.append(BufferGroup(params=[param], **param_attrs))
-
-        def group_sort_key(group):
-            priority = 0 if group.is_tie else (1 if not group.trainable else 2)
+        def sort_key(item):
+            _, trainable, unit_id, is_expert_param, _, is_tie = item[0]
             return (
-                priority,
-                group.fsdp_unit_id
-                if group.fsdp_unit_id is not None
-                else float('inf'),
-                group.is_expert_param,
+                0 if is_tie else (1 if not trainable else 2),
+                unit_id if unit_id is not None else float('inf'),
+                is_expert_param,
             )
 
-        # Buffer them by execution order
-        return [g for g in sorted(param_groups, key=group_sort_key) if g.params]
+        self.buffer_groups = [
+            BufferGroup(
+                params=params,
+                dtype=dtype,
+                trainable=trainable,
+                fsdp_unit_id=unit_id,
+                is_expert_param=is_expert_param,
+                fsdp_group=fsdp_group,
+                is_tie=is_tie,
+            )
+            for (
+                dtype,
+                trainable,
+                unit_id,
+                is_expert_param,
+                fsdp_group,
+                is_tie,
+            ), params in sorted(keyed_params.items(), key=sort_key)
+        ]
+
+        self.param_to_buffer_id = {}
+        for gid, group in enumerate(self.buffer_groups):
+            params = group.params
+            group.params_buffer = TensorFusionBuffer(
+                gid, params, group.fsdp_group, group.dtype, is_params=True
+            )
+            if not params[0].stop_gradient:
+                group.grads_buffer = TensorFusionBuffer(
+                    gid,
+                    params,
+                    group.fsdp_group,
+                    group.dtype,
+                    main_grad_dtype=paddle.float32
+                    if group.is_expert_param or group.dtype == paddle.float32
+                    else self.main_grad_dtype,
+                )
+            group.grads_use_sum = len(params)
+            for param in params:
+                self.param_to_buffer_id[param.name] = gid
 
 
 class FSDPCommManager:
@@ -331,119 +351,127 @@ class FSDPCommManager:
         self,
         buffer_manager,
         enable_overlap=True,
-        double_buffer_limit=2,
+        double_buffer_limit=None,
     ):
         self.buffer_manager = buffer_manager
         self.enable_overlap = enable_overlap
         self.grad_reduce_queue = []
 
         # for double buffer mechanism config
-        self.double_buffer_limit = double_buffer_limit
+        groups_per_unit = 2
+        self.double_buffer_limit = double_buffer_limit or (groups_per_unit * 2)
+        self.prefetch_units = max(
+            self.double_buffer_limit // groups_per_unit - 1, 0
+        )
         self.buffer_cnt_in_using = 0
         self.need_zero_grads = True
         self._last_backward_unit_id = None
 
-    def _flush_expert_grads_after_unit(self, unit_id):
-        # Backward walks the FSDP units from last to first, so every unit after
-        # `unit_id` is done and its expert grads are final. Reducing here gives
-        # expert params their overlap back on a structural trigger.
-        if unit_id is None:
-            return
-        groups = self.buffer_manager.buffer_groups
-        for group in reversed(groups):
-            grads_buffer = group.grads_buffer
-            if (
-                not group.is_expert_param
-                or group.fsdp_unit_id is None
-                or grads_buffer is None
-                or grads_buffer.tmp_data_buffer is None
-            ):
-                continue
-            if group.fsdp_unit_id > unit_id:
-                self._reduce_group_grads(group)
+    # ------------------------------------------------------------------
+    # Params all_gather double buffer. Owns buffer_cnt_in_using /
+    # double_buffer_limit / prefetch_units and the BufferState machine.
+    # ------------------------------------------------------------------
 
-    def _release_one_buffer_if_needed(self):
+    def _release_one_buffer_if_needed(self, keep=()):
         # Release a buffer with the READY status if needed
         while self.buffer_cnt_in_using >= self.double_buffer_limit:
             found = False
             for gid_idx, group in enumerate(self.buffer_manager.buffer_groups):
+                if gid_idx in keep:
+                    continue
                 if not group.params_buffer.is_sharded:
                     continue
                 if group.params_buffer.status == BufferState.READY:
-                    group.params_buffer.clear_tmp_buffer()
                     group.params_buffer.status = BufferState.FREED
+                    group.params_buffer.clear_tmp_buffer()
                     self.buffer_cnt_in_using -= 1
                     found = True
                     break
             if not found:
                 break
 
-    def _next_buffer_id(self, gid, is_backward):
+    def _next_buffer_id(self, req_gids, is_backward):
         # Get next buffer id for prefetch
-        if is_backward:
-            next_gid = gid - 1
-            # Search backward for trainable buffer_groups
-            while (
-                next_gid >= 0
-                and not self.buffer_manager.buffer_groups[
-                    next_gid
-                ].params_buffer.trainable
-            ):
-                next_gid -= 1
-            return max(next_gid, 0)
-        else:
-            return min(gid + 1, len(self.buffer_manager.buffer_groups) - 1)
+        groups = self.buffer_manager.buffer_groups
+        if self.prefetch_units <= 0:
+            return []
+        step = -1 if is_backward else 1
+        requested = set(req_gids)
+        next_gid = (min(req_gids) if is_backward else max(req_gids)) + step
+        while next_gid in requested:
+            next_gid += step
+
+        gids = []
+        seen_units = set()
+        while 0 <= next_gid < len(groups):
+            group = groups[next_gid]
+            if is_backward and not group.params_buffer.trainable:
+                next_gid += step
+                continue
+            if group.fsdp_unit_id not in seen_units:
+                if len(seen_units) >= self.prefetch_units:
+                    break
+                seen_units.add(group.fsdp_unit_id)
+            gids.append(next_gid)
+            next_gid += step
+        return gids
+
+    def _issue_async_gather(self, gid):
+        params_buffer = self.buffer_manager.buffer_groups[gid].params_buffer
+        params_buffer.status = BufferState.SYNCING
+        params_buffer.comm_task = params_buffer.do_all_gather()
+        self.buffer_cnt_in_using += 1
 
     def all_gather_params(self, params, is_backward=False):
         if len(params) == 0:
             return
+
+        req_gids = []
+        for param in params:
+            gid = self.buffer_manager.param_to_buffer_id[param.name]
+            if gid not in req_gids:
+                req_gids.append(gid)
+
+        if is_backward:
+            unit_id = self.buffer_manager.buffer_groups[
+                req_gids[0]
+            ].fsdp_unit_id
+            if unit_id != self._last_backward_unit_id:
+                self._last_backward_unit_id = unit_id
+                self._flush_expert_grads_after_unit(unit_id)
+
+        if self.enable_overlap:
+            keep = set(req_gids)
+            for gid in req_gids:
+                group = self.buffer_manager.buffer_groups[gid]
+                if not group.params_buffer.is_sharded:
+                    continue
+                if group.params_buffer.status == BufferState.FREED:
+                    self._release_one_buffer_if_needed(keep)
+                    self._issue_async_gather(gid)
+
+            for next_gid in self._next_buffer_id(req_gids, is_backward):
+                next_params_buffer = self.buffer_manager.buffer_groups[
+                    next_gid
+                ].params_buffer
+                if not next_params_buffer.is_sharded:
+                    continue
+                if next_params_buffer.status != BufferState.FREED:
+                    continue
+                self._release_one_buffer_if_needed(keep)
+                if self.buffer_cnt_in_using >= self.double_buffer_limit:
+                    break
+                self._issue_async_gather(next_gid)
+
         for param in params:
             gid = self.buffer_manager.param_to_buffer_id[param.name]
             group = self.buffer_manager.buffer_groups[gid]
             params_buffer = group.params_buffer
-            # Use group-specific fsdp_group
-            fsdp_group = group.fsdp_group
-
-            if (
-                is_backward
-                and group.fsdp_unit_id != self._last_backward_unit_id
-            ):
-                self._last_backward_unit_id = group.fsdp_unit_id
-                self._flush_expert_grads_after_unit(group.fsdp_unit_id)
 
             # Double buffer: reuse buffer if status is READY
             if params_buffer.status == BufferState.READY:
                 # Reuse: READY -> USING, no need to all_gather again
                 params_buffer.status = BufferState.USING
-
-            # Overlap prefetch comm
-            if self.enable_overlap:
-                prefetch_count = 2
-                curr_next_gid = gid
-                for _ in range(prefetch_count):
-                    next_gid = self._next_buffer_id(curr_next_gid, is_backward)
-                    next_group = self.buffer_manager.buffer_groups[next_gid]
-                    next_params_buffer = next_group.params_buffer
-                    next_fsdp_group = next_group.fsdp_group
-                    if (
-                        next_params_buffer.status == BufferState.FREED
-                        and next_fsdp_group.nranks > 1
-                    ):
-                        # Check double_buffer_limit before prefetch
-                        self._release_one_buffer_if_needed()
-                        next_params_buffer.status = BufferState.SYNCING
-                        tmp_buffer_prefetch = (
-                            next_params_buffer.get_tmp_buffer()
-                        )
-                        next_params_buffer.comm_task = (
-                            paddle.distributed.all_gather(
-                                tmp_buffer_prefetch,
-                                next_params_buffer.data_buffer,
-                                group=next_fsdp_group,
-                                sync_op=False,
-                            )
-                        )
-                        self.buffer_cnt_in_using += 1
 
             # Wait for async comm to complete: SYNCING -> USING
             if params_buffer.status == BufferState.SYNCING:
@@ -455,7 +483,7 @@ class FSDPCommManager:
             # Do all_gather in sync: FREED -> USING
             if params_buffer.status == BufferState.FREED:
                 if params_buffer.is_sharded:
-                    fsdp_group.process_group.all_gather(
+                    params_buffer.fsdp_group.process_group.all_gather(
                         params_buffer.data_buffer, tmp_buffer
                     ).wait()
                     self.buffer_cnt_in_using += 1
@@ -475,6 +503,7 @@ class FSDPCommManager:
         affected_gids = set()
         for param in params:
             gid = self.buffer_manager.param_to_buffer_id.get(param.name)
+            group = self.buffer_manager.buffer_groups[gid]
             stop_gradient = param.stop_gradient
             _shape = param.shape
             param._clear_data()
@@ -488,121 +517,112 @@ class FSDPCommManager:
             if group.params_buffer.status == BufferState.USING:
                 group.params_buffer.status = BufferState.READY
 
-    def reduce_scatter_grads(self, param):
-        if self.need_zero_grads:
-            self.need_zero_grads = False
-            for group in self.buffer_manager.buffer_groups:
-                if group.grads_buffer is not None:
-                    group.grads_buffer.data_buffer.zero_()
-        gid = self.buffer_manager.param_to_buffer_id.get(param.name)
-        group = self.buffer_manager.buffer_groups[gid]
-        group.grads_use_cnt += 1
-        param.main_grad = None
-
-        if group.is_expert_param:
-            return
-
-        if group.grads_use_cnt == group.grads_use_sum:
-            self._reduce_group_grads(group)
-
-    def _reduce_group_grads(self, group):
-        # Reduce-scatter one group's fused grad buffer over its own group.
-        group.grads_use_cnt = 0
-        grads_buffer = group.grads_buffer
-        if grads_buffer is None:
-            return
-        if not grads_buffer.is_sharded:
-            return
-        if grads_buffer.reduce_pending:
-            return
-        fsdp_group = group.fsdp_group
-
-        # Grad queue mechanism: wait and release completed reduce_scatter async tasks
-        self._wait_for_grad_comm()
-
-        tmp_buffer = grads_buffer.get_tmp_buffer()
-        shard_size = grads_buffer.data_buffer.shape[0]
-        grad_buffer_shard = tmp_buffer._slice(0, shard_size)
-        tmp_buffer.scale_(1.0 / fsdp_group.nranks)
-        if self.enable_overlap:
-            # Comm grads async and check all comm_task before optimizer update
-            grads_buffer.comm_task = paddle.distributed.reduce_scatter(
-                grad_buffer_shard,
-                tmp_buffer,
-                op=paddle.distributed.ReduceOp.SUM,
-                group=fsdp_group,
-                sync_op=False,
-            )
-            grads_buffer.reduce_pending = True
-
-            # Add async task to queue
-            self.grad_reduce_queue.append(grads_buffer)
-        else:
-            paddle.distributed.reduce_scatter(
-                grad_buffer_shard,
-                tmp_buffer,
-                op=paddle.distributed.ReduceOp.SUM,
-                group=fsdp_group,
-                sync_op=False,
-            ).wait()
-            grads_buffer.data_buffer.add_(grad_buffer_shard)
-            grads_buffer.clear_tmp_buffer()
-
-    def _finish_grads_buffer_reduce(self, grads_buffer):
-        if grads_buffer.comm_task is not None:
-            grads_buffer.comm_task.wait()
-            grads_buffer.comm_task = None
-            shard_size = grads_buffer.data_buffer.shape[0]
-            grad_buffer_shard = grads_buffer.tmp_data_buffer._slice(
-                0, shard_size
-            )
-            grads_buffer.data_buffer.add_(grad_buffer_shard)
-        grads_buffer.clear_tmp_buffer()
-        grads_buffer.reduce_pending = False
-        if grads_buffer in self.grad_reduce_queue:
-            self.grad_reduce_queue.remove(grads_buffer)
-
-    def wait_grads_buffer_ready(self, param):
-        gid = self.buffer_manager.param_to_buffer_id.get(param.name)
-        grads_buffer = self.buffer_manager.buffer_groups[gid].grads_buffer
-        if grads_buffer is not None and grads_buffer.reduce_pending:
-            self._finish_grads_buffer_reduce(grads_buffer)
-
-    def _wait_for_grad_comm(self, queue_limit=2):
-        # Wait for async reduce_scatter tasks to complete and release resources
-        # queue_limit: max queue size, default use 2, 0 means wait for all
-        while len(self.grad_reduce_queue) > queue_limit:
-            self._finish_grads_buffer_reduce(self.grad_reduce_queue[0])
-
-    def finish_grads_sync(self):
-        # Wait for all async reduce_scatter tasks, call before optimizer.step()
-        groups = self.buffer_manager.buffer_groups
-        for group in reversed(groups):
-            grads_buffer = group.grads_buffer
-            if (
-                group.is_expert_param
-                and grads_buffer is not None
-                and grads_buffer.tmp_data_buffer is not None
-            ):
-                self._reduce_group_grads(group)
-        for group in groups:
-            if not group.is_expert_param and group.grads_use_cnt > 0:
-                self._reduce_group_grads(group)
-        self._wait_for_grad_comm(queue_limit=0)
-
     def reset_params_buffer_status(self):
         self._last_backward_unit_id = None
         for group in self.buffer_manager.buffer_groups:
-            group.grads_use_cnt = 0
             params_buffer = group.params_buffer
             if params_buffer.status in (BufferState.READY, BufferState.USING):
-                # Clear stale tmp_buffer to force re-all_gather with updated data_buffer
                 params_buffer.clear_tmp_buffer()
                 params_buffer.status = BufferState.FREED
                 if not params_buffer.is_sharded:
                     continue
                 if self.buffer_cnt_in_using > 0:
                     self.buffer_cnt_in_using -= 1
+
+    # ------------------------------------------------------------------
+    # Grads reduce_scatter queue. Owns grad_reduce_queue / need_zero_grads;
+    # must not touch the double buffer state above.
+    # ------------------------------------------------------------------
+
+    def _maybe_zero_grads(self):
+        if not self.need_zero_grads:
+            return
+        self.need_zero_grads = False
+        for group in self.buffer_manager.buffer_groups:
+            if group.grads_buffer is not None:
+                group.grads_buffer.data_buffer.zero_()
+
+    def _ensure_grads_writable(self, param):
+        gid = self.buffer_manager.param_to_buffer_id.get(param.name)
+        if gid is None:
+            return
+        grads_buffer = self.buffer_manager.buffer_groups[gid].grads_buffer
+        if grads_buffer is None:
+            return
+        while grads_buffer in self.grad_reduce_queue:
+            self._wait_for_grad_comm(
+                queue_limit=len(self.grad_reduce_queue) - 1
+            )
+
+    def reduce_scatter_grads(self, param):
+        self._maybe_zero_grads()
+        gid = self.buffer_manager.param_to_buffer_id.get(param.name)
+        group = self.buffer_manager.buffer_groups[gid]
+        group.grads_use_cnt += 1
+        param.main_grad = None
+
+        if group.grads_buffer is not None and (
+            group.is_expert_param or not group.grads_buffer.is_sharded
+        ):
+            return
+
+        if group.grads_use_cnt == group.grads_use_sum:
+            self._reduce_group_grads(group)
+
+    def _reduce_group_grads(self, group):
+        # Reduce-scatter one group's fused grad buffer over its own fsdp_group.
+        group.grads_use_cnt = 0
+        grads_buffer = group.grads_buffer
+        if (
+            grads_buffer is None
+            or not grads_buffer.is_sharded
+            or grads_buffer.tmp_data_buffer is None
+            or grads_buffer in self.grad_reduce_queue
+        ):
+            return
+        # Grad queue mechanism: wait and release completed reduce_scatter async tasks
+        self._wait_for_grad_comm()
+        grads_buffer.comm_task = grads_buffer.do_reduce_scatter()
+        self.grad_reduce_queue.append(grads_buffer)
+        if not self.enable_overlap:
+            self._wait_for_grad_comm(queue_limit=0)
+
+    def _flush_expert_grads_after_unit(self, unit_id):
+        # Backward walks the FSDP units from last to first, so every unit after
+        # `unit_id` is done and its expert grads are final. Reducing here gives
+        # expert params their overlap back on a structural trigger.
+        if unit_id is None:
+            return
+        for group in reversed(self.buffer_manager.buffer_groups):
+            if not group.is_expert_param or group.fsdp_unit_id is None:
+                continue
+            if group.fsdp_unit_id > unit_id:
+                self._reduce_group_grads(group)
+
+    def _wait_for_grad_comm(self, queue_limit=2):
+        while len(self.grad_reduce_queue) > queue_limit:
+            grads_buffer = self.grad_reduce_queue.pop(0)
+            if grads_buffer.comm_task is None:
+                grads_buffer.clear_tmp_buffer()
+                continue
+            grads_buffer.comm_task.wait()
+            grads_buffer.comm_task = None
+            grads_buffer.accumulate_reduced_grad()
+
+    def finish_grads_sync(self):
+        # Wait for all async reduce_scatter tasks, call before optimizer.step()
+        self._wait_for_grad_comm(queue_limit=0)
+        for group in self.buffer_manager.buffer_groups:
+            grads_buffer = group.grads_buffer
+            if grads_buffer is None:
+                continue
+            group.grads_use_cnt = 0
+            if not grads_buffer.is_sharded:
+                continue
+            if grads_buffer.tmp_data_buffer is None:
+                continue
+            grads_buffer.do_reduce_scatter().wait()
+            grads_buffer.accumulate_reduced_grad()
 
 
 class FusionBackwardHook(PyLayer):
@@ -631,7 +651,7 @@ class FusionForwardHook(PyLayer):
         ctx.layer = layer
         ctx.comm_manager = comm_manager
         ctx.recursive = recursive
-        return inputs if len(inputs) > 1 else inputs[0]
+        return inputs
 
     @staticmethod
     def backward(ctx, *args):
@@ -647,16 +667,21 @@ class FullyShardFusion:
         self,
         model,
         fsdp_unit_layers=None,
-        moe_layers_name=None,
         enable_tensor_fusion_and_overlap=True,
+        double_buffer_limit=None,
+        mp_policy=None,
     ):
         self.model = model
+        self.mp_policy = mp_policy
         self.buffer_manager = FSDPBufferManager(
-            self.model, fsdp_unit_layers, moe_layers_name
+            self.model,
+            fsdp_unit_layers,
+            None if mp_policy is None else mp_policy.reduce_dtype,
         )
         self.comm_manager = FSDPCommManager(
             self.buffer_manager,
             enable_overlap=enable_tensor_fusion_and_overlap,
+            double_buffer_limit=double_buffer_limit,
         )
         self.register_tensor_fusion_hooks(self.model)
         register_fsdp_context(self)
@@ -670,15 +695,50 @@ class FullyShardFusion:
             if param.trainable:
                 param.main_grad = None
 
+    @paddle.autograd.no_grad()
+    def _bind_expert_main_grads(self, params):
+        self.comm_manager._maybe_zero_grads()
+        for param in params:
+            if not param.trainable:
+                continue
+            if not getattr(param, "is_moe_param", False):
+                continue
+            if not hasattr(param, "get_main_grad"):
+                continue
+            param._fusion_buffer.rebind_main_grad(param)
+
+    def _register_grad_hook_once(self, param):
+        param.main_grad = None
+        if not hasattr(param, "get_main_grad"):
+            return
+        if getattr(param, "_fsdp_grad_hooked", False):
+            return
+        param._fsdp_grad_hooked = True
+        comm_manager = self.comm_manager
+
+        @paddle.autograd.no_grad()
+        def comm_hook(grad):
+            comm_manager._maybe_zero_grads()
+            comm_manager._ensure_grads_writable(param)
+            if grad is not None and grad._is_initialized():
+                # Share mem with grads_tmp_buffer
+                param.get_main_grad(grad.shape)
+                param.main_grad.add_(grad)
+                grad._clear_data()
+            comm_manager.shard_params([param], is_backward=True)
+            comm_manager.reduce_scatter_grads(param)
+
+        param._register_grad_hook(comm_hook)
+
     def register_tensor_fusion_hooks(self, model):
         def _pre_forward_hook(sublayers, recursive=False):
             comm_manager = self.comm_manager
 
             @paddle.autograd.no_grad()
             def all_gather_comm(*_):
-                comm_manager.all_gather_params(
-                    sublayers.parameters(include_sublayers=recursive)
-                )
+                params = sublayers.parameters(include_sublayers=recursive)
+                comm_manager.all_gather_params(params)
+                self._bind_expert_main_grads(params)
 
             return all_gather_comm
 
@@ -693,32 +753,15 @@ class FullyShardFusion:
 
             return shard_comm
 
-        def _update_main_grad_hook(param):
-            comm_manager = self.comm_manager
-
-            @paddle.autograd.no_grad()
-            def comm_hook(grad):
-                if grad is not None and grad._is_initialized():
-                    # Share mem with grads_tmp_buffer
-                    comm_manager.wait_grads_buffer_ready(param)
-                    _main_grad = param.get_main_grad()
-                    _main_grad.get_tensor()._set_dims(grad.shape)
-                    param.main_grad = _main_grad
-                    param.main_grad.add_(grad)
-                    grad._clear_data()
-                comm_manager.shard_params([param], is_backward=True)
-                comm_manager.reduce_scatter_grads(param)
-
-            return comm_hook
-
-        def _post_backward_hook(param):
-            param.main_grad = None
-            if hasattr(param, "get_main_grad"):
-                param._register_grad_hook(_update_main_grad_hook(param))
-
         for param in model.parameters():
             if param.trainable:
-                _post_backward_hook(param)
+                self._register_grad_hook_once(param)
+
+        @paddle.autograd.no_grad()
+        def _bind_experts_pre_forward(layer, inputs):
+            self._bind_expert_main_grads(model.parameters())
+
+        model.register_forward_pre_hook(_bind_experts_pre_forward)
 
         def _register_recursive(layer):
             is_unit = (
