@@ -2421,7 +2421,7 @@ class TestPutAlongAxisZeroDimPublicAPI(unittest.TestCase):
     def test_put_along_axis_inplace(self):
         for place in self.places:
             arr, index, value = self._operands(place)
-            paddle.put_along_axis_(arr, index, value, 0, 'add')
+            paddle.tensor.put_along_axis_(arr, index, value, 0, 'add')
             np.testing.assert_allclose(arr.numpy(), np.array(8.0))
 
     def test_scatter_inplace(self):
@@ -2449,7 +2449,7 @@ class TestPutAlongAxisZeroDimPublicAPI(unittest.TestCase):
             with self.assertRaises(IndexError):
                 paddle.put_along_axis(arr, index, value, axis)
             with self.assertRaises(IndexError):
-                paddle.put_along_axis_(arr, index, value, axis)
+                paddle.tensor.put_along_axis_(arr, index, value, axis)
             with self.assertRaises(IndexError):
                 arr.scatter_(axis, index, value)
 
