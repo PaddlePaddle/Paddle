@@ -45,6 +45,34 @@ constexpr bool IsInInt32Range(int64_t v1, int64_t v2) {
   return IsInInt32Range(v1) && IsInInt32Range(v2);
 }
 
+constexpr bool IsInInt32Range(int64_t v1, int64_t v2, int64_t v3) {
+  return IsInInt32Range(v1) && IsInInt32Range(v2) && IsInInt32Range(v3);
+}
+
+// Byte extent of the index operand, i.e. the third operand of the offset
+// calculators built by the index_elementwise kernels. Its strides come from
+// the broadcast index shape (the tail of `index_dims`, see cal_shape_stride)
+// scaled by sizeof(int64_t), so it reaches (elements - 1) * sizeof(int64_t)
+// bytes. That can exceed int32_t while x and out stay well inside it -- e.g.
+// a bool x[1] gathered by an int64 index of 3e8 elements -- so it has to take
+// part in the 32/64 bit dispatch, otherwise the signed calculator's
+// CheckOffsetRange rejects a shape the unsigned path used to handle.
+inline int64_t IndexOperandByteSpan(const std::vector<int64_t>& index_dims) {
+  int64_t num_indices = 0;
+  std::vector<int64_t> index_shape;
+  std::vector<int64_t> index_stride;
+  cal_shape_stride(index_dims, &num_indices, &index_shape, &index_stride);
+
+  int64_t elements = 1;
+  for (int64_t dim : index_shape) {
+    elements *= dim;
+  }
+  if (elements == 0) {
+    return 0;
+  }
+  return (elements - 1) * static_cast<int64_t>(sizeof(int64_t));
+}
+
 // A 0-Size index selects nothing, so the indexed region is empty no matter
 // what the other operands look like.
 inline bool HasEmptyIndex(const std::vector<const DenseTensor*>& index) {

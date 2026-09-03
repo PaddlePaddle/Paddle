@@ -264,7 +264,9 @@ void IndexElementwisePutKernel(const Context& dev_ctx,
                         DataType::INT64));
 
   if (out->numel() == 0) return;
-  if (funcs::IsInInt32Range(x.numel() * sizeof(T), out->numel() * sizeof(T))) {
+  if (funcs::IsInInt32Range(x.numel() * sizeof(T),
+                            out->numel() * sizeof(T),
+                            funcs::IndexOperandByteSpan(index_dims))) {
     GPUIndexElementwisePutKernel<T>(dev_ctx,
                                     x,
                                     value,
@@ -324,7 +326,9 @@ void IndexElementwisePutWithTensorKernel(
                         DataType::INT64));
 
   if (out->numel() == 0) return;
-  if (funcs::IsInInt32Range(x.numel() * sizeof(T), out->numel() * sizeof(T))) {
+  if (funcs::IsInInt32Range(x.numel() * sizeof(T),
+                            out->numel() * sizeof(T),
+                            funcs::IndexOperandByteSpan(index_dims))) {
     GPUIndexElementwisePutWithTensorKernel<T>(dev_ctx,
                                               x,
                                               value,

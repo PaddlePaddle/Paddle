@@ -823,7 +823,8 @@ void IndexElementwiseGetGradKernel(const Context& dev_ctx,
   }
 
   if (funcs::IsInInt32Range(x_grad->numel() * sizeof(T),
-                            out_grad.numel() * sizeof(T))) {
+                            out_grad.numel() * sizeof(T),
+                            funcs::IndexOperandByteSpan(index_dims))) {
     GPUIndexElementwiseGetGrad<T>(dev_ctx,
                                   x,
                                   out_grad,
