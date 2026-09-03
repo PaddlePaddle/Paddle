@@ -13,6 +13,9 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/p_norm_grad_kernel.h"
+
+#include <type_traits>
+
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
 
@@ -48,158 +51,216 @@ void PNormGradKernel(const Context& dev_ctx,
   using XPUType = typename XPUTypeTrait<T>::Type;
   dev_ctx.template Alloc<T>(x_grad);
   if (x.numel() == 0) return;
-  auto xdim = x.dims();
-  axis = axis < 0 ? xdim.size() + axis : axis;
-  int m, t, n;
-  GetDims(xdim, axis, &m, &t, &n, asvector);
+  if constexpr (std::is_same<T, phi::bfloat16>::value) {
+    // XDNN p_norm_grad only supports float math. Promote bfloat16 tensors to
+    // float, reuse the existing XPU float path, then cast dx back to bfloat16.
+    DenseTensor x_float;
+    x_float.Resize(x.dims());
+    float* x_float_data = dev_ctx.template Alloc<float>(&x_float);
+    DenseTensor out_float;
+    out_float.Resize(out.dims());
+    float* out_float_data = dev_ctx.template Alloc<float>(&out_float);
+    DenseTensor out_grad_float;
+    out_grad_float.Resize(out_grad.dims());
+    float* out_grad_float_data = dev_ctx.template Alloc<float>(&out_grad_float);
 
-  std::vector<int64_t> r_dim;
-  std::vector<int64_t> x_dim;
-  std::vector<int64_t> y_dim;
-
-  x_dim.push_back(m);
-  x_dim.push_back(t);
-  x_dim.push_back(n);
-
-  y_dim.push_back(m);
-  y_dim.push_back(1);
-  y_dim.push_back(n);
-
-  int r = 0;
-  if (porder == 0) {
-    r = xpu::constant(dev_ctx.x_context(),
-                      reinterpret_cast<XPUType*>(x_grad->data<T>()),
-                      m * t * n,
-                      static_cast<T>(0));
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
-  } else if (porder == INFINITY || porder == -INFINITY) {
-    xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
-    XPUType* x_abs = RAII_GUARD.alloc_l3_or_gm<XPUType>(m * t * n);
-    PADDLE_ENFORCE_XDNN_NOT_NULL(x_abs);
-    r = xpu::abs(dev_ctx.x_context(),
-                 reinterpret_cast<const XPUType*>(x.data<T>()),
-                 x_abs,
-                 m * t * n);
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "abs");
-
-    bool* dx_t = RAII_GUARD.alloc_l3_or_gm<bool>(m * t * n);
-    PADDLE_ENFORCE_XDNN_NOT_NULL(dx_t);
-
-    XPUType* dx_mid = RAII_GUARD.alloc_l3_or_gm<XPUType>(m * t * n);
-    PADDLE_ENFORCE_XDNN_NOT_NULL(dx_mid);
-
-    r = xpu::broadcast_equal<XPUType>(
+    int r =
+        xpu::cast<XPUType, float>(dev_ctx.x_context(),
+                                  reinterpret_cast<const XPUType*>(x.data<T>()),
+                                  x_float_data,
+                                  x.numel());
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
+    r = xpu::cast<XPUType, float>(
         dev_ctx.x_context(),
-        reinterpret_cast<const XPUType*>(x_abs),
         reinterpret_cast<const XPUType*>(out.data<T>()),
-        dx_t,
-        x_dim,
-        y_dim);
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "broadcast_equal");
-
-    r = xpu::cast<bool, XPUType>(dev_ctx.x_context(), dx_t, dx_mid, m * t * n);
+        out_float_data,
+        out.numel());
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
+    r = xpu::cast<XPUType, float>(
+        dev_ctx.x_context(),
+        reinterpret_cast<const XPUType*>(out_grad.data<T>()),
+        out_grad_float_data,
+        out_grad.numel());
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
 
-    XPUType* x_sign = RAII_GUARD.alloc_l3_or_gm<XPUType>(m * t * n);
-    PADDLE_ENFORCE_XDNN_NOT_NULL(x_sign);
-    r = xpu::sign(dev_ctx.x_context(),
-                  reinterpret_cast<const XPUType*>(x.data<T>()),
-                  x_sign,
-                  m * t * n);
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "sign");
+    DenseTensor x_grad_float;
+    x_grad_float.Resize(x_grad->dims());
+    PNormGradKernel<float, Context>(dev_ctx,
+                                    x_float,
+                                    out_float,
+                                    out_grad_float,
+                                    porder,
+                                    axis,
+                                    epsilon,
+                                    keepdim,
+                                    asvector,
+                                    &x_grad_float);
 
-    XPUType* dx_pre_dy = x_abs;
-    r = xpu::mul(dev_ctx.x_context(),
-                 reinterpret_cast<const XPUType*>(dx_mid),
-                 reinterpret_cast<const XPUType*>(x_sign),
-                 dx_pre_dy,
-                 m * t * n);
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "mul");
-
-    r = xpu::broadcast_mul(dev_ctx.x_context(),
-                           dx_pre_dy,
-                           reinterpret_cast<const XPUType*>(out_grad.data<T>()),
-                           reinterpret_cast<XPUType*>(x_grad->data<T>()),
-                           x_dim,
-                           y_dim);
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "broadcast_mul");
-
-  } else {
-    xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
-    XPUType* x_abs = RAII_GUARD.alloc_l3_or_gm<XPUType>(m * t * n);
-    PADDLE_ENFORCE_XDNN_NOT_NULL(x_abs);
-    r = xpu::abs(dev_ctx.x_context(),
-                 reinterpret_cast<const XPUType*>(x.data<T>()),
-                 x_abs,
-                 m * t * n);
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "abs");
-
-    DenseTensor porder_tensor;
-    DDim pdim = make_ddim({1});
-    porder_tensor.Resize(pdim);
-    dev_ctx.template Alloc<float>(&porder_tensor);
-    r = xpu::constant(dev_ctx.x_context(),
-                      porder_tensor.data<float>(),
-                      1,
-                      static_cast<float>(porder - 1.0));
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
-    std::vector<int64_t> p_dim(1, 1);
-
-    XPUType* x_pow = RAII_GUARD.alloc_l3_or_gm<XPUType>(m * t * n);
-    PADDLE_ENFORCE_XDNN_NOT_NULL(x_pow);
-    r = xpu::broadcast_pow(
-        dev_ctx.x_context(),
-        reinterpret_cast<const XPUType*>(x_abs),
-        reinterpret_cast<const XPUType*>(porder_tensor.data<float>()),
-        x_pow,
-        x_dim,
-        p_dim);
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "broadcast_pow");
-
-    XPUType* y_pow = RAII_GUARD.alloc_l3_or_gm<XPUType>(m * n);
-    PADDLE_ENFORCE_XDNN_NOT_NULL(y_pow);
-    r = xpu::broadcast_pow(
-        dev_ctx.x_context(),
-        reinterpret_cast<const XPUType*>(out.data<T>()),
-        reinterpret_cast<const XPUType*>(porder_tensor.data<float>()),
-        y_pow,
-        y_dim,
-        p_dim);
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "broadcast_pow");
+    r = xpu::cast<float, XPUType>(dev_ctx.x_context(),
+                                  x_grad_float.data<float>(),
+                                  reinterpret_cast<XPUType*>(x_grad->data<T>()),
+                                  x_grad->numel());
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
     dev_ctx.Wait();
+    return;
+  } else {
+    auto xdim = x.dims();
+    axis = axis < 0 ? xdim.size() + axis : axis;
+    int m, t, n;
+    GetDims(xdim, axis, &m, &t, &n, asvector);
 
-    XPUType* dx_t = x_abs;
+    std::vector<int64_t> r_dim;
+    std::vector<int64_t> x_dim;
+    std::vector<int64_t> y_dim;
 
-    r = xpu::broadcast_div(
-        dev_ctx.x_context(), x_pow, y_pow, dx_t, x_dim, y_dim);
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "broadcast_div");
+    x_dim.push_back(m);
+    x_dim.push_back(t);
+    x_dim.push_back(n);
 
-    XPUType* x_sign = x_pow;
-    r = xpu::sign(dev_ctx.x_context(),
-                  reinterpret_cast<const XPUType*>(x.data<T>()),
-                  x_sign,
-                  m * t * n);
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "sign");
+    y_dim.push_back(m);
+    y_dim.push_back(1);
+    y_dim.push_back(n);
 
-    XPUType* dx_mid = RAII_GUARD.alloc_l3_or_gm<XPUType>(m * t * n);
-    PADDLE_ENFORCE_XDNN_NOT_NULL(dx_mid);
+    int r = 0;
+    if (porder == 0) {
+      r = xpu::constant(dev_ctx.x_context(),
+                        reinterpret_cast<XPUType*>(x_grad->data<T>()),
+                        m * t * n,
+                        static_cast<T>(0));
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
+    } else if (porder == INFINITY || porder == -INFINITY) {
+      xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
+      XPUType* x_abs = RAII_GUARD.alloc_l3_or_gm<XPUType>(m * t * n);
+      PADDLE_ENFORCE_XDNN_NOT_NULL(x_abs);
+      r = xpu::abs(dev_ctx.x_context(),
+                   reinterpret_cast<const XPUType*>(x.data<T>()),
+                   x_abs,
+                   m * t * n);
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "abs");
 
-    r = xpu::broadcast_mul(dev_ctx.x_context(),
-                           reinterpret_cast<const XPUType*>(x_sign),
-                           reinterpret_cast<const XPUType*>(out_grad.data<T>()),
-                           dx_mid,
-                           x_dim,
-                           y_dim);
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "broadcast_mul");
+      bool* dx_t = RAII_GUARD.alloc_l3_or_gm<bool>(m * t * n);
+      PADDLE_ENFORCE_XDNN_NOT_NULL(dx_t);
 
-    r = xpu::broadcast_mul(dev_ctx.x_context(),
-                           reinterpret_cast<const XPUType*>(dx_t),
-                           reinterpret_cast<const XPUType*>(dx_mid),
-                           reinterpret_cast<XPUType*>(x_grad->data<T>()),
-                           x_dim,
-                           x_dim);
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "broadcast_mul");
+      XPUType* dx_mid = RAII_GUARD.alloc_l3_or_gm<XPUType>(m * t * n);
+      PADDLE_ENFORCE_XDNN_NOT_NULL(dx_mid);
+
+      r = xpu::broadcast_equal<XPUType>(
+          dev_ctx.x_context(),
+          reinterpret_cast<const XPUType*>(x_abs),
+          reinterpret_cast<const XPUType*>(out.data<T>()),
+          dx_t,
+          x_dim,
+          y_dim);
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "broadcast_equal");
+
+      r = xpu::cast<bool, XPUType>(
+          dev_ctx.x_context(), dx_t, dx_mid, m * t * n);
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
+
+      XPUType* x_sign = RAII_GUARD.alloc_l3_or_gm<XPUType>(m * t * n);
+      PADDLE_ENFORCE_XDNN_NOT_NULL(x_sign);
+      r = xpu::sign(dev_ctx.x_context(),
+                    reinterpret_cast<const XPUType*>(x.data<T>()),
+                    x_sign,
+                    m * t * n);
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "sign");
+
+      XPUType* dx_pre_dy = x_abs;
+      r = xpu::mul(dev_ctx.x_context(),
+                   reinterpret_cast<const XPUType*>(dx_mid),
+                   reinterpret_cast<const XPUType*>(x_sign),
+                   dx_pre_dy,
+                   m * t * n);
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "mul");
+
+      r = xpu::broadcast_mul(
+          dev_ctx.x_context(),
+          dx_pre_dy,
+          reinterpret_cast<const XPUType*>(out_grad.data<T>()),
+          reinterpret_cast<XPUType*>(x_grad->data<T>()),
+          x_dim,
+          y_dim);
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "broadcast_mul");
+
+    } else {
+      xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
+      XPUType* x_abs = RAII_GUARD.alloc_l3_or_gm<XPUType>(m * t * n);
+      PADDLE_ENFORCE_XDNN_NOT_NULL(x_abs);
+      r = xpu::abs(dev_ctx.x_context(),
+                   reinterpret_cast<const XPUType*>(x.data<T>()),
+                   x_abs,
+                   m * t * n);
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "abs");
+
+      DenseTensor porder_tensor;
+      DDim pdim = make_ddim({1});
+      porder_tensor.Resize(pdim);
+      dev_ctx.template Alloc<float>(&porder_tensor);
+      r = xpu::constant(dev_ctx.x_context(),
+                        porder_tensor.data<float>(),
+                        1,
+                        static_cast<float>(porder - 1.0));
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
+      std::vector<int64_t> p_dim(1, 1);
+
+      XPUType* x_pow = RAII_GUARD.alloc_l3_or_gm<XPUType>(m * t * n);
+      PADDLE_ENFORCE_XDNN_NOT_NULL(x_pow);
+      r = xpu::broadcast_pow(
+          dev_ctx.x_context(),
+          reinterpret_cast<const XPUType*>(x_abs),
+          reinterpret_cast<const XPUType*>(porder_tensor.data<float>()),
+          x_pow,
+          x_dim,
+          p_dim);
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "broadcast_pow");
+
+      XPUType* y_pow = RAII_GUARD.alloc_l3_or_gm<XPUType>(m * n);
+      PADDLE_ENFORCE_XDNN_NOT_NULL(y_pow);
+      r = xpu::broadcast_pow(
+          dev_ctx.x_context(),
+          reinterpret_cast<const XPUType*>(out.data<T>()),
+          reinterpret_cast<const XPUType*>(porder_tensor.data<float>()),
+          y_pow,
+          y_dim,
+          p_dim);
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "broadcast_pow");
+      dev_ctx.Wait();
+
+      XPUType* dx_t = x_abs;
+
+      r = xpu::broadcast_div(
+          dev_ctx.x_context(), x_pow, y_pow, dx_t, x_dim, y_dim);
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "broadcast_div");
+
+      XPUType* x_sign = x_pow;
+      r = xpu::sign(dev_ctx.x_context(),
+                    reinterpret_cast<const XPUType*>(x.data<T>()),
+                    x_sign,
+                    m * t * n);
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "sign");
+
+      XPUType* dx_mid = RAII_GUARD.alloc_l3_or_gm<XPUType>(m * t * n);
+      PADDLE_ENFORCE_XDNN_NOT_NULL(dx_mid);
+
+      r = xpu::broadcast_mul(
+          dev_ctx.x_context(),
+          reinterpret_cast<const XPUType*>(x_sign),
+          reinterpret_cast<const XPUType*>(out_grad.data<T>()),
+          dx_mid,
+          x_dim,
+          y_dim);
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "broadcast_mul");
+
+      r = xpu::broadcast_mul(dev_ctx.x_context(),
+                             reinterpret_cast<const XPUType*>(dx_t),
+                             reinterpret_cast<const XPUType*>(dx_mid),
+                             reinterpret_cast<XPUType*>(x_grad->data<T>()),
+                             x_dim,
+                             x_dim);
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "broadcast_mul");
+    }
   }
 }
 }  // namespace phi
-PD_REGISTER_KERNEL(p_norm_grad, XPU, ALL_LAYOUT, phi::PNormGradKernel, float) {}
+PD_REGISTER_KERNEL(
+    p_norm_grad, XPU, ALL_LAYOUT, phi::PNormGradKernel, float, phi::bfloat16) {}
