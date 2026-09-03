@@ -64,33 +64,79 @@ void GatherGradKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(x_grad);
   using XPUType = typename XPUTypeTrait<T>::Type;
 
+  int64_t index_len = index.dims().size() == 0 ? 1 : index.dims()[0];
+  // XPU SDK gather_grad may exceed grid limits for large index tensors.
+  // Empirically, the SDK fails when index_len >= ~65500.
+  constexpr int64_t kMaxChunkSize = 32768;
+
   int r = 0;
-  if (index_type == DataType::INT32) {
-    r = xpu::gather_grad<XPUType, int>(
-        dev_ctx.x_context(),
-        reinterpret_cast<const XPUType*>(out_grad.data<T>()),
-        index.data<int>(),
-        reinterpret_cast<XPUType*>(x_grad->data<T>()),
-        xshape,
-        index.dims().size() == 0 ? 1 : index.dims()[0],
-        axis_v,
-        false);
-  } else if (index_type == DataType::INT64) {
-    r = xpu::gather_grad<XPUType, int64_t>(
-        dev_ctx.x_context(),
-        reinterpret_cast<const XPUType*>(out_grad.data<T>()),
-        index.data<int64_t>(),
-        reinterpret_cast<XPUType*>(x_grad->data<T>()),
-        xshape,
-        index.dims().size() == 0 ? 1 : index.dims()[0],
-        axis_v,
-        false);
+  if (index_len <= kMaxChunkSize) {
+    // Small enough to process with gather_grad in a single call
+    if (index_type == DataType::INT32) {
+      r = xpu::gather_grad<XPUType, int>(
+          dev_ctx.x_context(),
+          reinterpret_cast<const XPUType*>(out_grad.data<T>()),
+          index.data<int>(),
+          reinterpret_cast<XPUType*>(x_grad->data<T>()),
+          xshape,
+          index_len,
+          axis_v,
+          false);
+    } else if (index_type == DataType::INT64) {
+      r = xpu::gather_grad<XPUType, int64_t>(
+          dev_ctx.x_context(),
+          reinterpret_cast<const XPUType*>(out_grad.data<T>()),
+          index.data<int64_t>(),
+          reinterpret_cast<XPUType*>(x_grad->data<T>()),
+          xshape,
+          index_len,
+          axis_v,
+          false);
+    } else {
+      PADDLE_THROW(common::errors::InvalidArgument(
+          "Unsupported index type, expected int32 or int64, but got type %s",
+          DataTypeToString(index_type)));
+    }
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "gather_grad");
   } else {
-    PADDLE_THROW(common::errors::InvalidArgument(
-        "Unsupported index type, expected int32 or int64, but got type %s",
-        DataTypeToString(index_type)));
+    // Large index: use scatter_add instead of gather_grad, because
+    // gather_grad zeroes output internally on every call and cannot be
+    // used for chunked accumulation. scatter_add does true atomic
+    // scatter-add.
+    r = xpu::constant<XPUType>(dev_ctx.x_context(),
+                               reinterpret_cast<XPUType*>(x_grad->data<T>()),
+                               x_grad->numel(),
+                               static_cast<XPUType>(0));
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
+
+    auto out_grad_shape = vectorize<int64_t>(out_grad.dims());
+    auto index_shape = vectorize<int64_t>(index.dims());
+
+    if (index_type == DataType::INT32) {
+      r = xpu::scatter_add<XPUType, int>(
+          dev_ctx.x_context(),
+          reinterpret_cast<const XPUType*>(x_grad->data<T>()),
+          reinterpret_cast<const XPUType*>(out_grad.data<T>()),
+          index.data<int>(),
+          reinterpret_cast<XPUType*>(x_grad->data<T>()),
+          xshape,
+          out_grad_shape,
+          index_shape,
+          axis_v);
+    } else {
+      r = xpu::scatter_add<XPUType, int64_t>(
+          dev_ctx.x_context(),
+          reinterpret_cast<const XPUType*>(x_grad->data<T>()),
+          reinterpret_cast<const XPUType*>(out_grad.data<T>()),
+          index.data<int64_t>(),
+          reinterpret_cast<XPUType*>(x_grad->data<T>()),
+          xshape,
+          out_grad_shape,
+          index_shape,
+          axis_v);
+    }
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "scatter_add");
   }
-  PADDLE_ENFORCE_XDNN_SUCCESS(r, "gather_grad");
 }
 
 }  // namespace phi
@@ -105,5 +151,4 @@ PD_REGISTER_KERNEL(gather_grad,
                    int8_t,
                    int16_t,
                    int32_t,
-                   int64_t,
-                   bool) {}
+                   int64_t) {}
