@@ -107,7 +107,7 @@ py_tests=(
 run_ctest() {
     local test_name=$1
     echo -e "${BLUE}Running ctest: $test_name${RESET}"
-    output=$(ctest -R "$test_name" --timeout $timeout_limit --output-on-failure 2>&1)
+    output=$(compute-sanitizer --tool memcheck --target-processes all ctest -R "$test_name" --timeout $timeout_limit --output-on-failure 2>&1)
     local test_result=$?
 
     if echo "$output" | grep -q "No tests were found!!!"; then
