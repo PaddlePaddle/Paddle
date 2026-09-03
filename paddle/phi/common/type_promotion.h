@@ -119,6 +119,14 @@ inline bool is_support_complex(DataType dtype) {
   }
 }
 
+inline bool is_support_bool(DataType dtype) {
+  if (dtype == DataType::BOOL) {
+    return true;
+  } else {
+    return false;
+  }
+}
+
 // only T+S support int type promotion
 inline bool is_support_int(DataType dtype) {
   if (dtype == DataType::UINT8 || dtype == DataType::INT8 ||
@@ -214,7 +222,9 @@ inline bool NeedTypePromotion(
 #endif
 
     if ((is_support_float(x_dtype) && is_support_float(y_dtype)) ||
-        (is_support_complex(x_dtype) || is_support_complex(y_dtype))) {
+        (is_support_complex(x_dtype) || is_support_complex(y_dtype)) ||
+        (is_support_int(x_dtype) && is_support_int(y_dtype)) ||
+        (is_support_bool(x_dtype) || is_support_bool(y_dtype))) {
       return true;
     } else {
       PADDLE_THROW(common::errors::InvalidType(
