@@ -1455,15 +1455,40 @@ compute_pow_grad_dy(T x, T y, T out, T dout) {
   return dout * static_cast<T>(log(x_val) * pow(x_val, y_val));
 }
 #else
+// Integral types need double precision for pow/log intermediate computations
+// to match GPU behavior. The GPU path computes dout*y*pow(x,y-1) entirely in
+// double and only casts to T at return. Casting to T mid-computation truncates
+// fractional parts before multiplying by dout, causing gradient divergence.
 template <typename T, typename MPType>
-HOSTDEVICE T compute_pow_grad_dx(T x, T y, T out UNUSED, T dout) {
+HOSTDEVICE typename std::enable_if<std::is_integral<T>::value, T>::type
+compute_pow_grad_dx(T x, T y, T out UNUSED, T dout) {
+  if (y == static_cast<T>(0.0)) return static_cast<T>(0.0);
+  return static_cast<T>(
+      static_cast<double>(dout) * static_cast<double>(y) *
+      std::pow(static_cast<double>(x), static_cast<double>(y) - 1.0));
+}
+template <typename T, typename MPType>
+HOSTDEVICE typename std::enable_if<!std::is_integral<T>::value, T>::type
+compute_pow_grad_dx(T x, T y, T out UNUSED, T dout) {
   if (y == static_cast<T>(0.0)) return static_cast<T>(0.0);
   MPType x_val = static_cast<MPType>(x);
   MPType y_val = static_cast<MPType>(y);
   return dout * static_cast<T>(y_val * std::pow(x_val, y_val - 1));
 }
+// Integral types: compute dout*log(x)*pow(x,y) entirely in double, matching
+// the GPU path which keeps all intermediates in double before the final cast.
 template <typename T, typename MPType>
-HOSTDEVICE T compute_pow_grad_dy(T x, T y, T out UNUSED, T dout) {
+HOSTDEVICE typename std::enable_if<std::is_integral<T>::value, T>::type
+compute_pow_grad_dy(T x, T y, T out UNUSED, T dout) {
+  if (x == static_cast<T>(0) && y >= static_cast<T>(0))
+    return static_cast<T>(0);
+  return static_cast<T>(
+      static_cast<double>(dout) * std::log(static_cast<double>(x)) *
+      std::pow(static_cast<double>(x), static_cast<double>(y)));
+}
+template <typename T, typename MPType>
+HOSTDEVICE typename std::enable_if<!std::is_integral<T>::value, T>::type
+compute_pow_grad_dy(T x, T y, T out UNUSED, T dout) {
   if (x == static_cast<T>(0) && y >= static_cast<T>(0))
     return static_cast<T>(0);
   MPType x_val = static_cast<MPType>(x);
