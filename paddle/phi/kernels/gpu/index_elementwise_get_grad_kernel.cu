@@ -15,6 +15,7 @@
 #include "paddle/phi/kernels/index_elementwise_get_grad_kernel.h"
 
 #include <algorithm>
+#include <cstdlib>
 #include <utility>
 #include <vector>
 
@@ -406,14 +407,21 @@ struct SortedPathLayout {
 };
 
 // A strided region is free of self overlap when, walking its axes from the
-// smallest stride up, every stride clears the span already covered.
+// smallest stride magnitude up, every stride clears the span already covered.
+// Only magnitudes matter: negating an axis mirrors the region onto the same set
+// of elements, so a reversed view (x[::-1, idx]) is just as non overlapping as
+// the forward one.  Such a view cannot reach this kernel today because the
+// forward index_elementwise_get_kernel truncates negative strides to unsigned
+// (its offset calculator is instantiated with signed_strides = false), but the
+// sign of a stride is a property of the layout, not of what the caller happens
+// to be able to build, so it is handled here rather than assumed away.
 static bool IsNonOverlapping(const std::vector<int64_t>& dims,
                              const std::vector<int64_t>& strides) {
-  std::vector<std::pair<int64_t, int64_t>> axes;  // (stride, extent)
+  std::vector<std::pair<int64_t, int64_t>> axes;  // (|stride|, extent)
   for (size_t i = 0; i < dims.size(); ++i) {
-    if (dims[i] == 1) continue;  // its stride is never used
-    if (strides[i] <= 0) return false;
-    axes.emplace_back(strides[i], dims[i]);
+    if (dims[i] == 1) continue;         // its stride is never used
+    if (strides[i] == 0) return false;  // broadcast axis, not a real region
+    axes.emplace_back(std::abs(strides[i]), dims[i]);
   }
   std::sort(axes.begin(), axes.end());
   int64_t span = 1;
@@ -444,7 +452,7 @@ static bool DeriveSortedPathLayout(const std::vector<int64_t>& input_dims,
   const size_t ndim = input_dims.size();
   const size_t nidx = index_strides.size();
   if (nidx == 0 || ndim == 0 || input_strides.size() != ndim ||
-      index_dims.size() < nidx || slice_offset % elesize != 0) {
+      index_dims.size() < nidx) {
     return false;
   }
 
@@ -461,7 +469,7 @@ static bool DeriveSortedPathLayout(const std::vector<int64_t>& input_dims,
   std::vector<int64_t> vstride(input_strides.begin(),
                                input_strides.begin() + db);
   for (size_t i = 0; i < nidx; ++i) {
-    if (index_dims[i] < 0 || index_strides[i] % elesize != 0) return false;
+    if (index_dims[i] < 0) return false;
     view.push_back(index_dims[i]);
     vstride.push_back(index_strides[i] / elesize);
   }
@@ -476,21 +484,41 @@ static bool DeriveSortedPathLayout(const std::vector<int64_t>& input_dims,
   if (numel <= 0 || numel > grad_numel) return false;
 
   // Every element the sort based kernel touches sits at
-  //   slice_offset / elesize + sum_i i_k * view_strides[k]
-  // so the largest reachable position has to stay inside x_grad.  Checking the
-  // span rather than just numel also covers the strided cases, where the region
-  // is sparse and reaches further than its element count.
-  int64_t last = slice_offset / elesize;
-  for (size_t i = 0; i < view.size(); ++i) last += (view[i] - 1) * vstride[i];
+  //   slice_offset / elesize + sum_k i_k * view_strides[k]
+  // so both ends of that range have to stay inside x_grad.  Checking the span
+  // rather than just numel also covers the strided cases, where the region is
+  // sparse and reaches further than its element count; a reversed axis has a
+  // negative stride and pulls the low end below slice_offset.
+  const int64_t base = slice_offset / elesize;
+  int64_t lo = base;
+  int64_t hi = base;
+  for (size_t i = 0; i < view.size(); ++i) {
+    const int64_t reach = (view[i] - 1) * vstride[i];
+    if (reach < 0) {
+      lo += reach;
+    } else {
+      hi += reach;
+    }
+  }
+  PADDLE_ENFORCE_GE(
+      lo,
+      0,
+      common::errors::InvalidArgument(
+          "The indexed view starts before the beginning of x_grad: its lowest "
+          "element is at position %d. slice_offset is %d bytes and the view is "
+          "%s with strides %s.",
+          lo,
+          slice_offset,
+          make_ddim(view).to_str(),
+          make_ddim(vstride).to_str()));
   PADDLE_ENFORCE_LT(
-      last,
+      hi,
       grad_numel,
       common::errors::InvalidArgument(
-          "The indexed view runs past the end of x_grad: its last element is "
-          "at "
-          "position %d but x_grad only holds %d elements. slice_offset is %d "
-          "bytes and the view is %s with strides %s.",
-          last,
+          "The indexed view runs past the end of x_grad: its highest element "
+          "is at position %d but x_grad only holds %d elements. slice_offset "
+          "is %d bytes and the view is %s with strides %s.",
+          hi,
           grad_numel,
           slice_offset,
           make_ddim(view).to_str(),
@@ -724,6 +752,30 @@ void IndexElementwiseGetGradKernel(const Context& dev_ctx,
           "%d bytes.",
           slice_offset,
           grad_bytes));
+
+  // slice_offset and index_strides are byte quantities that both paths turn
+  // into T* arithmetic, so they have to be whole elements. By construction they
+  // always are (slice_offset is a pointer delta between two views of one
+  // allocation, index_strides is an element stride times sizeof(T)); assert it
+  // here so neither path can build a misaligned T*.
+  PADDLE_ENFORCE_EQ(
+      slice_offset % static_cast<int64_t>(sizeof(T)),
+      0,
+      common::errors::InvalidArgument(
+          "slice_offset (%d bytes) must be a whole number of %d byte elements.",
+          slice_offset,
+          sizeof(T)));
+  for (size_t i = 0; i < index_strides.size(); ++i) {
+    PADDLE_ENFORCE_EQ(
+        index_strides[i] % static_cast<int64_t>(sizeof(T)),
+        0,
+        common::errors::InvalidArgument(
+            "index_strides[%d] (%d bytes) must be a whole number of %d byte "
+            "elements.",
+            i,
+            index_strides[i],
+            sizeof(T)));
+  }
 
   if (accumulate) {
 #ifdef PADDLE_WITH_CUDA

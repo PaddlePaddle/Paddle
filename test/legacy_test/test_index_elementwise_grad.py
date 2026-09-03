@@ -313,9 +313,9 @@ class TestIndexElementwiseGetGradSlicedView(unittest.TestCase):
     the reduced gradient back through them. A wrong offset or stride would move
     the whole gradient block, which shows up both as wrong values inside the
     slice and as non-zero gradient on rows the expression never read. The cases
-    below deliberately include non-zero offsets (``x[1::2]``, ``x[2:7:2]``) and
-    are run with ``FLAGS_use_stride_kernel`` both on and off, since only the
-    former reaches ``index_elementwise_get_grad`` at all.
+    below deliberately include non-zero offsets (``x[1::2]``, ``x[2:7:2]``),
+    and are run with ``FLAGS_use_stride_kernel`` both on and off, since only
+    the former reaches ``index_elementwise_get_grad`` at all.
     """
 
     SHAPE = (8, 6)
@@ -386,6 +386,70 @@ class TestIndexElementwiseGetGradSlicedView(unittest.TestCase):
                 self._run(use_stride_kernel)
         finally:
             paddle.set_flags({'FLAGS_use_stride_kernel': original})
+            paddle.enable_static()
+
+
+@unittest.skipUnless(
+    paddle.device.is_compiled_with_cuda()
+    and not paddle.device.is_compiled_with_rocm(),
+    'The sorted-index backward kernels are built for CUDA only.',
+)
+class TestIndexElementwiseGetGradSlicedViewRounding(unittest.TestCase):
+    """A basic slice is a strided view, so its gradient is reduced into a
+    contiguous scratch buffer and scattered back through the view's strides.
+    That reduction must still happen in float32 and round only once. Unlike
+    ``TestIndexElementwiseGetGradSlicedView`` the gradient values here are not
+    exactly representable, so a per-duplicate ``CudaAtomicAdd`` fallback would
+    round on every step and fail the comparison.
+    """
+
+    SHAPE = (8, 6)
+
+    def _cases(self):
+        return [
+            ('x[1::2, idx]', lambda t, i: t[1::2, i], (slice(1, None, 2),)),
+            ('x[2:7:2, idx]', lambda t, i: t[2:7:2, i], (slice(2, 7, 2),)),
+        ]
+
+    def test_sliced_view_rounds_once(self):
+        paddle.disable_static(place=paddle.CUDAPlace(0))
+        index_np = np.array([2, 2, 2, 2, 2, 2, 2, 5], dtype=np.int64)
+        try:
+            for dtype in ('float16', 'bfloat16'):
+                for name, fn, base_slice in self._cases():
+                    with self.subTest(dtype=dtype, expr=name):
+                        rng = np.random.default_rng(2026)
+                        x = paddle.zeros(list(self.SHAPE), dtype=dtype)
+                        x.stop_gradient = False
+                        out = fn(x, paddle.to_tensor(index_np))
+
+                        out_grad = paddle.to_tensor(
+                            rng.uniform(-0.5, 0.5, tuple(out.shape)),
+                            dtype=dtype,
+                        )
+                        out.backward(out_grad)
+
+                        block = np.zeros(
+                            [out.shape[0], self.SHAPE[1]], dtype=np.float32
+                        )
+                        np.add.at(
+                            block,
+                            (slice(None), index_np),
+                            out_grad.astype('float32').numpy(),
+                        )
+                        block = (
+                            paddle.to_tensor(block)
+                            .astype(dtype)
+                            .astype('float32')
+                            .numpy()
+                        )
+                        expected = np.zeros(self.SHAPE, dtype=np.float32)
+                        expected[base_slice] = block
+
+                        np.testing.assert_array_equal(
+                            x.grad.astype('float32').numpy(), expected
+                        )
+        finally:
             paddle.enable_static()
 
 
