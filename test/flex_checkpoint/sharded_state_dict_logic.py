@@ -567,6 +567,9 @@ class TestParallelLayersLogic:
             }
             if "multi_precision" in inspect.signature(opt_cls).parameters:
                 opt_kwargs["multi_precision"] = self.master_weight
+            # A named optimizer prefixes its accumulator names with `name`.
+            if os.getenv("optimizer_name"):
+                opt_kwargs["name"] = os.getenv("optimizer_name")
             opt = mix_precision_utils.MixPrecisionOptimizer(
                 opt_cls(**opt_kwargs)
             )

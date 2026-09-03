@@ -934,6 +934,8 @@ class FullyShardFusion:
             reverse=True,
         )
         _master_weight_suffix = re.compile(r"^(.*)_fp32_master_\d+$")
+        # ``_add_accumulator`` prefixes the accumulator with the optimizer name.
+        opt_name = getattr(inner, "_name", None)
 
         def _split_optimizer_state_name(vname):
             """``fuse_params_0_fp32_master_0_moment1_3`` -> ``("fuse_params_0", "moment1_0")``."""
@@ -945,6 +947,8 @@ class FullyShardFusion:
                 if not vname[idx + len(marker) :].isdigit():
                     continue
                 base = vname[:idx]
+                if opt_name and base.endswith("_" + opt_name):
+                    base = base[: -len(opt_name) - 1]
                 matched = _master_weight_suffix.match(base)
                 if matched:
                     base = matched.group(1)
