@@ -17,7 +17,9 @@
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/index_elementwise.h"
+#include "paddle/phi/kernels/funcs/index_put_utils.h"
 #include "paddle/phi/kernels/funcs/stride_utils.h"
+#include "paddle/phi/kernels/xpu/index_put_xpu_utils.h"
 
 namespace phi {
 template <typename T, typename Context, typename IndexT = int>
@@ -85,7 +87,54 @@ void XPUIndexElementwiseGetGradKernel(
 
   XPUType* output_ptr = reinterpret_cast<XPUType*>(output->data<T>());
 
-  // call xpu kernel
+  // When accumulate=true and slice_offset=0 (the backward pass for simple
+  // advanced / boolean indexing), xpu::index_elementwise_get_grad does NOT
+  // use atomic operations for scatter-add, leading to race conditions on
+  // duplicate indices.  Additionally its int32 instantiation produces garbage
+  // values.  Replace with XPUDealWithIndices + xpu::scatter_nd (is_overwrite
+  // = false), which is the same atomically-correct scatter-add primitive used
+  // by index_put_grad_kernel.cc.
+  //
+  // For int64_t output type, xpu::index_elementwise_get_grad does NOT have a
+  // <long, long> specialization in the XPU SDK, so we always use scatter_nd
+  // for the int64_t case regardless of accumulate/slice_offset.
+  constexpr bool kIsInt64 = std::is_same<T, int64_t>::value;
+  if ((accumulate && slice_offset == 0) || kIsInt64) {
+    // Merge per-dimension index tensors into a single [N, num_indices] tensor.
+    auto bd_dims = funcs::BroadCastTensorsDims(index);
+    DenseTensor res_indices(DataType::INT64);
+    XPUDealWithIndices<Context>(dev_ctx, index, bd_dims, &res_indices);
+    auto index_shape = vectorize<int64_t>(res_indices.dims());
+
+    auto xshape = vectorize<int64_t>(output->dims());
+    xpu::VectorParam<int64_t> xshape_param = {
+        xshape.data(), static_cast<int64_t>(xshape.size()), nullptr};
+
+    auto index_data = const_cast<int64_t*>(res_indices.data<int64_t>());
+    xpu::VectorParam<int64_t> index_vec{
+        nullptr, res_indices.numel(), index_data};
+
+    // scatter_nd with x=nullptr and is_overwrite=false performs atomic
+    // scatter-add: out[index[j]] += updates[j].
+    // scatter_nd with x=nullptr and is_overwrite=true performs scatter-
+    // overwrite: out[index[j]] = updates[j].
+    // Since output is pre-zeroed by set_constant, x=nullptr is safe for both.
+    bool is_overwrite = !accumulate;
+    int r = xpu::scatter_nd<XPUType, int64_t>(dev_ctx.x_context(),
+                                              nullptr,
+                                              value_ptr,
+                                              output_ptr,
+                                              index_vec,
+                                              xshape_param,
+                                              index_shape,
+                                              is_overwrite);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "scatter_nd (index_elementwise_get_grad)");
+    return;
+  }
+
+  // Fallback path for non-accumulate or non-zero slice_offset cases
+  // (only reached for float, int, float16, bfloat16 types which have
+  // xpu::index_elementwise_get_grad specializations in the XPU SDK).
   int r = xpu::index_elementwise_get_grad<XPUType, XPUTypeIndexT>(
       dev_ctx.x_context(),
       value_ptr,
@@ -150,5 +199,6 @@ PD_REGISTER_KERNEL(index_elementwise_get_grad,
                    phi::IndexElementwiseGetGradKernel,
                    float,
                    int,
+                   int64_t,
                    phi::float16,
                    phi::bfloat16) {}
