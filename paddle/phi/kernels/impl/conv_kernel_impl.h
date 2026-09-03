@@ -75,6 +75,41 @@ void ConvKernelImpl(const Context& dev_ctx,
   UpdatePaddingAndDilation(
       &paddings_, &dilations_, padding_algorithm, in_data_dims, strides, ksize);
 
+  // Calculate the effective kernel size after dilation
+  int effective_kernel_h = dilations[0] * (filter_data_dims[0] - 1) + 1;
+  int effective_kernel_w = dilations[1] * (filter_data_dims[1] - 1) + 1;
+
+  // Calculate the output height and width
+  int output_h =
+      (in_data_dims[0] + 2 * paddings[0] - effective_kernel_h) / strides[0] + 1;
+  int output_w =
+      (in_data_dims[1] + 2 * paddings[1] - effective_kernel_w) / strides[1] + 1;
+
+  // Check if the output dimensions are valid
+  PADDLE_ENFORCE_GT(
+      output_h,
+      0,
+      phi::errors::InvalidArgument(
+          "Invalid convolution parameters: the effective kernel size (%d, %d) "
+          "exceeds the input size (%d, %d). Please adjust the stride, "
+          "dilation, or padding.",
+          effective_kernel_h,
+          effective_kernel_w,
+          in_data_dims[0],
+          in_data_dims[1]));
+
+  PADDLE_ENFORCE_GT(
+      output_w,
+      0,
+      phi::errors::InvalidArgument(
+          "Invalid convolution parameters: the effective kernel size (%d, %d) "
+          "exceeds the input size (%d, %d). Please adjust the stride, "
+          "dilation, or padding.",
+          effective_kernel_h,
+          effective_kernel_w,
+          in_data_dims[0],
+          in_data_dims[1]));
+
   const int64_t batch_size = transformed_input.dims()[0];
 
   // filter_shape_vec:
