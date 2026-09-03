@@ -17,6 +17,7 @@ limitations under the License. */
 #include <algorithm>
 #include <array>
 #include <cstdint>
+#include <limits>
 #include <type_traits>
 #include <vector>
 
@@ -30,6 +31,19 @@ namespace phi {
 namespace funcs {
 
 constexpr int MAX_DIMS = DDim::kMaxRank;
+
+// Offset calculators instantiated with signed_strides=true keep their offsets
+// in std::make_signed_t<INDEX_T>, so their 32-bit fast path is bounded by
+// int32_t instead of uint32_t. Byte extents in (2 GiB, 4 GiB] must therefore
+// fall through to the 64-bit path instead of reusing IsInUint32Range.
+constexpr bool IsInInt32Range(int64_t value) {
+  return value >= std::numeric_limits<int32_t>::min() &&
+         value <= std::numeric_limits<int32_t>::max();
+}
+
+constexpr bool IsInInt32Range(int64_t v1, int64_t v2) {
+  return IsInInt32Range(v1) && IsInInt32Range(v2);
+}
 
 // A 0-Size index selects nothing, so the indexed region is empty no matter
 // what the other operands look like.

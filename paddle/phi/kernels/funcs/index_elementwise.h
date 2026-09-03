@@ -68,6 +68,49 @@ struct CPUOffsetCalculator {
         strides_[i][arg] = strides[arg][i] / element_size;
       }
     }
+    if constexpr (signed_strides) {
+      // Signed offsets are what makes reversed views (negative strides) work,
+      // but they also halve the reachable range compared to the unsigned
+      // instantiation.  The CPU calculator has no 64 bit variant, so report the
+      // limit instead of silently wrapping.
+      CheckOffsetRange(dims, sizes, strides, element_sizes);
+    }
+  }
+
+  static void CheckOffsetRange(int dims,
+                               const int64_t* sizes,
+                               const int64_t* const* strides,
+                               const int64_t* element_sizes) {
+    for (int arg = 0; arg < NARGS; arg++) {
+      const int64_t element_size =
+          (element_sizes == nullptr ? 1LL : element_sizes[arg]);
+      int64_t lo = 0;
+      int64_t hi = 0;
+      for (int i = 0; i < dims; i++) {
+        const int64_t reach = (sizes[i] - 1) * (strides[arg][i] / element_size);
+        if (reach < 0) {
+          lo += reach;
+        } else {
+          hi += reach;
+        }
+      }
+      PADDLE_ENFORCE_GE(
+          lo,
+          static_cast<int64_t>(std::numeric_limits<stride_t>::lowest()),
+          common::errors::PreconditionNotMet(
+              "Offset %d of operand %d underflows the %d bit offset type.",
+              lo,
+              arg,
+              static_cast<int>(sizeof(stride_t) * 8)));
+      PADDLE_ENFORCE_LE(
+          hi,
+          static_cast<int64_t>(std::numeric_limits<stride_t>::max()),
+          common::errors::PreconditionNotMet(
+              "Offset %d of operand %d overflows the %d bit offset type.",
+              hi,
+              arg,
+              static_cast<int>(sizeof(stride_t) * 8)));
+    }
   }
 
   offset_type cpu_get(index_t linear_idx) const {

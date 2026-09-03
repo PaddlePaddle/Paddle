@@ -453,6 +453,105 @@ class TestIndexElementwiseGetGradSlicedViewRounding(unittest.TestCase):
             paddle.enable_static()
 
 
+@unittest.skipUnless(
+    paddle.device.is_compiled_with_cuda(), 'CUDA is required for this test.'
+)
+class TestIndexElementwiseNegativeStrideView(unittest.TestCase):
+    """Advanced indexing applied to a reversed view.
+
+    A negative step makes the view's stride negative and puts its base offset
+    at the *highest* address of that axis, so every element the kernel touches
+    sits at a non-positive offset from ``slice_offset``. The offset calculators
+    must therefore keep their offsets in a signed type; an unsigned one turns
+    those offsets into huge positive numbers and the kernel reads or writes
+    outside the tensor.
+
+    numpy is the reference: torch rejects negative steps outright
+    (``step must be greater than zero``), so there is nothing to compare
+    against there. The backward reference is exact rather than approximate --
+    running the same expression on an array of flat positions names the source
+    element of every output element, which is exactly what the gradient
+    scatters into.
+
+    Ranks above two matter on their own: once an axis is left over after the
+    indexed one, the iteration dimensions get sorted by stride, and ordering a
+    negative stride as the smallest one permutes the output layout.
+    """
+
+    SHAPES = ((8, 6), (8, 6, 6), (8, 6, 33))
+
+    def _cases(self, ndim):
+        cases = [
+            ('x[::-1, idx]', lambda t, i: t[::-1, i]),
+            ('x[::-2, idx]', lambda t, i: t[::-2, i]),
+            ('x[1::-1, idx]', lambda t, i: t[1::-1, i]),
+            ('x[idx, ::-1]', lambda t, i: t[i, ::-1]),
+            ('x[::-1][idx]', lambda t, i: t[::-1][i]),
+            ('x[:, ::-1][idx]', lambda t, i: t[:, ::-1][i]),
+            ('x[::-1, ::-1][idx]', lambda t, i: t[::-1, ::-1][i]),
+            ('x[..., ::-1][idx]', lambda t, i: t[..., ::-1][i]),
+            ('x[::-1, idx2]', lambda t, i: t[::-1, i]),
+            # x[::-1][:, idx] is left out on purpose: advanced indexing on a
+            # non-contiguous base with the indexed axis after a sliced one is
+            # broken for positive steps too (x[::2][:, idx] returns the wrong
+            # shape), so it is not a negative-stride issue.
+        ]
+        if ndim > 2:
+            cases += [
+                ('x[::-1, :, idx]', lambda t, i: t[::-1, :, i]),
+                ('x[idx, ::-1, :]', lambda t, i: t[i, ::-1, :]),
+                ('x[::-1, idx, ::-1]', lambda t, i: t[::-1, i, ::-1]),
+            ]
+        return cases
+
+    def _run(self, dtype, shape):
+        # Integral values keep every partial sum exact, so the comparison is
+        # independent of the order duplicates are reduced in.
+        x_np = (
+            np.arange(np.prod(shape), dtype=np.float32)
+            .reshape(shape)
+            .astype(dtype)
+        )
+        positions = np.arange(np.prod(shape), dtype=np.int64).reshape(shape)
+        idx_np = np.array([2, 5, 2, 0, 5], dtype=np.int64)
+        idx2_np = np.array([[1, 3], [3, 1], [0, 0]], dtype=np.int64)
+
+        for name, fn in self._cases(len(shape)):
+            index_np = idx2_np if 'idx2' in name else idx_np
+            with self.subTest(dtype=dtype, shape=shape, expr=name):
+                expected = fn(x_np, index_np)
+                selected = fn(positions, index_np)
+                grad_np = (
+                    np.arange(selected.size, dtype=np.float32).reshape(
+                        selected.shape
+                    )
+                    % 8
+                ) + 1
+                expected_grad = np.zeros(positions.size, dtype=np.float32)
+                np.add.at(
+                    expected_grad, selected.reshape(-1), grad_np.reshape(-1)
+                )
+                expected_grad = expected_grad.reshape(shape)
+
+                x = paddle.to_tensor(x_np, dtype=dtype)
+                x.stop_gradient = False
+                out = fn(x, paddle.to_tensor(index_np))
+                self.assertEqual(list(out.shape), list(expected.shape))
+                np.testing.assert_array_equal(out.numpy(), expected)
+
+                out.backward(paddle.to_tensor(grad_np, dtype=dtype))
+                np.testing.assert_array_equal(x.grad.numpy(), expected_grad)
+
+    def test_negative_stride_view_grad(self):
+        paddle.disable_static(place=paddle.CUDAPlace(0))
+        try:
+            for dtype in ('float32', 'float64'):
+                for shape in self.SHAPES:
+                    self._run(dtype, shape)
+        finally:
+            paddle.enable_static()
+
+
 if __name__ == '__main__':
     paddle.enable_static()
     unittest.main()
