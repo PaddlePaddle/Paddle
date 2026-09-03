@@ -1,4 +1,4 @@
-# Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2026 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,13 +15,13 @@
 import abstract_drr
 import access_topo_drr  # noqa: F401
 import ap
+import conv2d_variadic_tpl
 import epilogue_access_topo_simplify
 import index_program_translator_util
 import ir_tools
 import kernel_arg_id_util
 import kernel_arg_translator_util  # noqa: F401
 import low_level_ir_code_gen_ctx_util  # noqa: F401
-import matmul_variadic_tpl
 import op_compute_translator_util
 import op_conversion_drr_pass  # noqa: F401
 import pir  # noqa: F401
@@ -31,16 +31,16 @@ import umprime  # noqa: F401
 import variadic_mixin
 
 
-class MatmulEpilogueFusion(abstract_drr.DrrPass):
+class Conv2dEpilogueFusion(abstract_drr.DrrPass):
     def source_pattern(self, o, t):
         in_num = self.number_of_inputs()
         out_num = self.number_of_outputs()
-        o.matmul_op = o.ap_native_op("pd_op.matmul")
-        o.matmul_op([t.input0, t.input1], [t.mm_out])
+        o.conv2d_op = o.ap_native_op("pd_op.conv2d")
+        o.conv2d_op([t.input0, t.input1], [t.conv2d_out])
         o.trivial_op = o.ap_trivial_fusion_op()
         o.trivial_op(
             [
-                t.mm_out,
+                t.conv2d_out,
                 *ap.map(
                     lambda index: getattr(t, f"input{index + 2}"),
                     range(in_num - 2),
@@ -59,12 +59,39 @@ class MatmulEpilogueFusion(abstract_drr.DrrPass):
         )
 
     def constraint(self, o, t):
+        return self._is_supported_by_backend(o) and self._epilogue_can_fuse(
+            o, t
+        )
+
+    def _is_supported_by_backend(self, o):
+        # Limitations of the cutlass conv2d backend:
+        # - groups == 1: grouped conv needs a different cutlass kernel (GroupMode).
+        # - NHWC: cutlass conv fprop only has TensorNHWC and
+        #   TensorNCxHWx<Interleave> iterators, no plain NCHW.
+        # - EXPLICIT and symmetric padding: `paddings` is forwarded as-is while
+        #   cutlass takes a single pad value per spatial axis, and SAME / VALID
+        #   derive the effective padding at runtime.
+        paddings = self._get_int_list_attr(o.conv2d_op.paddings)
+        symmetric_padding = (
+            True
+            if len(paddings) == 2
+            else (paddings[0] == paddings[1] and paddings[2] == paddings[3])
+        )
+        supported_attrs = (self._get_int_attr(o.conv2d_op.groups) == 1) and (
+            o.conv2d_op.data_format.match(a_str=lambda x: x) == "NHWC"
+        )
+        explicit_padding = (
+            o.conv2d_op.padding_algorithm.match(a_str=lambda x: x) == "EXPLICIT"
+        ) and symmetric_padding
+        return supported_attrs and explicit_padding
+
+    def _epilogue_can_fuse(self, o, t):
         program = ir_tools.copy_fused_ops_to_program(
             o.trivial_op, tensor_match_ctx=t
         )
         program = epilogue_access_topo_simplify.simplify_epilogue_program(
             program,
-            anchor_data_op_name="mm_out",
+            anchor_data_op_name="conv2d_out",
             number_of_inputs=self.number_of_inputs(),
             number_of_outputs=self.number_of_outputs(),
         )
@@ -95,7 +122,16 @@ class MatmulEpilogueFusion(abstract_drr.DrrPass):
         init_pass_manager.run(program)
 
     def _make_kernel_arg_translator(self):
-        return matmul_variadic_tpl.make_kernel_arg_translator()
+        return conv2d_variadic_tpl.make_kernel_arg_translator()
+
+    def _get_int_attr(self, attr):
+        return attr.match(a_i32=lambda x: int(x))
+
+    def _get_int_list_attr(self, attr):
+        # `int[]` of pd_op.conv2d is ArrayAttribute<Int32Attribute>.
+        return attr.match(
+            a_array=lambda values: ap.map(self._get_int_attr, values)
+        )
 
     def _apply_topo_access_passes(self, mut_program, anchor_data_op_name):
         init_pass_manager = ir_tools.create_pass_manager()
@@ -252,7 +288,7 @@ class MatmulEpilogueFusion(abstract_drr.DrrPass):
         pass_manager.add_pass(ir_tools.create_access_topo_drr_pass("umprime"))
         pass_manager.add_pass(ir_tools.create_dce_pass())
         pass_manager.run(mut_program)
-        self._insert_load_from_global(mut_program, input_names=["mm_out"])
+        self._insert_load_from_global(mut_program, input_names=["conv2d_out"])
         self._insert_load_from_global(mut_program, input_names=inputs_name_list)
         self._insert_store_to_global(
             mut_program, output_names=outputs_name_list
@@ -261,7 +297,7 @@ class MatmulEpilogueFusion(abstract_drr.DrrPass):
         index_func_unique_id2index_program = (
             self._make_index_func_unique_id2index_program(
                 mut_program,
-                anchor_data_op_name="mm_out",
+                anchor_data_op_name="conv2d_out",
                 input_names=inputs_name_list,
                 output_names=other_outputs_name_list,
             )
@@ -273,10 +309,12 @@ class MatmulEpilogueFusion(abstract_drr.DrrPass):
         index_program_translator_map = index_program_translator_util.IndexProgramTranslatorMap(
             index_func_unique_id2index_program=index_func_unique_id2index_program,
             kernel_arg_translator=kernel_arg_translator,
-            anchor_iter_var_names=matmul_variadic_tpl.get_anchor_iter_var_names(),
+            anchor_iter_var_names=conv2d_variadic_tpl.get_anchor_iter_var_names(),
         )
         self._replace_with_load_from_register(
-            mut_program, load_ir_value_name="mm_out", register_var_name="x"
+            mut_program,
+            load_ir_value_name="conv2d_out",
+            register_var_name="x",
         )
         self._replace_with_store_to_register(mut_program, "output0", "out")
         print("mut_program:", mut_program)
@@ -298,7 +336,7 @@ class MatmulEpilogueFusion(abstract_drr.DrrPass):
             code_gen_ctx=ctx, tensor_match_ctx=t, name_prefix=""
         )
 
-        template_module = matmul_variadic_tpl.MatmulVariadicTemplate(
+        template_module = conv2d_variadic_tpl.Conv2dVariadicTemplate(
             program_translator=program_translator,
             mut_kernel_arg_id_registry=mut_kernel_arg_id_registry,
         )
@@ -318,31 +356,36 @@ class MatmulEpilogueFusion(abstract_drr.DrrPass):
             output_karg=ctx.out_tensor_data_ptr_kernel_arg_id(t.output0),
             input0_shape_kargs=input0_shape_kargs,
             input1_shape_kargs=input1_shape_kargs,
+            strides=self._get_int_list_attr(o.conv2d_op.strides),
+            paddings=self._get_int_list_attr(o.conv2d_op.paddings),
+            dilations=self._get_int_list_attr(o.conv2d_op.dilations),
+            groups=self._get_int_attr(o.conv2d_op.groups),
+            data_format=o.conv2d_op.data_format.match(a_str=lambda x: x),
         )
 
 
-def register_matmul_epilogue_class(base_class, max_num_inputs, max_num_outputs):
-    def register_drr_class(num_inputs, num_outputs):
+def register_conv2d_epilogue_class(base_class, max_num_inputs, max_num_outputs):
+    def register_conv2d_drr_class(num_inputs, num_outputs):
         abstract_drr.register_drr_pass(
-            f"matmul_epilogue_in{num_inputs}_out{num_outputs}_fusion", nice=0
+            f"conv2d_epilogue_in{num_inputs}_out{num_outputs}_fusion", nice=0
         )(
             variadic_mixin.get_mixin_class(
                 base_class,
-                "MatmulEpilogueFusion",
+                "Conv2dEpilogueFusion",
                 num_inputs,
                 num_outputs,
             )
         )
 
-    def register_num_inputs_drr_classes(num_inputs):
-        def register_num_outputs_drr_classes(num_outputs):
-            return register_drr_class(num_inputs + 2, num_outputs + 1)
+    def register_conv2d_num_inputs_drr_classes(num_inputs):
+        def register_conv2d_num_outputs_drr_classes(num_outputs):
+            return register_conv2d_drr_class(num_inputs + 2, num_outputs + 1)
 
-        ap.map(register_num_outputs_drr_classes, range(max_num_outputs))
+        ap.map(register_conv2d_num_outputs_drr_classes, range(max_num_outputs))
 
-    ap.map(register_num_inputs_drr_classes, range(max_num_inputs))
+    ap.map(register_conv2d_num_inputs_drr_classes, range(max_num_inputs))
 
 
-register_matmul_epilogue_class(
-    base_class=MatmulEpilogueFusion, max_num_inputs=10, max_num_outputs=10
+register_conv2d_epilogue_class(
+    base_class=Conv2dEpilogueFusion, max_num_inputs=10, max_num_outputs=10
 )
