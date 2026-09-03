@@ -1340,7 +1340,7 @@ void LaunchKeMatrixSoftmaxForwardKernel(const GPUContext& dev_ctx,
       <<<N, block_dim, 0, dev_ctx.stream()>>>(out, input, dim_size);
 }
 
-#if CUDNN_VERSION < 8100
+#if !defined(PADDLE_WITH_HIP) && CUDNN_VERSION < 8100
 template <>
 inline void LaunchSoftmaxForwardCudnnKernel<phi::bfloat16>(
     const GPUContext& dev_ctx,
@@ -2850,7 +2850,16 @@ void SoftmaxForwardCUDAKernelDriverImpl(const GPUContext& dev_ctx,
                                                            dim_log2);
       }
     } else {
-      if (dim >= MATRIX_SOFTMAX_THRESHOLD) {
+      bool use_matrix_kernel = dim >= MATRIX_SOFTMAX_THRESHOLD;
+#ifdef PADDLE_WITH_HIP
+      // MIOpen (as of ROCm 7.x) returns MIOPEN_STATUS_NOT_IMPLEMENTED for
+      // miopenSoftmaxForward_V2 with miopenBFloat16. Route BF16 through the
+      // matrix softmax kernel for any dim that exceeds the warp-softmax cap.
+      if (std::is_same<T, phi::bfloat16>::value) {
+        use_matrix_kernel = true;
+      }
+#endif
+      if (use_matrix_kernel) {
         LaunchKeMatrixSoftmaxForwardKernel<T, IndexType, LogMode>(
             dev_ctx, out_data, x.data<T>(), N, dim);
       } else {

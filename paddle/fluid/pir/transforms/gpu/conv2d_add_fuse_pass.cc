@@ -221,4 +221,10 @@ std::unique_ptr<Pass> CreateConv2dAddFusePass() {
 }
 }  // namespace pir
 
+// The fused_conv2d_add_act op this pass produces only has a cuDNN
+// (PADDLE_WITH_CUDA) GPUDNN kernel, so the pass is a no-op on other backends.
+// Skip registration on ROCm/HIP to avoid applying the rewrite and later
+// failing at kernel-dispatch time.
+#ifdef PADDLE_WITH_CUDA
 REGISTER_IR_PASS(conv2d_add_fuse_pass, Conv2dAddFusePass);
+#endif
