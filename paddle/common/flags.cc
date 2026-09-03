@@ -2506,18 +2506,34 @@ PHI_DEFINE_EXPORTED_bool(enable_compact_mem,
                          "whether start compact memory or not.");
 /**
  * Allocator Compact related FLAG
+ * Name: FLAGS_max_reserved_threshold_ratio
+ * Since Version: 3.3
+ * Value Range: double, default=0.9 (90% of total GPU memory)
+ * Example: FLAGS_max_reserved_threshold_ratio=0.85
+ * Note: Threshold ratio (0.0~1.0) used in compact memory. Only reserved_mem
+ * greater than (total_mem * ratio) may trigger defragmentation.
+ * This adapts to different GPU memory sizes automatically.
+ */
+PHI_DEFINE_EXPORTED_double(
+    max_reserved_threshold_ratio,
+    0.9,
+    "Threshold ratio (0.0~1.0) used in compact memory. Only reserved_mem "
+    "greater than (total_mem * ratio) may trigger defragmentation.");
+
+/**
+ * Allocator Compact related FLAG (DEPRECATED, use max_reserved_threshold_ratio instead)
  * Name: FLAGS_max_reserved_threshold_in_gb
  * Since Version: 3.3
- * Value Range: int64, default=70
+ * Value Range: int64, default=0 (disabled, use ratio instead)
  * Example:
  * Note: Threshold (GB) used in compact memory. Only reserved_mem greater than
- * threshold may trigger defragmentation.
+ * threshold may trigger defragmentation. Set to 0 to use ratio-based threshold.
  */
 PHI_DEFINE_EXPORTED_int64(
     max_reserved_threshold_in_gb,
-    70,
-    "Threshold (GB) used in compact memory. Only reserved_mem greater than "
-    "threshold may trigger defragmentation.");
+    0,
+    "[DEPRECATED] Threshold (GB) used in compact memory. Use "
+    "FLAGS_max_reserved_threshold_ratio instead. Set to 0 to use ratio.");
 
 /**
  * Allocator Compact related FLAG
