@@ -310,7 +310,8 @@ void LaunchIndexElementwisePutGradCudaKernel(
   if (x_grad) {
     Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
     if (funcs::IsInInt32Range(x_grad->numel() * sizeof(T),
-                              out_grad.numel() * sizeof(T))) {
+                              out_grad.numel() * sizeof(T),
+                              funcs::IndexOperandByteSpan(index_dims))) {
       GPUIndexElementwisePutGradKernel<T, int64_t>(dev_ctx,
                                                    out_grad,
                                                    indices,
@@ -447,8 +448,10 @@ void IndexElementwisePutWithTensorGradKernel(
     }
     return;
   }
-  if (x_grad && funcs::IsInInt32Range(x_grad->numel() * sizeof(T),
-                                      out_grad.numel() * sizeof(T))) {
+  if (x_grad &&
+      funcs::IsInInt32Range(x_grad->numel() * sizeof(T),
+                            out_grad.numel() * sizeof(T),
+                            funcs::IndexOperandByteSpan(index_dims))) {
     LaunchIndexElementwisePutWithTensorGradCudaKernel<T, Context>(dev_ctx,
                                                                   indices,
                                                                   out_grad,
