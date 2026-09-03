@@ -913,28 +913,50 @@ def flash_attention_v3_varlen(
     pack_gqa=None,
     sm_margin=0,
 ):
-    return flash_attn_varlen_func(
+    assert "xpu" not in paddle.get_device(), (
+        "flash_attn_varlen_func is not supported on xpu"
+    )
+
+    assert not paddle.get_flags(["FLAGS_cudnn_deterministic"])[
+        "FLAGS_cudnn_deterministic"
+    ], "flash_attention_v3_varlen does not support deterministic"
+
+    assert in_dynamic_or_pir_mode(), (
+        "flash_attention_v3_varlen only support dynamic or pir mode"
+    )
+
+    assert qv is None, "flash_attention_v3_varlen does not support setting qv"
+
+    if softmax_scale is None:
+        softmax_scale = (
+            query.shape[-1] + (qv.shape[-1] if qv is not None else 0)
+        ) ** (-0.5)
+
+    out, softmax_lse = _C_ops.flash_attn_v3_varlen(
         query,
         key,
         value,
         cu_seqlens_q,
         cu_seqlens_k,
-        max_seqlen_q,
-        max_seqlen_k,
         seqused_q,
         seqused_k,
-        softmax_scale,
-        causal,
         qv,
         q_descale,
         k_descale,
         v_descale,
-        window_size,
+        max_seqlen_q,
+        max_seqlen_k,
+        softmax_scale,
+        causal,
+        window_size[0],
+        window_size[1],
         softcap,
         num_splits,
-        pack_gqa,
+        pack_gqa is not None,
+        pack_gqa if pack_gqa is not None else False,
         sm_margin,
     )
+    return out, softmax_lse
 
 
 def flash_attn_varlen_func(
@@ -1020,49 +1042,41 @@ def flash_attn_varlen_func(
         "FLAGS_cudnn_deterministic"
     ], "flash_attn_varlen_func does not support deterministic"
 
-    assert (
-        paddle.base.framework.get_flags(["FLAGS_flash_attn_version"])[
-            "FLAGS_flash_attn_version"
-        ]
-        == 3
-    ), "FLAGS_flash_attn_version is 2, conflicts with flash_attn_varlen_func"
-
     assert in_dynamic_or_pir_mode(), (
         "flash_attn_varlen_func only support dynamic or pir mode"
     )
 
     assert qv is None, "flash_attn_varlen_func does not support setting qv"
 
-    if softmax_scale is None:
-        softmax_scale = (
-            query.shape[-1] + (qv.shape[-1] if qv is not None else 0)
-        ) ** (-0.5)
-
-    out, softmax_lse = _C_ops.flash_attn_v3_varlen(
-        query,
-        key,
-        value,
-        cu_seqlens_q,
-        cu_seqlens_k,
-        seqused_q,
-        seqused_k,
-        qv,
-        q_descale,
-        k_descale,
-        v_descale,
-        max_seqlen_q,
-        max_seqlen_k,
-        softmax_scale,
-        causal,
-        window_size[0],
-        window_size[1],
-        softcap,
-        num_splits,
-        pack_gqa is not None,
-        pack_gqa if pack_gqa is not None else False,
-        sm_margin,
+    fa_version = paddle.base.framework.get_flags(["FLAGS_flash_attn_version"])[
+        "FLAGS_flash_attn_version"
+    ]
+    assert fa_version == 3, (
+        f"The current FLAGS_flash_attn_version is set to {fa_version}, but flash_attn_varlen_func does not support this version yet. Please use flash_attn_unpadded instead"
     )
-    return out, softmax_lse
+
+    return flash_attention_v3_varlen(
+        query=query,
+        key=key,
+        value=value,
+        cu_seqlens_q=cu_seqlens_q,
+        cu_seqlens_k=cu_seqlens_k,
+        max_seqlen_q=max_seqlen_q,
+        max_seqlen_k=max_seqlen_k,
+        seqused_q=seqused_q,
+        seqused_k=seqused_k,
+        softmax_scale=softmax_scale,
+        causal=causal,
+        qv=qv,
+        q_descale=q_descale,
+        k_descale=k_descale,
+        v_descale=v_descale,
+        window_size=window_size,
+        softcap=softcap,
+        num_splits=num_splits,
+        pack_gqa=pack_gqa,
+        sm_margin=sm_margin,
+    )
 
 
 @overload
