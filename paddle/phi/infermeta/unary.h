@@ -522,6 +522,7 @@ PADDLE_API void ModeInferMeta(const MetaTensor& x,
 PADDLE_API void MultinomialInferMeta(const MetaTensor& x,
                                      const Scalar& num_samples,
                                      bool replacement,
+                                     bool check_input_zeros,
                                      MetaTensor* out,
                                      MetaConfig config = MetaConfig());
 
