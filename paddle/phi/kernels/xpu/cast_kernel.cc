@@ -149,6 +149,20 @@ void CastKernel(const Context& dev_ctx,
       phi::ComplexKernel<float>(dev_ctx, real, imag, out);
       break;
     }
+    case DataType::COMPLEX128: {
+      if (x.numel() == 0) {
+        dev_ctx.template Alloc<T>(out);
+        return;
+      }
+      DenseTensor real;
+      real.Resize(x.dims());
+      CastXPUKernelImpl<T, double, Context>(dev_ctx, x, &real);
+      dev_ctx.template Alloc<T>(out);
+      DenseTensor imag = Fill<double, Context>(
+          dev_ctx, vectorize<int>(x.dims()), static_cast<double>(0.0));
+      phi::ComplexKernel<double>(dev_ctx, real, imag, out);
+      break;
+    }
 #endif
     default:
       PADDLE_THROW(common::errors::Unavailable(
@@ -170,6 +184,24 @@ void CastKernel<phi::complex64, XPUContext>(const XPUContext& dev_ctx,
     if (!out->IsSharedWith(x)) {
       Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
     }
+    return;
+  }
+  if (out_dtype == DataType::COMPLEX128) {
+    if (x.numel() == 0) {
+      dev_ctx.template Alloc<T>(out);
+      return;
+    }
+    DenseTensor x_real = Real<T, XPUContext>(dev_ctx, x);
+    DenseTensor x_imag = Imag<T, XPUContext>(dev_ctx, x);
+    DenseTensor x_real_double, x_imag_double;
+    x_real_double.Resize(x.dims());
+    x_imag_double.Resize(x.dims());
+    CastXPUKernelImpl<float, double, XPUContext>(
+        dev_ctx, x_real, &x_real_double);
+    CastXPUKernelImpl<float, double, XPUContext>(
+        dev_ctx, x_imag, &x_imag_double);
+    dev_ctx.template Alloc<T>(out);
+    phi::ComplexKernel<double>(dev_ctx, x_real_double, x_imag_double, out);
     return;
   }
   DenseTensor x_real = Real<T, XPUContext>(dev_ctx, x);
