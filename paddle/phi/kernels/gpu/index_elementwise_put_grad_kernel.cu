@@ -85,7 +85,7 @@ void GPUIndexElementwisePutGradKernel(
   if (numel == 0 || funcs::HasEmptyIndex(index)) {
     return;
   }
-  auto offset_calc = funcs::make_offset_calculator_put<3, false, OffsetT>(
+  auto offset_calc = funcs::make_offset_calculator_put<3, true, OffsetT>(
       desired_shape, strides_array);
   const int64_t N = numel;
 
@@ -135,7 +135,7 @@ void GPUIndexElementwisePutGradKernel(
     const char* out_ptr = reinterpret_cast<const char*>(out_grad.data<T>());
     char* value_ptr = reinterpret_cast<char*>(value_grad->data<T>());
     PADDLE_ENFORCE_EQ(true,
-                      funcs::IsInUint32Range(value_grad->numel()),
+                      funcs::IsInInt32Range(value_grad->numel()),
                       common::errors::PreconditionNotMet(
                           "the numel of input or output should be in [0, "
                           "std::numeric_limits<int32_t>::max()]"));
@@ -162,7 +162,7 @@ void GPUIndexElementwisePutGradKernel(
     auto index_ptrs = funcs::GetIndexDataPtrs<IndexT>(index);
     char* out_ptr = reinterpret_cast<char*>(x_grad->data<T>());
     PADDLE_ENFORCE_EQ(true,
-                      funcs::IsInUint32Range(value_grad->numel()),
+                      funcs::IsInInt32Range(value_grad->numel()),
                       common::errors::PreconditionNotMet(
                           "the numel of input or output should be in [0, "
                           "std::numeric_limits<int32_t>::max()]"));
@@ -309,8 +309,8 @@ void LaunchIndexElementwisePutGradCudaKernel(
     DenseTensor* x_grad) {
   if (x_grad) {
     Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
-    if (funcs::IsInUint32Range(x_grad->numel() * sizeof(T),
-                               out_grad.numel() * sizeof(T))) {
+    if (funcs::IsInInt32Range(x_grad->numel() * sizeof(T),
+                              out_grad.numel() * sizeof(T))) {
       GPUIndexElementwisePutGradKernel<T, int64_t>(dev_ctx,
                                                    out_grad,
                                                    indices,
@@ -447,8 +447,8 @@ void IndexElementwisePutWithTensorGradKernel(
     }
     return;
   }
-  if (x_grad && funcs::IsInUint32Range(x_grad->numel() * sizeof(T),
-                                       out_grad.numel() * sizeof(T))) {
+  if (x_grad && funcs::IsInInt32Range(x_grad->numel() * sizeof(T),
+                                      out_grad.numel() * sizeof(T))) {
     LaunchIndexElementwisePutWithTensorGradCudaKernel<T, Context>(dev_ctx,
                                                                   indices,
                                                                   out_grad,

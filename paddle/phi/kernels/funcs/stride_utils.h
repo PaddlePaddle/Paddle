@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <cstdlib>
 #include <vector>
 #include "paddle/common/array.h"
 #include "paddle/phi/backends/context_pool.h"
@@ -177,7 +178,18 @@ static inline void reorder_dimensions(const std::vector<int64_t>& stride_size,
         // equal strides we try to break the tie later by comparing
         // corresponding dimensions or if that does not work, moving on to the
         // next tensor
-      } else if (stride0 < stride1) {
+      }
+      // Order by magnitude, not by signed value. A reversed view (`x[::-1]`)
+      // carries a negative stride, and only |stride| says how fast that
+      // dimension moves; the sign is handled by the signed offset calculator.
+      // Comparing signed values would sort every reversed dimension first,
+      // i.e. innermost, and the contiguous output strides that
+      // allocate_or_resize_outputs() assigns afterwards would then describe a
+      // permuted layout while the output tensor's meta stays C-contiguous.
+      // This is a no-op for non-negative strides.
+      stride0 = std::abs(stride0);
+      stride1 = std::abs(stride1);
+      if (stride0 < stride1) {
         return -1;
       } else if (stride0 > stride1) {
         return 1;

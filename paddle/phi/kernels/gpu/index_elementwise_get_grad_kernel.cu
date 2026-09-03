@@ -117,7 +117,7 @@ void GPUIndexElementwiseGetGrad(const GPUContext& dev_ctx,
                            &strides_array,
                            &numel,
                            strides_vec);
-  auto offset_calc = funcs::make_offset_calculator_put<3, false, OffsetT>(
+  auto offset_calc = funcs::make_offset_calculator_put<3, true, OffsetT>(
       desired_shape, strides_array);
 
   auto max_grid_size = phi::backends::gpu::GetGpuMaxGridDimSize(
@@ -822,8 +822,8 @@ void IndexElementwiseGetGradKernel(const Context& dev_ctx,
 #endif
   }
 
-  if (funcs::IsInUint32Range(x_grad->numel() * sizeof(T),
-                             out_grad.numel() * sizeof(T))) {
+  if (funcs::IsInInt32Range(x_grad->numel() * sizeof(T),
+                            out_grad.numel() * sizeof(T))) {
     GPUIndexElementwiseGetGrad<T>(dev_ctx,
                                   x,
                                   out_grad,

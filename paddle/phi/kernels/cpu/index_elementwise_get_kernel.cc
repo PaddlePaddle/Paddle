@@ -59,8 +59,8 @@ void CPUIndexElementwiseGetKernel(const CPUContext& dev_ctx,
                            &strides_array,
                            &numel,
                            strides_vec);
-  auto offset_calc =
-      funcs::CPUmake_offset_calculator_put<3>(desired_shape, strides_array);
+  auto offset_calc = funcs::CPUmake_offset_calculator_put<3, true>(
+      desired_shape, strides_array);
   const int64_t N = output->numel();
   PADDLE_ENFORCE_GE(
       N, 0, common::errors::InvalidArgument("Output numel must >= 0"));

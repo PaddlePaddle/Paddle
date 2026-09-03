@@ -81,7 +81,7 @@ void GPUIndexElementwisePutKernel(const GPUContext& dev_ctx,
   if (numel == 0 || funcs::HasEmptyIndex(index)) {
     return;
   }
-  auto offset_calc = funcs::make_offset_calculator_put<3, false, OffsetT>(
+  auto offset_calc = funcs::make_offset_calculator_put<3, true, OffsetT>(
       desired_shape, strides_array);
 
   const int64_t N = numel;
@@ -192,7 +192,7 @@ void GPUIndexElementwisePutWithTensorKernel(
     return;
   }
 
-  auto offset_calc = funcs::make_offset_calculator_put<3, false, OffsetT>(
+  auto offset_calc = funcs::make_offset_calculator_put<3, true, OffsetT>(
       desired_shape, strides_array);
 
   const int64_t N = numel;
@@ -264,7 +264,7 @@ void IndexElementwisePutKernel(const Context& dev_ctx,
                         DataType::INT64));
 
   if (out->numel() == 0) return;
-  if (funcs::IsInUint32Range(x.numel() * sizeof(T), out->numel() * sizeof(T))) {
+  if (funcs::IsInInt32Range(x.numel() * sizeof(T), out->numel() * sizeof(T))) {
     GPUIndexElementwisePutKernel<T>(dev_ctx,
                                     x,
                                     value,
@@ -324,7 +324,7 @@ void IndexElementwisePutWithTensorKernel(
                         DataType::INT64));
 
   if (out->numel() == 0) return;
-  if (funcs::IsInUint32Range(x.numel() * sizeof(T), out->numel() * sizeof(T))) {
+  if (funcs::IsInInt32Range(x.numel() * sizeof(T), out->numel() * sizeof(T))) {
     GPUIndexElementwisePutWithTensorKernel<T>(dev_ctx,
                                               x,
                                               value,
