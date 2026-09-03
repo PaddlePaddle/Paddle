@@ -140,6 +140,17 @@ inline bool is_common_dtype_for_scalar(DataType x, DataType y) {
   }
 }
 
+inline bool IsXpuAddComplex128Promote(const std::string& op_name,
+                                      DataType promote_type) {
+#if defined(PADDLE_WITH_XPU)
+  return promote_type == DataType::COMPLEX128 &&
+         (op_name == "add" || op_name == "add_" ||
+          op_name == "elementwise_add");
+#else
+  return false;
+#endif
+}
+
 inline phi::DataType GetPromoteDtype(
     const std::string& op_name,
     const DataType& x_dtype,
@@ -157,7 +168,11 @@ inline phi::DataType GetPromoteDtype(
       (x_shape.size() == 0 || y_shape.size() == 0)) {
     if (!is_common_dtype_for_scalar(x_dtype, y_dtype) ||
         (x_shape.size() == 0 && y_shape.size() == 0)) {
-      return phi::promoteTypes(x_dtype, y_dtype);
+      auto promote_type = phi::promoteTypes(x_dtype, y_dtype);
+      if (IsXpuAddComplex128Promote(op_name, promote_type)) {
+        promote_type = DataType::COMPLEX64;
+      }
+      return promote_type;
     } else {
       if (x_shape.size() == 0) {
         return y_dtype;
@@ -167,7 +182,11 @@ inline phi::DataType GetPromoteDtype(
     }
   }
 
-  return phi::promoteTypes(x_dtype, y_dtype);
+  auto promote_type = phi::promoteTypes(x_dtype, y_dtype);
+  if (IsXpuAddComplex128Promote(op_name, promote_type)) {
+    promote_type = DataType::COMPLEX64;
+  }
+  return promote_type;
 }
 
 inline phi::DataType GetPromoteDtypeOldIr(const std::string& op_name,
