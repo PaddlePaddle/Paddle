@@ -478,6 +478,121 @@ for stype in support_types:
     create_test_class(globals(), XPUTestAbsOPZeroSize, stype)
 
 
+class XPUTestAbsOPComplex(XPUOpTestWrapper):
+    def __init__(self):
+        self.op_name = 'abs'
+        self.use_dynamic_create_class = False
+
+    class XPUTestAbsComplex(TestActivationOPBase):
+        def set_shape(self):
+            self.shape = [4, 25]
+
+        def init_random_config(self):
+            self.seed = 2026
+            self.dist = "uniform"
+            self.low = -1.0
+            self.high = 1.0
+            self.mean = 0.0
+            self.std = 1.0
+
+        def gen_random_part(self, rng):
+            if self.dist == "normal":
+                val = rng.normal(loc=self.mean, scale=self.std, size=self.shape)
+            else:
+                val = rng.uniform(low=self.low, high=self.high, size=self.shape)
+            return np.asarray(val, dtype=np.float32)
+
+        def set_case(self):
+            self.op_type = "abs"
+            self.dtype = np.complex64
+            self.init_random_config()
+            rng = np.random.default_rng(self.seed)
+
+            # Generate complex numbers with both real and imaginary parts
+            real_part = self.gen_random_part(rng)
+            imag_part = self.gen_random_part(rng)
+            # Avoid values too close to zero
+            real_part = np.where(
+                np.abs(real_part) < 0.005, np.float32(0.02), real_part
+            )
+            imag_part = np.where(
+                np.abs(imag_part) < 0.005, np.float32(0.02), imag_part
+            )
+            x = real_part + 1j * imag_part
+
+            # abs(complex64) returns float32
+            out = np.abs(x).astype(np.float32)
+
+            self.attrs = {'use_xpu': True}
+            self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
+            self.outputs = {'Out': out}
+
+    class XPUTestAbsComplexZeroSize(XPUTestAbsComplex):
+        def set_shape(self):
+            self.shape = [0, 25]
+
+    class XPUTestAbsComplexZeroDim(XPUTestAbsComplex):
+        def set_shape(self):
+            self.shape = []
+
+    class XPUTestAbsComplexOneDim(XPUTestAbsComplex):
+        def set_shape(self):
+            self.shape = [97]
+
+    class XPUTestAbsComplexRandomUniform1(XPUTestAbsComplex):
+        def set_shape(self):
+            self.shape = [13, 9]
+
+        def init_random_config(self):
+            self.seed = 1
+            self.dist = "uniform"
+            self.low = -2.0
+            self.high = 2.0
+            self.mean = 0.0
+            self.std = 1.0
+
+    class XPUTestAbsComplexRandomUniform2(XPUTestAbsComplex):
+        def set_shape(self):
+            self.shape = [2, 3, 17]
+
+        def init_random_config(self):
+            self.seed = 17
+            self.dist = "uniform"
+            self.low = -5.0
+            self.high = 5.0
+            self.mean = 0.0
+            self.std = 1.0
+
+    class XPUTestAbsComplexRandomNormal(XPUTestAbsComplex):
+        def set_shape(self):
+            self.shape = [5, 11]
+
+        def init_random_config(self):
+            self.seed = 97
+            self.dist = "normal"
+            self.low = -1.0
+            self.high = 1.0
+            self.mean = 0.0
+            self.std = 2.5
+
+    class XPUTestAbsComplexRandomWideRange(XPUTestAbsComplex):
+        def set_shape(self):
+            self.shape = [3, 7, 19]
+
+        def init_random_config(self):
+            self.seed = 311
+            self.dist = "uniform"
+            self.low = -20.0
+            self.high = 20.0
+            self.mean = 0.0
+            self.std = 1.0
+
+
+complex_support_types = get_xpu_op_support_types('abs')
+if 'complex64' in complex_support_types:
+    create_test_class(globals(), XPUTestAbsOPComplex, 'complex64')
+
+
 class XPUTestReluOP(XPUOpTestWrapper):
     def __init__(self):
         self.op_name = 'relu'
