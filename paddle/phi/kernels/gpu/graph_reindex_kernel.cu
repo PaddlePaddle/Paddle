@@ -19,6 +19,7 @@
 #include <thrust/reduce.h>
 #include <thrust/scan.h>
 #include <thrust/sequence.h>
+#include "paddle/common/enforce.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/common/memory_utils.h"
@@ -30,7 +31,7 @@ namespace phi {
 
 constexpr int WARP_SIZE = 32;
 const int CUDA_NUM_THREADS = 512;
-inline int GET_BLOCKS(const int N) {
+inline int64_t GET_BLOCKS(const int64_t N) {
   return (N + CUDA_NUM_THREADS - 1) / CUDA_NUM_THREADS;
 }
 
@@ -134,13 +135,22 @@ void ResetBufferHashTable(const Context& dev_ctx,
                           int* key_index) {
   int block = 1024;
   int max_grid_dimx = dev_ctx.GetCUDAMaxGridDimSize()[0];
-  int grid_tmp = (unique_items->size() + block - 1) / block;
-  int grid = grid_tmp < max_grid_dimx ? grid_tmp : max_grid_dimx;
-  ResetHashTable<T><<<grid, block, 0, dev_ctx.stream()>>>(
-      thrust::raw_pointer_cast(unique_items->data()),
-      unique_items->size(),
-      key_index,
-      values);
+  size_t unique_items_size = unique_items->size();
+  size_t grid_tmp = (unique_items_size + static_cast<size_t>(block) - 1) /
+                    static_cast<size_t>(block);
+  size_t grid = grid_tmp < static_cast<size_t>(max_grid_dimx)
+                    ? grid_tmp
+                    : static_cast<size_t>(max_grid_dimx);
+  PADDLE_ENFORCE_LE_UINT32_MAX(grid, "graph_reindex reset grid.x");
+  PADDLE_ENFORCE_LE_UINT32_MAX(block, "graph_reindex reset block.x");
+  ResetHashTable<T>
+      <<<static_cast<uint32_t>(grid),
+         static_cast<uint32_t>(block),
+         0,
+         dev_ctx.stream()>>>(thrust::raw_pointer_cast(unique_items->data()),
+                             unique_items_size,
+                             key_index,
+                             values);
 }
 
 template <typename T, typename Context>
@@ -155,8 +165,13 @@ void ReindexSrc(const Context& dev_ctx,
   int max_grid_dimx = dev_ctx.GetCUDAMaxGridDimSize()[0];
   int grid_tmp = (num_edges + block - 1) / block;
   int grid = grid_tmp < max_grid_dimx ? grid_tmp : max_grid_dimx;
-  ReindexSrcOutput<T><<<grid, block, 0, dev_ctx.stream()>>>(
-      edges_src, num_edges, table_size, keys, values);
+  PADDLE_ENFORCE_LE_UINT32_MAX(grid, "graph_reindex src grid.x");
+  PADDLE_ENFORCE_LE_UINT32_MAX(block, "graph_reindex src block.x");
+  ReindexSrcOutput<T>
+      <<<static_cast<uint32_t>(grid),
+         static_cast<uint32_t>(block),
+         0,
+         dev_ctx.stream()>>>(edges_src, num_edges, table_size, keys, values);
 }
 
 template <typename T, typename Context>
@@ -175,25 +190,37 @@ void Reindex(const Context& dev_ctx,
   int64_t num = out_nodes->size();
   int64_t log_num = 1 << static_cast<size_t>(1 + std::log2(num >> 1));
   int64_t table_size = log_num << 1;
+  PADDLE_ENFORCE_LE_INT_MAX(table_size, "graph_reindex table_size");
+  const size_t table_size_bytes = static_cast<size_t>(table_size);
 
-  auto keys = memory_utils::Alloc(dev_ctx.GetPlace(), table_size * sizeof(T));
+  auto keys =
+      memory_utils::Alloc(dev_ctx.GetPlace(), table_size_bytes * sizeof(T));
   auto values =
-      memory_utils::Alloc(dev_ctx.GetPlace(), table_size * sizeof(int));
+      memory_utils::Alloc(dev_ctx.GetPlace(), table_size_bytes * sizeof(int));
   auto key_index =
-      memory_utils::Alloc(dev_ctx.GetPlace(), table_size * sizeof(int));
+      memory_utils::Alloc(dev_ctx.GetPlace(), table_size_bytes * sizeof(int));
   T* keys_ptr = reinterpret_cast<T*>(keys->ptr());
   int* values_ptr = reinterpret_cast<int*>(values->ptr());
   int* key_index_ptr = reinterpret_cast<int*>(key_index->ptr());
 
-  InitializeHashTable<T>
-      <<<GET_BLOCKS(table_size), CUDA_NUM_THREADS, 0, dev_ctx.stream()>>>(
-          keys_ptr, table_size);
-  InitializeHashTable<int>
-      <<<GET_BLOCKS(table_size), CUDA_NUM_THREADS, 0, dev_ctx.stream()>>>(
-          values_ptr, table_size);
-  InitializeHashTable<int>
-      <<<GET_BLOCKS(table_size), CUDA_NUM_THREADS, 0, dev_ctx.stream()>>>(
-          key_index_ptr, table_size);
+  int64_t table_blocks = GET_BLOCKS(table_size);
+  PADDLE_ENFORCE_LE(
+      table_blocks,
+      dev_ctx.GetCUDAMaxGridDimSize()[0],
+      common::errors::InvalidArgument(
+          "graph_reindex init table grid.x exceeds device limit."));
+  PADDLE_ENFORCE_LE_UINT32_MAX(table_blocks, "graph_reindex init table grid.x");
+  PADDLE_ENFORCE_LE_UINT32_MAX(CUDA_NUM_THREADS,
+                               "graph_reindex init table block.x");
+  const uint32_t table_grid = static_cast<uint32_t>(table_blocks);
+  const uint32_t table_block = static_cast<uint32_t>(CUDA_NUM_THREADS);
+  const int table_size_int = static_cast<int>(table_size);
+  InitializeHashTable<T><<<table_grid, table_block, 0, dev_ctx.stream()>>>(
+      keys_ptr, table_size_int);
+  InitializeHashTable<int><<<table_grid, table_block, 0, dev_ctx.stream()>>>(
+      values_ptr, table_size_int);
+  InitializeHashTable<int><<<table_grid, table_block, 0, dev_ctx.stream()>>>(
+      key_index_ptr, table_size_int);
 
   int unique_len = 0;
   std::shared_ptr<Allocation> unique_items =
@@ -250,7 +277,12 @@ void BufferReindex(const Context& dev_ctx,
   int max_grid_dimx = dev_ctx.GetCUDAMaxGridDimSize()[0];
   int grid_tmp = (num_edges + block - 1) / block;
   int grid = grid_tmp < max_grid_dimx ? grid_tmp : max_grid_dimx;
-  ReindexSrcOutput<T><<<grid, block, 0, dev_ctx.stream()>>>(
+  PADDLE_ENFORCE_LE_UINT32_MAX(grid, "graph_reindex buffer src grid.x");
+  PADDLE_ENFORCE_LE_UINT32_MAX(block, "graph_reindex buffer src block.x");
+  ReindexSrcOutput<T><<<static_cast<uint32_t>(grid),
+                        static_cast<uint32_t>(block),
+                        0,
+                        dev_ctx.stream()>>>(
       thrust::raw_pointer_cast(src_outputs), num_edges, hashtable_value);
 
   ResetBufferHashTable<T, Context>(dev_ctx,
@@ -295,35 +327,49 @@ void ReindexDst(const Context& dev_ctx,
                 int node_len) {
   constexpr int BLOCK_WARPS = 128 / WARP_SIZE;
   constexpr int TILE_SIZE = BLOCK_WARPS * 16;
-  const dim3 block(WARP_SIZE, BLOCK_WARPS);
-  const dim3 grid((node_len + TILE_SIZE - 1) / TILE_SIZE);
+  const int64_t grid_x =
+      (static_cast<int64_t>(node_len) + TILE_SIZE - 1) / TILE_SIZE;
+  PADDLE_ENFORCE_LE(grid_x,
+                    dev_ctx.GetCUDAMaxGridDimSize()[0],
+                    common::errors::InvalidArgument(
+                        "graph_reindex dst grid.x exceeds device limit."));
+  PADDLE_ENFORCE_LE_UINT32_MAX(WARP_SIZE, "graph_reindex dst block.x");
+  PADDLE_ENFORCE_LE_UINT32_MAX(BLOCK_WARPS, "graph_reindex dst block.y");
+  PADDLE_ENFORCE_LE_UINT32_MAX(grid_x, "graph_reindex dst grid.x");
+  const dim3 block(static_cast<uint32_t>(WARP_SIZE),
+                   static_cast<uint32_t>(BLOCK_WARPS));
+  const dim3 grid(static_cast<uint32_t>(grid_x));
 
-  int begin = 0, count_i = 0;
-  thrust::device_vector<int> dst_ptr(node_len + 1, 0);
+  int64_t begin = 0;
+  int count_i = 0;
+  const int64_t node_len_64 = static_cast<int64_t>(node_len);
+  thrust::device_vector<int> dst_ptr(static_cast<size_t>(node_len_64) + 1, 0);
   for (int i = 0; i < num_edge_types; i++) {
+    const int64_t count_offset = static_cast<int64_t>(i) * node_len_64;
     thrust::inclusive_scan(
-        thrust::device_pointer_cast(count_data) + i * node_len,
-        thrust::device_pointer_cast(count_data) + (i + 1) * node_len,
+        thrust::device_pointer_cast(count_data) + count_offset,
+        thrust::device_pointer_cast(count_data) + count_offset + node_len_64,
         dst_ptr.begin() + 1);
     GetDstEdgeCUDAKernel<T, BLOCK_WARPS, TILE_SIZE>
         <<<grid, block, 0, dev_ctx.stream()>>>(
             node_len,
             scan_dst_data,
-            count_data + i * node_len,
+            count_data + count_offset,
             thrust::raw_pointer_cast(dst_ptr.data()),
             reindex_dst_data + begin);
 #ifdef PADDLE_WITH_HIP
     hipMemcpy(&count_i,
-              thrust::raw_pointer_cast(dst_ptr.data()) + node_len,
+              thrust::raw_pointer_cast(dst_ptr.data()) + node_len_64,
               sizeof(int),
               hipMemcpyDeviceToHost);
 #else
     cudaMemcpy(&count_i,
-               thrust::raw_pointer_cast(dst_ptr.data()) + node_len,
+               thrust::raw_pointer_cast(dst_ptr.data()) + node_len_64,
                sizeof(int),
                cudaMemcpyDeviceToHost);
 #endif
     begin += count_i;
+    PADDLE_ENFORCE_LE_INT_MAX(begin, "graph_reindex dst offset");
   }
 }
 
@@ -349,6 +395,12 @@ void GraphReindexKernel(const Context& dev_ctx,
       bs,
       errors::InvalidArgument("The first of dims should not be equal to 0."));
   int64_t num_edges = neighbors.dims()[0];
+  PADDLE_ENFORCE_LE_INT_MAX(bs, "graph_reindex num_inputs");
+  PADDLE_ENFORCE_LE_INT_MAX(num_edges, "graph_reindex num_edges");
+  PADDLE_ENFORCE_LE_INT_MAX(bs + num_edges, "graph_reindex total nodes");
+
+  const int bs_int = static_cast<int>(bs);
+  const int num_edges_int = static_cast<int>(num_edges);
 
   reindex_src->Resize({num_edges});
 
@@ -374,19 +426,21 @@ void GraphReindexKernel(const Context& dev_ctx,
                               x_data,
                               src_outputs,
                               &unique_nodes,
-                              bs,
+                              bs_int,
                               hashtable_value_data,
                               hashtable_index_data,
-                              num_edges);
+                              num_edges_int);
   } else {
     Reindex<T, Context>(
-        dev_ctx, x_data, src_outputs, &unique_nodes, bs, num_edges);
+        dev_ctx, x_data, src_outputs, &unique_nodes, bs_int, num_edges_int);
   }
 
   // Get reindex dst edge.
   // Add support for multi-type edges reindex.
   int64_t num_ac_count = count.dims()[0];
   int64_t num_edge_types = num_ac_count / bs;
+  PADDLE_ENFORCE_LE_INT_MAX(num_edge_types, "graph_reindex num_edge_types");
+  const int num_edge_types_int = static_cast<int>(num_edge_types);
   // TODO(large-tensor): downstream functors may still use int
   thrust::device_vector<int> unique_dst_reindex(bs);
   thrust::sequence(unique_dst_reindex.begin(), unique_dst_reindex.end());
@@ -397,8 +451,8 @@ void GraphReindexKernel(const Context& dev_ctx,
                          reindex_dst_data,
                          thrust::raw_pointer_cast(unique_dst_reindex.data()),
                          count_data,
-                         num_edge_types,
-                         bs);
+                         num_edge_types_int,
+                         bs_int);
   // TODO(large-tensor): Resize not support int64
   PADDLE_ENFORCE_LE_INT_MAX(unique_nodes.size(), "unique_nodes.size()");
   out_nodes->Resize({static_cast<int>(unique_nodes.size())});

@@ -14,6 +14,9 @@
 
 #include "paddle/phi/kernels/group_norm_grad_kernel.h"
 
+#include <array>
+
+#include "paddle/common/enforce.h"
 #include "paddle/common/layout.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
@@ -812,6 +815,7 @@ void GroupNormGradKernel(const Context& dev_ctx,
     // PyTorch-aligned NCHW backward path (optimized)
     // =========================================================
     const int64_t HxW = imsize;
+    const int64_t max_grid_x = dev_ctx.GetCUDAMaxGridDimSize()[0];
 
     // Stage 1: Compute internal gradients ds[n,c] = sum_hw(dY*X),
     //          db[n,c] = sum_hw(dY)
@@ -827,9 +831,21 @@ void GroupNormGradKernel(const Context& dev_ctx,
       {
         int64_t num_threads =
             HxW < kGradBlockReduceNumThreads ? 32 : kGradBlockReduceNumThreads;
+        const int64_t internal_grad_blocks = N * C;
+        PADDLE_ENFORCE_LE(
+            internal_grad_blocks,
+            dev_ctx.GetCUDAMaxGridDimSize()[0],
+            common::errors::InvalidArgument(
+                "group_norm grad internal grid.x exceeds device limit."));
+        PADDLE_ENFORCE_LE_UINT32_MAX(internal_grad_blocks,
+                                     "group_norm grad internal grid.x");
+        PADDLE_ENFORCE_LE_UINT32_MAX(num_threads,
+                                     "group_norm grad internal block.x");
         ComputeInternalGradientsCUDAKernel<T, AccT>
-            <<<N * C, num_threads, 0, dev_ctx.stream()>>>(
-                HxW, dy_data, x_data, ds_data, db_data);
+            <<<static_cast<uint32_t>(internal_grad_blocks),
+               static_cast<uint32_t>(num_threads),
+               0,
+               dev_ctx.stream()>>>(HxW, dy_data, x_data, ds_data, db_data);
       }
     }
 
@@ -845,23 +861,40 @@ void GroupNormGradKernel(const Context& dev_ctx,
       {
         int64_t num_threads =
             D < kGradBlockReduceNumThreads ? 32 : kGradBlockReduceNumThreads;
+        std::array<unsigned int, 3> max_grid_dim =
+            dev_ctx.GetCUDAMaxGridDimSize();
+        PADDLE_ENFORCE_LE(N,
+                          max_grid_dim[0],
+                          common::errors::InvalidArgument(
+                              "group_norm grad fused params grid.x exceeds "
+                              "device limit."));
+        PADDLE_ENFORCE_LE(G,
+                          max_grid_dim[1],
+                          common::errors::InvalidArgument(
+                              "group_norm grad fused params grid.y exceeds "
+                              "device limit."));
+        PADDLE_ENFORCE_LE_UINT32_MAX(N, "group_norm grad fused params grid.x");
+        PADDLE_ENFORCE_LE_UINT32_MAX(G, "group_norm grad fused params grid.y");
+        PADDLE_ENFORCE_LE_UINT32_MAX(num_threads,
+                                     "group_norm grad fused params block.x");
         ComputeBackwardFusedParamsCUDAKernel<T, AccT>
-            <<<dim3(N, G), num_threads, 0, dev_ctx.stream()>>>(
-                C,
-                HxW,
-                G,
-                mean_data,
-                var_data,
-                scale_data,
-                ds_data,
-                db_data,
-                static_cast<AccT>(epsilon),
-                c2_data,
-                c3_data);
+            <<<dim3(static_cast<uint32_t>(N), static_cast<uint32_t>(G)),
+               static_cast<uint32_t>(num_threads),
+               0,
+               dev_ctx.stream()>>>(C,
+                                   HxW,
+                                   G,
+                                   mean_data,
+                                   var_data,
+                                   scale_data,
+                                   ds_data,
+                                   db_data,
+                                   static_cast<AccT>(epsilon),
+                                   c2_data,
+                                   c3_data);
       }
 
       // Stage 4: dX = c1 * dY + c2 * X + c3 (optimized)
-      int64_t max_grid_x = dev_ctx.GetCUDAMaxGridDimSize()[0];
       constexpr int64_t kElemThreads = 256;
 
       if (scale_data != nullptr) {
@@ -875,15 +908,20 @@ void GroupNormGradKernel(const Context& dev_ctx,
           const int64_t N_C = N * C;
           const int64_t c1_blocks =
               std::min((N_C + kElemThreads - 1) / kElemThreads, max_grid_x);
+          PADDLE_ENFORCE_LE_UINT32_MAX(c1_blocks, "group_norm grad c1 grid.x");
+          PADDLE_ENFORCE_LE_UINT32_MAX(kElemThreads,
+                                       "group_norm grad c1 block.x");
           ComputeC1CUDAKernel<T, AccT>
-              <<<c1_blocks, kElemThreads, 0, dev_ctx.stream()>>>(
-                  N_C,
-                  C,
-                  G,
-                  static_cast<AccT>(epsilon),
-                  var_data,
-                  scale_data,
-                  c1_data);
+              <<<static_cast<uint32_t>(c1_blocks),
+                 static_cast<uint32_t>(kElemThreads),
+                 0,
+                 dev_ctx.stream()>>>(N_C,
+                                     C,
+                                     G,
+                                     static_cast<AccT>(epsilon),
+                                     var_data,
+                                     scale_data,
+                                     c1_data);
         }
 
         // Dispatch vectorized or scalar dX kernel
@@ -892,46 +930,67 @@ void GroupNormGradKernel(const Context& dev_ctx,
           const int64_t total_vec = N * C * HxW_vec;
           const int64_t elem_blocks = std::min(
               (total_vec + kElemThreads - 1) / kElemThreads, max_grid_x);
+          PADDLE_ENFORCE_LE_UINT32_MAX(elem_blocks,
+                                       "group_norm grad dx vec4 grid.x");
+          PADDLE_ENFORCE_LE_UINT32_MAX(kElemThreads,
+                                       "group_norm grad dx vec4 block.x");
           GroupNormBackwardDxVec4CUDAKernel<T, AccT>
-              <<<elem_blocks, kElemThreads, 0, dev_ctx.stream()>>>(N * C,
-                                                                   HxW_vec,
-                                                                   D,
-                                                                   dy_data,
-                                                                   x_data,
-                                                                   c1_data,
-                                                                   c2_data,
-                                                                   c3_data,
-                                                                   d_x_data);
+              <<<static_cast<uint32_t>(elem_blocks),
+                 static_cast<uint32_t>(kElemThreads),
+                 0,
+                 dev_ctx.stream()>>>(N * C,
+                                     HxW_vec,
+                                     D,
+                                     dy_data,
+                                     x_data,
+                                     c1_data,
+                                     c2_data,
+                                     c3_data,
+                                     d_x_data);
         } else if (std::is_same<T, double>::value && (HxW % 2 == 0)) {
           const int64_t HxW_vec = HxW / 2;
           const int64_t total_vec = N * C * HxW_vec;
           const int64_t elem_blocks = std::min(
               (total_vec + kElemThreads - 1) / kElemThreads, max_grid_x);
+          PADDLE_ENFORCE_LE_UINT32_MAX(elem_blocks,
+                                       "group_norm grad dx vec2 grid.x");
+          PADDLE_ENFORCE_LE_UINT32_MAX(kElemThreads,
+                                       "group_norm grad dx vec2 block.x");
           GroupNormBackwardDxVec2DoubleCUDAKernel<T, AccT>
-              <<<elem_blocks, kElemThreads, 0, dev_ctx.stream()>>>(N * C,
-                                                                   HxW_vec,
-                                                                   D,
-                                                                   dy_data,
-                                                                   x_data,
-                                                                   c1_data,
-                                                                   c2_data,
-                                                                   c3_data,
-                                                                   d_x_data);
+              <<<static_cast<uint32_t>(elem_blocks),
+                 static_cast<uint32_t>(kElemThreads),
+                 0,
+                 dev_ctx.stream()>>>(N * C,
+                                     HxW_vec,
+                                     D,
+                                     dy_data,
+                                     x_data,
+                                     c1_data,
+                                     c2_data,
+                                     c3_data,
+                                     d_x_data);
         } else {
           // Scalar fallback with pre-computed c1
           const int64_t total = N * C * HxW;
           const int64_t elem_blocks =
               std::min((total + kElemThreads - 1) / kElemThreads, max_grid_x);
+          PADDLE_ENFORCE_LE_UINT32_MAX(elem_blocks,
+                                       "group_norm grad dx grid.x");
+          PADDLE_ENFORCE_LE_UINT32_MAX(kElemThreads,
+                                       "group_norm grad dx block.x");
           GroupNormBackwardDxOptCUDAKernel<T, AccT>
-              <<<elem_blocks, kElemThreads, 0, dev_ctx.stream()>>>(N * C,
-                                                                   HxW,
-                                                                   D,
-                                                                   dy_data,
-                                                                   x_data,
-                                                                   c1_data,
-                                                                   c2_data,
-                                                                   c3_data,
-                                                                   d_x_data);
+              <<<static_cast<uint32_t>(elem_blocks),
+                 static_cast<uint32_t>(kElemThreads),
+                 0,
+                 dev_ctx.stream()>>>(N * C,
+                                     HxW,
+                                     D,
+                                     dy_data,
+                                     x_data,
+                                     c1_data,
+                                     c2_data,
+                                     c3_data,
+                                     d_x_data);
         }
       } else {
         // No gamma path: c1 = rstd[ng], pre-compute rstd rounded through T
@@ -943,9 +1002,15 @@ void GroupNormGradKernel(const Context& dev_ctx,
           const int64_t N_G = N * G;
           const int64_t rstd_blocks =
               std::min((N_G + kElemThreads - 1) / kElemThreads, max_grid_x);
-          ComputeRstdCUDAKernel<T, AccT>
-              <<<rstd_blocks, kElemThreads, 0, dev_ctx.stream()>>>(
-                  N_G, static_cast<AccT>(epsilon), var_data, c1_ng_data);
+          PADDLE_ENFORCE_LE_UINT32_MAX(rstd_blocks,
+                                       "group_norm grad rstd grid.x");
+          PADDLE_ENFORCE_LE_UINT32_MAX(kElemThreads,
+                                       "group_norm grad rstd block.x");
+          ComputeRstdCUDAKernel<T, AccT><<<static_cast<uint32_t>(rstd_blocks),
+                                           static_cast<uint32_t>(kElemThreads),
+                                           0,
+                                           dev_ctx.stream()>>>(
+              N_G, static_cast<AccT>(epsilon), var_data, c1_ng_data);
         }
 
         const int64_t D_HxW = D * HxW;
@@ -955,43 +1020,64 @@ void GroupNormGradKernel(const Context& dev_ctx,
           const int64_t total_vec = N * G * D_HxW_vec;
           const int64_t elem_blocks = std::min(
               (total_vec + kElemThreads - 1) / kElemThreads, max_grid_x);
+          PADDLE_ENFORCE_LE_UINT32_MAX(
+              elem_blocks, "group_norm grad dx no gamma vec4 grid.x");
+          PADDLE_ENFORCE_LE_UINT32_MAX(
+              kElemThreads, "group_norm grad dx no gamma vec4 block.x");
           GroupNormBackwardDxNoGammaVec4CUDAKernel<T, AccT>
-              <<<elem_blocks, kElemThreads, 0, dev_ctx.stream()>>>(N * G,
-                                                                   D_HxW_vec,
-                                                                   dy_data,
-                                                                   x_data,
-                                                                   c1_ng_data,
-                                                                   c2_data,
-                                                                   c3_data,
-                                                                   d_x_data);
+              <<<static_cast<uint32_t>(elem_blocks),
+                 static_cast<uint32_t>(kElemThreads),
+                 0,
+                 dev_ctx.stream()>>>(N * G,
+                                     D_HxW_vec,
+                                     dy_data,
+                                     x_data,
+                                     c1_ng_data,
+                                     c2_data,
+                                     c3_data,
+                                     d_x_data);
         } else if (std::is_same<T, double>::value && (D_HxW % 2 == 0)) {
           const int64_t D_HxW_vec = D_HxW / 2;
           const int64_t total_vec = N * G * D_HxW_vec;
           const int64_t elem_blocks = std::min(
               (total_vec + kElemThreads - 1) / kElemThreads, max_grid_x);
+          PADDLE_ENFORCE_LE_UINT32_MAX(
+              elem_blocks, "group_norm grad dx no gamma vec2 grid.x");
+          PADDLE_ENFORCE_LE_UINT32_MAX(
+              kElemThreads, "group_norm grad dx no gamma vec2 block.x");
           GroupNormBackwardDxNoGammaVec2DoubleCUDAKernel<T, AccT>
-              <<<elem_blocks, kElemThreads, 0, dev_ctx.stream()>>>(N * G,
-                                                                   D_HxW_vec,
-                                                                   dy_data,
-                                                                   x_data,
-                                                                   c1_ng_data,
-                                                                   c2_data,
-                                                                   c3_data,
-                                                                   d_x_data);
+              <<<static_cast<uint32_t>(elem_blocks),
+                 static_cast<uint32_t>(kElemThreads),
+                 0,
+                 dev_ctx.stream()>>>(N * G,
+                                     D_HxW_vec,
+                                     dy_data,
+                                     x_data,
+                                     c1_ng_data,
+                                     c2_data,
+                                     c3_data,
+                                     d_x_data);
         } else {
           // Scalar fallback with pre-computed rstd
           const int64_t total = N * G * D_HxW;
           const int64_t elem_blocks =
               std::min((total + kElemThreads - 1) / kElemThreads, max_grid_x);
+          PADDLE_ENFORCE_LE_UINT32_MAX(elem_blocks,
+                                       "group_norm grad dx no gamma grid.x");
+          PADDLE_ENFORCE_LE_UINT32_MAX(kElemThreads,
+                                       "group_norm grad dx no gamma block.x");
           GroupNormBackwardDxNoGammaOptCUDAKernel<T, AccT>
-              <<<elem_blocks, kElemThreads, 0, dev_ctx.stream()>>>(N * G,
-                                                                   D_HxW,
-                                                                   dy_data,
-                                                                   x_data,
-                                                                   c1_ng_data,
-                                                                   c2_data,
-                                                                   c3_data,
-                                                                   d_x_data);
+              <<<static_cast<uint32_t>(elem_blocks),
+                 static_cast<uint32_t>(kElemThreads),
+                 0,
+                 dev_ctx.stream()>>>(N * G,
+                                     D_HxW,
+                                     dy_data,
+                                     x_data,
+                                     c1_ng_data,
+                                     c2_data,
+                                     c3_data,
+                                     d_x_data);
         }
       }
     }
@@ -1001,45 +1087,81 @@ void GroupNormGradKernel(const Context& dev_ctx,
       if (N <= 128) {
         constexpr int kNumThreads = 256;
         const int64_t B = (C + kNumThreads - 1) / kNumThreads;
+        PADDLE_ENFORCE_LE(
+            B,
+            max_grid_x,
+            common::errors::InvalidArgument(
+                "group_norm grad gamma beta grid.x exceeds device limit."));
+        PADDLE_ENFORCE_LE_UINT32_MAX(B, "group_norm grad gamma beta grid.x");
+        PADDLE_ENFORCE_LE_UINT32_MAX(kNumThreads,
+                                     "group_norm grad gamma beta block.x");
         GammaBetaBackwardCUDAKernel1<T, AccT>
-            <<<B, kNumThreads, 0, dev_ctx.stream()>>>(
-                N,
-                C,
-                G,
-                mean_data,
-                var_data,
-                ds_data,
-                db_data,
-                static_cast<AccT>(epsilon),
-                d_scale_data,
-                d_bias_data);
+            <<<static_cast<uint32_t>(B),
+               static_cast<uint32_t>(kNumThreads),
+               0,
+               dev_ctx.stream()>>>(N,
+                                   C,
+                                   G,
+                                   mean_data,
+                                   var_data,
+                                   ds_data,
+                                   db_data,
+                                   static_cast<AccT>(epsilon),
+                                   d_scale_data,
+                                   d_bias_data);
       } else {
         const int64_t B = (C + kGradReduceTileSize - 1) / kGradReduceTileSize;
         constexpr int kThreadX = kGradReduceTileSize;
         constexpr int kThreadY = kGradReduceTileSize / 2;
+        PADDLE_ENFORCE_LE(
+            B,
+            max_grid_x,
+            common::errors::InvalidArgument(
+                "group_norm grad gamma beta 2 grid.x exceeds device limit."));
+        PADDLE_ENFORCE_LE_UINT32_MAX(B, "group_norm grad gamma beta 2 grid.x");
+        PADDLE_ENFORCE_LE_UINT32_MAX(kThreadX,
+                                     "group_norm grad gamma beta 2 block.x");
+        PADDLE_ENFORCE_LE_UINT32_MAX(kThreadY,
+                                     "group_norm grad gamma beta 2 block.y");
         GammaBetaBackwardCUDAKernel2<T, AccT>
-            <<<B, dim3(kThreadX, kThreadY), 0, dev_ctx.stream()>>>(
-                N,
-                C,
-                G,
-                mean_data,
-                var_data,
-                ds_data,
-                db_data,
-                static_cast<AccT>(epsilon),
-                d_scale_data,
-                d_bias_data);
+            <<<static_cast<uint32_t>(B),
+               dim3(static_cast<uint32_t>(kThreadX),
+                    static_cast<uint32_t>(kThreadY)),
+               0,
+               dev_ctx.stream()>>>(N,
+                                   C,
+                                   G,
+                                   mean_data,
+                                   var_data,
+                                   ds_data,
+                                   db_data,
+                                   static_cast<AccT>(epsilon),
+                                   d_scale_data,
+                                   d_bias_data);
       }
     }
   } else {
     // =========================================================
     // NHWC backward path (kept unchanged)
     // =========================================================
-    int block_size = std::min(static_cast<int64_t>(1024), imsize);
+    int64_t block_size_64 = std::min(static_cast<int64_t>(1024), imsize);
     int64_t max_grid_x = dev_ctx.GetCUDAMaxGridDimSize()[0];
+    int64_t max_grid_y = dev_ctx.GetCUDAMaxGridDimSize()[1];
     int64_t max_grid_z = dev_ctx.GetCUDAMaxGridDimSize()[2];
-    dim3 grid(
-        std::min(max_grid_x, group_size), groups, std::min(max_grid_z, N));
+    const int64_t grid_x = std::min(max_grid_x, group_size);
+    const int64_t grid_z = std::min(max_grid_z, N);
+    PADDLE_ENFORCE_LE(groups,
+                      max_grid_y,
+                      common::errors::InvalidArgument(
+                          "group_norm grad grid.y exceeds device limit."));
+    PADDLE_ENFORCE_LE_UINT32_MAX(grid_x, "group_norm grad grid.x");
+    PADDLE_ENFORCE_LE_UINT32_MAX(groups, "group_norm grad grid.y");
+    PADDLE_ENFORCE_LE_UINT32_MAX(grid_z, "group_norm grad grid.z");
+    PADDLE_ENFORCE_LE_UINT32_MAX(block_size_64, "group_norm grad block.x");
+    uint32_t block_size = static_cast<uint32_t>(block_size_64);
+    dim3 grid(static_cast<uint32_t>(grid_x),
+              static_cast<uint32_t>(groups),
+              static_cast<uint32_t>(grid_z));
     dim3 threads(block_size, 1, 1);
 
     auto* y_data = y.data<T>();

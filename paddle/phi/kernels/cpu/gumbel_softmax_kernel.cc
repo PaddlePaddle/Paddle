@@ -26,8 +26,8 @@ struct GumbleNoiseGenerator<CPUContext, T> {
   static void Transform(const CPUContext& dev_ctx,
                         const T* input_data,
                         T* output_data,
-                        int size_to_axis,
-                        int size_from_axis,
+                        int64_t size_to_axis,
+                        int64_t size_from_axis,
                         const float temperature) {
     // generate uniform random number
     const int64_t size = static_cast<int64_t>(size_to_axis) * size_from_axis;
