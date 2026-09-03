@@ -241,6 +241,11 @@ void CrossEntropyWithSoftmaxBwdWithDowncastGPUKernel(
   const int64_t d = funcs::SizeFromAxis(axis_v, logit_grad->dims());
   const int64_t remain = d / axis_dim;
 
+  // Handle zero-size tensor to avoid invalid kernel configuration
+  if (n == 0 || d == 0 || axis_dim == 0) {
+    return;
+  }
+
   const T* softmax_data = softmax.data<T>();
   const auto* label_data = label.data<LabelT>();
 
