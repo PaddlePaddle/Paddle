@@ -215,10 +215,13 @@ struct CastDataType {
 #endif
 #if defined(PADDLE_WITH_XPU)
     } else if (phi::is_xpu_place(in_.place())) {
+      auto* context = static_cast<const phi::XPUContext*>(ctx_);
       if (in_.dtype() == DataType::COMPLEX64 &&
           out_->dtype() == DataType::FLOAT32) {
-        auto* context = static_cast<const phi::XPUContext*>(ctx_);
         phi::RealKernel<phi::dtype::complex<float>>(*context, in_, out_);
+      } else if (in_.dtype() == DataType::COMPLEX128 &&
+                 out_->dtype() == DataType::FLOAT64) {
+        phi::RealKernel<phi::dtype::complex<double>>(*context, in_, out_);
       } else {
         PADDLE_THROW(common::errors::Unimplemented(
             "Place type is not supported when casting data type from %s to %s.",
