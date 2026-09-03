@@ -19,6 +19,7 @@ import queue
 import sys
 import threading
 import time
+import traceback
 import warnings
 
 import numpy as np
@@ -146,10 +147,10 @@ class _DataLoaderIterBase:
         if self._blocking_queue:
             self._blocking_queue.close()
 
-    def _exit_thread_unexpectedly(self):
+    def _exit_thread_unexpectedly(self, reason=""):
         self._thread_done_event.set()
         if self._blocking_queue:
-            self._blocking_queue.kill()
+            self._blocking_queue.kill(reason)
 
 
 class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
@@ -287,7 +288,9 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
                     self._exit_thread_expectedly()
 
             except Exception as e:
-                self._exit_thread_unexpectedly()
+                self._exit_thread_unexpectedly(
+                    "".join(traceback.format_exception(*sys.exc_info()))
+                )
                 raise e
 
         self._exit_thread_expectedly()
@@ -658,7 +661,9 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                         if not self._blocking_queue.push(array):
                             self._blocking_queue.close()
                     except Exception as e:
-                        self._exit_thread_unexpectedly()
+                        self._exit_thread_unexpectedly(
+                            "".join(traceback.format_exception(*sys.exc_info()))
+                        )
                         raise e
                     finally:
                         self._rcvd_idx += 1
@@ -728,12 +733,13 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                         failed_workers.append(w)
                         self._shutdown_worker(i)
                 if len(failed_workers) > 0:
-                    self._exit_thread_unexpectedly()
                     pids = ', '.join(str(w.pid) for w in failed_workers)
-                    logging.warning(
-                        f"DataLoader {len(failed_workers)} workers exit unexpectedly, "
-                        f"pids: {pids}"
+                    reason = (
+                        f"DataLoader {len(failed_workers)} worker(s) exited "
+                        f"unexpectedly, pids: {pids}"
                     )
+                    self._exit_thread_unexpectedly(reason)
+                    logging.warning(reason)
                     return
 
                 # get(timeout) will call _poll(timeout) and may raise IOError
@@ -741,7 +747,9 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                     # continue on timeout to keep getting data from queue
                     continue
 
-                self._exit_thread_unexpectedly()
+                self._exit_thread_unexpectedly(
+                    "".join(traceback.format_exception(*sys.exc_info()))
+                )
                 logging.error(
                     f"DataLoader reader thread failed({e}) to read data from "
                     "workers' result queue."
@@ -774,7 +782,7 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                     return idx
 
                 if isinstance(batch, _WorkerException):
-                    self._exit_thread_unexpectedly()
+                    self._exit_thread_unexpectedly(batch.exc_msg)
                     batch.reraise()
 
                 if idx == self._rcvd_idx:
