@@ -103,6 +103,7 @@ PD_REGISTER_KERNEL(batch_norm_infer,
                    ALL_LAYOUT,
                    phi::BatchNormInferKernel,
                    float,
+                   phi::bfloat16,
                    phi::float16) {}
 #endif
 #ifdef PADDLE_WITH_XPU
