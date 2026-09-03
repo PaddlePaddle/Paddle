@@ -12,6 +12,8 @@ file(
   GLOB func_cc_srcs
   RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
   "*.cc")
+list(APPEND func_cc_srcs "tensor_to_npy.cc")
+list(REMOVE_DUPLICATES func_cc_srcs)
 if(WITH_GPU OR WITH_ROCM)
   file(
     GLOB func_cu_srcs
