@@ -81,14 +81,16 @@ class FFTConfig {
     // Check if the number of elements participating in FFT transformation is
     // greater than 8 (XPU hardware requirement)
     for (int i = 0; i < signal_ndim; ++i) {
-      if (signal_sizes[i] <= 8) {
-        PADDLE_THROW(common::errors::InvalidArgument(
-            "XPU FFT requires all axes to have greater than 8 elements, "
-            "but axis %d has size %d.Set XFFT_DEBUG=1 environment variable "
-            "to inspect dimensions.",
-            i,
-            signal_sizes[i]));
-      }
+      PADDLE_ENFORCE_GT(signal_sizes[i],
+                        8,
+                        common::errors::InvalidArgument(
+                            "XPU FFT requires all axes to have greater than 8 "
+                            "elements, but axis %d has size %d. "
+                            "This check should be handled by the kernel-level "
+                            "CPU fallback. If you see this error, the fallback "
+                            "may not be working correctly.",
+                            i,
+                            signal_sizes[i]));
     }
 
     cufftType exec_type;
