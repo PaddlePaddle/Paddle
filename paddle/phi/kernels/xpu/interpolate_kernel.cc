@@ -143,7 +143,11 @@ void InterpolateKernel(
   if ("bicubic" == interp_method) {
     if constexpr (std::is_floating_point_v<T> ||
                   std::is_same_v<T, phi::dtype::float16>) {
-      int trans_mode = (align_corners) ? (0) : ((align_mode == 0) ? (1) : (2));
+      // GPU bicubic (KeBicubicInterpFw) calls AreaPixelComputeSourceIndex with
+      // align_corners only — it does NOT branch on align_mode. When
+      // align_corners=False, GPU always uses half_pixel (trans_mode=1).
+      // Map align_mode=1 to half_pixel as well to match GPU precision behavior.
+      int trans_mode = (align_corners) ? (0) : (1);
       int r = xpu::upsample_bicubic2d<XPUType>(
           dev_ctx.x_context(),
           reinterpret_cast<const XPUType*>(x.data<T>()),
