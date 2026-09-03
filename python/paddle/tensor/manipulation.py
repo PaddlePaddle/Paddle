@@ -4481,32 +4481,45 @@ def _put_along_axis_inplace_wrapper(
         raise ValueError(
             "`index` and `input` must have the same number of dimensions!"
         )
-    axis = non_negative_axis(input, dim)
+    is_0d = len(input.shape) == 0
+    axis = (
+        normalize_put_along_axis_0d_axis(dim)
+        if is_0d
+        else non_negative_axis(input, dim)
+    )
 
-    if isinstance(src, (paddle.Tensor, paddle.pir.Value)):
-        if len(index.shape) != len(src.shape):
-            raise ValueError(
-                "`index` and `src` must have the same number of dimensions!"
-            )
-        for i in range(len(input.shape)):
-            if (i != axis and input.shape[i] < index.shape[i]) or index.shape[
-                i
-            ] > src.shape[i]:
-                raise RuntimeError(
-                    f"Size does not match at dimension {i} expected index {index.shape} to be smaller than self {input.shape} apart from dimension {axis} and to be smaller size than src {src.shape}"
-                )
+    if is_0d:
+        # 0-D operands have no dimension to compare and no
+        # ``input.shape[axis]`` to bound the index against: the kernel promotes
+        # them to rank 1 itself and bound checks the single index there. ``src``
+        # still has to become a tensor, since that is all the kernel accepts.
+        if not isinstance(src, (paddle.Tensor, paddle.pir.Value)):
+            src = paddle.to_tensor(src).astype(input.dtype)
     else:
-        src = paddle.to_tensor(src).astype(input.dtype)
-        elements = 1
-        for num in src.shape:
-            elements *= num
-        if elements == 1:  # paddle.pir.Value has no attribute 'size'
-            src = paddle.broadcast_to(src, index.shape)
-    axis_max_size = input.shape[axis]
-    if not (index < axis_max_size).all():
-        raise RuntimeError(
-            f"one of element of index is out of bounds for dimension {axis} with size {axis_max_size}"
-        )
+        if isinstance(src, (paddle.Tensor, paddle.pir.Value)):
+            if len(index.shape) != len(src.shape):
+                raise ValueError(
+                    "`index` and `src` must have the same number of dimensions!"
+                )
+            for i in range(len(input.shape)):
+                if (
+                    i != axis and input.shape[i] < index.shape[i]
+                ) or index.shape[i] > src.shape[i]:
+                    raise RuntimeError(
+                        f"Size does not match at dimension {i} expected index {index.shape} to be smaller than self {input.shape} apart from dimension {axis} and to be smaller size than src {src.shape}"
+                    )
+        else:
+            src = paddle.to_tensor(src).astype(input.dtype)
+            elements = 1
+            for num in src.shape:
+                elements *= num
+            if elements == 1:  # paddle.pir.Value has no attribute 'size'
+                src = paddle.broadcast_to(src, index.shape)
+        axis_max_size = input.shape[axis]
+        if not (index < axis_max_size).all():
+            raise RuntimeError(
+                f"one of element of index is out of bounds for dimension {axis} with size {axis_max_size}"
+            )
 
     if convert_dtype(index.dtype) not in ['int32', 'int64']:
         raise TypeError(
@@ -7226,25 +7239,33 @@ def infer_dynamic_broadcast_shape(
     Returns:
         Tensor: The shape tensor for later broadcasting
     """
+    # Outside ``axis`` the target is the larger of the two sizes, not ``arr``'s
+    # alone. Taking ``arr``'s size unconditionally silently overrides an
+    # ``indices`` dimension that exceeds it: for ``arr`` of shape [0, 10, 10, 10]
+    # and ``indices`` of shape [1, 1, 1, 1] the target used to be [0, 10, 1, 10],
+    # which expands a non-empty index into an empty one and turns the scatter
+    # into a silent no-op, where torch reports that the index is larger than self
+    # apart from ``axis``. Keeping the larger size leaves the violation visible
+    # to ``PutAlongAxisInferMeta``, which runs again with the runtime shapes.
     if axis == 0:
         new_shapes = [
             indices_shape[
                 :1
             ],  # use indices_shape[0] will error in concat after, because its shape is [], and shape of arr_shape[1:] is [1]
-            arr_shape[1:],
+            paddle.maximum(arr_shape[1:], indices_shape[1:]),
         ]
     elif axis == arr_shape_dim - 1:
         new_shapes = [
-            arr_shape[:axis],
+            paddle.maximum(arr_shape[:axis], indices_shape[:axis]),
             indices_shape[
                 axis:
             ],  # use indices_shape[axis] will error in concat after, because its shape is [], and shape of arr_shape[axis:] is [1]
         ]
     else:
         new_shapes = [
-            arr_shape[:axis],
+            paddle.maximum(arr_shape[:axis], indices_shape[:axis]),
             indices_shape[axis : axis + 1],
-            arr_shape[axis + 1 :],
+            paddle.maximum(arr_shape[axis + 1 :], indices_shape[axis + 1 :]),
         ]
     return paddle.concat(new_shapes)
 
@@ -7261,6 +7282,57 @@ def infer_broadcast_shape(
             # if indices matrix has larger size than arr matrix, do not broadcast.
             return None
     return broadcast_shape
+
+
+def check_put_along_axis_index_shape(
+    arr: Tensor, indices: Tensor, axis: int
+) -> None:
+    """Validate that ``indices`` can address ``arr`` in put_along_axis.
+
+    ``indices`` is only allowed to exceed ``arr`` along ``axis``. The remaining
+    dimensions of ``indices`` are used as coordinates into ``arr``, so a larger
+    size there would make the scatter kernel write out of bounds.
+
+    An empty ``arr.shape[axis]`` is deliberately *not* rejected here: it leaves
+    no valid index value, which the kernel reports as an index out-of-bounds
+    error, the same way ``torch.scatter_`` does.
+
+    ``broadcast=False`` and ``torch.scatter_`` already reject the case above;
+    this brings the ``broadcast=True`` path in line with them.
+
+    Both callers reach here only with a non-empty ``indices`` and with both
+    shapes fully known, so neither case is handled again: they return early on
+    an empty ``indices``, and a dynamic shape either cannot occur (the inplace
+    API runs its body in dygraph only) or is routed to
+    ``infer_dynamic_broadcast_shape``, which leaves the same diagnosis to
+    ``PutAlongAxisInferMeta`` when the executor re-runs it with runtime shapes.
+    """
+    for i in range(len(arr.shape)):
+        if i == axis:
+            continue
+        if arr.shape[i] < indices.shape[i]:
+            raise RuntimeError(
+                f"Size does not match at dimension {i} expected index "
+                f"{indices.shape} to be no larger than self {arr.shape} "
+                f"apart from dimension {axis}"
+            )
+
+
+def normalize_put_along_axis_0d_axis(axis: int) -> int:
+    """Normalize ``axis`` when the put_along_axis operands are 0-D.
+
+    A 0-D tensor is treated as holding a single element on one dimension, the
+    way ``PutAlongAxisInferMeta`` and ``torch.scatter_`` do, so ``axis`` ranges
+    over ``[-1, 1)``. ``non_negative_axis`` cannot express that: it derives the
+    range from ``len(arr.shape)``, which is 0 here, leaving no legal value at
+    all.
+    """
+    if axis not in (0, -1):
+        raise IndexError(
+            f"Dimension out of range, expected axis to be in [-1, 1), but got "
+            f"{axis}."
+        )
+    return 0
 
 
 def scatter_add(
@@ -7610,7 +7682,12 @@ def put_along_axis(
         raise ValueError(
             "`indices` and `arr` must have the same number of dimensions!"
         )
-    axis = non_negative_axis(arr, axis)
+    is_0d = len(arr.shape) == 0
+    axis = (
+        normalize_put_along_axis_0d_axis(axis)
+        if is_0d
+        else non_negative_axis(arr, axis)
+    )
     # When indices is empty (numel == 0) there are no scatter operations to
     # perform.  Return a copy of arr immediately to avoid passing a 0-size
     # index tensor through the broadcast path, which would attempt an invalid
@@ -7623,7 +7700,14 @@ def put_along_axis(
             arr, indices, reduce, include_self
         )
         return paddle.assign(arr)
-    if broadcast:
+    if is_0d:
+        # There is nothing to broadcast and no ``arr.shape[axis]`` to compare
+        # against: the kernel promotes the 0-D operands to rank 1 itself and
+        # bound checks the single index there. ``values`` still has to become a
+        # tensor, since that is all the kernel accepts.
+        if not isinstance(values, (paddle.Tensor, paddle.pir.Value, Variable)):
+            values = paddle.to_tensor(values).astype(arr.dtype)
+    elif broadcast:
         if has_dynamic_shape(arr.shape) or has_dynamic_shape(indices.shape):
             arr_shape = paddle.shape(arr)
             indices_shape = paddle.shape(indices)
@@ -7640,6 +7724,7 @@ def put_along_axis(
             indices = paddle.broadcast_to(indices, broadcast_shape)
             values = paddle.broadcast_to(values, broadcast_shape)
         else:
+            check_put_along_axis_index_shape(arr, indices, axis)
             broadcast_shape = infer_broadcast_shape(arr, indices, axis)
             values = (
                 paddle.to_tensor(values)
@@ -7741,13 +7826,26 @@ def put_along_axis_(
         raise ValueError(
             "`indices` and `arr` must have the same number of dimensions!"
         )
-    axis = non_negative_axis(arr, axis)
+    is_0d = len(arr.shape) == 0
+    axis = (
+        normalize_put_along_axis_0d_axis(axis)
+        if is_0d
+        else non_negative_axis(arr, axis)
+    )
     if 0 in indices.shape:
         _check_put_along_axis_early_return_params(
             arr, indices, reduce, include_self
         )
         return arr
-    if broadcast:
+    if is_0d:
+        # There is nothing to broadcast and no ``arr.shape[axis]`` to compare
+        # against: the kernel promotes the 0-D operands to rank 1 itself and
+        # bound checks the single index there. ``values`` still has to become a
+        # tensor, since that is all the kernel accepts.
+        if not isinstance(values, (paddle.Tensor, paddle.pir.Value)):
+            values = paddle.to_tensor(values).astype(arr.dtype)
+    elif broadcast:
+        check_put_along_axis_index_shape(arr, indices, axis)
         broadcast_shape = infer_broadcast_shape(arr, indices, axis)
         values = (
             paddle.to_tensor(values)
