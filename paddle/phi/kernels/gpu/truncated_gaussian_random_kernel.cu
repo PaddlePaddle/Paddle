@@ -156,12 +156,17 @@ __global__ void ReplaceOutOfRangeKernel(
 // `candidates.sub_(mean).div_(std).pow_(2).mul_(-0.5).sub_(log_peak)`, which
 // stores an intermediate of dtype T after every step. That rounding is
 // observable for float16/bfloat16, hence the casts.
+//
+// `div_` by a python float takes torch's CPU-scalar fast path, which turns the
+// division into a multiplication by a reciprocal formed in double precision
+// (see `div_true_kernel_cuda` in BinaryDivTrueKernel.cu). That is not the same
+// as dividing, so `inv_std` has to be pre-computed the same way.
 template <typename T, typename MT>
 __device__ __forceinline__ bool IsProposalRejected(
-    T candidate, T accept_rand, MT mean, MT std, MT log_peak) {
+    T candidate, T accept_rand, MT mean, MT inv_std, MT log_peak) {
   MT value = static_cast<MT>(candidate);
   value = static_cast<MT>(static_cast<T>(value - mean));
-  value = static_cast<MT>(static_cast<T>(value / std));
+  value = static_cast<MT>(static_cast<T>(value * inv_std));
   value = static_cast<MT>(static_cast<T>(value * value));
   value = static_cast<MT>(static_cast<T>(value * static_cast<MT>(-0.5)));
   MT log_pdf = static_cast<MT>(static_cast<T>(value - log_peak));
@@ -179,7 +184,7 @@ __global__ void AcceptRejectKernel(T* result,
                                    bool* pending,
                                    int64_t numel,
                                    MT mean,
-                                   MT std,
+                                   MT inv_std,
                                    MT log_peak,
                                    bool is_first_round,
                                    int* flag) {
@@ -224,7 +229,7 @@ __global__ void AcceptRejectKernel(T* result,
         continue;
       }
       bool rejected = IsProposalRejected<T, MT>(
-          candidates[j], accepts[j], mean, std, log_peak);
+          candidates[j], accepts[j], mean, inv_std, log_peak);
       now_pending[j] = rejected;
       any_rejected |= rejected;
     }
@@ -253,7 +258,7 @@ __global__ void AcceptRejectKernel(T* result,
       result[i] = candidate;
     }
     bool rejected = IsProposalRejected<T, MT>(
-        candidate, accept_rand[i], mean, std, log_peak);
+        candidate, accept_rand[i], mean, inv_std, log_peak);
     pending[i] = rejected;
     any_rejected |= rejected;
   }
@@ -405,7 +410,9 @@ void RejectionSampleFromUniform(const Context& dev_ctx,
   double mode = std::max(a, std::min(mean, b));
   double log_peak = -0.5 * std::pow((mode - mean) / std, 2);
   MT mean_mt = static_cast<MT>(mean);
-  MT std_mt = static_cast<MT>(std);
+  // torch's `div_(std)` folds the divisor into a double-precision reciprocal
+  // before multiplying; see the note on IsProposalRejected.
+  MT inv_std_mt = static_cast<MT>(1.0 / std);
   MT log_peak_mt = static_cast<MT>(log_peak);
 
   funcs::uniform_distribution<MT> dist;
@@ -434,7 +441,8 @@ void RejectionSampleFromUniform(const Context& dev_ctx,
       dev_ctx, &accept_rand, dist, accept_trans);
   flag.Reset();
   {
-    int vec_size = GetTruncatedNormalVecSize<T>(out_data, accept_data);
+    int vec_size = std::min(GetTruncatedNormalVecSize<T>(out_data, accept_data),
+                            GetTruncatedNormalVecSize<bool>(pending_data));
     LAUNCH_WITH_VEC_SIZE(AcceptRejectKernel,
                          vec_size,
                          out_data,
@@ -443,7 +451,7 @@ void RejectionSampleFromUniform(const Context& dev_ctx,
                          pending_data,
                          numel,
                          mean_mt,
-                         std_mt,
+                         inv_std_mt,
                          log_peak_mt,
                          true,
                          flag.data());
@@ -455,8 +463,9 @@ void RejectionSampleFromUniform(const Context& dev_ctx,
   DenseTensor proposal;
   proposal.Resize(out->dims());
   T* proposal_data = dev_ctx.template Alloc<T>(&proposal);
-  int vec_size = std::min(GetTruncatedNormalVecSize<T>(out_data, accept_data),
-                          GetTruncatedNormalVecSize<T>(proposal_data));
+  int vec_size = std::min({GetTruncatedNormalVecSize<T>(out_data, accept_data),
+                           GetTruncatedNormalVecSize<T>(proposal_data),
+                           GetTruncatedNormalVecSize<bool>(pending_data)});
   while (true) {
     funcs::distribution_and_transform<T>(
         dev_ctx, &proposal, dist, proposal_trans);
@@ -471,7 +480,7 @@ void RejectionSampleFromUniform(const Context& dev_ctx,
                          pending_data,
                          numel,
                          mean_mt,
-                         std_mt,
+                         inv_std_mt,
                          log_peak_mt,
                          false,
                          flag.data());
