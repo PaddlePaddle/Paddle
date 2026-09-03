@@ -117,9 +117,143 @@ def normalize(
     """
 
     if in_dygraph_mode():
-        eps = paddle.full(shape=[1], fill_value=epsilon, dtype=x.dtype)
-        ret = _C_ops.p_norm(x, float(p), axis, epsilon, True, False)
-        ret = x / _C_ops.maximum(ret, eps)
+
+        class _NormalizeFunc(paddle.autograd.PyLayer):
+            """Normalize matching PyTorch's F.normalize fwd/bwd bitwise.
+
+            Forward (same as PyTorch):
+                denom = input.norm(p, dim, keepdim=True).clamp_min(eps)
+                output = input / denom
+
+            Backward chain (replicate PyTorch exactly):
+                1. div backward (FunctionsManual.cpp div_tensor_other_backward):
+                   d_x_partial = grad / denom
+                   d_denom_elem = -grad * ((x / denom) / denom)
+                2. expand_as backward:
+                   d_clamped = sum(d_denom_elem, axis, keepdim)
+                3. clamp_min backward:
+                   d_norm = where(norm >= eps, d_clamped, 0)
+                4. norm backward (FunctionsManual.cpp norm_backward):
+                   d_x_from_norm = d_norm * (x / norm)   [masked_fill 0 when norm==0]
+                5. accumulate:
+                   d_x = d_x_partial + d_x_from_norm
+            """
+
+            @staticmethod
+            def forward(ctx, x, p, axis, epsilon):
+                pf = float(p)
+                # Compute Lp norm (match PyTorch vector_norm)
+                if pf == 0.0:
+                    norm = paddle.sum(
+                        (x != 0).astype(x.dtype),
+                        axis=axis,
+                        keepdim=True,
+                    )
+                elif pf == float('inf'):
+                    norm = paddle.max(paddle.abs(x), axis=axis, keepdim=True)
+                elif pf == float('-inf'):
+                    norm = paddle.min(paddle.abs(x), axis=axis, keepdim=True)
+                elif pf == 2.0:
+                    norm = paddle.sqrt(
+                        paddle.sum(x * x, axis=axis, keepdim=True)
+                    )
+                else:
+                    if pf % 2.0 == 0.0:
+                        norm = paddle.pow(
+                            paddle.sum(
+                                paddle.pow(x, pf),
+                                axis=axis,
+                                keepdim=True,
+                            ),
+                            1.0 / pf,
+                        )
+                    else:
+                        norm = paddle.pow(
+                            paddle.sum(
+                                paddle.pow(paddle.abs(x), pf),
+                                axis=axis,
+                                keepdim=True,
+                            ),
+                            1.0 / pf,
+                        )
+                # clamp_min
+                denom = paddle.clip(norm, min=epsilon)
+                out = x / denom
+                ctx.save_for_backward(x, norm, denom)
+                ctx.pf = pf
+                ctx.axis = axis
+                ctx.epsilon = epsilon
+                return out
+
+            @staticmethod
+            def backward(ctx, grad_output):
+                x, norm, denom = ctx.saved_tensor()
+                pf = ctx.pf
+                axis = ctx.axis
+                epsilon = ctx.epsilon
+
+                # ---- Step 1: div backward (match PyTorch) ----
+                # PyTorch FunctionsManual.cpp div_tensor_other_backward:
+                #   -grad * ((self / other) / other)
+                d_x_partial = grad_output / denom
+                d_denom_elem = -grad_output * ((x / denom) / denom)
+                # ---- Step 2: expand_as backward ----
+                d_clamped = paddle.sum(d_denom_elem, axis=axis, keepdim=True)
+                # ---- Step 3: clamp_min backward ----
+                # PyTorch: where(self >= min, grad, 0)
+                d_norm = paddle.where(
+                    norm >= epsilon,
+                    d_clamped,
+                    paddle.zeros_like(d_clamped),
+                )
+                # ---- Step 4: norm backward ----
+                # PyTorch FunctionsManual.cpp norm_backward:
+                norm_broadcast = paddle.broadcast_to(norm, x.shape)
+                norm_is_zero = norm_broadcast == 0
+                if pf == 0.0:
+                    d_x_from_norm = paddle.zeros_like(x)
+                elif pf == 1.0:
+                    d_x_from_norm = x.sign() * d_norm
+                elif pf == 2.0:
+                    # grad * (self / norm).masked_fill_(norm == 0, 0)
+                    x_div_norm = x / norm
+                    x_div_norm = paddle.where(
+                        norm_is_zero,
+                        paddle.zeros_like(x),
+                        x_div_norm,
+                    )
+                    d_x_from_norm = d_norm * x_div_norm
+                elif pf == float('inf'):
+                    x_abs = paddle.abs(x)
+                    mask = (x_abs == norm_broadcast) | paddle.isnan(x_abs)
+                    mask_count = paddle.sum(
+                        mask.astype(x.dtype), axis=axis, keepdim=True
+                    )
+                    d_x_from_norm = x.sign() * (d_norm / mask_count) * mask
+                elif pf < 2.0:
+                    self_scaled = x.sign() * paddle.where(
+                        x == 0,
+                        paddle.zeros_like(x),
+                        paddle.abs(x).pow(pf - 1),
+                    )
+                    scale_v = paddle.where(
+                        norm_is_zero,
+                        paddle.zeros_like(d_norm / norm_broadcast),
+                        d_norm / norm_broadcast.pow(pf - 1),
+                    )
+                    d_x_from_norm = self_scaled * scale_v
+                else:
+                    self_scaled = x * paddle.abs(x).pow(pf - 2)
+                    scale_v = paddle.where(
+                        norm_is_zero,
+                        paddle.zeros_like(d_norm / norm_broadcast),
+                        d_norm / norm_broadcast.pow(pf - 1),
+                    )
+                    d_x_from_norm = self_scaled * scale_v
+                # ---- Step 5: accumulate ----
+                return d_x_partial + d_x_from_norm
+
+        ret = _NormalizeFunc.apply(x, p, axis, epsilon)
 
     elif in_pir_mode():
         eps = paddle.full(shape=[1], fill_value=epsilon, dtype=x.dtype)
