@@ -53,32 +53,35 @@ void Pool2dKernel(const Context& dev_ctx,
                     common::errors::InvalidArgument(
                         "The Pool2d XPU OP only support 2 dimension pooling!"));
 
-  // old model's data_format maybe AnyLayout
-  PADDLE_ENFORCE_NE(
-      data_format,
-      "NHWC",
-      common::errors::InvalidArgument("The Pool2d XPU OP does not support "
-                                      "data_format is 'NHWC', but received %s",
-                                      data_format));
+  // old model's data_format maybe AnyLayout, which is handled as NCHW.
+  const bool channel_last = data_format == "NHWC";
+  const bool xpu_layout_nchw = !channel_last;
+  auto x_dims = x.dims();
+  auto out_dims = out->dims();
 
-  if (global_pooling) {
-    for (size_t i = 0; i < kernel_size.size(); ++i) {
-      paddings[i] = 0;
-      kernel_size[i] = x.dims()[i + 2];
-    }
+  int64_t n = x_dims[0];
+  int64_t c = x_dims[1];
+  int64_t in_h = x_dims[2];
+  int64_t in_w = x_dims[3];
+
+  int64_t out_h = out_dims[2];
+  int64_t out_w = out_dims[3];
+
+  if (channel_last) {
+    c = x_dims[3];
+    in_h = x_dims[1];
+    in_w = x_dims[2];
+
+    out_h = out_dims[1];
+    out_w = out_dims[2];
   }
 
-  const int64_t n = x.dims()[0];
-  const int64_t c = x.dims()[1];
-  const int64_t in_h = x.dims()[2];
-  const int64_t in_w = x.dims()[3];
-
-  const int64_t out_h = out->dims()[2];
-  const int64_t out_w = out->dims()[3];
-
   DDim data_dims;
-
-  data_dims = slice_ddim(x.dims(), 2, x.dims().size());
+  if (channel_last) {
+    data_dims = slice_ddim(x_dims, 1, x_dims.size() - 1);
+  } else {
+    data_dims = slice_ddim(x_dims, 2, x_dims.size());
+  }
   funcs::UpdatePadding(&paddings,
                        global_pooling,
                        adaptive,
@@ -86,6 +89,10 @@ void Pool2dKernel(const Context& dev_ctx,
                        data_dims,
                        strides,
                        kernel_size);
+
+  if (global_pooling) {
+    funcs::UpdateKernelSize(&kernel_size, data_dims);
+  }
 
   dev_ctx.template Alloc<T>(out);
   int* index_data = nullptr;
@@ -110,7 +117,7 @@ void Pool2dKernel(const Context& dev_ctx,
           kernel_size,
           strides,
           paddings,
-          true);
+          xpu_layout_nchw);
     } else if (pooling_type == "avg") {
       r = xpu::avg_pool2d<XPUType>(
           dev_ctx.x_context(),
@@ -124,7 +131,7 @@ void Pool2dKernel(const Context& dev_ctx,
           strides,
           paddings,
           !exclusive,
-          true);
+          xpu_layout_nchw);
     } else {
       PADDLE_THROW(common::errors::InvalidArgument(
           "Unsupported pooling type for kunlun %s", pooling_type));
@@ -142,7 +149,7 @@ void Pool2dKernel(const Context& dev_ctx,
           in_w,
           out_h,
           out_w,
-          true);
+          xpu_layout_nchw);
     } else if (pooling_type == "avg") {
       r = xpu::adaptive_avg_pool2d<XPUType>(
           dev_ctx.x_context(),
@@ -154,7 +161,7 @@ void Pool2dKernel(const Context& dev_ctx,
           in_w,
           out_h,
           out_w,
-          true);
+          xpu_layout_nchw);
     } else {
       PADDLE_THROW(common::errors::InvalidArgument(
           "Unsupported pooling type for kunlun %s", pooling_type));
