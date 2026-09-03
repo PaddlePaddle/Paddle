@@ -399,6 +399,32 @@ void InstanceNormGradKernel(const Context &dev_ctx,
   } else {
     set_constant(dev_ctx, &scale_tmp, static_cast<AccT>(1));
   }
+
+  // MIOpen/cuDNN batch norm backward also requires N*spatial_size > 1.
+  // When H*W*D <= 1, gradients simplify: d_x=0, d_scale=0,
+  // d_bias[c]=sum_n d_y[n,c] (sum over N for each channel).
+  if (H * W * D <= 1) {
+    {
+      funcs::SetConstant<GPUContext, T> set_zero_t;
+      set_zero_t(dev_ctx, d_x, static_cast<T>(0));
+    }
+    if (d_scale) {
+      dev_ctx.template Alloc<AccT>(d_scale);
+      set_constant(dev_ctx, d_scale, static_cast<AccT>(0));
+    }
+    if (d_bias) {
+      dev_ctx.template Alloc<AccT>(d_bias);
+      DenseTensor db_tmp;
+      db_tmp.Resize({NxC});
+      dev_ctx.template Alloc<AccT>(&db_tmp);
+      convert_data_type<T, AccT><<<grid, block, 0, dev_ctx.stream()>>>(
+          d_y.data<T>(), db_tmp.data<AccT>(), NxC);
+      add_param<AccT, block, false><<<grid1, block, 0, dev_ctx.stream()>>>(
+          db_tmp.data<AccT>(), d_bias->data<AccT>(), N, C);
+    }
+    return;
+  }
+
   std::vector<int> dims;
   std::vector<int> strides;
   const int64_t sample_size_64 = static_cast<int64_t>(H) * W * D;
