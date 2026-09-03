@@ -172,6 +172,28 @@ void CastKernel<phi::complex64, XPUContext>(const XPUContext& dev_ctx,
     }
     return;
   }
+  if (out_dtype == DataType::BOOL) {
+    // Preserve imaginary-only truthiness for complex-to-bool casts.
+    DenseTensor x_real = Real<T, XPUContext>(dev_ctx, x);
+    DenseTensor x_imag = Imag<T, XPUContext>(dev_ctx, x);
+    DenseTensor real_bool;
+    real_bool.Resize(x.dims());
+    CastXPUKernelImpl<float, bool, XPUContext>(dev_ctx, x_real, &real_bool);
+    DenseTensor imag_bool;
+    imag_bool.Resize(x.dims());
+    CastXPUKernelImpl<float, bool, XPUContext>(dev_ctx, x_imag, &imag_bool);
+    dev_ctx.template Alloc<bool>(out);
+    if (out->numel() == 0) {
+      return;
+    }
+    int r = xpu::logical_or<bool, bool>(dev_ctx.x_context(),
+                                        real_bool.data<bool>(),
+                                        imag_bool.data<bool>(),
+                                        out->data<bool>(),
+                                        out->numel());
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "logical_or");
+    return;
+  }
   DenseTensor x_real = Real<T, XPUContext>(dev_ctx, x);
   CastKernel<float, XPUContext>(dev_ctx, x_real, out_dtype, out);
 }
