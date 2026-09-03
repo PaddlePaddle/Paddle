@@ -21,6 +21,8 @@
 #include "paddle/phi/kernels/expand_kernel.h"
 #include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/common_infer_shape_functions.h"
+#include "paddle/phi/kernels/reduce_sum_kernel.h"
+#include "paddle/phi/kernels/where_kernel.h"
 
 namespace phi {
 
@@ -78,7 +80,7 @@ void MaskedFillGradKernel(const Context& dev_ctx,
 
   DenseTensor* value_grad_tmp = nullptr;
   if (v_grad) {
-    if (v_grad->dims() != expanded_dims) {
+    if (v_grad->dims() != expanded_dims && v_grad->numel() != 1) {
       value_grad_expand = Empty<T, Context>(dev_ctx, IntArray(expanded_size));
       value_grad_tmp = &value_grad_expand;
       expand_value = true;
@@ -107,6 +109,8 @@ void MaskedFillGradKernel(const Context& dev_ctx,
   T* dx_ptr = nullptr;
   T* dy_ptr = nullptr;
 
+  bool scalar_value = v_grad && v_grad->numel() == 1;
+
   if (x_grad_tmp) {
     dx_ptr = x_grad_tmp->data<T>();
   } else {
@@ -114,7 +118,7 @@ void MaskedFillGradKernel(const Context& dev_ctx,
     dx_ptr = dx_dummy.data<T>();
   }
 
-  if (value_grad_tmp) {
+  if (value_grad_tmp && !scalar_value) {
     dy_ptr = value_grad_tmp->data<T>();
   } else {
     dy_dummy = Empty<T, Context>(dev_ctx, IntArray(expanded_size));
@@ -136,7 +140,28 @@ void MaskedFillGradKernel(const Context& dev_ctx,
   }
 
   if (v_grad) {
-    if (expand_value) {
+    if (scalar_value) {
+      // When value is a scalar (numel==1), compute v_grad via Where+Sum
+      // to match GPU implementation, rather than ExpandGradKernel
+      DenseTensor zero_tensor;
+      Full<T, Context>(dev_ctx, IntArray(expanded_size), T(0), &zero_tensor);
+      DenseTensor value_grad_intermediate;
+      value_grad_intermediate.set_meta(mask_expand.meta());
+      WhereKernel<T, Context>(dev_ctx,
+                              mask_expand,
+                              out_grad,
+                              zero_tensor,
+                              &value_grad_intermediate);
+      std::vector<int> v_dims(value_grad_intermediate.dims().size());
+      std::iota(v_dims.begin(), v_dims.end(), 0);
+      IntArray v_axis(v_dims);
+      SumKernel<T, Context>(dev_ctx,
+                            value_grad_intermediate,
+                            v_axis,
+                            v_grad->dtype(),
+                            false,
+                            v_grad);
+    } else if (expand_value) {
       ExpandGradKernel<T, Context>(
           dev_ctx, value, value_grad_expand, IntArray(expanded_size), v_grad);
     }
