@@ -451,6 +451,25 @@ class TestJitSaveLoad(unittest.TestCase):
         with self.assertRaises(ValueError):
             loaded_layer = paddle.jit.load(path)
 
+    def test_jit_save_load_unicode_path(self):
+        net = LinearNetNotDeclarative(784, 10)
+        net.eval()
+        x = paddle.rand([4, 784], dtype='float32')
+        expected = net(x).numpy()
+
+        model_path = os.path.join(self.temp_dir.name, "中文路径/model")
+        paddle.jit.save(net, model_path, input_spec=[x])
+
+        self.assertTrue(
+            os.path.exists(model_path + ".json")
+            or os.path.exists(model_path + ".pdmodel")
+        )
+        self.assertTrue(os.path.exists(model_path + ".pdiparams"))
+
+        infer_layer = paddle.jit.load(model_path)
+        actual = infer_layer(x).numpy()
+        np.testing.assert_allclose(expected, actual, rtol=1e-5, atol=1e-6)
+
 
 class TestSaveLoadWithNestOut(unittest.TestCase):
     def setUp(self):
