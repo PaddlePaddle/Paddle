@@ -280,6 +280,14 @@ class Conv2dAddActFusePass : public pir::PatternRewritePass {
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);
+#ifdef PADDLE_WITH_HIP
+    // fused_conv2d_add_act kernel is not implemented for ROCm/HIP.
+    // Returning an empty pattern set prevents the pass from generating
+    // FusedConv2dAddActOp nodes that have no kernel on ROCm, which would
+    // cause a runtime error.  PaddleX used to work around this by calling
+    // config.delete_pass() on these passes; this guard makes that unnecessary.
+    return ps;
+#endif
     auto conv2d_double_add_act_fuse_pattern =
         std::make_unique<Conv2dAdd2ActFusePattern>(
             context,
