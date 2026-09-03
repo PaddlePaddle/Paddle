@@ -14,11 +14,14 @@
 
 #ifdef PADDLE_WITH_XPU_FFT
 #include <cmath>
+#include <type_traits>
 
 #include "paddle/phi/kernels/funcs/fft.h"
 #include "paddle/phi/kernels/funcs/fft_cache.h"
 
 #include "paddle/common/ddim.h"
+#include "paddle/phi/backends/context_pool.h"
+#include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/common/memory_utils.h"
@@ -94,6 +97,60 @@ void exec_fft(const XPUContext& dev_ctx,
   const int signal_ndim = axes.size();
   const int batch_ndim = ndim - signal_ndim;
   const DDim& out_sizes = out->dims();
+
+  // XPU FFT requires all signal axes to have > 8 elements.
+  // For small axes, fall back to CPU FFT which has no such restriction.
+  bool need_cpu_fallback = false;
+  for (auto axis : axes) {
+    if (x.dims()[axis] <= 8) {
+      need_cpu_fallback = true;
+      break;
+    }
+  }
+
+  if (need_cpu_fallback) {
+    auto& cpu_ctx = static_cast<phi::CPUContext&>(
+        *(phi::DeviceContextPool::Instance().Get(phi::CPUPlace())));
+
+    DenseTensor cpu_x;
+    cpu_x.Resize(x.dims());
+    cpu_ctx.Alloc<Ti>(&cpu_x);
+    phi::memory_utils::Copy(phi::CPUPlace(),
+                            cpu_x.data(),
+                            x.place(),
+                            x.data(),
+                            x.numel() * sizeof(Ti));
+
+    DenseTensor cpu_out;
+    cpu_out.Resize(out->dims());
+    cpu_ctx.Alloc<To>(&cpu_out);
+
+    if constexpr (std::is_same_v<Ti, phi::dtype::complex<float>> &&
+                  std::is_same_v<To, float>) {
+      // C2R — CPU functor internally handles conj+inverse for forward case
+      FFTC2RFunctor<phi::CPUContext, Ti, To> func;
+      func(cpu_ctx, cpu_x, &cpu_out, axes, FFTNormMode::none, forward);
+    } else {
+      if constexpr (std::is_same_v<Ti, float> &&
+                    std::is_same_v<To, phi::dtype::complex<float>>) {
+        // R2C — CPU functor internally handles exec_plan+conj for inverse case
+        FFTR2CFunctor<phi::CPUContext, Ti, To> func;
+        func(cpu_ctx, cpu_x, &cpu_out, axes, FFTNormMode::none, forward);
+      } else {
+        // C2C
+        FFTC2CFunctor<phi::CPUContext, Ti, To> func;
+        func(cpu_ctx, cpu_x, &cpu_out, axes, FFTNormMode::none, forward);
+      }
+    }
+
+    dev_ctx.Alloc<To>(out);
+    phi::memory_utils::Copy(out->place(),
+                            out->data(),
+                            phi::CPUPlace(),
+                            cpu_out.data(),
+                            out->numel() * sizeof(To));
+    return;
+  }
 
   // make a dim permutation
   std::vector<int> dim_permute(ndim);
