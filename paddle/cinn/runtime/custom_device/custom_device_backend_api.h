@@ -74,7 +74,19 @@ class CustomRuntimeStrategy {
 class CustomCompileStrategy {
  public:
   virtual ~CustomCompileStrategy() = default;
-  virtual bool ApplyCustomPass(void* ir_module) { return false; }
+
+  // Apply a vendor-specific custom pass identified by name.
+  // `ir_func` is a cinn::ir::LoweredFunc* cast to void*.
+  // Returns true on success.
+  virtual bool ApplyCustomPass(const std::string& pass_name, void* ir_func) {
+    return false;
+  }
+
+  // Query the vendor's desired ordered pass pipeline.
+  // Returns an empty vector to use the default NVGPU-equivalent pipeline.
+  // Built-in pass names are executed by the CINN framework; unknown names
+  // are forwarded to ApplyCustomPass().
+  virtual std::vector<std::string> QueryPassPipeline() { return {}; }
 };
 
 // ============================================================

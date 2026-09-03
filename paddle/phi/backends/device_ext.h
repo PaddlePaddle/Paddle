@@ -168,7 +168,22 @@ struct C_CinnInterface {
                             void* stream);
 
   // --- Compile Strategy ---
-  C_Status (*apply_custom_pass)(void* dev_ptr, void* ir_module);
+  // Apply a vendor-specific custom pass by name on a LoweredFunc.
+  // `pass_name` identifies the pass; `ir_func` is a cinn::ir::LoweredFunc*
+  // cast to void*.
+  C_Status (*apply_custom_pass)(void* dev_ptr,
+                                const char* pass_name,
+                                void* ir_func);
+
+  // Query the vendor's desired ordered pass pipeline.
+  // When pass_names==nullptr, only fill *count with the pipeline size.
+  // When pass_names!=nullptr, fill pass_names[0..count-1] (max 128 chars each).
+  // Built-in names are executed by the CINN framework; unknown names are
+  // forwarded to apply_custom_pass().
+  // Return nullptr to use the default NVGPU-equivalent pipeline.
+  C_Status (*query_pass_pipeline)(void* dev_ptr,
+                                  char pass_names[][128],
+                                  int* count);
 };
 
 struct C_DeviceInterface {
