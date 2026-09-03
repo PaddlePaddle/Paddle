@@ -293,7 +293,7 @@ XPUOpMap& get_kl2_ops() {
       {"matmul_v2_grad", XPUKernelSet({FLOAT32, FLOAT16})},
       {"matmul_v2", XPUKernelSet({FLOAT32, FLOAT16})},
       {"matmul", XPUKernelSet({FLOAT32, FLOAT16})},
-      {"mean_grad", XPUKernelSet({FLOAT32, FLOAT16, BFLOAT16})},
+      {"mean_grad", XPUKernelSet({FLOAT32, FLOAT16, BFLOAT16, INT32, INT64})},
       {"mean", XPUKernelSet({FLOAT32, FLOAT16, BFLOAT16})},
       {"merged_adam", XPUKernelSet({FLOAT32})},
       {"merged_momentum", XPUKernelSet({FLOAT32, FLOAT16})},
