@@ -102,7 +102,8 @@ class AllocatorFacade {
   PADDLE_API bool IsStreamSafeCUDAAllocatorUsed();
   PADDLE_API bool IsCUDAMallocAsyncAllocatorUsed();
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && \
+    !defined(PADDLE_WITH_CUSTOM_DEVICE)
   // TODO(zhiqiu): change gpuStream_t to phi::Stream if needed.
   uint64_t Release(const GPUPlace& place, gpuStream_t stream);
   bool RecordStream(std::shared_ptr<Allocation> allocation, gpuStream_t stream);
