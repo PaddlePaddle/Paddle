@@ -730,7 +730,10 @@ class RowParallelLinear(paddle.nn.Layer):
 
         if self.is_mp:
             if self.fuse_matmul_bias:
-                bias = MPScale.apply(self.bias, self.world_size)
+                if self.bias is not None:
+                    bias = MPScale.apply(self.bias, self.world_size)
+                else:
+                    bias = None
                 output_parallel = self.linear(
                     input_parallel, self.weight, bias, name=self._name
                 )
