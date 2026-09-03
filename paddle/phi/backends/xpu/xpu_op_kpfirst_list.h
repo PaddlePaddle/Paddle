@@ -34,7 +34,8 @@ XPUOpMap& get_kp_ops() {
       {"elementwise_floordiv", XPUKernelSet({phi::DataType::INT32})},
       // activation op
       {"exp", XPUKernelSet({phi::DataType::FLOAT32})},
-      {"hard_swish", XPUKernelSet({phi::DataType::FLOAT32})},
+      {"hard_swish",
+       XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
       {"leaky_relu", XPUKernelSet({phi::DataType::FLOAT32})},
       {"softplus", XPUKernelSet({phi::DataType::FLOAT32})},
       {"reciprocal", XPUKernelSet({phi::DataType::FLOAT32})},
