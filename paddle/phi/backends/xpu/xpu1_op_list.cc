@@ -176,6 +176,8 @@ XPUOpMap& get_kl1_ops() {
       {"transpose", XPUKernelSet({FLOAT32})},
       {"truncated_gaussian_random", XPUKernelSet({FLOAT32})},
       {"uniform_random", XPUKernelSet({FLOAT32})},
+      {"unpool", XPUKernelSet({FLOAT32})},
+      {"unpool_grad", XPUKernelSet({FLOAT32})},
       {"unsqueeze2_grad",
        XPUKernelSet({FLOAT64, INT64, INT32, BOOL, INT8, UINT8, FLOAT32})},
       {"unsqueeze2",
