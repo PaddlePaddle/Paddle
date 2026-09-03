@@ -211,11 +211,12 @@ void Pool3dGradKernel(const Context& dev_ctx,
   std::vector<int64_t> strides(strides_t.begin(), strides_t.end());
 
   PADDLE_ENFORCE_EQ(
-      data_format,
-      "NCDHW",
-      common::errors::InvalidArgument("The Pool3d_grad XPU OP only support "
-                                      "data_format is 'NCDHW', but received %s",
-                                      data_format));
+      data_format == "NCDHW" || data_format == "NDHWC",
+      true,
+      common::errors::InvalidArgument(
+          "The Pool3d_grad XPU OP only supports data_format 'NCDHW' or "
+          "'NDHWC', but received %s",
+          data_format));
   if (!dx) {
     return;
   }
@@ -327,7 +328,7 @@ void Pool3dGradKernel(const Context& dev_ctx,
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "adaptive_pool3d_grad");
   } else {
     if (pooling_type == "max") {
-      if (kernel_size[0] == 1 && kernel_size.size() == 3 &&
+      if (!channel_last && kernel_size[0] == 1 && kernel_size.size() == 3 &&
           strides.size() == 3 && paddings.size() == 6) {
         r = xpu::max_pool2d_grad<XPUType>(
             dev_ctx.x_context(),
@@ -344,6 +345,63 @@ void Pool3dGradKernel(const Context& dev_ctx,
             {strides[1], strides[2]},
             {paddings[2], paddings[3], paddings[4], paddings[5]},
             !channel_last);
+      } else if (channel_last) {
+        // XDNN max_pool3d_grad only accepts NCDHW layout, so bridge NDHWC.
+        xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
+        XPUType* x_ncdhw = RAII_GUARD.alloc_l3_or_gm<XPUType>(x.numel());
+        XPUType* out_ncdhw = RAII_GUARD.alloc_l3_or_gm<XPUType>(out.numel());
+        XPUType* dout_ncdhw = RAII_GUARD.alloc_l3_or_gm<XPUType>(dout.numel());
+        XPUType* dx_ncdhw = RAII_GUARD.alloc_l3_or_gm<XPUType>(dx->numel());
+        PADDLE_ENFORCE_XDNN_NOT_NULL(x_ncdhw);
+        PADDLE_ENFORCE_XDNN_NOT_NULL(out_ncdhw);
+        PADDLE_ENFORCE_XDNN_NOT_NULL(dout_ncdhw);
+        PADDLE_ENFORCE_XDNN_NOT_NULL(dx_ncdhw);
+
+        r = xpu::transpose<XPUType>(
+            dev_ctx.x_context(),
+            reinterpret_cast<const XPUType*>(x.data<T>()),
+            x_ncdhw,
+            {n, in_d, in_h, in_w, c},
+            {0, 4, 1, 2, 3});
+        PADDLE_ENFORCE_XDNN_SUCCESS(r, "transpose");
+        r = xpu::transpose<XPUType>(
+            dev_ctx.x_context(),
+            reinterpret_cast<const XPUType*>(out.data<T>()),
+            out_ncdhw,
+            {n, out_d, out_h, out_w, c},
+            {0, 4, 1, 2, 3});
+        PADDLE_ENFORCE_XDNN_SUCCESS(r, "transpose");
+        r = xpu::transpose<XPUType>(
+            dev_ctx.x_context(),
+            reinterpret_cast<const XPUType*>(dout.data<T>()),
+            dout_ncdhw,
+            {n, out_d, out_h, out_w, c},
+            {0, 4, 1, 2, 3});
+        PADDLE_ENFORCE_XDNN_SUCCESS(r, "transpose");
+
+        r = xpu::max_pool3d_grad<XPUType>(dev_ctx.x_context(),
+                                          x_ncdhw,
+                                          out_ncdhw,
+                                          index_data,
+                                          dout_ncdhw,
+                                          dx_ncdhw,
+                                          n,
+                                          c,
+                                          in_d,
+                                          in_h,
+                                          in_w,
+                                          kernel_size,
+                                          strides,
+                                          paddings,
+                                          true);
+        PADDLE_ENFORCE_XDNN_SUCCESS(r, "max_pool3d_grad");
+
+        r = xpu::transpose<XPUType>(dev_ctx.x_context(),
+                                    dx_ncdhw,
+                                    reinterpret_cast<XPUType*>(dx->data<T>()),
+                                    {n, c, in_d, in_h, in_w},
+                                    {0, 2, 3, 4, 1});
+        PADDLE_ENFORCE_XDNN_SUCCESS(r, "transpose");
       } else {
         r = xpu::max_pool3d_grad<XPUType>(
             dev_ctx.x_context(),
@@ -360,7 +418,7 @@ void Pool3dGradKernel(const Context& dev_ctx,
             kernel_size,
             strides,
             paddings,
-            !channel_last);
+            true);
       }
     } else if (pooling_type == "avg") {
       r = xpu::avg_pool3d_grad<XPUType>(
