@@ -369,9 +369,43 @@ struct XPURelu6GradFunctor : public funcs::BaseActivationFunctor<T> {
                   const DenseTensor* out,
                   const DenseTensor* dout,
                   DenseTensor* dx) const {
-    int r = xpu_activation_backward<Context, T, XPUType>(
-        dev_ctx, x, out, dout, dx, xpu::relu6_grad<XPUType>);
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "relu6_grad");
+    if constexpr (std::is_same_v<T, phi::float16>) {
+      // XPU relu6_grad does not support float16 directly. Match GPU behavior
+      // by computing the backward mask in float32, then cast the result back.
+      xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
+      float* out_fp32 = RAII_GUARD.alloc_l3_or_gm<float>(out->numel());
+      float* dout_fp32 = RAII_GUARD.alloc_l3_or_gm<float>(dout->numel());
+      float* dx_fp32 = RAII_GUARD.alloc_l3_or_gm<float>(dx->numel());
+
+      int r = xpu::cast<XPUType, float>(
+          dev_ctx.x_context(),
+          reinterpret_cast<const XPUType*>(out->data<T>()),
+          out_fp32,
+          out->numel());
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
+      r = xpu::cast<XPUType, float>(
+          dev_ctx.x_context(),
+          reinterpret_cast<const XPUType*>(dout->data<T>()),
+          dout_fp32,
+          dout->numel());
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
+      r = xpu::relu6_grad<float>(dev_ctx.x_context(),
+                                 nullptr,
+                                 out_fp32,
+                                 dout_fp32,
+                                 dx_fp32,
+                                 dx->numel());
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "relu6_grad");
+      r = xpu::cast<float, XPUType>(dev_ctx.x_context(),
+                                    dx_fp32,
+                                    reinterpret_cast<XPUType*>(dx->data<T>()),
+                                    dx->numel());
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
+    } else {
+      int r = xpu_activation_backward<Context, T, XPUType>(
+          dev_ctx, x, out, dout, dx, xpu::relu6_grad<XPUType>);
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "relu6_grad");
+    }
   }
 };
 
@@ -849,7 +883,8 @@ PD_REGISTER_ACTIVATION_GRAD_KERNEL(log_grad, LogGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(leaky_relu_grad, LeakyReluGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(hardsigmoid_grad, HardSigmoidGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(reciprocal_grad, ReciprocalGradKernel)
-PD_REGISTER_ACTIVATION_GRAD_KERNEL(relu6_grad, Relu6GradKernel)
+PD_REGISTER_KERNEL(
+    relu6_grad, XPU, ALL_LAYOUT, phi::Relu6GradKernel, float, phi::float16) {}
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(mish_grad, MishGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(softplus_grad, SoftplusGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(sin_grad, SinGradKernel)
