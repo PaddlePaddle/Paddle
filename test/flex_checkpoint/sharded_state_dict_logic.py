@@ -577,11 +577,47 @@ class TestParallelLayersLogic:
                     parameters=[paddle.create_parameter([2], "float32")]
                 )
             )
+            self._check_mixed_decay_rejected(fsdp_context)
             fsdp_context.init_optimizer_state(opt)
             model.train()
             self.run_fully_shard_test(model, opt, fsdp_context)
         else:
             raise ValueError(f"Unknown layer_type: {self.layer_type}")
+
+    def _check_mixed_decay_rejected(self, fsdp_context):
+        """A buffer mixing decayed and exempt params must be rejected, not decayed as a whole."""
+
+        class FakeOptimizer:
+            def __init__(self, fun):
+                self._apply_decay_param_fun = fun
+
+        group = next(
+            (
+                g
+                for g in fsdp_context.buffer_manager.buffer_groups
+                if len(g.params) > 1
+            ),
+            None,
+        )
+        assert group is not None, "no fused buffer holds more than one param"
+        buffer_name = group.params_buffer.data_buffer.name
+        decayed_name = group.params[0].name
+
+        mixed = FakeOptimizer(lambda name: name == decayed_name)
+        try:
+            fsdp_context.bind_decay_param_fun(mixed)
+        except ValueError as err:
+            assert buffer_name in str(err), str(err)
+        else:
+            raise AssertionError(
+                "mixed weight decay inside one fused buffer was not rejected"
+            )
+
+        uniform = FakeOptimizer(lambda name: True)
+        fsdp_context.bind_decay_param_fun(uniform)
+        assert uniform._apply_decay_param_fun(buffer_name) == (
+            not group.no_decay
+        )
 
     def run_fully_shard_test(self, model, opt, fsdp_context):
         def state_dict():
@@ -644,6 +680,8 @@ class TestParallelLayersLogic:
 
         ckpt_path = os.getenv("ckpt_path")
         dist.save_state_dict(state, ckpt_path)
+        # Wait for every rank's shard file before listing.
+        dist.barrier()
         if dist.get_rank() == 0:
             shards = [
                 name

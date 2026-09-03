@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import re
-import warnings
 from collections import OrderedDict
 from dataclasses import dataclass, field
 from enum import Enum
@@ -871,14 +870,18 @@ class FullyShardFusion:
         buffer_decay = {}
         for group in self.buffer_manager.buffer_groups:
             buffer_name = group.params_buffer.data_buffer.name
-            answers = {fun(param.name) for param in group.params}
-            if len(answers) > 1:
-                warnings.warn(
+            decayed, exempt = [], []
+            for param in group.params:
+                (decayed if fun(param.name) else exempt).append(param.name)
+            if decayed and exempt:
+                # A fused update can only honor one decay answer per buffer.
+                raise ValueError(
                     f"FSDP: fused buffer {buffer_name} mixes params with and "
                     "without weight decay; mark the exempt ones with "
-                    "`param.no_weight_decay = True` before fully_shard()."
+                    "`param.no_weight_decay = True` before fully_shard(). "
+                    f"Decayed: {decayed}; exempt: {exempt}."
                 )
-            buffer_decay[buffer_name] = any(answers) and not group.no_decay
+            buffer_decay[buffer_name] = bool(decayed) and not group.no_decay
 
         def fsdp_apply_decay_param_fun(name):
             if name in buffer_decay:
@@ -917,9 +920,10 @@ class FullyShardFusion:
         inner = optimizer
         while hasattr(inner, "_inner_opt"):
             inner = inner._inner_opt
+        # Keep the raw value: Adadelta's acc names start with '_' themselves.
         tags = sorted(
             {
-                getattr(cls, attr).lstrip("_")
+                getattr(cls, attr)
                 for cls in type(inner).__mro__
                 for attr in vars(cls)
                 if attr.endswith("_str")
@@ -944,7 +948,7 @@ class FullyShardFusion:
                 matched = _master_weight_suffix.match(base)
                 if matched:
                     base = matched.group(1)
-                return base, f"{tag}_0"
+                return base, f"{tag.lstrip('_')}_0"
             return None, None
 
         def _replicated_scalar(key, tensor):
