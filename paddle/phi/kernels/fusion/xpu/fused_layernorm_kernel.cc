@@ -52,11 +52,32 @@ void FusedLayerNormKernel(const Context& dev_ctx,
     n *= x_shape[i];
   }
 
-  dev_ctx.template Alloc<T>(out);
+  PADDLE_ENFORCE_EQ(
+      out->dtype() != phi::DataType::FLOAT8_E4M3FN,
+      true,
+      common::errors::Unimplemented(
+          "XPU fused_bias_residual_layernorm does not support FLOAT8_E4M3FN "
+          "quantized output yet."));
+  const bool quant_int8 = out->dtype() == phi::DataType::INT8;
+  DenseTensor fp_out;
+  DenseTensor quant_input;
+  DenseTensor* ln_out = out;
+  if (quant_int8) {
+    fp_out.Resize(out->dims());
+    quant_input.Resize(out->dims());
+    dev_ctx.template Alloc<float>(&fp_out);
+    dev_ctx.template Alloc<T>(&quant_input);
+    ln_out = &quant_input;
+  } else {
+    dev_ctx.template Alloc<T>(out);
+  }
   dev_ctx.template Alloc<float>(mean);
   dev_ctx.template Alloc<float>(variance);
 
   if (m * n == 0) {
+    if (quant_int8) {
+      dev_ctx.template Alloc<int8_t>(out);
+    }
     if (residual) {
       dev_ctx.template Alloc<T>(residual_out);
     }
@@ -91,44 +112,60 @@ void FusedLayerNormKernel(const Context& dev_ctx,
           xpu_ctx->x_context(),
           reinterpret_cast<const XPUType*>(residual.get().data<T>()),
           reinterpret_cast<XPUType*>(residual_alpha_ptr.data<T>()),
-          reinterpret_cast<XPUType*>(out->data<T>()),
+          reinterpret_cast<XPUType*>(ln_out->data<T>()),
           {m, n},
           {1});
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "broadcast_mul");
       if (bias) {
         r = baidu::xpu::api::broadcast_add(
             xpu_ctx->x_context(),
-            reinterpret_cast<XPUType*>(out->data<T>()),
+            reinterpret_cast<XPUType*>(ln_out->data<T>()),
             reinterpret_cast<const XPUType*>(bias.get().data<T>()),
-            reinterpret_cast<XPUType*>(out->data<T>()),
+            reinterpret_cast<XPUType*>(ln_out->data<T>()),
             {m, n},
             {n});
         PADDLE_ENFORCE_XDNN_SUCCESS(r, "broadcast_add");
       }
       r = baidu::xpu::api::add(xpu_ctx->x_context(),
-                               reinterpret_cast<XPUType*>(out->data<T>()),
+                               reinterpret_cast<XPUType*>(ln_out->data<T>()),
                                reinterpret_cast<const XPUType*>(x.data<T>()),
-                               reinterpret_cast<XPUType*>(out->data<T>()),
+                               reinterpret_cast<XPUType*>(ln_out->data<T>()),
                                m * n);
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "add");
+      dev_ctx.template Alloc<T>(residual_out);
+      r = baidu::xpu::api::copy(
+          xpu_ctx->x_context(),
+          reinterpret_cast<XPUType*>(ln_out->data<T>()),
+          reinterpret_cast<XPUType*>(residual_out->data<T>()),
+          m * n);
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "copy");
     } else {
       if (bias) {
         r = baidu::xpu::api::broadcast_add(
             xpu_ctx->x_context(),
             reinterpret_cast<const XPUType*>(x.data<T>()),
             reinterpret_cast<const XPUType*>(bias.get().data<T>()),
-            reinterpret_cast<XPUType*>(out->data<T>()),
+            reinterpret_cast<XPUType*>(ln_out->data<T>()),
             {m, n},
             {n});
         PADDLE_ENFORCE_XDNN_SUCCESS(r, "broadcast_add");
       } else {
         r = baidu::xpu::api::copy(xpu_ctx->x_context(),
                                   reinterpret_cast<const XPUType*>(x.data<T>()),
-                                  reinterpret_cast<XPUType*>(out->data<T>()),
+                                  reinterpret_cast<XPUType*>(ln_out->data<T>()),
                                   m * n);
         PADDLE_ENFORCE_XDNN_SUCCESS(r, "copy");
       }
     }
+    if (!quant_int8 || quant_scale <= 0.0f) {
+      return;
+    }
+    r = baidu::xpu::api::cast<XPUType, float>(
+        xpu_ctx->x_context(),
+        reinterpret_cast<const XPUType*>(ln_out->data<T>()),
+        fp_out.data<float>(),
+        m * n);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
   } else {
     auto x_ptr = reinterpret_cast<const XPUType*>(x.data<T>());
     if (bias) {
@@ -162,39 +199,186 @@ void FusedLayerNormKernel(const Context& dev_ctx,
           {1});
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "broadcast_mul");
 
-      r = baidu::xpu::api::add_layer_norm_fusion(
-          xpu_ctx->x_context(),
-          x_ptr,
-          reinterpret_cast<const XPUType*>(residual_tmp.data<T>()),
-          reinterpret_cast<XPUType*>(out->data<T>()),
-          m,
-          n,
-          epsilon,
-          norm_weight.get().data<float>(),
-          norm_bias.get().data<float>(),
-          mean->data<float>(),
-          variance->data<float>(),
-          reinterpret_cast<XPUType*>(residual_out->data<T>()));
-      PADDLE_ENFORCE_XDNN_SUCCESS(r, "add_layer_norm_fusion");
+      if (quant_int8) {
+        DenseTensor ln_input;
+        ln_input.Resize(x.dims());
+        dev_ctx.template Alloc<T>(&ln_input);
+        r = baidu::xpu::api::add(
+            xpu_ctx->x_context(),
+            x_ptr,
+            reinterpret_cast<const XPUType*>(residual_tmp.data<T>()),
+            reinterpret_cast<XPUType*>(ln_input.data<T>()),
+            m * n);
+        PADDLE_ENFORCE_XDNN_SUCCESS(r, "add");
+        r = baidu::xpu::api::copy(
+            xpu_ctx->x_context(),
+            reinterpret_cast<const XPUType*>(ln_input.data<T>()),
+            reinterpret_cast<XPUType*>(residual_out->data<T>()),
+            m * n);
+        PADDLE_ENFORCE_XDNN_SUCCESS(r, "copy");
+        DenseTensor ln_out_tmp;
+        ln_out_tmp.Resize(out->dims());
+        dev_ctx.template Alloc<T>(&ln_out_tmp);
+        r = baidu::xpu::api::layer_norm(
+            xpu_ctx->x_context(),
+            reinterpret_cast<const XPUType*>(ln_input.data<T>()),
+            reinterpret_cast<XPUType*>(ln_out_tmp.data<T>()),
+            m,
+            n,
+            epsilon,
+            norm_weight.get().data<float>(),
+            norm_bias.get().data<float>(),
+            mean->data<float>(),
+            variance->data<float>(),
+            true);
+        PADDLE_ENFORCE_XDNN_SUCCESS(r, "layer_norm");
+        DenseTensor ln_input_fp;
+        ln_input_fp.Resize(x.dims());
+        dev_ctx.template Alloc<float>(&ln_input_fp);
+        r = baidu::xpu::api::cast<XPUType, float>(
+            xpu_ctx->x_context(),
+            reinterpret_cast<const XPUType*>(ln_input.data<T>()),
+            ln_input_fp.data<float>(),
+            m * n);
+        PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
+        DenseTensor quant_mean;
+        DenseTensor quant_variance;
+        quant_mean.Resize(mean->dims());
+        quant_variance.Resize(variance->dims());
+        dev_ctx.template Alloc<float>(&quant_mean);
+        dev_ctx.template Alloc<float>(&quant_variance);
+        r = baidu::xpu::api::layer_norm(xpu_ctx->x_context(),
+                                        ln_input_fp.data<float>(),
+                                        fp_out.data<float>(),
+                                        m,
+                                        n,
+                                        epsilon,
+                                        norm_weight.get().data<float>(),
+                                        norm_bias.get().data<float>(),
+                                        quant_mean.data<float>(),
+                                        quant_variance.data<float>(),
+                                        true);
+        PADDLE_ENFORCE_XDNN_SUCCESS(r, "layer_norm");
+      } else {
+        r = baidu::xpu::api::add_layer_norm_fusion(
+            xpu_ctx->x_context(),
+            x_ptr,
+            reinterpret_cast<const XPUType*>(residual_tmp.data<T>()),
+            reinterpret_cast<XPUType*>(ln_out->data<T>()),
+            m,
+            n,
+            epsilon,
+            norm_weight.get().data<float>(),
+            norm_bias.get().data<float>(),
+            mean->data<float>(),
+            variance->data<float>(),
+            reinterpret_cast<XPUType*>(residual_out->data<T>()));
+        PADDLE_ENFORCE_XDNN_SUCCESS(r, "add_layer_norm_fusion");
+      }
     } else {
-      r = baidu::xpu::api::layer_norm(
-          xpu_ctx->x_context(),
-          x_ptr,
-          reinterpret_cast<XPUType*>(out->data<T>()),
-          m,
-          n,
-          epsilon,
-          norm_weight.get().data<float>(),
-          norm_bias.get().data<float>(),
-          mean->data<float>(),
-          variance->data<float>());
+      if (quant_int8) {
+        DenseTensor ln_out_tmp;
+        ln_out_tmp.Resize(out->dims());
+        dev_ctx.template Alloc<T>(&ln_out_tmp);
+        r = baidu::xpu::api::layer_norm(
+            xpu_ctx->x_context(),
+            x_ptr,
+            reinterpret_cast<XPUType*>(ln_out_tmp.data<T>()),
+            m,
+            n,
+            epsilon,
+            norm_weight.get().data<float>(),
+            norm_bias.get().data<float>(),
+            mean->data<float>(),
+            variance->data<float>(),
+            true);
+        PADDLE_ENFORCE_XDNN_SUCCESS(r, "layer_norm");
+        DenseTensor x_fp;
+        x_fp.Resize(x.dims());
+        dev_ctx.template Alloc<float>(&x_fp);
+        r = baidu::xpu::api::cast<XPUType, float>(
+            xpu_ctx->x_context(), x_ptr, x_fp.data<float>(), m * n);
+        PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
+        DenseTensor quant_mean;
+        DenseTensor quant_variance;
+        quant_mean.Resize(mean->dims());
+        quant_variance.Resize(variance->dims());
+        dev_ctx.template Alloc<float>(&quant_mean);
+        dev_ctx.template Alloc<float>(&quant_variance);
+        r = baidu::xpu::api::layer_norm(xpu_ctx->x_context(),
+                                        x_fp.data<float>(),
+                                        fp_out.data<float>(),
+                                        m,
+                                        n,
+                                        epsilon,
+                                        norm_weight.get().data<float>(),
+                                        norm_bias.get().data<float>(),
+                                        quant_mean.data<float>(),
+                                        quant_variance.data<float>(),
+                                        true);
+      } else {
+        r = baidu::xpu::api::layer_norm(
+            xpu_ctx->x_context(),
+            x_ptr,
+            reinterpret_cast<XPUType*>(ln_out->data<T>()),
+            m,
+            n,
+            epsilon,
+            norm_weight.get().data<float>(),
+            norm_bias.get().data<float>(),
+            mean->data<float>(),
+            variance->data<float>(),
+            true);
+      }
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "layer_norm");
     }
-    if (quant_scale > 0.0f) {
-      PD_THROW("NOT supported quant int8. ");
-    } else {
+    if (quant_scale <= 0.0f) {
       return;
     }
+  }
+
+  if (quant_scale > 0.0f) {
+    PADDLE_ENFORCE_EQ(quant_int8,
+                      true,
+                      common::errors::Unimplemented(
+                          "XPU fused_bias_residual_layernorm only supports "
+                          "INT8 quantized output."));
+    PADDLE_ENFORCE_EQ(quant_round_type == 1,
+                      true,
+                      common::errors::InvalidArgument(
+                          "XPU fused_bias_residual_layernorm quantized output "
+                          "only supports quant_round_type = 1, but got %d.",
+                          quant_round_type));
+    DenseTensor quant_tmp;
+    quant_tmp.Resize(out->dims());
+    dev_ctx.template Alloc<float>(&quant_tmp);
+    r = baidu::xpu::api::scale(xpu_ctx->x_context(),
+                               fp_out.data<float>(),
+                               quant_tmp.data<float>(),
+                               m * n,
+                               false,
+                               quant_max_bound * quant_scale,
+                               0.f);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "scale");
+    r = baidu::xpu::api::round(xpu_ctx->x_context(),
+                               quant_tmp.data<float>(),
+                               quant_tmp.data<float>(),
+                               m * n,
+                               0);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "round");
+    r = baidu::xpu::api::clip(xpu_ctx->x_context(),
+                              quant_tmp.data<float>(),
+                              quant_tmp.data<float>(),
+                              m * n,
+                              quant_min_bound,
+                              quant_max_bound);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "clip");
+    dev_ctx.template Alloc<int8_t>(out);
+    r = baidu::xpu::api::cast<float, int8_t>(xpu_ctx->x_context(),
+                                             quant_tmp.data<float>(),
+                                             out->data<int8_t>(),
+                                             m * n);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
   }
 }
 
@@ -208,4 +392,10 @@ PD_REGISTER_KERNEL(fused_bias_residual_layernorm,
                    phi::fusion::FusedLayerNormKernel,
                    float,
                    phi::bfloat16,
-                   phi::float16) {}
+                   phi::float16) {
+  kernel->InputAt(3).SetDataType(phi::DataType::FLOAT32);
+  kernel->InputAt(4).SetDataType(phi::DataType::FLOAT32);
+  kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
+  kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT32);
+  kernel->OutputAt(3).SetDataType(phi::DataType::FLOAT32);
+}
