@@ -160,6 +160,59 @@ class DefaultRuntimeStrategy : public CustomRuntimeStrategy {
     LOG(ERROR) << "launch_kernel interface not implemented by vendor.";
   }
 
+  void LaunchCooperativeKernel(void* func_ptr,
+                               const std::string& func_name,
+                               void** args,
+                               int num_args,
+                               int grid_x,
+                               int grid_y,
+                               int grid_z,
+                               int block_x,
+                               int block_y,
+                               int block_z,
+                               int shared_mem,
+                               void* stream) override {
+    if (SupportsCooperativeLaunch()) {
+      cif_->launch_cooperative_kernel(cif_->dev_ptr,
+                                      func_ptr,
+                                      args,
+                                      num_args,
+                                      grid_x,
+                                      grid_y,
+                                      grid_z,
+                                      block_x,
+                                      block_y,
+                                      block_z,
+                                      shared_mem,
+                                      stream);
+      return;
+    }
+    // Graceful fallback: use regular launch with a warning
+    LOG(WARNING) << "launch_cooperative_kernel not supported by vendor, "
+                    "falling back to launch_kernel.";
+    LaunchKernel(func_ptr,
+                 func_name,
+                 args,
+                 num_args,
+                 grid_x,
+                 grid_y,
+                 grid_z,
+                 block_x,
+                 block_y,
+                 block_z,
+                 shared_mem,
+                 stream);
+  }
+
+  bool SupportsCooperativeLaunch() override {
+    if (!cif_) return false;
+    size_t required_size =
+        offsetof(C_CinnInterface, launch_cooperative_kernel) +
+        sizeof(cif_->launch_cooperative_kernel);
+    if (cif_->size < required_size) return false;
+    return cif_->launch_cooperative_kernel != nullptr;
+  }
+
  private:
   C_CinnInterface* cif_;
 };

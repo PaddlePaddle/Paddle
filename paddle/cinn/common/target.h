@@ -89,6 +89,8 @@ struct Target {
 
   bool get_supports_cooperative_launch() const;
 
+  void PrintHardwareParams() const;
+
   std::string arch_str() const;
 
   std::string device_name_str() const;

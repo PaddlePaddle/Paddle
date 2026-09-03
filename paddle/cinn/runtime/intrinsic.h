@@ -108,6 +108,8 @@ static const char* call_cuda_cooperative_kernel =
     "cinn_call_cuda_cooperative_kernel";
 
 static const char* call_custom_device_kernel = "cinn_call_custom_device_kernel";
+static const char* call_custom_device_cooperative_kernel =
+    "cinn_call_custom_device_cooperative_kernel";
 
 static const char* call_hip_kernel = "cinn_call_hip_kernel";
 
