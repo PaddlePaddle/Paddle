@@ -648,7 +648,12 @@ XPUOpMap& get_kl3_ops() {
       {"reduce_mean_grad", XPUKernelSet({FLOAT32, FLOAT16, BFLOAT16})},
       {"reduce_mean",
        XPUKernelSet({FLOAT32, FLOAT16, BFLOAT16, INT32, INT64, BOOL})},
-      {"reduce_min_grad", XPUKernelSet({FLOAT32})},
+      {"reduce_min_grad",
+       XPUKernelSet({
+           FLOAT32,
+           FLOAT16,
+           BFLOAT16,
+       })},
       {"reduce_min",
        XPUKernelSet({
            FLOAT32,
