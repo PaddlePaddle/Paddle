@@ -23,6 +23,7 @@ XPUOpMap& get_kl3_ops() {
   // KL3支持的op，通过op_name, data_type, place来索引
   static XPUOpMap s_xpu3_kernels{
       {"acos", XPUKernelSet({FLOAT32, FLOAT16, BFLOAT16})},
+      {"asinh", XPUKernelSet({FLOAT32, FLOAT16})},
       {"add_act_xpu", XPUKernelSet({FLOAT32, FLOAT16})},
       {"add_layernorm_xpu", XPUKernelSet({FLOAT32, FLOAT16})},
       {"abs", XPUKernelSet({FLOAT32, FLOAT16, BFLOAT16})},
