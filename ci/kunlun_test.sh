@@ -143,7 +143,7 @@ set +x
                             done
                         rm -f $tmp_dir/*
                         failed_test_lists=''
-                        ctest -R "($retry_unittests_regular)" --output-on-failure -j $2 | tee $tmpfile
+                        cuda-memcheck ctest -R "($retry_unittests_regular)" --output-on-failure -j $2 | tee $tmpfile
                         collect_failed_tests
                         exec_times=$[$exec_times+1]
                     done
