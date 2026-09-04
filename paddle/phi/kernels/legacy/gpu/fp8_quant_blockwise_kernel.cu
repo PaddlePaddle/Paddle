@@ -688,35 +688,24 @@ __global__ void __launch_bounds__(512, MINBLK)
     }
   }
 
-  // 2. row-wise amax, packed as bf16x2, then reduced across the lanes of a row
+  // 2. row-wise amax, then reduced across the lanes of a row. The max goes
+  // through device_abs / device_max rather than the packed __habs2 / __hmax2
+  // pair: those are declared only for __CUDA_ARCH__ >= 800 on older toolkits,
+  // and being non-dependent names they are diagnosed even inside a discarded
+  // if-constexpr branch, so a packed bf16 path breaks the pre-sm_80 build of
+  // the float16 instantiation. The kernel is memory bound, so halving the
+  // number of max operations buys nothing anyway.
 #pragma unroll
   for (int i = 0; i < kIters; i++) {
     T warp_max;
-    if constexpr (std::is_same<T, __nv_bfloat16>::value) {
-      __nv_bfloat162 m2;
-      bool first = true;
+    bool first = true;
 #pragma unroll
-      for (int v = 0; v < kNVec; v++) {
-        const __nv_bfloat162 *p =
-            reinterpret_cast<const __nv_bfloat162 *>(&x[i * kNVec + v].data);
+    for (int v = 0; v < kNVec; v++) {
 #pragma unroll
-        for (int k = 0; k < kVec / 2; k++) {
-          __nv_bfloat162 a = __habs2(p[k]);
-          m2 = first ? a : __hmax2(m2, a);
-          first = false;
-        }
-      }
-      warp_max = __hmax(__low2bfloat16(m2), __high2bfloat16(m2));
-    } else {
-      bool first = true;
-#pragma unroll
-      for (int v = 0; v < kNVec; v++) {
-#pragma unroll
-        for (int k = 0; k < kVec; k++) {
-          T a = device_abs(x[i * kNVec + v].data.scalar[k]);
-          warp_max = first ? a : device_max(warp_max, a);
-          first = false;
-        }
+      for (int k = 0; k < kVec; k++) {
+        T a = device_abs(x[i * kNVec + v].data.scalar[k]);
+        warp_max = first ? a : device_max(warp_max, a);
+        first = false;
       }
     }
 #pragma unroll
