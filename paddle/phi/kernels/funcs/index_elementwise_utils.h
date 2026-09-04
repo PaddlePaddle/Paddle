@@ -17,6 +17,7 @@ limitations under the License. */
 #include <algorithm>
 #include <array>
 #include <cstdint>
+#include <cstdlib>
 #include <limits>
 #include <type_traits>
 #include <vector>
@@ -47,6 +48,33 @@ constexpr bool IsInInt32Range(int64_t v1, int64_t v2) {
 
 constexpr bool IsInInt32Range(int64_t v1, int64_t v2, int64_t v3) {
   return IsInInt32Range(v1) && IsInInt32Range(v2) && IsInInt32Range(v3);
+}
+
+constexpr bool IsInInt32Range(int64_t v1, int64_t v2, int64_t v3, int64_t v4) {
+  return IsInInt32Range(v1, v2) && IsInInt32Range(v3, v4);
+}
+
+// Largest |byte offset| an offset calculator can produce for an operand it
+// walks with the tensor's own dims and strides, i.e.
+// sum_d (dim_d - 1) * |stride_d| * sizeof(dtype).
+// `numel * sizeof(dtype)` only bounds this for a contiguous tensor. The put
+// kernels hand the `value` operand to the calculator with its own strides, and
+// its element size is unrelated to the ones already covered by the dispatch:
+// a complex128 value of 2e8 elements reaches 3.2e9 bytes while x, out and the
+// int64 index operand (1.6e9 bytes) all stay inside int32_t, so the signed
+// calculator's CheckOffsetRange would reject a shape the 64-bit path handles.
+inline int64_t StridedOperandByteSpan(const DenseTensor& t) {
+  const auto& dims = t.dims();
+  const auto& strides = t.strides();
+  const int64_t elesize = static_cast<int64_t>(SizeOf(t.dtype()));
+  int64_t span = 0;
+  for (int i = 0; i < dims.size(); ++i) {
+    if (dims[i] <= 1) {
+      continue;
+    }
+    span += (dims[i] - 1) * std::abs(strides[i]) * elesize;
+  }
+  return span;
 }
 
 // Byte extent of the index operand, i.e. the third operand of the offset
