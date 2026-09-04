@@ -130,14 +130,25 @@ class MixedDtypeNet(paddle.nn.Layer):
 
 
 def _init_weights():
-    """Initial weights, identical on every rank."""
+    """Initial weights, identical on every rank.
+
+    Scaled by 1/sqrt(dim) so each layer roughly preserves the activation scale.
+    Unscaled U[0, 1) weights grow the activations by ~dim/2 per layer, which
+    reaches inf by the third of four 512-wide layers in float16 -- and the
+    resulting nan parameters would compare equal on every rank, so the
+    cross-rank check at the end would pass without meaning anything.
+    """
     return (
         [
-            np.random.random_sample((LOW_DIM, LOW_DIM)).astype("float32")
+            (np.random.randn(LOW_DIM, LOW_DIM) / np.sqrt(LOW_DIM)).astype(
+                "float32"
+            )
             for _ in range(N_LOW_LAYERS)
         ],
         [
-            np.random.random_sample((FP32_DIM, FP32_DIM)).astype("float32")
+            (np.random.randn(FP32_DIM, FP32_DIM) / np.sqrt(FP32_DIM)).astype(
+                "float32"
+            )
             for _ in range(N_FP32_LAYERS)
         ],
     )
@@ -250,6 +261,14 @@ class TestMuonMixedDtypePartition(unittest.TestCase):
             start = sharding_rank * local_bs
             batch = paddle.to_tensor(self.data[idx][start : start + local_bs])
             loss = model(batch)
+            # The forward must stay in range, especially in float16: an
+            # overflowed loss produces nan parameters, and nan compares equal to
+            # nan on every rank, which would make the cross-rank check below
+            # pass without testing anything.
+            self.assertTrue(
+                np.isfinite(float(loss)),
+                msg=f"step {idx} loss is {float(loss)}, not finite",
+            )
             loss.backward()
             optimizer.step()
             optimizer.clear_grad()
@@ -341,6 +360,14 @@ class TestMuonMixedDtypePartition(unittest.TestCase):
             gathered = []
             paddle.distributed.all_gather(gathered, param.cast("float32"))
             reference = gathered[0].numpy()
+            self.assertTrue(
+                np.isfinite(reference).all(),
+                msg=(
+                    f"param {name!r} is not finite after the optimizer steps; "
+                    "nan/inf compares equal across ranks and would make the "
+                    "comparison below vacuous"
+                ),
+            )
             for rank, other in enumerate(gathered):
                 np.testing.assert_array_equal(
                     other.numpy(),
