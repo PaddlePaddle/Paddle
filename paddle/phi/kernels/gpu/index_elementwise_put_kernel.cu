@@ -328,7 +328,8 @@ void IndexElementwisePutWithTensorKernel(
   if (out->numel() == 0) return;
   if (funcs::IsInInt32Range(x.numel() * sizeof(T),
                             out->numel() * sizeof(T),
-                            funcs::IndexOperandByteSpan(index_dims))) {
+                            funcs::IndexOperandByteSpan(index_dims),
+                            funcs::StridedOperandByteSpan(value))) {
     GPUIndexElementwisePutWithTensorKernel<T>(dev_ctx,
                                               x,
                                               value,
