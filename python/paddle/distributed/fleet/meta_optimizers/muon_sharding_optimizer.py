@@ -665,9 +665,11 @@ class MuonShardingOptimizer:
         for p in params:
             params_by_dtype[p.dtype].append(p)
 
-        # Sorted so that every rank walks the dtypes in the same order and
-        # derives an identical mapping, otherwise the reduce dst and the
-        # broadcast src would disagree across ranks.
+        # Sorted so the result is fully determined by the input list rather than
+        # by the order the dtypes happen to appear in it. Owner assignment does
+        # not depend on this -- every dtype packs from rank 0 independently --
+        # but the order of each rank's param list does, and that order is what
+        # ``_local_2d`` is built from.
         for dtype in sorted(params_by_dtype, key=str):
             parameters = params_by_dtype[dtype]
             parameters.sort(
