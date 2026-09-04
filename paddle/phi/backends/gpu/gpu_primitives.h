@@ -455,12 +455,12 @@ CUDA_ATOMIC_WRAPPER(Mul, float) {
   return __int_as_float(old);
 }
 
-__device__ __forceinline__ uint32_t __loadAligned(const uintptr_t base_addr,
-                                                  uint32_t mask,
-                                                  uint32_t shift) {
-  // get 4B aligned address
-  uint32_t aligned_value = *reinterpret_cast<const uint32_t *>(base_addr);
-  return (aligned_value & mask) >> shift;
+// Reads the whole 4B aligned word holding the sub-word element. Callers keep
+// the neighbouring lanes of that word untouched by rebuilding it as
+// ``(old32 & ~mask) | (new_element << shift)``, so they need the full word
+// here, not just the element.
+__device__ __forceinline__ uint32_t __loadAligned(const uintptr_t base_addr) {
+  return *reinterpret_cast<const uint32_t *>(base_addr);
 }
 
 CUDA_ATOMIC_WRAPPER(Mul, uint8_t) {
@@ -470,7 +470,7 @@ CUDA_ATOMIC_WRAPPER(Mul, uint8_t) {
   uint32_t shift = offset * 8;
   uint32_t mask = 0xFFU << shift;
 
-  uint32_t old32 = __loadAligned(base_addr, mask, shift), assumed32 = 0;
+  uint32_t old32 = __loadAligned(base_addr), assumed32 = 0;
 
   do {
     assumed32 = old32;
@@ -493,14 +493,18 @@ CUDA_ATOMIC_WRAPPER(Mul, int16_t) {
   uint32_t shift = offset * 16;
   uint32_t mask = 0xFFFFU << shift;
 
-  uint32_t old32 = __loadAligned(base_addr, mask, shift), assumed32 = 0;
+  uint32_t old32 = __loadAligned(base_addr), assumed32 = 0;
 
   do {
     assumed32 = old32;
     int16_t current = static_cast<int16_t>((old32 & mask) >> shift);
     int16_t new_val = current * val;
+    // Narrow to uint16_t first: a plain ``static_cast<uint32_t>`` of a negative
+    // int16_t sign extends, and the ``|`` below would then overwrite the
+    // neighbouring halfword of the word with 0xFFFF.
     uint32_t new32 =
-        (old32 & ~mask) | (static_cast<uint32_t>(new_val) << shift);
+        (old32 & ~mask) |
+        (static_cast<uint32_t>(static_cast<uint16_t>(new_val)) << shift);
 
     old32 =
         atomicCAS(reinterpret_cast<uint32_t *>(base_addr), assumed32, new32);
@@ -1001,7 +1005,7 @@ CUDA_ATOMIC_WRAPPER(Min, phi::dtype::bfloat16) {
     }                                                                         \
     uint8_t current = 0;                                                      \
     uint8_t new_val = 0;                                                      \
-    uint32_t assumed32 = 0, old32 = __loadAligned(base_addr, mask, shift);    \
+    uint32_t assumed32 = 0, old32 = __loadAligned(base_addr);                 \
     do {                                                                      \
       assumed32 = old32;                                                      \
       current = static_cast<uint8_t>((old32 & mask) >> shift);                \
