@@ -200,10 +200,6 @@ def _build_optimizer(model):
     )
 
 
-def _short_dtype(dtype):
-    return str(dtype).split(".")[-1]
-
-
 class TestMuonMixedDtypePartition(unittest.TestCase):
     def setUp(self):
         random.seed(2024)
