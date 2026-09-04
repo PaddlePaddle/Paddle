@@ -411,11 +411,9 @@ struct SortedPathLayout {
 // smallest stride magnitude up, every stride clears the span already covered.
 // Only magnitudes matter: negating an axis mirrors the region onto the same set
 // of elements, so a reversed view (x[::-1, idx]) is just as non overlapping as
-// the forward one.  Such a view cannot reach this kernel today because the
-// forward index_elementwise_get_kernel truncates negative strides to unsigned
-// (its offset calculator is instantiated with signed_strides = false), but the
-// sign of a stride is a property of the layout, not of what the caller happens
-// to be able to build, so it is handled here rather than assumed away.
+// the forward one.  Reversed views do reach this kernel -- the forward
+// index_elementwise_get_kernel keeps its offsets signed -- so the negative
+// case is live, not defensive.
 static bool IsNonOverlapping(const std::vector<int64_t>& dims,
                              const std::vector<int64_t>& strides) {
   std::vector<std::pair<int64_t, int64_t>> axes;  // (|stride|, extent)
@@ -491,16 +489,10 @@ static bool DeriveSortedPathLayout(const std::vector<int64_t>& input_dims,
   // sparse and reaches further than its element count; a reversed axis has a
   // negative stride and pulls the low end below slice_offset.
   const int64_t base = slice_offset / elesize;
-  int64_t lo = base;
-  int64_t hi = base;
-  for (size_t i = 0; i < view.size(); ++i) {
-    const int64_t reach = (view[i] - 1) * vstride[i];
-    if (reach < 0) {
-      lo += reach;
-    } else {
-      hi += reach;
-    }
-  }
+  funcs::OperandReach reach;
+  funcs::AccumulateReach(view.size(), view.data(), vstride.data(), 1, &reach);
+  const int64_t lo = base + reach.lo;
+  const int64_t hi = base + reach.hi;
   PADDLE_ENFORCE_GE(
       lo,
       0,

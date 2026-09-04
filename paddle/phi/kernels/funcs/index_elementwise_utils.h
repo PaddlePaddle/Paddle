@@ -17,7 +17,6 @@ limitations under the License. */
 #include <algorithm>
 #include <array>
 #include <cstdint>
-#include <cstdlib>
 #include <limits>
 #include <type_traits>
 #include <vector>
@@ -33,8 +32,8 @@ namespace funcs {
 
 constexpr int MAX_DIMS = DDim::kMaxRank;
 
-// Offset calculators instantiated with signed_strides=true keep their offsets
-// in std::make_signed_t<INDEX_T>, so their 32-bit fast path is bounded by
+// The GPU offset calculator instantiated with signed_strides=true keeps its
+// offsets in std::make_signed_t<INDEX_T>, so its 32-bit fast path is bounded by
 // int32_t instead of uint32_t. Byte extents in (2 GiB, 4 GiB] must therefore
 // fall through to the 64-bit path instead of reusing IsInUint32Range.
 constexpr bool IsInInt32Range(int64_t value) {
@@ -54,27 +53,53 @@ constexpr bool IsInInt32Range(int64_t v1, int64_t v2, int64_t v3, int64_t v4) {
   return IsInInt32Range(v1, v2) && IsInInt32Range(v3, v4);
 }
 
+// Lowest and highest offset, relative to an operand's base, that walking
+// `dims` with `strides` can produce. Both ends have to be tracked separately:
+// a reversed axis carries a negative stride and pulls `lo` below the base,
+// and once an operand is strided `numel` bounds neither end.
+struct OperandReach {
+  int64_t lo = 0;
+  int64_t hi = 0;
+};
+
+// Accumulates one operand's reach into `reach`, so that operands sharing a base
+// (x and the index tensor are both offset from slice_offset) can be combined.
+// `scale` converts `strides` into the unit the caller wants, e.g. sizeof(dtype)
+// to turn element strides into bytes.
+inline void AccumulateReach(int64_t ndim,
+                            const int64_t* dims,
+                            const int64_t* strides,
+                            int64_t scale,
+                            OperandReach* reach) {
+  for (int64_t i = 0; i < ndim; ++i) {
+    if (dims[i] <= 1) {
+      continue;  // a 1-size axis never uses its stride, a 0-size one is empty
+    }
+    const int64_t r = (dims[i] - 1) * strides[i] * scale;
+    if (r < 0) {
+      reach->lo += r;
+    } else {
+      reach->hi += r;
+    }
+  }
+}
+
 // Largest |byte offset| an offset calculator can produce for an operand it
-// walks with the tensor's own dims and strides, i.e.
-// sum_d (dim_d - 1) * |stride_d| * sizeof(dtype).
+// walks with the tensor's own dims and strides, i.e. hi - lo of its reach.
 // `numel * sizeof(dtype)` only bounds this for a contiguous tensor. The put
 // kernels hand the `value` operand to the calculator with its own strides, and
 // its element size is unrelated to the ones already covered by the dispatch:
 // a complex128 value of 2e8 elements reaches 3.2e9 bytes while x, out and the
-// int64 index operand (1.6e9 bytes) all stay inside int32_t, so the signed
-// calculator's CheckOffsetRange would reject a shape the 64-bit path handles.
+// int64 index operand (1.6e9 bytes) all stay inside int32_t, so the 32-bit
+// offset type would wrap on a shape the 64-bit path handles.
 inline int64_t StridedOperandByteSpan(const DenseTensor& t) {
-  const auto& dims = t.dims();
-  const auto& strides = t.strides();
-  const int64_t elesize = static_cast<int64_t>(SizeOf(t.dtype()));
-  int64_t span = 0;
-  for (int i = 0; i < dims.size(); ++i) {
-    if (dims[i] <= 1) {
-      continue;
-    }
-    span += (dims[i] - 1) * std::abs(strides[i]) * elesize;
-  }
-  return span;
+  OperandReach reach;
+  AccumulateReach(t.dims().size(),
+                  t.dims().Get(),
+                  t.strides().Get(),
+                  static_cast<int64_t>(SizeOf(t.dtype())),
+                  &reach);
+  return reach.hi - reach.lo;
 }
 
 // Byte extent of the index operand, i.e. the third operand of the offset
