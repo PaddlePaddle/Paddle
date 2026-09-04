@@ -73,24 +73,15 @@ void GPUIndexElementwiseGetKernel(const GPUContext& dev_ctx,
   // into a diagnosable error instead of an illegal memory access.
   const int64_t elesize = static_cast<int64_t>(phi::SizeOf(input.dtype()));
   const int64_t capacity = input.numel() * elesize;
-  int64_t lo = slice_offset;
-  int64_t hi = slice_offset;
-  for (size_t i = 0; i < input_dims.size(); ++i) {
-    const int64_t reach = (input_dims[i] - 1) * input_strides[i] * elesize;
-    if (reach < 0) {
-      lo += reach;
-    } else {
-      hi += reach;
-    }
-  }
-  for (int64_t i = 0; i < num_indices; ++i) {
-    const int64_t reach = (sizes[i] - 1) * strides[i];
-    if (reach < 0) {
-      lo += reach;
-    } else {
-      hi += reach;
-    }
-  }
+  funcs::OperandReach reach;
+  funcs::AccumulateReach(input_dims.size(),
+                         input_dims.data(),
+                         input_strides.data(),
+                         elesize,
+                         &reach);
+  funcs::AccumulateReach(num_indices, sizes.data(), strides.data(), 1, &reach);
+  const int64_t lo = slice_offset + reach.lo;
+  const int64_t hi = slice_offset + reach.hi;
   PADDLE_ENFORCE_GE(lo,
                     0,
                     common::errors::InvalidArgument(
