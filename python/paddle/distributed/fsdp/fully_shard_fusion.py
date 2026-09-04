@@ -73,7 +73,6 @@ class TensorFusionBuffer:
         dtype,
         is_params=False,
         main_grad_dtype=None,
-        grad_div=None,
     ):
         # Calculate total buffer size needed (with padding)
         self.unique_key = unique_key
@@ -85,13 +84,6 @@ class TensorFusionBuffer:
         self.main_grad_dtype = (
             main_grad_dtype if main_grad_dtype is not None else dtype
         )
-        # Average over data replicas (sharding degree), not this buffer's own
-        # fsdp_degree: expert grads already cover every rank's tokens.
-        self.grad_scale = 1.0 / (
-            grad_div if grad_div is not None else self.fsdp_degree
-        )
-        # Set once per accumulation cycle; only unsharded buffers need it.
-        self.grad_scaled = False
         self.total_buffer_size = 0
         self.param_offsets = {}
         self.tmp_data_buffer = None
@@ -248,7 +240,7 @@ class TensorFusionBuffer:
     def do_reduce_scatter(self):
         tmp_buffer = self.get_tmp_buffer()
         shard = tmp_buffer._slice(0, self.data_buffer.shape[0])
-        tmp_buffer.scale_(self.grad_scale)
+        tmp_buffer.scale_(1.0 / self.fsdp_degree)
         return paddle.distributed.reduce_scatter(
             shard,
             tmp_buffer,
@@ -382,7 +374,6 @@ class FSDPBufferManager:
                     main_grad_dtype=paddle.float32
                     if group.is_expert_param or group.dtype == paddle.float32
                     else self.main_grad_dtype,
-                    grad_div=self._fsdp_group.nranks,
                 )
             group.grads_use_sum = len(params)
             for param in params:
@@ -584,7 +575,6 @@ class FSDPCommManager:
         for group in self.buffer_manager.buffer_groups:
             if group.grads_buffer is not None:
                 group.grads_buffer.data_buffer.zero_()
-                group.grads_buffer.grad_scaled = False
 
     def _ensure_grads_writable(self, param):
         gid = self.buffer_manager.param_to_buffer_id.get(param.name)
@@ -662,14 +652,6 @@ class FSDPCommManager:
                 continue
             group.grads_use_cnt = 0
             if not grads_buffer.is_sharded:
-                # No reduce_scatter here, so apply the grad average once per
-                # accumulation cycle.
-                if (
-                    grads_buffer.grad_scale != 1.0
-                    and not grads_buffer.grad_scaled
-                ):
-                    grads_buffer.data_buffer.scale_(grads_buffer.grad_scale)
-                    grads_buffer.grad_scaled = True
                 continue
             if grads_buffer.tmp_data_buffer is None:
                 continue
