@@ -44,10 +44,16 @@ struct CPUIntDivider {
   Value divisor;
 };
 
-template <int NARGS, typename index_t = uint32_t, bool signed_strides = false>
+template <int NARGS, typename index_t = uint32_t>
 struct CPUOffsetCalculator {
-  using stride_t =
-      std::conditional_t<signed_strides, std::make_signed_t<index_t>, index_t>;
+  // Offsets are signed so that reversed views (negative strides) work, and
+  // 64-bit so that being signed costs no reach.  The GPU calculator has to
+  // trade the two off against each other -- there a narrow offset saves
+  // registers, so it dispatches between a 32-bit and a 64-bit variant -- but on
+  // the CPU a 64-bit add is as cheap as a 32-bit one and there is nothing to
+  // dispatch on.  Only the divmod over `linear_idx` benefits from `index_t`
+  // staying 32-bit, and that is independent of the offset width.
+  using stride_t = int64_t;
   using offset_type = std::array<stride_t, std::max<int>(NARGS, 1)>;
 
   CPUOffsetCalculator(int dims,
@@ -67,49 +73,6 @@ struct CPUOffsetCalculator {
             (element_sizes == nullptr ? 1LL : element_sizes[arg]);
         strides_[i][arg] = strides[arg][i] / element_size;
       }
-    }
-    if constexpr (signed_strides) {
-      // Signed offsets are what makes reversed views (negative strides) work,
-      // but they also halve the reachable range compared to the unsigned
-      // instantiation.  The CPU calculator has no 64 bit variant, so report the
-      // limit instead of silently wrapping.
-      CheckOffsetRange(dims, sizes, strides, element_sizes);
-    }
-  }
-
-  static void CheckOffsetRange(int dims,
-                               const int64_t* sizes,
-                               const int64_t* const* strides,
-                               const int64_t* element_sizes) {
-    for (int arg = 0; arg < NARGS; arg++) {
-      const int64_t element_size =
-          (element_sizes == nullptr ? 1LL : element_sizes[arg]);
-      int64_t lo = 0;
-      int64_t hi = 0;
-      for (int i = 0; i < dims; i++) {
-        const int64_t reach = (sizes[i] - 1) * (strides[arg][i] / element_size);
-        if (reach < 0) {
-          lo += reach;
-        } else {
-          hi += reach;
-        }
-      }
-      PADDLE_ENFORCE_GE(
-          lo,
-          static_cast<int64_t>(std::numeric_limits<stride_t>::lowest()),
-          common::errors::PreconditionNotMet(
-              "Offset %d of operand %d underflows the %d bit offset type.",
-              lo,
-              arg,
-              static_cast<int>(sizeof(stride_t) * 8)));
-      PADDLE_ENFORCE_LE(
-          hi,
-          static_cast<int64_t>(std::numeric_limits<stride_t>::max()),
-          common::errors::PreconditionNotMet(
-              "Offset %d of operand %d overflows the %d bit offset type.",
-              hi,
-              arg,
-              static_cast<int>(sizeof(stride_t) * 8)));
     }
   }
 
@@ -137,31 +100,29 @@ struct CPUOffsetCalculator {
   stride_t strides_[MAX_DIMS][std::max<int>(NARGS, 1)];
 };
 
-template <int N, bool signed_strides = false>
-static CPUOffsetCalculator<N, uint32_t, signed_strides>
-CPUmake_offset_calculator_put(std::vector<int64_t> desired_shape,
-                              std::array<int64_t*, N> strides_array) {
-  return CPUOffsetCalculator<N, uint32_t, signed_strides>(
+template <int N>
+static CPUOffsetCalculator<N, uint32_t> CPUmake_offset_calculator_put(
+    std::vector<int64_t> desired_shape, std::array<int64_t*, N> strides_array) {
+  return CPUOffsetCalculator<N, uint32_t>(
       desired_shape.size(), desired_shape.data(), strides_array.data());
 }
 
-template <int N, bool signed_strides = false>
-static CPUOffsetCalculator<N, uint32_t, signed_strides>
-CPUmake_offset_calculator(int ndim,
-                          const int64_t* shape,
-                          const std::vector<std::vector<int64_t>>& strides) {
+template <int N>
+static CPUOffsetCalculator<N, uint32_t> CPUmake_offset_calculator(
+    int ndim,
+    const int64_t* shape,
+    const std::vector<std::vector<int64_t>>& strides) {
   std::array<const int64_t*, N> strides_array;
   for (int i = 0; i < N; ++i) {
     strides_array[i] = strides[i].data();
   }
 
-  return CPUOffsetCalculator<N, uint32_t, signed_strides>(
-      ndim, shape, strides_array.data());
+  return CPUOffsetCalculator<N, uint32_t>(ndim, shape, strides_array.data());
 }
 
-template <int N, bool signed_strides = false>
-static CPUOffsetCalculator<N, uint32_t, signed_strides>
-CPUmake_offset_calculator(const DenseTensorIteratorBase& iter) {
+template <int N>
+static CPUOffsetCalculator<N, uint32_t> CPUmake_offset_calculator(
+    const DenseTensorIteratorBase& iter) {
   PADDLE_ENFORCE_LE(N,
                     iter.ntensors(),
                     ::common::errors::InvalidArgument(
@@ -170,7 +131,7 @@ CPUmake_offset_calculator(const DenseTensorIteratorBase& iter) {
   for (int i = 0; i < N; i++) {
     strides[i] = iter.operands_[i].stride_bytes.data();
   }
-  return CPUOffsetCalculator<N, uint32_t, signed_strides>(
+  return CPUOffsetCalculator<N, uint32_t>(
       iter.ndim(), iter.shape().data(), strides.data());
 }
 

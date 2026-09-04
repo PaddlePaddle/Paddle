@@ -80,8 +80,8 @@ void CPUIndexElementwisePutWithTensorKernel(
   if (numel == 0 || funcs::HasEmptyIndex(index)) {
     return;
   }
-  auto offset_calc = funcs::CPUmake_offset_calculator_put<3, true>(
-      desired_shape, strides_array);
+  auto offset_calc =
+      funcs::CPUmake_offset_calculator_put<3>(desired_shape, strides_array);
   const int64_t N = numel;
   PADDLE_ENFORCE_EQ(true,
                     (N >= 0 && N <= std::numeric_limits<int32_t>::max()),
@@ -164,8 +164,8 @@ void CPUIndexElementwisePutKernel(const CPUContext& dev_ctx,
   if (numel == 0 || funcs::HasEmptyIndex(index)) {
     return;
   }
-  auto offset_calc = funcs::CPUmake_offset_calculator_put<3, true>(
-      desired_shape, strides_array);
+  auto offset_calc =
+      funcs::CPUmake_offset_calculator_put<3>(desired_shape, strides_array);
   const int64_t N = numel;
   PADDLE_ENFORCE_EQ(true,
                     (N >= 0 && N <= std::numeric_limits<int32_t>::max()),
