@@ -14,10 +14,27 @@
 
 #pragma once
 
+#include <type_traits>
+
 #include "paddle/phi/common/data_type.h"
 
 namespace phi {
 namespace dtype {
+
+template <typename T>
+struct is_floating_point
+    : std::integral_constant<
+          bool,
+          std::is_floating_point<typename std::remove_cv<T>::type>::value ||
+              std::is_same<typename std::remove_cv<T>::type, float16>::value ||
+              std::is_same<typename std::remove_cv<T>::type, bfloat16>::value ||
+              std::is_same<typename std::remove_cv<T>::type,
+                           float8_e4m3fn>::value ||
+              std::is_same<typename std::remove_cv<T>::type,
+                           float8_e5m2>::value> {};
+
+template <typename T>
+inline constexpr bool is_floating_point_v = is_floating_point<T>::value;
 
 template <bool B, typename T>
 struct cond {

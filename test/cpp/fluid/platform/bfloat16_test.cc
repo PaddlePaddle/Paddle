@@ -11,6 +11,7 @@ limitations under the License. */
 
 #include "paddle/phi/common/bfloat16.h"
 
+#include "paddle/phi/common/type_traits.h"
 #include "paddle/phi/kernels/funcs/eigen/extensions.h"
 
 #include "gtest/gtest.h"
@@ -126,9 +127,10 @@ TEST(bfloat16, dense_tensor_cpu) {
 TEST(bfloat16, floating) {
   // compile time assert.
   PADDLE_ENFORCE_EQ(
-      std::is_floating_point<bfloat16>::value,
+      phi::dtype::is_floating_point<bfloat16>::value,
       true,
-      common::errors::Fatal("std::is_floating_point with bfloat16 data type "
+      common::errors::Fatal("phi::dtype::is_floating_point with bfloat16 "
+                            "data type "
                             "should be equal to true but it is not"));
 }
 
