@@ -22,6 +22,36 @@ from paddle.base import core
 from paddle.base.variable_index import _getitem_static
 
 
+def none_before_advanced_index_cases():
+    """``(name, shape, index)`` triples where ``None`` sits before or between
+    advanced indices.
+
+    ``None`` inserts an axis into the tensor produced by basic indexing, so the
+    axis an advanced index binds to shifts by the number of preceding ``None``s.
+    The 1-D cases carry more ``None``s than the tensor has axes, which is what
+    overflows ``advanced_index_dim`` when it is only sized after the rank.
+    """
+    i = [0, 2, 1]
+    j = [1, 0, 2]
+    mask = np.array([True, False, True])
+    return [
+        ('x[None, :, i]', (3, 4, 5, 6), (None, slice(None), i)),
+        ('x[:, None, i]', (3, 4, 5, 6), (slice(None), None, i)),
+        ('x[None, i]', (3, 4, 5, 6), (None, i)),
+        ('x[i, None]', (3, 4, 5, 6), (i, None)),
+        ('x[None, None, i]', (3, 4, 5, 6), (None, None, i)),
+        ('x[None, None, None, i]', (3, 4, 5, 6), (None, None, None, i)),
+        ('x[None, ..., i]', (3, 4, 5, 6), (None, Ellipsis, i)),
+        ('x[None, 0, i]', (3, 4, 5, 6), (None, 0, i)),
+        ('x[None, i, j]', (3, 4, 5, 6), (None, i, j)),
+        ('x[i, None, j]', (3, 4, 5, 6), (i, None, j)),
+        ('x[:, i, None, j]', (3, 4, 5, 6), (slice(None), i, None, j)),
+        ('x[None, i, None, j]', (3, 4, 5, 6), (None, i, None, j)),
+        ('x[None, mask]', (3, 4, 5, 6), (None, mask)),
+        ('x1d[None * 5, i]', (5,), (None, None, None, None, None, i)),
+    ]
+
+
 class TestGetitemInDygraph(unittest.TestCase):
     def setUp(self):
         paddle.disable_static()
@@ -426,6 +456,27 @@ class TestGetitemInDygraph(unittest.TestCase):
         )
 
         np.testing.assert_allclose(result.numpy(), expected_result.numpy())
+
+    def test_none_before_advanced_index(self):
+        # `None` used to be pushed into none_axes without advancing
+        # estimated_dim, so the advanced index bound to an axis shifted by the
+        # number of preceding `None`s and even the forward shape was wrong.
+        for name, shape, index in none_before_advanced_index_cases():
+            with self.subTest(expr=name):
+                np_data = np.random.randn(*shape).astype(self.ndtype)
+
+                if self.dtype == 'bfloat16':
+                    np_data = convert_uint16_to_float(
+                        convert_float_to_uint16(np_data)
+                    )
+                if self.dtype == 'complex64' or self.dtype == 'complex128':
+                    np_data = np_data + 1j * np_data
+
+                x = paddle.to_tensor(np_data, dtype=self.dtype)
+                y = x[index]
+                if self.dtype == 'bfloat16':
+                    y = paddle.cast(y, dtype='float32')
+                np.testing.assert_allclose(y.numpy(), np_data[index])
 
 
 class TestMultipleIndexing(TestGetitemInDygraph):
@@ -1336,6 +1387,23 @@ class TestGetitemInStatic(unittest.TestCase):
             res = self.exe.run(fetch_list=[y])
 
         np.testing.assert_allclose(res[0], np_res)
+
+    def test_none_before_advanced_index(self):
+        # replace_none() strips `None` out of the index before the loop that
+        # tracks estimated_dim, so the advanced index used to bind to an axis
+        # shifted by the number of preceding `None`s and gather_nd reported
+        # index out of range.
+        for name, shape, index in none_before_advanced_index_cases():
+            with self.subTest(expr=name):
+                np_data = np.random.randn(*shape)
+                with paddle.static.program_guard(
+                    paddle.static.Program(), paddle.static.Program()
+                ):
+                    x = paddle.to_tensor(np_data)
+                    y = _getitem_static(x, index)
+                    res = self.exe.run(fetch_list=[y])
+
+                np.testing.assert_allclose(res[0], np_data[index])
 
 
 class TestGetitemBasicIndexOutputView(unittest.TestCase):

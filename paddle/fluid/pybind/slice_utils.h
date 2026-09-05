@@ -443,6 +443,13 @@ static void ParseIndex(const Tensor& tensor,
     } else if (slice_item == Py_None) {
       none_axes->push_back(current_dim + none_count);
       none_count++;
+      // `estimated_dim` counts the axes of the tensor produced by basic
+      // indexing, and that tensor already contains the axis inserted by this
+      // `None` (see the unsqueeze in getTensorWithBasicIndexing). Advancing it
+      // here keeps `advanced_index_dim` in the same coordinate system,
+      // otherwise a `None` placed before an advanced index would bind the index
+      // to the wrong axis.
+      estimated_dim++;
     } else if (PyBool_Check(slice_item)) {
       *has_advanced_index = true;
       none_axes->push_back(current_dim + none_count);

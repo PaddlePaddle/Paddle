@@ -14,12 +14,18 @@
 
 #include "paddle/phi/kernels/index_elementwise_get_grad_kernel.h"
 
+#include <algorithm>
+#include <cstdlib>
+#include <utility>
+#include <vector>
+
 #include "paddle/common/enforce.h"
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/phi/backends/gpu/cuda/cuda_device_function.h"
 #endif
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
+#include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/arange_kernel.h"
@@ -30,7 +36,7 @@
 #include "paddle/phi/kernels/funcs/radix_sort.h"
 #include "paddle/phi/kernels/funcs/stride_utils.h"
 #include "paddle/phi/kernels/reshape_kernel.h"
-#include "paddle/phi/kernels/transpose_kernel.h"
+#include "paddle/phi/kernels/strided_copy_kernel.h"
 
 namespace phi {
 template <typename T, typename IndexT, int nt, int vt, typename offset_calc_t>
@@ -112,7 +118,7 @@ void GPUIndexElementwiseGetGrad(const GPUContext& dev_ctx,
                            &strides_array,
                            &numel,
                            strides_vec);
-  auto offset_calc = funcs::make_offset_calculator_put<3, false, OffsetT>(
+  auto offset_calc = funcs::make_offset_calculator_put<3, true, OffsetT>(
       desired_shape, strides_array);
 
   auto max_grid_size =
@@ -329,37 +335,238 @@ __global__ void IndexingBackwardKernelStride1(const int64_t* sorted_indices,
   }
 }
 
+// The 1 < sliceSize <= WARP_SIZE case lets a single thread own one feature
+// column, so all duplicates of an index can be reduced in `opmath_t` registers
+// and written back exactly once. The generic feature-unrolled kernel instead
+// read-modify-writes `grad_weight` per duplicate, which rounds to `scalar_t`
+// on every step and loses precision for float16/bfloat16. This mirrors the
+// specialized CUDA path used by PyTorch.
+template <typename scalar_t>
+__global__ void IndexingBackwardKernelSmallStride(const int64_t* sorted_indices,
+                                                  const int64_t* indices,
+                                                  const scalar_t* grad_output,
+                                                  scalar_t* grad_weight,
+                                                  int64_t numel,
+                                                  int64_t stride,
+                                                  int64_t stride_before,
+                                                  int64_t outer_dim,
+                                                  bool accumulate) {
+  using opmath_t = typename phi::dtype::MPTypeTrait<scalar_t>::Type;
+
+  const int64_t tidx = threadIdx.x;
+  if (tidx >= stride) return;
+
+  for (int64_t z = blockIdx.z; z < outer_dim; z += gridDim.z) {
+    for (int64_t idx =
+             static_cast<int64_t>(blockIdx.x) * blockDim.y + threadIdx.y;
+         idx < numel;
+         idx += static_cast<int64_t>(gridDim.x) * blockDim.y) {
+      const int64_t current_index = sorted_indices[idx];
+      if (idx != 0 && current_index == sorted_indices[idx - 1]) {
+        continue;
+      }
+
+      int64_t num_duplicates = 1;
+      while (idx + num_duplicates < numel &&
+             sorted_indices[idx + num_duplicates] == current_index) {
+        ++num_duplicates;
+      }
+
+      const int64_t weight_row = current_index * stride + z * stride_before;
+      const opmath_t scale = static_cast<opmath_t>(1.0);
+
+      if (!accumulate) {
+        const int64_t grad_row =
+            indices[idx + num_duplicates - 1] * stride + z * numel * stride;
+        grad_weight[weight_row + tidx] = static_cast<scalar_t>(
+            static_cast<opmath_t>(grad_output[grad_row + tidx]) * scale);
+      } else {
+        opmath_t gradient = static_cast<opmath_t>(0.0);
+        for (int64_t i = 0; i < num_duplicates; ++i) {
+          const int64_t grad_row =
+              indices[idx + i] * stride + z * numel * stride;
+          gradient +=
+              static_cast<opmath_t>(grad_output[grad_row + tidx]) * scale;
+        }
+        grad_weight[weight_row + tidx] = static_cast<scalar_t>(
+            static_cast<opmath_t>(grad_weight[weight_row + tidx]) + gradient);
+      }
+    }
+  }
+}
+
+// Where the indexed axes sit inside the indexed view, plus that view's shape
+// and where that view lives inside x_grad.  The kernel arguments only describe
+// the *restrided* view (indexed axes already replaced by the broadcast index
+// shape), so this has to be recovered.
+struct SortedPathLayout {
+  int64_t dims_before;
+  std::vector<int64_t> view_dims;     // the view's shape before indexing
+  std::vector<int64_t> view_strides;  // its element strides inside x_grad
+  int64_t view_offset;                // its byte offset inside x_grad
+  bool is_whole_tensor;               // view == the whole contiguous x_grad
+};
+
+// A strided region is free of self overlap when, walking its axes from the
+// smallest stride magnitude up, every stride clears the span already covered.
+// Only magnitudes matter: negating an axis mirrors the region onto the same set
+// of elements, so a reversed view (x[::-1, idx]) is just as non overlapping as
+// the forward one.  Reversed views do reach this kernel -- the forward
+// index_elementwise_get_kernel keeps its offsets signed -- so the negative
+// case is live, not defensive.
+static bool IsNonOverlapping(const std::vector<int64_t>& dims,
+                             const std::vector<int64_t>& strides) {
+  std::vector<std::pair<int64_t, int64_t>> axes;  // (|stride|, extent)
+  for (size_t i = 0; i < dims.size(); ++i) {
+    if (dims[i] == 1) continue;         // its stride is never used
+    if (strides[i] == 0) return false;  // broadcast axis, not a real region
+    axes.emplace_back(std::abs(strides[i]), dims[i]);
+  }
+  std::sort(axes.begin(), axes.end());
+  int64_t span = 1;
+  for (auto& [stride, extent] : axes) {
+    if (stride < span) return false;
+    span += (extent - 1) * stride;
+  }
+  return true;
+}
+
+// restride_src() (paddle/fluid/pybind/slice_utils.h) replaces the indexed axes
+// with the broadcast index shape and gives exactly those axes a zero stride, so
+// the run of zeros in `input_strides` marks the block and its start is
+// dims_before.  `index_dims` starts with the extents of exactly those axes (see
+// AdvancedIndex::indexed_sizes, terminated by -1), so the view's pre-indexing
+// shape and its strides inside x_grad are both reconstructible.
+//
+// Returns false only when the region is degenerate or overlaps itself, in which
+// case the caller falls back to the elementwise path.
+static bool DeriveSortedPathLayout(const std::vector<int64_t>& input_dims,
+                                   const std::vector<int64_t>& input_strides,
+                                   const std::vector<int64_t>& index_dims,
+                                   const std::vector<int64_t>& index_strides,
+                                   int64_t slice_offset,
+                                   int64_t elesize,
+                                   int64_t grad_numel,
+                                   SortedPathLayout* layout) {
+  const size_t ndim = input_dims.size();
+  const size_t nidx = index_strides.size();
+  if (nidx == 0 || ndim == 0 || input_strides.size() != ndim ||
+      index_dims.size() < nidx) {
+    return false;
+  }
+
+  size_t db = 0;
+  while (db < ndim && input_strides[db] != 0) ++db;
+  size_t nblock = 0;
+  while (db + nblock < ndim && input_strides[db + nblock] == 0) ++nblock;
+  if (nblock == 0) return false;
+  for (size_t i = db + nblock; i < ndim; ++i) {
+    if (input_strides[i] == 0) return false;
+  }
+
+  std::vector<int64_t> view(input_dims.begin(), input_dims.begin() + db);
+  std::vector<int64_t> vstride(input_strides.begin(),
+                               input_strides.begin() + db);
+  for (size_t i = 0; i < nidx; ++i) {
+    if (index_dims[i] < 0) return false;
+    view.push_back(index_dims[i]);
+    vstride.push_back(index_strides[i] / elesize);
+  }
+  view.insert(view.end(), input_dims.begin() + db + nblock, input_dims.end());
+  vstride.insert(
+      vstride.end(), input_strides.begin() + db + nblock, input_strides.end());
+
+  if (!IsNonOverlapping(view, vstride)) return false;
+
+  int64_t numel = 1;
+  for (int64_t s : view) numel *= s;
+  if (numel <= 0 || numel > grad_numel) return false;
+
+  // Every element the sort based kernel touches sits at
+  //   slice_offset / elesize + sum_k i_k * view_strides[k]
+  // so both ends of that range have to stay inside x_grad.  Checking the span
+  // rather than just numel also covers the strided cases, where the region is
+  // sparse and reaches further than its element count; a reversed axis has a
+  // negative stride and pulls the low end below slice_offset.
+  const int64_t base = slice_offset / elesize;
+  funcs::OperandReach reach;
+  funcs::AccumulateReach(view.size(), view.data(), vstride.data(), 1, &reach);
+  const int64_t lo = base + reach.lo;
+  const int64_t hi = base + reach.hi;
+  PADDLE_ENFORCE_GE(
+      lo,
+      0,
+      common::errors::InvalidArgument(
+          "The indexed view starts before the beginning of x_grad: its lowest "
+          "element is at position %d. slice_offset is %d bytes and the view is "
+          "%s with strides %s.",
+          lo,
+          slice_offset,
+          make_ddim(view).to_str(),
+          make_ddim(vstride).to_str()));
+  PADDLE_ENFORCE_LT(
+      hi,
+      grad_numel,
+      common::errors::InvalidArgument(
+          "The indexed view runs past the end of x_grad: its highest element "
+          "is at position %d but x_grad only holds %d elements. slice_offset "
+          "is %d bytes and the view is %s with strides %s.",
+          hi,
+          grad_numel,
+          slice_offset,
+          make_ddim(view).to_str(),
+          make_ddim(vstride).to_str()));
+
+  std::vector<int64_t> contig(view.size(), 1);
+  for (int i = static_cast<int>(view.size()) - 2; i >= 0; --i) {
+    contig[i] = contig[i + 1] * view[i + 1];
+  }
+  layout->is_whole_tensor =
+      (slice_offset == 0 && numel == grad_numel && vstride == contig);
+  layout->dims_before = static_cast<int64_t>(db);
+  layout->view_dims = std::move(view);
+  layout->view_strides = std::move(vstride);
+  layout->view_offset = slice_offset;
+  return true;
+}
+
 template <typename T, typename IndexT>
 void IndexPutWithSortKernel(const GPUContext& dev_ctx,
-                            const DenseTensor& input,
                             const DenseTensor& value,
                             const std::vector<const DenseTensor*>& indices,
-                            const std::vector<int64_t>& input_dims,
-                            const std::vector<int64_t>& input_strides,
-                            const std::vector<int64_t>& index_dims,
-                            const std::vector<int64_t>& index_strides,
-                            const int64_t slice_offset,
+                            const SortedPathLayout& layout,
                             const bool accumulate,
                             DenseTensor* output) {
   DenseTensor& self = *output;
 
-  if (indices.size() > static_cast<size_t>(self.dims().size())) {
+  if (indices.size() > layout.view_dims.size()) {
     PADDLE_THROW(common::errors::InvalidArgument(
         "Too many indices for tensor of dimension %d (got %d).",
-        self.dims().size(),
+        layout.view_dims.size(),
         indices.size()));
   }
 
-  const bool unsafe = true;
   const bool self_contiguous = self.meta().is_contiguous();
   auto self_ =
       self_contiguous ? self : Contiguous<T, GPUContext>(dev_ctx, self);
-  DenseTensor linearIndex, src, expandedValue = value;
-  int64_t nElemBefore, strideBefore, sliceSize;
-  std::vector<int64_t> inversePerm;
-  std::tie(
-      linearIndex, src, nElemBefore, strideBefore, sliceSize, inversePerm) =
-      funcs::makeLinearIndex<T>(dev_ctx, self_, indices, !unsafe);
+  DenseTensor expandedValue = value;
+
+  // Reinterpret x_grad with the shape of the indexed view so that the linear
+  // index is built against the axes the indices actually address. This is a
+  // pure relabelling: the two agree elementwise and both are contiguous.
+  DenseTensor view_src = self_;
+  auto view_meta = self_.meta();
+  view_meta.dims = make_ddim(layout.view_dims);
+  view_meta.strides = DenseTensorMeta::calc_strides(view_meta.dims);
+  view_src.set_meta(view_meta);
+
+  std::vector<DenseTensor> aligned(layout.view_dims.size());
+  for (size_t i = 0; i < indices.size(); ++i) {
+    aligned[layout.dims_before + i] = *indices[i];
+  }
+
+  auto [linearIndex, nElemBefore, strideBefore, sliceSize] =
+      funcs::computeLinearIndex(dev_ctx, view_src, aligned, false);
 
   int64_t num_indices = linearIndex.numel();
 
@@ -387,8 +594,7 @@ void IndexPutWithSortKernel(const GPUContext& dev_ctx,
   }
 
   if (num_indices > 0 && sliceSize > 0) {
-    const bool permuted = !src.meta().is_contiguous();
-    DenseTensor src_ = permuted ? Contiguous<T, GPUContext>(dev_ctx, src) : src;
+    DenseTensor& src_ = self_;
     linearIndex = Reshape<IndexT, GPUContext>(dev_ctx, linearIndex, {-1});
 
     DenseTensor sorted_indices;
@@ -449,6 +655,17 @@ void IndexPutWithSortKernel(const GPUContext& dev_ctx,
                                        strideBefore,
                                        nElemBefore,
                                        accumulate);
+    } else if (sliceSize <= WARP_SIZE) {
+      IndexingBackwardKernelSmallStride<T>
+          <<<grid, block, 0, stream>>>(sorted_indices.data<IndexT>(),
+                                       orig_indices.data<IndexT>(),
+                                       expandedValue.data<T>(),
+                                       src_.data<T>(),
+                                       num_indices,
+                                       sliceSize,
+                                       strideBefore,
+                                       nElemBefore,
+                                       accumulate);
     } else {
       IndexingBackwardKernel<T, UNROLL>
           <<<grid, block, 0, stream>>>(sorted_indices.data<IndexT>(),
@@ -462,17 +679,7 @@ void IndexPutWithSortKernel(const GPUContext& dev_ctx,
                                        accumulate);
     }
 
-    if (permuted) {
-      DenseTensor transposed_src;
-      std::vector<int> inversePerm_int(inversePerm.size());
-      std::transform(inversePerm.begin(),
-                     inversePerm.end(),
-                     inversePerm_int.begin(),
-                     [](int64_t x) { return static_cast<int>(x); });
-
-      Transpose<T, GPUContext>(dev_ctx, src_, inversePerm_int, &transposed_src);
-      Copy(dev_ctx, transposed_src, dev_ctx.GetPlace(), false, output);
-    } else if (!self_contiguous) {
+    if (!self_contiguous) {
       Copy(dev_ctx, self_, dev_ctx.GetPlace(), false, output);
     }
   }
@@ -515,24 +722,97 @@ void IndexElementwiseGetGradKernel(const Context& dev_ctx,
                         DataTypeToString(index_type),
                         DataTypeToString(DataType::INT64)));
 
-  if (accumulate && index.size() == 1 && !is_combined) {
+  // slice_offset is the byte offset of the indexed view inside x_grad's buffer,
+  // measured in the forward pass. Both the sort based path and the elementwise
+  // fallback add it to x_grad's base pointer, so a bogus value would turn into
+  // an out of bounds write. Reject it here instead.
+  const int64_t grad_bytes = x_grad->numel() * static_cast<int64_t>(sizeof(T));
+  PADDLE_ENFORCE_GE(
+      slice_offset,
+      0,
+      common::errors::InvalidArgument(
+          "slice_offset must be non-negative, but got %d.", slice_offset));
+  PADDLE_ENFORCE_LT(
+      slice_offset,
+      grad_bytes,
+      common::errors::InvalidArgument(
+          "slice_offset (%d bytes) must point inside x_grad, which only holds "
+          "%d bytes.",
+          slice_offset,
+          grad_bytes));
+
+  // slice_offset and index_strides are byte quantities that both paths turn
+  // into T* arithmetic, so they have to be whole elements. By construction they
+  // always are (slice_offset is a pointer delta between two views of one
+  // allocation, index_strides is an element stride times sizeof(T)); assert it
+  // here so neither path can build a misaligned T*.
+  PADDLE_ENFORCE_EQ(
+      slice_offset % static_cast<int64_t>(sizeof(T)),
+      0,
+      common::errors::InvalidArgument(
+          "slice_offset (%d bytes) must be a whole number of %d byte elements.",
+          slice_offset,
+          sizeof(T)));
+  for (size_t i = 0; i < index_strides.size(); ++i) {
+    PADDLE_ENFORCE_EQ(
+        index_strides[i] % static_cast<int64_t>(sizeof(T)),
+        0,
+        common::errors::InvalidArgument(
+            "index_strides[%d] (%d bytes) must be a whole number of %d byte "
+            "elements.",
+            i,
+            index_strides[i],
+            sizeof(T)));
+  }
+
+  if (accumulate) {
 #ifdef PADDLE_WITH_CUDA
-    IndexPutWithSortKernel<T, int64_t>(dev_ctx,
-                                       x,
-                                       out_grad,
-                                       index,
-                                       input_dims,
-                                       input_strides,
-                                       index_dims,
-                                       index_strides,
-                                       slice_offset,
-                                       accumulate,
-                                       x_grad);
-    return;
+    // PyTorch routes every accumulating advanced index backward through the
+    // sort based kernel, so how much the duplicate reduction rounds depends on
+    // sliceSize alone and not on how the index expression was spelled. Do the
+    // same here.
+    SortedPathLayout layout;
+    if (DeriveSortedPathLayout(input_dims,
+                               input_strides,
+                               index_dims,
+                               index_strides,
+                               slice_offset,
+                               static_cast<int64_t>(sizeof(T)),
+                               x_grad->numel(),
+                               &layout)) {
+      if (layout.is_whole_tensor) {
+        IndexPutWithSortKernel<T, int64_t>(
+            dev_ctx, out_grad, index, layout, accumulate, x_grad);
+      } else {
+        // The indices address a strided sub region of x (slices were applied
+        // first), which the sort based kernel cannot write to because it
+        // addresses grad_weight as one flat buffer. Reduce into a contiguous
+        // buffer shaped like that view and scatter it back afterwards, which is
+        // how PyTorch composes slice_backward with index_backward. x_grad is
+        // already zeroed, so the copy needs no accumulation.
+        DenseTensor view_grad;
+        view_grad.Resize(make_ddim(layout.view_dims));
+        dev_ctx.template Alloc<T>(&view_grad);
+        funcs::set_constant(dev_ctx, &view_grad, static_cast<float>(0));
+        IndexPutWithSortKernel<T, int64_t>(
+            dev_ctx, out_grad, index, layout, accumulate, &view_grad);
+        auto grad_meta = x_grad->meta();
+        StridedCopyKernel<T, Context>(dev_ctx,
+                                      view_grad,
+                                      layout.view_dims,
+                                      layout.view_strides,
+                                      layout.view_offset,
+                                      x_grad);
+        x_grad->set_meta(grad_meta);
+      }
+      return;
+    }
 #endif
   }
-  if (funcs::IsInUint32Range(x_grad->numel() * sizeof(T),
-                             out_grad.numel() * sizeof(T))) {
+
+  if (funcs::IsInInt32Range(x_grad->numel() * sizeof(T),
+                            out_grad.numel() * sizeof(T),
+                            funcs::IndexOperandByteSpan(index_dims))) {
     GPUIndexElementwiseGetGrad<T>(dev_ctx,
                                   x,
                                   out_grad,
