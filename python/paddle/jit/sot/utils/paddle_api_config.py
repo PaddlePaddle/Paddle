@@ -165,4 +165,13 @@ def is_directly_run_api(api):
             paddle.base.libpaddle.get_device_properties
         )
 
+    if hasattr(paddle.core, "nvprof_init"):
+        NATIVE_CODE_PURE_FUNCTIONS |= {
+            paddle.core.nvprof_start,
+            paddle.core.nvprof_stop,
+            paddle.core.nvprof_nvtx_push,
+            paddle.core.nvprof_nvtx_pop,
+            paddle.core.nvprof_enable_record_event,
+            paddle.core.nvprof_disable_record_event,
+        }
     return api in NATIVE_CODE_PURE_FUNCTIONS
