@@ -840,6 +840,10 @@ class Tensor : public TensorBase {
   // expand_as - expands to same size as another tensor
   Tensor expand_as(const Tensor& other) const;
 
+  // broadcast_to - broadcasts tensor to new size
+  Tensor broadcast_to(at::IntArrayRef size) const;
+  Tensor broadcast_to_symint(c10::SymIntArrayRef size) const;
+
   PaddleTensor _PD_GetInner() const { return tensor_; }
   PaddleTensor& _PD_GetInner() { return tensor_; }
 };  // NOLINT(readability/braces)
