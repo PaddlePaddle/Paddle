@@ -1446,6 +1446,11 @@ inline void PermuteAndTranspose(
                                        phi::gpuMemcpyDeviceToDevice,
                                        dev_ctx.stream());
   } else {
+    // The guard of `count` is sufficient for both dispatch paths.
+    // TransposeLauncher uses tiled row/column/channel bounds in
+    // TransposeDataReader/Writer.
+    // PermuteLauncher bounds `idx` by `main_cnt_ = count / VecSize` for the
+    // vectorized part and by `tid + (count - tail_cnt)` for the tail.
     if (count < std::numeric_limits<uint32_t>::max() / 2) {
       PermuteDispatch<T, uint32_t>(dev_ctx,
                                    static_cast<uint32_t>(count),
