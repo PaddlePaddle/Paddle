@@ -247,6 +247,311 @@ class TestIndexElementwiseGetGradStride1(unittest.TestCase):
             paddle.enable_static()
 
 
+@unittest.skipUnless(
+    paddle.device.is_compiled_with_cuda()
+    and not paddle.device.is_compiled_with_rocm(),
+    'The sorted-index backward kernels are built for CUDA only.',
+)
+class TestIndexElementwiseGetGradSmallStride(unittest.TestCase):
+    """Duplicate indices with 1 < sliceSize <= 32 must reduce all duplicates in
+    float32 and round to the low-precision dtype only once. Rounding on every
+    duplicate would lose up to one ulp per accumulation step.
+
+    ROCm/DCU is excluded because ``IndexPutWithSortKernel`` is guarded by
+    ``PADDLE_WITH_CUDA``; those builds fall back to a bfloat16/float16
+    ``CudaAtomicAdd`` that rounds on every duplicate.
+    """
+
+    def _reference_grad(self, rows, index_np, out_grad_np, dtype):
+        expected = np.zeros([rows, out_grad_np.shape[1]], dtype=np.float32)
+        np.add.at(expected, index_np, out_grad_np)
+        return paddle.to_tensor(expected).astype(dtype).astype('float32')
+
+    def test_low_precision_accumulation(self):
+        paddle.disable_static(place=paddle.CUDAPlace(0))
+
+        try:
+            rows = 16
+            for dtype in ('float16', 'bfloat16'):
+                for slice_size in (2, 8, 32):
+                    with self.subTest(dtype=dtype, slice_size=slice_size):
+                        rng = np.random.default_rng(2025)
+                        index_np = rng.integers(
+                            0, rows, size=(64,), dtype=np.int64
+                        )
+                        out_grad = paddle.to_tensor(
+                            rng.uniform(-0.5, 0.5, (64, slice_size)),
+                            dtype=dtype,
+                        )
+                        x = paddle.zeros([rows, slice_size], dtype=dtype)
+                        x.stop_gradient = False
+
+                        x[paddle.to_tensor(index_np)].backward(out_grad)
+
+                        expected = self._reference_grad(
+                            rows,
+                            index_np,
+                            out_grad.astype('float32').numpy(),
+                            dtype,
+                        )
+                        np.testing.assert_array_equal(
+                            x.grad.astype('float32').numpy(),
+                            expected.numpy(),
+                        )
+        finally:
+            paddle.enable_static()
+
+
+@unittest.skipUnless(
+    paddle.device.is_compiled_with_cuda(), 'CUDA is required for this test.'
+)
+class TestIndexElementwiseGetGradSlicedView(unittest.TestCase):
+    """Advanced indexing applied to a basic slice.
+
+    The slice is a view, so the backward kernel receives its byte offset inside
+    ``x_grad`` (``slice_offset``) plus the view's strides, and has to scatter
+    the reduced gradient back through them. A wrong offset or stride would move
+    the whole gradient block, which shows up both as wrong values inside the
+    slice and as non-zero gradient on rows the expression never read. The cases
+    below deliberately include non-zero offsets (``x[1::2]``, ``x[2:7:2]``),
+    and are run with ``FLAGS_use_stride_kernel`` both on and off, since only
+    the former reaches ``index_elementwise_get_grad`` at all.
+    """
+
+    SHAPE = (8, 6)
+
+    def _cases(self):
+        return [
+            ('x[::2, idx]', lambda t, i: t[::2, i], (slice(None, None, 2),)),
+            ('x[1::2, idx]', lambda t, i: t[1::2, i], (slice(1, None, 2),)),
+            ('x[2:7:2, idx]', lambda t, i: t[2:7:2, i], (slice(2, 7, 2),)),
+            ('x[1:5, idx]', lambda t, i: t[1:5, i], (slice(1, 5),)),
+            (
+                'x[1::2, idx, None]',
+                lambda t, i: t[1::2, i, None],
+                (slice(1, None, 2),),
+            ),
+        ]
+
+    def _expected(self, base_slice, index_np, out_grad_np, dtype):
+        """Reduce in float32 and round once, which is what the sorted-index
+        kernel does, then place the block back at the sliced rows."""
+        rows = out_grad_np.shape[0]
+        block = np.zeros([rows, self.SHAPE[1]], dtype=np.float32)
+        np.add.at(block, (slice(None), index_np), out_grad_np)
+        block = paddle.to_tensor(block).astype(dtype).astype('float32').numpy()
+        expected = np.zeros(self.SHAPE, dtype=np.float32)
+        expected[base_slice] = block
+        return expected
+
+    def _run(self, use_stride_kernel):
+        # 7 duplicates of column 2 exercise the duplicate reduction; the
+        # gradient of every untouched column stays exactly zero.  The gradient
+        # values are quarters so that every partial sum is exact in float16 and
+        # bfloat16 too, which keeps the comparison independent of the order the
+        # kernel reduces duplicates in.
+        index_np = np.array([2, 2, 2, 2, 2, 2, 2, 5], dtype=np.int64)
+        for dtype in ('float32', 'float16', 'bfloat16'):
+            for name, fn, base_slice in self._cases():
+                with self.subTest(
+                    use_stride_kernel=use_stride_kernel, dtype=dtype, expr=name
+                ):
+                    x = paddle.zeros(list(self.SHAPE), dtype=dtype)
+                    x.stop_gradient = False
+                    out = fn(x, paddle.to_tensor(index_np))
+
+                    rows = out.shape[0]
+                    steps = np.arange(rows * index_np.size, dtype=np.float32)
+                    out_grad_np = ((steps % 8) + 1).reshape(
+                        [rows, index_np.size]
+                    ) / 4
+                    out_grad = paddle.to_tensor(out_grad_np, dtype=dtype)
+                    out.backward(out_grad.reshape(out.shape))
+
+                    np.testing.assert_array_equal(
+                        x.grad.astype('float32').numpy(),
+                        self._expected(
+                            base_slice, index_np, out_grad_np, dtype
+                        ),
+                    )
+
+    def test_sliced_view_grad(self):
+        paddle.disable_static(place=paddle.CUDAPlace(0))
+        original = paddle.get_flags('FLAGS_use_stride_kernel')[
+            'FLAGS_use_stride_kernel'
+        ]
+        try:
+            for use_stride_kernel in (True, False):
+                paddle.set_flags({'FLAGS_use_stride_kernel': use_stride_kernel})
+                self._run(use_stride_kernel)
+        finally:
+            paddle.set_flags({'FLAGS_use_stride_kernel': original})
+            paddle.enable_static()
+
+
+@unittest.skipUnless(
+    paddle.device.is_compiled_with_cuda()
+    and not paddle.device.is_compiled_with_rocm(),
+    'The sorted-index backward kernels are built for CUDA only.',
+)
+class TestIndexElementwiseGetGradSlicedViewRounding(unittest.TestCase):
+    """A basic slice is a strided view, so its gradient is reduced into a
+    contiguous scratch buffer and scattered back through the view's strides.
+    That reduction must still happen in float32 and round only once. Unlike
+    ``TestIndexElementwiseGetGradSlicedView`` the gradient values here are not
+    exactly representable, so a per-duplicate ``CudaAtomicAdd`` fallback would
+    round on every step and fail the comparison.
+    """
+
+    SHAPE = (8, 6)
+
+    def _cases(self):
+        return [
+            ('x[1::2, idx]', lambda t, i: t[1::2, i], (slice(1, None, 2),)),
+            ('x[2:7:2, idx]', lambda t, i: t[2:7:2, i], (slice(2, 7, 2),)),
+        ]
+
+    def test_sliced_view_rounds_once(self):
+        paddle.disable_static(place=paddle.CUDAPlace(0))
+        index_np = np.array([2, 2, 2, 2, 2, 2, 2, 5], dtype=np.int64)
+        try:
+            for dtype in ('float16', 'bfloat16'):
+                for name, fn, base_slice in self._cases():
+                    with self.subTest(dtype=dtype, expr=name):
+                        rng = np.random.default_rng(2026)
+                        x = paddle.zeros(list(self.SHAPE), dtype=dtype)
+                        x.stop_gradient = False
+                        out = fn(x, paddle.to_tensor(index_np))
+
+                        out_grad = paddle.to_tensor(
+                            rng.uniform(-0.5, 0.5, tuple(out.shape)),
+                            dtype=dtype,
+                        )
+                        out.backward(out_grad)
+
+                        block = np.zeros(
+                            [out.shape[0], self.SHAPE[1]], dtype=np.float32
+                        )
+                        np.add.at(
+                            block,
+                            (slice(None), index_np),
+                            out_grad.astype('float32').numpy(),
+                        )
+                        block = (
+                            paddle.to_tensor(block)
+                            .astype(dtype)
+                            .astype('float32')
+                            .numpy()
+                        )
+                        expected = np.zeros(self.SHAPE, dtype=np.float32)
+                        expected[base_slice] = block
+
+                        np.testing.assert_array_equal(
+                            x.grad.astype('float32').numpy(), expected
+                        )
+        finally:
+            paddle.enable_static()
+
+
+@unittest.skipUnless(
+    paddle.device.is_compiled_with_cuda(), 'CUDA is required for this test.'
+)
+class TestIndexElementwiseNegativeStrideView(unittest.TestCase):
+    """Advanced indexing applied to a reversed view.
+
+    A negative step makes the view's stride negative and puts its base offset
+    at the *highest* address of that axis, so every element the kernel touches
+    sits at a non-positive offset from ``slice_offset``. The offset calculators
+    must therefore keep their offsets in a signed type; an unsigned one turns
+    those offsets into huge positive numbers and the kernel reads or writes
+    outside the tensor.
+
+    numpy is the reference: torch rejects negative steps outright
+    (``step must be greater than zero``), so there is nothing to compare
+    against there. The backward reference is exact rather than approximate --
+    running the same expression on an array of flat positions names the source
+    element of every output element, which is exactly what the gradient
+    scatters into.
+
+    Ranks above two matter on their own: once an axis is left over after the
+    indexed one, the iteration dimensions get sorted by stride, and ordering a
+    negative stride as the smallest one permutes the output layout.
+    """
+
+    SHAPES = ((8, 6), (8, 6, 6), (8, 6, 33))
+
+    def _cases(self, ndim):
+        cases = [
+            ('x[::-1, idx]', lambda t, i: t[::-1, i]),
+            ('x[::-2, idx]', lambda t, i: t[::-2, i]),
+            ('x[1::-1, idx]', lambda t, i: t[1::-1, i]),
+            ('x[idx, ::-1]', lambda t, i: t[i, ::-1]),
+            ('x[::-1][idx]', lambda t, i: t[::-1][i]),
+            ('x[:, ::-1][idx]', lambda t, i: t[:, ::-1][i]),
+            ('x[::-1, ::-1][idx]', lambda t, i: t[::-1, ::-1][i]),
+            ('x[..., ::-1][idx]', lambda t, i: t[..., ::-1][i]),
+            ('x[::-1, idx2]', lambda t, i: t[::-1, i]),
+            # x[::-1][:, idx] is left out on purpose: advanced indexing on a
+            # non-contiguous base with the indexed axis after a sliced one is
+            # broken for positive steps too (x[::2][:, idx] returns the wrong
+            # shape), so it is not a negative-stride issue.
+        ]
+        if ndim > 2:
+            cases += [
+                ('x[::-1, :, idx]', lambda t, i: t[::-1, :, i]),
+                ('x[idx, ::-1, :]', lambda t, i: t[i, ::-1, :]),
+                ('x[::-1, idx, ::-1]', lambda t, i: t[::-1, i, ::-1]),
+            ]
+        return cases
+
+    def _run(self, dtype, shape):
+        # Integral values keep every partial sum exact, so the comparison is
+        # independent of the order duplicates are reduced in.
+        x_np = (
+            np.arange(np.prod(shape), dtype=np.float32)
+            .reshape(shape)
+            .astype(dtype)
+        )
+        positions = np.arange(np.prod(shape), dtype=np.int64).reshape(shape)
+        idx_np = np.array([2, 5, 2, 0, 5], dtype=np.int64)
+        idx2_np = np.array([[1, 3], [3, 1], [0, 0]], dtype=np.int64)
+
+        for name, fn in self._cases(len(shape)):
+            index_np = idx2_np if 'idx2' in name else idx_np
+            with self.subTest(dtype=dtype, shape=shape, expr=name):
+                expected = fn(x_np, index_np)
+                selected = fn(positions, index_np)
+                grad_np = (
+                    np.arange(selected.size, dtype=np.float32).reshape(
+                        selected.shape
+                    )
+                    % 8
+                ) + 1
+                expected_grad = np.zeros(positions.size, dtype=np.float32)
+                np.add.at(
+                    expected_grad, selected.reshape(-1), grad_np.reshape(-1)
+                )
+                expected_grad = expected_grad.reshape(shape)
+
+                x = paddle.to_tensor(x_np, dtype=dtype)
+                x.stop_gradient = False
+                out = fn(x, paddle.to_tensor(index_np))
+                self.assertEqual(list(out.shape), list(expected.shape))
+                np.testing.assert_array_equal(out.numpy(), expected)
+
+                out.backward(paddle.to_tensor(grad_np, dtype=dtype))
+                np.testing.assert_array_equal(x.grad.numpy(), expected_grad)
+
+    def test_negative_stride_view_grad(self):
+        paddle.disable_static(place=paddle.CUDAPlace(0))
+        try:
+            for dtype in ('float32', 'float64'):
+                for shape in self.SHAPES:
+                    self._run(dtype, shape)
+        finally:
+            paddle.enable_static()
+
+
 if __name__ == '__main__':
     paddle.enable_static()
     unittest.main()

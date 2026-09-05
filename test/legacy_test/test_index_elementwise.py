@@ -189,6 +189,71 @@ class TestIndexElementwiseBool4D_k3_AllDtypes(TestIndexElementwiseBool):
             self.test_dygraph()
 
 
+class TestIndexElementwiseNegativeStride(unittest.TestCase):
+    """Advanced indexing on a reversed view.
+
+    ``x[::-1]`` is a view with a negative stride whose base offset points at the
+    highest address of that axis, so the gather kernel has to reach *backwards*
+    from ``slice_offset``. Its offset calculator must use a signed offset type;
+    an unsigned one wraps those offsets into huge positive values and the kernel
+    reads outside ``x``. numpy is the reference -- torch refuses negative steps.
+
+    Ranks above two matter on their own: once an axis is left over after the
+    indexed one, the iteration dimensions get sorted by stride, and ordering a
+    negative stride as the smallest one permutes the output layout.
+    """
+
+    SHAPES = ((8, 6), (8, 6, 6), (8, 6, 33))
+
+    def _cases(self, ndim):
+        cases = [
+            ('x[::-1, idx]', lambda t, i: t[::-1, i]),
+            ('x[::-2, idx]', lambda t, i: t[::-2, i]),
+            ('x[1::-1, idx]', lambda t, i: t[1::-1, i]),
+            ('x[idx, ::-1]', lambda t, i: t[i, ::-1]),
+            ('x[::-1][idx]', lambda t, i: t[::-1][i]),
+            ('x[:, ::-1][idx]', lambda t, i: t[:, ::-1][i]),
+            ('x[::-1, ::-1][idx]', lambda t, i: t[::-1, ::-1][i]),
+            ('x[..., ::-1][idx]', lambda t, i: t[..., ::-1][i]),
+            ('x[::-1, idx2]', lambda t, i: t[::-1, i]),
+            # x[::-1][:, idx] is left out on purpose: indexing an axis that
+            # comes after a sliced one on a non-contiguous base is broken for
+            # positive steps too, so it is not a negative-stride issue.
+        ]
+        if ndim > 2:
+            cases += [
+                ('x[::-1, :, idx]', lambda t, i: t[::-1, :, i]),
+                ('x[idx, ::-1, :]', lambda t, i: t[i, ::-1, :]),
+                ('x[::-1, idx, ::-1]', lambda t, i: t[::-1, i, ::-1]),
+            ]
+        return cases
+
+    def test_dygraph(self):
+        paddle.disable_static()
+        try:
+            idx_np = np.array([2, 5, 2, 0, 5], dtype=np.int64)
+            idx2_np = np.array([[1, 3], [3, 1], [0, 0]], dtype=np.int64)
+            for shape in self.SHAPES:
+                x_np = np.arange(np.prod(shape), dtype=np.float32).reshape(
+                    shape
+                )
+                for dtype in ('float32', 'float64', 'int64'):
+                    for name, fn in self._cases(len(shape)):
+                        index_np = idx2_np if 'idx2' in name else idx_np
+                        with self.subTest(dtype=dtype, shape=shape, expr=name):
+                            expected = fn(x_np.astype(dtype), index_np)
+                            out = fn(
+                                paddle.to_tensor(x_np, dtype=dtype),
+                                paddle.to_tensor(index_np),
+                            )
+                            self.assertEqual(
+                                list(out.shape), list(expected.shape)
+                            )
+                            np.testing.assert_array_equal(out.numpy(), expected)
+        finally:
+            paddle.enable_static()
+
+
 if __name__ == '__main__':
     paddle.enable_static()
     unittest.main()

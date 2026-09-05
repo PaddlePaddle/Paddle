@@ -163,6 +163,51 @@ struct OffsetCalculator {
         strides_[i][arg] = strides[arg][i] / element_size;
       }
     }
+    if constexpr (signed_strides) {
+      // Signed offsets are what makes reversed views (negative strides) work,
+      // but they also halve the reachable range compared to the unsigned
+      // instantiation.  Verify that the caller's 32/64 bit dispatch picked an
+      // INDEX_T wide enough to hold every offset this calculator can produce.
+      CheckOffsetRange(dims, shape, strides, element_sizes);
+    }
+  }
+
+  static void CheckOffsetRange(int dims,
+                               const int64_t* shape,
+                               const int64_t* const* strides,
+                               const int64_t* element_sizes) {
+    for (int arg = 0; arg < NARGS; arg++) {
+      const int64_t element_size =
+          (element_sizes == nullptr ? 1LL : element_sizes[arg]);
+      int64_t lo = 0;
+      int64_t hi = 0;
+      for (int i = 0; i < dims; i++) {
+        const int64_t reach = (shape[i] - 1) * (strides[arg][i] / element_size);
+        if (reach < 0) {
+          lo += reach;
+        } else {
+          hi += reach;
+        }
+      }
+      PADDLE_ENFORCE_GE(
+          lo,
+          static_cast<int64_t>(std::numeric_limits<stride_t>::lowest()),
+          common::errors::PreconditionNotMet(
+              "Offset %d of operand %d underflows the %d bit offset type; "
+              "dispatch a wider one.",
+              lo,
+              arg,
+              static_cast<int>(sizeof(stride_t) * 8)));
+      PADDLE_ENFORCE_LE(
+          hi,
+          static_cast<int64_t>(std::numeric_limits<stride_t>::max()),
+          common::errors::PreconditionNotMet(
+              "Offset %d of operand %d overflows the %d bit offset type; "
+              "dispatch a wider one.",
+              hi,
+              arg,
+              static_cast<int>(sizeof(stride_t) * 8)));
+    }
   }
 
   __host__ __device__ offset_type get(INDEX_T linear_idx) const {
