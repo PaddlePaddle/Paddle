@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import tempfile
 import unittest
 
 import collective.test_communication_api_base as test_base
@@ -150,6 +151,45 @@ TEST_CONFIGS = {
             "has_bias": "True",
             "master_weight": "True",
         },
+        {
+            "test_type": "optimizer",
+            "layer_type": "FullyShard",
+            "world_size": 2,
+            "tp": 1,
+            "sharding_degree": 2,
+            "has_bias": "True",
+            "master_weight": "True",
+        },
+        {
+            "test_type": "optimizer",
+            "layer_type": "FullyShard",
+            "optimizer_type": "Adamax",
+            "world_size": 2,
+            "tp": 1,
+            "sharding_degree": 2,
+            "has_bias": "True",
+            "master_weight": "True",
+        },
+        {
+            "test_type": "optimizer",
+            "layer_type": "FullyShard",
+            "optimizer_type": "Adadelta",
+            "world_size": 2,
+            "tp": 1,
+            "sharding_degree": 2,
+            "has_bias": "True",
+            "master_weight": "True",
+        },
+        {
+            "test_type": "optimizer",
+            "layer_type": "FullyShard",
+            "optimizer_name": "opt",
+            "world_size": 2,
+            "tp": 1,
+            "sharding_degree": 2,
+            "has_bias": "True",
+            "master_weight": "True",
+        },
     ],
     "4_card_tests": [
         {
@@ -199,10 +239,12 @@ class TestParallelLayersWith2Devices(test_base.CommunicationTestDistBase):
     def test_metadata(self):
         for config in TEST_CONFIGS["2_card_tests"]:
             envs = {k: str(v) for k, v in config.items()}
-            self.run_test_case(
-                "sharded_state_dict_logic.py",
-                user_defined_envs=envs,
-            )
+            with tempfile.TemporaryDirectory() as ckpt_dir:
+                envs["ckpt_path"] = ckpt_dir
+                self.run_test_case(
+                    "sharded_state_dict_logic.py",
+                    user_defined_envs=envs,
+                )
 
 
 class TestParallelLayersWith4Devices(test_base.CommunicationTestDistBase):

@@ -12,10 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import inspect
 import math
 import os
 
+import numpy as np
+
 import paddle
+import paddle.distributed as dist
 from paddle import nn
 from paddle.distributed import ShardedWeight, fleet
 from paddle.distributed.fleet.layers.mpu import (
@@ -33,10 +37,13 @@ from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_optimizer_sta
 from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_stage3 import (
     GroupShardedStage3,
 )
+from paddle.distributed.fleet.utils import mix_precision_utils
 from paddle.distributed.fleet.utils.sequence_parallel_utils import (
     ColumnSequenceParallelLinear,
     RowSequenceParallelLinear,
 )
+from paddle.distributed.fsdp._fsdp_context import get_fsdp_context
+from paddle.distributed.fsdp.fully_shard import fully_shard
 
 
 class SimpleMLP(
@@ -59,6 +66,30 @@ class SimpleMLP(
         x = self.linear2(x)
         x = paddle.matmul(x, self.llm_head.weight, transpose_y=True)
         return x
+
+
+class TiedHead(nn.Layer):
+    def __init__(self, weight):
+        super().__init__()
+        self.weight = weight
+
+    def forward(self, x):
+        return paddle.matmul(x, self.weight, transpose_y=True)
+
+
+class FSDPMLP(nn.Layer):
+    def __init__(self, hidden_size=100, has_bias=False):
+        super().__init__()
+        self.embedding = nn.Embedding(24, hidden_size)
+        self.linear1 = nn.Linear(hidden_size, hidden_size, bias_attr=has_bias)
+        self.linear2 = nn.Linear(hidden_size, hidden_size, bias_attr=has_bias)
+        self.llm_head = TiedHead(self.embedding.weight)
+
+    def forward(self, x):
+        x = self.embedding(x)
+        x = self.linear1(x)
+        x = self.linear2(x)
+        return self.llm_head(x)
 
 
 class TestParallelLayersLogic:
@@ -523,8 +554,160 @@ class TestParallelLayersLogic:
                         assert tuple(
                             opt_sharded_state_dict[opt__var_name].global_offset
                         ) == tuple(value.global_offset)
+        elif self.layer_type == "FullyShard":
+            model = mix_precision_utils.MixPrecisionLayer(
+                fully_shard(FSDPMLP(has_bias=self.has_bias)), dtype="bfloat16"
+            )
+            opt_cls = getattr(
+                paddle.optimizer, os.getenv("optimizer_type", "AdamW")
+            )
+            opt_kwargs = {
+                "learning_rate": 0.01,
+                "parameters": [p for p in model.parameters() if p.trainable],
+            }
+            if "multi_precision" in inspect.signature(opt_cls).parameters:
+                opt_kwargs["multi_precision"] = self.master_weight
+            # A named optimizer prefixes its accumulator names with `name`.
+            if os.getenv("optimizer_name"):
+                opt_kwargs["name"] = os.getenv("optimizer_name")
+            opt = mix_precision_utils.MixPrecisionOptimizer(
+                opt_cls(**opt_kwargs)
+            )
+            fsdp_context = get_fsdp_context()
+            assert fsdp_context.owns_optimizer_params(opt)
+            assert not fsdp_context.owns_optimizer_params(
+                paddle.optimizer.AdamW(
+                    parameters=[paddle.create_parameter([2], "float32")]
+                )
+            )
+            self._check_mixed_decay_rejected(fsdp_context)
+            fsdp_context.init_optimizer_state(opt)
+            model.train()
+            self.run_fully_shard_test(model, opt, fsdp_context)
         else:
             raise ValueError(f"Unknown layer_type: {self.layer_type}")
+
+    def _check_mixed_decay_rejected(self, fsdp_context):
+        """A buffer mixing decayed and exempt params must be rejected, not decayed as a whole."""
+
+        class FakeOptimizer:
+            def __init__(self, fun):
+                self._apply_decay_param_fun = fun
+
+        group = next(
+            (
+                g
+                for g in fsdp_context.buffer_manager.buffer_groups
+                if len(g.params) > 1
+            ),
+            None,
+        )
+        assert group is not None, "no fused buffer holds more than one param"
+        buffer_name = group.params_buffer.data_buffer.name
+        decayed_name = group.params[0].name
+
+        mixed = FakeOptimizer(lambda name: name == decayed_name)
+        try:
+            fsdp_context.bind_decay_param_fun(mixed)
+        except ValueError as err:
+            assert buffer_name in str(err), str(err)
+        else:
+            raise AssertionError(
+                "mixed weight decay inside one fused buffer was not rejected"
+            )
+
+        uniform = FakeOptimizer(lambda name: True)
+        fsdp_context.bind_decay_param_fun(uniform)
+        assert uniform._apply_decay_param_fun(buffer_name) == (
+            not group.no_decay
+        )
+
+    def run_fully_shard_test(self, model, opt, fsdp_context):
+        def state_dict():
+            state = dict(model.sharded_state_dict())
+            state.update(fsdp_context.optimizer_sharded_state_dict(opt))
+            return state
+
+        def snapshot(state):
+            return {
+                key: sharded.local_tensor.astype("float32").numpy()
+                for key, sharded in state.items()
+            }
+
+        def train_step(step):
+            rng = np.random.RandomState(1000 + step)
+            x = paddle.to_tensor(
+                rng.randint(
+                    0,
+                    self.vocab_size,
+                    size=[self.batch_size, self.seq_len, self.hidden_size],
+                ).astype("int64")
+            )
+            with paddle.amp.auto_cast(level="O1", dtype="bfloat16"):
+                loss = model(x).astype("float32").sum()
+            loss.backward()
+            opt.step()
+            opt.clear_grad()
+
+        train_step(0)
+        train_step(1)
+        model_state = model.sharded_state_dict()
+        state = state_dict()
+        checked = 0
+        for key, value in model_state.items():
+            for opt_key, opt_var in state.items():
+                if not opt_key.startswith(key + "."):
+                    continue
+                if int(opt_var.local_tensor.numel()) == 1:
+                    continue
+                checked += 1
+                assert opt_var.flattened_range == value.flattened_range
+                assert tuple(opt_var.local_shape) == tuple(value.local_shape)
+                assert tuple(opt_var.global_shape) == tuple(value.global_shape)
+                assert tuple(opt_var.global_offset) == tuple(
+                    value.global_offset
+                )
+        assert checked, "no optimizer state matched a model key"
+
+        saved = snapshot(state)
+        trained = [
+            key
+            for key in sorted(set(state) - set(model_state))
+            if saved[key].size > 1
+        ]
+        assert trained, "no sharded optimizer accumulator reached the save side"
+        for key in trained:
+            assert np.abs(saved[key]).max() > 0, (
+                f"optimizer accumulator '{key}' is all zeros after training"
+            )
+
+        ckpt_path = os.getenv("ckpt_path")
+        dist.save_state_dict(state, ckpt_path)
+        # Wait for every rank's shard file before listing.
+        dist.barrier()
+        if dist.get_rank() == 0:
+            shards = [
+                name
+                for name in os.listdir(ckpt_path)
+                if name.endswith(".distcp")
+            ]
+            assert len(shards) == self.world_size, sorted(shards)
+            assert os.path.exists(os.path.join(ckpt_path, "0.metadata"))
+
+        train_step(2)
+        resumed = snapshot(state_dict())
+        for sharded in state.values():
+            sharded.local_tensor.zero_()
+        dist.load_state_dict(state, ckpt_path)
+        for key, value in snapshot(state).items():
+            np.testing.assert_allclose(
+                value, saved[key], rtol=0, atol=0, err_msg=key
+            )
+        train_step(2)
+        for key, value in snapshot(state_dict()).items():
+            np.testing.assert_allclose(
+                value, resumed[key], rtol=1e-5, atol=1e-6, err_msg=key
+            )
 
 
 if __name__ == '__main__':
