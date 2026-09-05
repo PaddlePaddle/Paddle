@@ -44,7 +44,6 @@ if(WITH_GPU AND CUDA_VERSION VERSION_GREATER_EQUAL 10.2)
 endif()
 
 if(NOT WIN32)
-  list(APPEND ALLOCATOR_SRCS mmap_allocator.cc)
   if(WITH_GPU)
     list(APPEND ALLOCATOR_SRCS cuda_ipc_allocator.cc)
   endif()
@@ -52,6 +51,8 @@ if(NOT WIN32)
     list(APPEND ALLOCATOR_SRCS xpu_ipc_allocator.cc)
   endif()
 endif()
+
+list(APPEND ALLOCATOR_SRCS mmap_allocator.cc)
 
 if(WITH_CUSTOM_DEVICE)
   list(APPEND ALLOCATOR_SRCS custom_allocator.cc

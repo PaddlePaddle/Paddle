@@ -12,31 +12,43 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef _WIN32
-
 #include "paddle/fluid/imperative/data_loader.h"
 
-#include <sys/wait.h>
-#include <unistd.h>
 #include <cstdlib>
 
 #include <csignal>
+#include <mutex>
 
 #include "glog/logging.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/core/memory/allocation/mmap_allocator.h"
 
+#ifdef _WIN32
+// NOTE: keep this after the paddle/glog headers, windows.h defines a lot of
+// macros (ERROR, min/max, ...) that clash with them.
+#include <windows.h>
+#else
+#include <sys/wait.h>
+#include <unistd.h>
+#endif
+
 namespace paddle::imperative {
 
 static std::map<int64_t, std::set<pid_t>> load_process_pids;
+// `load_process_pids` is written by the main thread (when workers are
+// created / destroyed) and read by the DataLoader reader thread through
+// ThrowErrorIfLoadProcessFailed, so all accesses must be serialized.
+static std::mutex load_process_pids_mutex;
 
 void SetLoadProcessPIDs(int64_t key, std::set<pid_t> pids) {
   VLOG(3) << "DataLoader: set loader child process PID (" << key
           << ", pid number: " << pids.size() << ")";
+  std::lock_guard<std::mutex> guard(load_process_pids_mutex);
   load_process_pids[key] = pids;
 }
 
 void EraseLoadProcessPIDs(int64_t key) {
+  std::lock_guard<std::mutex> guard(load_process_pids_mutex);
   auto it = load_process_pids.find(key);
   // Note: Can not find key also possible
   if (it != load_process_pids.end()) {
@@ -49,6 +61,7 @@ void EraseLoadProcessPIDs(int64_t key) {
   }
 }
 
+#ifndef _WIN32
 // sigaction doc: http://man7.org/linux/man-pages/man2/sigaction.2.html
 // sigemptyset doc: https://linux.die.net/man/3/sigemptyset
 // siginfo_t doc: https://www.mkssoftware.com/docs/man5/siginfo_t.5.asp
@@ -117,16 +130,83 @@ static inline void setSignalHandler(int signal,
         "An error occurred while setting handler for %s.", strsignal(signal)));
   }
 }
+#endif
 
-// Note: maybe need to add other signal handler
+#ifdef _WIN32
+// Last-chance exception filter: logs crash info before OS terminates the
+// process.
+static LONG CALLBACK paddle_crash_filter(EXCEPTION_POINTERS *ep) {
+  fprintf(stderr,
+          "[PADDLE_CRASH] PID=%lu code=0x%08lX addr=%p\n",
+          GetCurrentProcessId(),
+          ep->ExceptionRecord->ExceptionCode,
+          ep->ExceptionRecord->ExceptionAddress);
+  fflush(stderr);
+  return EXCEPTION_EXECUTE_HANDLER;
+}
+#endif
+
 void SetLoadProcessSignalHandler() {
+#ifdef _WIN32
+  // Last-chance filter: logs crash details before OS terminates the process.
+  // This is the ONLY handler on Windows -- VEH is removed because it could
+  // deadlock if MemoryMapFdSet::Clear() is called while the mutex is held.
+  SetUnhandledExceptionFilter(&paddle_crash_filter);
+  VLOG(3) << "DataLoader: crash handler registered";
+#else
   setSignalHandler(SIGSEGV, &SIGSEGV_handler, nullptr);
   setSignalHandler(SIGBUS, &SIGBUS_handler, nullptr);
   setSignalHandler(SIGFPE, &SIGFPE_handler, nullptr);
   setSignalHandler(SIGTERM, &SIGTERM_handler, nullptr);
+#endif
 }
 
 void ThrowErrorIfLoadProcessFailed() {
+  std::lock_guard<std::mutex> guard(load_process_pids_mutex);
+#ifdef _WIN32
+  // On Windows, use WaitForSingleObject + GetExitCodeProcess
+  // to check for crashed workers. This is called periodically from Python.
+  std::set<pid_t> *pids_set = nullptr;
+  pid_t process_pid = 0;
+
+  for (auto &p : load_process_pids) {
+    pids_set = &(p.second);
+    for (auto pid_it = pids_set->begin(); pid_it != pids_set->end(); ++pid_it) {
+      process_pid = *pid_it;
+      VLOG(3) << "DataLoader: monitor loader child process " << process_pid;
+
+      HANDLE hProcess = OpenProcess(PROCESS_QUERY_INFORMATION | SYNCHRONIZE,
+                                    FALSE,
+                                    static_cast<DWORD>(process_pid));
+      if (hProcess == NULL) {
+        // Process may have already exited; GetLastError() ==
+        // ERROR_INVALID_PARAMETER
+        continue;
+      }
+
+      DWORD exit_code = STILL_ACTIVE;
+      if (WaitForSingleObject(hProcess, 0) == WAIT_OBJECT_0) {
+        // Process has exited
+        GetExitCodeProcess(hProcess, &exit_code);
+        CloseHandle(hProcess);
+
+        if (exit_code != 0 && exit_code != STILL_ACTIVE) {
+          // Exited with error (non-zero exit code)
+          pids_set->clear();
+          PADDLE_THROW(common::errors::Fatal(
+              "DataLoader process (pid %ld) exited unexpectedly with code "
+              "0x%lX (%lu). "
+              "Rerunning with num_workers=0 may give better error trace.",
+              process_pid,
+              exit_code,
+              exit_code));
+        }
+      } else {
+        CloseHandle(hProcess);
+      }
+    }
+  }
+#else
   int error = 0;
   std::set<pid_t> *pids_set = nullptr;
   pid_t process_pid = 0;
@@ -190,8 +270,7 @@ void ThrowErrorIfLoadProcessFailed() {
       }
     }
   }
+#endif
 }
 
 }  // namespace paddle::imperative
-
-#endif
