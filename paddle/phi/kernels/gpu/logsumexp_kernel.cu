@@ -15,6 +15,8 @@
 #include "paddle/phi/kernels/logsumexp_kernel.h"
 #include "paddle/phi/kernels/gpu/logsumexp_function.cu.h"
 
+#include "paddle/common/flags.h"
+#include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/activation_kernel.h"
 #include "paddle/phi/kernels/elementwise_add_kernel.h"
@@ -25,7 +27,10 @@
 #include "paddle/phi/kernels/funcs/transpose_function.cuh"
 #include "paddle/phi/kernels/gpu/reduce.h"
 #include "paddle/phi/kernels/reduce_max_kernel.h"
+#include "paddle/phi/kernels/reduce_sum_kernel.h"
 #include "paddle/phi/kernels/transpose_kernel.h"
+
+COMMON_DECLARE_bool(use_accuracy_compatible_kernel);
 
 namespace phi {
 
@@ -79,6 +84,56 @@ void LogsumexpFallbackKernel(const Context& dev_ctx,
   log_out.Resize(outdim);
   out->Resize(outdim);
   AddKernel<T, Context>(dev_ctx, log_out, max_x, out);
+}
+
+template <typename T>
+struct ZeroInfFunctor {
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+  HOSTDEVICE T operator()(const T x) const {
+    return isinf(static_cast<MT>(x)) ? static_cast<T>(0) : x;
+  }
+};
+
+// Align bit for bit with torch2.12's logsumexp(logsumexp_out_impl).
+// Note that torch's `maxes_squeezed` aliases `maxes` (squeeze returns a view),
+// so its masked_fill_ zeroes the infinite maxes before they are subtracted from
+// x, that is why ZeroInfFunctor is applied to max_x up front.s
+template <typename T, typename Context>
+void LogsumexpAccuracyCompatibleKernel(
+    const Context& dev_ctx,
+    const DenseTensor& x,
+    const std::vector<int>& axis_vec,
+    const std::vector<int64_t>& outdim_vec,
+    const std::vector<int64_t>& keep_outdim_vec,
+    DenseTensor* out) {
+  auto outdim = make_ddim(outdim_vec);
+  auto keep_outdim = make_ddim(keep_outdim_vec);
+
+  DenseTensor max_x;
+  max_x.Resize(keep_outdim);
+  dev_ctx.template Alloc<T>(&max_x);
+  MaxKernel<T, Context>(dev_ctx, x, axis_vec, true, &max_x);
+  std::vector<DenseTensor*> zero_inf_outs = {&max_x};
+  funcs::ElementwiseKernel<T, ZeroInfFunctor<T>>(
+      dev_ctx, {&max_x}, &zero_inf_outs, ZeroInfFunctor<T>());
+
+  DenseTensor temp_x = Subtract<T, Context>(dev_ctx, x, max_x);
+  DenseTensor exp_x;
+  exp_x.Resize(x.dims());
+  dev_ctx.template Alloc<T>(&exp_x);
+  ExpKernel<T, Context>(dev_ctx, temp_x, &exp_x);
+
+  out->Resize(keep_outdim);
+  dev_ctx.template Alloc<T>(out);
+  SumKernel<T, Context>(dev_ctx, exp_x, axis_vec, x.dtype(), true, out);
+
+  DenseTensor log_out;
+  log_out.Resize(keep_outdim);
+  dev_ctx.template Alloc<T>(&log_out);
+  LogKernel<T, Context>(dev_ctx, *out, &log_out);
+
+  AddKernel<T, Context>(dev_ctx, log_out, max_x, out);
+  out->Resize(outdim);
 }
 
 template <typename T, typename Context>
@@ -140,6 +195,11 @@ void LogsumexpKernel(const Context& dev_ctx,
   }
 
   auto outdim = make_ddim(outdim_vec);
+  if (FLAGS_use_accuracy_compatible_kernel) {
+    LogsumexpAccuracyCompatibleKernel<T, Context>(
+        dev_ctx, x, axis_vec, outdim_vec, keep_outdim_vec, out);
+    return;
+  }
   if (compute_size <= 1024) {
     if (perm.size() != xdim.size())
       perm.insert(perm.end(), axis_vec.begin(), axis_vec.end());
