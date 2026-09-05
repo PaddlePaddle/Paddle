@@ -207,6 +207,11 @@ phi::DeviceContext* ProcessGroupNCCL::GetDeviceContext(
   const std::string& key = GetKeyFromPlace(place);
   if (use_calc_stream) {
     const auto& iter = place_to_calc_ctx_.find(key);
+    PADDLE_ENFORCE_NE(
+        iter,
+        place_to_calc_ctx_.end(),
+        common::errors::NotFound(
+            "Cannot find the device context in this process group."));
     return iter->second;
   } else {
     const auto& iter = place_to_comm_ctx_.find(key);
@@ -239,6 +244,17 @@ phi::distributed::NCCLCommContext* ProcessGroupNCCL::GetOrCreateCommContext(
     CreateNCCLEnvCache(place, key, store_key, comm_type, 0, nccl_config_ptr_);
   }
   return GetCommContext(&store_key);
+}
+
+phi::DeviceContext* ProcessGroupNCCL::GetOrCreateCalcContext(
+    const Place& place, bool use_calc_stream) {
+  const auto& key = GetKeyFromPlace(place);
+  if (place_to_calc_ctx_.find(key) == place_to_calc_ctx_.end()) {
+    auto* calc_ctx = static_cast<phi::GPUContext*>(
+        phi::DeviceContextPool::Instance().Get(place));
+    place_to_calc_ctx_.emplace(key, calc_ctx);
+  }
+  return GetDeviceContext(place, use_calc_stream);
 }
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllGather(
@@ -963,13 +979,11 @@ void ProcessGroupNCCL::CreateNCCLEnvCache(
         group_key, global_ranks);
   }
 
-  auto* calc_ctx = static_cast<phi::GPUContext*>(
-      phi::DeviceContextPool::Instance().Get(place));
-
   place_to_calc_event_.emplace(
       place_key,
       platform::DeviceEvent(place, platform::GenerateDeviceEventFlag()));
-  place_to_calc_ctx_.emplace(place_key, calc_ctx);
+
+  GetOrCreateCalcContext(place, true);
   place_to_comm_ctx_.emplace(place_key, std::move(comm_ctx));
   place_to_p2p_opts_.emplace(place_key, std::move(p2p_opts));
 
