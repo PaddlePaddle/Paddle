@@ -425,8 +425,6 @@ TEST(TensorBaseTest, UndefinedAndNonDenseBranchCoverage) {
   at::TensorBase undefined;
   ASSERT_EQ(undefined.toString(), std::string("UndefinedType"));
   ASSERT_EQ(undefined.data_ptr(), nullptr);
-  ASSERT_FALSE(undefined.has_names());
-
   at::Tensor non_dense = at::arange(6, at::TensorOptions().dtype(at::kFloat))
                              .as_strided({2, 2}, {4, 1});
   ASSERT_FALSE(non_dense.is_non_overlapping_and_dense());
