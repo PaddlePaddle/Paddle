@@ -160,5 +160,41 @@ class TestUnfoldAPI_Compatibility(unittest.TestCase):
         np.testing.assert_array_equal(out1.numpy(), out4.numpy())
 
 
+class TestTensorUnfoldOverlapBackward(unittest.TestCase):
+    """With step < size the unfolded windows overlap, so every input element
+    must receive the sum of the gradients of all windows containing it."""
+
+    def setUp(self):
+        self.places = get_places()
+
+    def _check(self, shape, axis, size, step, dtype='float64'):
+        x_np = np.random.random(shape).astype(dtype)
+        expected = np.zeros(shape, dtype=dtype)
+        num_window = (shape[axis] - size) // step + 1
+        index = [slice(None)] * len(shape)
+        for w in range(num_window):
+            index[axis] = slice(w * step, w * step + size)
+            expected[tuple(index)] += 1
+        for place in self.places:
+            with base.dygraph.guard(place):
+                x = paddle.to_tensor(x_np)
+                x.stop_gradient = False
+                y = paddle.unfold(x, axis, size, step)
+                y.backward(paddle.ones_like(y))
+                np.testing.assert_allclose(x.grad.numpy(), expected)
+
+    def test_overlapping_windows(self):
+        self._check([5], 0, 3, 1)
+        self._check([16], 0, 4, 1)
+        self._check([8, 4], 0, 4, 2)
+
+    def test_overlapping_windows_float32(self):
+        self._check([5], 0, 3, 1, dtype='float32')
+
+    def test_non_overlapping_windows(self):
+        self._check([12], 0, 4, 4)
+        self._check([12], -1, 2, 5)
+
+
 if __name__ == '__main__':
     unittest.main()

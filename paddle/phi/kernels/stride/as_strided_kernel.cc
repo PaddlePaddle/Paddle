@@ -12,9 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #include "paddle/phi/kernels/as_strided_kernel.h"
+#include "paddle/common/ddim.h"
 #include "paddle/common/flags.h"
 #include "paddle/phi/backends/all_context.h"
+#include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/strided_view_utils.h"
 
 COMMON_DECLARE_bool(use_stride_kernel);
 
@@ -62,6 +65,7 @@ void AsStridedKernel(const Context& dev_ctx,
       0,
       common::errors::InvalidArgument(
           "The offset must be non-negative, but got %d.", offset));
+  ValidateStridedViewStorage(dims, stride, offset, input);
   out->set_meta(meta);
   out->ResetHolder(input.Holder());
   out->ShareInplaceVersionCounterWith(input);

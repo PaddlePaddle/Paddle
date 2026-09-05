@@ -166,3 +166,30 @@ TEST_F(TensorAsStridedTest, AsStridedContiguous) {
   at::Tensor non_contig = t.as_strided({3, 2}, {1, 3});
   ASSERT_FALSE(non_contig.is_contiguous());
 }
+
+TEST_F(TensorAsStridedTest, AsStridedRejectsOutOfRangeView) {
+  // The view reaches element 4095 of a 12 element allocation. Without the
+  // range check every read and write through it corrupts unrelated memory.
+  at::Tensor t = at::arange(12, at::kFloat);
+  ASSERT_ANY_THROW(t.as_strided({64, 64}, {64, 1}));
+}
+
+TEST_F(TensorAsStridedTest, AsStridedRejectsOverflowingStorageOffset) {
+  // storage_offset counts elements, so it has to be multiplied by the element
+  // size. 2^62 * 4 wraps around to 0 in size_t arithmetic, which would turn an
+  // out of range request into a silent alias of the first element.
+  at::Tensor t = at::arange(12, at::kFloat);
+  ASSERT_ANY_THROW(t.as_strided({2}, {1}, int64_t{1} << 62));
+}
+
+TEST_F(TensorAsStridedTest, AsStridedRejectsNegativeStorageOffset) {
+  at::Tensor t = at::arange(12, at::kFloat);
+  ASSERT_ANY_THROW(t.as_strided({2}, {1}, -1));
+}
+
+TEST_F(TensorAsStridedTest, AsStridedInplaceRejectsBadStorageOffset) {
+  at::Tensor t = at::arange(12, at::kFloat);
+  ASSERT_ANY_THROW(t.as_strided_({2}, {1}, int64_t{1} << 62));
+  at::Tensor u = at::arange(12, at::kFloat);
+  ASSERT_ANY_THROW(u.as_strided_({64, 64}, {64, 1}));
+}
