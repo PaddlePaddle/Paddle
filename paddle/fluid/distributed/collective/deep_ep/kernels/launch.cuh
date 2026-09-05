@@ -123,6 +123,9 @@
   if (hidden == 1536) {                            \
     constexpr size_t kHidden = 1536;               \
     __VA_ARGS__                                    \
+  } else if (hidden == 2048) {                     \
+    constexpr size_t kHidden = 2048;               \
+    __VA_ARGS__                                    \
   } else if (hidden == 4096) {                     \
     constexpr size_t kHidden = 4096;               \
     __VA_ARGS__                                    \
@@ -216,6 +219,9 @@
     __VA_ARGS__                                                        \
   } else if (num_warp_groups == 4) {                                   \
     constexpr int kNumWarpGroups = 4;                                  \
+    __VA_ARGS__                                                        \
+  } else if (num_warp_groups == 6) {                                   \
+    constexpr int kNumWarpGroups = 6;                                  \
     __VA_ARGS__                                                        \
   } else if (num_warp_groups == 8) {                                   \
     constexpr int kNumWarpGroups = 8;                                  \
