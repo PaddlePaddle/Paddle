@@ -355,10 +355,13 @@ class TestTripletMarginWithDistanceLossDFE(unittest.TestCase):
         func = distance_function
         shape = (5, 5)
         np.random.seed(1234)
-        input = np.random.uniform(0.1, 0.8, size=shape).astype(np.float64)
-        positive = np.random.uniform(0, 2, size=shape).astype(np.float64)
-        negative = np.random.uniform(0, 2, size=shape).astype(np.float64)
+        np_input = np.random.uniform(0.1, 0.8, size=shape).astype(np.float64)
+        np_positive = np.random.uniform(0, 2, size=shape).astype(np.float64)
+        np_negative = np.random.uniform(0, 2, size=shape).astype(np.float64)
 
+        input = paddle.to_tensor(np_input)
+        positive = paddle.to_tensor(np_positive)
+        negative = paddle.to_tensor(np_negative)
         self.assertRaises(
             ValueError,
             paddle.nn.functional.triplet_margin_with_distance_loss,
