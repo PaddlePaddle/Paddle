@@ -49,8 +49,9 @@ GradNodePyLayer::operator()(
   // Capture the Python stack (GIL held) so allocations during this PyLayer
   // backward that don't flow through an eager _C_ops dispatch are attributed to
   // the backward call site; inner _C_ops push/pop finer stacks on top.
-  paddle::memory::MemStackGuard __mem_stack_guard(
-      paddle::pybind::CaptureCurrentPyStack());
+  const auto __mem_stack_capture = paddle::pybind::CaptureCurrentPyStack();
+  paddle::memory::MemStackGuard __mem_stack_guard(__mem_stack_capture.active,
+                                                  __mem_stack_capture.stack_id);
   if (VLOG_IS_ON(2)) egr::LogIndent::Instance().IncreaseIndentLevel();
   VLOG(3) << "Running Eager Backward Node: " << name();
   if (FLAGS_call_stack_level == 3) {

@@ -208,8 +208,9 @@ PyObject* pylayer_method_apply(PyObject* cls,
   // the whole forward (including allocations that don't flow through an eager
   // _C_ops dispatch, e.g. custom ops / comm buffers); inner _C_ops push/pop
   // their own finer stacks on top. Near-zero cost when recording is disabled.
-  paddle::memory::MemStackGuard __mem_stack_guard(
-      paddle::pybind::CaptureCurrentPyStack());
+  const auto __mem_stack_capture = paddle::pybind::CaptureCurrentPyStack();
+  paddle::memory::MemStackGuard __mem_stack_guard(__mem_stack_capture.active,
+                                                  __mem_stack_capture.stack_id);
   std::string classname =
       std::string(reinterpret_cast<PyTypeObject*>(cls)->tp_name);
   std::string forward_stack;
