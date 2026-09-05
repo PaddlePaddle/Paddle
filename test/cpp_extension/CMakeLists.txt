@@ -10,4 +10,8 @@ if(WITH_TESTING)
   endif()
   py_test(test_mixed_extension_setup SRCS test_mixed_extension_setup.py)
   set_tests_properties(test_mixed_extension_setup PROPERTIES TIMEOUT 120)
+
+  # Unit tests for extension_utils helpers (no GPU / compilation required).
+  py_test(test_cpp_extension_utils SRCS test_cpp_extension_utils.py)
+  set_tests_properties(test_cpp_extension_utils PROPERTIES TIMEOUT 60)
 endif()
