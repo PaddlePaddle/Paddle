@@ -15,6 +15,7 @@
 #include "paddle/phi/kernels/legacy/gpu/fp8_quant_blockwise_kernel.h"
 #include <cuda_fp8.h>
 #include <cstdint>
+#include <type_traits>
 #include <vector>
 #include "paddle/common/flags.h"
 #include "paddle/phi/core/dense_tensor.h"
@@ -601,6 +602,175 @@ __global__ void __launch_bounds__(512)
   }
 }
 
+// Vectorized rewrite of quantize_1x128_kernel, covering only the
+// !input_transpose && !return_transpose_only instantiation.
+//
+// In that instantiation the transpose steps are compiled away, leaving plain
+// streaming quantization with one scale per 128 elements along the last dim,
+// but it still pays for the transpose-oriented layout: 8-byte loads and
+// 4-byte stores per thread, and a full 128x129 fp8 shared buffer of which
+// only 128 bf16 row maxima are used.
+//
+// This version widens the accesses to 128-bit, packs the amax reduction into
+// bf16x2, and shrinks shared memory accordingly. Results are bit-identical:
+// NaN-suppressing max is associative, so reordering the reduction is safe, and
+// the scale computation and its index arithmetic are copied verbatim.
+//
+// Selection is automatic: the template branch is fixed at compile time by
+// if constexpr, and the only runtime condition is base-pointer alignment (see
+// vec128_ok in FP8QuantBlockWiseKernelImpl). Element indices inside the kernel
+// are always multiples of EPT because this branch is only reached for shapes
+// that are multiples of 128, so the tensor base address is the only thing that
+// can break the wider accesses. Unlike the transpose path, no minimum-size
+// condition is needed: tile and grid are unchanged from the scalar version.
+//
+// __launch_bounds__(512, 4) is load-bearing, not decoration. Occupancy here is
+// register-limited and 4 blocks/SM requires staying within 32 registers
+// (65536 / (512 * 4)); without the minimum the compiler settles above that and
+// loses a block, and the exact count drifts with unrelated edits. Most of the
+// speedup comes from the extra resident block rather than from the wider
+// accesses, so do not relax these two numbers.
+template <int EPT>
+struct alignas(EPT) fp8_out_vec_t {
+  __nv_fp8x2_storage_t h[EPT / 2];
+};
+
+template <typename T,
+          typename ScaleT,
+          bool output_scale_transpose,
+          bool use_pow2_scale,
+          bool using_ue8m0_scale,
+          int EPT,
+          int MINBLK = 1>
+__global__ void __launch_bounds__(512, MINBLK)
+    quantize_1x128_kernel_v128(const T *const input,
+                               __nv_fp8_e4m3 *const output,
+                               __nv_fp8_e4m3 *const output_transposed,
+                               ScaleT *const scale,
+                               ScaleT *const scale_transposed,
+                               const size_t rows,
+                               const size_t cols,
+                               const size_t quanted_rows,
+                               const size_t quanted_cols,
+                               const float epsilon) {
+  constexpr int kVec = 8;  // elements per 128-bit access
+  constexpr int kNVec = EPT / kVec;
+  constexpr int kThreads = 512;
+  constexpr int kLanesPerRow = k_block_span / EPT;
+  constexpr int kRowsPerIter = kThreads / kLanesPerRow;
+  constexpr int kIters = k_block_span / kRowsPerIter;
+  static_assert(kNVec >= 1 && k_block_span % EPT == 0, "EPT");
+
+  __shared__ T shm_max[k_block_span];
+  __shared__ float block_scale[k_block_span];
+
+  const size_t col_blocks = rows / k_block_span;  // rows is actually cols
+  const size_t block_x = blockIdx.x % col_blocks;
+  const size_t block_y = blockIdx.x / col_blocks;
+  const size_t block_offset_x = block_x * k_block_span;
+  const size_t block_offset_y = block_y * k_block_span;
+
+  const int tid =
+      static_cast<int>(threadIdx.y) * 32 + static_cast<int>(threadIdx.x);
+  const int sub = tid % kLanesPerRow;          // which segment of the row
+  const int row_in_iter = tid / kLanesPerRow;  // which row of the tile
+
+  // 1. load the tile
+  v128_t<T> x[kIters * kNVec];
+#pragma unroll
+  for (int i = 0; i < kIters; i++) {
+    const size_t base =
+        (block_offset_y + i * kRowsPerIter + row_in_iter) * rows +
+        block_offset_x + static_cast<size_t>(sub) * EPT;
+#pragma unroll
+    for (int v = 0; v < kNVec; v++) {
+      x[i * kNVec + v].load(input + base + v * kVec);
+    }
+  }
+
+  // 2. row-wise amax, then reduced across the lanes of a row. The max goes
+  // through device_abs / device_max rather than the packed __habs2 / __hmax2
+  // pair: those are declared only for __CUDA_ARCH__ >= 800 on older toolkits,
+  // and being non-dependent names they are diagnosed even inside a discarded
+  // if-constexpr branch, so a packed bf16 path breaks the pre-sm_80 build of
+  // the float16 instantiation. The kernel is memory bound, so halving the
+  // number of max operations buys nothing anyway.
+#pragma unroll
+  for (int i = 0; i < kIters; i++) {
+    T warp_max;
+    bool first = true;
+#pragma unroll
+    for (int v = 0; v < kNVec; v++) {
+#pragma unroll
+      for (int k = 0; k < kVec; k++) {
+        T a = device_abs(x[i * kNVec + v].data.scalar[k]);
+        warp_max = first ? a : device_max(warp_max, a);
+        first = false;
+      }
+    }
+#pragma unroll
+    for (int off = kLanesPerRow / 2; off > 0; off /= 2) {
+      T other = __shfl_down_sync(0xFFFFFFFF, warp_max, off);
+      warp_max = device_max(warp_max, other);
+    }
+    if (sub == 0) {
+      shm_max[i * kRowsPerIter + row_in_iter] = warp_max;
+    }
+  }
+  __syncthreads();
+
+  if (threadIdx.y < 4) {
+    T amax = shm_max[threadIdx.y * 32 + threadIdx.x];
+    block_scale[threadIdx.y * 32 + threadIdx.x] =
+        ScaleWrapper < using_ue8m0_scale ||
+        use_pow2_scale > (static_cast<float>(amax), epsilon);
+  }
+  __syncthreads();
+
+  // 3. store the 1x128 scales; index arithmetic copied from the scalar kernel
+  if (threadIdx.y < 4) {
+    size_t col_idx = block_offset_y + static_cast<size_t>(threadIdx.y) * 32 +
+                     static_cast<size_t>(threadIdx.x);
+    size_t row_idx = block_x;
+    float store_scale = 1.0f / block_scale[threadIdx.y * 32 + threadIdx.x];
+
+    size_t stride_rows = using_ue8m0_scale ? quanted_rows * 4 : quanted_rows;
+    size_t idx;
+    if (using_ue8m0_scale) {
+      idx = output_scale_transpose
+                ? (row_idx / 4) * (cols * 4) + col_idx * 4 + (row_idx % 4)
+                : col_idx * stride_rows + row_idx;
+    } else {
+      idx = output_scale_transpose ? row_idx * stride_rows + col_idx
+                                   : col_idx * stride_rows + row_idx;
+    }
+    StoreScale<ScaleT, using_ue8m0_scale>(scale, idx, store_scale);
+  }
+
+  // 4. quantize and store back
+#pragma unroll
+  for (int i = 0; i < kIters; i++) {
+    const int r_local = i * kRowsPerIter + row_in_iter;
+    const float scale_val = block_scale[r_local];
+    const size_t base = (block_offset_y + r_local) * rows + block_offset_x +
+                        static_cast<size_t>(sub) * EPT;
+    fp8_out_vec_t<EPT> o;
+#pragma unroll
+    for (int v = 0; v < kNVec; v++) {
+      const T *s = x[i * kNVec + v].data.scalar;
+#pragma unroll
+      for (int k = 0; k < kVec / 2; k++) {
+        float2 f;
+        f.x = static_cast<float>(s[2 * k]) * scale_val;
+        f.y = static_cast<float>(s[2 * k + 1]) * scale_val;
+        o.h[v * (kVec / 2) + k] =
+            __nv_cvt_float2_to_fp8x2(f, __NV_SATFINITE, __NV_E4M3);
+      }
+    }
+    *reinterpret_cast<fp8_out_vec_t<EPT> *>(output + base) = o;
+  }
+}
+
 template <typename T,
           typename ScaleT,
           bool output_scale_transpose,
@@ -875,6 +1045,33 @@ void FP8QuantBlockWiseKernelImpl(const Context &dev_ctx,
                                                 return_transpose_only,
                                                 using_pow2_scale,
                                                 using_ue8m0_scale>;
+
+    // The vectorized kernel only covers this template branch; every other
+    // combination keeps the scalar kernel assigned above.
+    if constexpr (using_1x128_vec_quant && !input_transpose &&
+                  !return_transpose_only) {
+      // Element indices are always 16-element aligned here, so only the tensor
+      // base addresses can break the 128-bit accesses. Fused parameter buffers
+      // give tensors an arbitrary element offset, which data() folds into the
+      // pointer, so this has to be checked at runtime.
+      constexpr size_t kVecBytes = 16;
+      const bool vec128_ok =
+          reinterpret_cast<uintptr_t>(X.data<T>()) % kVecBytes == 0 &&
+          reinterpret_cast<uintptr_t>(out->data<phi::float8_e4m3fn>()) %
+                  kVecBytes ==
+              0;
+      if (vec128_ok) {
+        // The trailing 4 is the minimum blocks/SM: see the comment on
+        // quantize_1x128_kernel_v128 before changing it or EPT.
+        kernel = quantize_1x128_kernel_v128<NvType,
+                                            ScaleT,
+                                            output_scale_transpose,
+                                            using_pow2_scale,
+                                            using_ue8m0_scale,
+                                            16,
+                                            4>;
+      }
+    }
 
     kernel<<<grid, block, 0, dev_ctx.stream()>>>(
         reinterpret_cast<const NvType *>(X.data<T>()),
