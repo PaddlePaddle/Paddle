@@ -33,7 +33,7 @@ class TestLayerNormSPMDRule(unittest.TestCase):
     def setUp(self):
         self.rule = core.get_phi_spmd_rule("layer_norm")
 
-        x_shape = [64, 32, 1024]
+        x_shape = [48, 32, 1024]
         scale_shape = [1024]
         bias_shape = [1024]
         process_mesh = auto.ProcessMesh(mesh=[[0, 1, 2], [3, 4, 5]])
