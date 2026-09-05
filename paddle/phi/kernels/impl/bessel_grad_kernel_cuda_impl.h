@@ -44,7 +44,9 @@ struct CudaI0GradFunctor {
     auto len = std::get<1>(coeff_pair_B);
     MT y = (MT{32.0} / x) - MT{2.0};
 
-    const MT i1_out = (std::exp(x) * Chbevl<MT>(y, B, len)) / std::sqrt(x);
+    const MT half_exp = std::exp(x / MT{2.0});
+    const MT i1_out =
+        half_exp * (Chbevl<MT>(y, B, len) / std::sqrt(x)) * half_exp;
     const MT i1_data = (mp_x < MT{0.0}) ? -i1_out : i1_out;
 
     return static_cast<T>(i1_data * mp_out_grad);
