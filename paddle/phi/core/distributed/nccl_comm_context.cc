@@ -190,6 +190,36 @@ bool NCCLCommContext::IsRegistered(const void* ptr, size_t size) const {
   return false;
 }
 
+bool NCCLCommContext::IsAllToAllAvailable() const {
+#if defined(PADDLE_WITH_NCCL) && NCCL_VERSION_CODE >= 23007
+  return phi::dynload::ncclAlltoAll.IsValid();
+#else
+  return false;
+#endif
+}
+
+void NCCLCommContext::AllToAll(DenseTensor* out_tensor,
+                               const DenseTensor& in_tensor,
+                               gpuStream_t stream) {
+#if defined(PADDLE_WITH_NCCL) && NCCL_VERSION_CODE >= 23007
+  CommStaticCheck::SameShape(*out_tensor,
+                             in_tensor,
+                             /*dst_rank*/ rank_,
+                             /*cur_rank*/ rank_,
+                             size_);
+  NCCL_CHECK(phi::dynload::ncclAlltoAll(in_tensor.data(),
+                                        out_tensor->data(),
+                                        in_tensor.numel() / size_,
+                                        ToNCCLDataType(in_tensor.type()),
+                                        nccl_comm_,
+                                        stream));
+#else
+  PADDLE_THROW(common::errors::Unavailable(
+      "ncclAlltoAll is not available in the NCCL library Paddle was compiled "
+      "against, IsAllToAllAvailable() must be checked first."));
+#endif
+}
+
 int NCCLCommContext::GetNcclVersion() { return nccl_version_; }
 
 ncclComm_t NCCLCommContext::GetNcclComm() { return nccl_comm_; }
