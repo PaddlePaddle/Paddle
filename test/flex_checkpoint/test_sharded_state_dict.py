@@ -184,6 +184,7 @@ TEST_CONFIGS = {
             "test_type": "optimizer",
             "layer_type": "FullyShard",
             "optimizer_name": "opt",
+            "amp_level": "O2",
             "world_size": 2,
             "tp": 1,
             "sharding_degree": 2,
