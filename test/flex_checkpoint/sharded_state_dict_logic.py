@@ -105,6 +105,7 @@ class TestParallelLayersLogic:
         self.master_weight = (
             os.getenv("master_weight", "False").lower() == "true"
         )
+        self.amp_level = os.getenv("amp_level", "O1")
         self.batch_size = 2
         self.hidden_size = 32
         self.vocab_size = 24
@@ -555,8 +556,14 @@ class TestParallelLayersLogic:
                             opt_sharded_state_dict[opt__var_name].global_offset
                         ) == tuple(value.global_offset)
         elif self.layer_type == "FullyShard":
+            inner = FSDPMLP(has_bias=self.has_bias)
+            if self.amp_level == "O2":
+                # O2 casts the params, so multi_precision keeps fp32 master weights.
+                inner = paddle.amp.decorate(
+                    models=inner, level="O2", dtype="bfloat16"
+                )
             model = mix_precision_utils.MixPrecisionLayer(
-                fully_shard(FSDPMLP(has_bias=self.has_bias)), dtype="bfloat16"
+                fully_shard(inner), dtype="bfloat16"
             )
             opt_cls = getattr(
                 paddle.optimizer, os.getenv("optimizer_type", "AdamW")
@@ -668,6 +675,11 @@ class TestParallelLayersLogic:
                     value.global_offset
                 )
         assert checked, "no optimizer state matched a model key"
+
+        if self.amp_level == "O2":
+            assert any(key.endswith(".w_0") for key in state), (
+                "no fp32 master weight reached the sharded optimizer state"
+            )
 
         saved = snapshot(state)
         trained = [
