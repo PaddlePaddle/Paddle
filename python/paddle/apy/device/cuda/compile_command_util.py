@@ -29,6 +29,9 @@ class CompileCommandGenerator:
     def __call__(self, op_type, source_dir, library_name):
         return self.op_type2generate_func[op_type](source_dir, library_name)
 
+    def supports(self, op_type):
+        return self.op_type2generate_func.contains(op_type)
+
     def generate_compile_command_with_cutlass(self, source_dir, library_name):
         autotune_flag = 1 if self.enable_autotune else 0
         compile_cmd = "nvcc -std=c++20 -O3 -Xcompiler=-fPIC -arch=sm_80 --expt-relaxed-constexpr"

@@ -107,9 +107,14 @@ class TestConv2dEpilogue(unittest.TestCase):
         generated_pir_program = GetPirProgram(
             fused_foo, [self.x, self.w, self.b]
         )
-        self.assertTrue(
-            'pd_op.ap_variadic' in generated_pir_program, "fusion failed"
-        )
+        if paddle.is_compiled_with_rocm():
+            # There is no conv2d backend for HIP yet, the pass rejects the
+            # subgraph and it stays on the phi kernels.
+            self.assertNotIn('pd_op.ap_variadic', generated_pir_program)
+        else:
+            self.assertIn(
+                'pd_op.ap_variadic', generated_pir_program, "fusion failed"
+            )
         if IsSupportDevice():
             ap_outs = fused_foo(self.x, self.w, self.b)
             dy_outs = foo(self.x, self.w, self.b)

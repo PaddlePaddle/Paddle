@@ -15,6 +15,7 @@
 import abstract_drr
 import access_topo_drr  # noqa: F401
 import ap
+import compile_command_util
 import conv2d_variadic_tpl
 import epilogue_access_topo_simplify
 import index_program_translator_util
@@ -59,11 +60,18 @@ class Conv2dEpilogueFusion(abstract_drr.DrrPass):
         )
 
     def constraint(self, o, t):
-        return self._is_supported_by_backend(o) and self._epilogue_can_fuse(
-            o, t
+        return self._is_supported_by_device() and (
+            self._is_supported_by_backend(o, t)
+            and self._epilogue_can_fuse(o, t)
         )
 
-    def _is_supported_by_backend(self, o):
+    def _is_supported_by_device(self):
+        compile_command_generator = (
+            compile_command_util.CompileCommandGenerator(enable_autotune=False)
+        )
+        return compile_command_generator.supports("conv2d")
+
+    def _is_supported_by_backend(self, o, t):
         # Limitations of the cutlass conv2d backend:
         # - groups == 1: grouped conv needs a different cutlass kernel (GroupMode).
         # - NHWC: cutlass conv fprop only has TensorNHWC and
@@ -71,6 +79,7 @@ class Conv2dEpilogueFusion(abstract_drr.DrrPass):
         # - EXPLICIT and symmetric padding: `paddings` is forwarded as-is while
         #   cutlass takes a single pad value per spatial axis, and SAME / VALID
         #   derive the effective padding at runtime.
+        # - KRSC filter, see `_is_krsc_filter`.
         paddings = self._get_int_list_attr(o.conv2d_op.paddings)
         symmetric_padding = (
             True
@@ -83,7 +92,17 @@ class Conv2dEpilogueFusion(abstract_drr.DrrPass):
         explicit_padding = (
             o.conv2d_op.padding_algorithm.match(a_str=lambda x: x) == "EXPLICIT"
         ) and symmetric_padding
-        return supported_attrs and explicit_padding
+        supported_conv_attrs = supported_attrs and explicit_padding
+        return supported_conv_attrs and self._is_krsc_filter(t)
+
+    def _is_krsc_filter(self, t):
+        # cutlass reads the filter as KRSC (`layout::TensorNHWC` on a filter
+        # means "C innermost"), while paddle's native filter is KCRS; the
+        # transposed filter is only recognizable by its innermost dim matching
+        # the activation's channel dimension.
+        input_shape = t.input0.symbolic_shape_to_list()
+        weight_shape = t.input1.symbolic_shape_to_list()
+        return weight_shape[3] == input_shape[3]
 
     def _epilogue_can_fuse(self, o, t):
         program = ir_tools.copy_fused_ops_to_program(
