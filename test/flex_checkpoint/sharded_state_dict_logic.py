@@ -557,13 +557,14 @@ class TestParallelLayersLogic:
                         ) == tuple(value.global_offset)
         elif self.layer_type == "FullyShard":
             inner = FSDPMLP(has_bias=self.has_bias)
+            self.amp_dtype = "float16" if self.amp_level == "O2" else "bfloat16"
             if self.amp_level == "O2":
                 # O2 casts the params, so multi_precision keeps fp32 master weights.
                 inner = paddle.amp.decorate(
-                    models=inner, level="O2", dtype="bfloat16"
+                    models=inner, level="O2", dtype=self.amp_dtype
                 )
             model = mix_precision_utils.MixPrecisionLayer(
-                fully_shard(inner), dtype="bfloat16"
+                fully_shard(inner), dtype=self.amp_dtype
             )
             opt_cls = getattr(
                 paddle.optimizer, os.getenv("optimizer_type", "AdamW")
@@ -650,7 +651,7 @@ class TestParallelLayersLogic:
                     size=[self.batch_size, self.seq_len, self.hidden_size],
                 ).astype("int64")
             )
-            with paddle.amp.auto_cast(level="O1", dtype="bfloat16"):
+            with paddle.amp.auto_cast(level="O1", dtype=self.amp_dtype):
                 loss = model(x).astype("float32").sum()
             loss.backward()
             opt.step()
