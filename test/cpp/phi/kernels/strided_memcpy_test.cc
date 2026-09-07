@@ -14,10 +14,13 @@ limitations under the License. */
 
 #include "paddle/phi/kernels/funcs/strided_memcpy.h"
 #include <array>
+#include <limits>
 
 #include "gtest/gtest.h"
 #include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/common/memory_utils.h"
+#include "paddle/phi/kernels/funcs/index_elementwise.h"
+
 namespace phi {
 namespace tests {
 
@@ -73,6 +76,28 @@ TEST(StridedMemcpy, CPUConcat) {
   // clang-format on
   for (size_t i = 0; i < sizeof(expect_dst) / sizeof(int); ++i) {
     ASSERT_EQ(expect_dst[i], dst[i]);
+  }
+}
+
+TEST(IndexElementwiseOffset, CPUUses64BitOffsets) {
+  const int64_t shape[] = {2};
+  int64_t int32_overflow_stride[] = {
+      static_cast<int64_t>(std::numeric_limits<int32_t>::max()) + 1};
+  int64_t uint32_overflow_stride[] = {
+      static_cast<int64_t>(std::numeric_limits<uint32_t>::max()) + 1};
+
+  {
+    std::array<int64_t*, 1> strides = {int32_overflow_stride};
+    auto offset_calc =
+        phi::funcs::CPUmake_offset_calculator_put<1>({shape[0]}, strides);
+    EXPECT_EQ(offset_calc.cpu_get(1)[0], int32_overflow_stride[0]);
+  }
+
+  {
+    std::array<int64_t*, 1> strides = {uint32_overflow_stride};
+    auto offset_calc =
+        phi::funcs::CPUmake_offset_calculator_put<1>({shape[0]}, strides);
+    EXPECT_EQ(offset_calc.cpu_get(1)[0], uint32_overflow_stride[0]);
   }
 }
 
