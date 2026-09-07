@@ -41,16 +41,9 @@ constexpr bool IsInInt32Range(int64_t value) {
          value <= std::numeric_limits<int32_t>::max();
 }
 
-constexpr bool IsInInt32Range(int64_t v1, int64_t v2) {
-  return IsInInt32Range(v1) && IsInInt32Range(v2);
-}
-
-constexpr bool IsInInt32Range(int64_t v1, int64_t v2, int64_t v3) {
-  return IsInInt32Range(v1) && IsInInt32Range(v2) && IsInInt32Range(v3);
-}
-
-constexpr bool IsInInt32Range(int64_t v1, int64_t v2, int64_t v3, int64_t v4) {
-  return IsInInt32Range(v1, v2) && IsInInt32Range(v3, v4);
+template <typename... Values>
+constexpr bool IsInInt32Range(int64_t value, Values... values) {
+  return IsInInt32Range(value) && (IsInInt32Range(values) && ...);
 }
 
 // Lowest and highest offset, relative to an operand's base, that walking
@@ -111,14 +104,14 @@ inline int64_t StridedOperandByteSpan(const DenseTensor& t) {
 // part in the 32/64 bit dispatch, otherwise the signed calculator's
 // CheckOffsetRange rejects a shape the unsigned path used to handle.
 inline int64_t IndexOperandByteSpan(const std::vector<int64_t>& index_dims) {
-  int64_t num_indices = 0;
-  std::vector<int64_t> index_shape;
-  std::vector<int64_t> index_stride;
-  cal_shape_stride(index_dims, &num_indices, &index_shape, &index_stride);
-
+  auto shape_begin = std::find(index_dims.begin(), index_dims.end(), -1);
+  if (shape_begin == index_dims.end()) {
+    return 0;
+  }
   int64_t elements = 1;
-  for (int64_t dim : index_shape) {
-    elements *= dim;
+  for (++shape_begin; shape_begin != index_dims.end() && *shape_begin != -1;
+       ++shape_begin) {
+    elements *= *shape_begin;
   }
   if (elements == 0) {
     return 0;
