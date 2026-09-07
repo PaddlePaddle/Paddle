@@ -37,6 +37,45 @@ def ref_logsumexp(x, axis=None, keepdim=False, reduce_all=False):
     return out
 
 
+def ref_logsumexp_torch(x, axis=None, keepdim=False, reduce_all=False):
+    """Mimic torch2.12's logsumexp_out_impl:
+        maxes = amax(x, dims, keepdim=true)
+        maxes_squeezed = keepdim ? maxes : squeeze(maxes, dims)
+        maxes_squeezed.masked_fill_(abs(maxes_squeezed) == inf, 0)
+        result = sum((x - maxes).exp_(), dims, keepdim)
+        result.log_().add_(maxes_squeezed)
+
+    torch's masked_fill_ acts on maxes_squeezed, which is a view of maxes
+    (squeeze returns a view), so the zeroed maxes are also the ones
+    subtracted from x. Filling maxes directly below is equivalent and keeps
+    the zeroed values visible to `x - maxes`.
+    """
+    if isinstance(axis, int):
+        axis = (axis,)
+    elif isinstance(axis, list):
+        axis = tuple(axis)
+    if reduce_all:
+        axis = None
+
+    if x.size == 0:
+        with np.errstate(divide='ignore'):
+            return np.log(np.exp(x).sum(axis=axis, keepdims=keepdim))
+
+    maxes = np.asarray(np.amax(x, axis=axis, keepdims=True))
+    if keepdim:
+        maxes_squeezed = maxes
+    elif axis is None:
+        maxes_squeezed = np.squeeze(maxes)
+    else:
+        maxes_squeezed = np.squeeze(maxes, axis=axis)
+    maxes[np.abs(maxes) == np.inf] = 0
+
+    result = np.exp(x - maxes).sum(axis=axis, keepdims=keepdim)
+    with np.errstate(divide='ignore'):
+        result = np.log(result)
+    return result + maxes_squeezed
+
+
 def logsumexp_wrapper(x, axis=None, keepdim=False, allreduce=False):
     if allreduce:
         return paddle.logsumexp(x, None, keepdim)
@@ -477,6 +516,187 @@ class TestLogsumexpAPI_Compatibility(unittest.TestCase):
             ref_out = self.np_ref_out
             for out in fetches:
                 np.testing.assert_allclose(out, ref_out)
+
+
+@unittest.skipIf(
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "compatible logsumexp kernel is implemented in cuda",
+)
+class TestLogsumexp_CompatibleKernel(TestLogsumexp):
+    """Test the torch-compatible path (FLAGS_use_accuracy_compatible_kernel=1).
+
+    On GPU this replaces the fused warp kernel with the op-by-op
+    MaxKernel/ZeroInf/Subtract/Exp/Sum/Log/Add decomposition, so the
+    default shape/axis/dtype cases are re-run through that path here.
+    """
+
+    def setUp(self):
+        self._old_flag = paddle.get_flags(
+            ['FLAGS_use_accuracy_compatible_kernel']
+        )['FLAGS_use_accuracy_compatible_kernel']
+        paddle.set_flags({'FLAGS_use_accuracy_compatible_kernel': 1})
+        self.op_type = 'logsumexp'
+        self.prim_op_type = "prim"
+        self.python_api = logsumexp_wrapper
+        self.public_python_api = logsumexp_wrapper
+        self.shape = [2048, 160]
+        self.axis = [1]
+        self.dtype = 'float32'
+        self.keepdim = False
+        self.reduce_all = False
+        self.set_attrs()
+
+        np.random.seed(10)
+        x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
+        out = ref_logsumexp_torch(x, self.axis, self.keepdim, self.reduce_all)
+
+        self.inputs = {'X': x}
+        self.outputs = {'Out': out}
+        self.attrs = {
+            'axis': self.axis,
+            'keepdim': self.keepdim,
+            'reduce_all': self.reduce_all,
+        }
+        self.user_defined_grads = None
+        self.user_defined_grad_outputs = None
+        self.set_attrs_addition()
+
+    def tearDown(self):
+        paddle.set_flags(
+            {'FLAGS_use_accuracy_compatible_kernel': self._old_flag}
+        )
+        super().tearDown()
+
+    def test_check_grad(self):
+        # Same as TestLogsumexp_FP32: the numeric-diff grad check is unstable
+        # in float32, so compare against the analytic softmax gradient with
+        # full reduction instead.
+        self.__class__.dtype = self.dtype
+        x_grad = logsumexp_op_grad(self.inputs['X'])
+        ref_x_grad = logsumexp_ref_grad(self.inputs['X'])
+        np.testing.assert_allclose(x_grad, ref_x_grad, rtol=1e-08, atol=1e-08)
+
+
+@unittest.skipIf(
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "compatible logsumexp kernel is implemented in cuda",
+)
+class TestLogsumexp_CompatibleKernel_AxisKeepdim(
+    TestLogsumexp_CompatibleKernel
+):
+    def set_attrs(self):
+        self.axis = [0]
+        self.keepdim = True
+
+
+@unittest.skipIf(
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "compatible logsumexp kernel is implemented in cuda",
+)
+class TestLogsumexp_CompatibleKernel_ReduceAll(TestLogsumexp_CompatibleKernel):
+    def set_attrs(self):
+        self.axis = [0, 1]
+        self.reduce_all = True
+
+
+@unittest.skipIf(
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "compatible logsumexp kernel is implemented in cuda",
+)
+class TestLogsumexp_CompatibleKernel_Inf(TestLogsumexp_CompatibleKernel):
+    def setUp(self):
+        super().setUp()
+        x = self.inputs['X']
+        x[0, 0] = np.inf  # +inf inside a row -> +inf
+        x[1, :] = -np.inf  # all -inf row -> -inf
+        x[2, 5] = -np.inf  # -inf among finite values -> finite result
+        self.inputs['X'] = x
+        self.outputs['Out'] = ref_logsumexp_torch(
+            x, self.axis, self.keepdim, self.reduce_all
+        )
+
+
+@unittest.skipIf(
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
+)
+class TestLogsumexp_CompatibleKerne_FP16(TestLogsumexp_CompatibleKernel):
+    def set_attrs(self):
+        self.dtype = 'float16'
+
+    def test_check_output(self):
+        place = get_device_place()
+        self.check_output_with_place(
+            place,
+            check_pir=True,
+            check_prim_pir=True,
+        )
+
+    def test_check_grad(self):
+        place = get_device_place()
+        self.check_grad_with_place(
+            place,
+            ['X'],
+            'Out',
+            check_pir=True,
+            check_prim_pir=True,
+        )
+
+
+@unittest.skipIf(
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
+    "core is not compiled with CUDA and not support the bfloat16",
+)
+class TestLogsumexp_CompatibleKernel_BF16(TestLogsumexp_CompatibleKernel):
+    def setUp(self):
+        self._old_flag = paddle.get_flags(
+            ['FLAGS_use_accuracy_compatible_kernel']
+        )['FLAGS_use_accuracy_compatible_kernel']
+        paddle.set_flags({'FLAGS_use_accuracy_compatible_kernel': 1})
+        self.op_type = 'logsumexp'
+        self.prim_op_type = "prim"
+        self.python_api = logsumexp_wrapper
+        self.public_python_api = logsumexp_wrapper
+        self.dtype = np.uint16
+        self.shape = [2048, 160]
+        self.axis = [1]
+        self.keepdim = False
+        self.reduce_all = False
+        self.set_attrs()
+
+        np.random.seed(10)
+        x = np.random.uniform(-1, 1, self.shape).astype(np.float64)
+        out = ref_logsumexp_torch(x, self.axis, self.keepdim, self.reduce_all)
+
+        self.inputs = {'X': convert_float_to_uint16(x)}
+        self.outputs = {'Out': convert_float_to_uint16(out)}
+        self.attrs = {
+            'axis': self.axis,
+            'keepdim': self.keepdim,
+            'reduce_all': self.reduce_all,
+        }
+        self.user_defined_grads = None
+        self.user_defined_grad_outputs = None
+        self.set_attrs_addition()
+
+    def test_check_output(self):
+        place = get_device_place()
+        self.check_output_with_place(
+            place,
+            check_pir=True,
+            check_prim_pir=True,
+        )
+
+    def test_check_grad(self):
+        place = get_device_place()
+        self.check_grad_with_place(
+            place,
+            ['X'],
+            'Out',
+            check_pir=True,
+            check_prim_pir=True,
+        )
 
 
 if __name__ == '__main__':
