@@ -183,6 +183,7 @@ TEST_CONFIGS = {
         {
             "test_type": "optimizer",
             "layer_type": "FullyShard",
+            "optimizer_type": "AdamW",
             "optimizer_name": "opt",
             "amp_level": "O2",
             "world_size": 2,
