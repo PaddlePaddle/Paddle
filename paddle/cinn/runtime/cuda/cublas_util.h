@@ -13,10 +13,28 @@
 // limitations under the License.
 #pragma once
 
-#include <cublas_v2.h>
+#include "paddle/cinn/runtime/cuda/xtrans_cublas_v2_compat.h"
 
 #include "glog/logging.h"
 #include "paddle/cinn/common/type.h"
+
+// xtrans's cublas_v2.h declares cublasGemmEx/cublasGemmBatchedEx with a
+// cudaDataType_t computeType parameter (matching the pre-CUDA-11
+// cublasComputeType_t-less API surface), unlike NVIDIA's official header
+// which uses cublasComputeType_t (e.g. CUBLAS_COMPUTE_32F) starting with
+// CUDA 11. Map to the numerically-equivalent cudaDataType_t (CUDA_R_32F)
+// under xtrans so the same call sites compile against both header flavors.
+//
+// cublasGemmStridedBatchedEx is the exception: xtrans's header textually
+// redirects it to cublasGemmStridedBatchedEx_v2 (guarded by PADDLE_WITH_CUDA,
+// see cublas_v2.h's "Paddle-specific symbol redirection" block), and that
+// _v2 entry point still takes the standard cublasComputeType_t, so it must
+// keep using CUBLAS_COMPUTE_32F directly rather than this macro.
+#if defined(PADDLE_WITH_XPU_CADA)
+#define CINN_CUBLAS_COMPUTE_32F CUDA_R_32F
+#else
+#define CINN_CUBLAS_COMPUTE_32F CUBLAS_COMPUTE_32F
+#endif
 
 namespace cinn {
 namespace runtime {
@@ -88,7 +106,7 @@ inline cublasStatus_t cublasGemm(cudaDataType_t dtype,
                         C,
                         CUDA_R_16F,
                         ldc,
-                        CUBLAS_COMPUTE_32F,
+                        CINN_CUBLAS_COMPUTE_32F,
                         CUBLAS_GEMM_DEFAULT_TENSOR_OP);
 #else
     cinn::common::float16 alpha_fp16{alpha};
@@ -127,7 +145,7 @@ inline cublasStatus_t cublasGemm(cudaDataType_t dtype,
                         C,
                         CUDA_R_16BF,
                         ldc,
-                        CUBLAS_COMPUTE_32F,
+                        CINN_CUBLAS_COMPUTE_32F,
                         CUBLAS_GEMM_DEFAULT_TENSOR_OP);
 #else
     PADDLE_THROW(::common::errors::Fatal(
@@ -220,7 +238,7 @@ inline cublasStatus_t cublasGemmStridedBatched(cudaDataType_t dtype,
                                       ldc,
                                       strideC,
                                       batchCount,
-                                      CUBLAS_COMPUTE_32F,
+                                      CINN_CUBLAS_COMPUTE_32F,
                                       CUBLAS_GEMM_DEFAULT_TENSOR_OP);
 #else
     cinn::common::float16 alpha_fp16{alpha};
@@ -268,7 +286,7 @@ inline cublasStatus_t cublasGemmStridedBatched(cudaDataType_t dtype,
                                       ldc,
                                       strideC,
                                       batchCount,
-                                      CUBLAS_COMPUTE_32F,
+                                      CINN_CUBLAS_COMPUTE_32F,
                                       CUBLAS_GEMM_DEFAULT_TENSOR_OP);
 #else
     PADDLE_THROW(::common::errors::InvalidArgument(
@@ -339,10 +357,18 @@ inline cublasStatus_t cublasGemmBatched(cudaDataType_t dtype,
                                n,
                                k,
                                &alpha,
+#if defined(PADDLE_WITH_XPU_CADA)
+                               const_cast<const void **>(A),
+#else
                                A,
+#endif
                                CUDA_R_16F,
                                lda,
+#if defined(PADDLE_WITH_XPU_CADA)
+                               const_cast<const void **>(B),
+#else
                                B,
+#endif
                                CUDA_R_16F,
                                ldb,
                                &beta,
@@ -350,7 +376,7 @@ inline cublasStatus_t cublasGemmBatched(cudaDataType_t dtype,
                                CUDA_R_16F,
                                ldc,
                                batchCount,
-                               CUBLAS_COMPUTE_32F,
+                               CINN_CUBLAS_COMPUTE_32F,
                                CUBLAS_GEMM_DEFAULT_TENSOR_OP);
 #else
     __half alpha_fp16{alpha};
@@ -380,10 +406,18 @@ inline cublasStatus_t cublasGemmBatched(cudaDataType_t dtype,
                                n,
                                k,
                                &alpha,
+#if defined(PADDLE_WITH_XPU_CADA)
+                               const_cast<const void **>(A),
+#else
                                A,
+#endif
                                CUDA_R_16BF,
                                lda,
+#if defined(PADDLE_WITH_XPU_CADA)
+                               const_cast<const void **>(B),
+#else
                                B,
+#endif
                                CUDA_R_16BF,
                                ldb,
                                &beta,
@@ -391,7 +425,7 @@ inline cublasStatus_t cublasGemmBatched(cudaDataType_t dtype,
                                CUDA_R_16BF,
                                ldc,
                                batchCount,
-                               CUBLAS_COMPUTE_32F,
+                               CINN_CUBLAS_COMPUTE_32F,
                                CUBLAS_GEMM_DEFAULT_TENSOR_OP);
 #else
     PADDLE_THROW(::common::errors::Fatal(

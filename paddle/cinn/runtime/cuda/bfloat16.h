@@ -27,7 +27,10 @@
 #ifdef CINN_WITH_CUDA
 #include <cuda.h>
 
-#if (defined(__CUDACC__) || defined(__CUDACC_RTC__)) && CUDA_VERSION >= 11000
+// TODO(zhangxiao): see float16_xpu_cada.h -- bf16 hits the same xtrans
+// overload-resolution ambiguity, temporarily disabled for WITH_XPU_CADA.
+#if (defined(__CUDACC__) || defined(__CUDACC_RTC__)) && CUDA_VERSION >= 11000 && \
+    !defined(PADDLE_WITH_XPU_CADA)
 #define CINN_CUDA_BF16
 #include <cuda_bf16.h>
 

@@ -72,7 +72,8 @@ struct ArgSourceMaker {
       auto DoEachIndex = [&](std::size_t index) -> Ok {
         ADT_CHECK(index < inputs.size());
         const auto& bir_node = inputs.at(index);
-        NativeIrValueSource native_ir_value_source{input_idx};
+        NativeIrValueSource native_ir_value_source{
+            static_cast<int>(input_idx)};
         TensorSource tensor_source{native_ir_value_source};
         InTensorSource in_tensor_source{tensor_source};
         Pair pair{bir_node, in_tensor_source};
@@ -84,7 +85,8 @@ struct ArgSourceMaker {
         for (std::size_t i = start; i < end; ++i) {
           ADT_CHECK(i < inputs.size());
           const auto& bir_node = inputs.at(i);
-          PackedIrValueSource packed_ir_value_source{input_idx, i};
+          PackedIrValueSource packed_ir_value_source{
+              static_cast<int>(input_idx), static_cast<int>(i)};
           TensorSource tensor_source{packed_ir_value_source};
           InTensorSource in_tensor_source{tensor_source};
           Pair pair{bir_node, in_tensor_source};
@@ -121,7 +123,7 @@ struct ArgSourceMaker {
         ADT_CHECK(index < outputs.size());
         const auto& bir_node = outputs.at(index);
         OutTensorSource out_tensor_source{
-            TensorSource{NativeIrValueSource{output_idx}}};
+            TensorSource{NativeIrValueSource{static_cast<int>(output_idx)}}};
         ret.emplace_back(Pair{bir_node, out_tensor_source});
         ++output_idx;
         return adt::Ok{};
@@ -130,8 +132,8 @@ struct ArgSourceMaker {
         for (std::size_t i = start; i < end; ++i) {
           ADT_CHECK(i < outputs.size());
           const auto& bir_node = outputs.at(i);
-          OutTensorSource out_tensor_source{
-              TensorSource{PackedIrValueSource{output_idx, i}}};
+          OutTensorSource out_tensor_source{TensorSource{PackedIrValueSource{
+              static_cast<int>(output_idx), static_cast<int>(i)}}};
           ret.emplace_back(Pair{bir_node, out_tensor_source});
         }
         ++output_idx;

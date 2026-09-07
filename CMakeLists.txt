@@ -59,6 +59,9 @@ option(WITH_XPU_XFT "Compile PaddlePaddle with BAIDU XPU-XFT" OFF)
 option(WITH_XPU_PLUGIN "Compile PaddlePaddle with BAIDU XPU plugin" OFF)
 option(WITH_XPU_XRE5 "Compile PaddlePaddle with BAIDU XPU XRE 5" OFF)
 option(WITH_XPU_FFT "Compile PaddlePaddle with BAIDU XPU FFT" ${WITH_XPU})
+option(
+  WITH_XPU_CADA
+  "Compile CINN with BAIDU KUNLUN XPU M100 CUDA-compat (xtrans) backend" OFF)
 option(WITH_MAGMA "Compile PaddlePaddle with Magma library" OFF)
 option(
   WITH_SLEEF
@@ -601,13 +604,21 @@ if(WITH_CINN)
   # TODO(6clc): Use CINN_WITH_CUDNN to completely replace WITH_CUDNN in CINN.
   #             Use WITH_GPU to completely replace WITH_CUDA in CINN.
   set(WITH_MKL_CBLAS ${WITH_MKL})
-  if(WITH_GPU)
-    set(WITH_CUDA ${WITH_GPU})
+  if(WITH_GPU OR WITH_XPU_CADA)
+    set(WITH_CUDA ON)
     add_definitions(-DCINN_WITH_CUDA)
     set(WITH_CUDNN ${CINN_WITH_CUDNN})
     if(WITH_CUDNN)
       add_definitions(-DCINN_WITH_CUDNN)
     endif()
+  endif()
+
+  if(WITH_XPU_CADA)
+    # M100 (xtrans) presents a CUDA/NVRTC/Driver-API compatible surface, so
+    # CINN's CUDA codegen/nvrtc/runtime path is reused as-is; PADDLE_WITH_XPU_CADA
+    # only isolates the few spots where the xtrans toolchain layout differs
+    # from a standard NVIDIA CUDA installation (see cmake/cinn.cmake).
+    add_definitions(-DPADDLE_WITH_XPU_CADA)
   endif()
 
   include(cmake/cinn.cmake)

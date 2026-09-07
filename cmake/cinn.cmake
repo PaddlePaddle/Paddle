@@ -2,6 +2,15 @@ set(CINN_THIRD_PARTY_PATH "${CMAKE_BINARY_DIR}/third_party")
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(DOWNLOAD_MODEL_DIR "${CINN_THIRD_PARTY_PATH}/model")
 
+if(WITH_XPU_CADA)
+  # xtrans/clang treats narrowing conversions in brace-init (e.g. int64_t ->
+  # int) as a hard error by default (-Wc++11-narrowing), whereas gcc only
+  # warns. paddle/cinn and paddle/ap have many such call sites that are
+  # value-safe in practice (indices/sizes fit in int); silence the
+  # diagnostic for WITH_XPU_CADA builds instead of casting every call site.
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-c++11-narrowing")
+endif()
+
 string(REGEX MATCH "-std=(c\\+\\+[^ ]+)" STD_FLAG "${CMAKE_CXX_FLAGS}")
 if(NOT STD_FLAG)
   if(NOT CMAKE_CXX_STANDARD)
@@ -26,7 +35,7 @@ else()
 endif()
 
 if(NOT DEFINED ENV{runtime_include_dir})
-  if(WITH_GPU)
+  if(WITH_GPU OR WITH_XPU_CADA)
     message(
       STATUS
         "set runtime_include_dir: ${CMAKE_SOURCE_DIR}/paddle/cinn/runtime/cuda")
@@ -72,26 +81,66 @@ if(WITH_ONEDNN)
   add_definitions(-DCINN_WITH_DNNL)
 endif()
 
-if(WITH_GPU)
+if(WITH_GPU OR WITH_XPU_CADA)
   message(STATUS "Enable CINN CUDA")
   add_definitions(-DCINN_WITH_CUDA)
   if(WITH_CUDNN)
     message(STATUS "Enable CINN CUDNN")
     add_definitions(-DCINN_WITH_CUDNN)
   endif()
-  if(WITH_CUTLASS)
-    message(STATUS "Enable CINN CUTLASS")
-    add_definitions(-DCINN_WITH_CUTLASS)
+
+  if(WITH_XPU_CADA)
+    # M100 support via xtrans: xtrans ships a CUDA/NVRTC/Driver-API
+    # compatible toolchain (nvcc wrapper, libnvrtc.so, libcuda.so.*.kunlun,
+    # standard CUDA headers) rooted at XTRANS_ROOT. CINN's CUDA
+    # codegen/nvrtc/runtime code is reused unmodified; only the toolchain
+    # root/library search paths differ from a stock NVIDIA CUDA install (no
+    # lib64/stubs, libs under targets/x86_64-linux/lib).
+    message(STATUS "Enable CINN CUDA-compat (XPU_CADA / xtrans)")
+    if(WITH_CUTLASS)
+      message(
+        WARNING "CINN CUTLASS integration is not verified with xtrans; "
+                "skipping CINN_WITH_CUTLASS for WITH_XPU_CADA builds. This "
+                "does not affect phi's own CUTLASS kernels (WITH_CUTLASS "
+                "stays as configured).")
+    endif()
+    if(NOT XTRANS_ROOT)
+      if(DEFINED ENV{XTRANS_ROOT})
+        set(XTRANS_ROOT $ENV{XTRANS_ROOT})
+      else()
+        message(
+          FATAL_ERROR
+            "WITH_XPU_CADA=ON requires -DXTRANS_ROOT=<path to xtrans_cuda_*> "
+            "(or environment variable XTRANS_ROOT) to locate the xtrans "
+            "CUDA-compat toolchain.")
+      endif()
+    endif()
+    set(CUDA_TOOLKIT_ROOT_DIR ${XTRANS_ROOT})
+    # xtrans has no lib64/stubs directory; libs live under
+    # targets/x86_64-linux/{lib,include} instead of the stock CUDA layout.
+    set(XTRANS_LIB_DIR ${XTRANS_ROOT}/targets/x86_64-linux/lib)
+    set(XTRANS_INCLUDE_DIR ${XTRANS_ROOT}/targets/x86_64-linux/include)
+    set(CUDA_INCLUDE_DIRS ${XTRANS_INCLUDE_DIR})
+    find_library(CUDA_LIBRARIES libcudart.so HINTS ${XTRANS_LIB_DIR} REQUIRED)
+    set(CUDASTUB_HINTS ${XTRANS_LIB_DIR})
+    set(CUDA_LIB_HINTS ${XTRANS_LIB_DIR})
+  else()
+    if(WITH_CUTLASS)
+      message(STATUS "Enable CINN CUTLASS")
+      add_definitions(-DCINN_WITH_CUTLASS)
+    endif()
+    enable_language(CUDA)
+    find_package(CUDA REQUIRED)
+    set(CUDASTUB_HINTS ${CUDA_TOOLKIT_ROOT_DIR}/lib64/stubs/)
+    set(CUDA_LIB_HINTS ${CUDA_TOOLKIT_ROOT_DIR}/lib64 /usr/lib /usr/lib64)
+    set(CUDA_SEPARABLE_COMPILATION ON)
+    cuda_select_nvcc_arch_flags(ARCH_FLAGS Auto)
+    list(APPEND CUDA_NVCC_FLAGS ${ARCH_FLAGS})
+    include_directories(/usr/lib/x86_64-linux-gnu)
   endif()
-  enable_language(CUDA)
-  find_package(CUDA REQUIRED)
+
   include_directories(${CUDA_INCLUDE_DIRS})
   include_directories(${CMAKE_SOURCE_DIR}/paddle/cinn/runtime/cuda)
-  include_directories(/usr/lib/x86_64-linux-gnu)
-  set(CUDA_SEPARABLE_COMPILATION ON)
-
-  cuda_select_nvcc_arch_flags(ARCH_FLAGS Auto)
-  list(APPEND CUDA_NVCC_FLAGS ${ARCH_FLAGS})
   set(CMAKE_CUDA_STANDARD ${CMAKE_CXX_STANDARD})
 
   message(
@@ -102,16 +151,28 @@ if(WITH_GPU)
             paddle/cinn/common/float8e4m3.h
        DESTINATION $ENV{runtime_include_dir})
 
-  find_library(CUDASTUB libcuda.so HINTS ${CUDA_TOOLKIT_ROOT_DIR}/lib64/stubs/
-                                         REQUIRED)
-  find_library(CUBLAS libcublas.so HINTS ${CUDA_TOOLKIT_ROOT_DIR}/lib64
-                                         /usr/lib /usr/lib64 REQUIRED)
-  find_library(CUDNN libcudnn.so HINTS ${CUDA_TOOLKIT_ROOT_DIR}/lib64 /usr/lib
-                                       /usr/lib64 REQUIRED)
-  find_library(CURAND libcurand.so HINTS ${CUDA_TOOLKIT_ROOT_DIR}/lib64
-                                         /usr/lib /usr/lib64 REQUIRED)
-  find_library(CUSOLVER libcusolver.so HINTS ${CUDA_TOOLKIT_ROOT_DIR}/lib64
-                                             /usr/lib /usr/lib64 REQUIRED)
+  find_library(CUDASTUB libcuda.so HINTS ${CUDASTUB_HINTS} REQUIRED)
+  find_library(CUBLAS libcublas.so HINTS ${CUDA_LIB_HINTS} REQUIRED)
+  # cudnn is intentionally NOT linked at compile time (no find_library +
+  # target_link_libraries here). CINN calls cudnn through phi's dynload
+  # wrapper (paddle/phi/backends/dynload/cudnn.h), which lazily dlopen's
+  # libcudnn.so on first real use, matching how the rest of Paddle already
+  # handles cudnn. This avoids making libcudnn.so a hard DT_NEEDED of
+  # cinnapi/cinncore: under WITH_XPU_CADA, xtrans's libcudnn.so itself
+  # dynamically depends on its own libLLVM-15.so (via libclang-cpp.so.15),
+  # and any process linking cinnapi (e.g. eager_generator) would otherwise
+  # load both xtrans's LLVM-15 and CINN's own statically-linked LLVM into
+  # the same process, causing their global llvm::cl::opt registries to
+  # collide and abort at startup.
+  find_library(CURAND libcurand.so HINTS ${CUDA_LIB_HINTS} REQUIRED)
+  find_library(CUSOLVER libcusolver.so HINTS ${CUDA_LIB_HINTS} REQUIRED)
+  if(WITH_XPU_CADA)
+    # xtrans's libcusolver.so is dynamically linked against libcusparse.so
+    # (undefined cusparseCreate/cusparseDestroy/etc. at link time) instead of
+    # statically bundling it like the official NVIDIA cusolver, so it must be
+    # linked explicitly here.
+    find_library(CUSPARSE libcusparse.so HINTS ${CUDA_LIB_HINTS} REQUIRED)
+  endif()
 endif()
 
 if(WITH_SYCL)
@@ -191,16 +252,18 @@ if(WITH_MKL)
   endif()
 endif()
 
-if(WITH_GPU)
+if(WITH_GPU OR WITH_XPU_CADA)
   target_link_libraries(
     cinnapi
     ${CUDA_NVRTC_LIB}
     ${CUDA_LIBRARIES}
     ${CUDASTUB}
     ${CUBLAS}
-    ${CUDNN}
     ${CURAND}
     ${CUSOLVER})
+  if(WITH_XPU_CADA)
+    target_link_libraries(cinnapi ${CUSPARSE})
+  endif()
   if(NVTX_FOUND)
     target_link_libraries(cinnapi ${CUDA_NVTX_LIB})
   endif()
@@ -248,17 +311,19 @@ function(gen_cinncore LINKTYPE)
     endif()
   endif()
 
-  if(WITH_GPU)
+  if(WITH_GPU OR WITH_XPU_CADA)
     target_link_libraries(
       ${CINNCORE_TARGET}
       ${CUDA_NVRTC_LIB}
       ${CUDA_LIBRARIES}
       ${CUDASTUB}
       ${CUBLAS}
-      ${CUDNN}
       ${CURAND}
       ${CUSOLVER})
     # ${jitify_deps})
+    if(WITH_XPU_CADA)
+      target_link_libraries(${CINNCORE_TARGET} ${CUSPARSE})
+    endif()
     if(NVTX_FOUND)
       target_link_libraries(${CINNCORE_TARGET} ${CUDA_NVTX_LIB})
     endif()

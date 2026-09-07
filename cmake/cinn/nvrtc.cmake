@@ -1,4 +1,4 @@
-if(NOT WITH_GPU)
+if(NOT WITH_GPU AND NOT WITH_XPU_CADA)
   return()
 endif()
 
@@ -6,8 +6,9 @@ find_package(PkgConfig)
 
 find_library(
   CUDA_NVRTC_LIB libnvrtc nvrtc
-  HINTS "${CUDA_TOOLKIT_ROOT_DIR}/lib64" "${LIBNVRTC_LIBRARY_DIR}"
-        "${CUDA_TOOLKIT_ROOT_DIR}/lib/x64" /usr/lib64 /usr/local/cuda/lib64)
+  HINTS "${CUDA_TOOLKIT_ROOT_DIR}/lib64" "${XTRANS_LIB_DIR}"
+        "${LIBNVRTC_LIBRARY_DIR}" "${CUDA_TOOLKIT_ROOT_DIR}/lib/x64"
+        /usr/lib64 /usr/local/cuda/lib64)
 
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(LibNVRTC DEFAULT_MSG CUDA_NVRTC_LIB)

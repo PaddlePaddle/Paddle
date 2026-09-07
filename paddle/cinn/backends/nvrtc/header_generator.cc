@@ -64,7 +64,14 @@ std::string read_file_as_string(const std::string& file_path) {
 #ifdef CINN_WITH_CUDA
 
 static const std::string cinn_float16_header =  // NOLINT
+#ifdef PADDLE_WITH_XPU_CADA
+    // xtrans/clang's strict overload resolution makes float16's implicit
+    // float+double conversions ambiguous (see float16_xpu_cada.h's file
+    // comment); use the explicit-only variant instead of float16.h.
+    read_file_as_string("float16_xpu_cada.h");
+#else
     read_file_as_string("float16.h");
+#endif
 static const std::string cinn_bfloat16_header =  // NOLINT
     read_file_as_string("bfloat16.h");
 static const std::string cinn_float8e4m3_header =  // NOLINT
@@ -78,12 +85,45 @@ static const std::string cinn_cuda_runtime_source_header =  // NOLINT
     read_file_as_string("cinn_cuda_runtime_source.cuh");
 #endif
 JitSafeHeaderGenerator::JitSafeHeaderGenerator() {
+#ifndef PADDLE_WITH_XPU_CADA
+  // jitify's stub headers exist to let NVRTC compile code that uses
+  // standard-library facilities (limits, cmath, type_traits, ...) even
+  // when no real CUDA-compatible C++ standard headers are reachable via
+  // --include-path. Under xtrans, FindCUDAIncludePaths() already points
+  // NVRTC at a real, self-consistent set of headers (xtrans's own
+  // clang-cuda wrappers plus the system libstdc++), so injecting jitify's
+  // stubs on top is not just unnecessary but actively harmful: xtrans's
+  // __clang_cuda_runtime_wrapper.h includes the real <limits>/<cmath> at a
+  // point where jitify's same-named stub silently shadows them (nvrtc
+  // materializes the injected headers array as real files and resolves
+  // #include <limits> to jitify's stub before falling back to the
+  // --include-path search), which uses bare __host__/__device__ without
+  // the macros defined yet, and skipping just those two stubs then
+  // surfaces further stdlib/libstdc++ ABI mismatches (size_t/ptrdiff_t,
+  // type_traits helpers) from the remaining stubs. So for WITH_XPU_CADA
+  // builds, skip the jitify stub set entirely and rely solely on xtrans's
+  // real headers.
   const auto& headers_map = ::jitify::detail::get_jitsafe_headers_map();
   for (auto& pair : headers_map) {
     include_names_.emplace_back(pair.first.data());
     headers_.emplace_back(pair.second.data());
   }
+#endif  // PADDLE_WITH_XPU_CADA
 #ifdef CINN_WITH_CUDA
+#ifdef PADDLE_WITH_XPU_CADA
+  // TODO(zhangxiao): float16/bfloat16/float8e4m3 hit xtrans overload-
+  // resolution ambiguities not yet fully fixed. CodeGenCudaDev's
+  // WITH_XPU_CADA source_header_ no longer #includes float16_h/bfloat16_h,
+  // and cinn_cuda_runtime_source.cuh no longer needs them either
+  // (CINN_CUDA_FP16/CINN_CUDA_BF16 are suppressed), so skip injecting these
+  // headers into NVRTC entirely; re-add once the ambiguities are fixed.
+  include_names_.emplace_back("float8e4m3_h");
+  headers_.emplace_back(cinn_float8e4m3_header.data());
+  include_names_.emplace_back("cinn_with_cuda_h");
+  headers_.emplace_back(cinn_with_cuda_header.data());
+  include_names_.emplace_back("cinn_cuda_runtime_source_h");
+  headers_.emplace_back(cinn_cuda_runtime_source_header.data());
+#else
   include_names_.emplace_back("float16_h");
   headers_.emplace_back(cinn_float16_header.data());
   include_names_.emplace_back("bfloat16_h");
@@ -94,6 +134,7 @@ JitSafeHeaderGenerator::JitSafeHeaderGenerator() {
   headers_.emplace_back(cinn_with_cuda_header.data());
   include_names_.emplace_back("cinn_cuda_runtime_source_h");
   headers_.emplace_back(cinn_cuda_runtime_source_header.data());
+#endif  // PADDLE_WITH_XPU_CADA
 #endif
 }
 

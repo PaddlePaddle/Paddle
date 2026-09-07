@@ -5,6 +5,13 @@ if((NOT WITH_GPU)
   return()
 endif()
 
+if(WITH_XPU_CADA)
+  # xtrans ships a 0-byte libnvToolsExt.so stub (no NVTX implementation), so
+  # never treat NVTX as available under WITH_XPU_CADA.
+  set(NVTX_FOUND OFF)
+  return()
+endif()
+
 set(NVTX_ROOT
     "/usr"
     CACHE PATH "NVTX ROOT")

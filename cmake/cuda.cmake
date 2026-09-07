@@ -300,6 +300,12 @@ select_nvcc_arch_flags(NVCC_FLAGS_EXTRA NVCC_ARCH_BIN)
 set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} ${NVCC_FLAGS_EXTRA}")
 message(STATUS "NVCC_FLAGS_EXTRA: ${NVCC_FLAGS_EXTRA}")
 
+# The xcn/xtrans_cuda toolchain (clang-based nvcc replacement) does not define
+# __NVCC__ by default, which breaks the many "#if defined(__NVCC__) || ..."
+# guards used across phi kernels to select GPU-only code paths. Define it
+# explicitly so those guards behave the same as with the official nvcc.
+set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -D__NVCC__")
+
 # Set C++17 support
 set(CUDA_PROPAGATE_HOST_FLAGS OFF)
 # Release/Debug flags set by cmake. Such as -O3 -g -DNDEBUG etc.

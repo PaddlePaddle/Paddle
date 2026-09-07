@@ -18,6 +18,52 @@
 
 namespace ap::axpr {
 
+// xtrans/clang's `if constexpr` branch inside a member-template lambda
+// (see CpsInterpreter::InterpretBuiltinSymbolCall in cps_interpreter.h,
+// which dispatches to `this->template InterpretBuiltinUnarySymbolCall<Sym>`
+// / `InterpretBuiltinBinarySymbolCall<Sym>` per builtin_symbol type) does
+// not implicitly instantiate these member function templates the way
+// GCC/system-clang do; the call sites end up as unresolved external
+// references at link time. Force explicit instantiation for every
+// builtin_symbol type used by CpsInterpreter so the definitions are
+// actually emitted into this translation unit.
+#define AP_EXPLICIT_INSTANTIATE_UNARY(Sym)      \
+  template adt::Result<adt::Ok>                 \
+  CpsInterpreter::InterpretBuiltinUnarySymbolCall<builtin_symbol::Sym>( \
+      ComposedCallImpl<axpr::Value>*);
+#define AP_EXPLICIT_INSTANTIATE_BINARY(Sym)      \
+  template adt::Result<adt::Ok>                  \
+  CpsInterpreter::InterpretBuiltinBinarySymbolCall<builtin_symbol::Sym>( \
+      ComposedCallImpl<axpr::Value>*);
+
+AP_EXPLICIT_INSTANTIATE_UNARY(Not)
+AP_EXPLICIT_INSTANTIATE_UNARY(Neg)
+AP_EXPLICIT_INSTANTIATE_UNARY(Starred)
+AP_EXPLICIT_INSTANTIATE_UNARY(Call)
+AP_EXPLICIT_INSTANTIATE_UNARY(ToString)
+AP_EXPLICIT_INSTANTIATE_UNARY(Hash)
+AP_EXPLICIT_INSTANTIATE_UNARY(Length)
+
+AP_EXPLICIT_INSTANTIATE_BINARY(Add)
+AP_EXPLICIT_INSTANTIATE_BINARY(Sub)
+AP_EXPLICIT_INSTANTIATE_BINARY(Mul)
+AP_EXPLICIT_INSTANTIATE_BINARY(Div)
+AP_EXPLICIT_INSTANTIATE_BINARY(FloorDiv)
+AP_EXPLICIT_INSTANTIATE_BINARY(Mod)
+AP_EXPLICIT_INSTANTIATE_BINARY(EQ)
+AP_EXPLICIT_INSTANTIATE_BINARY(NE)
+AP_EXPLICIT_INSTANTIATE_BINARY(GT)
+AP_EXPLICIT_INSTANTIATE_BINARY(GE)
+AP_EXPLICIT_INSTANTIATE_BINARY(LT)
+AP_EXPLICIT_INSTANTIATE_BINARY(LE)
+AP_EXPLICIT_INSTANTIATE_BINARY(GetAttr)
+AP_EXPLICIT_INSTANTIATE_BINARY(SetAttr)
+AP_EXPLICIT_INSTANTIATE_BINARY(GetItem)
+AP_EXPLICIT_INSTANTIATE_BINARY(SetItem)
+
+#undef AP_EXPLICIT_INSTANTIATE_UNARY
+#undef AP_EXPLICIT_INSTANTIATE_BINARY
+
 adt::Result<axpr::Value> Interpreter::Interpret(
     const Lambda<CoreExpr>& lambda, const std::vector<axpr::Value>& args) {
   CpsInterpreter cps_interpreter{builtin_frame_attr_map_, circlable_ref_list_};

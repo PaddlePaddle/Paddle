@@ -55,11 +55,11 @@ struct Arch final : public ArchBase {
 
   DEFINE_MATCH_METHOD();
 
-  bool operator==(const auto& other) const {
+  bool operator==(const Arch& other) const {
     return this->index() == other.index();
   }
 
-  bool operator!=(const auto& other) const { return !(*this == other); }
+  bool operator!=(const Arch& other) const { return !(*this == other); }
 };
 
 inline bool IsDefined(Arch arch) {

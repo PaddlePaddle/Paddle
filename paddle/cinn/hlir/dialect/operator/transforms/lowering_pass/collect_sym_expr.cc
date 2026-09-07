@@ -229,7 +229,7 @@ CreateGroupShapeOrDataExprs(
     return GetGroupValue2Shape(group, global_shape_analysis);
   }
 
-  pir::ShapeConstraintIRAnalysis local_shape_analysis({});
+  pir::ShapeConstraintIRAnalysis local_shape_analysis;
   local_shape_analysis.InitInferContext();
 
   local_shape_analysis.RegisterSymbolConstraintFromShapeAnalysis(

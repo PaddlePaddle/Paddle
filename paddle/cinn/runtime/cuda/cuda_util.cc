@@ -14,7 +14,7 @@
 
 #include "paddle/cinn/runtime/cuda/cuda_util.h"
 
-#include <cublas_v2.h>
+#include "paddle/cinn/runtime/cuda/xtrans_cublas_v2_compat.h"
 #include <cuda_runtime.h>
 #include <curand.h>
 #include <cusolverDn.h>
@@ -25,7 +25,9 @@
 #include <algorithm>
 #include <string>
 #ifdef CINN_WITH_CUDNN
-#include <cudnn.h>
+// See paddle/cinn/backends/cuda_util.h for why this uses phi's dynload
+// wrapper instead of <cudnn.h> directly.
+#include "paddle/phi/backends/dynload/cudnn.h"
 #endif
 
 #include "paddle/cinn/backends/cuda_util.h"
@@ -660,7 +662,7 @@ class CudnnHandle {
   CudnnHandle(const CudnnHandle &) = delete;
   CudnnHandle &operator=(const CudnnHandle &) = delete;
   ~CudnnHandle() {
-    CUDNN_CALL(cudnnDestroy(cuhandle_));
+    CUDNN_CALL(phi::dynload::cudnnDestroy(cuhandle_));
     if (workspace_) {
       CUDA_CALL(cudaFree(workspace_));
     }
@@ -685,7 +687,7 @@ class CudnnHandle {
 
  private:
   CudnnHandle() : workspace_(nullptr), size_(0) {
-    CUDNN_CALL(cudnnCreate(&cuhandle_));
+    CUDNN_CALL(phi::dynload::cudnnCreate(&cuhandle_));
   }
   cudnnHandle_t cuhandle_;
   void *workspace_;
@@ -845,7 +847,7 @@ void cinn_call_cudnn_conv2d_forward(void *v_args,
       ::common::errors::InvalidArgument(
           "Expected number of argruments is 3, but received %d.", num_args));
   cudnnHandle_t &handle = CudnnHandle::GetInstance().GetCudnnHandle();
-  CUDNN_CALL(cudnnSetStream(handle, static_cast<cudaStream_t>(stream)));
+  CUDNN_CALL(phi::dynload::cudnnSetStream(handle, static_cast<cudaStream_t>(stream)));
   cinn_pod_value_t *args = static_cast<cinn_pod_value_t *>(v_args);
   void *_x = args[0].operator cinn_buffer_t *()->memory;
   void *_w = args[1].operator cinn_buffer_t *()->memory;
@@ -855,13 +857,13 @@ void cinn_call_cudnn_conv2d_forward(void *v_args,
   cudnnDataType_t data_type = convert_to_cudnn_dtype(v_args, num_args);
 
   cudnnTensorDescriptor_t x_desc;
-  CUDNN_CALL(cudnnCreateTensorDescriptor(&x_desc));
-  CUDNN_CALL(cudnnSetTensor4dDescriptor(
+  CUDNN_CALL(phi::dynload::cudnnCreateTensorDescriptor(&x_desc));
+  CUDNN_CALL(phi::dynload::cudnnSetTensor4dDescriptor(
       x_desc, tensor_format, data_type, input_n, input_c, input_h, input_w));
 
   cudnnFilterDescriptor_t w_desc;
-  CUDNN_CALL(cudnnCreateFilterDescriptor(&w_desc));
-  CUDNN_CALL(cudnnSetFilter4dDescriptor(w_desc,
+  CUDNN_CALL(phi::dynload::cudnnCreateFilterDescriptor(&w_desc));
+  CUDNN_CALL(phi::dynload::cudnnSetFilter4dDescriptor(w_desc,
                                         data_type,
                                         tensor_format,
                                         filter_n,
@@ -870,9 +872,9 @@ void cinn_call_cudnn_conv2d_forward(void *v_args,
                                         filter_w));
 
   cudnnConvolutionDescriptor_t conv_desc;
-  CUDNN_CALL(cudnnCreateConvolutionDescriptor(&conv_desc));
+  CUDNN_CALL(phi::dynload::cudnnCreateConvolutionDescriptor(&conv_desc));
   CUDNN_CALL(
-      cudnnSetConvolution2dDescriptor(conv_desc,
+      phi::dynload::cudnnSetConvolution2dDescriptor(conv_desc,
                                       pad_h,
                                       pad_w,
                                       stride_h,
@@ -881,12 +883,12 @@ void cinn_call_cudnn_conv2d_forward(void *v_args,
                                       dilation_w,
                                       CUDNN_CROSS_CORRELATION,
                                       get_cudnn_compute_dtype(data_type)));
-  CUDNN_CALL(cudnnSetConvolutionGroupCount(conv_desc, groups));
-  CUDNN_CALL(cudnnSetConvolutionMathType(conv_desc, CUDNN_DEFAULT_MATH));
+  CUDNN_CALL(phi::dynload::cudnnSetConvolutionGroupCount(conv_desc, groups));
+  CUDNN_CALL(phi::dynload::cudnnSetConvolutionMathType(conv_desc, CUDNN_DEFAULT_MATH));
 
   cudnnTensorDescriptor_t y_desc;
-  CUDNN_CALL(cudnnCreateTensorDescriptor(&y_desc));
-  CUDNN_CALL(cudnnSetTensor4dDescriptor(y_desc,
+  CUDNN_CALL(phi::dynload::cudnnCreateTensorDescriptor(&y_desc));
+  CUDNN_CALL(phi::dynload::cudnnSetTensor4dDescriptor(y_desc,
                                         tensor_format,
                                         data_type,
                                         output_n,
@@ -913,7 +915,7 @@ void cinn_call_cudnn_conv2d_forward(void *v_args,
   } else {
     int count = 0;
     cudnnConvolutionFwdAlgoPerf_t algo_perf;
-    CUDNN_CALL(cudnnFindConvolutionForwardAlgorithm(
+    CUDNN_CALL(phi::dynload::cudnnFindConvolutionForwardAlgorithm(
         handle, x_desc, w_desc, conv_desc, y_desc, 1, &count, &algo_perf));
 
     algo = algo_perf.algo;
@@ -921,7 +923,7 @@ void cinn_call_cudnn_conv2d_forward(void *v_args,
   }
 
   size_t workspace_size = 0;
-  CUDNN_CALL(cudnnGetConvolutionForwardWorkspaceSize(
+  CUDNN_CALL(phi::dynload::cudnnGetConvolutionForwardWorkspaceSize(
       handle, x_desc, w_desc, conv_desc, y_desc, algo, &workspace_size));
 
   void *workspace_data =
@@ -929,7 +931,7 @@ void cinn_call_cudnn_conv2d_forward(void *v_args,
   if (data_type == CUDNN_DATA_DOUBLE) {
     const double alpha_fp64 = static_cast<double>(alpha);
     const double beta_fp64 = static_cast<double>(beta);
-    CUDNN_CALL(cudnnConvolutionForward(handle,
+    CUDNN_CALL(phi::dynload::cudnnConvolutionForward(handle,
                                        &alpha_fp64,
                                        x_desc,
                                        _x,
@@ -943,7 +945,7 @@ void cinn_call_cudnn_conv2d_forward(void *v_args,
                                        y_desc,
                                        _y));
   } else {
-    CUDNN_CALL(cudnnConvolutionForward(handle,
+    CUDNN_CALL(phi::dynload::cudnnConvolutionForward(handle,
                                        &alpha,
                                        x_desc,
                                        _x,
@@ -958,10 +960,10 @@ void cinn_call_cudnn_conv2d_forward(void *v_args,
                                        _y));
   }
 
-  CUDNN_CALL(cudnnDestroyTensorDescriptor(x_desc));
-  CUDNN_CALL(cudnnDestroyFilterDescriptor(w_desc));
-  CUDNN_CALL(cudnnDestroyConvolutionDescriptor(conv_desc));
-  CUDNN_CALL(cudnnDestroyTensorDescriptor(y_desc));
+  CUDNN_CALL(phi::dynload::cudnnDestroyTensorDescriptor(x_desc));
+  CUDNN_CALL(phi::dynload::cudnnDestroyFilterDescriptor(w_desc));
+  CUDNN_CALL(phi::dynload::cudnnDestroyConvolutionDescriptor(conv_desc));
+  CUDNN_CALL(phi::dynload::cudnnDestroyTensorDescriptor(y_desc));
 }
 
 void cinn_call_cudnn_conv2d_backward_data(void *v_args,
@@ -995,7 +997,7 @@ void cinn_call_cudnn_conv2d_backward_data(void *v_args,
       ::common::errors::InvalidArgument(
           "Expected number of argruments is 3, but received %d.", num_args));
   cudnnHandle_t &handle = CudnnHandle::GetInstance().GetCudnnHandle();
-  CUDNN_CALL(cudnnSetStream(handle, static_cast<cudaStream_t>(stream)));
+  CUDNN_CALL(phi::dynload::cudnnSetStream(handle, static_cast<cudaStream_t>(stream)));
   cinn_pod_value_t *args = static_cast<cinn_pod_value_t *>(v_args);
   void *_w = args[0].operator cinn_buffer_t *()->memory;
   void *_dy = args[1].operator cinn_buffer_t *()->memory;
@@ -1005,13 +1007,13 @@ void cinn_call_cudnn_conv2d_backward_data(void *v_args,
   cudnnDataType_t data_type = convert_to_cudnn_dtype(v_args, num_args);
 
   cudnnTensorDescriptor_t x_desc;
-  CUDNN_CALL(cudnnCreateTensorDescriptor(&x_desc));
-  CUDNN_CALL(cudnnSetTensor4dDescriptor(
+  CUDNN_CALL(phi::dynload::cudnnCreateTensorDescriptor(&x_desc));
+  CUDNN_CALL(phi::dynload::cudnnSetTensor4dDescriptor(
       x_desc, tensor_format, data_type, input_n, input_c, input_h, input_w));
 
   cudnnFilterDescriptor_t w_desc;
-  CUDNN_CALL(cudnnCreateFilterDescriptor(&w_desc));
-  CUDNN_CALL(cudnnSetFilter4dDescriptor(w_desc,
+  CUDNN_CALL(phi::dynload::cudnnCreateFilterDescriptor(&w_desc));
+  CUDNN_CALL(phi::dynload::cudnnSetFilter4dDescriptor(w_desc,
                                         data_type,
                                         tensor_format,
                                         filter_n,
@@ -1020,9 +1022,9 @@ void cinn_call_cudnn_conv2d_backward_data(void *v_args,
                                         filter_w));
 
   cudnnConvolutionDescriptor_t conv_desc;
-  CUDNN_CALL(cudnnCreateConvolutionDescriptor(&conv_desc));
+  CUDNN_CALL(phi::dynload::cudnnCreateConvolutionDescriptor(&conv_desc));
   CUDNN_CALL(
-      cudnnSetConvolution2dDescriptor(conv_desc,
+      phi::dynload::cudnnSetConvolution2dDescriptor(conv_desc,
                                       pad_h,
                                       pad_w,
                                       stride_h,
@@ -1031,12 +1033,12 @@ void cinn_call_cudnn_conv2d_backward_data(void *v_args,
                                       dilation_w,
                                       CUDNN_CROSS_CORRELATION,
                                       get_cudnn_compute_dtype(data_type)));
-  CUDNN_CALL(cudnnSetConvolutionGroupCount(conv_desc, groups));
-  CUDNN_CALL(cudnnSetConvolutionMathType(conv_desc, CUDNN_DEFAULT_MATH));
+  CUDNN_CALL(phi::dynload::cudnnSetConvolutionGroupCount(conv_desc, groups));
+  CUDNN_CALL(phi::dynload::cudnnSetConvolutionMathType(conv_desc, CUDNN_DEFAULT_MATH));
 
   cudnnTensorDescriptor_t y_desc;
-  CUDNN_CALL(cudnnCreateTensorDescriptor(&y_desc));
-  CUDNN_CALL(cudnnSetTensor4dDescriptor(y_desc,
+  CUDNN_CALL(phi::dynload::cudnnCreateTensorDescriptor(&y_desc));
+  CUDNN_CALL(phi::dynload::cudnnSetTensor4dDescriptor(y_desc,
                                         tensor_format,
                                         data_type,
                                         output_n,
@@ -1066,7 +1068,7 @@ void cinn_call_cudnn_conv2d_backward_data(void *v_args,
   } else {
     int count = 0;
     cudnnConvolutionBwdDataAlgoPerf_t algo_perf;
-    CUDNN_CALL(cudnnFindConvolutionBackwardDataAlgorithm(
+    CUDNN_CALL(phi::dynload::cudnnFindConvolutionBackwardDataAlgorithm(
         handle, w_desc, y_desc, conv_desc, x_desc, 1, &count, &algo_perf));
 
     algo = algo_perf.algo;
@@ -1074,7 +1076,7 @@ void cinn_call_cudnn_conv2d_backward_data(void *v_args,
   }
 
   size_t workspace_size = 0;
-  CUDNN_CALL(cudnnGetConvolutionBackwardDataWorkspaceSize(
+  CUDNN_CALL(phi::dynload::cudnnGetConvolutionBackwardDataWorkspaceSize(
       handle, w_desc, y_desc, conv_desc, x_desc, algo, &workspace_size));
 
   void *workspace_data =
@@ -1082,7 +1084,7 @@ void cinn_call_cudnn_conv2d_backward_data(void *v_args,
   if (data_type == CUDNN_DATA_DOUBLE) {
     const double alpha_fp64 = static_cast<double>(alpha);
     const double beta_fp64 = static_cast<double>(beta);
-    CUDNN_CALL(cudnnConvolutionBackwardData(handle,
+    CUDNN_CALL(phi::dynload::cudnnConvolutionBackwardData(handle,
                                             &alpha_fp64,
                                             w_desc,
                                             _w,
@@ -1096,7 +1098,7 @@ void cinn_call_cudnn_conv2d_backward_data(void *v_args,
                                             x_desc,
                                             _dx));
   } else {
-    CUDNN_CALL(cudnnConvolutionBackwardData(handle,
+    CUDNN_CALL(phi::dynload::cudnnConvolutionBackwardData(handle,
                                             &alpha,
                                             w_desc,
                                             _w,
@@ -1111,10 +1113,10 @@ void cinn_call_cudnn_conv2d_backward_data(void *v_args,
                                             _dx));
   }
 
-  CUDNN_CALL(cudnnDestroyTensorDescriptor(x_desc));
-  CUDNN_CALL(cudnnDestroyFilterDescriptor(w_desc));
-  CUDNN_CALL(cudnnDestroyConvolutionDescriptor(conv_desc));
-  CUDNN_CALL(cudnnDestroyTensorDescriptor(y_desc));
+  CUDNN_CALL(phi::dynload::cudnnDestroyTensorDescriptor(x_desc));
+  CUDNN_CALL(phi::dynload::cudnnDestroyFilterDescriptor(w_desc));
+  CUDNN_CALL(phi::dynload::cudnnDestroyConvolutionDescriptor(conv_desc));
+  CUDNN_CALL(phi::dynload::cudnnDestroyTensorDescriptor(y_desc));
 }
 
 void cinn_call_cudnn_conv2d_backward_filter(void *v_args,
@@ -1148,7 +1150,7 @@ void cinn_call_cudnn_conv2d_backward_filter(void *v_args,
       ::common::errors::InvalidArgument(
           "Expected number of argruments is 3, but received %d.", num_args));
   cudnnHandle_t &handle = CudnnHandle::GetInstance().GetCudnnHandle();
-  CUDNN_CALL(cudnnSetStream(handle, static_cast<cudaStream_t>(stream)));
+  CUDNN_CALL(phi::dynload::cudnnSetStream(handle, static_cast<cudaStream_t>(stream)));
   cinn_pod_value_t *args = static_cast<cinn_pod_value_t *>(v_args);
 
   void *_x = args[0].operator cinn_buffer_t *()->memory;
@@ -1159,13 +1161,13 @@ void cinn_call_cudnn_conv2d_backward_filter(void *v_args,
   cudnnDataType_t data_type = convert_to_cudnn_dtype(v_args, num_args);
 
   cudnnTensorDescriptor_t x_desc;
-  CUDNN_CALL(cudnnCreateTensorDescriptor(&x_desc));
-  CUDNN_CALL(cudnnSetTensor4dDescriptor(
+  CUDNN_CALL(phi::dynload::cudnnCreateTensorDescriptor(&x_desc));
+  CUDNN_CALL(phi::dynload::cudnnSetTensor4dDescriptor(
       x_desc, tensor_format, data_type, input_n, input_c, input_h, input_w));
 
   cudnnFilterDescriptor_t w_desc;
-  CUDNN_CALL(cudnnCreateFilterDescriptor(&w_desc));
-  CUDNN_CALL(cudnnSetFilter4dDescriptor(w_desc,
+  CUDNN_CALL(phi::dynload::cudnnCreateFilterDescriptor(&w_desc));
+  CUDNN_CALL(phi::dynload::cudnnSetFilter4dDescriptor(w_desc,
                                         data_type,
                                         tensor_format,
                                         filter_n,
@@ -1174,9 +1176,9 @@ void cinn_call_cudnn_conv2d_backward_filter(void *v_args,
                                         filter_w));
 
   cudnnConvolutionDescriptor_t conv_desc;
-  CUDNN_CALL(cudnnCreateConvolutionDescriptor(&conv_desc));
+  CUDNN_CALL(phi::dynload::cudnnCreateConvolutionDescriptor(&conv_desc));
   CUDNN_CALL(
-      cudnnSetConvolution2dDescriptor(conv_desc,
+      phi::dynload::cudnnSetConvolution2dDescriptor(conv_desc,
                                       pad_h,
                                       pad_w,
                                       stride_h,
@@ -1185,12 +1187,12 @@ void cinn_call_cudnn_conv2d_backward_filter(void *v_args,
                                       dilation_w,
                                       CUDNN_CROSS_CORRELATION,
                                       get_cudnn_compute_dtype(data_type)));
-  CUDNN_CALL(cudnnSetConvolutionGroupCount(conv_desc, groups));
-  CUDNN_CALL(cudnnSetConvolutionMathType(conv_desc, CUDNN_DEFAULT_MATH));
+  CUDNN_CALL(phi::dynload::cudnnSetConvolutionGroupCount(conv_desc, groups));
+  CUDNN_CALL(phi::dynload::cudnnSetConvolutionMathType(conv_desc, CUDNN_DEFAULT_MATH));
 
   cudnnTensorDescriptor_t y_desc;
-  CUDNN_CALL(cudnnCreateTensorDescriptor(&y_desc));
-  CUDNN_CALL(cudnnSetTensor4dDescriptor(y_desc,
+  CUDNN_CALL(phi::dynload::cudnnCreateTensorDescriptor(&y_desc));
+  CUDNN_CALL(phi::dynload::cudnnSetTensor4dDescriptor(y_desc,
                                         tensor_format,
                                         data_type,
                                         output_n,
@@ -1220,7 +1222,7 @@ void cinn_call_cudnn_conv2d_backward_filter(void *v_args,
   } else {
     int count = 0;
     cudnnConvolutionBwdFilterAlgoPerf_t algo_perf;
-    CUDNN_CALL(cudnnFindConvolutionBackwardFilterAlgorithm(
+    CUDNN_CALL(phi::dynload::cudnnFindConvolutionBackwardFilterAlgorithm(
         handle, x_desc, y_desc, conv_desc, w_desc, 1, &count, &algo_perf));
 
     algo = algo_perf.algo;
@@ -1228,7 +1230,7 @@ void cinn_call_cudnn_conv2d_backward_filter(void *v_args,
   }
 
   size_t workspace_size = 0;
-  CUDNN_CALL(cudnnGetConvolutionBackwardFilterWorkspaceSize(
+  CUDNN_CALL(phi::dynload::cudnnGetConvolutionBackwardFilterWorkspaceSize(
       handle, x_desc, y_desc, conv_desc, w_desc, algo, &workspace_size));
 
   void *workspace_data =
@@ -1236,7 +1238,7 @@ void cinn_call_cudnn_conv2d_backward_filter(void *v_args,
   if (data_type == CUDNN_DATA_DOUBLE) {
     const double alpha_fp64 = static_cast<double>(alpha);
     const double beta_fp64 = static_cast<double>(beta);
-    CUDNN_CALL(cudnnConvolutionBackwardFilter(handle,
+    CUDNN_CALL(phi::dynload::cudnnConvolutionBackwardFilter(handle,
                                               &alpha_fp64,
                                               x_desc,
                                               _x,
@@ -1250,7 +1252,7 @@ void cinn_call_cudnn_conv2d_backward_filter(void *v_args,
                                               w_desc,
                                               _dw));
   } else {
-    CUDNN_CALL(cudnnConvolutionBackwardFilter(handle,
+    CUDNN_CALL(phi::dynload::cudnnConvolutionBackwardFilter(handle,
                                               &alpha,
                                               x_desc,
                                               _x,
@@ -1265,10 +1267,10 @@ void cinn_call_cudnn_conv2d_backward_filter(void *v_args,
                                               _dw));
   }
 
-  CUDNN_CALL(cudnnDestroyTensorDescriptor(x_desc));
-  CUDNN_CALL(cudnnDestroyFilterDescriptor(w_desc));
-  CUDNN_CALL(cudnnDestroyConvolutionDescriptor(conv_desc));
-  CUDNN_CALL(cudnnDestroyTensorDescriptor(y_desc));
+  CUDNN_CALL(phi::dynload::cudnnDestroyTensorDescriptor(x_desc));
+  CUDNN_CALL(phi::dynload::cudnnDestroyFilterDescriptor(w_desc));
+  CUDNN_CALL(phi::dynload::cudnnDestroyConvolutionDescriptor(conv_desc));
+  CUDNN_CALL(phi::dynload::cudnnDestroyTensorDescriptor(y_desc));
 }
 
 void cinn_call_cudnn_pool2d_forward(void *v_args,
@@ -1298,7 +1300,7 @@ void cinn_call_cudnn_pool2d_forward(void *v_args,
       ::common::errors::InvalidArgument(
           "Expected number of argruments is 2, but received %d.", num_args));
   cudnnHandle_t &handle = CudnnHandle::GetInstance().GetCudnnHandle();
-  CUDNN_CALL(cudnnSetStream(handle, static_cast<cudaStream_t>(stream)));
+  CUDNN_CALL(phi::dynload::cudnnSetStream(handle, static_cast<cudaStream_t>(stream)));
   cinn_pod_value_t *args = static_cast<cinn_pod_value_t *>(v_args);
 
   void *_x = args[0].operator cinn_buffer_t *()->memory;
@@ -1324,8 +1326,8 @@ void cinn_call_cudnn_pool2d_forward(void *v_args,
   VLOG(4) << hash_key;
 
   cudnnPoolingDescriptor_t pool_desc;
-  CUDNN_CALL(cudnnCreatePoolingDescriptor(&pool_desc));
-  CUDNN_CALL(cudnnSetPooling2dDescriptor(pool_desc,
+  CUDNN_CALL(phi::dynload::cudnnCreatePoolingDescriptor(&pool_desc));
+  CUDNN_CALL(phi::dynload::cudnnSetPooling2dDescriptor(pool_desc,
                                          pool_mode,
                                          CUDNN_NOT_PROPAGATE_NAN,
                                          kernel_h,
@@ -1336,13 +1338,13 @@ void cinn_call_cudnn_pool2d_forward(void *v_args,
                                          stride_w));
 
   cudnnTensorDescriptor_t x_desc;
-  CUDNN_CALL(cudnnCreateTensorDescriptor(&x_desc));
-  CUDNN_CALL(cudnnSetTensor4dDescriptor(
+  CUDNN_CALL(phi::dynload::cudnnCreateTensorDescriptor(&x_desc));
+  CUDNN_CALL(phi::dynload::cudnnSetTensor4dDescriptor(
       x_desc, tensor_format, data_type, input_n, input_c, input_h, input_w));
 
   cudnnTensorDescriptor_t y_desc;
-  CUDNN_CALL(cudnnCreateTensorDescriptor(&y_desc));
-  CUDNN_CALL(cudnnSetTensor4dDescriptor(y_desc,
+  CUDNN_CALL(phi::dynload::cudnnCreateTensorDescriptor(&y_desc));
+  CUDNN_CALL(phi::dynload::cudnnSetTensor4dDescriptor(y_desc,
                                         tensor_format,
                                         data_type,
                                         output_n,
@@ -1353,16 +1355,16 @@ void cinn_call_cudnn_pool2d_forward(void *v_args,
   if (data_type == CUDNN_DATA_DOUBLE) {
     const double alpha_fp64 = static_cast<double>(alpha);
     const double beta_fp64 = static_cast<double>(beta);
-    CUDNN_CALL(cudnnPoolingForward(
+    CUDNN_CALL(phi::dynload::cudnnPoolingForward(
         handle, pool_desc, &alpha_fp64, x_desc, _x, &beta_fp64, y_desc, _y));
   } else {
-    CUDNN_CALL(cudnnPoolingForward(
+    CUDNN_CALL(phi::dynload::cudnnPoolingForward(
         handle, pool_desc, &alpha, x_desc, _x, &beta, y_desc, _y));
   }
 
-  CUDNN_CALL(cudnnDestroyPoolingDescriptor(pool_desc));
-  CUDNN_CALL(cudnnDestroyTensorDescriptor(x_desc));
-  CUDNN_CALL(cudnnDestroyTensorDescriptor(y_desc));
+  CUDNN_CALL(phi::dynload::cudnnDestroyPoolingDescriptor(pool_desc));
+  CUDNN_CALL(phi::dynload::cudnnDestroyTensorDescriptor(x_desc));
+  CUDNN_CALL(phi::dynload::cudnnDestroyTensorDescriptor(y_desc));
 }
 
 void cinn_call_cudnn_pool2d_backward(void *v_args,
@@ -1392,7 +1394,7 @@ void cinn_call_cudnn_pool2d_backward(void *v_args,
       ::common::errors::InvalidArgument(
           "Expected number of argruments is 4, but received %d.", num_args));
   cudnnHandle_t &handle = CudnnHandle::GetInstance().GetCudnnHandle();
-  CUDNN_CALL(cudnnSetStream(handle, static_cast<cudaStream_t>(stream)));
+  CUDNN_CALL(phi::dynload::cudnnSetStream(handle, static_cast<cudaStream_t>(stream)));
   cinn_pod_value_t *args = static_cast<cinn_pod_value_t *>(v_args);
 
   void *_x = args[0].operator cinn_buffer_t *()->memory;
@@ -1420,8 +1422,8 @@ void cinn_call_cudnn_pool2d_backward(void *v_args,
   VLOG(4) << hash_key;
 
   cudnnPoolingDescriptor_t pool_desc;
-  CUDNN_CALL(cudnnCreatePoolingDescriptor(&pool_desc));
-  CUDNN_CALL(cudnnSetPooling2dDescriptor(pool_desc,
+  CUDNN_CALL(phi::dynload::cudnnCreatePoolingDescriptor(&pool_desc));
+  CUDNN_CALL(phi::dynload::cudnnSetPooling2dDescriptor(pool_desc,
                                          pool_mode,
                                          CUDNN_NOT_PROPAGATE_NAN,
                                          kernel_h,
@@ -1432,13 +1434,13 @@ void cinn_call_cudnn_pool2d_backward(void *v_args,
                                          stride_w));
 
   cudnnTensorDescriptor_t x_desc;
-  CUDNN_CALL(cudnnCreateTensorDescriptor(&x_desc));
-  CUDNN_CALL(cudnnSetTensor4dDescriptor(
+  CUDNN_CALL(phi::dynload::cudnnCreateTensorDescriptor(&x_desc));
+  CUDNN_CALL(phi::dynload::cudnnSetTensor4dDescriptor(
       x_desc, tensor_format, data_type, input_n, input_c, input_h, input_w));
 
   cudnnTensorDescriptor_t y_desc;
-  CUDNN_CALL(cudnnCreateTensorDescriptor(&y_desc));
-  CUDNN_CALL(cudnnSetTensor4dDescriptor(y_desc,
+  CUDNN_CALL(phi::dynload::cudnnCreateTensorDescriptor(&y_desc));
+  CUDNN_CALL(phi::dynload::cudnnSetTensor4dDescriptor(y_desc,
                                         tensor_format,
                                         data_type,
                                         output_n,
@@ -1449,7 +1451,7 @@ void cinn_call_cudnn_pool2d_backward(void *v_args,
   if (data_type == CUDNN_DATA_DOUBLE) {
     const double alpha_fp64 = static_cast<double>(alpha);
     const double beta_fp64 = static_cast<double>(beta);
-    CUDNN_CALL(cudnnPoolingBackward(handle,
+    CUDNN_CALL(phi::dynload::cudnnPoolingBackward(handle,
                                     pool_desc,
                                     &alpha_fp64,
                                     y_desc,
@@ -1462,7 +1464,7 @@ void cinn_call_cudnn_pool2d_backward(void *v_args,
                                     x_desc,
                                     _dx));
   } else {
-    CUDNN_CALL(cudnnPoolingBackward(handle,
+    CUDNN_CALL(phi::dynload::cudnnPoolingBackward(handle,
                                     pool_desc,
                                     &alpha,
                                     y_desc,
@@ -1476,9 +1478,9 @@ void cinn_call_cudnn_pool2d_backward(void *v_args,
                                     _dx));
   }
 
-  CUDNN_CALL(cudnnDestroyPoolingDescriptor(pool_desc));
-  CUDNN_CALL(cudnnDestroyTensorDescriptor(x_desc));
-  CUDNN_CALL(cudnnDestroyTensorDescriptor(y_desc));
+  CUDNN_CALL(phi::dynload::cudnnDestroyPoolingDescriptor(pool_desc));
+  CUDNN_CALL(phi::dynload::cudnnDestroyTensorDescriptor(x_desc));
+  CUDNN_CALL(phi::dynload::cudnnDestroyTensorDescriptor(y_desc));
 }
 
 void cinn_call_cudnn_softmax_forward(void *v_args,
@@ -1502,7 +1504,7 @@ void cinn_call_cudnn_softmax_forward(void *v_args,
       ::common::errors::InvalidArgument(
           "Expected number of argruments is 2, but received %d.", num_args));
   cudnnHandle_t &handle = CudnnHandle::GetInstance().GetCudnnHandle();
-  CUDNN_CALL(cudnnSetStream(handle, static_cast<cudaStream_t>(stream)));
+  CUDNN_CALL(phi::dynload::cudnnSetStream(handle, static_cast<cudaStream_t>(stream)));
   cinn_pod_value_t *args = static_cast<cinn_pod_value_t *>(v_args);
 
   void *_x = args[0].operator cinn_buffer_t *()->memory;
@@ -1513,13 +1515,13 @@ void cinn_call_cudnn_softmax_forward(void *v_args,
   cudnnDataType_t data_type = convert_to_cudnn_dtype(v_args, num_args);
 
   cudnnTensorDescriptor_t x_desc;
-  CUDNN_CALL(cudnnCreateTensorDescriptor(&x_desc));
-  CUDNN_CALL(cudnnSetTensor4dDescriptor(
+  CUDNN_CALL(phi::dynload::cudnnCreateTensorDescriptor(&x_desc));
+  CUDNN_CALL(phi::dynload::cudnnSetTensor4dDescriptor(
       x_desc, tensor_format, data_type, input_n, input_c, input_h, input_w));
 
   cudnnTensorDescriptor_t y_desc;
-  CUDNN_CALL(cudnnCreateTensorDescriptor(&y_desc));
-  CUDNN_CALL(cudnnSetTensor4dDescriptor(y_desc,
+  CUDNN_CALL(phi::dynload::cudnnCreateTensorDescriptor(&y_desc));
+  CUDNN_CALL(phi::dynload::cudnnSetTensor4dDescriptor(y_desc,
                                         tensor_format,
                                         data_type,
                                         output_n,
@@ -1530,7 +1532,7 @@ void cinn_call_cudnn_softmax_forward(void *v_args,
   if (data_type == CUDNN_DATA_DOUBLE) {
     const double alpha_fp64 = static_cast<double>(alpha);
     const double beta_fp64 = static_cast<double>(beta);
-    CUDNN_CALL(cudnnSoftmaxForward(handle,
+    CUDNN_CALL(phi::dynload::cudnnSoftmaxForward(handle,
                                    CUDNN_SOFTMAX_LOG,
                                    softmax_mode,
                                    &alpha_fp64,
@@ -1540,7 +1542,7 @@ void cinn_call_cudnn_softmax_forward(void *v_args,
                                    y_desc,
                                    _y));
   } else {
-    CUDNN_CALL(cudnnSoftmaxForward(handle,
+    CUDNN_CALL(phi::dynload::cudnnSoftmaxForward(handle,
                                    CUDNN_SOFTMAX_LOG,
                                    softmax_mode,
                                    &alpha,
@@ -1551,8 +1553,8 @@ void cinn_call_cudnn_softmax_forward(void *v_args,
                                    _y));
   }
 
-  CUDNN_CALL(cudnnDestroyTensorDescriptor(x_desc));
-  CUDNN_CALL(cudnnDestroyTensorDescriptor(y_desc));
+  CUDNN_CALL(phi::dynload::cudnnDestroyTensorDescriptor(x_desc));
+  CUDNN_CALL(phi::dynload::cudnnDestroyTensorDescriptor(y_desc));
 }
 
 void cinn_call_cudnn_softmax_backward(void *v_args,
@@ -1576,7 +1578,7 @@ void cinn_call_cudnn_softmax_backward(void *v_args,
       ::common::errors::InvalidArgument(
           "Expected number of argruments is 3, but received %d.", num_args));
   cudnnHandle_t &handle = CudnnHandle::GetInstance().GetCudnnHandle();
-  CUDNN_CALL(cudnnSetStream(handle, static_cast<cudaStream_t>(stream)));
+  CUDNN_CALL(phi::dynload::cudnnSetStream(handle, static_cast<cudaStream_t>(stream)));
   cinn_pod_value_t *args = static_cast<cinn_pod_value_t *>(v_args);
 
   void *_y = args[0].operator cinn_buffer_t *()->memory;
@@ -1588,13 +1590,13 @@ void cinn_call_cudnn_softmax_backward(void *v_args,
   cudnnDataType_t data_type = convert_to_cudnn_dtype(v_args, num_args);
 
   cudnnTensorDescriptor_t x_desc;
-  CUDNN_CALL(cudnnCreateTensorDescriptor(&x_desc));
-  CUDNN_CALL(cudnnSetTensor4dDescriptor(
+  CUDNN_CALL(phi::dynload::cudnnCreateTensorDescriptor(&x_desc));
+  CUDNN_CALL(phi::dynload::cudnnSetTensor4dDescriptor(
       x_desc, tensor_format, data_type, input_n, input_c, input_h, input_w));
 
   cudnnTensorDescriptor_t y_desc;
-  CUDNN_CALL(cudnnCreateTensorDescriptor(&y_desc));
-  CUDNN_CALL(cudnnSetTensor4dDescriptor(y_desc,
+  CUDNN_CALL(phi::dynload::cudnnCreateTensorDescriptor(&y_desc));
+  CUDNN_CALL(phi::dynload::cudnnSetTensor4dDescriptor(y_desc,
                                         tensor_format,
                                         data_type,
                                         output_n,
@@ -1605,7 +1607,7 @@ void cinn_call_cudnn_softmax_backward(void *v_args,
   if (data_type == CUDNN_DATA_DOUBLE) {
     const double alpha_fp64 = static_cast<double>(alpha);
     const double beta_fp64 = static_cast<double>(beta);
-    CUDNN_CALL(cudnnSoftmaxBackward(handle,
+    CUDNN_CALL(phi::dynload::cudnnSoftmaxBackward(handle,
                                     CUDNN_SOFTMAX_LOG,
                                     softmax_mode,
                                     &alpha_fp64,
@@ -1617,7 +1619,7 @@ void cinn_call_cudnn_softmax_backward(void *v_args,
                                     x_desc,
                                     _dx));
   } else {
-    CUDNN_CALL(cudnnSoftmaxBackward(handle,
+    CUDNN_CALL(phi::dynload::cudnnSoftmaxBackward(handle,
                                     CUDNN_SOFTMAX_LOG,
                                     softmax_mode,
                                     &alpha,
@@ -1630,8 +1632,8 @@ void cinn_call_cudnn_softmax_backward(void *v_args,
                                     _dx));
   }
 
-  CUDNN_CALL(cudnnDestroyTensorDescriptor(x_desc));
-  CUDNN_CALL(cudnnDestroyTensorDescriptor(y_desc));
+  CUDNN_CALL(phi::dynload::cudnnDestroyTensorDescriptor(x_desc));
+  CUDNN_CALL(phi::dynload::cudnnDestroyTensorDescriptor(y_desc));
 }
 
 #endif  // CINN_WITH_CUDNN
@@ -2383,7 +2385,7 @@ void cinn_gpu_cudnn_conv2d(const paddle::flat_hash_map<std::string, int> &attr,
   GetAttrValue(attr, output_w, -1);
 
   cudnnHandle_t &handle = CudnnHandle::GetInstance().GetCudnnHandle();
-  CUDNN_CALL(cudnnSetStream(handle, static_cast<cudaStream_t>(stream)));
+  CUDNN_CALL(phi::dynload::cudnnSetStream(handle, static_cast<cudaStream_t>(stream)));
   void *_x = x->memory;
   void *_w = w->memory;
   void *_y = y->memory;
@@ -2391,8 +2393,8 @@ void cinn_gpu_cudnn_conv2d(const paddle::flat_hash_map<std::string, int> &attr,
   auto data_type = convert_to_cudnn_dtype(x);
 
   cudnnTensorDescriptor_t x_desc;
-  CUDNN_CALL(cudnnCreateTensorDescriptor(&x_desc));
-  CUDNN_CALL(cudnnSetTensor4dDescriptor(x_desc,
+  CUDNN_CALL(phi::dynload::cudnnCreateTensorDescriptor(&x_desc));
+  CUDNN_CALL(phi::dynload::cudnnSetTensor4dDescriptor(x_desc,
                                         cudnn_tensor_format,
                                         data_type,
                                         input_n,
@@ -2401,8 +2403,8 @@ void cinn_gpu_cudnn_conv2d(const paddle::flat_hash_map<std::string, int> &attr,
                                         input_w));
 
   cudnnFilterDescriptor_t w_desc;
-  CUDNN_CALL(cudnnCreateFilterDescriptor(&w_desc));
-  CUDNN_CALL(cudnnSetFilter4dDescriptor(w_desc,
+  CUDNN_CALL(phi::dynload::cudnnCreateFilterDescriptor(&w_desc));
+  CUDNN_CALL(phi::dynload::cudnnSetFilter4dDescriptor(w_desc,
                                         data_type,
                                         cudnn_tensor_format,
                                         weights_n,
@@ -2411,9 +2413,9 @@ void cinn_gpu_cudnn_conv2d(const paddle::flat_hash_map<std::string, int> &attr,
                                         weights_w));
 
   cudnnConvolutionDescriptor_t conv_desc;
-  CUDNN_CALL(cudnnCreateConvolutionDescriptor(&conv_desc));
+  CUDNN_CALL(phi::dynload::cudnnCreateConvolutionDescriptor(&conv_desc));
   CUDNN_CALL(
-      cudnnSetConvolution2dDescriptor(conv_desc,
+      phi::dynload::cudnnSetConvolution2dDescriptor(conv_desc,
                                       pad_h,
                                       pad_w,
                                       stride_h,
@@ -2422,12 +2424,12 @@ void cinn_gpu_cudnn_conv2d(const paddle::flat_hash_map<std::string, int> &attr,
                                       dilation_w,
                                       CUDNN_CROSS_CORRELATION,
                                       get_cudnn_compute_dtype(data_type)));
-  CUDNN_CALL(cudnnSetConvolutionGroupCount(conv_desc, groups));
-  CUDNN_CALL(cudnnSetConvolutionMathType(conv_desc, CUDNN_DEFAULT_MATH));
+  CUDNN_CALL(phi::dynload::cudnnSetConvolutionGroupCount(conv_desc, groups));
+  CUDNN_CALL(phi::dynload::cudnnSetConvolutionMathType(conv_desc, CUDNN_DEFAULT_MATH));
 
   cudnnTensorDescriptor_t y_desc;
-  CUDNN_CALL(cudnnCreateTensorDescriptor(&y_desc));
-  CUDNN_CALL(cudnnSetTensor4dDescriptor(y_desc,
+  CUDNN_CALL(phi::dynload::cudnnCreateTensorDescriptor(&y_desc));
+  CUDNN_CALL(phi::dynload::cudnnSetTensor4dDescriptor(y_desc,
                                         cudnn_tensor_format,
                                         data_type,
                                         output_n,
@@ -2454,7 +2456,7 @@ void cinn_gpu_cudnn_conv2d(const paddle::flat_hash_map<std::string, int> &attr,
   } else {
     int count = 0;
     cudnnConvolutionFwdAlgoPerf_t algo_perf;
-    CUDNN_CALL(cudnnFindConvolutionForwardAlgorithm(
+    CUDNN_CALL(phi::dynload::cudnnFindConvolutionForwardAlgorithm(
         handle, x_desc, w_desc, conv_desc, y_desc, 1, &count, &algo_perf));
 
     algo = algo_perf.algo;
@@ -2462,13 +2464,13 @@ void cinn_gpu_cudnn_conv2d(const paddle::flat_hash_map<std::string, int> &attr,
   }
 
   size_t ws_size = 0;
-  CUDNN_CALL(cudnnGetConvolutionForwardWorkspaceSize(
+  CUDNN_CALL(phi::dynload::cudnnGetConvolutionForwardWorkspaceSize(
       handle, x_desc, w_desc, conv_desc, y_desc, algo, &ws_size));
 
   void *ws_data = CudnnHandle::GetInstance().GetWorkSpace(ws_size);
   if (data_type == CUDNN_DATA_DOUBLE) {
     double alpha[] = {1.f}, beta[] = {0.f};
-    CUDNN_CALL(cudnnConvolutionForward(handle,
+    CUDNN_CALL(phi::dynload::cudnnConvolutionForward(handle,
                                        alpha,
                                        x_desc,
                                        _x,
@@ -2483,7 +2485,7 @@ void cinn_gpu_cudnn_conv2d(const paddle::flat_hash_map<std::string, int> &attr,
                                        _y));
   } else {
     float alpha[] = {1.f}, beta[] = {0.f};
-    CUDNN_CALL(cudnnConvolutionForward(handle,
+    CUDNN_CALL(phi::dynload::cudnnConvolutionForward(handle,
                                        alpha,
                                        x_desc,
                                        _x,
@@ -2498,10 +2500,10 @@ void cinn_gpu_cudnn_conv2d(const paddle::flat_hash_map<std::string, int> &attr,
                                        _y));
   }
 
-  CUDNN_CALL(cudnnDestroyTensorDescriptor(x_desc));
-  CUDNN_CALL(cudnnDestroyFilterDescriptor(w_desc));
-  CUDNN_CALL(cudnnDestroyConvolutionDescriptor(conv_desc));
-  CUDNN_CALL(cudnnDestroyTensorDescriptor(y_desc));
+  CUDNN_CALL(phi::dynload::cudnnDestroyTensorDescriptor(x_desc));
+  CUDNN_CALL(phi::dynload::cudnnDestroyFilterDescriptor(w_desc));
+  CUDNN_CALL(phi::dynload::cudnnDestroyConvolutionDescriptor(conv_desc));
+  CUDNN_CALL(phi::dynload::cudnnDestroyTensorDescriptor(y_desc));
 }
 
 void cinn_gpu_cudnn_conv2d_backward_data(
@@ -2531,7 +2533,7 @@ void cinn_gpu_cudnn_conv2d_backward_data(
   GetAttrValue(attr, output_w, -1);
 
   cudnnHandle_t &handle = CudnnHandle::GetInstance().GetCudnnHandle();
-  CUDNN_CALL(cudnnSetStream(handle, static_cast<cudaStream_t>(stream)));
+  CUDNN_CALL(phi::dynload::cudnnSetStream(handle, static_cast<cudaStream_t>(stream)));
   void *_w = w->memory;
   void *_dy = dy->memory;
   void *_dx = dx->memory;
@@ -2539,8 +2541,8 @@ void cinn_gpu_cudnn_conv2d_backward_data(
   auto data_type = convert_to_cudnn_dtype(w);
 
   cudnnTensorDescriptor_t x_desc;
-  CUDNN_CALL(cudnnCreateTensorDescriptor(&x_desc));
-  CUDNN_CALL(cudnnSetTensor4dDescriptor(x_desc,
+  CUDNN_CALL(phi::dynload::cudnnCreateTensorDescriptor(&x_desc));
+  CUDNN_CALL(phi::dynload::cudnnSetTensor4dDescriptor(x_desc,
                                         CUDNN_TENSOR_NCHW,
                                         data_type,
                                         input_n,
@@ -2549,8 +2551,8 @@ void cinn_gpu_cudnn_conv2d_backward_data(
                                         input_w));
 
   cudnnFilterDescriptor_t w_desc;
-  CUDNN_CALL(cudnnCreateFilterDescriptor(&w_desc));
-  CUDNN_CALL(cudnnSetFilter4dDescriptor(w_desc,
+  CUDNN_CALL(phi::dynload::cudnnCreateFilterDescriptor(&w_desc));
+  CUDNN_CALL(phi::dynload::cudnnSetFilter4dDescriptor(w_desc,
                                         data_type,
                                         CUDNN_TENSOR_NCHW,
                                         weights_n,
@@ -2559,9 +2561,9 @@ void cinn_gpu_cudnn_conv2d_backward_data(
                                         weights_w));
 
   cudnnConvolutionDescriptor_t conv_desc;
-  CUDNN_CALL(cudnnCreateConvolutionDescriptor(&conv_desc));
+  CUDNN_CALL(phi::dynload::cudnnCreateConvolutionDescriptor(&conv_desc));
   CUDNN_CALL(
-      cudnnSetConvolution2dDescriptor(conv_desc,
+      phi::dynload::cudnnSetConvolution2dDescriptor(conv_desc,
                                       pad_h,
                                       pad_w,
                                       stride_h,
@@ -2570,12 +2572,12 @@ void cinn_gpu_cudnn_conv2d_backward_data(
                                       dilation_w,
                                       CUDNN_CROSS_CORRELATION,
                                       get_cudnn_compute_dtype(data_type)));
-  CUDNN_CALL(cudnnSetConvolutionGroupCount(conv_desc, groups));
-  CUDNN_CALL(cudnnSetConvolutionMathType(conv_desc, CUDNN_DEFAULT_MATH));
+  CUDNN_CALL(phi::dynload::cudnnSetConvolutionGroupCount(conv_desc, groups));
+  CUDNN_CALL(phi::dynload::cudnnSetConvolutionMathType(conv_desc, CUDNN_DEFAULT_MATH));
 
   cudnnTensorDescriptor_t y_desc;
-  CUDNN_CALL(cudnnCreateTensorDescriptor(&y_desc));
-  CUDNN_CALL(cudnnSetTensor4dDescriptor(y_desc,
+  CUDNN_CALL(phi::dynload::cudnnCreateTensorDescriptor(&y_desc));
+  CUDNN_CALL(phi::dynload::cudnnSetTensor4dDescriptor(y_desc,
                                         CUDNN_TENSOR_NCHW,
                                         data_type,
                                         output_n,
@@ -2604,7 +2606,7 @@ void cinn_gpu_cudnn_conv2d_backward_data(
     int count = 0;
     cudnnConvolutionBwdDataAlgoPerf_t algo_perf;
 
-    CUDNN_CALL(cudnnFindConvolutionBackwardDataAlgorithm(
+    CUDNN_CALL(phi::dynload::cudnnFindConvolutionBackwardDataAlgorithm(
         handle, w_desc, y_desc, conv_desc, x_desc, 1, &count, &algo_perf));
 
     algo = algo_perf.algo;
@@ -2612,13 +2614,13 @@ void cinn_gpu_cudnn_conv2d_backward_data(
   }
 
   size_t ws_size = 0;
-  CUDNN_CALL(cudnnGetConvolutionBackwardDataWorkspaceSize(
+  CUDNN_CALL(phi::dynload::cudnnGetConvolutionBackwardDataWorkspaceSize(
       handle, w_desc, y_desc, conv_desc, x_desc, algo, &ws_size));
 
   void *ws_data = CudnnHandle::GetInstance().GetWorkSpace(ws_size);
   if (data_type == CUDNN_DATA_DOUBLE) {
     double alpha[] = {1.0f}, beta[] = {0.0f};
-    CUDNN_CALL(cudnnConvolutionBackwardData(handle,
+    CUDNN_CALL(phi::dynload::cudnnConvolutionBackwardData(handle,
                                             alpha,
                                             w_desc,
                                             _w,
@@ -2633,7 +2635,7 @@ void cinn_gpu_cudnn_conv2d_backward_data(
                                             _dx));
   } else {
     float alpha[] = {1.0f}, beta[] = {0.0f};
-    CUDNN_CALL(cudnnConvolutionBackwardData(handle,
+    CUDNN_CALL(phi::dynload::cudnnConvolutionBackwardData(handle,
                                             alpha,
                                             w_desc,
                                             _w,
@@ -2648,10 +2650,10 @@ void cinn_gpu_cudnn_conv2d_backward_data(
                                             _dx));
   }
 
-  CUDNN_CALL(cudnnDestroyTensorDescriptor(x_desc));
-  CUDNN_CALL(cudnnDestroyFilterDescriptor(w_desc));
-  CUDNN_CALL(cudnnDestroyConvolutionDescriptor(conv_desc));
-  CUDNN_CALL(cudnnDestroyTensorDescriptor(y_desc));
+  CUDNN_CALL(phi::dynload::cudnnDestroyTensorDescriptor(x_desc));
+  CUDNN_CALL(phi::dynload::cudnnDestroyFilterDescriptor(w_desc));
+  CUDNN_CALL(phi::dynload::cudnnDestroyConvolutionDescriptor(conv_desc));
+  CUDNN_CALL(phi::dynload::cudnnDestroyTensorDescriptor(y_desc));
 }
 
 void cinn_gpu_cudnn_conv2d_backward_filter(
@@ -2681,7 +2683,7 @@ void cinn_gpu_cudnn_conv2d_backward_filter(
   GetAttrValue(attr, output_w, -1);
 
   cudnnHandle_t &handle = CudnnHandle::GetInstance().GetCudnnHandle();
-  CUDNN_CALL(cudnnSetStream(handle, static_cast<cudaStream_t>(stream)));
+  CUDNN_CALL(phi::dynload::cudnnSetStream(handle, static_cast<cudaStream_t>(stream)));
 
   void *_x = x->memory;
   void *_dy = dy->memory;
@@ -2690,8 +2692,8 @@ void cinn_gpu_cudnn_conv2d_backward_filter(
   auto data_type = convert_to_cudnn_dtype(x);
 
   cudnnTensorDescriptor_t x_desc;
-  CUDNN_CALL(cudnnCreateTensorDescriptor(&x_desc));
-  CUDNN_CALL(cudnnSetTensor4dDescriptor(x_desc,
+  CUDNN_CALL(phi::dynload::cudnnCreateTensorDescriptor(&x_desc));
+  CUDNN_CALL(phi::dynload::cudnnSetTensor4dDescriptor(x_desc,
                                         CUDNN_TENSOR_NCHW,
                                         data_type,
                                         input_n,
@@ -2700,8 +2702,8 @@ void cinn_gpu_cudnn_conv2d_backward_filter(
                                         input_w));
 
   cudnnFilterDescriptor_t w_desc;
-  CUDNN_CALL(cudnnCreateFilterDescriptor(&w_desc));
-  CUDNN_CALL(cudnnSetFilter4dDescriptor(w_desc,
+  CUDNN_CALL(phi::dynload::cudnnCreateFilterDescriptor(&w_desc));
+  CUDNN_CALL(phi::dynload::cudnnSetFilter4dDescriptor(w_desc,
                                         data_type,
                                         CUDNN_TENSOR_NCHW,
                                         weights_n,
@@ -2710,9 +2712,9 @@ void cinn_gpu_cudnn_conv2d_backward_filter(
                                         weights_w));
 
   cudnnConvolutionDescriptor_t conv_desc;
-  CUDNN_CALL(cudnnCreateConvolutionDescriptor(&conv_desc));
+  CUDNN_CALL(phi::dynload::cudnnCreateConvolutionDescriptor(&conv_desc));
   CUDNN_CALL(
-      cudnnSetConvolution2dDescriptor(conv_desc,
+      phi::dynload::cudnnSetConvolution2dDescriptor(conv_desc,
                                       pad_h,
                                       pad_w,
                                       stride_h,
@@ -2721,12 +2723,12 @@ void cinn_gpu_cudnn_conv2d_backward_filter(
                                       dilation_w,
                                       CUDNN_CROSS_CORRELATION,
                                       get_cudnn_compute_dtype(data_type)));
-  CUDNN_CALL(cudnnSetConvolutionGroupCount(conv_desc, groups));
-  CUDNN_CALL(cudnnSetConvolutionMathType(conv_desc, CUDNN_DEFAULT_MATH));
+  CUDNN_CALL(phi::dynload::cudnnSetConvolutionGroupCount(conv_desc, groups));
+  CUDNN_CALL(phi::dynload::cudnnSetConvolutionMathType(conv_desc, CUDNN_DEFAULT_MATH));
 
   cudnnTensorDescriptor_t y_desc;
-  CUDNN_CALL(cudnnCreateTensorDescriptor(&y_desc));
-  CUDNN_CALL(cudnnSetTensor4dDescriptor(y_desc,
+  CUDNN_CALL(phi::dynload::cudnnCreateTensorDescriptor(&y_desc));
+  CUDNN_CALL(phi::dynload::cudnnSetTensor4dDescriptor(y_desc,
                                         CUDNN_TENSOR_NCHW,
                                         data_type,
                                         output_n,
@@ -2754,7 +2756,7 @@ void cinn_gpu_cudnn_conv2d_backward_filter(
   } else {
     int count = 0;
     cudnnConvolutionBwdFilterAlgoPerf_t algo_perf;
-    CUDNN_CALL(cudnnFindConvolutionBackwardFilterAlgorithm(
+    CUDNN_CALL(phi::dynload::cudnnFindConvolutionBackwardFilterAlgorithm(
         handle, x_desc, y_desc, conv_desc, w_desc, 1, &count, &algo_perf));
 
     algo = algo_perf.algo;
@@ -2762,13 +2764,13 @@ void cinn_gpu_cudnn_conv2d_backward_filter(
   }
 
   size_t ws_size = 0;
-  CUDNN_CALL(cudnnGetConvolutionBackwardFilterWorkspaceSize(
+  CUDNN_CALL(phi::dynload::cudnnGetConvolutionBackwardFilterWorkspaceSize(
       handle, x_desc, y_desc, conv_desc, w_desc, algo, &ws_size));
 
   void *ws_data = CudnnHandle::GetInstance().GetWorkSpace(ws_size);
   if (data_type == CUDNN_DATA_DOUBLE) {
     double alpha[] = {1.0}, beta[] = {0.0};
-    CUDNN_CALL(cudnnConvolutionBackwardFilter(handle,
+    CUDNN_CALL(phi::dynload::cudnnConvolutionBackwardFilter(handle,
                                               alpha,
                                               x_desc,
                                               _x,
@@ -2783,7 +2785,7 @@ void cinn_gpu_cudnn_conv2d_backward_filter(
                                               _dw));
   } else {
     float alpha[] = {1.0}, beta[] = {0.0};
-    CUDNN_CALL(cudnnConvolutionBackwardFilter(handle,
+    CUDNN_CALL(phi::dynload::cudnnConvolutionBackwardFilter(handle,
                                               alpha,
                                               x_desc,
                                               _x,
@@ -2798,10 +2800,10 @@ void cinn_gpu_cudnn_conv2d_backward_filter(
                                               _dw));
   }
 
-  CUDNN_CALL(cudnnDestroyTensorDescriptor(x_desc));
-  CUDNN_CALL(cudnnDestroyFilterDescriptor(w_desc));
-  CUDNN_CALL(cudnnDestroyConvolutionDescriptor(conv_desc));
-  CUDNN_CALL(cudnnDestroyTensorDescriptor(y_desc));
+  CUDNN_CALL(phi::dynload::cudnnDestroyTensorDescriptor(x_desc));
+  CUDNN_CALL(phi::dynload::cudnnDestroyFilterDescriptor(w_desc));
+  CUDNN_CALL(phi::dynload::cudnnDestroyConvolutionDescriptor(conv_desc));
+  CUDNN_CALL(phi::dynload::cudnnDestroyTensorDescriptor(y_desc));
 }
 
 void cinn_gpu_cudnn_pool2d(const std::vector<int> &attrs,
@@ -2810,7 +2812,7 @@ void cinn_gpu_cudnn_pool2d(const std::vector<int> &attrs,
                            cinn_buffer_t *output,
                            cudaStream_t stream) {
   cudnnHandle_t &handle = CudnnHandle::GetInstance().GetCudnnHandle();
-  CUDNN_CALL(cudnnSetStream(handle, static_cast<cudaStream_t>(stream)));
+  CUDNN_CALL(phi::dynload::cudnnSetStream(handle, static_cast<cudaStream_t>(stream)));
   PADDLE_ENFORCE_EQ(attrs.size(),
                     17,
                     ::common::errors::InvalidArgument(
@@ -2836,7 +2838,7 @@ void cinn_gpu_cudnn_pool2d(const std::vector<int> &attrs,
   int adaptive = attrs[16];
   std::string pool_type = str_attrs[0];
   cudnnPoolingDescriptor_t pooling_desc;
-  CUDNN_CALL(cudnnCreatePoolingDescriptor(&pooling_desc));
+  CUDNN_CALL(phi::dynload::cudnnCreatePoolingDescriptor(&pooling_desc));
   cudnnPoolingMode_t pool_mode;
   if (pool_type == "max") {
     pool_mode = CUDNN_POOLING_MAX;
@@ -2854,7 +2856,7 @@ void cinn_gpu_cudnn_pool2d(const std::vector<int> &attrs,
 
   auto data_type = convert_to_cudnn_dtype(input);
 
-  CUDNN_CALL(cudnnSetPooling2dDescriptor(pooling_desc,
+  CUDNN_CALL(phi::dynload::cudnnSetPooling2dDescriptor(pooling_desc,
                                          pool_mode,
                                          CUDNN_NOT_PROPAGATE_NAN,
                                          kernel_h,
@@ -2866,9 +2868,9 @@ void cinn_gpu_cudnn_pool2d(const std::vector<int> &attrs,
 
   cudnnTensorDescriptor_t in_desc;
 
-  CUDNN_CALL(cudnnCreateTensorDescriptor(&in_desc));
+  CUDNN_CALL(phi::dynload::cudnnCreateTensorDescriptor(&in_desc));
 
-  CUDNN_CALL(cudnnSetTensor4dDescriptor(in_desc,
+  CUDNN_CALL(phi::dynload::cudnnSetTensor4dDescriptor(in_desc,
                                         CUDNN_TENSOR_NCHW,
                                         data_type,
                                         input_n,
@@ -2878,9 +2880,9 @@ void cinn_gpu_cudnn_pool2d(const std::vector<int> &attrs,
 
   cudnnTensorDescriptor_t out_desc;
 
-  CUDNN_CALL(cudnnCreateTensorDescriptor(&out_desc));
+  CUDNN_CALL(phi::dynload::cudnnCreateTensorDescriptor(&out_desc));
 
-  CUDNN_CALL(cudnnSetTensor4dDescriptor(out_desc,
+  CUDNN_CALL(phi::dynload::cudnnSetTensor4dDescriptor(out_desc,
                                         CUDNN_TENSOR_NCHW,
                                         data_type,
                                         output_n,
@@ -2894,7 +2896,7 @@ void cinn_gpu_cudnn_pool2d(const std::vector<int> &attrs,
   if (data_type == CUDNN_DATA_DOUBLE) {
     double alpha = 1.0f;
     double beta = 0.0f;
-    CUDNN_CALL(cudnnPoolingForward(handle,
+    CUDNN_CALL(phi::dynload::cudnnPoolingForward(handle,
                                    pooling_desc,
                                    &alpha,
                                    in_desc,
@@ -2905,7 +2907,7 @@ void cinn_gpu_cudnn_pool2d(const std::vector<int> &attrs,
   } else {
     float alpha = 1.0f;
     float beta = 0.0f;
-    CUDNN_CALL(cudnnPoolingForward(handle,
+    CUDNN_CALL(phi::dynload::cudnnPoolingForward(handle,
                                    pooling_desc,
                                    &alpha,
                                    in_desc,
@@ -2915,9 +2917,9 @@ void cinn_gpu_cudnn_pool2d(const std::vector<int> &attrs,
                                    out_data));
   }
 
-  cudnnDestroyTensorDescriptor(in_desc);
-  cudnnDestroyTensorDescriptor(out_desc);
-  cudnnDestroyPoolingDescriptor(pooling_desc);
+  phi::dynload::cudnnDestroyTensorDescriptor(in_desc);
+  phi::dynload::cudnnDestroyTensorDescriptor(out_desc);
+  phi::dynload::cudnnDestroyPoolingDescriptor(pooling_desc);
 }
 extern "C" {
 void infer_shape_set_value(int row, int col, int64_t value, int64_t **v) {
@@ -2948,13 +2950,13 @@ void cinn_gpu_cudnn_softmax(const std::vector<int> &attrs,
   auto data_type = convert_to_cudnn_dtype(input);
 
   cudnnHandle_t &handle = CudnnHandle::GetInstance().GetCudnnHandle();
-  CUDNN_CALL(cudnnSetStream(handle, static_cast<cudaStream_t>(stream)));
+  CUDNN_CALL(phi::dynload::cudnnSetStream(handle, static_cast<cudaStream_t>(stream)));
   void *in_data = input->memory;
   void *out_data = output->memory;
 
   cudnnTensorDescriptor_t in_desc;
-  CUDNN_CALL(cudnnCreateTensorDescriptor(&in_desc));
-  CUDNN_CALL(cudnnSetTensor4dDescriptor(in_desc,
+  CUDNN_CALL(phi::dynload::cudnnCreateTensorDescriptor(&in_desc));
+  CUDNN_CALL(phi::dynload::cudnnSetTensor4dDescriptor(in_desc,
                                         CUDNN_TENSOR_NCHW,
                                         data_type,
                                         outer_num,
@@ -2963,8 +2965,8 @@ void cinn_gpu_cudnn_softmax(const std::vector<int> &attrs,
                                         1));
 
   cudnnTensorDescriptor_t out_desc;
-  CUDNN_CALL(cudnnCreateTensorDescriptor(&out_desc));
-  CUDNN_CALL(cudnnSetTensor4dDescriptor(out_desc,
+  CUDNN_CALL(phi::dynload::cudnnCreateTensorDescriptor(&out_desc));
+  CUDNN_CALL(phi::dynload::cudnnSetTensor4dDescriptor(out_desc,
                                         CUDNN_TENSOR_NCHW,
                                         data_type,
                                         outer_num,
@@ -2975,7 +2977,7 @@ void cinn_gpu_cudnn_softmax(const std::vector<int> &attrs,
   if (data_type == CUDNN_DATA_DOUBLE) {
     double alpha = 1.f;
     double beta = 0.f;
-    CUDNN_CALL(cudnnSoftmaxForward(handle,
+    CUDNN_CALL(phi::dynload::cudnnSoftmaxForward(handle,
                                    CUDNN_SOFTMAX_ACCURATE,
                                    CUDNN_SOFTMAX_MODE_CHANNEL,
                                    &alpha,
@@ -2987,7 +2989,7 @@ void cinn_gpu_cudnn_softmax(const std::vector<int> &attrs,
   } else {
     float alpha = 1.f;
     float beta = 0.f;
-    CUDNN_CALL(cudnnSoftmaxForward(handle,
+    CUDNN_CALL(phi::dynload::cudnnSoftmaxForward(handle,
                                    CUDNN_SOFTMAX_ACCURATE,
                                    CUDNN_SOFTMAX_MODE_CHANNEL,
                                    &alpha,
@@ -2998,8 +3000,8 @@ void cinn_gpu_cudnn_softmax(const std::vector<int> &attrs,
                                    out_data));
   }
 
-  cudnnDestroyTensorDescriptor(in_desc);
-  cudnnDestroyTensorDescriptor(out_desc);
+  phi::dynload::cudnnDestroyTensorDescriptor(in_desc);
+  phi::dynload::cudnnDestroyTensorDescriptor(out_desc);
 }
 
 #endif  // CINN_WITH_CUDNN

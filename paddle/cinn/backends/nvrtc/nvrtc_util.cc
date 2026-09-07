@@ -120,6 +120,27 @@ std::vector<std::string> Compiler::FindCUDAIncludePaths() {
     return {cuda_include_path};
   }
 
+#ifdef PADDLE_WITH_XPU_CADA
+  // M100/xtrans does not follow the NVIDIA pip-package layout that
+  // GetNvidiaAllIncludePath expects, nor is it installed under
+  // /usr/local/cuda; its headers live under XTRANS_ROOT/targets/<arch>/include
+  // (see cmake/cinn.cmake XTRANS_ROOT/XTRANS_INCLUDE_DIR).
+  const char* xtrans_root_env = std::getenv("XTRANS_ROOT");
+  if (xtrans_root_env != nullptr) {
+    cuda_include_path = std::string(xtrans_root_env) + delimiter +
+                        "targets" + delimiter + "x86_64-linux" + delimiter +
+                        "include";
+    VLOG(4) << "FindCUDAIncludePaths from XTRANS_ROOT: " << cuda_include_path;
+    return {cuda_include_path};
+  }
+  std::stringstream ss;
+  ss << "Cannot find xtrans include path. "
+     << "Set environment variable XTRANS_ROOT to the xtrans_cuda_* "
+        "installation directory.";
+  PADDLE_THROW(::common::errors::Fatal(ss.str()));
+  return {cuda_include_path};
+#else
+
 #if defined(__linux__)
   if (!FLAGS_nvidia_package_dir.empty() &&
       TryLocatePath(FLAGS_nvidia_package_dir)) {
@@ -141,6 +162,7 @@ std::vector<std::string> Compiler::FindCUDAIncludePaths() {
      << "In other than linux, it is necessary to set CUDA_PATH.";
   PADDLE_THROW(::common::errors::Fatal(ss.str()));
   return {cuda_include_path};
+#endif  // PADDLE_WITH_XPU_CADA
 }
 
 std::vector<std::string> Compiler::FindCINNRuntimeIncludePaths() {
@@ -180,6 +202,15 @@ std::string Compiler::CompileCudaSource(const std::string& code,
   compile_options.push_back("-std=c++14");
 #endif
   compile_options.push_back("-default-device");
+#ifdef PADDLE_WITH_XPU_CADA
+  // Propagate this build-time macro into the NVRTC device-code compile so
+  // that the WITH_XPU_CADA-only code paths in the injected runtime headers
+  // (struct __shfl_down_sync/__shfl_xor_sync overloads, float16_xpu_cada.h
+  // selection, etc.) actually activate. Without this, the macro is only
+  // ever true for the host-side Paddle/CINN C++ code, never for the code
+  // NVRTC JIT-compiles at runtime.
+  compile_options.push_back("-DPADDLE_WITH_XPU_CADA");
+#endif  // PADDLE_WITH_XPU_CADA
 
   if (include_headers) {  // prepare include headers
     auto cuda_headers = FindCUDAIncludePaths();

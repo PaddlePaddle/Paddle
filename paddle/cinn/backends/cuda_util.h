@@ -17,8 +17,18 @@
 
 #include <cuda.h>
 #include <cuda_runtime.h>
-#include <cudnn.h>
 #include <curand.h>
+
+// Use phi's dynload wrapper instead of including <cudnn.h> directly and
+// linking libcudnn.so at compile time. xtrans's libcudnn.so dynamically
+// depends on its own libLLVM-15.so (via libclang-cpp.so.15); if cudnn is a
+// hard link-time dependency of cinnapi/cinncore, any process linking them
+// (e.g. eager_generator) loads both xtrans's LLVM-15 and CINN's own
+// statically-linked LLVM into the same process, and their global
+// llvm::cl::opt registries collide at load time. phi's dynload wrapper
+// keeps cudnn lazily dlopen'd at first real use, matching how the rest of
+// Paddle already handles cudnn.
+#include "paddle/phi/backends/dynload/cudnn.h"
 #include <glog/logging.h>
 
 #include <string>
@@ -83,7 +93,8 @@
     auto status = func;                                      \
     if (status != CUDNN_STATUS_SUCCESS) {                    \
       std::stringstream ss;                                  \
-      ss << "CUDNN Error : " << cudnnGetErrorString(status); \
+      ss << "CUDNN Error : "                                 \
+         << ::phi::dynload::cudnnGetErrorString(status);     \
       PADDLE_THROW(::common::errors::Fatal(ss.str()));       \
     }                                                        \
   }

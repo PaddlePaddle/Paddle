@@ -192,7 +192,7 @@ bool ContainBroadcastShape(const cinn::common::BroadcastLeaf& leaves) {
 std::optional<std::shared_ptr<cinn::common::BroadcastTree>>
 ConstructBroadcastTree(const cinn::common::BroadcastLeaf& leaves) {
   VLOG(6) << "before constructed. broadcast-leaf: \n"
-          << ToTxtString(cinn::common::BroadcastTree(leaves));
+          << cinn::common::ToTxtString(cinn::common::BroadcastTree(leaves));
   int num_of_leaves = 0;
   auto broadcast_tree = std::make_shared<cinn::common::BroadcastTree>(
       cinn::common::ConstructBroadcastTree(cinn::common::BroadcastLeaf(leaves),
@@ -202,7 +202,8 @@ ConstructBroadcastTree(const cinn::common::BroadcastLeaf& leaves) {
                     "limit.";
     return std::nullopt;
   }
-  VLOG(4) << "broadcast-tree: \n" << ToTxtString(*broadcast_tree);
+  VLOG(4) << "broadcast-tree: \n"
+          << cinn::common::ToTxtString(*broadcast_tree);
   return broadcast_tree;
 }
 

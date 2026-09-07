@@ -82,7 +82,8 @@ struct DefaultPirGraphDescriptor {
         [&](const PackedIrOp& impl) -> adt::Result<adt::Ok> {
           const auto& inputs = GetFusionOpInputValues(impl.fusion_op);
           for (int i = 0; i < inputs.size(); ++i) {
-            PackedIrOpOperand ir_op_operand{impl.fusion_op, i};
+            PackedIrOpOperand ir_op_operand{impl.fusion_op,
+                                            static_cast<std::size_t>(i)};
             ADT_RETURN_IF_ERR(DoEach(ir_op_operand));
           }
           return adt::Ok{};
@@ -123,7 +124,8 @@ struct DefaultPirGraphDescriptor {
               const auto& user_op_inputs = GetFusionOpInputValues(fusion_op);
               for (int i = 0; i < user_op_inputs.size(); ++i) {
                 if (user_op_inputs.at(i) == impl.value) {
-                  PackedIrOpOperand ir_op_operand{fusion_op, i};
+                  PackedIrOpOperand ir_op_operand{
+                      fusion_op, static_cast<std::size_t>(i)};
                   ADT_RETURN_IF_ERR(DoEach(ir_op_operand));
                 }
               }
@@ -521,7 +523,8 @@ struct BlockBoundPirGraphDescriptor {
                 backend_graph_.GetFusionOpInputValues(fusion_op);
             for (int i = 0; i < user_op_inputs.size(); ++i) {
               if (user_op_inputs.at(i) == impl.value) {
-                PackedIrOpOperand ir_op_operand{fusion_op, i};
+                PackedIrOpOperand ir_op_operand{
+                    fusion_op, static_cast<std::size_t>(i)};
                 ADT_RETURN_IF_ERR(DoEach(ir_op_operand));
               }
             }

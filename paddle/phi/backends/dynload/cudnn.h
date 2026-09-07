@@ -94,9 +94,11 @@ extern void EnforceCUDNNLoaded(const char* fn_name);
   __macro(cudnnSoftmaxBackward);                           \
   __macro(cudnnSoftmaxForward);                            \
   __macro(cudnnGetVersion);                                \
+  __macro(cudnnFindConvolutionForwardAlgorithm);           \
   __macro(cudnnFindConvolutionForwardAlgorithmEx);         \
   __macro(cudnnFindConvolutionBackwardFilterAlgorithmEx);  \
   __macro(cudnnFindConvolutionBackwardFilterAlgorithm);    \
+  __macro(cudnnFindConvolutionBackwardDataAlgorithm);      \
   __macro(cudnnFindConvolutionBackwardDataAlgorithmEx);    \
   __macro(cudnnGetErrorString);                            \
   __macro(cudnnCreateDropoutDescriptor);                   \
