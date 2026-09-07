@@ -17,7 +17,7 @@ message: |
     for i, j, k, m, n in itertools.product(range_a, range_b, range_c, range_d, range_e):
         process(i, j, k, m, n)
 
-  If it is a false positive, please contact SigureMo or zrr1999 for more information.
+  If it is a false positive, please contact zrr1999 for more information.
 note: Refactor deeply nested loops using itertools.product for better readability
 files:
   - test/**

@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include <array>
+#include <cstdint>
 #include <limits>
 #include <set>
 
@@ -76,6 +77,95 @@ TEST(math_function, gemm_notrans_cblas) {
   EXPECT_EQ(input3_ptr[5], 73);
   EXPECT_EQ(input3_ptr[6], 86);
   EXPECT_EQ(input3_ptr[7], 99);
+}
+
+TEST(math_function, gemm_gemv_int64_dimensions) {
+  auto* dev_ctx =
+      phi::DeviceContextPool::Instance().GetByPlace(phi::CPUPlace());
+  auto blas = GetBlas<float>(*dev_ctx);
+
+  const int64_t m = 2;
+  const int64_t n = 2;
+  const int64_t k = 3;
+  const std::array<float, 6> a = {1, 2, 3, 4, 5, 6};
+  const std::array<float, 6> b = {1, 2, 3, 4, 5, 6};
+  const std::array<float, 4> expected = {22, 28, 49, 64};
+
+  std::array<float, 4> enum_gemm_out{};
+  blas.GEMM(CblasNoTrans,
+            CblasNoTrans,
+            m,
+            n,
+            k,
+            1.0f,
+            a.data(),
+            k,
+            b.data(),
+            n,
+            0.0f,
+            enum_gemm_out.data(),
+            n);
+  EXPECT_EQ(enum_gemm_out, expected);
+
+  std::array<float, 4> bool_gemm_out{};
+  blas.GEMM(false,
+            false,
+            m,
+            n,
+            k,
+            1.0f,
+            a.data(),
+            k,
+            b.data(),
+            n,
+            0.0f,
+            bool_gemm_out.data(),
+            n);
+  EXPECT_EQ(bool_gemm_out, expected);
+
+  const std::array<float, 3> vector = {1, 1, 1};
+  const std::array<float, 2> expected_gemv = {6, 15};
+  std::array<float, 2> gemv_out{};
+  blas.GEMV(false, m, k, 1.0f, a.data(), vector.data(), 0.0f, gemv_out.data());
+  EXPECT_EQ(gemv_out, expected_gemv);
+}
+
+TEST(math_function, gemm_gemv_reject_unsupported_cpu_dimensions) {
+  auto* dev_ctx =
+      phi::DeviceContextPool::Instance().GetByPlace(phi::CPUPlace());
+  auto blas = GetBlas<float>(*dev_ctx);
+  float value = 1.0f;
+  const int64_t too_large =
+      static_cast<int64_t>(std::numeric_limits<int>::max()) + 1;
+
+  EXPECT_THROW(blas.GEMM(CblasNoTrans,
+                         CblasNoTrans,
+                         too_large,
+                         1,
+                         1,
+                         1.0f,
+                         &value,
+                         &value,
+                         0.0f,
+                         &value),
+               common::enforce::EnforceNotMet);
+  EXPECT_THROW(blas.GEMM(false,
+                         false,
+                         1,
+                         1,
+                         1,
+                         1.0f,
+                         &value,
+                         too_large,
+                         &value,
+                         1,
+                         0.0f,
+                         &value,
+                         1),
+               common::enforce::EnforceNotMet);
+  EXPECT_THROW(
+      blas.GEMV(false, too_large, 1, 1.0f, &value, &value, 0.0f, &value),
+      common::enforce::EnforceNotMet);
 }
 
 TEST(math_function, dot_with_blas_zero_length) {
@@ -299,12 +389,12 @@ TEST(math_function, zero) {
 }
 
 template <typename T>
-void GemvTest(int m, int n, bool trans) {
+void GemvTest(int64_t m, int64_t n, bool trans) {
   phi::DenseTensor mat_a;
   phi::DenseTensor vec_b;
   phi::DenseTensor vec_c;
-  int b_num = trans ? m : n;
-  int c_num = trans ? n : m;
+  int64_t b_num = trans ? m : n;
+  int64_t c_num = trans ? n : m;
 
   auto* dev_ctx =
       phi::DeviceContextPool::Instance().GetByPlace(phi::CPUPlace());
@@ -315,34 +405,27 @@ void GemvTest(int m, int n, bool trans) {
   T* data_b = dev_ctx->template Alloc<T>(&vec_b);
   vec_c.Resize({c_num});
   T* data_c = dev_ctx->template Alloc<T>(&vec_c);
-  for (int i = 0; i < mat_a.numel(); ++i) {
+  for (int64_t i = 0; i < mat_a.numel(); ++i) {
     data_a[i] = static_cast<T>(i);
   }
-  for (int i = 0; i < vec_b.numel(); ++i) {
+  for (int64_t i = 0; i < vec_b.numel(); ++i) {
     data_b[i] = static_cast<T>(i);
   }
 
-  GetBlas<T>(*dev_ctx).GEMV(trans,
-                            static_cast<int>(m),
-                            static_cast<int>(n),
-                            1.,
-                            data_a,
-                            data_b,
-                            0.,
-                            data_c);
+  GetBlas<T>(*dev_ctx).GEMV(trans, m, n, 1., data_a, data_b, 0., data_c);
 
   if (!trans) {
-    for (int i = 0; i < m; ++i) {
+    for (int64_t i = 0; i < m; ++i) {
       T sum = 0.0;
-      for (int j = 0; j < n; ++j) {
+      for (int64_t j = 0; j < n; ++j) {
         sum += data_a[i * n + j] * data_b[j];
       }
       ASSERT_FLOAT_EQ(data_c[i], sum);
     }
   } else {
-    for (int i = 0; i < n; ++i) {
+    for (int64_t i = 0; i < n; ++i) {
       T sum = 0.0;
-      for (int j = 0; j < m; ++j) {
+      for (int64_t j = 0; j < m; ++j) {
         sum += data_a[j * n + i] * data_b[j];
       }
       ASSERT_FLOAT_EQ(data_c[i], sum);

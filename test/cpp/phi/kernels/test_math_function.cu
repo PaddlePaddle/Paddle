@@ -12,7 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <cstdint>
+#include <limits>
+
 #include "gtest/gtest.h"
+#include "paddle/common/enforce.h"
 #include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
@@ -455,7 +459,135 @@ TEST(math_function, gemm_trans_cublas_fp16) {
 }
 
 template <typename T>
-void GemvTest(int m, int n, bool trans) {
+void Gemm64BitLeadingDimensionTest(int compute_capability) {
+  phi::DenseTensor input1;
+  phi::DenseTensor input2;
+  phi::DenseTensor output;
+  phi::DenseTensor input1_gpu;
+  phi::DenseTensor input2_gpu;
+  phi::DenseTensor output_gpu;
+
+  phi::CPUPlace cpu_place;
+  phi::GPUPlace gpu_place(0);
+  phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
+  auto* context = reinterpret_cast<phi::GPUContext*>(pool.Get(phi::GPUPlace()));
+
+  if (context->GetComputeCapability() < compute_capability) {
+    return;
+  }
+
+  T* input1_ptr = input1.mutable_data<T>({1, 1}, cpu_place);
+  T* input2_ptr = input2.mutable_data<T>({1, 1}, cpu_place);
+  T* output_ptr = output.mutable_data<T>({1, 1}, cpu_place);
+  input1_ptr[0] = static_cast<T>(2.0f);
+  input2_ptr[0] = static_cast<T>(3.0f);
+  output_ptr[0] = static_cast<T>(0.0f);
+
+  phi::Copy(*context, input1, gpu_place, true, &input1_gpu);
+  phi::Copy(*context, input2, gpu_place, true, &input2_gpu);
+  phi::Copy(*context, output, gpu_place, true, &output_gpu);
+
+  const int64_t large_ld =
+      static_cast<int64_t>(std::numeric_limits<int>::max()) + 1;
+  bool gemm_succeeded = true;
+  try {
+    GetBlas<T>(*context).GEMM(false,
+                              false,
+                              1,
+                              1,
+                              1,
+                              static_cast<T>(1.0f),
+                              input1_gpu.data<T>(),
+                              1,
+                              input2_gpu.data<T>(),
+                              1,
+                              static_cast<T>(0.0f),
+                              output_gpu.data<T>(),
+                              large_ld);
+  } catch (const common::enforce::EnforceNotMet& error) {
+    // Some CUDA versions reject oversized leading dimensions in cuBLAS even
+    // through the 64-bit entry point. The dispatch must still reach cuBLAS.
+    gemm_succeeded = false;
+    EXPECT_EQ(error.code(), common::ErrorCode::EXTERNAL);
+  }
+
+  if (gemm_succeeded) {
+    phi::Copy(*context, output_gpu, cpu_place, true, &output);
+    context->Wait();
+    EXPECT_FLOAT_EQ(static_cast<float>(output_ptr[0]), 6.0f);
+  }
+}
+
+#if CUDA_VERSION >= 12030 && defined(__linux__)
+TEST(math_function, gemm_64bit_leading_dimension_dispatch_fp16) {
+  Gemm64BitLeadingDimensionTest<phi::dtype::float16>(53);
+}
+
+TEST(math_function, gemm_64bit_leading_dimension_dispatch_bf16) {
+  Gemm64BitLeadingDimensionTest<phi::dtype::bfloat16>(80);
+}
+
+template <typename T>
+void ComplexGemm64ApiTest() {
+  phi::DenseTensor input1;
+  phi::DenseTensor input2;
+  phi::DenseTensor output;
+  phi::DenseTensor input1_gpu;
+  phi::DenseTensor input2_gpu;
+  phi::DenseTensor output_gpu;
+
+  phi::CPUPlace cpu_place;
+  phi::GPUPlace gpu_place(0);
+  phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
+  auto* context = reinterpret_cast<phi::GPUContext*>(pool.Get(phi::GPUPlace()));
+
+  auto* input1_ptr = input1.mutable_data<T>({1, 1}, cpu_place);
+  auto* input2_ptr = input2.mutable_data<T>({1, 1}, cpu_place);
+  auto* output_ptr = output.mutable_data<T>({1, 1}, cpu_place);
+  input1_ptr[0] = T(2.0, 0.0);
+  input2_ptr[0] = T(3.0, 0.0);
+  output_ptr[0] = T(0.0, 0.0);
+
+  phi::Copy(*context, input1, gpu_place, true, &input1_gpu);
+  phi::Copy(*context, input2, gpu_place, true, &input2_gpu);
+  phi::Copy(*context, output, gpu_place, true, &output_gpu);
+
+  const T alpha(1.0, 0.0);
+  const T beta(0.0, 0.0);
+  context->CublasCall([&](cublasHandle_t handle) {
+    phi::funcs::CUBlas<T>::GEMM_64(handle,
+                                   CUBLAS_OP_N,
+                                   CUBLAS_OP_N,
+                                   1,
+                                   1,
+                                   1,
+                                   &alpha,
+                                   input1_gpu.data<T>(),
+                                   1,
+                                   input2_gpu.data<T>(),
+                                   1,
+                                   &beta,
+                                   output_gpu.data<T>(),
+                                   1);
+  });
+
+  phi::Copy(*context, output_gpu, cpu_place, true, &output);
+  context->Wait();
+  EXPECT_DOUBLE_EQ(static_cast<double>(output_ptr[0].real), 6.0);
+  EXPECT_DOUBLE_EQ(static_cast<double>(output_ptr[0].imag), 0.0);
+}
+
+TEST(math_function, gemm_64_complex64_typed_api) {
+  ComplexGemm64ApiTest<phi::complex64>();
+}
+
+TEST(math_function, gemm_64_complex128_typed_api) {
+  ComplexGemm64ApiTest<phi::complex128>();
+}
+#endif
+
+template <typename T>
+void GemvTest(int64_t m, int64_t n, bool trans) {
   phi::DenseTensor mat_a;
   phi::DenseTensor vec_b;
   phi::DenseTensor vec_c;
@@ -476,39 +608,32 @@ void GemvTest(int m, int n, bool trans) {
   T* g_data_b = g_vec_b.mutable_data<T>(vec_b.dims(), gpu_place);
   T* g_data_c = g_vec_c.mutable_data<T>(vec_c.dims(), gpu_place);
 
-  for (int i = 0; i < mat_a.numel(); ++i) {
+  for (int64_t i = 0; i < mat_a.numel(); ++i) {
     data_a[i] = static_cast<T>(i);
   }
-  for (int i = 0; i < vec_b.numel(); ++i) {
+  for (int64_t i = 0; i < vec_b.numel(); ++i) {
     data_b[i] = static_cast<T>(i);
   }
 
   phi::Copy(*context, mat_a, gpu_place, true, &g_mat_a);
   phi::Copy(*context, vec_b, gpu_place, true, &g_vec_b);
 
-  GetBlas<T>(*context).GEMV(trans,
-                            static_cast<int>(m),
-                            static_cast<int>(n),
-                            1.,
-                            g_data_a,
-                            g_data_b,
-                            0.,
-                            g_data_c);
+  GetBlas<T>(*context).GEMV(trans, m, n, 1., g_data_a, g_data_b, 0., g_data_c);
 
   phi::Copy(*context, g_vec_c, cpu_place, true, &vec_c);
 
   if (!trans) {
-    for (int i = 0; i < m; ++i) {
+    for (int64_t i = 0; i < m; ++i) {
       T sum = 0.0;
-      for (int j = 0; j < n; ++j) {
+      for (int64_t j = 0; j < n; ++j) {
         sum += data_a[i * n + j] * data_b[j];
       }
       ASSERT_FLOAT_EQ(data_c[i], sum);
     }
   } else {
-    for (int i = 0; i < n; ++i) {
+    for (int64_t i = 0; i < n; ++i) {
       T sum = 0.0;
-      for (int j = 0; j < m; ++j) {
+      for (int64_t j = 0; j < m; ++j) {
         sum += data_a[j * n + i] * data_b[j];
       }
       ASSERT_FLOAT_EQ(data_c[i], sum);

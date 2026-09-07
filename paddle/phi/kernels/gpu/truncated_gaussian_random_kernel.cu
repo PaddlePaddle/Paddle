@@ -25,6 +25,7 @@
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/distribution_helper.h"
 
 namespace phi {
 
@@ -56,33 +57,20 @@ struct GPUTruncatedNormal {
 };
 
 template <typename T, typename MT>
-struct TruncatedNormalOffset {
+struct TruncatedNormalTransform {
   MT mean, std, a, b;
   MT a_normal_cdf;
   MT b_normal_cdf;
-  unsigned int seed;
-  MT numeric_min;
-  int offset_;
 
-  __host__ __device__ TruncatedNormalOffset(
-      MT mean, MT std, MT numeric_min, int seed, int offset, MT a, MT b)
-      : mean(mean),
-        std(std),
-        seed(seed),
-        numeric_min(numeric_min),
-        offset_(offset),
-        a(a),
-        b(b) {
+  HOSTDEVICE TruncatedNormalTransform(MT mean, MT std, MT a, MT b)
+      : mean(mean), std(std), a(a), b(b) {
     a_normal_cdf = (1.0 + erff((a - mean) / std / sqrtf(2.0))) / 2.0;
     b_normal_cdf = (1.0 + erff((b - mean) / std / sqrtf(2.0))) / 2.0;
   }
 
-  __host__ __device__ T operator()(const unsigned int n) const {
-    thrust::minstd_rand rng;
-    rng.seed(seed);
-    thrust::uniform_real_distribution<MT> dist(numeric_min, 1);
-    rng.discard(n + offset_);
-    MT value = dist(rng);
+  // Inverts the CDF of the truncated distribution, mapping a uniform sample in
+  // (0, 1] onto [a, b].
+  HOSTDEVICE inline T operator()(MT value) const {
     auto p = a_normal_cdf + (b_normal_cdf - a_normal_cdf) * value;
     MT ret = std::sqrt(2.0) * erfinvf(2 * p - 1) * std + mean;
     return static_cast<T>(std::clamp(ret, a, b));
@@ -103,28 +91,17 @@ void TruncatedGaussianRandomKernel(const Context& dev_ctx,
 
   using MT = typename MPTypeTrait<T>::Type;
 
-  thrust::counting_iterator<int64_t> index_sequence_begin(0);
-  int64_t size = out->numel();
-
-  auto gen_cuda = dev_ctx.GetGenerator();
   if (seed == 0) {
-    // use global Generator seed
-    auto seed_offset = gen_cuda->IncrementOffset(1);
-    uint64_t seed = seed_offset.first;
-    uint64_t offset = seed_offset.second;
-    thrust::transform(
-        index_sequence_begin,
-        index_sequence_begin + size,
-        thrust::device_ptr<T>(data),
-        TruncatedNormalOffset<T, MT>(mean,
-                                     std,
-                                     std::numeric_limits<MT>::min(),
-                                     seed,
-                                     size * offset,
-                                     a,
-                                     b));
+    funcs::uniform_distribution<MT> dist;
+    TruncatedNormalTransform<T, MT> trans(static_cast<MT>(mean),
+                                          static_cast<MT>(std),
+                                          static_cast<MT>(a),
+                                          static_cast<MT>(b));
+    funcs::distribution_and_transform<T>(dev_ctx, out, dist, trans);
   } else {
     // use OP seed
+    thrust::counting_iterator<int64_t> index_sequence_begin(0);
+    int64_t size = out->numel();
     thrust::transform(
         index_sequence_begin,
         index_sequence_begin + size,

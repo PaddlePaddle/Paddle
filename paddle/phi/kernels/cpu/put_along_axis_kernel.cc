@@ -26,14 +26,27 @@ namespace phi {
 template <typename T, typename Context>
 void PutAlongAxisKernel(const Context& dev_ctx,
                         const DenseTensor& x,
-                        const DenseTensor& index,
-                        const DenseTensor& value,
+                        const DenseTensor& indices,
+                        const DenseTensor& values,
                         int axis,
                         const std::string& reduce,
                         bool include_self,
                         DenseTensor* out) {
   Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+
+  // Brings the operands into the representation the scatter functor can
+  // address: a 0-D operand becomes rank 1 and ``axis`` is normalized.
+  // ``index`` and ``value`` are shallow views sharing the caller's buffer.
+  // ``out`` is promoted in place because the scatter writes through it, so its
+  // shape is saved here and restored once the scatter is done -- reading it
+  // back from ``x`` would not do, since ``x`` and ``out`` are the same tensor
+  // when the op runs inplace.
+  const DDim out_dims = out->dims();
+  DenseTensor index = indices;
+  DenseTensor value = values;
   const auto& index_type = index.dtype();
+  funcs::PreparePutAlongAxisOperands(out, &index, &value, &axis);
+
   if (reduce == "add") {
     if (index_type == DataType::INT32) {
       funcs::cpu_scatter_add_kernel<T, int32_t>(
@@ -92,6 +105,7 @@ void PutAlongAxisKernel(const Context& dev_ctx,
         reduce));
     return;
   }
+  out->Resize(out_dims);
 }
 
 }  // namespace phi

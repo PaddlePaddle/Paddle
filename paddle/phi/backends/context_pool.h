@@ -30,9 +30,6 @@ namespace phi {
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
     defined(PADDLE_WITH_CUSTOM_DEVICE)
-PADDLE_API void SetAllowTF32Cublas(bool active);
-/*Get the global variable allow_tf32_cublas value*/
-PADDLE_API bool AllowTF32Cublas();
 extern bool allow_tf32_cudnn;
 /*Set the value of the global variable allow_tf32_cudnn*/
 PADDLE_API void SetAllowTF32Cudnn(bool active);

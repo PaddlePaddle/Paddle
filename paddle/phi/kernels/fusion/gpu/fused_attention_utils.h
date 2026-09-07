@@ -17,9 +17,9 @@
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/phi/core/distributed/collective/process_group.h"
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
-#include "paddle/phi/kernels/funcs/reduce_function.h"
 #endif
 #include "paddle/common/errors.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/platform/collective_helper.h"
 #include "paddle/phi/core/tensor_utils.h"
 

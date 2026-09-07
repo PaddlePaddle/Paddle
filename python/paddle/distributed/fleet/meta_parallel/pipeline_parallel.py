@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 from __future__ import annotations
 
+import collections
 import os
 import queue
 import sys
@@ -47,6 +48,7 @@ if _use_four_directions:
 else:
     from .pp_utils import p2p_communication as p2p
 
+from collections.abc import Callable
 from typing import TYPE_CHECKING
 
 from paddle.distributed import fleet
@@ -60,7 +62,7 @@ from .pipeline_hooks import (
     PipelineHook,
 )
 from .pp_utils.utils import dict_to_tuple_helper, tuple_to_dict_helper
-from .zero_bubble_utils import WeightGradStore
+from .zero_bubble_utils import RecomputeStore, WeightGradStore
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -121,6 +123,7 @@ def _can_free(t):
         t is not None
         and isinstance(t, paddle.Tensor)
         and t._is_initialized()
+        and not getattr(t, "pp_block_cached", False)
         and (t.inplace_version == 0 or getattr(t, "pp_can_free", False))
     )
 
@@ -331,6 +334,14 @@ class PipelineParallelMicroStepLocations(Enum):
     FORWARD_END = 'forward_end'
     BACKWARD_BEGIN = 'backward_begin'
     BACKWARD_END = 'backward_end'
+    # Raised after the P2P ops of a micro-step have been *issued* but before
+    # their wait handles are consumed. Hooks registered here run on the
+    # calculation stream after the isend/irecv have already recorded their
+    # cross-stream event, so their kernels can overlap the NCCL send/recv.
+    # Only raised when the schedule uses `_p2p_ops` (batch_p2p_comm=False),
+    # because `_batched_p2p_ops` runs the NCCL kernel on the calc stream and
+    # can never overlap with compute.
+    P2P_ISSUED = 'p2p_issued'
 
 
 # A callback class for managing hooks at different stages of a pipeline parallel process.
@@ -342,6 +353,7 @@ class PipelineParallelMicroStepCallback:
             PipelineParallelMicroStepLocations.FORWARD_END: [],
             PipelineParallelMicroStepLocations.BACKWARD_BEGIN: [],
             PipelineParallelMicroStepLocations.BACKWARD_END: [],
+            PipelineParallelMicroStepLocations.P2P_ISSUED: [],
         }
 
     def register_hook(
@@ -363,7 +375,7 @@ class PipelineParallelMicroStepCallback:
             AssertionError: If the specified location is not a valid micro-step location.
         """
         assert location in self.hooks, (
-            f"Invalid location '{location}'. Valid locations are 'forward_begin', 'forward_end', 'backward_begin', or 'backward_end'."
+            f"Invalid location '{location}'. Valid locations are 'forward_begin', 'forward_end', 'backward_begin', 'backward_end', or 'p2p_issued'."
         )
         self.hooks[location].append(hook)
 
@@ -381,7 +393,7 @@ class PipelineParallelMicroStepCallback:
             AssertionError: If the specified location is not a valid micro-step location.
         """
         assert location in self.hooks, (
-            f"Invalid location '{location}'. Valid locations are 'forward_begin', 'forward_end', 'backward_begin', or 'backward_end'."
+            f"Invalid location '{location}'. Valid locations are 'forward_begin', 'forward_end', 'backward_begin', 'backward_end', or 'p2p_issued'."
         )
         for hook in self.hooks[location]:
             hook(**kwargs)
@@ -401,6 +413,27 @@ def register_global_pipeline_parallel_hook(
     Registering global hooks for pipeline parallelism.
     """
     pipeline_parallel_callbacks_.register_hook(location, hook)
+
+
+def _raise_p2p_issued_and_wait(callbacks, wait_handles, output_tensor, step_id):
+    """Raise ``P2P_ISSUED`` between issuing the forward p2p ops and waiting.
+
+    Hooks registered at this location are enqueued on the calculation stream
+    after ``isend`` / ``irecv`` have recorded their cross-stream event, so their
+    kernels can overlap the NCCL send/recv. ``wait_handles`` is None when
+    ``batch_p2p_comm=True``, because ``_batched_p2p_ops`` already ran the
+    communication on the calculation stream: no overlap is possible there, but
+    the location is still raised so that hooks relying on it for correctness
+    are not silently skipped.
+    """
+    callbacks.on_location(
+        PipelineParallelMicroStepLocations.P2P_ISSUED,
+        output_tensor=output_tensor,
+        step_id=step_id,
+    )
+    if wait_handles is not None:
+        for wait_handle in wait_handles:
+            wait_handle.wait()
 
 
 class NoPipelineParallel(MetaParallelBase):
@@ -797,6 +830,11 @@ class PipelineParallel(MetaParallelBase):
         self._overlap_p2p_comm = self._strategy.hybrid_configs[
             "pp_configs"
         ].overlap_p2p_comm
+
+        if os.environ.get("BLOCK_ATTEN_RES_COMM_OPT", "0") == "1":
+            self._block_atten_res_opt = True
+        else:
+            self._block_atten_res_opt = False
 
         self._clear_every_step_cache = self._strategy.hybrid_configs[
             "pp_configs"
@@ -1777,6 +1815,14 @@ class PipelineParallel(MetaParallelBase):
                     outputs = [output_tensor]
                     grad_tensors = [output_tensor_grad]
 
+                if self._block_atten_res_opt and isinstance(
+                    output_tensor, tuple
+                ):
+                    for oi, t in enumerate(outputs):
+                        cc = getattr(t, "pp_cc_ref", None)
+                        if cc is not None and cc.grad is not None:
+                            grad_tensors[oi] = grad_tensors[oi] + cc.grad
+
                 if overlap_schedule_mode:
                     assert schedule_chunk is not None, (
                         "schedule_chunk should not be None in overlap_schedule_mode"
@@ -1983,12 +2029,26 @@ class P2PAsyncHandle:
     def forward_handle_wait(self):
         self.forward_handle_wait_fn()
 
-    def forward_async_comm(self, output_tensor):
-        (
-            self.next_forward_virtual_pp_rank,
-            self.input_tensor,
-            self.out_fwd_wait_handles,
-        ) = self.forward_async_comm_fn(output_tensor=output_tensor)
+    def forward_async_comm(self, output_tensor, block_cache_meta=None):
+        # Only pass block_cache_meta to the callback when it is actually set
+        # (i.e. the BlockAttnRes comm optimization is enabled). Passing it
+        # unconditionally would change the call signature for the default path
+        # and break existing callers that expect forward_async_comm_fn to be
+        # invoked with output_tensor only.
+        if block_cache_meta is not None:
+            (
+                self.next_forward_virtual_pp_rank,
+                self.input_tensor,
+                self.out_fwd_wait_handles,
+            ) = self.forward_async_comm_fn(
+                output_tensor=output_tensor, block_cache_meta=block_cache_meta
+            )
+        else:
+            (
+                self.next_forward_virtual_pp_rank,
+                self.input_tensor,
+                self.out_fwd_wait_handles,
+            ) = self.forward_async_comm_fn(output_tensor=output_tensor)
 
     def backward_handle_wait(self):
         self.backward_handle_wait_fn()
@@ -2018,6 +2078,12 @@ class PipelineParallelWithInterleave(PipelineParallel):
             assert not self._profiling, (
                 "Profiling is not compatible with overlap_schedule_mode."
             )
+            assert not self._block_atten_res_opt, (
+                "BlockAttnRes communication optimization does not support "
+                "forward_backward_overlap_scheduler yet: the overlapped "
+                "forward/backward path bypasses _merge_block_cache, so "
+                "locally cached blocks would be silently dropped."
+            )
         logger.info(f"Using {self._get_scheduler_name()}")
 
         self._record_format = (
@@ -2036,6 +2102,11 @@ class PipelineParallelWithInterleave(PipelineParallel):
         # Structures to record the micro step for each layer chunk
         self._forward_micro_step_counter = {}
         self._backward_micro_step_counter = {}
+        # Same idea, but maintained unconditionally: the two counters above only
+        # advance under _profiling / static_scheduler, and RecomputeStore needs a
+        # chunk identity on every run. Keyed by virtual_pp_rank.
+        self._rc_forward_count = collections.defaultdict(int)
+        self._rc_backward_count = collections.defaultdict(int)
 
         assert layers.get_num_virtual_stages() > 1
 
@@ -2244,6 +2315,84 @@ class PipelineParallelWithInterleave(PipelineParallel):
             if self._forward_only:
                 self.output_tensors[virtual_pp_rank].pop()
 
+    def _merge_block_cache(self, mb_idx, virtual_pp_rank, input_tensor_dict):
+        """Merge cached blocks with received blocks and update meta before forward."""
+        has_cached = mb_idx in self._block_cache
+        has_received = "blocks" in input_tensor_dict
+        if not (has_cached or has_received):
+            return
+
+        pp_size = self._hcg.get_pipe_parallel_world_size()
+        vpp_size = self.num_model_chunks
+        meta = self._block_cache_meta.setdefault(
+            mb_idx, [0] * (pp_size * vpp_size)
+        )
+
+        cached_blocks = self._block_cache.get(mb_idx, [])
+        received_blocks = input_tensor_dict.get("blocks", [])
+
+        my_stage = self._hcg.get_stage_id()
+        received_meta = self._recv_block_cache_meta_for_vpp[virtual_pp_rank]
+
+        if received_meta is not None:
+            recv_counts = received_meta[1:]
+            for i in range(len(meta)):
+                if i % pp_size != my_stage:
+                    meta[i] = recv_counts[i]
+            for i in range(my_stage, len(meta), pp_size):
+                meta[i] += len(received_blocks)
+
+        input_tensor_dict["blocks"] = cached_blocks + received_blocks
+
+    def _update_block_cache(
+        self, mb_idx, virtual_pp_rank, output_tensor, merged_len_pre
+    ):
+        """Update meta, cache blocks, and trim output blocks after forward. Returns meta_to_send."""
+        if not (isinstance(output_tensor, dict) and "blocks" in output_tensor):
+            return None
+
+        pp_size = self._hcg.get_pipe_parallel_world_size()
+        vpp_size = self.num_model_chunks
+        my_stage = self._hcg.get_stage_id()
+
+        meta = self._block_cache_meta.setdefault(
+            mb_idx, [0] * (pp_size * vpp_size)
+        )
+
+        total_blocks = output_tensor["blocks"]
+        new_blocks = len(total_blocks) - merged_len_pre
+        for i in range(my_stage, len(meta), pp_size):
+            meta[i] += new_blocks
+
+        cached_blocks = self._block_cache.setdefault(mb_idx, [])
+        cache_len = len(cached_blocks)
+        blocks_to_cache = total_blocks[cache_len:]
+
+        if blocks_to_cache:
+            num_produced = new_blocks
+            num_received_new = len(blocks_to_cache) - num_produced
+            for i, block in enumerate(blocks_to_cache):
+                if i < num_received_new:
+                    block.pp_block_cached = True
+                    cached_blocks.append(block)
+                else:
+                    cc = block.detach()
+                    cc.stop_gradient = False
+                    cached_blocks.append(cc)
+                    block.pp_cc_ref = cc
+
+        cur_chunk = virtual_pp_rank * pp_size + my_stage
+        next_chunk = cur_chunk + 1
+        if next_chunk < len(meta):
+            diff = meta[cur_chunk] - meta[next_chunk]
+            diff = max(0, min(diff, len(output_tensor["blocks"])))
+            if diff > 0:
+                output_tensor["blocks"] = output_tensor["blocks"][-diff:]
+            else:
+                output_tensor["blocks"] = []
+
+        return [mb_idx, *meta]
+
     def _forward_step_helper(
         self,
         micro_dataset,
@@ -2257,24 +2406,62 @@ class PipelineParallelWithInterleave(PipelineParallel):
 
         self.set_virtual_pipeline_rank(virtual_pp_rank)
 
-        input_tensor = self._get_forward_input(virtual_pp_rank)
+        if self._block_atten_res_opt:
+            mb_idx = self._block_cache_mb_idx[virtual_pp_rank]
+            self._block_cache_mb_idx[virtual_pp_rank] += 1
+        else:
+            mb_idx = None
 
+        input_tensor = self._get_forward_input(virtual_pp_rank)
         input_tensor_dict, use_dict = tuple_to_dict_helper(input_tensor)
+
+        if self._block_atten_res_opt and use_dict:
+            self._merge_block_cache(mb_idx, virtual_pp_rank, input_tensor_dict)
+
+        merged_len_pre = (
+            len(input_tensor_dict.get("blocks", []))
+            if (self._block_atten_res_opt and use_dict)
+            else 0
+        )
+
+        # Name this chunk so the cooldown loop can later ask for exactly the
+        # recompute belonging to the backward it is about to run. Forward and
+        # backward order differ under interleaving, so the pair
+        # (virtual_pp_rank, micro_id) is the only usable identity; micro_id is
+        # just how many forwards this virtual rank has done.
+        RecomputeStore.begin_chunk(
+            (virtual_pp_rank, self._rc_forward_count[virtual_pp_rank])
+        )
+        self._rc_forward_count[virtual_pp_rank] += 1
 
         output_tensor, schedule_chunk, loss_fn_node = self._forward_step(
             input_tensor_dict if use_dict else input_tensor,
             micro_dataset,
-            virtual_pp_rank,  # chunk_id
+            virtual_pp_rank,
             step_id=micro_step,
             overlap_schedule_mode=overlap_schedule_mode,
         )
+        RecomputeStore.end_chunk()
+
+        meta_to_send = (
+            self._update_block_cache(
+                mb_idx, virtual_pp_rank, output_tensor, merged_len_pre
+            )
+            if self._block_atten_res_opt
+            else None
+        )
 
         output_tensor_tuple = dict_to_tuple_helper(output_tensor)
-
+        if (
+            self._block_atten_res_opt
+            and isinstance(output_tensor_tuple, tuple)
+            and len(output_tensor_tuple) > 0
+        ):
+            output_tensor_tuple[0].pp_mb_idx = mb_idx
         self._store_forward_outputs(
             virtual_pp_rank, output_tensor_tuple, schedule_chunk, loss_fn_node
         )
-        return output_tensor_tuple
+        return output_tensor_tuple, meta_to_send
 
     def _overlap_comm_grads(self):
         if self._comm_overlap:
@@ -2342,6 +2529,7 @@ class PipelineParallelWithInterleave(PipelineParallel):
     def _backward_step_helper(self, micro_step, overlap_schedule_mode=False):
         virtual_pp_rank = self._get_virtual_pp_rank(micro_step, forward=False)
         self.set_virtual_pipeline_rank(virtual_pp_rank)
+        self._rc_backward_count[virtual_pp_rank] += 1
 
         (
             input_tensor,
@@ -2362,9 +2550,48 @@ class PipelineParallelWithInterleave(PipelineParallel):
             loss_fn_node=loss_fn_node,
         )
 
+        if (
+            self._block_atten_res_opt
+            and virtual_pp_rank == 0
+            and isinstance(output_tensor, tuple)
+        ):
+            mb_idx = getattr(output_tensor[0], "pp_mb_idx", None)
+            if mb_idx is not None:
+                self._block_cache.pop(mb_idx, None)
+                self._block_cache_meta.pop(mb_idx, None)
+
         self._overlap_comm_grads()
 
         return input_tensor_grad
+
+    def _rc_early_key(self, next_backward_micro_step_id, num_steps):
+        """Key of the chunk whose recompute can be run early, or None.
+
+        "Early" means: run those recompute spans now, inside the p2p window,
+        instead of at the start of the backward that needs them.
+
+        Second source of filler for when dW does not cover the p2p window: the
+        selective-recompute spans of the chunk whose backward comes next. Only
+        that one -- reaching further ahead would keep activations resident for
+        longer than the single window this buys.
+
+        Shared by every schedule that opens such a window, so that "which chunk"
+        is defined in exactly one place. The `(virtual_pp_rank, micro_id)` key
+        works because a given vpp rank's forwards and backwards both advance in
+        microbatch order, so its n-th forward and n-th backward are the same
+        microbatch (`_get_backward_input` pops per-vpp FIFOs).
+        """
+        if not RecomputeStore.enabled:
+            return None
+        if next_backward_micro_step_id >= num_steps:
+            return None
+        next_bwd_chunk = self._get_virtual_pp_rank(
+            next_backward_micro_step_id, forward=False
+        )
+        key = (next_bwd_chunk, self._rc_backward_count[next_bwd_chunk])
+        # Nothing to run early, e.g. the next chunk holds an EmptyLayer. The
+        # caller leaves the window as it is.
+        return key if RecomputeStore.pending(key) else None
 
     def _forward_backward_helper(
         self,
@@ -2378,14 +2605,16 @@ class PipelineParallelWithInterleave(PipelineParallel):
                 p2p_async_handle.forward_handle_wait()
 
             self._record_stamp("F", forward_micro_step_id, '"B"', forward=True)
-            output_tensor = self._forward_step_helper(
+            output_tensor, meta_to_send = self._forward_step_helper(
                 micro_dataset,
                 forward_micro_step_id,
             )
             self._record_stamp("F", forward_micro_step_id, '"E"', forward=True)
 
             if p2p_async_handle is not None:
-                p2p_async_handle.forward_async_comm(output_tensor)
+                p2p_async_handle.forward_async_comm(
+                    output_tensor, block_cache_meta=meta_to_send
+                )
                 p2p_async_handle.backward_handle_wait()
 
             # backward
@@ -2400,10 +2629,14 @@ class PipelineParallelWithInterleave(PipelineParallel):
             )
 
             if p2p_async_handle is not None:
+                if WeightGradStore.cache:
+                    WeightGradStore.flush()
                 p2p_async_handle.backward_async_comm(input_tensor_grad)
+                if not WeightGradStore.funcs_queue.empty():
+                    WeightGradStore.pop()
                 return
             else:
-                return output_tensor, input_tensor_grad
+                return output_tensor, input_tensor_grad, meta_to_send
         else:
             # 1. prepare forward inputs
             forward_virtual_pp_rank = self._get_virtual_pp_rank(
@@ -2513,7 +2746,7 @@ class PipelineParallelWithInterleave(PipelineParallel):
             self.set_virtual_pipeline_rank(backward_virtual_pp_rank)
             self._overlap_comm_grads()
 
-            return output_tensor_tuple, input_tensor_grad
+            return output_tensor_tuple, input_tensor_grad, None
 
     def bw_hook_func(self, buffer, param):
         # For pipeline with interleave, we need to add grad to buffer without communication.
@@ -2537,6 +2770,16 @@ class PipelineParallelWithInterleave(PipelineParallel):
         self.output_tensor_grads = [[] for _ in range(self.num_model_chunks)]
         self.schedule_chunks = [[] for _ in range(self.num_model_chunks)]
         self.loss_fn_chunks = []
+
+        if self._block_atten_res_opt:
+            # block cache for BlockAttnRes optimization
+            self._block_cache = {}
+            self._block_cache_mb_idx = [0] * self.num_model_chunks
+            # per-microbatch meta dict: _block_cache_meta[mb_idx] = list of size pp_size * vpp_size
+            self._block_cache_meta = {}
+            # Per-VPP-rank saved block_cache_meta from forward recv,
+            # preserved across backward communication overwrites (Bug fix)
+            self._recv_block_cache_meta_for_vpp = [None] * self.num_model_chunks
 
     def forward_backward_pipeline(
         self,
@@ -2618,6 +2861,18 @@ class PipelineParallelWithInterleave(PipelineParallel):
         )
         if forward_only:
             self.overlap_schedule_mode = False
+
+        # Reset the recompute bookkeeping at the batch boundary, unconditionally:
+        # _forward_step_helper bumps _rc_forward_count on every forward, including
+        # eval_batch's forward_only pass, while the counters used to be cleared
+        # only on the training path. One eval then left the forward counter
+        # non-zero while the backward counter restarted at 0, so the next training
+        # batch built rc_keys that could never match and its recompute overlap was
+        # silently off. Clearing on the way *in* rather than on the way out also
+        # covers a batch that raised partway through.
+        RecomputeStore.clear()
+        self._rc_forward_count.clear()
+        self._rc_backward_count.clear()
 
         # init some attributes for this batch run
         self.scaler = scaler
@@ -2740,6 +2995,13 @@ class PipelineParallelWithInterleave(PipelineParallel):
                     batch_p2p_comm=self._use_batch_p2p_comm,
                 )
             )
+            # Save block_cache_meta from the initial recv for VPP rank 0
+            if self._block_atten_res_opt:
+                self._recv_block_cache_meta_for_vpp[0] = (
+                    None
+                    if self.is_pipeline_first_stage()
+                    else self._p2p_helper.get_recv_block_cache_meta()
+                )
 
         fwd_wait_handles = None
         bwd_wait_handles = None
@@ -2765,7 +3027,7 @@ class PipelineParallelWithInterleave(PipelineParallel):
                 continue
 
             self._record_stamp("F", micro_step, '"B"', forward=True)
-            output_tensor = self._forward_step_helper(
+            output_tensor, meta_to_send = self._forward_step_helper(
                 micro_dataset,
                 micro_step,
                 overlap_schedule_mode=self.overlap_schedule_mode,
@@ -2816,6 +3078,7 @@ class PipelineParallelWithInterleave(PipelineParallel):
                         recv_next=recv_next,
                         batch_p2p_comm=self._use_batch_p2p_comm,
                         skip_check_meta=not self.training,
+                        block_cache_meta=meta_to_send,
                     )
                     # output_tensor_grad is not none if recv_next
                     # append output_tensor_grad no matter none or not
@@ -2828,6 +3091,16 @@ class PipelineParallelWithInterleave(PipelineParallel):
                         recv_prev=recv_prev,
                         batch_p2p_comm=self._use_batch_p2p_comm,
                         skip_check_meta=not self.training,
+                        block_cache_meta=meta_to_send,
+                    )
+                # Save block_cache_meta for the VPP rank that will use this input
+                if self._block_atten_res_opt:
+                    self._recv_block_cache_meta_for_vpp[
+                        next_virtual_pp_rank
+                    ] = (
+                        self._p2p_helper.get_recv_block_cache_meta()
+                        if recv_prev
+                        else None
                     )
                 # append input_tensor no matter none or not
                 self.input_tensors[next_virtual_pp_rank].append(input_tensor)
@@ -2841,7 +3114,17 @@ class PipelineParallelWithInterleave(PipelineParallel):
                     batch_p2p_comm=self._use_batch_p2p_comm,
                     overlap_p2p_comm=True,
                     skip_check_meta=not self.training,
+                    block_cache_meta=meta_to_send,
                 )
+                # Save block_cache_meta for the VPP rank that will use this input
+                if self._block_atten_res_opt:
+                    self._recv_block_cache_meta_for_vpp[
+                        next_virtual_pp_rank
+                    ] = (
+                        self._p2p_helper.get_recv_block_cache_meta()
+                        if recv_prev
+                        else None
+                    )
                 if (
                     micro_step == (startup_steps - 1)
                     and (not forward_only)
@@ -2913,7 +3196,9 @@ class PipelineParallelWithInterleave(PipelineParallel):
                         for req in fwd_wait_handles:
                             req.wait()
 
-                def forward_async_comm(forward_micro_step_id, output_tensor):
+                def forward_async_comm(
+                    forward_micro_step_id, output_tensor, block_cache_meta=None
+                ):
                     forward_virtual_pp_rank = self._get_virtual_pp_rank(
                         forward_micro_step_id, forward=True
                     )
@@ -2956,7 +3241,18 @@ class PipelineParallelWithInterleave(PipelineParallel):
                         batch_p2p_comm=self._use_batch_p2p_comm,
                         overlap_p2p_comm=True,
                         skip_check_meta=not self.training,
+                        block_cache_meta=block_cache_meta,
                     )
+                    # Save block_cache_meta for the VPP rank that will use this input
+                    if self._block_atten_res_opt:
+                        if recv_prev:
+                            self._recv_block_cache_meta_for_vpp[
+                                next_forward_virtual_pp_rank
+                            ] = self._p2p_helper.get_recv_block_cache_meta()
+                        else:
+                            self._recv_block_cache_meta_for_vpp[
+                                next_forward_virtual_pp_rank
+                            ] = None
                     _release_output(output_tensor)
                     return (
                         next_forward_virtual_pp_rank,
@@ -3083,7 +3379,7 @@ class PipelineParallelWithInterleave(PipelineParallel):
                 bwd_wait_handles = p2p_async_handle.out_bwd_wait_handles
             else:
                 backward_micro_step_id = micro_step
-                output_tensor, input_tensor_grad = (
+                output_tensor, input_tensor_grad, meta_to_send = (
                     self._forward_backward_helper(
                         micro_dataset,
                         forward_micro_step_id,
@@ -3176,6 +3472,7 @@ class PipelineParallelWithInterleave(PipelineParallel):
                     recv_next=recv_next,
                     batch_p2p_comm=self._use_batch_p2p_comm,
                     skip_check_meta=not self.training,
+                    block_cache_meta=meta_to_send,
                 )
             # append input_tensor no matter none or not
             self.input_tensors[next_forward_virtual_pp_rank].append(
@@ -3298,46 +3595,67 @@ class PipelineParallelWithInterleave(PipelineParallel):
                     )
 
                 # append output_tensor_grad no matter none or not
-                if self._best_unbalanced_scheduler:
-                    if self.is_pipeline_last_stage(ignore_virtual=True):
-                        output_tensor_grad = (
-                            self._p2p_helper.send_backward_recv_backward(
-                                input_tensor_grad,
-                                recv_next=recv_next,
-                                batch_p2p_comm=self._use_batch_p2p_comm,
-                            )
+                #
+                # Which chunk the received gradient belongs to. Resolved before
+                # the p2p call so the send/recv itself is written once instead
+                # of once per branch -- the three cases only ever differed in
+                # this target.
+                recv_target_virtual_pp_rank = next_backward_virtual_pp_rank
+                if (
+                    self._best_unbalanced_scheduler
+                    and self.is_pipeline_last_stage(ignore_virtual=True)
+                    and recv_next
+                ):
+                    recv_target_virtual_pp_rank = _last_stage_recv_pp_rank(
+                        micro_step + 1
+                    )
+                if WeightGradStore.cache:
+                    WeightGradStore.flush()
+
+                have_dw = not WeightGradStore.funcs_queue.empty()
+                rc_key = self._rc_early_key(micro_step + 1, num_steps)
+
+                if have_dw or rc_key is not None:
+                    output_tensor_grad, wait_handles = (
+                        self._p2p_helper.send_backward_recv_backward(
+                            input_tensor_grad,
+                            recv_next=recv_next,
+                            batch_p2p_comm=self._use_batch_p2p_comm,
+                            overlap_p2p_comm=True,
                         )
-                        if recv_next:
-                            recv_next_virtual_pp_rank = (
-                                _last_stage_recv_pp_rank(micro_step + 1)
-                            )
-                            self.output_tensor_grads[
-                                recv_next_virtual_pp_rank
-                            ].append(output_tensor_grad)
-                        else:
-                            self.output_tensor_grads[
-                                next_backward_virtual_pp_rank
-                            ].append(output_tensor_grad)
-                    else:
-                        self.output_tensor_grads[
-                            next_backward_virtual_pp_rank
-                        ].append(
-                            self._p2p_helper.send_backward_recv_backward(
-                                input_tensor_grad,
-                                recv_next=recv_next,
-                                batch_p2p_comm=self._use_batch_p2p_comm,
-                            )
-                        )
+                    )
+
+                    # the compute that is supposed to hide the transfer
+                    if have_dw:
+                        WeightGradStore.pop()
+
+                    if rc_key is not None:
+                        RecomputeStore.run(rc_key)
+
+                    if wait_handles is not None:
+                        for handle in wait_handles:
+                            handle.wait()
                 else:
-                    self.output_tensor_grads[
-                        next_backward_virtual_pp_rank
-                    ].append(
+                    output_tensor_grad = (
                         self._p2p_helper.send_backward_recv_backward(
                             input_tensor_grad,
                             recv_next=recv_next,
                             batch_p2p_comm=self._use_batch_p2p_comm,
                         )
                     )
+
+                self.output_tensor_grads[recv_target_virtual_pp_rank].append(
+                    output_tensor_grad
+                )
+
+            if WeightGradStore.cache:
+                WeightGradStore.flush()
+            if not WeightGradStore.funcs_queue.empty():
+                raise AssertionError(
+                    "WeightGradStore.funcs_queue should be empty at the end of "
+                    "the step; some deferred weight grads were never computed."
+                )
+            WeightGradStore.clear()
 
             self._sync_overlap_grads()
 
@@ -3603,9 +3921,18 @@ class PipelineParallelWithInterleaveFthenB(PipelineParallelWithInterleave):
                 batch_p2p_comm=self._use_batch_p2p_comm,
             )
         )
+        # Save block_cache_meta from the initial recv for VPP rank 0
+        if self._block_atten_res_opt:
+            self._recv_block_cache_meta_for_vpp[0] = (
+                None
+                if self.is_pipeline_first_stage()
+                else self._p2p_helper.get_recv_block_cache_meta()
+            )
 
         for micro_step in range(num_steps):
-            output_tensor = self._forward_step_helper(micro_dataset, micro_step)
+            output_tensor, meta_to_send = self._forward_step_helper(
+                micro_dataset, micro_step
+            )
             # determine whether recv forward tensor or not
             next_virtual_pp_rank = self._get_virtual_pp_rank(
                 micro_step + 1, forward=True
@@ -3639,7 +3966,15 @@ class PipelineParallelWithInterleaveFthenB(PipelineParallelWithInterleave):
                 recv_prev=recv_prev,
                 batch_p2p_comm=self._use_batch_p2p_comm,
                 skip_check_meta=not self.training,
+                block_cache_meta=meta_to_send,
             )
+            # Save block_cache_meta for the VPP rank that will use this input
+            if self._block_atten_res_opt:
+                self._recv_block_cache_meta_for_vpp[next_virtual_pp_rank] = (
+                    self._p2p_helper.get_recv_block_cache_meta()
+                    if recv_prev
+                    else None
+                )
             self.input_tensors[next_virtual_pp_rank].append(input_tensor)
 
             _release_output(output_tensor)
@@ -3811,6 +4146,14 @@ class VPPFhenBInBalancedMemory(PipelineParallelWithInterleaveFthenB):
                 return_micro_batch_loss,
             )
 
+        # Reset the recompute bookkeeping at the batch boundary, unconditionally.
+        # See the same block in PipelineParallelWithInterleave: an eval_batch pass
+        # bumps _rc_forward_count without ever clearing it, which used to leave the
+        # next training batch building rc_keys that could not match.
+        RecomputeStore.clear()
+        self._rc_forward_count.clear()
+        self._rc_backward_count.clear()
+
         if self.processed_steps < g_profile_pipeline_details_steps:
             profile_pipeline_details(
                 "[Pipeline details] Start_forward_backward_step"
@@ -3830,6 +4173,10 @@ class VPPFhenBInBalancedMemory(PipelineParallelWithInterleaveFthenB):
         forward_send_recv_buffer_queue = OffloadQueue(
             offload=self._enable_offload_queue
         )
+        # Parallel FIFO holding the block_cache_meta of each queued input
+        # tensor. Plain Queue: meta is a list of ints, offloading is pointless
+        # and would change OffloadQueue's tuple semantics.
+        forward_send_recv_meta_queue = queue.Queue()
 
         skip_steps = self.accumulate_steps - self.num_stages
         micro_dataset = self._wrap_data(data)
@@ -3861,12 +4208,21 @@ class VPPFhenBInBalancedMemory(PipelineParallelWithInterleaveFthenB):
                 batch_p2p_comm=self._use_batch_p2p_comm,
             )
         )
+        # Save block_cache_meta from the initial recv for VPP rank 0
+        if self._block_atten_res_opt:
+            self._recv_block_cache_meta_for_vpp[0] = (
+                None
+                if self.is_pipeline_first_stage()
+                else self._p2p_helper.get_recv_block_cache_meta()
+            )
 
         # In startup_steps, we send every output_tensor of last stage,
         # to simplify the code logic of stage 1F1B.
         for micro_step in range(startup_steps):
             self._record_stamp("F", micro_step, '"B"', forward=True)
-            output_tensor = self._forward_step_helper(micro_dataset, micro_step)
+            output_tensor, meta_to_send = self._forward_step_helper(
+                micro_dataset, micro_step
+            )
             self._record_stamp("F", micro_step, '"E"', forward=True)
             next_forward_virtual_pp_rank = self._get_virtual_pp_rank(
                 micro_step + 1, forward=True
@@ -3877,22 +4233,54 @@ class VPPFhenBInBalancedMemory(PipelineParallelWithInterleaveFthenB):
             ):
                 recv_prev = False
 
-            input_tensor = self._p2p_helper.send_forward_recv_forward(
-                output_tensor,
-                recv_prev=recv_prev,
-                batch_p2p_comm=self._use_batch_p2p_comm,
-                skip_check_meta=not self.training,
+            # NOTE: when `_p2p_ops` is in use (batch_p2p_comm=False) the NCCL
+            # send/recv lives on its own comm stream, gated by an event that
+            # `isend`/`irecv` records on the calculation stream at issue time.
+            # Deferring the wait and raising P2P_ISSUED here lets hook kernels
+            # be enqueued *after* that event, so they overlap the send/recv.
+            # `overlap_p2p_comm=True` is safe for both paths: with
+            # batch_p2p_comm=True the ops run on the calculation stream and no
+            # wait handle comes back, so this degrades to raising the location
+            # without any deferral.
+            input_tensor, fw_wait_handles = (
+                self._p2p_helper.send_forward_recv_forward(
+                    output_tensor,
+                    recv_prev=recv_prev,
+                    batch_p2p_comm=self._use_batch_p2p_comm,
+                    overlap_p2p_comm=True,
+                    skip_check_meta=not self.training,
+                    block_cache_meta=meta_to_send,
+                )
+            )
+            _raise_p2p_issued_and_wait(
+                self.callbacks, fw_wait_handles, output_tensor, micro_step
+            )
+            # the meta is exchanged before the tensor p2p ops are issued, so it
+            # is already available even when the wait handles are deferred
+            recv_meta = (
+                self._p2p_helper.get_recv_block_cache_meta()
+                if (self._block_atten_res_opt and recv_prev)
+                else None
             )
             if self.is_pipeline_first_stage(ignore_virtual=True):
                 if input_tensor is not None:
                     # stash the input_tensor and it will be used in the next chunk later
                     forward_send_recv_buffer_queue.put(input_tensor)
+                    if self._block_atten_res_opt:
+                        forward_send_recv_meta_queue.put(recv_meta)
                 if next_forward_virtual_pp_rank == 0:
                     input_tensor = None
+                    recv_meta = None
                 else:
                     # when a input_tensor is needed, get one from the queue
                     input_tensor = forward_send_recv_buffer_queue.get()
+                    if self._block_atten_res_opt:
+                        recv_meta = forward_send_recv_meta_queue.get()
 
+            if self._block_atten_res_opt:
+                self._recv_block_cache_meta_for_vpp[
+                    next_forward_virtual_pp_rank
+                ] = recv_meta
             self.input_tensors[next_forward_virtual_pp_rank].append(
                 input_tensor
             )
@@ -3912,7 +4300,7 @@ class VPPFhenBInBalancedMemory(PipelineParallelWithInterleaveFthenB):
             backward_micro_step_id = micro_step
 
             self._record_stamp("F", forward_micro_step_id, '"B"', forward=True)
-            output_tensor = self._forward_step_helper(
+            output_tensor, meta_to_send = self._forward_step_helper(
                 micro_dataset,
                 forward_micro_step_id,
                 check_is_last_chunk=True,
@@ -3926,10 +4314,23 @@ class VPPFhenBInBalancedMemory(PipelineParallelWithInterleaveFthenB):
 
             # NOTE: `send_forward_recv_backward` is intentionally unused to
             # prevent hanging bugs in dynamic shape mode.
-            self._p2p_helper.send_forward(
+            # The P2P_ISSUED hook is raised between `send_forward` and
+            # `recv_backward` on purpose: `recv_backward` waits on a grad that
+            # only exists after the downstream stage finishes its backward, so
+            # its inline wait would stall the calc stream and any hook placed
+            # after it could not overlap the forward send.
+            fw_send_wait_handles = self._p2p_helper.send_forward(
                 output_tensor,
                 self.is_pipeline_last_stage(ignore_virtual=True),
                 batch_p2p_comm=self._use_batch_p2p_comm,
+                block_cache_meta=meta_to_send,
+                overlap_p2p_comm=True,
+            )
+            _raise_p2p_issued_and_wait(
+                self.callbacks,
+                fw_send_wait_handles,
+                output_tensor,
+                forward_micro_step_id,
             )
             output_tensor_grad = self._p2p_helper.recv_backward(
                 self.is_pipeline_last_stage(ignore_virtual=True),
@@ -3952,14 +4353,20 @@ class VPPFhenBInBalancedMemory(PipelineParallelWithInterleaveFthenB):
             self._record_stamp(
                 "B", backward_micro_step_id, '"E"', forward=False
             )
-            WeightGradStore.flush()
+
+            if WeightGradStore.cache:
+                WeightGradStore.flush()
 
             # stash the input_tensor_grad and it will be sent to ths last stage later
             if self.is_pipeline_first_stage(ignore_virtual=True):
                 backward_send_recv_buffer_queue.put(input_tensor_grad)
 
             if not last_iter:
-                if not WeightGradStore.funcs_queue.empty():
+                have_dw = not WeightGradStore.funcs_queue.empty()
+                rc_key = self._rc_early_key(
+                    backward_micro_step_id + 1, num_steps
+                )
+                if have_dw or rc_key is not None:
                     # NOTE: `send_backward_recv_forward` is intentionally unused to
                     # prevent hanging bugs in dynamic shape mode.
                     input_tensor, fw_wait_handles = (
@@ -3969,15 +4376,27 @@ class VPPFhenBInBalancedMemory(PipelineParallelWithInterleaveFthenB):
                             overlap_p2p_comm=True,
                         )
                     )
+                    recv_meta = (
+                        self._p2p_helper.get_recv_block_cache_meta()
+                        if (
+                            self._block_atten_res_opt
+                            and not self.is_pipeline_first_stage(
+                                ignore_virtual=True
+                            )
+                        )
+                        else None
+                    )
                     bw_wait_handles = self._p2p_helper.send_backward(
                         input_tensor_grad,
                         self.is_pipeline_first_stage(ignore_virtual=True),
                         batch_p2p_comm=self._use_batch_p2p_comm,
                         overlap_p2p_comm=True,
                     )
-
-                    # Execute weight grad computation while P2P communication is in progress
-                    WeightGradStore.pop()
+                    # the compute that is supposed to hide the transfer
+                    if have_dw:
+                        WeightGradStore.pop()
+                    if rc_key is not None:
+                        RecomputeStore.run(rc_key)
                     # Wait for P2P communication to complete
                     if fw_wait_handles is not None:
                         for fw_wait_handle in fw_wait_handles:
@@ -3991,6 +4410,12 @@ class VPPFhenBInBalancedMemory(PipelineParallelWithInterleaveFthenB):
                     )
                     if self.is_pipeline_first_stage(ignore_virtual=True):
                         input_tensor = forward_send_recv_buffer_queue.get()
+                        if self._block_atten_res_opt:
+                            recv_meta = forward_send_recv_meta_queue.get()
+                    if self._block_atten_res_opt:
+                        self._recv_block_cache_meta_for_vpp[
+                            next_forward_virtual_pp_rank
+                        ] = recv_meta
                     self.input_tensors[next_forward_virtual_pp_rank].append(
                         input_tensor
                     )
@@ -4002,6 +4427,16 @@ class VPPFhenBInBalancedMemory(PipelineParallelWithInterleaveFthenB):
                         self.is_pipeline_first_stage(ignore_virtual=True),
                         batch_p2p_comm=self._use_batch_p2p_comm,
                     )
+                    recv_meta = (
+                        self._p2p_helper.get_recv_block_cache_meta()
+                        if (
+                            self._block_atten_res_opt
+                            and not self.is_pipeline_first_stage(
+                                ignore_virtual=True
+                            )
+                        )
+                        else None
+                    )
                     self._p2p_helper.send_backward(
                         input_tensor_grad,
                         self.is_pipeline_first_stage(ignore_virtual=True),
@@ -4012,6 +4447,12 @@ class VPPFhenBInBalancedMemory(PipelineParallelWithInterleaveFthenB):
                     )
                     if self.is_pipeline_first_stage(ignore_virtual=True):
                         input_tensor = forward_send_recv_buffer_queue.get()
+                        if self._block_atten_res_opt:
+                            recv_meta = forward_send_recv_meta_queue.get()
+                    if self._block_atten_res_opt:
+                        self._recv_block_cache_meta_for_vpp[
+                            next_forward_virtual_pp_rank
+                        ] = recv_meta
                     self.input_tensors[next_forward_virtual_pp_rank].append(
                         input_tensor
                     )
@@ -4032,7 +4473,9 @@ class VPPFhenBInBalancedMemory(PipelineParallelWithInterleaveFthenB):
         if self.is_pipeline_first_stage(ignore_virtual=True):
             input_tensor_grad = backward_send_recv_buffer_queue.get()
 
-        if not WeightGradStore.funcs_queue.empty():
+        have_dw = not WeightGradStore.funcs_queue.empty()
+        rc_key = self._rc_early_key(steady_1f1b_steps, num_steps)
+        if have_dw or rc_key is not None:
             output_tensor_grad, wait_handles = (
                 self._p2p_helper.send_backward_recv_backward(
                     input_tensor_grad,
@@ -4042,8 +4485,11 @@ class VPPFhenBInBalancedMemory(PipelineParallelWithInterleaveFthenB):
                 )
             )
 
-            # Execute weight grad computation while P2P communication is in progress
-            WeightGradStore.pop()
+            # the compute that is supposed to hide the transfer
+            if have_dw:
+                WeightGradStore.pop()
+            if rc_key is not None:
+                RecomputeStore.run(rc_key)
 
             if wait_handles is not None:
                 for handle in wait_handles:
@@ -4083,8 +4529,8 @@ class VPPFhenBInBalancedMemory(PipelineParallelWithInterleaveFthenB):
                 backward_micro_step_id + 1, forward=False
             )
 
-            # Flush deferred weight gradient computations to queue
-            WeightGradStore.flush()
+            if WeightGradStore.cache:
+                WeightGradStore.flush()
 
             recv_next = True
             if backward_micro_step_id == (num_steps - 1):
@@ -4103,7 +4549,9 @@ class VPPFhenBInBalancedMemory(PipelineParallelWithInterleaveFthenB):
                 else:
                     input_tensor_grad = backward_send_recv_buffer_queue.get()
 
-            if not WeightGradStore.funcs_queue.empty():
+            have_dw = not WeightGradStore.funcs_queue.empty()
+            rc_key = self._rc_early_key(backward_micro_step_id + 1, num_steps)
+            if have_dw or rc_key is not None:
                 output_tensor_grad, wait_handles = (
                     self._p2p_helper.send_backward_recv_backward(
                         input_tensor_grad,
@@ -4112,8 +4560,11 @@ class VPPFhenBInBalancedMemory(PipelineParallelWithInterleaveFthenB):
                         overlap_p2p_comm=True,
                     )
                 )
-                # Execute weight grad computation while P2P communication is in progress
-                WeightGradStore.pop()
+
+                if have_dw:
+                    WeightGradStore.pop()
+                if rc_key is not None:
+                    RecomputeStore.run(rc_key)
 
                 if wait_handles is not None:
                     for handle in wait_handles:

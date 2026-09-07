@@ -55,15 +55,15 @@ TEST(complex, conversion_on_gpu) {
   EXPECT_EQ(hipDoubleComplex(a1).real(), 1.0);
   EXPECT_EQ(hipDoubleComplex(a1).imag(), 2.0);
 #else
-  EXPECT_EQ(cuCrealf(cuFloatComplex(a)), 1.0);
-  EXPECT_EQ(cuCimagf(cuFloatComplex(a)), 2.0);
-  EXPECT_EQ(cuCreal(cuDoubleComplex(a)), 1.0);
-  EXPECT_EQ(cuCimag(cuDoubleComplex(a)), 2.0);
+  EXPECT_EQ(cuCrealf(a.operator cuFloatComplex()), 1.0);
+  EXPECT_EQ(cuCimagf(a.operator cuFloatComplex()), 2.0);
+  EXPECT_EQ(cuCreal(a.operator cuDoubleComplex()), 1.0);
+  EXPECT_EQ(cuCimag(a.operator cuDoubleComplex()), 2.0);
 
-  EXPECT_EQ(cuCrealf(cuFloatComplex(a1)), 1.0);
-  EXPECT_EQ(cuCimagf(cuFloatComplex(a1)), 2.0);
-  EXPECT_EQ(cuCreal(cuDoubleComplex(a1)), 1.0);
-  EXPECT_EQ(cuCimag(cuDoubleComplex(a1)), 2.0);
+  EXPECT_EQ(cuCrealf(a1.operator cuFloatComplex()), 1.0);
+  EXPECT_EQ(cuCimagf(a1.operator cuFloatComplex()), 2.0);
+  EXPECT_EQ(cuCreal(a1.operator cuDoubleComplex()), 1.0);
+  EXPECT_EQ(cuCimag(a1.operator cuDoubleComplex()), 2.0);
 #endif
 
   EXPECT_EQ(complex<float>().real, 0.0f);

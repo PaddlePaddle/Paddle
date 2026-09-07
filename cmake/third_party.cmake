@@ -52,7 +52,8 @@ if(NOT WITH_SETUP_INSTALL)
 
   if(WITH_OPENVINO)
     execute_process(
-      COMMAND git submodule update --init --depth=1 third_party/openvino
+      COMMAND git submodule update --init --jobs=8 --depth=1
+              third_party/openvino
       WORKING_DIRECTORY ${PADDLE_SOURCE_DIR}
       RESULT_VARIABLE result_var)
     # List of modules to be deleted
@@ -84,7 +85,7 @@ if(NOT WITH_SETUP_INSTALL)
         RESULT_VARIABLE git_rm_result)
     endforeach()
     execute_process(
-      COMMAND git submodule update --init --recursive
+      COMMAND git submodule update --init --recursive --jobs=8
       WORKING_DIRECTORY ${PADDLE_SOURCE_DIR}
       RESULT_VARIABLE result_var)
   else()
@@ -92,17 +93,24 @@ if(NOT WITH_SETUP_INSTALL)
       COMMAND git submodule status
       WORKING_DIRECTORY ${PADDLE_SOURCE_DIR}
       OUTPUT_VARIABLE submodule_list
-      RESULT_VARIABLE result_var)
-    string(REGEX MATCHALL "third_party/[^ )\n]+" submodule_paths
-                 "${submodule_list}")
-    foreach(submodule IN LISTS submodule_paths)
-      if(NOT submodule STREQUAL "third_party/openvino")
-        execute_process(
-          COMMAND git submodule update --init --recursive ${submodule}
-          WORKING_DIRECTORY ${PADDLE_SOURCE_DIR}
-          RESULT_VARIABLE result_var)
-      endif()
-    endforeach()
+      RESULT_VARIABLE submodule_status_result)
+    if(NOT submodule_status_result EQUAL 0)
+      set(result_var ${submodule_status_result})
+    else()
+      string(REGEX MATCHALL "third_party/[^ )\n]+" submodule_paths
+                   "${submodule_list}")
+      set(submodule_update_paths)
+      foreach(submodule IN LISTS submodule_paths)
+        if(NOT submodule STREQUAL "third_party/openvino")
+          list(APPEND submodule_update_paths ${submodule})
+        endif()
+      endforeach()
+      execute_process(
+        COMMAND git submodule update --init --recursive --jobs=8
+                ${submodule_update_paths}
+        WORKING_DIRECTORY ${PADDLE_SOURCE_DIR}
+        RESULT_VARIABLE result_var)
+    endif()
   endif()
   if(NOT result_var EQUAL 0)
     if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")

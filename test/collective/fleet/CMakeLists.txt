@@ -196,6 +196,12 @@ if((WITH_GPU) AND LOCAL_ALL_PLAT)
     test_parallel_dygraph_pipeline_parallel_with_virtual_stage
     PROPERTIES TIMEOUT "500")
 endif()
+if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
+  py_test_modules(
+    test_pp_block_attn_res_cache MODULES test_pp_block_attn_res_cache ENVS
+    "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
+  set_tests_properties(test_pp_block_attn_res_cache PROPERTIES TIMEOUT "120")
+endif()
 if((WITH_GPU) AND LOCAL_ALL_PLAT)
   bash_test_modules(
     test_parallel_dygraph_pp_adaptor
@@ -936,6 +942,20 @@ if((WITH_GPU) AND LOCAL_ALL_PLAT)
   )
   set_tests_properties(test_pp_with_shared_weight PROPERTIES TIMEOUT "500")
 endif()
+if((WITH_GPU) AND LOCAL_ALL_PLAT)
+  bash_test_modules(
+    test_pp_dw_recompute_overlap
+    START_BASH
+    ../../legacy_test/dist_test.sh
+    TIMEOUT
+    "800"
+    LABELS
+    "RUN_TYPE=DIST"
+    ENVS
+    "PADDLE_DIST_UT_PORT=21284;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
+  )
+  set_tests_properties(test_pp_dw_recompute_overlap PROPERTIES TIMEOUT "800")
+endif()
 if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
   py_test_modules(
     test_layer_spec MODULES test_layer_spec ENVS
@@ -966,6 +986,23 @@ endif()
 if(WITH_NCCL)
   if((WITH_GPU) AND LOCAL_ALL_PLAT)
     bash_test_modules(
+      test_muon_sharding_mixed_dtype_partition
+      START_BASH
+      ../../legacy_test/dist_test.sh
+      TIMEOUT
+      "400"
+      LABELS
+      "RUN_TYPE=DIST"
+      ENVS
+      "PADDLE_DIST_UT_PORT=22352;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
+    )
+    set_tests_properties(test_muon_sharding_mixed_dtype_partition
+                         PROPERTIES TIMEOUT "400")
+  endif()
+endif()
+if(WITH_NCCL)
+  if((WITH_GPU) AND LOCAL_ALL_PLAT)
+    bash_test_modules(
       test_parallel_dygraph_muon
       START_BASH
       ../../legacy_test/dist_test.sh
@@ -978,4 +1015,18 @@ if(WITH_NCCL)
     )
     set_tests_properties(test_parallel_dygraph_muon PROPERTIES TIMEOUT "400")
   endif()
+endif()
+if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
+  py_test_modules(
+    test_pipeline_parallel_micro_step_hooks MODULES
+    test_pipeline_parallel_micro_step_hooks ENVS
+    "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
+endif()
+if((WITH_GPU) AND (LINUX))
+  py_test_modules(
+    test_pipeline_parallel_p2p_issued_hook MODULES
+    test_pipeline_parallel_p2p_issued_hook ENVS
+    "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
+  set_tests_properties(test_pipeline_parallel_p2p_issued_hook
+                       PROPERTIES TIMEOUT "500" LABELS "RUN_TYPE=HYBRID")
 endif()
