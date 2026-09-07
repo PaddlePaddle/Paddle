@@ -66,6 +66,11 @@ class TestConv2dEpilogue(unittest.TestCase):
         self.w = paddle.randn(w_shape, dtype=dtype)
         self.w.stop_gradient = False
 
+        # Elementwise residual, same shape as the conv output (NPQK).
+        b_shape = [32, 8, 8, 16]
+        self.b = paddle.randn(b_shape, dtype=dtype)
+        self.b.stop_gradient = False
+
     def tearDown(self):
         paddle.set_flags(self.origin_flags)
 
@@ -82,11 +87,12 @@ class TestConv2dEpilogue(unittest.TestCase):
         def foo(
             x: pct.Tensor([N, H, W, C], DType),
             w: pct.Tensor([O, C, KH, KW], DType),
+            b: pct.Tensor([N, H, W, O], DType),
         ):
             # KCRS -> KRSC
             w = paddle.transpose(w, [0, 2, 3, 1])
             y = paddle.nn.functional.conv2d(x, w, padding=1, data_format="NHWC")
-            return paddle.nn.functional.relu(y)
+            return paddle.nn.functional.relu(y + b)
 
         return foo
 
@@ -98,13 +104,15 @@ class TestConv2dEpilogue(unittest.TestCase):
             ap_path=f"{os.path.dirname(paddle.__file__)}/apy/matmul_pass",
             backend_device=backend_device,
         )
-        generated_pir_program = GetPirProgram(fused_foo, [self.x, self.w])
+        generated_pir_program = GetPirProgram(
+            fused_foo, [self.x, self.w, self.b]
+        )
         self.assertTrue(
             'pd_op.ap_variadic' in generated_pir_program, "fusion failed"
         )
         if IsSupportDevice():
-            ap_outs = fused_foo(self.x, self.w)
-            dy_outs = foo(self.x, self.w)
+            ap_outs = fused_foo(self.x, self.w, self.b)
+            dy_outs = foo(self.x, self.w, self.b)
             for dy_out, ap_out in zip(dy_outs, ap_outs):
                 np.testing.assert_allclose(dy_out, ap_out, atol=1e-1)
 
