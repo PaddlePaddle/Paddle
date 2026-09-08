@@ -41,7 +41,8 @@ KernelKey Pad3dGetKernelTypeForVar(const GetKernelTypeForVarContext* dev_ctx) {
 bool Pad3dCheckIfOneDNNSupport(const KernelContext* dev_ctx) {
   // only constant mode and non-blocked layouts are supported for oneDNN
   if (dev_ctx->AttrAt<std::string>(1) == "constant" &&
-      dev_ctx->InputAt<DenseTensor>(0).mem_desc().get_inner_nblks() == 0) {
+      phi::funcs::GetOneDNNMemDesc(dev_ctx->InputAt<DenseTensor>(0))
+              .get_inner_nblks() == 0) {
     return true;
   }
   return false;

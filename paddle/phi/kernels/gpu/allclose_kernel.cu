@@ -106,7 +106,10 @@ void AllCloseKernel(const Context& dev_ctx,
 #else
   cudaMemset(out_data, true, sizeof(bool));
 #endif
-  if (num > std::numeric_limits<int32_t>::max()) {
+  // `stride` is included to avoid int32_t overflow on the last increment of
+  // the loop at L47.
+  int64_t stride = static_cast<int64_t>(grid) * block;
+  if (num + stride > std::numeric_limits<int32_t>::max()) {
     AllcloseCUDAKernel<T, int64_t><<<grid, block, 0, dev_ctx.stream()>>>(
         in_data, other_data, rtol_v, atol_v, equal_nan, num, out_data);
   } else {

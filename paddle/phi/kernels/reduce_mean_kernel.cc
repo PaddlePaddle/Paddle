@@ -15,6 +15,9 @@
 #include "paddle/phi/kernels/reduce_mean_kernel.h"
 
 #include "paddle/phi/backends/all_context.h"
+#ifdef PADDLE_WITH_DNNL
+#include "paddle/phi/backends/onednn/onednn_context.h"
+#endif
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/cast_kernel.h"
 #include "paddle/phi/kernels/reduce_kernel_impl.h"

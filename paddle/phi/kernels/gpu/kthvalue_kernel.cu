@@ -195,7 +195,8 @@ void KthvalueKernel(const Context& dev_ctx,
     const int64_t& input_width = in_dims[in_dims.size() - 1];
 #if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 9000
     const T* input_data = x.data<T>();
-    if (input_width > std::numeric_limits<int32_t>::max() / input_height) {
+    if (input_width > std::numeric_limits<int32_t>::max() / input_height ||
+        input_width + MAX_NUM_THREADS > std::numeric_limits<int32_t>::max()) {
       funcs::LaunchGatherKthValue<T, int64_t>(dev_ctx,
                                               input_data,
                                               input_width,
@@ -266,7 +267,8 @@ void KthvalueKernel(const Context& dev_ctx,
     const int64_t input_width = trans_dims[trans_dims.size() - 1];
 
 #if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 9000
-    if (input_width > std::numeric_limits<int32_t>::max() / input_height) {
+    if (input_width > std::numeric_limits<int32_t>::max() / input_height ||
+        input_width + MAX_NUM_THREADS > std::numeric_limits<int32_t>::max()) {
       funcs::LaunchGatherKthValue<T, int64_t>(dev_ctx,
                                               tran_input_data,
                                               input_width,

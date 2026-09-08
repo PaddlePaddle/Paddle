@@ -53,7 +53,8 @@ void ExpandGradKernel(const Context& dev_ctx,
         out_grad_vec_dims, out_grad.dtype(), out_grad_type, onednn_engine);
 
     auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
-        out_grad.mem_desc(), funcs::to_void_cast(out_grad.data<T>()));
+        phi::funcs::GetOneDNNMemDesc(out_grad),
+        funcs::to_void_cast(out_grad.data<T>()));
 
     auto reorder_dst_memory_p = reorder_handler.AcquireDstMemory(
         in_grad,
@@ -66,7 +67,7 @@ void ExpandGradKernel(const Context& dev_ctx,
     reorder_p->execute(astream, *reorder_src_memory_p, *reorder_dst_memory_p);
     astream.wait();
 
-    in_grad->set_mem_desc(reorder_dst_memory_p->get_desc());
+    phi::funcs::SetOneDNNMemDesc(in_grad, reorder_dst_memory_p->get_desc());
   } else {
     funcs::ReductionOneDNNHandler<T> handler(dnnl::algorithm::reduction_sum,
                                              0.0f,
@@ -91,7 +92,8 @@ void ExpandGradKernel(const Context& dev_ctx,
     const auto in_grad_md_dims = in_grad->dims().size() != 0
                                      ? vectorize<int64_t>(in_grad->dims())
                                      : std::vector<int64_t>{1};
-    in_grad->set_mem_desc(dst_memory_p->get_desc().reshape(in_grad_md_dims));
+    phi::funcs::SetOneDNNMemDesc(
+        in_grad, dst_memory_p->get_desc().reshape(in_grad_md_dims));
   }
 }
 }  // namespace phi

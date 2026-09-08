@@ -277,6 +277,7 @@ void RoiAlignKernel(const Context& dev_ctx,
                      bytes,
                      dev_ctx.stream());
   if (output_size > std::numeric_limits<int>::max() ||
+      boxes.numel() > std::numeric_limits<int>::max() ||
       x.numel() > std::numeric_limits<int>::max()) {
     GPURoiAlignForward<T, int64_t><<<blocks, threads, 0, dev_ctx.stream()>>>(
         output_size,

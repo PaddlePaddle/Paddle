@@ -21,6 +21,7 @@ limitations under the License. */
 #include "paddle/fluid/prim/api/composite_backward/composite_backward_api.h"
 #include "paddle/fluid/prim/utils/static/composite_grad_desc_maker.h"
 #include "paddle/fluid/prim/utils/static/desc_tensor.h"
+#include "paddle/phi/backends/onednn/onednn_helper.h"
 #include "paddle/phi/infermeta/unary.h"
 
 namespace paddle {
@@ -123,7 +124,8 @@ class SplitOp : public framework::OperatorWithKernel {
       // reorders, because if blocked dimension is not divisible by 8 or
       // 16(depending on which blocking format is used) submemory cannot be
       // created, so in that scenario a fallback is needed
-      const auto x_md = ctx.Input<DenseTensor>("X")->mem_desc();
+      const auto x_md =
+          phi::funcs::GetOneDNNMemDesc(*ctx.Input<DenseTensor>("X"));
       if (x_md.get_inner_nblks() == 0) {
         return phi::KernelKey(phi::Backend::ONEDNN,
                               phi::DataLayout::ONEDNN,

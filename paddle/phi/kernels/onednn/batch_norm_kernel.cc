@@ -78,7 +78,7 @@ void BatchNormKernel(const Context &dev_ctx,
     variance_memory = handler.AcquireVarianceMemory(saved_variance);
   }
 
-  y->set_mem_desc(dst_memory->get_desc());
+  phi::funcs::SetOneDNNMemDesc(y, dst_memory->get_desc());
 
   std::shared_ptr<dnnl::memory> scale_memory(nullptr);
   std::shared_ptr<dnnl::memory> shift_memory(nullptr);

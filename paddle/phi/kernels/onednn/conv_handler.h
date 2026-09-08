@@ -526,10 +526,11 @@ class ConvOneDNNHandlerT
     auto user_mem_p = this->AcquireMemory(user_key_suffix);
 
     if (!user_mem_p) {
-      return this->AcquireMemoryWithReorder(in_mem->mem_desc(),
-                                            mem_md,
-                                            funcs::to_void_cast<T>(in_mem_data),
-                                            key_mem);
+      return this->AcquireMemoryWithReorder(
+          phi::funcs::GetOneDNNMemDesc(*in_mem),
+          mem_md,
+          funcs::to_void_cast<T>(in_mem_data),
+          key_mem);
     } else {
       const std::string target_key_suffix{key_mem_target};
       const auto target_mem_p = this->AcquireMemory(target_key_suffix);
@@ -610,7 +611,7 @@ class ConvOneDNNHandlerT
       }
       const K_Bias* bias_data = bias->data<K_Bias>();
 
-      dnnl::memory::desc bias_md = bias->mem_desc();
+      dnnl::memory::desc bias_md = phi::funcs::GetOneDNNMemDesc(*bias);
       auto bias_tz = vectorize(bias->dims());
       if (bias_tz.size() > 1) {
         bias_tz = {bias_tz[1]};
@@ -641,9 +642,10 @@ class ConvOneDNNHandlerT
       residual_mem_p->set_data_handle(residual_data);
       return residual_mem_p;
     } else {
-      return this->AcquireMemoryFromPrimitive(residual_param->mem_desc(),
-                                              residual_data,
-                                              "@user_residual_data_mem_p");
+      return this->AcquireMemoryFromPrimitive(
+          phi::funcs::GetOneDNNMemDesc(*residual_param),
+          residual_data,
+          "@user_residual_data_mem_p");
     }
   }
 

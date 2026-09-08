@@ -15,6 +15,9 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
+#ifdef PADDLE_WITH_DNNL
+#include "paddle/phi/backends/onednn/onednn_context.h"
+#endif
 #include "paddle/phi/kernels/impl/matmul_kernel_impl.h"
 
 namespace paddle {

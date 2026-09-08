@@ -83,8 +83,13 @@ void SetValueImpl(const Context& dev_ctx,
   }
   funcs::CheckIsDimsMatch(slice_dims_for_assign, value.dims());
 
-  auto value_shape = vectorize<int64_t>(value.dims());
+  auto place = dev_ctx.GetPlace();
+  Copy(dev_ctx, in, place, false, out);
+  if (product(slice_dims) == 0) {
+    return;
+  }
 
+  auto value_shape = vectorize<int64_t>(value.dims());
   DenseTensor value_tensor = Empty<T>(dev_ctx, IntArray{value_shape});
   value_tensor = value;
   auto it = value_shape.begin();
@@ -101,10 +106,8 @@ void SetValueImpl(const Context& dev_ctx,
   if (expand_shape.empty()) expand_shape.push_back(1);
   DenseTensor expand_tensor = Empty<T>(dev_ctx, IntArray{expand_shape});
 
-  auto place = dev_ctx.GetPlace();
   auto& eigen_place = *dev_ctx.eigen_device();
 
-  Copy(dev_ctx, in, place, false, out);
   ExpandKernel<T, Context>(
       dev_ctx, value_tensor, IntArray{expand_shape}, &expand_tensor);
   expand_tensor.Resize(slice_dims);
@@ -147,11 +150,6 @@ void SetTensorValueKernel(const Context& dev_ctx,
                           const std::vector<int64_t>& decrease_axes,
                           const std::vector<int64_t>& none_axes,
                           DenseTensor* out) {
-  if (x.numel() == 0) {
-    dev_ctx.template Alloc<T>(out);
-    return;
-  }
-
   const int rank = x.dims().size();
 
   switch (rank) {

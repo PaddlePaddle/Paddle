@@ -736,8 +736,8 @@ class ActivationOneDNNHandler
                                 dnnl::eltwise_backward>(engine, cpu_place) {
     this->AcquireForwardPrimitiveDescriptor(dnnl::prop_kind::forward_training,
                                             algorithm,
-                                            x->mem_desc(),
-                                            x->mem_desc(),
+                                            phi::funcs::GetOneDNNMemDesc(*x),
+                                            phi::funcs::GetOneDNNMemDesc(*x),
                                             alpha,
                                             beta);
   }
@@ -754,16 +754,17 @@ class ActivationOneDNNHandler
                                 dnnl::eltwise_backward>(engine, cpu_place) {
     this->AcquireForwardPrimitiveDescriptor(dnnl::prop_kind::forward_training,
                                             algorithm,
-                                            x->mem_desc(),
-                                            x->mem_desc(),
+                                            phi::funcs::GetOneDNNMemDesc(*x),
+                                            phi::funcs::GetOneDNNMemDesc(*x),
                                             alpha,
                                             beta);
-    this->AcquireBackwardPrimitiveDescriptor(algorithm,
-                                             dout->mem_desc(),
-                                             dout->mem_desc(),
-                                             x->mem_desc(),
-                                             alpha,
-                                             beta);
+    this->AcquireBackwardPrimitiveDescriptor(
+        algorithm,
+        phi::funcs::GetOneDNNMemDesc(*dout),
+        phi::funcs::GetOneDNNMemDesc(*dout),
+        phi::funcs::GetOneDNNMemDesc(*x),
+        alpha,
+        beta);
   }
 
   std::shared_ptr<dnnl::memory> AcquireBackwardSrcMemory(
@@ -799,8 +800,8 @@ class SoftmaxOneDNNHandler
     const int canonical_axis = funcs::CanonicalAxis(axis, rank);
     this->AcquireForwardPrimitiveDescriptor(dnnl::prop_kind::forward_inference,
                                             dnnl::algorithm::softmax_accurate,
-                                            x->mem_desc(),
-                                            x->mem_desc(),
+                                            phi::funcs::GetOneDNNMemDesc(*x),
+                                            phi::funcs::GetOneDNNMemDesc(*x),
                                             canonical_axis);
   }
 
@@ -817,14 +818,15 @@ class SoftmaxOneDNNHandler
     const int canonical_axis = funcs::CanonicalAxis(axis, rank);
     this->AcquireForwardPrimitiveDescriptor(dnnl::prop_kind::forward_inference,
                                             dnnl::algorithm::softmax_accurate,
-                                            out->mem_desc(),
-                                            out->mem_desc(),
+                                            phi::funcs::GetOneDNNMemDesc(*out),
+                                            phi::funcs::GetOneDNNMemDesc(*out),
                                             canonical_axis);
-    this->AcquireBackwardPrimitiveDescriptor(dnnl::algorithm::softmax_accurate,
-                                             out_grad->mem_desc(),
-                                             out_grad->mem_desc(),
-                                             out->mem_desc(),
-                                             canonical_axis);
+    this->AcquireBackwardPrimitiveDescriptor(
+        dnnl::algorithm::softmax_accurate,
+        phi::funcs::GetOneDNNMemDesc(*out_grad),
+        phi::funcs::GetOneDNNMemDesc(*out_grad),
+        phi::funcs::GetOneDNNMemDesc(*out),
+        canonical_axis);
   }
 };
 
@@ -972,8 +974,8 @@ class BinaryOneDNNHandler : public OneDNNHandlerNoCachingT<T, dnnl::binary> {
             : (out->dims().size() == 0 ? std::vector<int64_t>{1}
                                        : common::vectorize(out->dims()));
 
-    auto src0_md = x->mem_desc();
-    auto src1_md = y->mem_desc();
+    auto src0_md = phi::funcs::GetOneDNNMemDesc(*x);
+    auto src1_md = phi::funcs::GetOneDNNMemDesc(*y);
     if (rankdiff > 0) {  // Second input is of smaller rank than first
       std::vector<int64_t> dims1_ex(rankdiff, 1);
       dims1_ex.insert(next(dims1_ex.begin(), (axis == -1 ? rankdiff : axis)),
@@ -1225,7 +1227,7 @@ class BroadcastDataOneDNNHandler
         src0_tz, OneDNNGetDataType<T>(), GetPlainOneDNNFormat(src0_tz.size()));
     const auto reshape_dims =
         extended_x_dims.size() != 0 ? extended_x_dims : std::vector<int64_t>{1};
-    const auto src1_md = x->mem_desc().reshape(reshape_dims);
+    const auto src1_md = phi::funcs::GetOneDNNMemDesc(*x).reshape(reshape_dims);
 
     dnnl::primitive_attr attributes;
     attributes.set_scales_mask(DNNL_ARG_SRC_0, 0);
@@ -1284,12 +1286,15 @@ class PReluOneDNNHandler
         weights_dims, OneDNNGetDataType<T>(), memory::format_tag::any);
 
     this->AcquireForwardPrimitiveDescriptor(dnnl::prop_kind::forward_training,
-                                            x.mem_desc(),
+                                            phi::funcs::GetOneDNNMemDesc(x),
                                             weights_md,
-                                            x.mem_desc());
+                                            phi::funcs::GetOneDNNMemDesc(x));
     if (!is_test) {
-      this->AcquireBackwardPrimitiveDescriptor(
-          x.mem_desc(), weights_md, x.mem_desc(), weights_md, x.mem_desc());
+      this->AcquireBackwardPrimitiveDescriptor(phi::funcs::GetOneDNNMemDesc(x),
+                                               weights_md,
+                                               phi::funcs::GetOneDNNMemDesc(x),
+                                               weights_md,
+                                               phi::funcs::GetOneDNNMemDesc(x));
     }
   }
 
@@ -1304,10 +1309,11 @@ class PReluOneDNNHandler
           this->fwd_pd_->weights_desc(), to_void_cast<float>(weights_data));
     }
 
-    return this->AcquireMemoryWithReorder(weights->mem_desc(),
-                                          this->fwd_pd_->weights_desc(),
-                                          to_void_cast<float>(weights_data),
-                                          is_test);
+    return this->AcquireMemoryWithReorder(
+        phi::funcs::GetOneDNNMemDesc(*weights),
+        this->fwd_pd_->weights_desc(),
+        to_void_cast<float>(weights_data),
+        is_test);
   }
 
   std::shared_ptr<memory> AcquireDiffWeightsMemory(DenseTensor* output) {
@@ -1337,10 +1343,10 @@ class ReductionOneDNNHandler
 
     if (attrs)
       this->AcquireForwardPrimitiveDescriptor(
-          attrs, algo, x->mem_desc(), out_md, p, eps);
+          attrs, algo, phi::funcs::GetOneDNNMemDesc(*x), out_md, p, eps);
     else
       this->AcquireForwardPrimitiveDescriptor(
-          algo, x->mem_desc(), out_md, p, eps);
+          algo, phi::funcs::GetOneDNNMemDesc(*x), out_md, p, eps);
   }
 };
 
@@ -1363,8 +1369,8 @@ class ClipOneDNNHandler
 
     this->AcquireForwardPrimitiveDescriptor(dnnl::prop_kind::forward_training,
                                             dnnl::algorithm::eltwise_clip_v2,
-                                            x->mem_desc(),
-                                            x->mem_desc(),
+                                            phi::funcs::GetOneDNNMemDesc(*x),
+                                            phi::funcs::GetOneDNNMemDesc(*x),
                                             alpha,
                                             beta);
   }
@@ -1383,17 +1389,18 @@ class ClipOneDNNHandler
 
     this->AcquireForwardPrimitiveDescriptor(dnnl::prop_kind::forward_training,
                                             dnnl::algorithm::eltwise_clip_v2,
-                                            x->mem_desc(),
-                                            x->mem_desc(),
+                                            phi::funcs::GetOneDNNMemDesc(*x),
+                                            phi::funcs::GetOneDNNMemDesc(*x),
                                             alpha,
                                             beta);
 
-    this->AcquireBackwardPrimitiveDescriptor(dnnl::algorithm::eltwise_clip_v2,
-                                             dout->mem_desc(),
-                                             dout->mem_desc(),
-                                             x->mem_desc(),
-                                             alpha,
-                                             beta);
+    this->AcquireBackwardPrimitiveDescriptor(
+        dnnl::algorithm::eltwise_clip_v2,
+        phi::funcs::GetOneDNNMemDesc(*dout),
+        phi::funcs::GetOneDNNMemDesc(*dout),
+        phi::funcs::GetOneDNNMemDesc(*x),
+        alpha,
+        beta);
   }
   std::shared_ptr<dnnl::memory> AcquireBackwardSrcMemory(
       const DenseTensor* input) {
@@ -1433,8 +1440,8 @@ class BatchNormOneDNNHandler
     this->AcquireForwardPrimitiveDescriptor(
         global_stats ? dnnl::prop_kind::forward_inference
                      : dnnl::prop_kind::forward_training,
-        x->mem_desc(),
-        x->mem_desc(),
+        phi::funcs::GetOneDNNMemDesc(*x),
+        phi::funcs::GetOneDNNMemDesc(*x),
         epsilon,
         flags);
   }
@@ -1455,16 +1462,17 @@ class BatchNormOneDNNHandler
     if (use_bias) flags |= dnnl::normalization_flags::use_shift;
 
     this->AcquireForwardPrimitiveDescriptor(dnnl::prop_kind::forward_training,
-                                            in_x->mem_desc(),
-                                            in_x->mem_desc(),
+                                            phi::funcs::GetOneDNNMemDesc(*in_x),
+                                            phi::funcs::GetOneDNNMemDesc(*in_x),
                                             epsilon,
                                             flags);
-    this->AcquireBackwardPrimitiveDescriptor(dnnl::prop_kind::backward,
-                                             out_grad->mem_desc(),
-                                             out_grad->mem_desc(),
-                                             in_x->mem_desc(),
-                                             epsilon,
-                                             flags);
+    this->AcquireBackwardPrimitiveDescriptor(
+        dnnl::prop_kind::backward,
+        phi::funcs::GetOneDNNMemDesc(*out_grad),
+        phi::funcs::GetOneDNNMemDesc(*out_grad),
+        phi::funcs::GetOneDNNMemDesc(*in_x),
+        epsilon,
+        flags);
   }
 
   std::shared_ptr<dnnl::memory> AcquireScaleMemory(const DenseTensor* scale) {
@@ -1637,7 +1645,7 @@ class PoolingOneDNNHandler
             ? dnnl::algorithm::pooling_max
             : (exclusive ? dnnl::algorithm::pooling_avg_exclude_padding
                          : dnnl::algorithm::pooling_avg_include_padding),
-        input->mem_desc(),
+        phi::funcs::GetOneDNNMemDesc(*input),
         dst_md,
         copied_strides,
         copied_kernel_size,
@@ -1727,7 +1735,7 @@ class PoolingOneDNNHandler
             ? dnnl::algorithm::pooling_max
             : (exclusive ? dnnl::algorithm::pooling_avg_exclude_padding
                          : dnnl::algorithm::pooling_avg_include_padding),
-        in_x->mem_desc(),
+        phi::funcs::GetOneDNNMemDesc(*in_x),
         dst_md,
         copied_strides,
         copied_kernel_size,
@@ -1741,7 +1749,7 @@ class PoolingOneDNNHandler
             : (exclusive ? dnnl::algorithm::pooling_avg_exclude_padding
                          : dnnl::algorithm::pooling_avg_include_padding),
         diff_src_md,
-        out_grad->mem_desc(),
+        phi::funcs::GetOneDNNMemDesc(*out_grad),
         copied_strides,
         copied_kernel_size,
         dilation,
@@ -1870,21 +1878,21 @@ class SoftplusOneDNNHandler : public OneDNNHandlerNoCachingT<T, dnnl::binary> {
     attrs.set_post_ops(post_ops);
 
     // if x is a 0-D tensor, then:
-    //     x->dims() is [] and x->mem_desc().dims() is [1], we should use
+    //     x->dims() is [] and its oneDNN descriptor dims are [1], we should use
     //     the later shape since oneDNN doesn't support 0-D shape.
     // else, then:
-    //    x->dims() == x->mem_desc().dims()
-    // so, we can directly use x->mem_desc().dims() here
-    auto x_tz = x->mem_desc().get_dims();
+    //    x->dims() == descriptor dims
+    // so, we can directly use the descriptor dims here
+    auto x_tz = phi::funcs::GetOneDNNMemDesc(*x).get_dims();
     auto beta_tz = std::vector<int64_t>(x_tz.size(), 1);
     auto beta_md = dnnl::memory::desc(
         beta_tz, OneDNNGetDataType<T>(), GetPlainOneDNNFormat(x_tz.size()));
 
     this->AcquireForwardPrimitiveDescriptor(attrs,
                                             dnnl::algorithm::binary_mul,
-                                            x->mem_desc(),
+                                            phi::funcs::GetOneDNNMemDesc(*x),
                                             beta_md,
-                                            x->mem_desc());
+                                            phi::funcs::GetOneDNNMemDesc(*x));
   }
 
   std::shared_ptr<dnnl::memory> AcquireBetaMemory(const float* beta) {
@@ -1912,7 +1920,7 @@ static void SetOutMemDescWithUnsqueeze2FuseSupport(
       unsqueezed_op_tz[i] = op_tz[j++];
     }
   }
-  out->set_mem_desc(out_md.reshape(unsqueezed_op_tz));
+  phi::funcs::SetOneDNNMemDesc(out, out_md.reshape(unsqueezed_op_tz));
   out->Resize(common::make_ddim(unsqueezed_op_tz));
 }
 
@@ -1939,7 +1947,7 @@ static void SetOutMemDescWithReshape2FuseSupport(
     }
   }
 
-  out->set_mem_desc(out_md.reshape(fused_reshape2_shape));
+  phi::funcs::SetOneDNNMemDesc(out, out_md.reshape(fused_reshape2_shape));
   out->Resize(common::make_ddim(fused_reshape2_shape));
 }
 

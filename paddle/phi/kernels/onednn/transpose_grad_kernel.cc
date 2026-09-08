@@ -28,7 +28,8 @@ void TransposeGradKernel(const Context& dev_ctx,
 
   if (axis.size() == 1 || axis.empty()) {
     Copy<Context>(dev_ctx, out_grad, out_grad.place(), false, x_grad);
-    x_grad->set_mem_desc(out_grad.mem_desc());
+    phi::funcs::SetOneDNNMemDesc(x_grad,
+                                 phi::funcs::GetOneDNNMemDesc(out_grad));
     return;
   }
 
@@ -39,11 +40,12 @@ void TransposeGradKernel(const Context& dev_ctx,
       funcs::ToOneDNNDataType(out_grad.dtype()),
       onednn_engine);
 
-  auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
-      out_grad.mem_desc(), funcs::to_void_cast(out_grad.data<T>()));
+  auto reorder_src_memory_p =
+      reorder_handler.AcquireSrcMemory(phi::funcs::GetOneDNNMemDesc(out_grad),
+                                       funcs::to_void_cast(out_grad.data<T>()));
 
   auto reorder_dst_memory_p = reorder_handler.AcquireDstMemory(
-      x_grad, out_grad.mem_desc(), dev_ctx.GetPlace());
+      x_grad, phi::funcs::GetOneDNNMemDesc(out_grad), dev_ctx.GetPlace());
 
   auto reorder_p = reorder_handler.AcquireReorder(reorder_dst_memory_p,
                                                   reorder_src_memory_p);
@@ -51,7 +53,8 @@ void TransposeGradKernel(const Context& dev_ctx,
   auto& astream = OneDNNContext::tls().get_stream();
   reorder_p->execute(astream, *reorder_src_memory_p, *reorder_dst_memory_p);
   astream.wait();
-  x_grad->set_mem_desc(reorder_dst_memory_p->get_desc().permute_axes(axis));
+  phi::funcs::SetOneDNNMemDesc(
+      x_grad, reorder_dst_memory_p->get_desc().permute_axes(axis));
 }
 
 }  // namespace phi

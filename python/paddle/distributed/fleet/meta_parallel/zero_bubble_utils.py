@@ -53,6 +53,83 @@ class WeightGradStore:
         cls.funcs_queue = queue.Queue()
 
 
+class RecomputeStore:
+    """Pending selective-recompute forwards, runnable inside a p2p window.
+
+    Companion to WeightGradStore, for when the deferred dW is not enough to fill
+    an exposed p2p window. A selective-recompute span replays its forward from
+    inputs saved during the original forward and never reads the incoming
+    activation gradient, so it can run any time before its backward reaches it.
+
+    Scope is deliberately narrow: the scheduler only ever runs early the
+    recompute of **the chunk whose backward comes next**. That keeps it simple
+    and makes the memory cost structural rather than tunable -- at most one
+    chunk's discarded activations are resident early, and they are consumed by
+    the very next backward. No looking further ahead: if the next backward has no
+    spans (an EmptyLayer chunk), nothing runs and the window stays as it was.
+
+    Spans are grouped by ``(virtual_pp_rank, micro_id)``, which is the only key
+    that lets the scheduler name a chunk: forward order and backward order differ
+    under interleaving, so "the most recent forward" is not "the next backward".
+    """
+
+    enabled = False
+    # (virtual_pp_rank, micro_id) -> {id(span): span}
+    groups = {}
+    _open_key = None
+
+    @classmethod
+    def begin_chunk(cls, key) -> None:
+        """Start recording the forward chunk identified by `key`."""
+        cls._open_key = key
+
+    @classmethod
+    def end_chunk(cls) -> None:
+        cls._open_key = None
+
+    @classmethod
+    def put(cls, span) -> None:
+        if cls._open_key is None:
+            # Registered outside a scheduler-tracked forward, e.g. a plain
+            # single-card run. Nothing can name it, so leave it to its own hook.
+            return
+        cls.groups.setdefault(cls._open_key, {})[id(span)] = span
+
+    @classmethod
+    def drop(cls, span) -> None:
+        """Called by a span that ran on its own, so `pending` stays honest."""
+        key = id(span)
+        emptied = None
+        for group_key, group in cls.groups.items():
+            if group.pop(key, None) is not None:
+                emptied = group_key if not group else None
+                break
+        if emptied is not None:
+            # Deleting inside the loop above would invalidate the iterator.
+            del cls.groups[emptied]
+
+    @classmethod
+    def pending(cls, key) -> int:
+        return len(cls.groups.get(key, ()))
+
+    @classmethod
+    def run(cls, key) -> int:
+        """Recompute the spans of chunk `key`. Returns how many ran."""
+        group = cls.groups.pop(key, None)
+        if not group:
+            return 0
+        ran = 0
+        while group:
+            group.popitem()[1].run_recompute_now()
+            ran += 1
+        return ran
+
+    @classmethod
+    def clear(cls) -> None:
+        cls.groups = {}
+        cls._open_key = None
+
+
 class EventStore:
     event = None
 

@@ -231,5 +231,24 @@ class TestMaxWithIndexMoreTypeAndShape(TestMaxWithIndexBasic):
         pass
 
 
+@unittest.skipIf(
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA, skipping",
+)
+class TestMinMaxWithIndexZeroSize(unittest.TestCase):
+    def test_zero_size_outputs_are_initialized(self):
+        paddle.disable_static()
+        x = paddle.empty([0], dtype='float32')
+
+        max_values, max_indices = max_with_index(x, 0, False)
+        np.testing.assert_allclose(max_values.numpy(), np.finfo(np.float32).min)
+        np.testing.assert_array_equal(max_indices.numpy(), np.array(0))
+
+        min_values, min_indices = min_with_index(x, 0, False)
+        np.testing.assert_allclose(min_values.numpy(), np.finfo(np.float32).max)
+        np.testing.assert_array_equal(min_indices.numpy(), np.array(0))
+        paddle.enable_static()
+
+
 if __name__ == "__main__":
     unittest.main()

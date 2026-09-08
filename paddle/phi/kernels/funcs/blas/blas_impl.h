@@ -29,7 +29,7 @@ namespace phi {
 namespace funcs {
 
 namespace detail {
-inline int to_blas_int(int64_t value, const char *name) {
+inline void check_blas_int64(int64_t value, const char *name) {
   PADDLE_ENFORCE_GE(
       value,
       0,
@@ -37,6 +37,10 @@ inline int to_blas_int(int64_t value, const char *name) {
                                       "but received %ld.",
                                       name,
                                       value));
+}
+
+inline int to_blas_int(int64_t value, const char *name) {
+  check_blas_int64(value, name);
   PADDLE_ENFORCE_LE_INT_MAX(value, name);
   return static_cast<int>(value);
 }
@@ -1281,29 +1285,18 @@ void Blas<CPUContext>::GEMM(CBLAS_TRANSPOSE transA,
                             const T *B,
                             T beta,
                             T *C) const {
-  if (M > std::numeric_limits<int>::max() ||
-      N > std::numeric_limits<int>::max() ||
-      K > std::numeric_limits<int>::max()) {
-    PADDLE_THROW(common::errors::Unimplemented(
-        "CPU GEMM only supports M, N and K not larger than INT_MAX. "
-        "Expected M <= %d, N <= %d and K <= %d, but received M = %ld, "
-        "N = %ld, K = %ld.",
-        std::numeric_limits<int>::max(),
-        std::numeric_limits<int>::max(),
-        std::numeric_limits<int>::max(),
-        M,
-        N,
-        K));
-  }
-  int lda = static_cast<int>((transA == CblasNoTrans) ? K : M);
-  int ldb = static_cast<int>((transB == CblasNoTrans) ? N : K);
-  int ldc = static_cast<int>(N);
+  const int m = detail::to_blas_int(M, "GEMM M");
+  const int n = detail::to_blas_int(N, "GEMM N");
+  const int k = detail::to_blas_int(K, "GEMM K");
+  const int lda = (transA == CblasNoTrans) ? k : m;
+  const int ldb = (transB == CblasNoTrans) ? n : k;
+  const int ldc = n;
   CBlas<T>::GEMM(CblasRowMajor,
                  transA,
                  transB,
-                 static_cast<int>(M),
-                 static_cast<int>(N),
-                 static_cast<int>(K),
+                 m,
+                 n,
+                 k,
                  alpha,
                  A,
                  lda,
@@ -1326,29 +1319,18 @@ void Blas<CPUContext>::GEMM(CBLAS_TRANSPOSE transA,
                             const T *B,
                             U beta,
                             T *C) const {
-  if (M > std::numeric_limits<int>::max() ||
-      N > std::numeric_limits<int>::max() ||
-      K > std::numeric_limits<int>::max()) {
-    PADDLE_THROW(common::errors::Unimplemented(
-        "CPU GEMM only supports M, N and K not larger than INT_MAX. "
-        "Expected M <= %d, N <= %d and K <= %d, but received M = %ld, "
-        "N = %ld, K = %ld.",
-        std::numeric_limits<int>::max(),
-        std::numeric_limits<int>::max(),
-        std::numeric_limits<int>::max(),
-        M,
-        N,
-        K));
-  }
-  int lda = static_cast<int>((transA == CblasNoTrans) ? K : M);
-  int ldb = static_cast<int>((transB == CblasNoTrans) ? N : K);
-  int ldc = static_cast<int>(N);
+  const int m = detail::to_blas_int(M, "GEMM M");
+  const int n = detail::to_blas_int(N, "GEMM N");
+  const int k = detail::to_blas_int(K, "GEMM K");
+  const int lda = (transA == CblasNoTrans) ? k : m;
+  const int ldb = (transB == CblasNoTrans) ? n : k;
+  const int ldc = n;
   CBlas<T>::GEMM(CblasRowMajor,
                  transA,
                  transB,
-                 static_cast<int>(M),
-                 static_cast<int>(N),
-                 static_cast<int>(K),
+                 m,
+                 n,
+                 k,
                  alpha,
                  A,
                  lda,
@@ -1363,62 +1345,74 @@ template <>
 template <typename T>
 void Blas<CPUContext>::GEMM(bool transA,
                             bool transB,
-                            int M,
-                            int N,
-                            int K,
+                            int64_t M,
+                            int64_t N,
+                            int64_t K,
                             T alpha,
                             const T *A,
-                            int lda,
+                            int64_t lda,
                             const T *B,
-                            int ldb,
+                            int64_t ldb,
                             T beta,
                             T *C,
-                            int ldc) const {
+                            int64_t ldc) const {
+  const int m = detail::to_blas_int(M, "GEMM M");
+  const int n = detail::to_blas_int(N, "GEMM N");
+  const int k = detail::to_blas_int(K, "GEMM K");
+  const int lda_int = detail::to_blas_int(lda, "GEMM lda");
+  const int ldb_int = detail::to_blas_int(ldb, "GEMM ldb");
+  const int ldc_int = detail::to_blas_int(ldc, "GEMM ldc");
   CBlas<T>::GEMM(CblasRowMajor,
                  transA == false ? CblasNoTrans : CblasTrans,
                  transB == false ? CblasNoTrans : CblasTrans,
-                 M,
-                 N,
-                 K,
+                 m,
+                 n,
+                 k,
                  alpha,
                  A,
-                 lda,
+                 lda_int,
                  B,
-                 ldb,
+                 ldb_int,
                  beta,
                  C,
-                 ldc);
+                 ldc_int);
 }
 
 template <>
 template <typename T>
 void Blas<CPUContext>::GEMM(CBLAS_TRANSPOSE transA,
                             CBLAS_TRANSPOSE transB,
-                            int M,
-                            int N,
-                            int K,
+                            int64_t M,
+                            int64_t N,
+                            int64_t K,
                             T alpha,
                             const T *A,
-                            int lda,
+                            int64_t lda,
                             const T *B,
-                            int ldb,
+                            int64_t ldb,
                             T beta,
                             T *C,
-                            int ldc) const {
+                            int64_t ldc) const {
+  const int m = detail::to_blas_int(M, "GEMM M");
+  const int n = detail::to_blas_int(N, "GEMM N");
+  const int k = detail::to_blas_int(K, "GEMM K");
+  const int lda_int = detail::to_blas_int(lda, "GEMM lda");
+  const int ldb_int = detail::to_blas_int(ldb, "GEMM ldb");
+  const int ldc_int = detail::to_blas_int(ldc, "GEMM ldc");
   CBlas<T>::GEMM(CblasRowMajor,
                  transA,
                  transB,
-                 M,
-                 N,
-                 K,
+                 m,
+                 n,
+                 k,
                  alpha,
                  A,
-                 lda,
+                 lda_int,
                  B,
-                 ldb,
+                 ldb_int,
                  beta,
                  C,
-                 ldc);
+                 ldc_int);
 }
 
 template <typename DeviceContext>
@@ -1489,15 +1483,17 @@ T Blas<CPUContext>::DOT(
 template <>
 template <typename T>
 void Blas<CPUContext>::GEMV(bool trans_a,
-                            int M,
-                            int N,
+                            int64_t M,
+                            int64_t N,
                             T alpha,
                             const T *A,
                             const T *B,
                             T beta,
                             T *C) const {
+  const int m = detail::to_blas_int(M, "GEMV M");
+  const int n = detail::to_blas_int(N, "GEMV N");
   CBLAS_TRANSPOSE transA = !trans_a ? CblasNoTrans : CblasTrans;
-  CBlas<T>::GEMV(CblasRowMajor, transA, M, N, alpha, A, N, B, 1, beta, C, 1);
+  CBlas<T>::GEMV(CblasRowMajor, transA, m, n, alpha, A, n, B, 1, beta, C, 1);
 }
 
 template <>

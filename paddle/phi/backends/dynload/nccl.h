@@ -131,5 +131,23 @@ NCCL_RAND_ROUTINE_EACH_AFTER_2703(DECLARE_DYNAMIC_LOAD_NCCL_WRAP)
 NCCL_RAND_ROUTINE_EACH_AFTER_21100(DECLARE_DYNAMIC_LOAD_NCCL_WRAP)
 #endif
 
+// Entry points the zero-SM (NCCL_CTA_POLICY_ZERO) communication paths need.
+// The individual symbols appeared earlier (ncclCommInitRankConfig in 2.14,
+// ncclMemAlloc in 2.19, ncclCommWindowRegister in 2.27), but the hierarchical
+// zero-SM collectives only work from 2.30.7 on, so they are gated as one group
+// on that version: below it the feature is refused rather than silently
+// degraded.
+#if NCCL_VERSION_CODE >= 23007
+#define NCCL_RAND_ROUTINE_EACH_AFTER_23007(__macro) \
+  __macro(ncclCommInitRankConfig);                  \
+  __macro(ncclMemAlloc);                            \
+  __macro(ncclMemFree);                             \
+  __macro(ncclCommRegister);                        \
+  __macro(ncclCommDeregister);                      \
+  __macro(ncclCommWindowRegister);                  \
+  __macro(ncclCommWindowDeregister);
+NCCL_RAND_ROUTINE_EACH_AFTER_23007(DECLARE_DYNAMIC_LOAD_NCCL_WRAP)
+#endif
+
 }  // namespace dynload
 }  // namespace phi

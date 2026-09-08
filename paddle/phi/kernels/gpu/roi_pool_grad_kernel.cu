@@ -116,9 +116,9 @@ void RoiPoolGradKernel(const Context& dev_ctx,
                          boxes_num->data<int>(),
                          sizeof(int) * boxes_batch_size,
                          0);
-      int start = 0;
+      int64_t start = 0;
       for (int n = 0; n < boxes_batch_size; ++n) {
-        for (int i = start; i < start + boxes_num_list[n]; ++i) {
+        for (int64_t i = start; i < start + boxes_num_list[n]; ++i) {
           box_batch_id_data[i] = n;
         }
         start += boxes_num_list[n];
@@ -132,7 +132,7 @@ void RoiPoolGradKernel(const Context& dev_ctx,
         }
       }
     }
-    int bytes = box_batch_id_list.numel() * sizeof(int);
+    size_t bytes = box_batch_id_list.numel() * sizeof(int);
     auto roi_ptr = memory_utils::Alloc(
         dev_ctx.GetPlace(),
         bytes,
@@ -155,9 +155,11 @@ void RoiPoolGradKernel(const Context& dev_ctx,
     int64_t output_grad_size = out_grad.numel();
     uint32_t blocks = NumBlocks(output_grad_size);
     uint32_t threads = kNumCUDAThreads;
+    int64_t grid_stride = static_cast<int64_t>(blocks) * threads;
 
     if (output_grad_size > 0) {
-      if (output_grad_size > std::numeric_limits<int32_t>::max() ||
+      if (output_grad_size + grid_stride >
+              std::numeric_limits<int32_t>::max() ||
           dx->numel() > std::numeric_limits<int32_t>::max()) {
         GPURoiPoolBackward<T, int64_t>
             <<<blocks, threads, 0, dev_ctx.stream()>>>(output_grad_size,

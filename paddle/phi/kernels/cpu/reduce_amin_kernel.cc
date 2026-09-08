@@ -14,9 +14,12 @@
 
 #include "paddle/phi/kernels/reduce_amin_kernel.h"
 
+#include <limits>
+
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/cpu/reduce.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/reduce_functor.h"
 
 namespace phi {
@@ -28,6 +31,11 @@ void AMinRawKernel(const Context& dev_ctx,
                    bool keep_dim,
                    bool reduce_all,
                    DenseTensor* out) {
+  if (x.numel() == 0) {
+    Full<T, Context>(dev_ctx, out->dims(), std::numeric_limits<T>::max(), out);
+    return;
+  }
+
   reduce_all = recompute_reduce_all(x, dims, reduce_all);
   auto out_dtype = x.dtype();
   Reduce<CPUContext, T, funcs::MinFunctor>(

@@ -163,7 +163,7 @@ void TransferLayoutOneDNN(const Context& dev_ctx,
     }
 
     dnnl::memory::desc out_mem_desc = funcs::make_memory_desc(*out, src_layout);
-    out->set_mem_desc(out_mem_desc);
+    phi::funcs::SetOneDNNMemDesc(out, out_mem_desc);
   } else if (src_layout == DataLayout::ONEDNN &&
              dst_layout != DataLayout::ONEDNN) {
     // Case2 - transform from OneDNN OPKernel to Non-OneDNN OPKernel

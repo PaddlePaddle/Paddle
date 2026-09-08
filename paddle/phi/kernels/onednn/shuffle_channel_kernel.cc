@@ -29,8 +29,8 @@ class ShuffleChannelONEDNNHandler
                                                                  cpu_place) {
     static constexpr int channel_axis = 1;
     this->AcquireForwardPrimitiveDescriptor(dnnl::prop_kind::forward_training,
-                                            x->mem_desc(),
-                                            x->mem_desc(),
+                                            phi::funcs::GetOneDNNMemDesc(*x),
+                                            phi::funcs::GetOneDNNMemDesc(*x),
                                             channel_axis,
                                             group);
   }
@@ -59,7 +59,7 @@ void ShuffleChannelMKLDNNKernel(const Context& dev_ctx,
       astream, {{DNNL_ARG_SRC, *src_memory_p}, {DNNL_ARG_DST, *dst_memory_p}});
   astream.wait();
 
-  out->set_mem_desc(dst_memory_p->get_desc());
+  phi::funcs::SetOneDNNMemDesc(out, dst_memory_p->get_desc());
 }
 }  // namespace phi
 

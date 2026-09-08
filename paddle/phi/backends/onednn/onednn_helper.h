@@ -14,12 +14,15 @@
 
 #pragma once
 #ifdef PADDLE_WITH_DNNL
+#include <memory>
 #include <thread>
+
 #include "dnnl.hpp"  // NOLINT
 #include "glog/logging.h"
 
 #include "paddle/common/layout.h"
 #include "paddle/phi/backends/onednn/onednn_context.h"
+#include "paddle/phi/backends/onednn/onednn_storage_properties.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
 
@@ -28,6 +31,26 @@ namespace funcs {
 
 using OneDNNMemoryFormat = dnnl::memory::format_tag;
 using OneDNNDataType = dnnl::memory::data_type;
+
+inline const dnnl::memory::desc& GetOneDNNMemDesc(const DenseTensor& tensor) {
+  if (!tensor.has_storage_properties()) {
+    static const dnnl::memory::desc undef_desc;
+    return undef_desc;
+  }
+  return tensor.storage_properties<OneDNNStorageProperties>().mem_desc;
+}
+
+inline void SetOneDNNMemDesc(DenseTensor* tensor,
+                             const dnnl::memory::desc& mem_desc) {
+  auto properties = std::make_unique<OneDNNStorageProperties>();
+  if (tensor->has_storage_properties()) {
+    properties->format =
+        tensor->storage_properties<OneDNNStorageProperties>().format;
+  }
+  properties->mem_desc = mem_desc;
+  tensor->set_storage_properties(std::move(properties));
+  tensor->set_layout(DataLayout::ONEDNN);
+}
 
 template <typename Type>
 void* to_void_cast(const Type* t) {

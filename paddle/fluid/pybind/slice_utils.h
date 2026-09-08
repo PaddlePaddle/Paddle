@@ -630,7 +630,7 @@ inline static bool MaskedFillDispatching(const Tensor& tensor,
                                          const std::vector<Tensor>& indices,
                                          Tensor* mask_tensor,
                                          Tensor* value_tensor) {
-  if (value_tensor->initialized() && value_tensor->numel() != 1) {
+  if (value_tensor->defined() && value_tensor->numel() != 1) {
     return false;
   }
   if (indices.size() != 1) return false;
@@ -1057,10 +1057,14 @@ static void DispatchSetitemKernel(const int pos_of_new_dim,
                                   Tensor* transed_sub_tensor,
                                   Tensor* value_tensor,
                                   std::vector<phi::Scalar>* values) {
+  if (!value_tensor->defined() && values->empty()) {
+    return;
+  }
+  const bool use_tensor_value = value_tensor->defined();
   Tensor mask_tensor;
   if (MaskedFillDispatching(
           *transed_sub_tensor, *transed_index, &mask_tensor, value_tensor)) {
-    if (value_tensor->initialized()) {
+    if (use_tensor_value) {
       if (!*out_is_view) {
         *transed_sub_tensor = masked_fill__ad_func(
             *transed_sub_tensor, mask_tensor, *value_tensor);
@@ -1093,7 +1097,7 @@ static void DispatchSetitemKernel(const int pos_of_new_dim,
     }
   }
   if (FLAGS_use_stride_kernel) {
-    if (value_tensor->initialized()) {
+    if (use_tensor_value) {
       *transed_index = expandTensors(*transed_index);
       *transed_index = expand_outplace(*transed_index);
 
@@ -1162,7 +1166,29 @@ static void DispatchSetitemKernel(const int pos_of_new_dim,
     }
   } else {
     // TODO(czy): remove in the future
-    if (value_tensor->initialized()) {
+    if (use_tensor_value) {
+      if (value_tensor->numel() == 0) {
+        auto shape_indices = expand_outplace(expandTensors(*transed_index));
+        std::vector<Tensor> shape_indices_int64;
+        shape_indices_int64.reserve(shape_indices.size());
+        for (auto& indice : shape_indices) {
+          if (indice.defined() && indice.dtype() == DataType::INT32) {
+            indice = indice.cast(DataType::INT64);
+          }
+          shape_indices_int64.push_back(indice);
+        }
+        AdvancedIndex ad =
+            AdvancedIndex(*transed_sub_tensor, shape_indices_int64);
+        PADDLE_ENFORCE_EQ(
+            phi::funcs::CheckIsDimsMatchBool(common::make_ddim(ad.src_sizes),
+                                             value_tensor->dims()),
+            true,
+            common::errors::InvalidArgument(
+                "shape mismatch: value tensor of shape %s cannot be "
+                "broadcast to indexing result of shape %s.",
+                value_tensor->dims().to_str(),
+                common::make_ddim(ad.src_sizes).to_str()));
+      }
       *transed_sub_tensor = index_put__ad_func(
           *transed_sub_tensor, *transed_index, *value_tensor);
     } else {
@@ -1184,8 +1210,11 @@ static void ApplySetitem(const std::vector<int> trans_dim,
                          Tensor* transed_sub_tensor,
                          Tensor* value_tensor,
                          std::vector<phi::Scalar>* values) {
-  if (!value_tensor->initialized() && (*values).size() == 0) return;
-  if (value_tensor->initialized()) {
+  if (!value_tensor->defined() && values->empty()) {
+    return;
+  }
+  const bool use_tensor_value = value_tensor->defined();
+  if (use_tensor_value) {
     if (self_tensor->dtype() != value_tensor->dtype()) {
       if (egr::Controller::Instance().GetAMPLevel() !=
           paddle::imperative::AmpLevel::O0) {

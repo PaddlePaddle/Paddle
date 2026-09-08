@@ -16,6 +16,7 @@
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/infermeta/unary.h"
+#include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/impl/share_data_kernel_impl.h"
@@ -36,6 +37,16 @@ void SetValueGradKernel(const Context& dev_ctx,
                         const std::vector<int64_t>& none_axes,
                         DenseTensor* x_grad,
                         DenseTensor* value_grad) {
+  if (out_grad.numel() == 0) {
+    if (x_grad) {
+      Full<T, Context>(dev_ctx, x_grad->dims(), Scalar(0), x_grad);
+    }
+    if (value_grad) {
+      Full<T, Context>(dev_ctx, value_grad->dims(), Scalar(0), value_grad);
+    }
+    return;
+  }
+
   const int rank = out_grad.dims().size();
   std::vector<int64_t> starts_local = starts.GetData();
   std::vector<int64_t> ends_local = ends.GetData();

@@ -134,7 +134,7 @@ void FusedElementwiseKernel(const OneDNNContext& dev_ctx,
   }
 
   if (fused_unsqueeze2_axes.empty()) {
-    out->set_mem_desc(out_md);
+    phi::funcs::SetOneDNNMemDesc(out, out_md);
   } else {
     funcs::SetOutMemDescWithUnsqueeze2FuseSupport(
         fused_unsqueeze2_axes, out, out_md);

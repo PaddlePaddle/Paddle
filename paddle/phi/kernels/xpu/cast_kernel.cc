@@ -41,13 +41,14 @@ void CastXPUKernelImpl(const Context& dev_ctx,
   using XPUInT = typename XPUTypeTrait<InT>::Type;
   using XPUOutT = typename XPUTypeTrait<OutT>::Type;
 
-  const auto* in_data = x.data<InT>();
-  auto* out_data = dev_ctx.template Alloc<OutT>(out);
   auto numel = x.numel();
-
   if (numel == 0) {
+    dev_ctx.template Alloc<OutT>(out);
     return;
   }
+
+  const auto* in_data = x.data<InT>();
+  auto* out_data = dev_ctx.template Alloc<OutT>(out);
 
   if (std::is_same<InT, OutT>::value) {
     int ret = xpu::copy(dev_ctx.x_context(),

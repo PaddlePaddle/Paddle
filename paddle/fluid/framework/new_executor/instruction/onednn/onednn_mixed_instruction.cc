@@ -105,7 +105,7 @@ void OneDNNMixedPhiKernelInstruction::Run() {
               transed_tensor, DataLayout::ONEDNN, tmp_layout);
           dnnl::memory::desc out_mem_desc =
               phi::funcs::make_memory_desc(*transed_tensor, tmp_layout);
-          transed_tensor->set_mem_desc(out_mem_desc);
+          phi::funcs::SetOneDNNMemDesc(transed_tensor, out_mem_desc);
           tmp_kernel_context.UpdataInput(i, transed_tensor);
           auto meta_tensor = MetaTensor(transed_tensor);
           auto input_meta_tensor = MetaTensor(input);

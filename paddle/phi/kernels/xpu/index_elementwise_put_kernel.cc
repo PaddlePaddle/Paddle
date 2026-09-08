@@ -17,6 +17,7 @@
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/index_elementwise.h"
+#include "paddle/phi/kernels/funcs/index_elementwise_utils.h"
 #include "paddle/phi/kernels/funcs/stride_utils.h"
 
 namespace phi {
@@ -41,6 +42,10 @@ void XPUIndexElementwisePutWithTensorKernel(
   }
   if (!is_initialized || !is_same_place) {
     Copy(dev_ctx, input, dev_ctx.GetPlace(), false, output);
+  }
+
+  if (index.empty()) {
+    return;
   }
 
   int64_t num_indices = 0;
@@ -70,6 +75,9 @@ void XPUIndexElementwisePutWithTensorKernel(
                            &strides_array,
                            &numel,
                            strides_vec);
+  if (numel == 0 || funcs::HasEmptyIndex(index)) {
+    return;
+  }
   const int64_t N = numel;
   PADDLE_ENFORCE_EQ(true,
                     (N >= 0 && N <= std::numeric_limits<int32_t>::max()),
@@ -146,6 +154,10 @@ void XPUIndexElementwisePutKernel(const Context& dev_ctx,
     Copy(dev_ctx, input, dev_ctx.GetPlace(), false, output);
   }
 
+  if (index.empty()) {
+    return;
+  }
+
   int64_t num_indices = 0;
   std::vector<int64_t> shape_tmp;
   std::vector<int64_t> stride_tmp;
@@ -173,6 +185,9 @@ void XPUIndexElementwisePutKernel(const Context& dev_ctx,
                            &strides_array,
                            &numel,
                            strides_vec);
+  if (numel == 0 || funcs::HasEmptyIndex(index)) {
+    return;
+  }
   const int64_t N = numel;
   PADDLE_ENFORCE_EQ(true,
                     (N >= 0 && N <= std::numeric_limits<int32_t>::max()),
@@ -240,6 +255,19 @@ void IndexElementwisePutWithTensorKernel(
     const std::vector<int64_t>& index_strides,
     const int64_t slice_offset,
     DenseTensor* out) {
+  if (index.empty()) {
+    if (out->numel() == 0) {
+      dev_ctx.template Alloc<T>(out);
+      return;
+    }
+    bool is_initialized = out->initialized();
+    bool is_same_place = is_initialized ? (x.place() == out->place()) : false;
+    dev_ctx.template Alloc<T>(out);
+    if (!is_initialized || !is_same_place) {
+      Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+    }
+    return;
+  }
   const auto& index_type = index[0]->dtype();
   PADDLE_ENFORCE_EQ(index_type == DataType::INT64,
                     true,
@@ -250,12 +278,6 @@ void IndexElementwisePutWithTensorKernel(
                         DataType::INT64));
   if (out && out->numel() == 0) {
     dev_ctx.template Alloc<T>(out);
-    return;
-  }
-  if (index.empty()) {
-    if (!out->initialized()) {
-      Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
-    }
     return;
   }
   if (out->numel() == 0) return;
@@ -282,6 +304,19 @@ void IndexElementwisePutKernel(const Context& dev_ctx,
                                const std::vector<int64_t>& index_strides,
                                const int64_t slice_offset,
                                DenseTensor* out) {
+  if (index.empty()) {
+    if (out->numel() == 0) {
+      dev_ctx.template Alloc<T>(out);
+      return;
+    }
+    bool is_initialized = out->initialized();
+    bool is_same_place = is_initialized ? (x.place() == out->place()) : false;
+    dev_ctx.template Alloc<T>(out);
+    if (!is_initialized || !is_same_place) {
+      Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+    }
+    return;
+  }
   const auto& index_type = index[0]->dtype();
   PADDLE_ENFORCE_EQ(index_type == DataType::INT64 ||
                         (index_type == DataType::BOOL && index.size() == 1),
@@ -293,12 +328,6 @@ void IndexElementwisePutKernel(const Context& dev_ctx,
                         DataType::INT64));
   if (out && out->numel() == 0) {
     dev_ctx.template Alloc<T>(out);
-    return;
-  }
-  if (index.empty()) {
-    if (!out->initialized()) {
-      Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
-    }
     return;
   }
   if (out->numel() == 0) return;

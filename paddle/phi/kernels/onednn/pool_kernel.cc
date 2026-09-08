@@ -83,7 +83,7 @@ void Pool2dKernel(const Context& dev_ctx,
   }
   astream.wait();
 
-  out->set_mem_desc(dst_memory->get_desc());
+  phi::funcs::SetOneDNNMemDesc(out, dst_memory->get_desc());
 }
 
 phi::KernelKey PoolOpGetKernelTypeForVar(

@@ -130,7 +130,7 @@ void BatchNormGradFunctor(const Context& dev_ctx,
   astream.wait();
 
   // set memory descriptor of out tensor
-  x_grad->set_mem_desc(diff_src_memory->get_desc());
+  phi::funcs::SetOneDNNMemDesc(x_grad, diff_src_memory->get_desc());
 }
 
 template <typename T, typename Context>

@@ -50,7 +50,7 @@ class StackOneDNNHandler : public OneDNNHandlerNoCachingT<T, dnnl::concat> {
     // wrong output format deduction and suboptimal performance as a result
     if (stack_axis != ndims) {
       for (auto input : inputs) {
-        srcs_md.push_back(input->mem_desc());
+        srcs_md.push_back(phi::funcs::GetOneDNNMemDesc(*input));
       }
 
       input_dims[stack_axis] *= inputs.size();  // NOLINT
@@ -60,7 +60,8 @@ class StackOneDNNHandler : public OneDNNHandlerNoCachingT<T, dnnl::concat> {
       extended_input_dims[stack_axis] = 1;
 
       for (auto input : inputs) {
-        srcs_md.push_back(input->mem_desc().reshape(extended_input_dims));
+        srcs_md.push_back(
+            phi::funcs::GetOneDNNMemDesc(*input).reshape(extended_input_dims));
       }
 
       // concat primitive chooses suboptimal format tag because it cannot
@@ -109,7 +110,8 @@ void StackKernel(const Context& dev_ctx,
   concat_p->execute(astream, args);
   astream.wait();
 
-  output->set_mem_desc(dst_mem->get_desc().reshape(vectorize(output->dims())));
+  phi::funcs::SetOneDNNMemDesc(
+      output, dst_mem->get_desc().reshape(vectorize(output->dims())));
 }
 
 }  // namespace phi

@@ -273,6 +273,7 @@ void RoiAlignGradKernel(const Context& dev_ctx,
 
   if (output_grad_size > 0) {
     if (output_grad_size > std::numeric_limits<int>::max() ||
+        boxes.numel() > std::numeric_limits<int>::max() ||
         dx->numel() > std::numeric_limits<int>::max()) {
       GPURoiAlignBackward<T, int64_t>
           <<<blocks, threads, 0, dev_ctx.stream()>>>(output_grad_size,

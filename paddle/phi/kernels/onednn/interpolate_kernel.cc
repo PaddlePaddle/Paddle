@@ -65,8 +65,10 @@ class InterpolateOneDNNHandler
     const auto dst_tz = vectorize(out->dims());
     const auto dst_md = dnnl::memory::desc(
         dst_tz, OneDNNGetDataType<T>(), OneDNNMemoryFormat::any);
-    this->AcquireForwardPrimitiveDescriptor(
-        dnnl::prop_kind::forward_inference, algo, x->mem_desc(), dst_md);
+    this->AcquireForwardPrimitiveDescriptor(dnnl::prop_kind::forward_inference,
+                                            algo,
+                                            phi::funcs::GetOneDNNMemDesc(*x),
+                                            dst_md);
   }
 };
 }  // namespace funcs
@@ -193,7 +195,7 @@ void InterpolateKernel(
   resampling_prim->execute(astream, args);
   astream.wait();
 
-  out->set_mem_desc(dst_memory_p->get_desc());
+  phi::funcs::SetOneDNNMemDesc(out, dst_memory_p->get_desc());
 }
 
 template <typename T, typename Context>

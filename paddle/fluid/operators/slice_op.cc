@@ -21,6 +21,7 @@ limitations under the License. */
 #include "paddle/fluid/prim/api/composite_backward/composite_backward_api.h"
 #include "paddle/fluid/prim/utils/static/composite_grad_desc_maker.h"
 #include "paddle/fluid/prim/utils/static/desc_tensor.h"
+#include "paddle/phi/backends/onednn/onednn_helper.h"
 #include "paddle/phi/kernels/funcs/slice_utils.h"
 
 namespace paddle {
@@ -162,8 +163,8 @@ class SliceOp : public framework::OperatorWithKernel {
         // reorders, because if blocked dimension is not divisible by 8 or
         // 16(depending on which blocking format is used) submemory cannot be
         // created, so in that scenario a fallback is needed
-        if (ctx.Input<DenseTensor>("Input")->mem_desc().get_inner_nblks() ==
-            0) {
+        if (phi::funcs::GetOneDNNMemDesc(*ctx.Input<DenseTensor>("Input"))
+                .get_inner_nblks() == 0) {
           return phi::KernelKey(phi::Backend::ONEDNN,
                                 phi::DataLayout::ONEDNN,
                                 phi::TransToPhiDataType(input_data_type));
@@ -337,8 +338,8 @@ class SliceOpGrad : public framework::OperatorWithKernel {
       // reorders, because if blocked dimension is not divisible by 8 or
       // 16(depending on which blocking format is used) submemory cannot be
       // created, so in that scenario a fallback is needed
-      if (ctx.Input<DenseTensor>(framework::GradVarName("Out"))
-              ->mem_desc()
+      if (phi::funcs::GetOneDNNMemDesc(
+              *ctx.Input<DenseTensor>(framework::GradVarName("Out")))
               .get_inner_nblks() == 0) {
         return phi::KernelKey(phi::Backend::ONEDNN,
                               phi::DataLayout::ONEDNN,

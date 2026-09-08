@@ -13,6 +13,7 @@
 # limitations under the License.
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -32,7 +33,7 @@ def in_auto_parallel_mode() -> bool:
     )
 
 
-# @dataclass
+@dataclass
 class MixedPrecisionPolicy:
     param_dtype: paddle.dtype | None = None
     reduce_dtype: paddle.dtype | None = None
@@ -58,6 +59,7 @@ def _fully_shard_manual_parallel(
     FullyShardFusion(
         module,
         enable_tensor_fusion_and_overlap=enable_tensor_fusion_and_overlap,
+        mp_policy=mp_policy,
     )
     return module
 

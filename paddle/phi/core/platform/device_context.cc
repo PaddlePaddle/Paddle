@@ -20,6 +20,9 @@ limitations under the License. */
 
 #include "glog/logging.h"
 #include "paddle/phi/api/profiler/event_tracing.h"
+#ifdef PADDLE_WITH_DNNL
+#include "paddle/phi/backends/onednn/onednn_context.h"
+#endif
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/allocator.h"
 #include "paddle/phi/core/expect.h"

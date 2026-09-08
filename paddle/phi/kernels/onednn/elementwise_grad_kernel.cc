@@ -105,7 +105,8 @@ inline void BroadcastReduction(const Place& place,
   auto grad_shape = grad_tensor->dims().size() == 0
                         ? std::vector<int64_t>{1}
                         : vectorize<int64_t>(grad_tensor->dims());
-  grad_tensor->set_mem_desc(dst_memory->get_desc().reshape(grad_shape));
+  phi::funcs::SetOneDNNMemDesc(grad_tensor,
+                               dst_memory->get_desc().reshape(grad_shape));
 }
 
 }  // namespace funcs
@@ -157,7 +158,7 @@ void ElementwiseGradKernel(const OneDNNContext& dev_ctx,
       tz, dout.dtype(), funcs::ToOneDNNDataType(dout.dtype()), onednn_engine);
 
   auto reorder_src_memory = reorder_handler.AcquireSrcMemory(
-      dout.mem_desc(), funcs::to_void_cast(dout.data<T>()));
+      phi::funcs::GetOneDNNMemDesc(dout), funcs::to_void_cast(dout.data<T>()));
 
   std::shared_ptr<dnnl::memory> dst_memory;
   std::shared_ptr<dnnl::memory> broadcast_src_memory = reorder_src_memory;
@@ -174,7 +175,7 @@ void ElementwiseGradKernel(const OneDNNContext& dev_ctx,
         BINARY_OP == dnnl::algorithm::binary_sub) {
       if (dout.dims() == dx->dims()) {
         dst_memory = reorder_handler.AcquireDstMemory(
-            dx, dout.mem_desc(), dev_ctx.GetPlace());
+            dx, phi::funcs::GetOneDNNMemDesc(dout), dev_ctx.GetPlace());
         AddSubNonBroadcast(
             &reorder_handler, dx, reorder_src_memory, dst_memory, scales_mem);
       }
@@ -219,7 +220,7 @@ void ElementwiseGradKernel(const OneDNNContext& dev_ctx,
                                    {scale},
                                    BINARY_OP == dnnl::algorithm::binary_sub);
     } else {
-      dx->set_mem_desc(dst_memory->get_desc());
+      phi::funcs::SetOneDNNMemDesc(dx, dst_memory->get_desc());
     }
   }
 
@@ -229,7 +230,7 @@ void ElementwiseGradKernel(const OneDNNContext& dev_ctx,
         BINARY_OP == dnnl::algorithm::binary_sub) {
       if (dout.dims() == dy->dims()) {
         dst_memory = reorder_handler.AcquireDstMemory(
-            dy, dout.mem_desc(), dev_ctx.GetPlace());
+            dy, phi::funcs::GetOneDNNMemDesc(dout), dev_ctx.GetPlace());
         AddSubNonBroadcast(
             &reorder_handler, dy, reorder_src_memory, dst_memory, scales_mem);
       }
@@ -324,7 +325,7 @@ void ElementwiseGradKernel(const OneDNNContext& dev_ctx,
                                    {scale},
                                    BINARY_OP == dnnl::algorithm::binary_sub);
     } else {
-      dy->set_mem_desc(dst_memory->get_desc());
+      phi::funcs::SetOneDNNMemDesc(dy, dst_memory->get_desc());
     }
   }
 }

@@ -51,7 +51,7 @@ class SumOneDNNHandler : public OneDNNHandlerNoCachingT<T, dnnl::sum> {
       if (input_it->numel() == 0) {
         continue;
       }
-      srcs_md.push_back(input_it->mem_desc());
+      srcs_md.push_back(phi::funcs::GetOneDNNMemDesc(*input_it));
       ++num_inputs_;
     }
     std::vector<float> scales(num_inputs_, 1.0f);
@@ -125,7 +125,7 @@ void AddNKernel(const Context& dev_ctx,
   sum_p->execute(astream, args);
   astream.wait();
 
-  out->set_mem_desc(dst_mem->get_desc());
+  phi::funcs::SetOneDNNMemDesc(out, dst_mem->get_desc());
 }
 }  // namespace phi
 

@@ -124,22 +124,24 @@ class TestSaveLoadLargeParameters(unittest.TestCase):
 class TestSaveLoadPickle(unittest.TestCase):
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
+        self.path = os.path.join(
+            self.temp_dir.name,
+            "test_paddle_save_load_pickle_protocol",
+            "layer.pdparams",
+        )
+
+        # enable dygraph mode
+        paddle.disable_static()
+        # create network
+        layer = LinearNet()
+        self.save_dict = layer.state_dict()
 
     def tearDown(self):
         self.temp_dir.cleanup()
 
     def test_pickle_protocol(self):
-        # enable dygraph mode
-        paddle.disable_static()
-        # create network
-        layer = LinearNet()
-        save_dict = layer.state_dict()
-
-        path = os.path.join(
-            self.temp_dir.name,
-            "test_paddle_save_load_pickle_protocol",
-            "layer.pdparams",
-        )
+        save_dict = self.save_dict
+        path = self.path
 
         with self.assertRaises(ValueError):
             paddle.save(save_dict, path, 2.0)
@@ -148,14 +150,31 @@ class TestSaveLoadPickle(unittest.TestCase):
             paddle.save(save_dict, path, 1)
 
         with self.assertRaises(ValueError):
-            paddle.save(save_dict, path, 5)
+            paddle.save(save_dict, path, 6)
 
-        protocols = [2, 3, 4]
+        protocols = [2, 3, 4, 5]
         for protocol in protocols:
             paddle.save(save_dict, path, pickle_protocol=protocol)
             dict_load = paddle.load(path)
             # compare results before and after saving
             for key, value in save_dict.items():
+                np.testing.assert_array_equal(
+                    dict_load[key].numpy(), value.numpy()
+                )
+
+    def test_pickle_zero_copy(self):
+        """Test zero-copy for cpu/pinned tensor with protocol=5"""
+        places = ["cpu"]
+        if paddle.base.core.is_compiled_with_cuda():
+            places += ["pin_memory"]
+        for place in places:
+            save_dict = {
+                k: getattr(v, place)() for k, v in self.save_dict.items()
+            }
+            paddle.save(save_dict, self.path, protocol=5)
+            dict_load = paddle.load(self.path)
+            # compare results before and after saving
+            for key, value in self.save_dict.items():
                 np.testing.assert_array_equal(
                     dict_load[key].numpy(), value.numpy()
                 )
@@ -376,7 +395,7 @@ class TestSaveLoadAny(unittest.TestCase):
         with self.assertRaises(ValueError):
             paddle.save(tensor, path, pickle_protocol='3')
         with self.assertRaises(ValueError):
-            paddle.save(tensor, path, pickle_protocol=5)
+            paddle.save(tensor, path, pickle_protocol=6)
         paddle.save(tensor, path)
         t_dygraph = paddle.load(path)
         np_dygraph = paddle.load(path, return_numpy=True)

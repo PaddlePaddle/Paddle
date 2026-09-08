@@ -95,15 +95,6 @@ std::vector<DenseTensor> Split(int64_t split_size, int64_t axis) const;
 
 std::vector<DenseTensor> Chunk(int64_t chunks, int64_t axis) const;
 
-#ifdef PADDLE_WITH_DNNL
-
-public:
-const dnnl::memory::desc& mem_desc() const;
-
-void set_mem_desc(const dnnl::memory::desc& mem_desc);
-
-#endif
-
 /* ------------------------------ */
 /*   From phi::DenseTensor    */
 /* ------------------------------ */

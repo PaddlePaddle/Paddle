@@ -279,7 +279,7 @@ class FCOneDNNHandler
       const DenseTensor* x) {
     const T_in* x_data = x->data<T_in>();
 
-    auto user_md = x->mem_desc();
+    auto user_md = phi::funcs::GetOneDNNMemDesc(*x);
     if (x->dims().size() != 2) {
       // reshape restrictions are always satisfied because in case of 3 or 4 dim
       // input, plain layout is enforced
@@ -390,7 +390,8 @@ void PrepareSrcMem(const std::shared_ptr<dnnl::inner_product_forward>& fc_p
                    const std::shared_ptr<dnnl::memory>& src_mem,
                    const DenseTensor* x,
                    const dnnl::engine& engine) {
-  auto x_md = x->mem_desc().reshape(src_mem->get_desc().get_dims());
+  auto x_md =
+      phi::funcs::GetOneDNNMemDesc(*x).reshape(src_mem->get_desc().get_dims());
   if (x_md != src_mem->get_desc()) {
     dnnl::memory x_mem(x_md, engine, to_void_cast<T>(x->data<T>()));
     auto reorder_p = dnnl::reorder(x_mem, *src_mem);
@@ -554,7 +555,7 @@ void RunKernel(const phi::OneDNNContext& dev_ctx,
   if (!reshape2_shape.empty()) {
     funcs::SetOutMemDescWithReshape2FuseSupport(reshape2_shape, out, out_md);
   } else {
-    out->set_mem_desc(out_md);
+    phi::funcs::SetOneDNNMemDesc(out, out_md);
   }
 }
 

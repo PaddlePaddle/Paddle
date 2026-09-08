@@ -240,7 +240,7 @@ class TestAbiRemovalApproval(unittest.TestCase):
         self.assertIn("no APPROVED review", approval.reason)
 
     def test_removed_symbol_with_required_approval_passes(self):
-        for reviewer in ("SigureMo", "BingooYang"):
+        for reviewer in ("wanghuancoder", "BingooYang"):
             with self.subTest(reviewer=reviewer):
                 approval = check_abi_removal_approval(
                     env={"GIT_PR_ID": "78831", "GITHUB_API_TOKEN": "token"},
@@ -255,7 +255,7 @@ class TestAbiRemovalApproval(unittest.TestCase):
     def test_other_reviewer_approval_does_not_pass(self):
         reviews = [
             {"state": "APPROVED", "user": {"login": "someone-else"}},
-            {"state": "COMMENTED", "user": {"login": "SigureMo"}},
+            {"state": "COMMENTED", "user": {"login": "wanghuancoder"}},
         ]
 
         self.assertIsNone(find_required_abi_approver(reviews))

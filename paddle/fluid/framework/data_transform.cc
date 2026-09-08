@@ -19,6 +19,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_type_transform.h"
 #include "paddle/fluid/platform/onednn_helper.h"
 #include "paddle/phi/api/lib/data_transform.h"
+#ifdef PADDLE_WITH_DNNL
+#include "paddle/phi/kernels/funcs/data_layout_transform.h"
+#endif
 
 namespace paddle {
 namespace framework {
@@ -77,7 +80,7 @@ void TransformData(const phi::KernelKey &expected_kernel_type,
 
         dnnl::memory::desc out_mem_desc =
             phi::funcs::make_memory_desc(out, lin);
-        out.set_mem_desc(out_mem_desc);
+        phi::funcs::SetOneDNNMemDesc(&(out), out_mem_desc);
       } else {
         // Case2 - transform from ONEDNN OPKernel to Non-ONEDNN OPKernel
         // Do transform via ONEDNN lib
@@ -139,7 +142,8 @@ void SetTensorToVariable(const Variable &in_var,
     tran_dense_tensor->set_lod(in_dense_tensor.lod());
     tran_dense_tensor->set_layout(in_dense_tensor.layout());
 #ifdef PADDLE_WITH_DNNL
-    tran_dense_tensor->set_mem_desc(in_dense_tensor.mem_desc());
+    phi::funcs::SetOneDNNMemDesc(tran_dense_tensor,
+                                 phi::funcs::GetOneDNNMemDesc(in_dense_tensor));
 #endif
     tran_dense_tensor->ShareDataWith(tensor);
   } else if (in_var.IsType<phi::SelectedRows>()) {

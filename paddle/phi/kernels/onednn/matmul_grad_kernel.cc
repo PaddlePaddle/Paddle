@@ -15,6 +15,7 @@
 #include "paddle/phi/kernels/matmul_grad_kernel.h"
 
 #include "paddle/phi/backends/onednn/matmul_utils.h"
+#include "paddle/phi/backends/onednn/onednn_helper.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/scale_kernel.h"
 
@@ -184,9 +185,9 @@ void MatmulGradKernel(const Context &dev_ctx,
     *dy = std::move(dy_tmp);
   }
 
-  dx->set_mem_desc(x.mem_desc());
+  phi::funcs::SetOneDNNMemDesc(dx, phi::funcs::GetOneDNNMemDesc(x));
   dx->Resize(x.dims());
-  dy->set_mem_desc(y.mem_desc());
+  phi::funcs::SetOneDNNMemDesc(dy, phi::funcs::GetOneDNNMemDesc(y));
   dy->Resize(y.dims());
 }
 

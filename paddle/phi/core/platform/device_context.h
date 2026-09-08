@@ -54,12 +54,6 @@ limitations under the License. */
 #include "xpu/bkcl.h"
 #endif
 
-#ifdef PADDLE_WITH_DNNL
-#include "dnnl.hpp"  // NOLINT
-#include "paddle/common/layout.h"
-#include "paddle/phi/backends/onednn/onednn_context.h"
-#endif
-
 #include <map>
 
 #include "paddle/phi/backends/stream.h"

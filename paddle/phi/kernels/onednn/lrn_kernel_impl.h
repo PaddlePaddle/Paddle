@@ -49,8 +49,8 @@ class LRNOneDNNHandler
         is_test ? dnnl::prop_kind::forward_inference
                 : dnnl::prop_kind::forward_training,
         dnnl::algorithm::lrn_across_channels,
-        input->mem_desc(),
-        input->mem_desc(),
+        phi::funcs::GetOneDNNMemDesc(*input),
+        phi::funcs::GetOneDNNMemDesc(*input),
         n,
         alpha,
         beta,
@@ -83,8 +83,8 @@ class LRNOneDNNHandler
     this->AcquireForwardPrimitiveDescriptor(
         dnnl::prop_kind::forward_training,
         dnnl::algorithm::lrn_across_channels,
-        in_x->mem_desc(),
-        in_x->mem_desc(),
+        phi::funcs::GetOneDNNMemDesc(*in_x),
+        phi::funcs::GetOneDNNMemDesc(*in_x),
         n,
         alpha,
         beta,
@@ -92,9 +92,9 @@ class LRNOneDNNHandler
 
     this->AcquireBackwardPrimitiveDescriptor(
         dnnl::algorithm::lrn_across_channels,
-        out_grad->mem_desc(),
-        out_grad->mem_desc(),
-        in_x->mem_desc(),
+        phi::funcs::GetOneDNNMemDesc(*out_grad),
+        phi::funcs::GetOneDNNMemDesc(*out_grad),
+        phi::funcs::GetOneDNNMemDesc(*in_x),
         n,
         alpha,
         beta,
@@ -154,7 +154,7 @@ void LRNMKLDNNOpKernel(const Context& dev_ctx,
 
   auto& astream = OneDNNContext::tls().get_stream();
   if (!workspace_memory->get_desc().is_zero()) {
-    mid->set_mem_desc(workspace_memory->get_desc());
+    phi::funcs::SetOneDNNMemDesc(mid, workspace_memory->get_desc());
     lrn_p->execute(astream,
                    {{DNNL_ARG_SRC, *src_memory},
                     {DNNL_ARG_DST, *dst_memory},
@@ -165,7 +165,7 @@ void LRNMKLDNNOpKernel(const Context& dev_ctx,
   }
   astream.wait();
 
-  out->set_mem_desc(dst_memory->get_desc());
+  phi::funcs::SetOneDNNMemDesc(out, dst_memory->get_desc());
 }
 
 template <typename T, typename Context>
@@ -222,6 +222,6 @@ void LRNMKLDNNGradOpKernel(const Context& dev_ctx,
                     {DNNL_ARG_WORKSPACE, *workspace}});
   astream.wait();
 
-  in_x_grad->set_mem_desc(diff_src_memory->get_desc());
+  phi::funcs::SetOneDNNMemDesc(in_x_grad, diff_src_memory->get_desc());
 }
 }  // namespace phi

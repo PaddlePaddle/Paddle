@@ -111,6 +111,7 @@
 
 #ifdef PADDLE_WITH_DNNL
 #include "paddle/fluid/pir/dialect/operator/ir/op_onednn_dialect.h"
+#include "paddle/phi/backends/onednn/onednn_context.h"
 #endif
 
 #include "paddle/common/flags.h"

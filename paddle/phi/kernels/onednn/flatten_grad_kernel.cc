@@ -33,8 +33,9 @@ void FlattenGradKernel(const Context& dev_ctx,
   funcs::ReorderOneDNNHandler reorder_handler(
       out_grad_vec_dims, out_grad.dtype(), out_grad_type, dev_ctx.GetEngine());
 
-  auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
-      out_grad.mem_desc(), funcs::to_void_cast(out_grad.data<T>()));
+  auto reorder_src_memory_p =
+      reorder_handler.AcquireSrcMemory(phi::funcs::GetOneDNNMemDesc(out_grad),
+                                       funcs::to_void_cast(out_grad.data<T>()));
   auto reorder_dst_memory_p = reorder_handler.AcquireDstMemory(
       x_grad,
       funcs::GetPlainOneDNNFormat(out_grad_vec_dims.size()),

@@ -25,7 +25,8 @@ bool SliceCheckIfOneDNNSupport(const KernelContext* ctx) {
   bool all_zero_dims = std::all_of(
       vec_dims.cbegin(), vec_dims.cend(), [](int64_t i) { return i == 0; });
 
-  if (!all_zero_dims && x.mem_desc().get_inner_nblks() == 0) {
+  if (!all_zero_dims &&
+      phi::funcs::GetOneDNNMemDesc(x).get_inner_nblks() == 0) {
     return true;
   }
   return false;
@@ -75,7 +76,7 @@ void SliceKernel(const Context& dev_ctx,
       x_vec_dims, x.dtype(), x_type, onednn_engine);
 
   auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
-      x.mem_desc(), funcs::to_void_cast(x.data<T>()));
+      phi::funcs::GetOneDNNMemDesc(x), funcs::to_void_cast(x.data<T>()));
   auto slice_mem_p = reorder_handler.AcquireSubmemory(
       slice_dims, offsets, reorder_src_memory_p);
   auto reorder_dst_memory_p = reorder_handler.AcquireDstMemory(
@@ -106,7 +107,8 @@ void SliceKernel(const Context& dev_ctx,
 
   astream.wait();
   out->Resize(new_out_dims);
-  out->set_mem_desc(reorder_dst_memory_p->get_desc().reshape(new_out_dims));
+  phi::funcs::SetOneDNNMemDesc(
+      out, reorder_dst_memory_p->get_desc().reshape(new_out_dims));
 }
 
 }  // namespace phi

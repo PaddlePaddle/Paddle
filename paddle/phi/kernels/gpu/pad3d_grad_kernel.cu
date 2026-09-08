@@ -357,6 +357,16 @@ void Pad3dGradKernel(const Context& dev_ctx,
   const int64_t pad_front = pads[4];
 
   const int64_t num = d_in_dims[0];
+  // Hoisted so the int32 guard below can inspect them.
+  // They will be narrowed to IndexType at launch.
+  const bool ncdhw = (data_format == "NCDHW");
+  const int64_t channels = d_in_dims[ncdhw ? 1 : 4];
+  const int64_t in_depth = d_in_dims[ncdhw ? 2 : 1];
+  const int64_t in_height = d_in_dims[ncdhw ? 3 : 2];
+  const int64_t in_width = d_in_dims[ncdhw ? 4 : 3];
+  const int64_t out_depth = d_out_dims[ncdhw ? 2 : 1];
+  const int64_t out_height = d_out_dims[ncdhw ? 3 : 2];
+  const int64_t out_width = d_out_dims[ncdhw ? 4 : 3];
 
   auto stream = dev_ctx.stream();
   int block = PADDLE_CUDA_NUM_THREADS;
@@ -364,27 +374,20 @@ void Pad3dGradKernel(const Context& dev_ctx,
   const size_t in_size = d_in->numel();
   uint32_t grid = (out_size + block - 1) / block;
 
-  bool use_int32_index = true;
-  if (out_size > std::numeric_limits<int32_t>::max()) {
-    use_int32_index = false;
-  } else {
-    for (int i = 0; i < d_out_dims.size(); ++i) {
-      if (d_out_dims[i] > std::numeric_limits<int32_t>::max()) {
-        use_int32_index = false;
-        break;
-      }
-    }
-  }
+  // Three independent sources of magnitude inside the kernels; all must fit:
+  //   out_size: loop bound of the reflect/replicate/circular kernels
+  //   in_size : loop bound of the constant kernels, and the upper bound of
+  //             every d_in offset (in_size >> out_size with negative padding)
+  //   in_* / 2: reflect's `2 * in_dim - x - 2`
+  constexpr int64_t kInt32Max = std::numeric_limits<int32_t>::max();
+  const bool use_int32_index =
+      static_cast<int64_t>(out_size) <= kInt32Max &&
+      static_cast<int64_t>(in_size) <= kInt32Max &&
+      (mode != "reflect" ||
+       (in_depth <= kInt32Max / 2 && in_height <= kInt32Max / 2 &&
+        in_width <= kInt32Max / 2));
   if (use_int32_index) {
-    if (data_format == "NCDHW") {
-      const int channels = d_in_dims[1];
-      const int in_depth = d_in_dims[2];
-      const int in_height = d_in_dims[3];
-      const int in_width = d_in_dims[4];
-      const int out_depth = d_out_dims[2];
-      const int out_height = d_out_dims[3];
-      const int out_width = d_out_dims[4];
-
+    if (ncdhw) {
       if (mode == "reflect") {
         Pad3DGradReflectNCDHW<T, int32_t>
             <<<grid, block, 0, stream>>>(out_size,
@@ -451,13 +454,6 @@ void Pad3dGradKernel(const Context& dev_ctx,
                                                                     d_out_data);
       }
     } else {
-      const int channels = d_in_dims[4];
-      const int in_depth = d_in_dims[1];
-      const int in_height = d_in_dims[2];
-      const int in_width = d_in_dims[3];
-      const int out_depth = d_out_dims[1];
-      const int out_height = d_out_dims[2];
-      const int out_width = d_out_dims[3];
       if (mode == "reflect") {
         Pad3DGradReflectNDHWC<T, int32_t>
             <<<grid, block, 0, stream>>>(out_size,
@@ -526,15 +522,7 @@ void Pad3dGradKernel(const Context& dev_ctx,
     }
 
   } else {
-    if (data_format == "NCDHW") {
-      const int64_t channels = d_in_dims[1];
-      const int64_t in_depth = d_in_dims[2];
-      const int64_t in_height = d_in_dims[3];
-      const int64_t in_width = d_in_dims[4];
-      const int64_t out_depth = d_out_dims[2];
-      const int64_t out_height = d_out_dims[3];
-      const int64_t out_width = d_out_dims[4];
-
+    if (ncdhw) {
       if (mode == "reflect") {
         Pad3DGradReflectNCDHW<T, int64_t>
             <<<grid, block, 0, stream>>>(out_size,
@@ -601,13 +589,6 @@ void Pad3dGradKernel(const Context& dev_ctx,
                                                                     d_out_data);
       }
     } else {
-      const int64_t channels = d_in_dims[4];
-      const int64_t in_depth = d_in_dims[1];
-      const int64_t in_height = d_in_dims[2];
-      const int64_t in_width = d_in_dims[3];
-      const int64_t out_depth = d_out_dims[1];
-      const int64_t out_height = d_out_dims[2];
-      const int64_t out_width = d_out_dims[3];
       if (mode == "reflect") {
         Pad3DGradReflectNDHWC<T, int64_t>
             <<<grid, block, 0, stream>>>(out_size,

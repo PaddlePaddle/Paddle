@@ -17,6 +17,9 @@ limitations under the License. */
 #include "glog/logging.h"
 #include "gtest/gtest.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
+#ifdef PADDLE_WITH_DNNL
+#include "paddle/phi/backends/onednn/onednn_storage_properties.h"
+#endif
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/framework/dense_tensor_serialize.h"
 #include "test/cpp/phi/core/allocator.h"
