@@ -1175,7 +1175,6 @@ class PipelineParallel(MetaParallelBase):
         self,
         data,
         scaler=None,
-        static_scheduler=False,
         return_micro_batch_loss=False,
     ):
         # use the 1f1b scheduling strategy.
@@ -1190,15 +1189,6 @@ class PipelineParallel(MetaParallelBase):
             profile_pipeline_details(
                 "[Pipeline details] Start_forward_backward_pipeline"
             )
-        if static_scheduler:
-            if data is not None:
-                warnings.warn(
-                    "Static scheduler run won't real run the model, but data has been provided"
-                )
-            logger.info(
-                "enable static_scheduler will return the pp schedule instead of the loss"
-            )
-            schedule = ""
 
         self.scaler = scaler
 
@@ -1218,11 +1208,6 @@ class PipelineParallel(MetaParallelBase):
         micro_dataset = self._wrap_data(data)
 
         for step_id in range(startup_steps):
-            if static_scheduler:
-                schedule += f"f{step_id};"
-                logger.info(f"forward step for micro step {step_id}")
-                continue
-
             input_tensor = self._p2p_helper.recv_forward(
                 self.is_pipeline_first_stage(),
                 batch_p2p_comm=self._use_batch_p2p_comm,
@@ -1252,19 +1237,13 @@ class PipelineParallel(MetaParallelBase):
             if not self.is_pipeline_last_stage():
                 _release_output(output_tensor_tuple)
 
-        if steady_steps > 0 and not static_scheduler:
+        if steady_steps > 0:
             input_tensor = self._p2p_helper.recv_forward(
                 self.is_pipeline_first_stage(),
                 batch_p2p_comm=self._use_batch_p2p_comm,
             )
 
         for i in range(steady_steps):
-            if static_scheduler:
-                schedule += f"f{startup_steps + i};"
-                schedule += f"b{i};"
-                logger.info(f"forward step for micro step {startup_steps + i}")
-                logger.info(f"backward step for micro step {i}")
-                continue
             last_iter = i == (steady_steps - 1)
 
             input_tensor_dict, use_dict = tuple_to_dict_helper(input_tensor)
@@ -1326,10 +1305,6 @@ class PipelineParallel(MetaParallelBase):
                 )
 
         for i in range(startup_steps):
-            if static_scheduler:
-                schedule += f"b{steady_steps + i};"
-                logger.info(f"backward step for micro step {steady_steps + i}")
-                continue
             input_tensor = input_buffers.pop(0)
             output_tensor = output_buffers.pop(0)
 
@@ -1349,9 +1324,6 @@ class PipelineParallel(MetaParallelBase):
                 self.is_pipeline_first_stage(),
                 batch_p2p_comm=self._use_batch_p2p_comm,
             )
-
-        if static_scheduler:
-            return schedule
 
         if self._comm_overlap:
             assert len(self._chunk_2_comm_buffers) > 0, (
@@ -1936,9 +1908,6 @@ class PipelineParallel(MetaParallelBase):
         elif can_free(output):
             output._clear_dataptr()
 
-    def get_static_scheduler(self):
-        return self.forward_backward_pipeline(data=None, static_scheduler=True)
-
 
 @dataclass
 class P2PAsyncHandle:
@@ -2014,12 +1983,7 @@ class PipelineParallelWithInterleave(PipelineParallel):
             )
         logger.info(f"Using {self._get_scheduler_name()}")
 
-        # Structures to record the micro step for each layer chunk
-        self._forward_micro_step_counter = {}
-        self._backward_micro_step_counter = {}
-        # Same idea, but maintained unconditionally: the two counters above only
-        # advance under static_scheduler, and RecomputeStore needs a chunk identity
-        # on every run. Keyed by virtual_pp_rank.
+        # Chunk identity for RecomputeStore. Keyed by virtual_pp_rank.
         self._rc_forward_count = collections.defaultdict(int)
         self._rc_backward_count = collections.defaultdict(int)
 
@@ -2033,7 +1997,6 @@ class PipelineParallelWithInterleave(PipelineParallel):
         assert len(self.model_chunks) == self.num_model_chunks
         self._virtual_pp_world_size = self.num_model_chunks
         self._virtual_pp_rank = 0
-        self._reset_counter()
         self._best_unbalanced_scheduler = self._strategy.hybrid_configs[
             "pp_configs"
         ].best_unbalanced_scheduler
@@ -2069,11 +2032,6 @@ class PipelineParallelWithInterleave(PipelineParallel):
         assert self.accumulate_steps >= 2 * self.num_stages, (
             f"accumulate_steps({self.accumulate_steps}) should be greater than or equal to 2 * num_stages({self.num_stages}) for pipeline with interleave"
         )
-
-    def _reset_counter(self):
-        for i in range(self.num_model_chunks):
-            self._forward_micro_step_counter[i] = 0
-            self._backward_micro_step_counter[i] = 0
 
     def _get_virtual_pp_rank(self, micro_step, forward):
         first_chunk_acc = (
@@ -2655,7 +2613,6 @@ class PipelineParallelWithInterleave(PipelineParallel):
         scaler,
         forward_only=False,
         compute_loss=True,
-        static_scheduler=False,
         return_micro_batch_loss=False,
     ):
         """
@@ -2701,18 +2658,6 @@ class PipelineParallelWithInterleave(PipelineParallel):
                 "compute_loss can only be set to False when forward_only is set to True"
             )
 
-        if static_scheduler:
-            assert not forward_only, (
-                "static_scheduler only for training not for eval"
-            )
-            if data is not None:
-                warnings.warn(
-                    "Static scheduler run won't real run the model, but data has been provided"
-                )
-            logger.info(
-                "enable static_scheduler will return the pp schedule instead of the loss"
-            )
-            schedule = ""
         # NOTE(shenliang03): Due to ring_exchange for pipeline with interleave, cache should be enabled
         assert self._using_cache, (
             "cache should be enabled for pipeline with interleave"
@@ -2852,21 +2797,20 @@ class PipelineParallelWithInterleave(PipelineParallel):
         rest_bubble_times = self.num_stages - 1 - self.stage_id
 
         self.set_virtual_pipeline_rank(0)
-        if not static_scheduler:
-            self.input_tensors[0].append(
-                self._p2p_helper.recv_forward(
-                    self.is_pipeline_first_stage(),
-                    sync_recv=False,
-                    batch_p2p_comm=self._use_batch_p2p_comm,
-                )
+        self.input_tensors[0].append(
+            self._p2p_helper.recv_forward(
+                self.is_pipeline_first_stage(),
+                sync_recv=False,
+                batch_p2p_comm=self._use_batch_p2p_comm,
             )
-            # Save block_cache_meta from the initial recv for VPP rank 0
-            if self._block_atten_res_opt:
-                self._recv_block_cache_meta_for_vpp[0] = (
-                    None
-                    if self.is_pipeline_first_stage()
-                    else self._p2p_helper.get_recv_block_cache_meta()
-                )
+        )
+        # Save block_cache_meta from the initial recv for VPP rank 0
+        if self._block_atten_res_opt:
+            self._recv_block_cache_meta_for_vpp[0] = (
+                None
+                if self.is_pipeline_first_stage()
+                else self._p2p_helper.get_recv_block_cache_meta()
+            )
 
         fwd_wait_handles = None
         bwd_wait_handles = None
@@ -2876,20 +2820,6 @@ class PipelineParallelWithInterleave(PipelineParallel):
             if fwd_wait_handles is not None:
                 for req in fwd_wait_handles:
                     req.wait()
-
-            if static_scheduler:
-                virtual_pp_rank = self._get_virtual_pp_rank(
-                    micro_step, forward=True
-                )
-                real_micro_step = self._forward_micro_step_counter[
-                    virtual_pp_rank
-                ]
-                self._forward_micro_step_counter[virtual_pp_rank] += 1
-                schedule += f"f{real_micro_step}_vp{virtual_pp_rank};"
-                logger.info(
-                    f"forward step for {real_micro_step} with virtual pp rank {virtual_pp_rank}"
-                )
-                continue
 
             output_tensor, meta_to_send = self._forward_step_helper(
                 micro_dataset,
@@ -3018,36 +2948,6 @@ class PipelineParallelWithInterleave(PipelineParallel):
 
         # run 1f1b steady steps
         for micro_step in range(steady_steps):
-            if static_scheduler:
-                forward_micro_step_id = micro_step + startup_steps
-                forward_virtual_pp_rank = self._get_virtual_pp_rank(
-                    forward_micro_step_id, forward=True
-                )
-                backward_micro_step_id = micro_step
-                backward_virtual_pp_rank = self._get_virtual_pp_rank(
-                    backward_micro_step_id, forward=False
-                )
-                real_forward_micro_step = self._forward_micro_step_counter[
-                    forward_virtual_pp_rank
-                ]
-                self._forward_micro_step_counter[forward_virtual_pp_rank] += 1
-                real_backward_micro_step = self._backward_micro_step_counter[
-                    backward_virtual_pp_rank
-                ]
-                self._backward_micro_step_counter[backward_virtual_pp_rank] += 1
-                schedule += (
-                    f"f{real_forward_micro_step}_vp{forward_virtual_pp_rank};"
-                )
-                schedule += (
-                    f"b{real_backward_micro_step}_vp{backward_virtual_pp_rank};"
-                )
-                logger.info(
-                    f"forward step for {real_forward_micro_step} with virtual pp rank {forward_virtual_pp_rank}"
-                )
-                logger.info(
-                    f"backward step for {real_backward_micro_step} with virtual pp rank {backward_virtual_pp_rank}"
-                )
-                continue
             # forward
             forward_micro_step_id = micro_step + startup_steps
 
@@ -3380,8 +3280,7 @@ class PipelineParallelWithInterleave(PipelineParallel):
             _release_output(output_tensor)
 
         assert fwd_buffer_queue.empty(), "forward buffer should be empty"
-        if not static_scheduler:
-            _release_output(output_tensor)
+        _release_output(output_tensor)
 
         # remaining backward steps
         if not forward_only:
@@ -3399,20 +3298,6 @@ class PipelineParallelWithInterleave(PipelineParallel):
                     output_tensor_grad
                 )
             for micro_step in range(steady_steps, num_steps):
-                if static_scheduler:
-                    virtual_pp_rank = self._get_virtual_pp_rank(
-                        micro_step, forward=False
-                    )
-                    real_micro_step = self._backward_micro_step_counter[
-                        virtual_pp_rank
-                    ]
-                    self._backward_micro_step_counter[virtual_pp_rank] += 1
-                    schedule += f"b{real_micro_step}_vp{virtual_pp_rank};"
-                    logger.info(
-                        f"backward step for {real_micro_step} with virtual pp rank {virtual_pp_rank}"
-                    )
-                    continue
-
                 if (
                     micro_step
                     < steady_steps + self.num_stages - 1 - self.stage_id
@@ -3522,10 +3407,6 @@ class PipelineParallelWithInterleave(PipelineParallel):
 
             for _ in range(self.stage_id):
                 self.bubble_hooks.run_hook()
-
-            if static_scheduler:
-                self._reset_counter()
-                return schedule
 
             if self._enable_timer:
                 self.timers("allreduce_shared_weight_gradients").start()
@@ -3647,11 +3528,6 @@ class PipelineParallelWithInterleave(PipelineParallel):
         self._compute_loss = origin_compute_loss
         self._return_host_tensor = origin_return_host_tensor
         return train_loss_or_logits
-
-    def get_static_scheduler(self):
-        return self.forward_backward_pipeline(
-            data=None, scaler=None, static_scheduler=True
-        )
 
 
 class PipelineParallelWithInterleaveFthenB(PipelineParallelWithInterleave):
