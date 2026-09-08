@@ -21,8 +21,12 @@ const std::string CodeGenCudaDev::general_source_header_ =  // NOLINT
 #pragma once
 #include <cstdint>
 #define CINN_WITH_CUDA
-#include "bfloat16.h"
+#ifdef PADDLE_WITH_XPU_CADA
+#include "float16_xpu_cada.h"
+#else
 #include "float16.h"
+#endif
+#include "bfloat16.h"
 #include "float8e4m3.h"
 using cinn::common::bfloat16;
 using cinn::common::float16;
@@ -40,21 +44,6 @@ using cinn::common::float8e4m34;
 #include <cooperative_groups.h>
 #include "cinn_cuda_runtime_source.cuh"
 )";
-#ifdef PADDLE_WITH_XPU_CADA
-// TODO(zhangxiao): float16/bfloat16/float8e4m3 hit xtrans overload-resolution
-// ambiguities not yet fully fixed (see cinn_cuda_runtime_source.cuh and
-// float16_xpu_cada.h comments). cinn_cuda_runtime_source.cuh itself no
-// longer needs these types (CINN_CUDA_FP16/CINN_CUDA_BF16 are suppressed
-// for WITH_XPU_CADA), so skip including/using them entirely here rather
-// than injecting a variant that never gets referenced; re-add once fixed.
-const std::string CodeGenCudaDev::source_header_ =  // NOLINT
-    R"(
-#pragma once
-#include <cstdint>
-#include <cooperative_groups.h>
-#include <cinn_cuda_runtime_source_h>
-)";
-#else
 const std::string CodeGenCudaDev::source_header_ =  // NOLINT
     R"(
 #pragma once
@@ -78,7 +67,6 @@ using cinn::common::float8e4m34;
 #include <cooperative_groups.h>
 #include <cinn_cuda_runtime_source_h>
 )";
-#endif  // PADDLE_WITH_XPU_CADA
 
 const std::string &CodeGenCudaDev::GetSourceHeader() { return source_header_; }
 const std::string &CodeGenCudaDev::GetGeneralSourceHeader() {

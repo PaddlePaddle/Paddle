@@ -1280,6 +1280,17 @@ if '${WITH_CINN}' == 'ON':
         shutil.copy(cinn_fp16_file, libs_path)
         package_data['paddle.libs']+=['float16.h']
 
+    if '${WITH_XPU_CADA}' == 'ON':
+        # xtrans/clang's strict overload resolution needs the explicit-only
+        # conversions in float16_xpu_cada.h instead of float16.h (see that
+        # file's comment); CodeGenCudaDev::general_source_header_ quotes
+        # #include "float16_xpu_cada.h" directly, so package it under its
+        # own real filename rather than renaming it to float16.h.
+        cinn_fp16_xpu_cada_file = '${CINN_INCLUDE_DIR}/paddle/cinn/runtime/cuda/float16_xpu_cada.h'
+        if os.path.exists(cinn_fp16_xpu_cada_file):
+            shutil.copy(cinn_fp16_xpu_cada_file, libs_path)
+            package_data['paddle.libs']+=['float16_xpu_cada.h']
+
     cinn_bf16_file = '${CINN_INCLUDE_DIR}/paddle/cinn/runtime/cuda/bfloat16.h'
     if os.path.exists(cinn_bf16_file):
         shutil.copy(cinn_bf16_file, libs_path)

@@ -46,15 +46,7 @@
 #ifdef CINN_WITH_CUDA
 #include <cuda.h>
 
-// TODO(zhangxiao): fp16 support on WITH_XPU_CADA still hits xtrans's
-// __shfl_down/__shfl_xor and __clang_houyi_cmath.h max()/min() ambiguity for
-// cinn::common::float16 (the struct-shuffle SFINAE fix in
-// cinn_cuda_runtime_source.cuh only covers __shfl_*_sync, not the plain
-// non-sync overloads, nor the cmath promotion path). Temporarily disable
-// half-precision codegen entirely for WITH_XPU_CADA since the current
-// validation case (simple_add_cinn.py) does not need fp16; re-enable once
-// that ambiguity is fixed.
-#if (defined(__CUDACC__) || defined(__CUDACC_RTC__)) && !defined(PADDLE_WITH_XPU_CADA)
+#if (defined(__CUDACC__) || defined(__CUDACC_RTC__))
 #define CINN_CUDA_FP16
 #include <cuda_fp16.h>
 #endif  // __CUDACC__
@@ -707,6 +699,17 @@ __device__ inline cinn::common::float16 __shfl_up_sync(
       __shfl_up_sync(mask, var.to_half(), delta, width));
 }
 
+// NOTE: on WITH_XPU_CADA, a concrete (non-template) __shfl_down_sync/
+// __shfl_xor_sync overload here would collide with xtrans's own
+// unconstrained __shfl_down_sync<MaskT,T> template from <xtdk_warp_sync_
+// functions.h> -- when both exist for the same call, xtrans's compiler
+// resolves to its own template (not this concrete overload), which then
+// hard-fails calling plain __shfl_down() on a non-scalar type. The fix is
+// an EXPLICIT SPECIALIZATION of xtrans's template instead (see
+// cinn_cuda_runtime_source.cuh's CINN_XPU_CADA_STRUCT_SHFL_SPECIALIZE,
+// applied to cinn::common::float16 below), so skip this concrete overload
+// for WITH_XPU_CADA.
+#ifndef PADDLE_WITH_XPU_CADA
 __device__ inline cinn::common::float16 __shfl_down_sync(
     unsigned mask,
     cinn::common::float16 var,
@@ -724,6 +727,7 @@ __device__ inline cinn::common::float16 __shfl_xor_sync(
   return cinn::common::float16(
       __shfl_xor_sync(mask, var.to_half(), laneMask, width));
 }
+#endif  // !PADDLE_WITH_XPU_CADA
 
 __host__ __device__ inline cinn::common::float16 max(
     const cinn::common::float16& a, const cinn::common::float16& b) {
@@ -732,6 +736,51 @@ __host__ __device__ inline cinn::common::float16 max(
 __host__ __device__ inline cinn::common::float16 min(
     const cinn::common::float16& a, const cinn::common::float16& b) {
   return a < b ? a : b;
+}
+
+// xtrans/clang's __clang_houyi_cmath.h __promote2<A1,A2> hard-errors (not a
+// SFINAE-friendly substitution failure) when both operands are a non-numeric
+// class type like cinn::common::float16, because its body unconditionally
+// computes decltype(__type1() + __type2()) which becomes decltype(void() +
+// void()). This explicit specialization short-circuits that computation so
+// max()/min()'s cmath-template candidate never gets instantiated, letting
+// overload resolution correctly pick the non-template overloads above.
+namespace __houyi {
+template <>
+struct __promote2<cinn::common::float16, cinn::common::float16> {
+  typedef cinn::common::float16 type;
+};
+}  // namespace __houyi
+
+// xtrans/clang only declares the plain (non-_sync) __shfl_down/__shfl_up/
+// __shfl_xor overloads for scalar/__half/__xpu_bfloat16 types, never for
+// cinn::common::float16, so these are added here (mirroring the CINN_HIP_FP16
+// block below) rather than being ambiguous like max()/min() above.
+__device__ inline cinn::common::float16 __shfl(cinn::common::float16 var,
+                                                int srcLane,
+                                                int width = warpSize) {
+  return cinn::common::float16(__shfl(static_cast<float>(var), srcLane, width));
+}
+
+__device__ inline cinn::common::float16 __shfl_up(cinn::common::float16 var,
+                                                   unsigned int delta,
+                                                   int width = warpSize) {
+  return cinn::common::float16(
+      __shfl_up(static_cast<float>(var), delta, width));
+}
+
+__device__ inline cinn::common::float16 __shfl_down(cinn::common::float16 var,
+                                                     unsigned int delta,
+                                                     int width = warpSize) {
+  return cinn::common::float16(
+      __shfl_down(static_cast<float>(var), delta, width));
+}
+
+__device__ inline cinn::common::float16 __shfl_xor(cinn::common::float16 var,
+                                                    int laneMask,
+                                                    int width = warpSize) {
+  return cinn::common::float16(
+      __shfl_xor(static_cast<float>(var), laneMask, width));
 }
 #endif  // __cplusplus && CINN_CUDA_FP16
 

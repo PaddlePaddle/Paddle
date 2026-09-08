@@ -231,6 +231,21 @@ __device__ inline double FN_FP64(rcp)(double x) {
     return {mean, m2, weight};                                                 \
   }
 
+// NOTE: on WITH_XPU_CADA, do NOT emit a concrete (non-template) __shfl_down_sync/
+// __shfl_xor_sync overload here for each welford_* type. xtrans's own
+// <xtdk_warp_sync_functions.h> declares an UNCONSTRAINED template
+// __shfl_down_sync<MaskT, T>(...) that matches ANY T equally well as a
+// hand-written concrete overload of the same signature -- when BOTH exist,
+// xtrans's compiler resolves the call to its own template (not the concrete
+// overload), which then hard-fails trying to call plain __shfl_down() on a
+// struct. The ONLY thing that reliably wins here is an EXPLICIT
+// SPECIALIZATION of xtrans's template (see CINN_XPU_CADA_STRUCT_SHFL_
+// SPECIALIZE below, applied to welford_fp32/fp64), so this macro must skip
+// generating shfl overloads for WITH_XPU_CADA and let that specialization
+// provide them instead.
+#ifdef PADDLE_WITH_XPU_CADA
+#define WELFORD_SHFL_SYNC_MACRO(TYPENAME, DTYPE, SHFL_FUNC, ARG2_TYPE, ARG2)
+#else
 #define WELFORD_SHFL_SYNC_MACRO(TYPENAME, DTYPE, SHFL_FUNC, ARG2_TYPE, ARG2) \
   __device__ inline TYPENAME SHFL_FUNC(                                      \
       unsigned mask, const TYPENAME &var, ARG2_TYPE ARG2, int width = 32) {  \
@@ -239,6 +254,7 @@ __device__ inline double FN_FP64(rcp)(double x) {
     DTYPE weight = SHFL_FUNC(mask, var.weight, ARG2, width);                 \
     return {mean, m2, weight};                                               \
   }
+#endif  // PADDLE_WITH_XPU_CADA
 
 #define EXPAND_WELFORD_MACRO(TYPE_SUFFIX, DTYPE)                       \
   WELFORD_STRUCT_MACRO(welford_##TYPE_SUFFIX, DTYPE)                   \
@@ -287,6 +303,15 @@ EXPAND_WELFORD_MACRO(fp64, double)
   }
 
 // shfl primitives for argidx
+// NOTE: on WITH_XPU_CADA, skip emitting a concrete overload here for the
+// same reason WELFORD_SHFL_SYNC_MACRO does above -- xtrans's own
+// unconstrained __shfl_down_sync<MaskT,T> template beats a hand-written
+// concrete overload of the same signature, so CINN_XPU_CADA_STRUCT_SHFL_
+// SPECIALIZE's explicit specialization must be the only overload provider.
+#ifdef PADDLE_WITH_XPU_CADA
+#define ARGIDX_SHFL_SYNC_MACRO(                                             \
+    TYPENAME, DTYPE, ITYPE, SHFL_FUNC, ARG2_TYPE, ARG2)
+#else
 #define ARGIDX_SHFL_SYNC_MACRO(                                             \
     TYPENAME, DTYPE, ITYPE, SHFL_FUNC, ARG2_TYPE, ARG2)                     \
   __device__ inline TYPENAME SHFL_FUNC(                                     \
@@ -295,6 +320,7 @@ EXPAND_WELFORD_MACRO(fp64, double)
     ITYPE index = SHFL_FUNC(mask, var.index, ARG2, width);                  \
     return {value, index};                                                  \
   }
+#endif  // PADDLE_WITH_XPU_CADA
 
 #define EXPAND_ARGIDX_DTYPE_MACRO_IMPL(                             \
     DTYPE, DNAME, DMIN, DMAX, ITYPE, INAME, IMAX)                   \
@@ -313,15 +339,9 @@ EXPAND_WELFORD_MACRO(fp64, double)
   EXPAND_ARGIDX_DTYPE_MACRO_IMPL(DTYPE, DNAME, DMIN, DMAX, int, i32, 0) \
   EXPAND_ARGIDX_DTYPE_MACRO_IMPL(DTYPE, DNAME, DMIN, DMAX, int64_t, i64, 0LL)
 
-#if defined(CINN_CUDA_FP16) && !defined(PADDLE_WITH_XPU_CADA)
-// TODO(zhangxiao): argidx_fp16_* on WITH_XPU_CADA still hits xtrans's
-// __shfl_down/__shfl_xor ambiguity for cinn::common::float16 (separate from
-// the struct-shuffle SFINAE fix above, which only covers __shfl_*_sync).
-// Temporarily disabled since the current validation case (simple_add_cinn.py)
-// does not exercise fp16 argmax/argmin; re-enable once that ambiguity is
-// fixed for WITH_XPU_CADA.
+#if defined(CINN_CUDA_FP16)
 EXPAND_ARGIDX_DTYPE_MACRO(float16, fp16, -CINN_FP16_MAX, CINN_FP16_MAX)
-#endif  // CINN_CUDA_FP16 && !PADDLE_WITH_XPU_CADA
+#endif  // CINN_CUDA_FP16
 EXPAND_ARGIDX_DTYPE_MACRO(float, fp32, -CINN_FP32_MAX, CINN_FP32_MAX)
 EXPAND_ARGIDX_DTYPE_MACRO(double, fp64, -CINN_FP64_MAX, CINN_FP64_MAX)
 EXPAND_ARGIDX_DTYPE_MACRO(int16_t, i16, CINN_INT16_MIN, CINN_INT16_MAX)
@@ -710,18 +730,6 @@ __device__ inline float16 FN_FP16(pow)(float16 a, float16 b) {
   EXPAND_ARGIDX_OP_MACRO_IMPL(OP_MACRO, argidx_##DNAME##_##INAME, max, DMIN, 0)
 
 // modify this macro to support more types
-// TODO(zhangxiao): argidx_fp16_* is temporarily disabled on WITH_XPU_CADA
-// (see EXPAND_ARGIDX_DTYPE_MACRO(float16, ...) above), so the fp16 branch
-// here must stay in sync or callers hit "argidx_fp16_* not defined".
-#ifdef PADDLE_WITH_XPU_CADA
-#define EXPAND_ARGIDX_OP_ALL_DTYPE_MACRO(MACRO, ITYPE, INAME)               \
-  EXPAND_ARGIDX_OP_MACRO(MACRO, fp32, -CINN_FP32_MAX, CINN_FP32_MAX, INAME) \
-  EXPAND_ARGIDX_OP_MACRO(MACRO, fp64, -CINN_FP64_MAX, CINN_FP64_MAX, INAME) \
-  EXPAND_ARGIDX_OP_MACRO(MACRO, i16, CINN_INT16_MIN, CINN_INT16_MAX, INAME) \
-  EXPAND_ARGIDX_OP_MACRO(MACRO, i32, CINN_INT32_MIN, CINN_INT32_MAX, INAME) \
-  EXPAND_ARGIDX_OP_MACRO(MACRO, i64, CINN_INT64_MIN, CINN_INT64_MAX, INAME) \
-  EXPAND_ARGIDX_OP_MACRO(MACRO, u8, CINN_UINT8_MIN, CINN_UINT8_MAX, INAME)
-#else
 #define EXPAND_ARGIDX_OP_ALL_DTYPE_MACRO(MACRO, ITYPE, INAME)               \
   EXPAND_ARGIDX_OP_MACRO(MACRO, fp16, -CINN_FP16_MAX, CINN_FP16_MAX, INAME) \
   EXPAND_ARGIDX_OP_MACRO(MACRO, fp32, -CINN_FP32_MAX, CINN_FP32_MAX, INAME) \
@@ -730,7 +738,6 @@ __device__ inline float16 FN_FP16(pow)(float16 a, float16 b) {
   EXPAND_ARGIDX_OP_MACRO(MACRO, i32, CINN_INT32_MIN, CINN_INT32_MAX, INAME) \
   EXPAND_ARGIDX_OP_MACRO(MACRO, i64, CINN_INT64_MIN, CINN_INT64_MAX, INAME) \
   EXPAND_ARGIDX_OP_MACRO(MACRO, u8, CINN_UINT8_MIN, CINN_UINT8_MAX, INAME)
-#endif  // PADDLE_WITH_XPU_CADA
 
 #define EXPAND_ARGIDX_OP_ALL_DTYPE_ITYPE_MACRO(MACRO) \
   EXPAND_ARGIDX_OP_ALL_DTYPE_MACRO(MACRO, int, i32)   \
@@ -794,19 +801,6 @@ __device__ inline int64_t cinn_min_int64(const int64_t left,
   return min(left, right);
 }
 
-// TODO(zhangxiao): sum_welford_fp32/fp64 (variance-reduction) still hit
-// xtrans's struct-shuffle/max()-min() ambiguity beyond what the SFINAE fix
-// below covers when combined with cmath's __promote2. Temporarily dropped
-// from these macros for WITH_XPU_CADA since the current validation case
-// (simple_add_cinn.py) is plain elementwise add and never touches welford;
-// re-enable once that's fixed.
-#ifdef PADDLE_WITH_XPU_CADA
-#define EXPAND_REDUCE_FP32_MACRO(MACRO, ...)            \
-  MACRO(sum_fp32, 0.0f, float, ##__VA_ARGS__)           \
-  MACRO(prod_fp32, 1.0f, float, ##__VA_ARGS__)          \
-  MACRO(max_fp32, -CINN_FP32_MAX, float, ##__VA_ARGS__) \
-  MACRO(min_fp32, CINN_FP32_MAX, float, ##__VA_ARGS__)
-#else
 #define EXPAND_REDUCE_FP32_MACRO(MACRO, ...)            \
   MACRO(sum_fp32, 0.0f, float, ##__VA_ARGS__)           \
   MACRO(prod_fp32, 1.0f, float, ##__VA_ARGS__)          \
@@ -816,7 +810,6 @@ __device__ inline int64_t cinn_min_int64(const int64_t left,
         welford_fp32(0.0f, 0.0f, 0.0f),                 \
         welford_fp32,                                   \
         ##__VA_ARGS__)
-#endif  // PADDLE_WITH_XPU_CADA
 
 __device__ inline float cinn_sum_fp32(const float left, const float right) {
   return left + right;
@@ -890,13 +883,6 @@ __device__ inline float16 cinn_min_fp16(const float16 left,
 }
 #endif
 
-#ifdef PADDLE_WITH_XPU_CADA
-#define EXPAND_REDUCE_FP64_MACRO(MACRO, ...)             \
-  MACRO(sum_fp64, 0.0, double, ##__VA_ARGS__)            \
-  MACRO(prod_fp64, 1.0, double, ##__VA_ARGS__)           \
-  MACRO(max_fp64, -CINN_FP64_MAX, double, ##__VA_ARGS__) \
-  MACRO(min_fp64, CINN_FP64_MAX, double, ##__VA_ARGS__)
-#else
 #define EXPAND_REDUCE_FP64_MACRO(MACRO, ...)             \
   MACRO(sum_fp64, 0.0, double, ##__VA_ARGS__)            \
   MACRO(prod_fp64, 1.0, double, ##__VA_ARGS__)           \
@@ -906,7 +892,6 @@ __device__ inline float16 cinn_min_fp16(const float16 left,
         welford_fp64(0.0, 0.0, 0.0),                     \
         welford_fp64,                                    \
         ##__VA_ARGS__)
-#endif  // PADDLE_WITH_XPU_CADA
 
 __device__ inline double cinn_sum_fp64(const double left, const double right) {
   return left + right;
@@ -937,54 +922,158 @@ __device__ inline bool cinn_any(const bool left, const bool right) {
 
 #ifdef PADDLE_WITH_XPU_CADA
 }  // extern "C"
-// xtrans's __shfl_down_sync/__shfl_xor_sync only overload scalar/half/bfloat16
-// types (see xtdk_warp_functions.h), unlike real CUDA which shuffles any
-// trivially-copyable type at the register level. CINN_WARP_SHUFFLE_INTERNAL_IMPL
-// below is instantiated with struct DTYPEs (welford_fp32/fp64, argidx_*), so on
-// xtrans those calls need a struct-shuffle overload. SFINAE on is_class<T>
-// makes this template participate in overload resolution only for structs,
-// so it never competes with xtrans's native scalar/half/bfloat16 overloads.
-// All struct DTYPEs reaching this macro (welford_*, argidx_*) are composed of
-// 32-bit-or-larger fields with natural alignment, so their size is always a
-// multiple of 4 bytes; the struct is shuffled one 4-byte word at a time.
-// (Templates cannot have C++-linkage-only features under `extern "C"`, so
-// this block is taken out of the surrounding extern "C" { ... } and put
-// back afterwards.)
-template <typename T,
-         typename = typename houyi_std::enable_if<
-             houyi_std::is_class<T>::value>::type>
-__device__ inline T __shfl_down_sync(unsigned mask,
-                                     const T& var,
-                                     unsigned delta,
-                                     int width = 32) {
-  static_assert(sizeof(T) % sizeof(unsigned) == 0,
-                "struct __shfl_down_sync requires a 4-byte-aligned size");
-  T result;
-  unsigned* dst = reinterpret_cast<unsigned*>(&result);
-  const unsigned* src = reinterpret_cast<const unsigned*>(&var);
-  for (int i = 0; i < sizeof(T) / sizeof(unsigned); ++i) {
-    dst[i] = __shfl_down_sync(mask, src[i], delta, width);
+// xtrans's own <xtdk_warp_sync_functions.h> declares an UNCONSTRAINED
+// template <typename MaskT, typename T> __shfl_down_sync(MaskT, T, unsigned,
+// int) that accepts ANY type T (its body just forwards to plain
+// __shfl_down(var, ...), which only has scalar/half/bfloat16 overloads).
+// Because it is unconstrained, it is just as good a match as any SFINAE-
+// constrained generic template we could add here for struct types (neither
+// is "more specialized" than the other from the compiler's point of view,
+// since they differ only in an unused trailing template parameter), so a
+// generic is_class<T> SFINAE overload does NOT reliably win overload
+// resolution against it -- xtrans's template gets selected instead, then
+// hard-fails instantiating __shfl_down(var, ...) for a struct type. The
+// only mechanism that unconditionally wins here is EXPLICIT SPECIALIZATION
+// of xtrans's own template for each concrete struct type CINN_WARP_SHUFFLE_
+// INTERNAL_IMPL/WELFORD_SHFL_SYNC_MACRO/ARGIDX_SHFL_SYNC_MACRO instantiate
+// it with (welford_fp32/fp64, argidx_*): an explicit specialization is
+// always preferred over the primary template, regardless of any competing
+// overload's constraints. (Templates/specializations cannot have C++-
+// linkage-only features under `extern "C"`, so this block is taken out of
+// the surrounding extern "C" { ... } and put back afterwards.)
+#define CINN_XPU_CADA_STRUCT_SHFL_SPECIALIZE(TYPENAME)                     \
+  template <>                                                              \
+  __device__ inline TYPENAME __shfl_down_sync<unsigned, TYPENAME>(         \
+      unsigned mask, TYPENAME var, unsigned int delta, int width) {        \
+    static_assert(sizeof(TYPENAME) % sizeof(unsigned) == 0,                \
+                  "struct __shfl_down_sync requires a 4-byte-aligned "     \
+                  "size");                                                 \
+    TYPENAME result;                                                      \
+    unsigned* dst = reinterpret_cast<unsigned*>(&result);                  \
+    const unsigned* src = reinterpret_cast<const unsigned*>(&var);         \
+    for (int i = 0; i < sizeof(TYPENAME) / sizeof(unsigned); ++i) {        \
+      dst[i] = __shfl_down_sync(mask, src[i], delta, width);               \
+    }                                                                      \
+    return result;                                                        \
+  }                                                                        \
+  template <>                                                              \
+  __device__ inline TYPENAME __shfl_xor_sync<unsigned, TYPENAME>(          \
+      unsigned mask, TYPENAME var, int laneMask, int width) {              \
+    static_assert(sizeof(TYPENAME) % sizeof(unsigned) == 0,                \
+                  "struct __shfl_xor_sync requires a 4-byte-aligned "      \
+                  "size");                                                 \
+    TYPENAME result;                                                      \
+    unsigned* dst = reinterpret_cast<unsigned*>(&result);                  \
+    const unsigned* src = reinterpret_cast<const unsigned*>(&var);         \
+    for (int i = 0; i < sizeof(TYPENAME) / sizeof(unsigned); ++i) {        \
+      dst[i] = __shfl_xor_sync(mask, src[i], laneMask, width);             \
+    }                                                                      \
+    return result;                                                        \
   }
-  return result;
-}
 
-template <typename T,
-         typename = typename houyi_std::enable_if<
-             houyi_std::is_class<T>::value>::type>
-__device__ inline T __shfl_xor_sync(unsigned mask,
-                                    const T& var,
-                                    int laneMask,
-                                    int width = 32) {
-  static_assert(sizeof(T) % sizeof(unsigned) == 0,
-                "struct __shfl_xor_sync requires a 4-byte-aligned size");
-  T result;
-  unsigned* dst = reinterpret_cast<unsigned*>(&result);
-  const unsigned* src = reinterpret_cast<const unsigned*>(&var);
-  for (int i = 0; i < sizeof(T) / sizeof(unsigned); ++i) {
-    dst[i] = __shfl_xor_sync(mask, src[i], laneMask, width);
-  }
-  return result;
+CINN_XPU_CADA_STRUCT_SHFL_SPECIALIZE(welford_fp32)
+CINN_XPU_CADA_STRUCT_SHFL_SPECIALIZE(welford_fp64)
+// float16/bfloat16's own concrete __shfl_down_sync/__shfl_xor_sync overloads
+// are skipped for WITH_XPU_CADA (see float16_xpu_cada.h/bfloat16.h) for the
+// same reason -- xtrans's unconstrained template would win over them too.
+// Provide the same functionality via explicit specialization instead,
+// converting to the underlying __half/__nv_bfloat16 and back like the
+// skipped overloads did.
+#if defined(CINN_CUDA_FP16)
+template <>
+__device__ inline cinn::common::float16
+__shfl_down_sync<unsigned, cinn::common::float16>(unsigned mask,
+                                                   cinn::common::float16 var,
+                                                   unsigned int delta,
+                                                   int width) {
+  return cinn::common::float16(
+      __shfl_down_sync(mask, var.to_half(), delta, width));
 }
+template <>
+__device__ inline cinn::common::float16
+__shfl_xor_sync<unsigned, cinn::common::float16>(unsigned mask,
+                                                  cinn::common::float16 var,
+                                                  int laneMask,
+                                                  int width) {
+  return cinn::common::float16(
+      __shfl_xor_sync(mask, var.to_half(), laneMask, width));
+}
+#endif  // CINN_CUDA_FP16
+#if defined(CINN_CUDA_BF16)
+template <>
+__device__ inline cinn::common::bfloat16
+__shfl_down_sync<unsigned, cinn::common::bfloat16>(unsigned mask,
+                                                    cinn::common::bfloat16 var,
+                                                    unsigned int delta,
+                                                    int width) {
+  return cinn::common::bfloat16(
+      __shfl_down_sync(mask, var.to_nv_bfloat16(), delta, width));
+}
+template <>
+__device__ inline cinn::common::bfloat16
+__shfl_xor_sync<unsigned, cinn::common::bfloat16>(unsigned mask,
+                                                   cinn::common::bfloat16 var,
+                                                   int laneMask,
+                                                   int width) {
+  return cinn::common::bfloat16(
+      __shfl_xor_sync(mask, var.to_nv_bfloat16(), laneMask, width));
+}
+#endif  // CINN_CUDA_BF16
+// argidx_fp16_* is only declared above when CINN_CUDA_FP16 is defined (see
+// EXPAND_ARGIDX_DTYPE_MACRO(float16, ...) earlier in this file).
+#if defined(CINN_CUDA_FP16)
+CINN_XPU_CADA_STRUCT_SHFL_SPECIALIZE(argidx_fp16_i32)
+CINN_XPU_CADA_STRUCT_SHFL_SPECIALIZE(argidx_fp16_i64)
+#endif  // CINN_CUDA_FP16
+CINN_XPU_CADA_STRUCT_SHFL_SPECIALIZE(argidx_fp32_i32)
+CINN_XPU_CADA_STRUCT_SHFL_SPECIALIZE(argidx_fp32_i64)
+CINN_XPU_CADA_STRUCT_SHFL_SPECIALIZE(argidx_fp64_i32)
+CINN_XPU_CADA_STRUCT_SHFL_SPECIALIZE(argidx_fp64_i64)
+CINN_XPU_CADA_STRUCT_SHFL_SPECIALIZE(argidx_i16_i32)
+CINN_XPU_CADA_STRUCT_SHFL_SPECIALIZE(argidx_i16_i64)
+CINN_XPU_CADA_STRUCT_SHFL_SPECIALIZE(argidx_i32_i32)
+CINN_XPU_CADA_STRUCT_SHFL_SPECIALIZE(argidx_i32_i64)
+CINN_XPU_CADA_STRUCT_SHFL_SPECIALIZE(argidx_i64_i32)
+CINN_XPU_CADA_STRUCT_SHFL_SPECIALIZE(argidx_i64_i64)
+CINN_XPU_CADA_STRUCT_SHFL_SPECIALIZE(argidx_u8_i32)
+CINN_XPU_CADA_STRUCT_SHFL_SPECIALIZE(argidx_u8_i64)
+
+#undef CINN_XPU_CADA_STRUCT_SHFL_SPECIALIZE
+// argidx_* structs also hit the __promote2 hard-error described above for
+// float16/bfloat16/welford_* whenever max()/min() is called on them:
+// xtrans's cmath max<T1,T2> template is unconditionally a candidate
+// alongside ARGIDX_COMBINE_MACRO's own non-template max/min, and
+// instantiating __promote2<argidx_*, argidx_*> hard-errors on decltype(void()
+// + void()) before overload resolution can even prefer the non-template
+// overload. Specialize __promote2 for every argidx_* type to bypass that.
+#define CINN_XPU_CADA_ARGIDX_PROMOTE2_SPECIALIZE(TYPENAME) \
+  namespace __houyi {                                      \
+  template <>                                               \
+  struct __promote2<TYPENAME, TYPENAME> {                   \
+    typedef TYPENAME type;                                  \
+  };                                                         \
+  }  // namespace __houyi
+
+CINN_XPU_CADA_ARGIDX_PROMOTE2_SPECIALIZE(welford_fp32)
+CINN_XPU_CADA_ARGIDX_PROMOTE2_SPECIALIZE(welford_fp64)
+#if defined(CINN_CUDA_FP16)
+CINN_XPU_CADA_ARGIDX_PROMOTE2_SPECIALIZE(argidx_fp16_i32)
+CINN_XPU_CADA_ARGIDX_PROMOTE2_SPECIALIZE(argidx_fp16_i64)
+#endif  // CINN_CUDA_FP16
+CINN_XPU_CADA_ARGIDX_PROMOTE2_SPECIALIZE(argidx_fp32_i32)
+CINN_XPU_CADA_ARGIDX_PROMOTE2_SPECIALIZE(argidx_fp32_i64)
+CINN_XPU_CADA_ARGIDX_PROMOTE2_SPECIALIZE(argidx_fp64_i32)
+CINN_XPU_CADA_ARGIDX_PROMOTE2_SPECIALIZE(argidx_fp64_i64)
+CINN_XPU_CADA_ARGIDX_PROMOTE2_SPECIALIZE(argidx_i16_i32)
+CINN_XPU_CADA_ARGIDX_PROMOTE2_SPECIALIZE(argidx_i16_i64)
+CINN_XPU_CADA_ARGIDX_PROMOTE2_SPECIALIZE(argidx_i32_i32)
+CINN_XPU_CADA_ARGIDX_PROMOTE2_SPECIALIZE(argidx_i32_i64)
+CINN_XPU_CADA_ARGIDX_PROMOTE2_SPECIALIZE(argidx_i64_i32)
+CINN_XPU_CADA_ARGIDX_PROMOTE2_SPECIALIZE(argidx_i64_i64)
+CINN_XPU_CADA_ARGIDX_PROMOTE2_SPECIALIZE(argidx_u8_i32)
+CINN_XPU_CADA_ARGIDX_PROMOTE2_SPECIALIZE(argidx_u8_i64)
+
+#undef CINN_XPU_CADA_ARGIDX_PROMOTE2_SPECIALIZE
 extern "C" {
 #endif  // PADDLE_WITH_XPU_CADA
 
@@ -1011,28 +1100,12 @@ extern "C" {
     return tmp_val;                                                           \
   }
 
-// TODO(zhangxiao): only float32 is validated on WITH_XPU_CADA right now
-// (simple_add_cinn.py is plain elementwise add on fp32); int32/int64/fp64/
-// bool/argidx/bf16/fp16 reduce-shuffle internals are temporarily disabled
-// here since some of them hit xtrans overload-resolution ambiguities
-// (see comments above) and the rest are simply unverified yet. Re-enable
-// each as it's confirmed working.
-#ifdef PADDLE_WITH_XPU_CADA
-EXPAND_REDUCE_FP32_MACRO(CINN_WARP_SHUFFLE_INTERNAL_IMPL)
-#else
 EXPAND_REDUCE_INT32_MARCO(CINN_WARP_SHUFFLE_INTERNAL_IMPL)
 EXPAND_REDUCE_INT64_MARCO(CINN_WARP_SHUFFLE_INTERNAL_IMPL)
 EXPAND_REDUCE_FP32_MACRO(CINN_WARP_SHUFFLE_INTERNAL_IMPL)
 EXPAND_REDUCE_FP64_MACRO(CINN_WARP_SHUFFLE_INTERNAL_IMPL)
 EXPAND_REDUCE_BOOL_MACRO(CINN_WARP_SHUFFLE_INTERNAL_IMPL)
-#endif  // PADDLE_WITH_XPU_CADA
-// TODO(zhangxiao): argidx_* (struct DTYPE) reduce internals hit the same
-// xtrans overload-resolution ambiguity beyond what the SFINAE fix above
-// covers. Temporarily disabled for WITH_XPU_CADA since the current
-// validation case (simple_add_cinn.py) never uses argmax/argmin.
-#ifndef PADDLE_WITH_XPU_CADA
 EXPAND_ARGIDX_OP_ALL_DTYPE_ITYPE_MACRO(CINN_WARP_SHUFFLE_INTERNAL_IMPL)
-#endif  // PADDLE_WITH_XPU_CADA
 
 #ifdef CINN_CUDA_BF16
 EXPAND_REDUCE_BF16_MACRO(CINN_WARP_SHUFFLE_INTERNAL_IMPL)
@@ -1069,18 +1142,12 @@ EXPAND_REDUCE_FP16_MACRO(CINN_WARP_SHUFFLE_INTERNAL_IMPL)
     CINN_BLOCK_REDUCE_IMPL(DTYPE, cinn_warp_shuffle_##REDUCE_TYPE##_internal); \
   }
 
-#ifdef PADDLE_WITH_XPU_CADA
-EXPAND_REDUCE_FP32_MACRO(CINN_BLOCK_REDUCE_MACRO)
-#else
 EXPAND_REDUCE_INT32_MARCO(CINN_BLOCK_REDUCE_MACRO)
 EXPAND_REDUCE_INT64_MARCO(CINN_BLOCK_REDUCE_MACRO)
 EXPAND_REDUCE_FP32_MACRO(CINN_BLOCK_REDUCE_MACRO)
 EXPAND_REDUCE_FP64_MACRO(CINN_BLOCK_REDUCE_MACRO)
 EXPAND_REDUCE_BOOL_MACRO(CINN_BLOCK_REDUCE_MACRO)
-#endif  // PADDLE_WITH_XPU_CADA
-#ifndef PADDLE_WITH_XPU_CADA
 EXPAND_ARGIDX_OP_ALL_DTYPE_ITYPE_MACRO(CINN_BLOCK_REDUCE_MACRO)
-#endif  // PADDLE_WITH_XPU_CADA
 
 #ifdef CINN_CUDA_BF16
 EXPAND_REDUCE_BF16_MACRO(CINN_BLOCK_REDUCE_MACRO)
@@ -1112,18 +1179,12 @@ EXPAND_REDUCE_FP16_MACRO(CINN_BLOCK_REDUCE_MACRO)
     CINN_DISCRETE_REDUCE_IMPL(REDUCE_TYPE, value);                    \
   }
 
-#ifdef PADDLE_WITH_XPU_CADA
-EXPAND_REDUCE_FP32_MACRO(CINN_DISCRETE_REDUCE_MACRO)
-#else
 EXPAND_REDUCE_INT32_MARCO(CINN_DISCRETE_REDUCE_MACRO)
 EXPAND_REDUCE_INT64_MARCO(CINN_DISCRETE_REDUCE_MACRO)
 EXPAND_REDUCE_FP32_MACRO(CINN_DISCRETE_REDUCE_MACRO)
 EXPAND_REDUCE_FP64_MACRO(CINN_DISCRETE_REDUCE_MACRO)
 EXPAND_REDUCE_BOOL_MACRO(CINN_DISCRETE_REDUCE_MACRO)
-#endif  // PADDLE_WITH_XPU_CADA
-#ifndef PADDLE_WITH_XPU_CADA
 EXPAND_ARGIDX_OP_ALL_DTYPE_ITYPE_MACRO(CINN_DISCRETE_REDUCE_MACRO)
-#endif  // PADDLE_WITH_XPU_CADA
 
 #ifdef CINN_CUDA_BF16
 EXPAND_REDUCE_BF16_MACRO(CINN_DISCRETE_REDUCE_MACRO)
@@ -1151,18 +1212,12 @@ EXPAND_REDUCE_FP16_MACRO(CINN_DISCRETE_REDUCE_MACRO)
     CINN_GRID_REDUCE_IMPL(REDUCE_TYPE, (DTYPE)(INITIAL_VALUE), DTYPE); \
   }
 
-#ifdef PADDLE_WITH_XPU_CADA
-EXPAND_REDUCE_FP32_MACRO(CINN_GRID_REDUCE_MACRO)
-#else
 EXPAND_REDUCE_INT32_MARCO(CINN_GRID_REDUCE_MACRO)
 EXPAND_REDUCE_INT64_MARCO(CINN_GRID_REDUCE_MACRO)
 EXPAND_REDUCE_FP32_MACRO(CINN_GRID_REDUCE_MACRO)
 EXPAND_REDUCE_FP64_MACRO(CINN_GRID_REDUCE_MACRO)
 EXPAND_REDUCE_BOOL_MACRO(CINN_GRID_REDUCE_MACRO)
-#endif  // PADDLE_WITH_XPU_CADA
-#ifndef PADDLE_WITH_XPU_CADA
 EXPAND_ARGIDX_OP_ALL_DTYPE_ITYPE_MACRO(CINN_GRID_REDUCE_MACRO)
-#endif  // PADDLE_WITH_XPU_CADA
 
 #ifdef CINN_CUDA_BF16
 EXPAND_REDUCE_BF16_MACRO(CINN_GRID_REDUCE_MACRO)

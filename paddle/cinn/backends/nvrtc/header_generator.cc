@@ -110,20 +110,6 @@ JitSafeHeaderGenerator::JitSafeHeaderGenerator() {
   }
 #endif  // PADDLE_WITH_XPU_CADA
 #ifdef CINN_WITH_CUDA
-#ifdef PADDLE_WITH_XPU_CADA
-  // TODO(zhangxiao): float16/bfloat16/float8e4m3 hit xtrans overload-
-  // resolution ambiguities not yet fully fixed. CodeGenCudaDev's
-  // WITH_XPU_CADA source_header_ no longer #includes float16_h/bfloat16_h,
-  // and cinn_cuda_runtime_source.cuh no longer needs them either
-  // (CINN_CUDA_FP16/CINN_CUDA_BF16 are suppressed), so skip injecting these
-  // headers into NVRTC entirely; re-add once the ambiguities are fixed.
-  include_names_.emplace_back("float8e4m3_h");
-  headers_.emplace_back(cinn_float8e4m3_header.data());
-  include_names_.emplace_back("cinn_with_cuda_h");
-  headers_.emplace_back(cinn_with_cuda_header.data());
-  include_names_.emplace_back("cinn_cuda_runtime_source_h");
-  headers_.emplace_back(cinn_cuda_runtime_source_header.data());
-#else
   include_names_.emplace_back("float16_h");
   headers_.emplace_back(cinn_float16_header.data());
   include_names_.emplace_back("bfloat16_h");
@@ -134,7 +120,6 @@ JitSafeHeaderGenerator::JitSafeHeaderGenerator() {
   headers_.emplace_back(cinn_with_cuda_header.data());
   include_names_.emplace_back("cinn_cuda_runtime_source_h");
   headers_.emplace_back(cinn_cuda_runtime_source_header.data());
-#endif  // PADDLE_WITH_XPU_CADA
 #endif
 }
 

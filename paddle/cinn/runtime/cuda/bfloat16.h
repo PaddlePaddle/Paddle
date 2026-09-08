@@ -27,10 +27,7 @@
 #ifdef CINN_WITH_CUDA
 #include <cuda.h>
 
-// TODO(zhangxiao): see float16_xpu_cada.h -- bf16 hits the same xtrans
-// overload-resolution ambiguity, temporarily disabled for WITH_XPU_CADA.
-#if (defined(__CUDACC__) || defined(__CUDACC_RTC__)) && CUDA_VERSION >= 11000 && \
-    !defined(PADDLE_WITH_XPU_CADA)
+#if (defined(__CUDACC__) || defined(__CUDACC_RTC__)) && CUDA_VERSION >= 11000
 #define CINN_CUDA_BF16
 #include <cuda_bf16.h>
 
@@ -162,7 +159,12 @@ struct CINN_ALIGN(2) bfloat16 {
   }
 
   // Conversion operators
-  __host__ __device__ inline operator float() const {
+  // Note: explicit, so that overloads templated on both float and double
+  // (e.g. xtrans/clang's cmath max/min promotion machinery) don't see an
+  // ambiguous implicit path from bfloat16 to two different floating types.
+  // Real CUDA/nvcc's __nv_bfloat16 only implicitly converts to float, so
+  // nvcc never hits this; xtrans/clang's stricter overload resolution does.
+  __host__ __device__ inline explicit operator float() const {
 #ifdef CINN_CUDA_BF16
     return __bfloat162float(*reinterpret_cast<const __nv_bfloat16*>(&x));
 #else
@@ -216,7 +218,7 @@ struct CINN_ALIGN(2) bfloat16 {
     return static_cast<uint64_t>(static_cast<float>(*this));
   }
 
-  __host__ __device__ inline operator double() const {
+  __host__ __device__ inline explicit operator double() const {
     return static_cast<double>(static_cast<float>(*this));
   }
 #endif  // __cplusplus
@@ -438,6 +440,46 @@ __host__ __device__ inline cinn::common::bfloat16 max(
 __host__ __device__ inline cinn::common::bfloat16 min(
     const cinn::common::bfloat16& a, const cinn::common::bfloat16& b) {
   return a < b ? a : b;
+}
+
+// See float16_xpu_cada.h for the matching fix and rationale: xtrans/clang's
+// __clang_houyi_cmath.h __promote2<A1,A2> hard-errors on decltype(void() +
+// void()) when both operands are a non-numeric class type. This explicit
+// specialization bypasses that computation so max()/min() above resolve.
+namespace __houyi {
+template <>
+struct __promote2<cinn::common::bfloat16, cinn::common::bfloat16> {
+  typedef cinn::common::bfloat16 type;
+};
+}  // namespace __houyi
+
+// xtrans/clang does not declare plain (non-_sync) __shfl_down/__shfl_up/
+// __shfl_xor overloads for cinn::common::bfloat16, only for scalar/__half/
+// __xpu_bfloat16 types, so they are added here.
+__device__ inline cinn::common::bfloat16 __shfl(cinn::common::bfloat16 var,
+                                                 int srcLane,
+                                                 int width = warpSize) {
+  return cinn::common::bfloat16(
+      __shfl(static_cast<float>(var), srcLane, width));
+}
+
+__device__ inline cinn::common::bfloat16 __shfl_up(cinn::common::bfloat16 var,
+                                                    unsigned int delta,
+                                                    int width = warpSize) {
+  return cinn::common::bfloat16(
+      __shfl_up(static_cast<float>(var), delta, width));
+}
+
+__device__ inline cinn::common::bfloat16 __shfl_down(
+    cinn::common::bfloat16 var, unsigned int delta, int width = warpSize) {
+  return cinn::common::bfloat16(
+      __shfl_down(static_cast<float>(var), delta, width));
+}
+
+__device__ inline cinn::common::bfloat16 __shfl_xor(
+    cinn::common::bfloat16 var, int laneMask, int width = warpSize) {
+  return cinn::common::bfloat16(
+      __shfl_xor(static_cast<float>(var), laneMask, width));
 }
 #endif  // __cplusplus && CINN_CUDA_FP16
 
