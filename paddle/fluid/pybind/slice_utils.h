@@ -1436,6 +1436,10 @@ static void ApplyGetitem(const int index_size,
             unsqueeze_ad_func((*transed_index)[0], {-1});
       }
 
+      if (HasNegativeXPUStride(*transed_tensor)) {
+        *transed_tensor = transed_tensor->contiguous();
+      }
+
       const phi::distributed::ProcessMesh* mesh = nullptr;
       if (InputsContainDistTensor(
               &mesh, *transed_tensor, transed_advanced_index_tensor)) {
