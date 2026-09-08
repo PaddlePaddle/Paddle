@@ -64,9 +64,17 @@ void ContiguousKernel(const Context& dev_ctx,
                                  0);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "as_strided");
     if (!flip_axes.empty()) {
-      r = xpu::flip<XPUType>(
-          dev_ctx.x_context(), output_data, output_data, input_dims, flip_axes);
+      xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
+      auto* flipped_data = RAII_GUARD.alloc_l3_or_gm<XPUType>(input.numel());
+      r = xpu::flip<XPUType>(dev_ctx.x_context(),
+                             output_data,
+                             flipped_data,
+                             input_dims,
+                             flip_axes);
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "flip");
+      r = xpu::copy<XPUType>(
+          dev_ctx.x_context(), flipped_data, output_data, input.numel());
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "copy");
     }
   }
 }
@@ -129,12 +137,20 @@ ComplexContiguousKernelImpl(const XPUContext& dev_ctx,
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "as_strided");
   }
   if (!flip_axes.empty()) {
+    xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
+    auto* flipped_bytes =
+        RAII_GUARD.alloc_l3_or_gm<int8_t>(input.numel() * bytes_per_elem);
     r = xpu::flip<int8_t>(dev_ctx.x_context(),
                           output_bytes,
-                          output_bytes,
+                          flipped_bytes,
                           bytes_shape,
                           flip_axes);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "flip");
+    r = xpu::copy<int8_t>(dev_ctx.x_context(),
+                          flipped_bytes,
+                          output_bytes,
+                          input.numel() * bytes_per_elem);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "copy");
   }
 }
 template <>
