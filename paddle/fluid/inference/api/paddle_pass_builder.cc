@@ -635,8 +635,12 @@ const std::vector<std::string> kPirGpuPasses{
     // Operator fusion pass
     "silu_fuse_pass",
     "conv2d_bn_fuse_pass",
+#ifdef PADDLE_WITH_CUDA
+    // conv2d_add(_act)_fuse_pass lower to the fused_conv2d_add_act op, which
+    // only has a cuDNN GPUDNN kernel. Skip on ROCm/HIP.
     "conv2d_add_act_fuse_pass",
     "conv2d_add_fuse_pass",
+#endif
     "embedding_eltwise_layernorm_fuse_pass",
     "fused_rotary_position_embedding_pass",
     "fused_flash_attn_pass",
