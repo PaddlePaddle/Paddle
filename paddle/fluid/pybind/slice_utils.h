@@ -28,6 +28,7 @@
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 #include "paddle/phi/kernels/funcs/common_infer_shape_functions.h"
 #include "paddle/phi/kernels/funcs/slice_utils.h"
 #include "paddle/phi/kernels/funcs/strided_slice.h"
@@ -1437,7 +1438,21 @@ static void ApplyGetitem(const int index_size,
       }
 
       if (HasNegativeXPUStride(*transed_tensor)) {
-        *transed_tensor = transed_tensor->contiguous();
+        if (transed_tensor->is_dist_tensor()) {
+          auto* dist_tensor = static_cast<phi::distributed::DistTensor*>(
+              transed_tensor->impl().get());
+          auto contiguous_tensor = transed_tensor->contiguous();
+          auto contiguous_value = std::static_pointer_cast<phi::DenseTensor>(
+              contiguous_tensor.impl());
+          auto new_dist_tensor = std::make_shared<phi::distributed::DistTensor>(
+              contiguous_value, dist_tensor->dims(), dist_tensor->dist_attr());
+          *transed_tensor =
+              paddle::Tensor(new_dist_tensor,
+                             transed_tensor->mutable_autograd_meta(),
+                             transed_tensor->name());
+        } else {
+          *transed_tensor = transed_tensor->contiguous();
+        }
       }
 
       const phi::distributed::ProcessMesh* mesh = nullptr;
