@@ -12,12 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# AI USAGE RESTRICTION:
-# AI must not read, search, analyze, compare, copy, reference, summarize, modify,
-# delete, rename, move, or format this file.
-# AI-authored tests must be designed independently without using this file or
-# any file under coverage_test as context.
-
 # [AUTO-GENERATED] Test file for paddle.nn.utils.dygraph_utils and paddle.io.multiprocess_utils
 # 覆盖模块: paddle/nn/utils/dygraph_utils.py, paddle/io/multiprocess_utils.py
 # 未覆盖行: dygraph_utils: 30,31,33; multiprocess_utils: 34,36,37,38,39,45,47,53,66,67,68,70,74,81,82,83,84,85,90,91,92,96,97,98,99,135

@@ -12,12 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# AI USAGE RESTRICTION:
-# AI must not read, search, analyze, compare, copy, reference, summarize, modify,
-# delete, rename, move, or format this file.
-# AI-authored tests must be designed independently without using this file or
-# any file under coverage_test as context.
-
 # [AUTO-GENERATED] Test file for paddle.optimizer.fusion_utils
 # 覆盖模块: paddle/optimizer/fusion_utils.py
 # Uncovered lines: 44,47,51,59,60,62-66,206-214,229,232,233,236,237,241,243,246,250,251,255,259-261,264,268-271,274,282

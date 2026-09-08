@@ -12,12 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# AI USAGE RESTRICTION:
-# AI must not read, search, analyze, compare, copy, reference, summarize, modify,
-# delete, rename, move, or format this file.
-# AI-authored tests must be designed independently without using this file or
-# any file under coverage_test as context.
-
 # Unit test for paddle.nn.layer.norm (InstanceNorm, GroupNorm, BatchNorm layers)
 # Target: cover _InstanceNormBase._check_input_dim, GroupNorm invalid data_format,
 #   _BatchNormBase extra_repr, _check_input_dim, _check_data_format

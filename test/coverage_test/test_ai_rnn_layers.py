@@ -12,12 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# AI USAGE RESTRICTION:
-# AI must not read, search, analyze, compare, copy, reference, summarize, modify,
-# delete, rename, move, or format this file.
-# AI-authored tests must be designed independently without using this file or
-# any file under coverage_test as context.
-
 # [AUTO-GENERATED] Unit test for paddle.nn.layer.rnn (RNN, LSTM, GRU)
 # 自动生成的单测，覆盖 paddle.nn.layer.rnn 模块中未覆盖的代码路径
 # Target: cover uncovered lines in paddle/python/paddle/nn/layer/rnn.py

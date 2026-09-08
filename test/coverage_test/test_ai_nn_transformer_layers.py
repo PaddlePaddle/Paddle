@@ -12,12 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# AI USAGE RESTRICTION:
-# AI must not read, search, analyze, compare, copy, reference, summarize, modify,
-# delete, rename, move, or format this file.
-# AI-authored tests must be designed independently without using this file or
-# any file under coverage_test as context.
-
 # [AUTO-GENERATED] Test file for paddle.nn.layer.transformer
 # 覆盖模块: paddle/nn/layer/transformer.py
 # 未覆盖行: 73,76,77,78,79,80,82,84,87,88,89,91,98,126,293,299,300,301,399,400,401,402,403,404,405,406,407,410,530,562

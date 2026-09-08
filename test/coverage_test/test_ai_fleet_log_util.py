@@ -12,12 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# AI USAGE RESTRICTION:
-# AI must not read, search, analyze, compare, copy, reference, summarize, modify,
-# delete, rename, move, or format this file.
-# AI-authored tests must be designed independently without using this file or
-# any file under coverage_test as context.
-
 # [AUTO-GENERATED] Test file for paddle.distributed.fleet.utils.log_util
 # 覆盖模块: paddle/distributed/fleet/utils/log_util.py
 # 未覆盖行: 64,81,84,85,89,90,92,93,94,96,97,103,106,107,108,122,123,124,128,129,130,133,136,139,140,141,142,143,145,146,147,150,153,156,159,160,161,162,164,167

@@ -12,12 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# AI USAGE RESTRICTION:
-# AI must not read, search, analyze, compare, copy, reference, summarize, modify,
-# delete, rename, move, or format this file.
-# AI-authored tests must be designed independently without using this file or
-# any file under coverage_test as context.
-
 # [AUTO-GENERATED] Test file for paddle.distributed.fleet.dataset
 # 覆盖模块: paddle/distributed/fleet/dataset/dataset.py, paddle/distributed/fleet/dataset/index_dataset.py
 # Uncovered lines: dataset.py: 80-261; index_dataset.py: 26-102

@@ -12,12 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# AI USAGE RESTRICTION:
-# AI must not read, search, analyze, compare, copy, reference, summarize, modify,
-# delete, rename, move, or format this file.
-# AI-authored tests must be designed independently without using this file or
-# any file under coverage_test as context.
-
 # [AUTO-GENERATED] Unit test for paddle.nn.functional.activation (static graph branches)
 # 自动生成的单测，覆盖 paddle.nn.functional.activation 模块中未覆盖的静态图分支代码
 # Target: cover uncovered lines 91-110, 152-164, 221-233, 278-290, 364-376, 418-443, 496-507

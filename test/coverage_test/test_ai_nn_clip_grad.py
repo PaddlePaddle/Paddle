@@ -12,12 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# AI USAGE RESTRICTION:
-# AI must not read, search, analyze, compare, copy, reference, summarize, modify,
-# delete, rename, move, or format this file.
-# AI-authored tests must be designed independently without using this file or
-# any file under coverage_test as context.
-
 # [AUTO-GENERATED] Test file for paddle.nn.clip
 # 覆盖模块: paddle/nn/clip.py
 # 未覆盖行: 88,89,92,94,95,99,103,110,143,144,145,151,206,207,208,211,212,213,219,229,230,231,232,242,246,273,274,277,278,280,281,282,283,288,291,334,335,336,338,339

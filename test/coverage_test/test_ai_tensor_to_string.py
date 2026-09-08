@@ -12,12 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# AI USAGE RESTRICTION:
-# AI must not read, search, analyze, compare, copy, reference, summarize, modify,
-# delete, rename, move, or format this file.
-# AI-authored tests must be designed independently without using this file or
-# any file under coverage_test as context.
-
 # [AUTO-GENERATED] Unit test for paddle.tensor.to_string
 # 自动生成的单测，覆盖 paddle.tensor.to_string 模块中未覆盖的代码路径
 # Target: cover uncovered lines 159-165, 256-274, 301 in paddle/python/paddle/tensor/to_string.py

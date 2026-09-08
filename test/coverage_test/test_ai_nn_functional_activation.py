@@ -12,12 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# AI USAGE RESTRICTION:
-# AI must not read, search, analyze, compare, copy, reference, summarize, modify,
-# delete, rename, move, or format this file.
-# AI-authored tests must be designed independently without using this file or
-# any file under coverage_test as context.
-
 # [AUTO-GENERATED] Test file for paddle.nn.functional.activation
 # 覆盖模块: paddle/nn/functional/activation.py
 # 未覆盖行: 98,101,102,103,109,152,155,156,157,163,221,224,225,226,232,277,281,282,283,289,363,367,368,369,375,417,431,432,433,434

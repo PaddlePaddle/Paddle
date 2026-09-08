@@ -12,12 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# AI USAGE RESTRICTION:
-# AI must not read, search, analyze, compare, copy, reference, summarize, modify,
-# delete, rename, move, or format this file.
-# AI-authored tests must be designed independently without using this file or
-# any file under coverage_test as context.
-
 # [AUTO-GENERATED] Test file for paddle.distributed.fleet.layers.mpu
 # 覆盖模块: paddle/distributed/fleet/layers/mpu/mp_layers.py, paddle/distributed/fleet/layers/mpu/mp_ops.py, paddle/distributed/fleet/layers/mpu/random.py
 # 未覆盖行: mp_layers: 38,42,45,47,214-218,227,228,230,234-236,238,241,242,246,248,249,254,255,257-259,266-268,274; mp_ops: 47,67-71,75,92,98,138,149-151,153,160,172,190,249,258,274,362-366,372,378,381,384,387; random: 50,53,75,86,198,199,201,202,205,206,208,209,213,217,222,223,236,238,239,243,244,248,249,251,252,256,266

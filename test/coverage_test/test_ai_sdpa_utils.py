@@ -12,12 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# AI USAGE RESTRICTION:
-# AI must not read, search, analyze, compare, copy, reference, summarize, modify,
-# delete, rename, move, or format this file.
-# AI-authored tests must be designed independently without using this file or
-# any file under coverage_test as context.
-
 # Unit test for paddle.nn.functional.sdpa utility functions
 # Target: cover SDPParams, check_head_dim_size_flash, check_flash_causal_non_square_seqlens,
 #   check_dtypes_low_precision_fa, check_dtypes_low_precision_mem_efficient_attn

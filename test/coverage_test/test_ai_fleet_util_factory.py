@@ -12,12 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# AI USAGE RESTRICTION:
-# AI must not read, search, analyze, compare, copy, reference, summarize, modify,
-# delete, rename, move, or format this file.
-# AI-authored tests must be designed independently without using this file or
-# any file under coverage_test as context.
-
 # [AUTO-GENERATED] Test file for paddle.distributed.fleet.base.util_factory
 # 覆盖模块: paddle/distributed/fleet/base/util_factory.py
 # Uncovered lines: 56,57,58,59,60,61,76,79,133,134,135,179,232,235,238,241-246,248-250,252-256,258,299,300,302,303,305,306,308-312

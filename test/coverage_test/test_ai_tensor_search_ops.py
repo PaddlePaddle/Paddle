@@ -12,12 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# AI USAGE RESTRICTION:
-# AI must not read, search, analyze, compare, copy, reference, summarize, modify,
-# delete, rename, move, or format this file.
-# AI-authored tests must be designed independently without using this file or
-# any file under coverage_test as context.
-
 # [AUTO-GENERATED] Test file for paddle.tensor.search
 # 覆盖模块: paddle/tensor/search.py
 # 未覆盖行: 165,181,182,185,188,194,283,284,300,307,309,315,405,421,423,427,588,589,592,595,601,727,728,729,730,731,733,734,736,742

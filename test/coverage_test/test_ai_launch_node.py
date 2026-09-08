@@ -12,12 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# AI USAGE RESTRICTION:
-# AI must not read, search, analyze, compare, copy, reference, summarize, modify,
-# delete, rename, move, or format this file.
-# AI-authored tests must be designed independently without using this file or
-# any file under coverage_test as context.
-
 # [AUTO-GENERATED] Test file for paddle.distributed.launch.context.node
 # 覆盖模块: paddle/distributed/launch/context/node.py
 # Uncovered lines: 43,44,51,52,55,59,69,70,75,84,86,90,93,94,95,96,97,99

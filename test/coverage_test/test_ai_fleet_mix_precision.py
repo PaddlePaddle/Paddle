@@ -12,12 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# AI USAGE RESTRICTION:
-# AI must not read, search, analyze, compare, copy, reference, summarize, modify,
-# delete, rename, move, or format this file.
-# AI-authored tests must be designed independently without using this file or
-# any file under coverage_test as context.
-
 # [AUTO-GENERATED] Test file for paddle.distributed.fleet.utils.mix_precision_utils
 # 覆盖模块: paddle/distributed/fleet/utils/mix_precision_utils.py
 # Uncovered lines: 84,92,119,122,129,133,138,148-157,162,166,171,174,175,178,192-195,202-205,212-215,218-222

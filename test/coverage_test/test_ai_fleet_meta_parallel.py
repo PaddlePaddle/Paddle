@@ -12,12 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# AI USAGE RESTRICTION:
-# AI must not read, search, analyze, compare, copy, reference, summarize, modify,
-# delete, rename, move, or format this file.
-# AI-authored tests must be designed independently without using this file or
-# any file under coverage_test as context.
-
 # [AUTO-GENERATED] Test file for paddle.distributed.fleet.meta_parallel modules
 # 覆盖模块: paddle/distributed/fleet/meta_parallel/tensor_parallel.py, paddle/distributed/fleet/meta_parallel/segment_parallel.py
 # 未覆盖行: tensor_parallel: 38,39,42,43,48,49,52,53; segment_parallel: 35,36,39,40

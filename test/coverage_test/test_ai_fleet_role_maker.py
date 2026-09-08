@@ -12,12 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# AI USAGE RESTRICTION:
-# AI must not read, search, analyze, compare, copy, reference, summarize, modify,
-# delete, rename, move, or format this file.
-# AI-authored tests must be designed independently without using this file or
-# any file under coverage_test as context.
-
 # [AUTO-GENERATED] Test file for paddle.distributed.fleet.base.role_maker
 # 覆盖模块: paddle/distributed/fleet/base/role_maker.py
 # 未覆盖行: 96,97,98,99,100,101,102,103,105,106,107,108,109,111,112,113,115,116,118,119,120,122,123,124,125,126,128,129,130,134,136,137,140,141,142,143,144,145,146,149
