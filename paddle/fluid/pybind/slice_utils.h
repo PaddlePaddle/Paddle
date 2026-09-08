@@ -147,6 +147,19 @@ struct AdvancedIndex {
   bool bool_case;
 };
 
+static bool HasNegativeXPUStride(const Tensor& tensor) {
+  if (tensor.place().GetType() != phi::AllocationType::XPU) {
+    return false;
+  }
+  const auto& strides = tensor.strides();
+  for (int i = 0; i < strides.size(); ++i) {
+    if (strides[i] < 0) {
+      return true;
+    }
+  }
+  return false;
+}
+
 inline static void restride_src(std::vector<int64_t>* shape,
                                 std::vector<int64_t>* strides,
                                 int64_t dims_before,
@@ -722,7 +735,8 @@ static Tensor dealWithAdvancedIndex(const Tensor& tensor,
     transed_tensor = tensor;
   } else {
     *out_is_view = true;
-    if (FLAGS_use_stride_kernel && *pos_of_new_dim != 0) {
+    if (FLAGS_use_stride_kernel && *pos_of_new_dim != 0 &&
+        (is_for_setitem || !HasNegativeXPUStride(tensor))) {
       transed_tensor = tensor;
     } else {
       transed_tensor = transpose_ad_func(tensor, *trans_dim);
@@ -1332,7 +1346,8 @@ static void ApplyGetitem(const int index_size,
     }
 
     if (FLAGS_use_stride_kernel && !has_empty_index &&
-        self_tensor->is_contiguous()) {
+        self_tensor->is_contiguous() &&
+        !HasNegativeXPUStride(*transed_tensor)) {
       const phi::distributed::ProcessMesh* mesh = nullptr;
       if (InputsContainDistTensor(
               &mesh, *self_tensor, *transed_tensor, *transed_index)) {

@@ -46,13 +46,28 @@ void ContiguousKernel(const Context& dev_ctx,
     r = xpu::copy<XPUType>(dev_ctx.x_context(), input_data, output_data, 1);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "copy");
   } else {
+    auto input_dims = vectorize<int64_t>(input.dims());
+    auto input_strides = vectorize<int64_t>(input.strides());
+    std::vector<int64_t> flip_axes;
+    for (size_t i = 0; i < input_strides.size(); ++i) {
+      if (input_strides[i] < 0) {
+        input_data += (input_dims[i] - 1) * input_strides[i];
+        input_strides[i] = -input_strides[i];
+        flip_axes.push_back(static_cast<int64_t>(i));
+      }
+    }
     r = xpu::as_strided<XPUType>(dev_ctx.x_context(),
                                  input_data,
                                  output_data,
-                                 vectorize<int64_t>(input.dims()),
-                                 vectorize<int64_t>(input.strides()),
+                                 input_dims,
+                                 input_strides,
                                  0);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "as_strided");
+    if (!flip_axes.empty()) {
+      r = xpu::flip<XPUType>(
+          dev_ctx.x_context(), output_data, output_data, input_dims, flip_axes);
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "flip");
+    }
   }
 }
 
@@ -81,28 +96,45 @@ ComplexContiguousKernelImpl(const XPUContext& dev_ctx,
   auto bytes_shape = vectorize<int64_t>(input.dims());
   auto bytes_strides = vectorize<int64_t>(input.strides());
   const int64_t bytes_per_elem = static_cast<int64_t>(sizeof(T));
+  std::vector<int64_t> flip_axes;
   for (auto& s : bytes_strides) {
     s *= bytes_per_elem;
+  }
+  const auto input_dims = bytes_shape;
+  const auto* input_data = reinterpret_cast<const int8_t*>(input.data<T>());
+  for (size_t i = 0; i < input_dims.size(); ++i) {
+    if (bytes_strides[i] < 0) {
+      input_data += (input_dims[i] - 1) * bytes_strides[i];
+      bytes_strides[i] = -bytes_strides[i];
+      flip_axes.push_back(static_cast<int64_t>(i));
+    }
   }
   bytes_shape.push_back(bytes_per_elem);
   bytes_strides.push_back(1);
 
-  const auto* input_bytes = reinterpret_cast<const int8_t*>(input.data<T>());
   auto* output_bytes = reinterpret_cast<int8_t*>(out->data<T>());
 
   int r = 0;
   if (input.numel() == 1) {
     r = xpu::copy<int8_t>(
-        dev_ctx.x_context(), input_bytes, output_bytes, bytes_per_elem);
+        dev_ctx.x_context(), input_data, output_bytes, bytes_per_elem);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "copy");
   } else {
     r = xpu::as_strided<int8_t>(dev_ctx.x_context(),
-                                input_bytes,
+                                input_data,
                                 output_bytes,
                                 bytes_shape,
                                 bytes_strides,
                                 0);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "as_strided");
+  }
+  if (!flip_axes.empty()) {
+    r = xpu::flip<int8_t>(dev_ctx.x_context(),
+                          output_bytes,
+                          output_bytes,
+                          bytes_shape,
+                          flip_axes);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "flip");
   }
 }
 template <>
