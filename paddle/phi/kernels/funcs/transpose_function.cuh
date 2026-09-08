@@ -662,7 +662,16 @@ void SendSwapDim1And2InTranspose(const GPUContext& d,
                                  T* output) {
   // FP8 fast path
   if constexpr (std::is_same<T, phi::float8_e4m3fn>::value) {
-    if (input_dims[1] >= 128 && input_dims[2] >= 128 &&
+    // The kernel moves 8 bytes at a time through fp8x8_t, whose alignment is 8.
+    // Both extents are multiples of 128, so every row start keeps the alignment
+    // class of the base pointer and checking the two base pointers is enough.
+    // A one-byte dtype makes this a real question: a view into a larger buffer
+    // can start at any byte, and an unaligned vector load faults.
+    constexpr uintptr_t kFp8VecAlign = 8;
+    const bool aligned =
+        reinterpret_cast<uintptr_t>(input) % kFp8VecAlign == 0 &&
+        reinterpret_cast<uintptr_t>(output) % kFp8VecAlign == 0;
+    if (aligned && input_dims[1] >= 128 && input_dims[2] >= 128 &&
         input_dims[1] % 128 == 0 && input_dims[2] % 128 == 0) {
       dispatch_fp8_fast_transpose_kernel<T, IndexType>(
           d, input, input_dims[0], input_dims[1], input_dims[2], output);
