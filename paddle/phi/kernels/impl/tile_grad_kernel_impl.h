@@ -16,12 +16,16 @@
 #include <type_traits>
 #include <vector>
 
+#include "paddle/common/flags.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/cast_kernel.h"
 #include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
+#include "paddle/phi/kernels/reduce_sum_kernel.h"
 #include "paddle/phi/kernels/tile_grad_kernel.h"
+
+COMMON_DECLARE_bool(use_accuracy_compatible_kernel);
 
 namespace phi {
 
@@ -81,6 +85,57 @@ void TileBackward(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
+bool TileGradCompatKernel(const Context& dev_ctx,
+                          const DDim& x_dims,
+                          const DenseTensor& out_grad,
+                          const std::vector<int64_t>& repeat_times_data,
+                          DenseTensor* x_grad) {
+  if constexpr (!(std::is_same_v<T, float> || std::is_same_v<T, double> ||
+                  std::is_same_v<T, dtype::float16> ||
+                  std::is_same_v<T, dtype::bfloat16>)) {
+    return false;
+  } else {
+    if (!out_grad.meta().is_contiguous()) {
+      return false;
+    }
+    const int x_rank = x_dims.size();
+    const int num_unsqueezed =
+        static_cast<int>(repeat_times_data.size()) - x_rank;
+
+    std::vector<int64_t> grad_size;
+    std::vector<int64_t> sum_dims;
+    for (int i = 0; i < x_rank; ++i) {
+      if (repeat_times_data[i + num_unsqueezed] != 1) {
+        grad_size.push_back(repeat_times_data[i + num_unsqueezed]);
+        sum_dims.push_back(static_cast<int64_t>(grad_size.size()) - 1);
+      }
+      grad_size.push_back(x_dims[i]);
+    }
+    // Resize below cannot express a rank beyond DDim::kMaxRank.
+    if (static_cast<int>(grad_size.size()) > DDim::kMaxRank) {
+      return false;
+    }
+
+    DenseTensor cur = out_grad;
+    for (int i = 0; i < num_unsqueezed; ++i) {
+      cur = Sum<T, Context>(dev_ctx, cur, IntArray({0}), cur.dtype(), false);
+    }
+
+    if (sum_dims.empty()) {
+      dev_ctx.template Alloc<T>(x_grad);
+      Copy(dev_ctx, cur, dev_ctx.GetPlace(), false, x_grad);
+      x_grad->Resize(x_dims);
+      return true;
+    }
+
+    cur.Resize(make_ddim(grad_size));
+    SumKernel<T, Context>(
+        dev_ctx, cur, IntArray(sum_dims), cur.dtype(), false, x_grad);
+    return true;
+  }
+}
+
+template <typename T, typename Context>
 void TileGradKernel(const Context& dev_ctx,
                     const DenseTensor& x,
                     const DenseTensor& out_grad,
@@ -130,6 +185,11 @@ void TileGradKernel(const Context& dev_ctx,
     // TensorCopy may change the dims of dx
     x_grad->Resize(x_dims);
   } else {
+    if (FLAGS_use_accuracy_compatible_kernel &&
+        TileGradCompatKernel<T, Context>(
+            dev_ctx, x_dims, out_grad, repeat_times_data, x_grad)) {
+      return;
+    }
     PADDLE_ENFORCE_GE(dims,
                       1,
                       errors::InvalidArgument(
