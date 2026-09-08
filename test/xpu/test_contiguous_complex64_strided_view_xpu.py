@@ -151,9 +151,24 @@ class XPUTestContiguousComplex64StridedViewXPU(XPUOpTestWrapper):
             if self.in_type_str != "float32":
                 return
             idx_np = np.array([2, 5, 2, 0, 5], dtype=np.int64)
+            idx2_np = np.array([[1, 3], [3, 1], [0, 0]], dtype=np.int64)
             idx = paddle.to_tensor(idx_np)
+            idx2 = paddle.to_tensor(idx2_np)
             self._assert_allclose(x[::-1, idx].numpy(), x_np[::-1, idx_np])
             self._assert_allclose(view[idx].numpy(), x_np[:, ::-1][idx_np])
+
+            x_np = np.arange(8 * 6 * 33, dtype=np.float32).reshape([8, 6, 33])
+            x = paddle.to_tensor(x_np)
+            self._assert_allclose(x[::-1, idx2].numpy(), x_np[::-1, idx2_np])
+            self._assert_allclose(
+                x[::-1, :, idx].numpy(), x_np[::-1, :, idx_np]
+            )
+            self._assert_allclose(
+                x[idx, ::-1, :].numpy(), x_np[idx_np, ::-1, :]
+            )
+            self._assert_allclose(
+                x[::-1, idx, ::-1].numpy(), x_np[::-1, idx_np, ::-1]
+            )
 
         def test_complex64_strided_slice_regression(self):
             # Regression for: XPU complex64 strided-view materialization bug.
