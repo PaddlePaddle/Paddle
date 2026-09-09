@@ -149,19 +149,6 @@ struct AdvancedIndex {
   bool bool_case;
 };
 
-static bool HasNegativeXPUStride(const Tensor& tensor) {
-  if (tensor.place().GetType() != phi::AllocationType::XPU) {
-    return false;
-  }
-  const auto& strides = tensor.strides();
-  for (int i = 0; i < strides.size(); ++i) {
-    if (strides[i] < 0) {
-      return true;
-    }
-  }
-  return false;
-}
-
 inline static void restride_src(std::vector<int64_t>* shape,
                                 std::vector<int64_t>* strides,
                                 int64_t dims_before,
@@ -737,8 +724,7 @@ static Tensor dealWithAdvancedIndex(const Tensor& tensor,
     transed_tensor = tensor;
   } else {
     *out_is_view = true;
-    if (FLAGS_use_stride_kernel && *pos_of_new_dim != 0 &&
-        (is_for_setitem || !HasNegativeXPUStride(tensor))) {
+    if (FLAGS_use_stride_kernel && *pos_of_new_dim != 0) {
       transed_tensor = tensor;
     } else {
       transed_tensor = transpose_ad_func(tensor, *trans_dim);
@@ -1348,8 +1334,7 @@ static void ApplyGetitem(const int index_size,
     }
 
     if (FLAGS_use_stride_kernel && !has_empty_index &&
-        self_tensor->is_contiguous() &&
-        !HasNegativeXPUStride(*transed_tensor)) {
+        self_tensor->is_contiguous()) {
       const phi::distributed::ProcessMesh* mesh = nullptr;
       if (InputsContainDistTensor(
               &mesh, *self_tensor, *transed_tensor, *transed_index)) {
@@ -1436,24 +1421,6 @@ static void ApplyGetitem(const int index_size,
         // unsqueeze
         transed_advanced_index_tensor =
             unsqueeze_ad_func((*transed_index)[0], {-1});
-      }
-
-      if (HasNegativeXPUStride(*transed_tensor)) {
-        if (transed_tensor->is_dist_tensor()) {
-          auto* dist_tensor = static_cast<phi::distributed::DistTensor*>(
-              transed_tensor->impl().get());
-          auto contiguous_tensor = transed_tensor->contiguous();
-          auto contiguous_value = std::static_pointer_cast<phi::DenseTensor>(
-              contiguous_tensor.impl());
-          auto new_dist_tensor = std::make_shared<phi::distributed::DistTensor>(
-              contiguous_value, dist_tensor->dims(), dist_tensor->dist_attr());
-          *transed_tensor =
-              paddle::Tensor(new_dist_tensor,
-                             transed_tensor->mutable_autograd_meta(),
-                             transed_tensor->name());
-        } else {
-          *transed_tensor = transed_tensor->contiguous();
-        }
       }
 
       const phi::distributed::ProcessMesh* mesh = nullptr;
