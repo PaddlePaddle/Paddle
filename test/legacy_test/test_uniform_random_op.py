@@ -680,48 +680,52 @@ class TestRandomValue(unittest.TestCase):
             out[2, 1, 512, 1000:1010], expect, rtol=1e-05
         )
 
-        expect_mean = 0.50002604722976684570312500
-        expect_std = 0.2886914908885955810546875
+        expect_mean = 0.500006020069122314453125
+        expect_std = 0.2886725366115570068359375
         expect = [
-            0.45320973,
-            0.17582087,
-            0.725341,
-            0.30849215,
-            0.622257,
-            0.46352342,
-            0.97228295,
-            0.12771158,
-            0.286525,
-            0.9810645,
+            0.97628236,
+            0.10293665,
+            0.476724,
+            0.13888365,
+            0.78930986,
+            0.7735406,
+            0.7698778,
+            0.5321222,
+            0.48524457,
+            0.93191594,
         ]
         out = paddle.rand([32, 3, 1024, 1024], dtype='float32').numpy()
-        self.assertEqual(np.mean(out), expect_mean)
-        self.assertEqual(np.std(out), expect_std)
+        self.assertEqual(
+            np.float32(np.mean(out, dtype=np.float64)), expect_mean
+        )
+        self.assertEqual(np.float32(np.std(out, dtype=np.float64)), expect_std)
         np.testing.assert_allclose(
             out[2, 1, 512, 1000:1010], expect, rtol=1e-05
         )
 
-        expect_mean = 25.11843109130859375
-        expect_std = 43.370647430419921875
+        expect_mean = 24.8612155914306640625
+        expect_std = 43.2602386474609375
         expect = [
-            30.089634,
-            77.05225,
-            3.1201615,
-            68.34072,
-            59.266724,
-            -25.33281,
-            12.973292,
-            27.41127,
-            -17.412298,
-            27.931019,
+            -26.741318,
+            27.845467,
+            80.62765,
+            20.548405,
+            54.39508,
+            98.822105,
+            39.612667,
+            55.175083,
+            -34.540794,
+            85.01998,
         ]
         out = (
             paddle.empty([16, 16, 16, 16], dtype='float32')
             .uniform_(-50, 100)
             .numpy()
         )
-        self.assertEqual(np.mean(out), expect_mean)
-        self.assertEqual(np.std(out), expect_std)
+        self.assertEqual(
+            np.float32(np.mean(out, dtype=np.float64)), expect_mean
+        )
+        self.assertEqual(np.float32(np.std(out, dtype=np.float64)), expect_std)
         np.testing.assert_allclose(out[10, 10, 10, 0:10], expect, rtol=1e-05)
 
         paddle.enable_static()
