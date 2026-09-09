@@ -389,9 +389,7 @@ class TestContiguousNonZeroOffset(StrideFlagTestCase):
                 view = buf[off : off + n].reshape(shape)
                 self.assertEqual(view.data_ptr() % 8, off % 8)
                 out = paddle.transpose(view, [1, 0]).contiguous()
-                ref = np.ascontiguousarray(
-                    bits[off : off + n].reshape(shape).T
-                )
+                ref = np.ascontiguousarray(bits[off : off + n].reshape(shape).T)
                 np.testing.assert_array_equal(out.numpy(), ref)
 
     def test_assign_materializes_the_same_bits(self):
