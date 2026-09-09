@@ -24,7 +24,6 @@
 #include "paddle/phi/kernels/funcs/scatter.cu.h"
 #include "paddle/phi/kernels/gather_kernel.h"
 
-COMMON_DECLARE_bool(cudnn_deterministic);
 COMMON_DECLARE_bool(use_accuracy_compatible_kernel);
 
 namespace phi {
@@ -115,7 +114,7 @@ void GatherGradKernel(const Context& dev_ctx,
   }
 
   if (axis_v != 0) {
-    if (FLAGS_use_accuracy_compatible_kernel && FLAGS_cudnn_deterministic) {
+    if (FLAGS_use_accuracy_compatible_kernel) {
       if (index_type == DataType::INT32) {
         GatherV2GradDeterministicCUDAFunction<T, Context, int32_t>(
             dev_ctx, out_grad, index, axis_v, x_grad);
