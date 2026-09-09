@@ -14,6 +14,7 @@
 
 #include "paddle/phi/kernels/index_elementwise_put_kernel.h"
 
+#include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/index_elementwise.h"
@@ -53,6 +54,31 @@ void XPUIndexElementwisePutWithTensorKernel(
   std::vector<int64_t> stride_tmp;
   funcs::cal_shape_stride(index_dims, &num_indices, &shape_tmp, &stride_tmp);
 
+  // xpu::index_elementwise_tensor can only walk the x view forwards, so rewrite
+  // its reversed axes. The scatter then consumes `value` reversed along
+  // `flip_axes`; since the destination is written in place it is `value` that
+  // has to be flipped, not the output.
+  const std::vector<int64_t> value_dims = vectorize<int64_t>(value.dims());
+  std::vector<int64_t> x_strides = input_strides;
+  int64_t x_offset = slice_offset;
+  std::vector<int64_t> flip_axes;
+  funcs::NormalizeNegativeStrides(input_dims,
+                                  phi::SizeOf(input.dtype()),
+                                  &x_strides,
+                                  &x_offset,
+                                  &flip_axes);
+  // `value` is right-aligned against `input_dims` by compute_strides(), and a
+  // broadcast axis carries stride 0 so its traversal order does not matter.
+  std::vector<int64_t> value_flip_axes;
+  const int64_t rank_diff = static_cast<int64_t>(input_dims.size()) -
+                            static_cast<int64_t>(value_dims.size());
+  for (int64_t axis : flip_axes) {
+    const int64_t value_axis = axis - rank_diff;
+    if (value_axis >= 0 && value_dims[value_axis] > 1) {
+      value_flip_axes.push_back(value_axis);
+    }
+  }
+
   auto sizes = std::array<int64_t, 25>{};
   auto strides = std::array<int64_t, 25>{};
   for (int64_t i = 0; i < num_indices; i++) {
@@ -63,9 +89,9 @@ void XPUIndexElementwisePutWithTensorKernel(
   std::vector<int64_t> desired_shape;
   std::array<std::vector<int64_t>, 3> strides_vec;
   funcs::IndexPutStride<3>(input_dims,
-                           input_strides,
+                           x_strides,
                            phi::SizeOf(input.dtype()),
-                           vectorize<int64_t>(value.dims()),
+                           value_dims,
                            vectorize<int64_t>(value.strides()),
                            phi::SizeOf(value.dtype()),
                            shape_tmp,
@@ -108,11 +134,26 @@ void XPUIndexElementwisePutWithTensorKernel(
       std::vector<std::vector<int64_t>>(strides_vec.begin(), strides_vec.end());
 
   const char* in_ptr = reinterpret_cast<const char*>(value.data<T>());
-  char* out_ptr = reinterpret_cast<char*>(output->data<T>()) + slice_offset;
+  char* out_ptr = reinterpret_cast<char*>(output->data<T>()) + x_offset;
 
   // for checkptr and checksum in XPU
   int64_t data_size_in = value.Holder()->size() - value.meta().offset;
   int64_t data_size_out = output->Holder()->size() - output->meta().offset;
+
+  xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
+  if (!value_flip_axes.empty()) {
+    using XPUCopyType = typename XPUCopyTypeTrait<T>::Type;
+    auto* flipped = RAII_GUARD.alloc_l3_or_gm<XPUCopyType>(value.numel());
+    int rf =
+        xpu::flip<XPUCopyType>(dev_ctx.x_context(),
+                               reinterpret_cast<const XPUCopyType*>(in_ptr),
+                               flipped,
+                               value_dims,
+                               value_flip_axes);
+    PADDLE_ENFORCE_XDNN_SUCCESS(rf, "flip");
+    in_ptr = reinterpret_cast<const char*>(flipped);
+    data_size_in = value.numel() * static_cast<int64_t>(sizeof(T));
+  }
 
   bool is_get = false;
   int r = xpu::index_elementwise_tensor<XPUType, XPUTypeIndexT>(
@@ -163,6 +204,18 @@ void XPUIndexElementwisePutKernel(const Context& dev_ctx,
   std::vector<int64_t> stride_tmp;
   funcs::cal_shape_stride(index_dims, &num_indices, &shape_tmp, &stride_tmp);
 
+  // xpu::index_elementwise_scalar can only walk the x view forwards. There is
+  // no dense operand here, so reversing the traversal order of an axis needs no
+  // compensation: every visited position gets the same scalar.
+  std::vector<int64_t> x_strides = input_strides;
+  int64_t x_offset = slice_offset;
+  std::vector<int64_t> flip_axes;
+  funcs::NormalizeNegativeStrides(input_dims,
+                                  phi::SizeOf(input.dtype()),
+                                  &x_strides,
+                                  &x_offset,
+                                  &flip_axes);
+
   auto sizes = std::array<int64_t, DDim::kMaxRank + 1>{};
   auto strides = std::array<int64_t, DDim::kMaxRank + 1>{};
   for (int64_t i = 0; i < num_indices; i++) {
@@ -173,7 +226,7 @@ void XPUIndexElementwisePutKernel(const Context& dev_ctx,
   std::vector<int64_t> desired_shape;
   std::array<std::vector<int64_t>, 3> strides_vec;
   funcs::IndexPutStride<3>(input_dims,
-                           input_strides,
+                           x_strides,
                            phi::SizeOf(input.dtype()),
                            {},
                            {},
@@ -217,7 +270,7 @@ void XPUIndexElementwisePutKernel(const Context& dev_ctx,
   std::vector<std::vector<int64_t>> strides_vec_vec =
       std::vector<std::vector<int64_t>>(strides_vec.begin(), strides_vec.end());
 
-  char* out_ptr = reinterpret_cast<char*>(output->data<T>()) + slice_offset;
+  char* out_ptr = reinterpret_cast<char*>(output->data<T>()) + x_offset;
 
   // for checkptr and checksum in XPU
   int64_t data_size_out = output->Holder()->size() - output->meta().offset;

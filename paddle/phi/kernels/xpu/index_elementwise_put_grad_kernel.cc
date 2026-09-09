@@ -14,6 +14,7 @@
 
 #include "paddle/phi/kernels/index_elementwise_put_kernel.h"
 
+#include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/full_kernel.h"
@@ -64,8 +65,21 @@ void XPUIndexElementwisePutGradKernel(
     value_ele_size = phi::SizeOf(value_grad->dtype());
   }
 
+  // xpu::index_elementwise_put_grad can only walk the x view forwards, so
+  // rewrite its reversed axes. out_grad is then read -- and x_grad written --
+  // at the same positions as before, but `value_grad` comes out reversed along
+  // `flip_axes` and is flipped back after the call.
+  std::vector<int64_t> x_strides = input_strides;
+  int64_t x_offset = slice_offset;
+  std::vector<int64_t> flip_axes;
+  funcs::NormalizeNegativeStrides(input_dims,
+                                  phi::SizeOf(out_grad.dtype()),
+                                  &x_strides,
+                                  &x_offset,
+                                  &flip_axes);
+
   funcs::IndexPutStride<3>(input_dims,
-                           input_strides,
+                           x_strides,
                            phi::SizeOf(out_grad.dtype()),
                            value_dims,
                            value_strides,
@@ -129,12 +143,33 @@ void XPUIndexElementwisePutGradKernel(
       sizes_vec,            // sizes
       orig_strides_vec,     // orig_strides
       strides_vec_vec,      // strides_vec
-      slice_offset,         // slice_offset
+      x_offset,             // slice_offset
       numel,                // numel
       x_grad_ptr,           // x_grad
       value_grad_ptr        // value_grad
   );
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "index_elementwise_put_grad");
+
+  if (!flip_axes.empty() && value_grad_ptr != nullptr) {
+    // Every caller hands in a `value_grad` whose dims are `input_dims`, so
+    // `flip_axes` applies to it unchanged. xpu::flip cannot alias, hence the
+    // scratch round trip.
+    using XPUCopyType = typename XPUCopyTypeTrait<T>::Type;
+    xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
+    auto* flipped = RAII_GUARD.alloc_l3_or_gm<XPUCopyType>(value_grad->numel());
+    r = xpu::flip<XPUCopyType>(
+        dev_ctx.x_context(),
+        reinterpret_cast<const XPUCopyType*>(value_grad_ptr),
+        flipped,
+        value_dims,
+        flip_axes);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "flip");
+    r = xpu::copy<XPUCopyType>(dev_ctx.x_context(),
+                               flipped,
+                               reinterpret_cast<XPUCopyType*>(value_grad_ptr),
+                               value_grad->numel());
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "copy");
+  }
 }
 
 template <typename T, typename Context>
