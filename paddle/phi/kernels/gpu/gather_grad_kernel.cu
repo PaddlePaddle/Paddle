@@ -41,7 +41,7 @@ __global__ void gather_grad_deterministic_cuda_kernel(const T* out_grad,
   CUDA_KERNEL_LOOP_TYPE(col_idx, num_columns, int64_t) {
     int64_t inner_dim_index = col_idx / outer_dim_size;
     int64_t outer_dim_index = col_idx % outer_dim_size;
-    for (int64_t k = 0; k < index_size; ++k) {
+    for (int64_t k = index_size - 1; k >= 0; k--) {
       int64_t out_grad_idx =
           (inner_dim_index * index_size + k) * outer_dim_size + outer_dim_index;
       int64_t x_grad_idx =
