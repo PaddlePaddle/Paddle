@@ -999,6 +999,92 @@ class TestGatherOp_ZeroSize2(TestGatherOp_ZeroSize):
         self.index_type = "int32"
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda() and not is_custom_device(),
+    "the deterministic gather_grad kernel is only available on GPU",
+)
+class TestGatherOpDeterministicAxis1(TestGatherOp):
+    """paddle.gather(x[1, 1024, 1, 64] float32, index[512] int64, axis=1).
+
+    gather_grad only takes the deterministic (torch-compatible) branch when
+    axis != 0 and both FLAGS_use_accuracy_compatible_kernel and
+    FLAGS_cudnn_deterministic are on, so the flags are switched on around the
+    backward check. Index contains duplicates on purpose, otherwise the
+    accumulation in that branch is never exercised.
+    """
+
+    FLAG_NAMES = [
+        'FLAGS_use_accuracy_compatible_kernel',
+        'FLAGS_cudnn_deterministic',
+    ]
+
+    def config(self):
+        self.x_shape = (1, 1024, 1, 64)
+        self.config_dtype()
+        self.index = np.random.randint(0, self.x_shape[1], size=[512])
+        self.index_type = "int64"
+        self.axis = [1]
+        self.axis_type = "int32"
+
+    def config_dtype(self):
+        self.x_type = "float64"
+
+    def if_enable_cinn(self):
+        self.enable_cinn = False
+
+    def init_inputs_and_outputs(self):
+        xnp = np.random.random(self.x_shape).astype(self.x_type)
+        index_np = np.array(self.index).astype(self.index_type)
+        self.inputs = {
+            'X': xnp,
+            'Index': index_np,
+            'Axis': np.array(self.axis).astype(self.axis_type),
+        }
+        self.outputs = {'Out': gather_numpy(xnp, index_np, self.axis[0])}
+
+    def gather_grad_numpy(self):
+        """Reference x_grad. OpTest differentiates mean(Out), so every gathered
+        slice gives back a slice of 1 / Out.size and duplicated indices
+        accumulate."""
+        x_grad = np.zeros(self.x_shape, dtype=self.x_type)
+        np.add.at(
+            np.swapaxes(x_grad, 0, self.axis[0]),
+            self.inputs['Index'],
+            1.0 / self.outputs['Out'].size,
+        )
+        return x_grad
+
+    def test_check_grad(self):
+        self.old_flags = paddle.get_flags(self.FLAG_NAMES)
+        paddle.set_flags(dict.fromkeys(self.FLAG_NAMES, True))
+        try:
+            self.check_grad_with_place(
+                get_device_place(),
+                ['X'],
+                'Out',
+                check_pir=True,
+                user_defined_grads=[self.gather_grad_numpy()],
+            )
+        finally:
+            paddle.set_flags(self.old_flags)
+
+    def tearDown(self):
+        # redundant with the finally above, kept so a failure inside
+        # set_flags/get_flags cannot leak the flags into other tests.
+        paddle.set_flags(
+            getattr(self, 'old_flags', dict.fromkeys(self.FLAG_NAMES, False))
+        )
+
+
+class TestGatherOpDeterministicAxis1FP32(TestGatherOpDeterministicAxis1):
+    # fp64 precision of this case is covered by the base class; declare it here
+    # so tearDownClass passes even when this class runs on its own.
+    exist_fp64_check_grad = True
+
+    def config_dtype(self):
+        self.x_type = "float32"
+
+
 if __name__ == "__main__":
     paddle.enable_static()
     unittest.main()
