@@ -14,6 +14,7 @@
 
 #include "paddle/phi/kernels/index_elementwise_get_kernel.h"
 
+#include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/index_elementwise.h"
@@ -36,6 +37,18 @@ void XPUIndexElementwiseGetKernel(const Context& dev_ctx,
   std::vector<int64_t> stride_tmp;
   funcs::cal_shape_stride(index_dims, &num_indices, &shape_tmp, &stride_tmp);
 
+  // xpu::index_elementwise_tensor can only walk the x view forwards, so rewrite
+  // its reversed axes. The gather then produces the output reversed along
+  // `flip_axes`, which is undone after the call.
+  std::vector<int64_t> x_strides = input_strides;
+  int64_t x_offset = slice_offset;
+  std::vector<int64_t> flip_axes;
+  funcs::NormalizeNegativeStrides(input_dims,
+                                  phi::SizeOf(input.dtype()),
+                                  &x_strides,
+                                  &x_offset,
+                                  &flip_axes);
+
   auto sizes = std::array<int64_t, DDim::kMaxRank>{};
   auto strides = std::array<int64_t, DDim::kMaxRank>{};
   for (int64_t i = 0; i < num_indices; i++) {
@@ -46,7 +59,7 @@ void XPUIndexElementwiseGetKernel(const Context& dev_ctx,
   std::vector<int64_t> desired_shape;
   std::array<std::vector<int64_t>, 3> strides_vec;
   funcs::IndexGetStride<3>(input_dims,
-                           input_strides,
+                           x_strides,
                            phi::SizeOf(input.dtype()),
                            std::vector<int64_t>(),
                            std::vector<int64_t>(),
@@ -89,18 +102,29 @@ void XPUIndexElementwiseGetKernel(const Context& dev_ctx,
       std::vector<std::vector<int64_t>>(strides_vec.begin(), strides_vec.end());
 
   const char* in_ptr =
-      reinterpret_cast<const char*>(input.data<T>()) + slice_offset;
+      reinterpret_cast<const char*>(input.data<T>()) + x_offset;
   char* out_ptr = reinterpret_cast<char*>(output->data<T>());
 
   // for checkptr and checksum in XPU
   int64_t data_size_in = input.Holder()->size() - input.meta().offset;
   int64_t data_size_out = output->Holder()->size() - output->meta().offset;
 
+  // xpu::flip cannot alias its input, so gather into scratch first when the
+  // reversed axes still have to be undone.
+  using XPUCopyType = typename XPUCopyTypeTrait<T>::Type;
+  xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
+  char* gather_ptr = out_ptr;
+  if (!flip_axes.empty()) {
+    gather_ptr =
+        reinterpret_cast<char*>(RAII_GUARD.alloc_l3_or_gm<XPUCopyType>(N));
+    data_size_out = N * static_cast<int64_t>(sizeof(T));
+  }
+
   bool is_get = true;
   int r = xpu::index_elementwise_tensor<XPUType, XPUTypeIndexT>(
       dev_ctx.x_context(),
       reinterpret_cast<const XPUType*>(in_ptr),  // XPU ptr
-      reinterpret_cast<XPUType*>(out_ptr),       // XPU ptr
+      reinterpret_cast<XPUType*>(gather_ptr),    // XPU ptr
       index_ptrs_vec,                            // vec of XPU ptrs
       input_dims,                                // CPU vec
       index_numel_vec,                           // CPU vec
@@ -113,6 +137,17 @@ void XPUIndexElementwiseGetKernel(const Context& dev_ctx,
       data_size_out,                             // int64_t
       is_get);                                   // true for get, false for put
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "index_elementwise_tensor_get");
+
+  if (!flip_axes.empty()) {
+    // `output` is contiguous with dims == input_dims, so the axis indices
+    // NormalizeNegativeStrides returned apply to it unchanged.
+    r = xpu::flip<XPUCopyType>(dev_ctx.x_context(),
+                               reinterpret_cast<const XPUCopyType*>(gather_ptr),
+                               reinterpret_cast<XPUCopyType*>(out_ptr),
+                               input_dims,
+                               flip_axes);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "flip");
+  }
 }
 
 template <typename T, typename Context>

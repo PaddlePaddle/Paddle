@@ -14,6 +14,7 @@
 
 #include "paddle/phi/kernels/index_elementwise_get_kernel.h"
 
+#include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/index_elementwise.h"
@@ -39,6 +40,18 @@ void XPUIndexElementwiseGetGradKernel(
   std::vector<int64_t> stride_tmp;
   funcs::cal_shape_stride(index_dims, &num_indices, &shape_tmp, &stride_tmp);
 
+  // xpu::index_elementwise_get_grad can only walk the x view forwards, so
+  // rewrite its reversed axes. The scatter then consumes `value` reversed along
+  // `flip_axes`, which is compensated by flipping `value` up front.
+  std::vector<int64_t> x_strides = input_strides;
+  int64_t x_offset = slice_offset;
+  std::vector<int64_t> flip_axes;
+  funcs::NormalizeNegativeStrides(input_dims,
+                                  phi::SizeOf(input.dtype()),
+                                  &x_strides,
+                                  &x_offset,
+                                  &flip_axes);
+
   auto sizes = std::array<int64_t, DDim::kMaxRank + 1>{};
   auto strides = std::array<int64_t, DDim::kMaxRank + 1>{};
   for (int64_t i = 0; i < num_indices; i++) {
@@ -52,7 +65,7 @@ void XPUIndexElementwiseGetGradKernel(
   std::array<std::vector<int64_t>, 3> strides_vec;
 
   funcs::IndexPutStride<3>(input_dims,
-                           input_strides,
+                           x_strides,
                            phi::SizeOf(input.dtype()),
                            vectorize<int64_t>(value.dims()),
                            vectorize<int64_t>(value.strides()),
@@ -69,6 +82,21 @@ void XPUIndexElementwiseGetGradKernel(
   using XPUTypeIndexT = typename XPUTypeTrait<IndexT>::Type;
 
   const XPUType* value_ptr = reinterpret_cast<const XPUType*>(value.data<T>());
+  xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
+  if (!flip_axes.empty()) {
+    // `value` is the out_grad of the gather, i.e. contiguous with
+    // dims == input_dims, so `flip_axes` applies to it unchanged.
+    using XPUCopyType = typename XPUCopyTypeTrait<T>::Type;
+    auto* flipped = RAII_GUARD.alloc_l3_or_gm<XPUCopyType>(value.numel());
+    int rf =
+        xpu::flip<XPUCopyType>(dev_ctx.x_context(),
+                               reinterpret_cast<const XPUCopyType*>(value_ptr),
+                               flipped,
+                               input_dims,
+                               flip_axes);
+    PADDLE_ENFORCE_XDNN_SUCCESS(rf, "flip");
+    value_ptr = reinterpret_cast<const XPUType*>(flipped);
+  }
   std::vector<const XPUTypeIndexT*> index_list_vec;
   std::vector<int64_t> index_numel;
   for (int i = 0; i < num_indices; i++) {
@@ -96,7 +124,7 @@ void XPUIndexElementwiseGetGradKernel(
       sizes_vec,
       orig_strides_vec,
       strides_vec_vec,
-      slice_offset,
+      x_offset,
       numel,
       accumulate,
       output_ptr);
