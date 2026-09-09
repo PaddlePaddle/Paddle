@@ -27,6 +27,7 @@
 #include "paddle/phi/core/allocator.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/memory/allocation/inlined_vector.h"
+#include "paddle/phi/core/memory/allocation/memory_history_recorder.h"
 #include "paddle/phi/core/memory/allocation/spin_lock.h"
 #include "paddle/phi/core/platform/device/gpu/gpu_types.h"
 
@@ -266,6 +267,17 @@ class PADDLE_API MultiScalePoolAllocator : public Allocator {
       RecordAlloc(allocator_instance, id, size);
       allocation->set_id(id);
     }
+    if (MemHistoryEnabled()) {
+      // Record the actual block size (rounded up to alignment_, 256B on GPU),
+      // not the request: kFreeRequested / kFreeCompleted report the same, so
+      // using `size` here would make a pair disagree (alloc=1 vs free=256).
+      RecordMemHistory(MemHistoryAction::kAlloc,
+                       place_.GetDeviceId(),
+                       reinterpret_cast<uintptr_t>(allocation->ptr()),
+                       allocation->size(),
+                       allocation->id(),
+                       0);
+    }
     return allocation;
   };
   // Free an allocation from small_allocator or large_allocator.
@@ -274,6 +286,14 @@ class PADDLE_API MultiScalePoolAllocator : public Allocator {
       uint64_t id = allocation->id();
       uintptr_t allocator_instance = reinterpret_cast<uintptr_t>(this);
       RecordFree(allocator_instance, id, allocation->size());
+    }
+    if (MemHistoryEnabled()) {
+      RecordMemHistory(MemHistoryAction::kFreeCompleted,
+                       place_.GetDeviceId(),
+                       reinterpret_cast<uintptr_t>(allocation->ptr()),
+                       allocation->size(),
+                       allocation->id(),
+                       0);
     }
     auto* decorated_allocation = static_cast<Allocation*>(allocation);
     decorated_allocation->PopDecoratedAllocator();

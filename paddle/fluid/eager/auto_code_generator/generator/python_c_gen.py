@@ -180,6 +180,11 @@ PyObject * eager_api_{}(PyObject *self, PyObject *args, PyObject *kwargs) {{
 {}
     // Parse predefined_out if needed
 {}
+    // Capture the Python dispatch stack for the memory-history recorder while
+    // the GIL is still held (near-zero cost when recording is disabled). The
+    // RAII guard pushes the id for the whole op (incl. the GIL-released kernel
+    // section) and pops it on scope exit / exception unwind.
+    paddle::memory::MemStackGuard __mem_stack_guard(paddle::pybind::CaptureCurrentPyStack());
     tstate = PyEval_SaveThread();
 
     // Set Device ID
@@ -258,6 +263,7 @@ PYTHON_C_WRAPPER_TEMPLATE = """
 #include "paddle/fluid/pybind/eager_op_function.h"
 #include "paddle/fluid/pybind/arg_pre_process.h"
 #include "paddle/fluid/pybind/args_mapper.h"
+#include "paddle/fluid/pybind/mem_py_stack.h"
 namespace paddle {{
 namespace pybind {{
 
