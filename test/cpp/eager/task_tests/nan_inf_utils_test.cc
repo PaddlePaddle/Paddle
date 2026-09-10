@@ -135,6 +135,20 @@ TEST(NanInfUtils, SkipFloat8Tensor) {
   CHECK_NO_NAN_INF(fp8_e5m2);
 }
 
+TEST(NanInfUtils, SkipNonContiguousTensor) {
+  FLAGS_check_nan_inf_blacklist = "";
+
+  auto tensor = paddle::experimental::full(
+      {2, 3}, std::numeric_limits<double>::quiet_NaN(), phi::DataType::FLOAT64);
+  CHECK_NAN_INF(tensor);
+
+  auto non_contiguous = paddle::experimental::transpose(tensor, {1, 0});
+  ASSERT_FALSE(static_cast<const phi::DenseTensor*>(non_contiguous.impl().get())
+                   ->meta()
+                   .is_contiguous());
+  CHECK_NO_NAN_INF(non_contiguous);
+}
+
 TEST(NanInfUtils, Functions) {
   // test all methods
   auto tensor = paddle::experimental::full(
