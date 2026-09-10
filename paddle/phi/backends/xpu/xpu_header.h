@@ -17,6 +17,7 @@ limitations under the License. */
 #include <map>
 #include <string>
 #include <unordered_map>
+#include <vector>
 
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/complex.h"
@@ -108,6 +109,34 @@ class XPUCopyTypeTrait<uint8_t> {
  public:
   using Type = int8_t;
 };
+
+// Reverse the given `axes` of a contiguous row-major buffer `x` into `y`,
+// which must not alias `x`. `xpu::flip` leaves parts of its output
+// uninitialized for some shapes (observed nondeterministically on (8, 6)
+// fp32), while the negative-step path of `xpu::strided_slice` -- the same
+// lowering every `x[::-1]`-style slice takes -- is long covered by XPU CI.
+// `strided_slice` is not instantiated for 1-byte types, so those keep
+// `xpu::flip`.
+template <typename T>
+inline int XPUReverseAxes(xpu::Context* ctx,
+                          const T* x,
+                          T* y,
+                          const std::vector<int64_t>& shape,
+                          const std::vector<int64_t>& axes) {
+  if constexpr (sizeof(T) > 1) {
+    std::vector<int64_t> starts(shape.size(), 0);
+    std::vector<int64_t> ends(shape);
+    std::vector<int64_t> steps(shape.size(), 1);
+    for (int64_t axis : axes) {
+      starts[axis] = shape[axis] - 1;
+      ends[axis] = -1;  // with a negative step, -1 runs down to index 0
+      steps[axis] = -1;
+    }
+    return xpu::strided_slice<T>(ctx, x, y, shape, starts, ends, steps);
+  } else {
+    return xpu::flip<T>(ctx, x, y, shape, axes);
+  }
+}
 
 #ifdef PADDLE_WITH_XPU_FFT
 template <typename T>

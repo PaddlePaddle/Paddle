@@ -151,6 +151,19 @@ class XPUTestContiguousComplex64StridedViewXPU(XPUOpTestWrapper):
 
             if self.in_type_str != "float32":
                 return
+            # (8, 6) regression: the flip inside the XPU contiguous kernel
+            # used to leave parts of the materialized buffer uninitialized
+            # for this shape (nondeterministically), so exercise the
+            # reversed-view materialization directly, more than once.
+            x_np2 = np.arange(8 * 6, dtype=np.float32).reshape([8, 6])
+            x2 = paddle.to_tensor(x_np2)
+            for _ in range(5):
+                self._assert_allclose(
+                    x2[::-1].contiguous().numpy(), x_np2[::-1]
+                )
+                self._assert_allclose(
+                    x2[:, ::-1].contiguous().numpy(), x_np2[:, ::-1]
+                )
             idx_np = np.array([2, 5, 2, 0, 5], dtype=np.int64)
             idx2_np = np.array([[1, 3], [3, 1], [0, 0]], dtype=np.int64)
             idx = paddle.to_tensor(idx_np)

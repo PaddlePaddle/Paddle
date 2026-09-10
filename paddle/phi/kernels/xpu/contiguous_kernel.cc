@@ -66,12 +66,14 @@ void ContiguousKernel(const Context& dev_ctx,
     if (!flip_axes.empty()) {
       xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
       auto* flipped_data = RAII_GUARD.alloc_l3_or_gm<XPUType>(input.numel());
-      r = xpu::flip<XPUType>(dev_ctx.x_context(),
-                             output_data,
-                             flipped_data,
-                             input_dims,
-                             flip_axes);
-      PADDLE_ENFORCE_XDNN_SUCCESS(r, "flip");
+      // XPUReverseAxes goes through strided_slice, which unlike xpu::flip
+      // writes every element of its output.
+      r = XPUReverseAxes<XPUType>(dev_ctx.x_context(),
+                                  output_data,
+                                  flipped_data,
+                                  input_dims,
+                                  flip_axes);
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "reverse_axes");
       r = xpu::copy<XPUType>(
           dev_ctx.x_context(), flipped_data, output_data, input.numel());
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "copy");

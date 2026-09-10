@@ -152,18 +152,18 @@ void XPUIndexElementwisePutGradKernel(
 
   if (!flip_axes.empty() && value_grad_ptr != nullptr) {
     // Every caller hands in a `value_grad` whose dims are `input_dims`, so
-    // `flip_axes` applies to it unchanged. xpu::flip cannot alias, hence the
-    // scratch round trip.
+    // `flip_axes` applies to it unchanged. XPUReverseAxes cannot alias,
+    // hence the scratch round trip.
     using XPUCopyType = typename XPUCopyTypeTrait<T>::Type;
     xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
     auto* flipped = RAII_GUARD.alloc_l3_or_gm<XPUCopyType>(value_grad->numel());
-    r = xpu::flip<XPUCopyType>(
+    r = XPUReverseAxes<XPUCopyType>(
         dev_ctx.x_context(),
         reinterpret_cast<const XPUCopyType*>(value_grad_ptr),
         flipped,
         value_dims,
         flip_axes);
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "flip");
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "reverse_axes");
     r = xpu::copy<XPUCopyType>(dev_ctx.x_context(),
                                flipped,
                                reinterpret_cast<XPUCopyType*>(value_grad_ptr),
