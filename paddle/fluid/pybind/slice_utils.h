@@ -813,14 +813,14 @@ static Tensor getValueForBoolTensor(const Tensor& tensor,
     ConvertAllInputsToDistTensor(mesh, tensor, self_tensor, bool_index);
   }
 
-  // `masked_select` has no strided kernel, so handing it a reversed view makes
-  // the dispatcher materialize that whole view first. Send such a view down the
-  // stride-aware route below instead: a full-rank mask indexes every axis, so
-  // the reversed stride ends up in `indexed_strides`, which the gather consumes
-  // directly.
-  if (bool_index.shape().size() == tensor_shape.size() &&
-      !(FLAGS_use_stride_kernel && self_tensor.is_contiguous() &&
-        HasNegativeStride(tensor))) {
+  // A full-rank mask leaves no room for a negative-step basic slice, so a
+  // negatively-strided `tensor` here always means `self_tensor` is itself a
+  // reversed view (chained indexing). `masked_select` reads its input as a
+  // dense row-major buffer, so materialize the view before handing it over.
+  if (bool_index.shape().size() == tensor_shape.size()) {
+    if (!tensor.is_dist_tensor() && HasNegativeStride(tensor)) {
+      return masked_select_ad_func(tensor.contiguous(), bool_index);
+    }
     return masked_select_ad_func(tensor, bool_index);
   }
 
@@ -893,10 +893,17 @@ static Tensor getValueForBoolTensor(const Tensor& tensor,
                                          accumulate,
                                          is_combined);
   } else {
-    if (bool_index.shape().size() == 1)
-      return gather_ad_func(tensor, bool_2_idx);
+    // Same as the masked_select early return above: this fallback reads the
+    // tensor as a dense row-major buffer, so materialize a reversed view.
+    Tensor dense = tensor;
+    if (!dense.is_dist_tensor() && HasNegativeStride(dense)) {
+      dense = dense.contiguous();
+    }
 
-    return gather_nd_ad_func(tensor, bool_2_idx);
+    if (bool_index.shape().size() == 1)
+      return gather_ad_func(dense, bool_2_idx);
+
+    return gather_nd_ad_func(dense, bool_2_idx);
   }
 }
 
@@ -1439,13 +1446,20 @@ static void ApplyGetitem(const int index_size,
             unsqueeze_ad_func((*transed_index)[0], {-1});
       }
 
+      // Same as the masked_select early return above: `gather_nd` reads its
+      // input as a dense row-major buffer, so materialize a reversed view.
+      Tensor dense_tensor = *transed_tensor;
+      if (!dense_tensor.is_dist_tensor() && HasNegativeStride(dense_tensor)) {
+        dense_tensor = dense_tensor.contiguous();
+      }
+
       const phi::distributed::ProcessMesh* mesh = nullptr;
       if (InputsContainDistTensor(
-              &mesh, *transed_tensor, transed_advanced_index_tensor)) {
+              &mesh, dense_tensor, transed_advanced_index_tensor)) {
         ConvertAllInputsToDistTensor(
-            mesh, *transed_tensor, transed_advanced_index_tensor);
+            mesh, dense_tensor, transed_advanced_index_tensor);
       }
-      *out = gather_nd_ad_func(*transed_tensor, transed_advanced_index_tensor);
+      *out = gather_nd_ad_func(dense_tensor, transed_advanced_index_tensor);
       handle_transpose(*out);
       return;
     }
