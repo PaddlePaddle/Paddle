@@ -141,9 +141,10 @@ std::unordered_map<std::string, int64_t> GetAxesSizes(
         // Get the max size for axis and check broadcastable.
         if (axis_to_size_map.find(axis) == axis_to_size_map.end()) {
           axis_to_size_map[axis] = pair.second[i];
-        } else if (axis_to_size_map[axis] == 1) {
+        } else if (axis_to_size_map[axis] == 1 ||
+                   axis_to_size_map[axis] == -1) {
           axis_to_size_map[axis] = pair.second[i];
-        } else if (pair.second[i] == 1) {
+        } else if (pair.second[i] == 1 || pair.second[i] == -1) {
           continue;
         } else {
           PADDLE_ENFORCE_EQ(
@@ -1022,7 +1023,7 @@ std::vector<std::vector<int64_t>> GetDimsMappingForAxes(
           dims_mapping.emplace_back(std::vector<int64_t>{});
         } else {
           common::errors::InvalidArgument(
-              "Tensor axis [%s] of not in axis_to_dim_map.", axis);
+              "Tensor axis [%s] is not in axis_to_dim_map.", axis);
         }
       } else {
         dims_mapping.emplace_back(iter->second);
@@ -1031,7 +1032,6 @@ std::vector<std::vector<int64_t>> GetDimsMappingForAxes(
   }
   return dims_mapping;
 }
-
 void DebugInfoForInferSpmd(const std::string& rule_name,
                            const SpmdInfo& infer_result) {
   VLOG(4) << "The infer spmd result of " << rule_name << " is as below:";
