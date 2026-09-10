@@ -757,6 +757,16 @@ static std::vector<Tensor> PrepareIndices(const Tensor& tensor,
   return indices;
 }
 
+static bool HasNegativeStride(const Tensor& tensor) {
+  const auto& strides = tensor.strides();
+  for (int i = 0; i < strides.size(); ++i) {
+    if (strides[i] < 0) {
+      return true;
+    }
+  }
+  return false;
+}
+
 static Tensor getValueForBoolTensor(const Tensor& tensor,
                                     const Tensor& self_tensor,
                                     const Tensor& bool_index,
@@ -804,7 +814,14 @@ static Tensor getValueForBoolTensor(const Tensor& tensor,
     ConvertAllInputsToDistTensor(mesh, tensor, self_tensor, bool_index);
   }
 
-  if (bool_index.shape().size() == tensor_shape.size()) {
+  // `masked_select` has no strided kernel, so handing it a reversed view makes
+  // the dispatcher materialize that whole view first. Send such a view down the
+  // stride-aware route below instead: a full-rank mask indexes every axis, so
+  // the reversed stride ends up in `indexed_strides`, which the gather consumes
+  // directly.
+  if (bool_index.shape().size() == tensor_shape.size() &&
+      !(FLAGS_use_stride_kernel && self_tensor.is_contiguous() &&
+        HasNegativeStride(tensor))) {
     return masked_select_ad_func(tensor, bool_index);
   }
 
