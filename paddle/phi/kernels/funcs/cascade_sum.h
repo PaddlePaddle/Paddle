@@ -422,12 +422,16 @@ struct DimInfo {
 
 // TensorIteratorBase::reorder_dimensions()'s `should_swap`: operand 0 is the
 // reduction output, operand 1 the input. Returns 1 if `a` should come after
-// `b`, -1 if before, 0 if ambiguous.
-inline int ShouldSwap(const DimInfo& a, const DimInfo& b) {
+// `b`, -1 if before, 0 if ambiguous. `is_reduction` mirrors the iterator's
+// `is_reduction_` flag, which gates the move-reduced-dimensions-to-the-front
+// rule; an elementwise iterator must not apply it.
+inline int ShouldSwap(const DimInfo& a,
+                      const DimInfo& b,
+                      bool is_reduction = true) {
   for (int arg = 0; arg < 2; ++arg) {
     const int64_t stride0 = (arg == 0) ? a.out_stride : a.in_stride;
     const int64_t stride1 = (arg == 0) ? b.out_stride : b.in_stride;
-    if (arg == 0) {
+    if (arg == 0 && is_reduction) {
       // Move reduced dimensions to the front.
       if ((stride0 == 0) != (stride1 == 0)) {
         return stride1 == 0 ? 1 : -1;
@@ -452,7 +456,8 @@ inline int ShouldSwap(const DimInfo& a, const DimInfo& b) {
 // merged when their strides allow it.
 inline std::vector<DimInfo> BuildDims(const std::vector<int64_t>& shape,
                                       const std::vector<int64_t>& in_strides,
-                                      const std::vector<int64_t>& out_strides) {
+                                      const std::vector<int64_t>& out_strides,
+                                      bool is_reduction = true) {
   const int rank = static_cast<int>(shape.size());
   std::vector<DimInfo> dims;
   dims.reserve(rank);
@@ -466,7 +471,7 @@ inline std::vector<DimInfo> BuildDims(const std::vector<int64_t>& shape,
   for (int i = 1; i < rank; ++i) {
     int dim1 = i;
     for (int dim0 = i - 1; dim0 >= 0; --dim0) {
-      const int comparison = ShouldSwap(dims[dim0], dims[dim1]);
+      const int comparison = ShouldSwap(dims[dim0], dims[dim1], is_reduction);
       if (comparison > 0) {
         std::swap(dims[dim0], dims[dim1]);
         dim1 = dim0;
