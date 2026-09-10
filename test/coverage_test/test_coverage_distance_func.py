@@ -15,7 +15,7 @@
 # [AUTO-GENERATED] Unit test for paddle.nn.functional.distance
 # 自动生成的单测，覆盖 paddle.nn.functional.distance 模块中不同代码路径
 # Target: cover uncovered lines in python/paddle/nn/functional/distance.py
-# NOTE: test_ai_pairwise_distance.py already covers basic pairwise_distance and pdist.
+# NOTE: test_coverage_pairwise_distance.py already covers basic pairwise_distance and pdist.
 #       This test focuses on edge cases, large p values, different dtypes, batched inputs,
 #       ParamAliasDecorator paths, error handling, negative values, zero vectors, etc.
 
