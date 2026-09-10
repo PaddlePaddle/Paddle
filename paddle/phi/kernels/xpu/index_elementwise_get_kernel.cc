@@ -130,18 +130,19 @@ void XPUIndexElementwiseGetKernel(const Context& dev_ctx,
   if (!flip_axes.empty()) {
     // The gather walked the reversed axes forwards, so `output` still holds the
     // result reversed along `flip_axes`. `output` is contiguous with dims ==
-    // input_dims, so those axis indices apply to it unchanged. xpu::flip cannot
-    // alias, hence the scratch round trip; the scratch is only ever written by
-    // xpu::flip, never by the XDNN gather itself.
+    // input_dims, so those axis indices apply to it unchanged. XPUReverseAxes
+    // cannot alias, hence the scratch round trip; the scratch is only ever
+    // written by XPUReverseAxes, never by the XDNN gather itself.
     using XPUCopyType = typename XPUCopyTypeTrait<T>::Type;
     xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
     auto* flipped = RAII_GUARD.alloc_l3_or_gm<XPUCopyType>(N);
-    r = xpu::flip<XPUCopyType>(dev_ctx.x_context(),
-                               reinterpret_cast<const XPUCopyType*>(out_ptr),
-                               flipped,
-                               input_dims,
-                               flip_axes);
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "flip");
+    r = XPUReverseAxes<XPUCopyType>(
+        dev_ctx.x_context(),
+        reinterpret_cast<const XPUCopyType*>(out_ptr),
+        flipped,
+        input_dims,
+        flip_axes);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "reverse_axes");
     r = xpu::copy<XPUCopyType>(dev_ctx.x_context(),
                                flipped,
                                reinterpret_cast<XPUCopyType*>(out_ptr),

@@ -88,13 +88,13 @@ void XPUIndexElementwiseGetGradKernel(
     // dims == input_dims, so `flip_axes` applies to it unchanged.
     using XPUCopyType = typename XPUCopyTypeTrait<T>::Type;
     auto* flipped = RAII_GUARD.alloc_l3_or_gm<XPUCopyType>(value.numel());
-    int rf =
-        xpu::flip<XPUCopyType>(dev_ctx.x_context(),
-                               reinterpret_cast<const XPUCopyType*>(value_ptr),
-                               flipped,
-                               input_dims,
-                               flip_axes);
-    PADDLE_ENFORCE_XDNN_SUCCESS(rf, "flip");
+    int rf = XPUReverseAxes<XPUCopyType>(
+        dev_ctx.x_context(),
+        reinterpret_cast<const XPUCopyType*>(value_ptr),
+        flipped,
+        input_dims,
+        flip_axes);
+    PADDLE_ENFORCE_XDNN_SUCCESS(rf, "reverse_axes");
     value_ptr = reinterpret_cast<const XPUType*>(flipped);
   }
   std::vector<const XPUTypeIndexT*> index_list_vec;

@@ -144,13 +144,13 @@ void XPUIndexElementwisePutWithTensorKernel(
   if (!value_flip_axes.empty()) {
     using XPUCopyType = typename XPUCopyTypeTrait<T>::Type;
     auto* flipped = RAII_GUARD.alloc_l3_or_gm<XPUCopyType>(value.numel());
-    int rf =
-        xpu::flip<XPUCopyType>(dev_ctx.x_context(),
-                               reinterpret_cast<const XPUCopyType*>(in_ptr),
-                               flipped,
-                               value_dims,
-                               value_flip_axes);
-    PADDLE_ENFORCE_XDNN_SUCCESS(rf, "flip");
+    int rf = XPUReverseAxes<XPUCopyType>(
+        dev_ctx.x_context(),
+        reinterpret_cast<const XPUCopyType*>(in_ptr),
+        flipped,
+        value_dims,
+        value_flip_axes);
+    PADDLE_ENFORCE_XDNN_SUCCESS(rf, "reverse_axes");
     in_ptr = reinterpret_cast<const char*>(flipped);
     data_size_in = value.numel() * static_cast<int64_t>(sizeof(T));
   }
