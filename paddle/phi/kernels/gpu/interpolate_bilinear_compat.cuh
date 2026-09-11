@@ -129,7 +129,8 @@ __device__ __forceinline__ float GatherGrad(const float* grad,
     // Torch's deterministic index_put sums full groups with a warp tree,
     // then lane 0 adds the remainder in original output-index order.
     tail = count / 32 * 32;
-    for (int64_t i = static_cast<int64_t>(threadIdx.x) % 32; i < tail; i += 32) {
+    for (int64_t i = static_cast<int64_t>(threadIdx.x) % 32; i < tail;
+         i += 32) {
       int64_t oy = y_begin + i / width;
       int64_t ox = x_begin + i % width;
       sum = __fadd_rn(sum,
