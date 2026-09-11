@@ -66,13 +66,87 @@ class _DatasetKind:
 
 
 class ParentWatchDog:
-    def __init__(self):
-        self._parent_pid = os.getppid()
-        self._parent_alive = True
+    def __init__(self, parent_pid=None):
+        self._parent_pid = (
+            parent_pid if parent_pid is not None else os.getppid()
+        )
+        # On Windows, os.getppid() can return a stale PID from the spawn
+        # bootstrap process. Use OpenProcess + GetExitCodeProcess instead
+        # of PPID comparison to reliably detect parent death.
+        if sys.platform == 'win32':
+            self._kernel32 = self._load_kernel32()
+            self._parent_alive = self._parent_alive_win32()
+        else:
+            self._parent_alive = True
+
+    @staticmethod
+    def _load_kernel32():
+        import ctypes
+        from ctypes import wintypes
+
+        # use_last_error=True is required for ctypes.get_last_error() to
+        # return the error code of our own calls reliably; reading
+        # windll.kernel32.GetLastError() may observe errors from ctypes
+        # internals instead.
+        kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        # Set proper argument/return types for Win64 HANDLE compatibility
+        kernel32.OpenProcess.argtypes = [
+            wintypes.DWORD,
+            wintypes.BOOL,
+            wintypes.DWORD,
+        ]
+        kernel32.OpenProcess.restype = wintypes.HANDLE
+        kernel32.GetExitCodeProcess.argtypes = [
+            wintypes.HANDLE,
+            ctypes.POINTER(wintypes.DWORD),
+        ]
+        kernel32.GetExitCodeProcess.restype = wintypes.BOOL
+        kernel32.CloseHandle.argtypes = [wintypes.HANDLE]
+        kernel32.CloseHandle.restype = wintypes.BOOL
+        return kernel32
+
+    def _parent_alive_win32(self):
+        """Check if parent process is alive using Windows API."""
+        import ctypes
+        from ctypes import wintypes
+
+        kernel32 = self._kernel32
+        PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
+        PROCESS_QUERY_INFORMATION = 0x0400
+        ERROR_ACCESS_DENIED = 5
+        STILL_ACTIVE = 259
+        handle = kernel32.OpenProcess(
+            PROCESS_QUERY_LIMITED_INFORMATION,
+            False,
+            self._parent_pid,
+        )
+        if not handle:
+            # Fallback: try PROCESS_QUERY_INFORMATION (might fail on some systems)
+            handle = kernel32.OpenProcess(
+                PROCESS_QUERY_INFORMATION,
+                False,
+                self._parent_pid,
+            )
+        if not handle:
+            # ERROR_ACCESS_DENIED means the process exists but we may not
+            # query it, so treat it as alive; any other error (e.g.
+            # ERROR_INVALID_PARAMETER, PID doesn't exist) means it is gone.
+            return ctypes.get_last_error() == ERROR_ACCESS_DENIED
+        exit_code = wintypes.DWORD(0)
+        # If GetExitCodeProcess fails we cannot tell, so keep the worker
+        # running instead of treating the parent as dead.
+        alive = True
+        if kernel32.GetExitCodeProcess(handle, ctypes.byref(exit_code)):
+            alive = exit_code.value == STILL_ACTIVE
+        kernel32.CloseHandle(handle)
+        return alive
 
     def is_alive(self):
         if self._parent_alive:
-            self._parent_alive = os.getppid() == self._parent_pid
+            if sys.platform == 'win32':
+                self._parent_alive = self._parent_alive_win32()
+            else:
+                self._parent_alive = os.getppid() == self._parent_pid
         return self._parent_alive
 
 
@@ -290,8 +364,16 @@ def _worker_loop(
     use_shared_memory,
     base_seed,
     shm_cache_size=0,
+    parent_pid=None,
 ):
     try:
+        # NOTE: with the spawn start method (Windows / macOS) the reductions
+        # registered in the parent process are not inherited, so register the
+        # ForkingPickler handlers here to make DenseTensor serializable.
+        from paddle.incubate.multiprocessing import init_reductions
+
+        init_reductions()
+
         # NOTE: [ mmap files clear ] When the child process exits unexpectedly,
         # some shared memory objects may have been applied for but have not yet
         # been put into the inter-process Queue. This part of the object needs
@@ -334,13 +416,23 @@ def _worker_loop(
         except:
             init_exception = _WorkerException(worker_id)
 
+        def numpy2lodtensor(arr):
+            lodtensor = core.DenseTensor()
+            lodtensor.set(arr, core.CPUPlace())
+            return lodtensor
+
         iterator_drained = False
-        parent_watch_dog = ParentWatchDog()
+        parent_watch_dog = ParentWatchDog(parent_pid)
 
         while parent_watch_dog.is_alive():
             try:
-                data = indices_queue.get(MP_STATUS_CHECK_INTERVAL)
+                data = indices_queue.get(timeout=MP_STATUS_CHECK_INTERVAL)
             except queue.Empty:
+                if sys.platform == 'win32' and use_shared_memory:
+                    # Reclaim shared-memory sections of already-consumed
+                    # batches while idle (e.g. between epochs); during
+                    # active loading this happens on every batch.
+                    core._sweep_mmap_handles()
                 continue
 
             if isinstance(data, _ResumeIteration):
@@ -389,12 +481,6 @@ def _worker_loop(
                     out_queue.put((idx, batch, None))
                 batch, structure = _flatten_batch(batch)
                 if use_shared_memory:
-
-                    def numpy2lodtensor(arr):
-                        lodtensor = core.DenseTensor()
-                        lodtensor.set(arr, core.CPUPlace())
-                        return lodtensor
-
                     tensor_list = [
                         (
                             numpy2lodtensor(b)
@@ -409,8 +495,6 @@ def _worker_loop(
     except KeyboardInterrupt:
         # NOTE: Main process will raise KeyboardInterrupt anyways, ignore it in child process
         pass
-    except:
-        raise
     finally:
         if use_shared_memory:
             _cleanup_mmap()
