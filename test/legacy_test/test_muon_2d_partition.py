@@ -12,15 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Single-process tests for MuonShardingOptimizer._partition_2d_parameters.
+"""Single-process tests for MuonShardingOptimizer's 2D partitioners.
 
-The method maps every 2D (Muon) parameter to an owner rank. It reads nothing
-but ``self.comm_buffer_size_MB`` and ``self._global_rank``, and takes the
-parameters as plain ``(name, numel, dtype_str, itemsize)`` tuples, so it can be
-exercised directly -- no communication groups, no accelerators, no launcher.
-These tests put every rank on one machine, which makes the machine-level terms
-constant and leaves the per-rank packing they are about. The multi-process
-behaviour it feeds into is covered by
+Both map every 2D (Muon) parameter to an owner rank, and which one runs is
+picked by the ``machine_balanced_2d_partition`` sharding config.
+``_partition_2d_parameters_machine_balanced`` reads nothing but
+``self.comm_buffer_size_MB`` and ``self._global_rank``, and takes the parameters
+as plain ``(name, numel, dtype_str, itemsize)`` tuples; the legacy
+``_partition_2d_parameters`` reads only ``self.comm_buffer_size_MB`` and each
+parameter's ``shape``/``dtype``. So both can be exercised directly -- no
+communication groups, no accelerators, no launcher. Most tests here put every
+rank on one machine, which makes the machine-level terms constant and leaves the
+per-rank packing they are about. The multi-process behaviour they feed into is
+covered by
 test/collective/fleet/test_muon_sharding_mixed_dtype_partition.py.
 """
 
@@ -44,9 +48,12 @@ class _StubParam:
 
 
 class _StubPartitioner:
-    """Carries only the state ``_partition_2d_parameters`` actually reads."""
+    """Carries only the state the partitioners actually read."""
 
     _partition_2d_parameters = MuonShardingOptimizer._partition_2d_parameters
+    _partition_2d_parameters_machine_balanced = (
+        MuonShardingOptimizer._partition_2d_parameters_machine_balanced
+    )
 
     def __init__(self, comm_buffer_size_MB, global_rank=1):
         self.comm_buffer_size_MB = comm_buffer_size_MB
@@ -63,7 +70,7 @@ def _partition(params, world_size, comm_buffer_size_MB, global_rank=1):
     color_group_key = (None, tuple(range(world_size)))
     owners = _StubPartitioner(
         comm_buffer_size_MB, global_rank
-    )._partition_2d_parameters(
+    )._partition_2d_parameters_machine_balanced(
         {
             color_group_key: [
                 (p.name, _numel(p), p.dtype, ITEMSIZE[p.dtype]) for p in params
@@ -76,6 +83,13 @@ def _partition(params, world_size, comm_buffer_size_MB, global_rank=1):
         rank: [by_name[name] for name in names]
         for rank, names in owners.items()
     }
+
+
+def _partition_legacy(params, world_size, comm_buffer_size_MB):
+    """The path taken when ``machine_balanced_2d_partition`` is off."""
+    return _StubPartitioner(comm_buffer_size_MB)._partition_2d_parameters(
+        list(params), world_size
+    )
 
 
 def _active_ranks(volume_numel, world_size, comm_buffer_size_MB):
@@ -279,6 +293,63 @@ class TestPartition2DParameters(unittest.TestCase):
         self.assertEqual([p.name for p in params], before)
 
 
+class TestLegacyPartition2DParameters(unittest.TestCase):
+    """The machine_balanced_2d_partition=False path, kept as it was.
+
+    It packs each color group from its own rank 0 and knows nothing about
+    machines, so only the per-dtype packing it exists for is asserted here.
+    """
+
+    def test_every_param_owned_exactly_once(self):
+        for label, params in PARAM_SETS.items():
+            for world_size in WORLD_SIZES:
+                for buffer_mb in BUFFER_SIZES_MB:
+                    with self.subTest(
+                        params=label, world_size=world_size, buffer=buffer_mb
+                    ):
+                        mapping = _partition_legacy(
+                            params, world_size, buffer_mb
+                        )
+                        self.assertEqual(
+                            set(mapping),
+                            set(range(world_size)),
+                            "every rank must be present as a key, even if empty",
+                        )
+                        self.assertEqual(
+                            sorted(_owner_of(mapping)),
+                            sorted(p.name for p in params),
+                            "params must be neither dropped nor duplicated",
+                        )
+
+    def test_rank_count_follows_own_dtype_volume(self):
+        """Each dtype spreads only as wide as its own volume requires."""
+        for label, params in PARAM_SETS.items():
+            dtypes = {p.dtype for p in params}
+            for world_size in WORLD_SIZES:
+                for buffer_mb in BUFFER_SIZES_MB:
+                    mapping = _partition_legacy(params, world_size, buffer_mb)
+                    for dtype in dtypes:
+                        own = [p for p in params if p.dtype == dtype]
+                        expected = min(
+                            _active_ranks(
+                                sum(_numel(p) for p in own),
+                                world_size,
+                                buffer_mb,
+                            ),
+                            len(own),
+                        )
+                        with self.subTest(
+                            params=label,
+                            world_size=world_size,
+                            buffer=buffer_mb,
+                            dtype=dtype,
+                        ):
+                            self.assertEqual(
+                                len(_ranks_holding(mapping, dtype)),
+                                expected,
+                            )
+
+
 # ---------------------------------------------------------------------------
 # PP + EP + sharding: several groups per color, spread over several machines
 # ---------------------------------------------------------------------------
@@ -346,7 +417,9 @@ class TestHybridParallelPartition(unittest.TestCase):
     def _run(self, comm_buffer_size_MB, global_rank=0):
         return _StubPartitioner(
             comm_buffer_size_MB, global_rank
-        )._partition_2d_parameters(self.info, self.rank_to_machine)
+        )._partition_2d_parameters_machine_balanced(
+            self.info, self.rank_to_machine
+        )
 
     def test_one_entry_per_group_not_per_color(self):
         """color_key alone is not an identity once PP or EP is on.
@@ -403,7 +476,9 @@ class TestHybridParallelPartition(unittest.TestCase):
                 expected = self._run(buffer_mb)
                 actual = _StubPartitioner(
                     buffer_mb, 0
-                )._partition_2d_parameters(reversed_info, self.rank_to_machine)
+                )._partition_2d_parameters_machine_balanced(
+                    reversed_info, self.rank_to_machine
+                )
                 self.assertEqual(actual, expected)
 
     def test_load_is_spread_over_every_machine(self):
