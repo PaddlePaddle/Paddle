@@ -154,7 +154,7 @@ class XPUTestContiguousComplex64StridedViewXPU(XPUOpTestWrapper):
             for view_fn in (lambda t: t[::-1], lambda t: t[:, ::-1]):
                 view = view_fn(x)
                 self.assertFalse(view.is_contiguous())
-                with self.assertRaises(OSError):
+                with self.assertRaises(NotImplementedError):
                     view.contiguous()
 
             if self.in_type_str != "float32":
@@ -162,14 +162,14 @@ class XPUTestContiguousComplex64StridedViewXPU(XPUOpTestWrapper):
             idx = paddle.to_tensor(np.array([2, 5, 2, 0, 5], dtype=np.int64))
             # single __getitem__: the negative strides reach the gather
             # kernel through its stride attributes
-            with self.assertRaises(OSError):
+            with self.assertRaises(NotImplementedError):
                 x[::-1, idx]
             # chained __getitem__: the getitem fallback materializes the
             # reversed view first
-            with self.assertRaises(OSError):
+            with self.assertRaises(NotImplementedError):
                 x[:, ::-1][idx]
             # setitem: the scatter kernel walks the same reversed view
-            with self.assertRaises(OSError):
+            with self.assertRaises(NotImplementedError):
                 x[::-1, idx] = -7
 
         def test_complex64_strided_slice_regression(self):
@@ -226,7 +226,7 @@ class XPUTestContiguousComplex64StridedViewXPU(XPUOpTestWrapper):
                 lambda t, i: t[::-1, i, ::-1],
             )
             for fn in cases:
-                with self.assertRaises(OSError):
+                with self.assertRaises(NotImplementedError):
                     fn(dist_x, idx)
 
 
