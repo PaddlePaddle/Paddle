@@ -40,7 +40,7 @@ void TruncatedGaussianRandomKernel(const Context& dev_ctx,
   // Sampling always happens in float and is rounded to T on store, which keeps
   // the half precision results identical to the historical behavior of
   // generating a float32 tensor and appending a cast.
-  using MT = typename MPTypeTrait<T>::Type;
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
 
   std::uniform_real_distribution<MT> dist(std::numeric_limits<float>::min(),
                                           1.0);

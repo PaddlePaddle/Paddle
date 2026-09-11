@@ -349,7 +349,7 @@ void RejectionSampleFromNormal(const Context& dev_ctx,
                                double a,
                                double b,
                                DenseTensor* out) {
-  using MT = typename MPTypeTrait<T>::Type;
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
   int64_t numel = out->numel();
 
   funcs::normal_distribution<MT> dist;
@@ -404,7 +404,7 @@ void RejectionSampleFromUniform(const Context& dev_ctx,
                                 double a,
                                 double b,
                                 DenseTensor* out) {
-  using MT = typename MPTypeTrait<T>::Type;
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
   int64_t numel = out->numel();
 
   double mode = std::max(a, std::min(mean, b));
