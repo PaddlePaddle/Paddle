@@ -543,6 +543,179 @@ create_test_fp16_class(TestElementwiseDivOpXsizeLessThanYsize)
 
 
 class TestElementwiseDivBroadcast(unittest.TestCase):
+    def test_cpu_no_broadcast_gradients_exact(self):
+        with base.dygraph.guard(base.CPUPlace()):
+            x_np = np.array([[1.25, -2.5, 3.75], [4.5, -5.75, 6.25]])
+            y_np = np.array([[0.75, -1.5, 2.25], [1.25, 2.5, -3.5]])
+            dout_np = np.array([[0.5, -1.25, 2.0], [-2.5, 3.0, -0.75]])
+
+            x = paddle.to_tensor(x_np, dtype='float32')
+            y = paddle.to_tensor(y_np, dtype='float32')
+            dout = paddle.to_tensor(dout_np, dtype='float32')
+            x.stop_gradient = False
+            y.stop_gradient = False
+            out = x / y
+            dx, dy = paddle.grad(out, [x, y], dout)
+            np.testing.assert_array_equal(dx.numpy(), (dout / y).numpy())
+            np.testing.assert_array_equal(
+                dy.numpy(), (-dout * (out / y)).numpy()
+            )
+
+            out = x / y
+            dx_only = paddle.grad(out, [x], dout)[0]
+            np.testing.assert_array_equal(dx_only.numpy(), (dout / y).numpy())
+
+            out = x / y
+            dy_only = paddle.grad(out, [y], dout)[0]
+            np.testing.assert_array_equal(
+                dy_only.numpy(), (-dout * (out / y)).numpy()
+            )
+
+    def test_cpu_broadcast_gradient_paths_exact(self):
+        with base.dygraph.guard(base.CPUPlace()):
+            # dx is written directly while dy is reduced over axis 0.
+            x = paddle.to_tensor(
+                np.array([[1.25, -2.5, 3.75], [4.5, -5.75, 6.25]]),
+                dtype='float32',
+            )
+            y = paddle.to_tensor(np.array([0.75, -1.5, 2.25]), dtype='float32')
+            dout = paddle.to_tensor(
+                np.array([[0.5, -1.25, 2.0], [-2.5, 3.0, -0.75]]),
+                dtype='float32',
+            )
+            x.stop_gradient = False
+            y.stop_gradient = False
+            out = x / y
+            dx, dy = paddle.grad(out, [x, y], dout)
+            np.testing.assert_array_equal(dx.numpy(), (dout / y).numpy())
+            expected_dy = paddle.sum(-dout * (out / y), axis=0)
+            np.testing.assert_array_equal(dy.numpy(), expected_dy.numpy())
+
+            out = x / y
+            dy_only = paddle.grad(out, [y], dout)[0]
+            np.testing.assert_array_equal(dy_only.numpy(), expected_dy.numpy())
+
+            # dx is reduced over axes 0 and 1 while dy is written directly.
+            x = paddle.to_tensor(np.array([1.25, -2.5, 3.75]), dtype='float32')
+            y = paddle.to_tensor(
+                np.array(
+                    [
+                        [[0.75, -1.5, 2.25]],
+                        [[1.25, 2.5, -3.5]],
+                    ]
+                ),
+                dtype='float32',
+            )
+            dout = paddle.to_tensor(
+                np.array(
+                    [
+                        [[0.5, -1.25, 2.0]],
+                        [[-2.5, 3.0, -0.75]],
+                    ]
+                ),
+                dtype='float32',
+            )
+            x.stop_gradient = False
+            y.stop_gradient = False
+            out = x / y
+            dx, dy = paddle.grad(out, [x, y], dout)
+            expected_dx = paddle.sum(dout / y, axis=[0, 1])
+            np.testing.assert_array_equal(dx.numpy(), expected_dx.numpy())
+            np.testing.assert_array_equal(
+                dy.numpy(), (-dout * (out / y)).numpy()
+            )
+
+            # Both operands reduce over different axes; this exercises the
+            # multi-axis cascade sum path and broadcast index mapping.
+            x_np = np.array(
+                [
+                    [[1.25, -2.5, 3.75, -4.25]],
+                    [[4.5, -5.75, 6.25, -7.5]],
+                ],
+                dtype='float32',
+            )
+            y_np = np.array([[[0.75], [-1.5], [2.25]]], dtype='float32')
+            dout_np = np.array(
+                [
+                    [
+                        [0.5, -1.25, 2.0, -2.75],
+                        [1.0, 0.75, -1.5, 2.25],
+                        [-0.5, 2.5, 1.25, -1.75],
+                    ],
+                    [
+                        [-2.5, 3.0, -0.75, 1.5],
+                        [1.75, -2.25, 0.5, 3.25],
+                        [2.0, -1.0, -2.75, 0.25],
+                    ],
+                ],
+                dtype='float32',
+            )
+            x = paddle.to_tensor(x_np)
+            y = paddle.to_tensor(y_np)
+            dout = paddle.to_tensor(dout_np)
+            x.stop_gradient = False
+            y.stop_gradient = False
+            out = x / y
+            dx, dy = paddle.grad(out, [x, y], dout)
+            local_dx = dout / y
+            local_dy = -dout * (out / y)
+            expected_dx = paddle.sum(local_dx, axis=1, keepdim=True)
+            expected_dy = paddle.sum(local_dy, axis=[0, 2], keepdim=True)
+            np.testing.assert_array_equal(dx.numpy(), expected_dx.numpy())
+            np.testing.assert_array_equal(dy.numpy(), expected_dy.numpy())
+
+    def test_cpu_broadcast_gradients_exact(self):
+        with base.dygraph.guard(base.CPUPlace()):
+            for dtype in ['float32', 'float64']:
+                x_np = np.array(
+                    [[[1.25, -2.5, 3.75]], [[4.5, -5.75, 6.25]]],
+                    dtype=dtype,
+                )
+                y_np = np.array([[0.75, -1.5, 2.25]], dtype=dtype)
+                dout_np = np.array(
+                    [
+                        [[0.5, -1.25, 2.0]],
+                        [[-2.5, 3.0, -0.75]],
+                    ],
+                    dtype=dtype,
+                )
+                x = paddle.to_tensor(x_np)
+                y = paddle.to_tensor(y_np)
+                dout = paddle.to_tensor(dout_np)
+                x.stop_gradient = False
+                y.stop_gradient = False
+                out = x / y
+                dx, dy = paddle.grad(out, [x, y], dout)
+                expected_dx = dout_np / y_np
+                expected_dy = np.sum(
+                    -dout_np * (out.numpy() / y_np), axis=0
+                ).reshape(y_np.shape)
+                np.testing.assert_array_equal(dx.numpy(), expected_dx)
+                np.testing.assert_array_equal(dy.numpy(), expected_dy)
+
+                out_only = x / y
+                dx_only = paddle.grad(out_only, [x], dout)[0]
+                np.testing.assert_array_equal(dx_only.numpy(), expected_dx)
+
+    def test_zero_size_broadcast_gradients_are_zero(self):
+        with base.dygraph.guard(base.CPUPlace()):
+            for dtype in ['float32', 'float64']:
+                x = paddle.zeros([0, 3], dtype=dtype)
+                y = paddle.ones([1, 3], dtype=dtype)
+                x.stop_gradient = False
+                y.stop_gradient = False
+                (x / y).sum().backward()
+                np.testing.assert_array_equal(x.grad.numpy(), np.zeros([0, 3]))
+                np.testing.assert_array_equal(y.grad.numpy(), np.zeros([1, 3]))
+
+                x = paddle.ones([1, 3], dtype=dtype)
+                y = paddle.zeros([0, 3], dtype=dtype)
+                x.stop_gradient = False
+                y.stop_gradient = False
+                (x / y).sum().backward()
+                np.testing.assert_array_equal(x.grad.numpy(), np.zeros([1, 3]))
+                np.testing.assert_array_equal(y.grad.numpy(), np.zeros([0, 3]))
+
     def test_shape_with_batch_sizes(self):
         main_program = paddle.static.Program()
         with paddle.static.program_guard(main_program):
