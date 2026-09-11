@@ -14,6 +14,9 @@ limitations under the License. */
 
 #pragma once
 
+#include <memory>
+#include <type_traits>
+
 #include "glog/logging.h"
 
 #include "paddle/common/enforce.h"
@@ -23,6 +26,7 @@ limitations under the License. */
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/cast_kernel.h"
+#include "paddle/phi/kernels/funcs/cascade_sum.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
 #include "paddle/phi/kernels/funcs/elementwise_utils.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
@@ -53,6 +57,57 @@ namespace phi {
 namespace funcs {
 using DDim = DDim;
 
+// Detects grad functors whose per-element term equals dout bit-for-bit (e.g.
+// IdentityGrad of add). The broadcast reduction can then read dout directly
+// instead of materializing the terms, mirroring torch, which reduces the raw
+// gradient via sum_to_size for such functors.
+template <typename F, typename = void>
+struct GradTermEqualsDout : std::false_type {};
+
+template <typename F>
+struct GradTermEqualsDout<F, std::void_t<decltype(F::kGradTermIsDout)>>
+    : std::bool_constant<F::kGradTermIsDout> {};
+
+// Reduces the per-element gradient terms of a row-major contiguous buffer
+// laid out over the broadcast output shape over `reduce_axes`, reproducing
+// the summation order of torch's at::sum (TensorIterator cascade), which is
+// how torch reduces broadcast gradients. For fp16/bf16 torch may instead sum
+// a float32 copy and round only the result (pytorch issue 83149); mirror
+// that here.
+template <typename T>
+void ReduceGradTermsCascade(const T *terms,
+                            const std::vector<int64_t> &shape,
+                            const std::vector<int64_t> &reduce_axes,
+                            T *out_data,
+                            int64_t out_numel) {
+  std::vector<int64_t> strides(shape.size(), 1);
+  for (int i = static_cast<int>(shape.size()) - 2; i >= 0; --i) {
+    strides[i] = strides[i + 1] * shape[i + 1];
+  }
+  if constexpr (std::is_same<T, ::phi::dtype::float16>::value ||
+                std::is_same<T, ::phi::dtype::bfloat16>::value) {
+    if (NeedsFloatAccBuffer(shape, strides, reduce_axes)) {
+      int64_t terms_numel = 1;
+      for (int64_t d : shape) {
+        terms_numel *= d;
+      }
+      std::vector<float> terms_f(terms_numel);
+      for (int64_t i = 0; i < terms_numel; ++i) {
+        terms_f[i] = static_cast<float>(terms[i]);
+      }
+      std::vector<float> out_f(out_numel);
+      TorchCompatibleReduceSum<float>(
+          terms_f.data(), shape, strides, reduce_axes, out_f.data(), out_numel);
+      for (int64_t i = 0; i < out_numel; ++i) {
+        out_data[i] = static_cast<T>(out_f[i]);
+      }
+      return;
+    }
+  }
+  TorchCompatibleReduceSum<T>(
+      terms, shape, strides, reduce_axes, out_data, out_numel);
+}
+
 template <typename T, typename DX_OP, typename DY_OP, typename Tout = T>
 void CommonGradBroadcastCPU(const DenseTensor &x,
                             const DenseTensor &y,
@@ -67,64 +122,117 @@ void CommonGradBroadcastCPU(const DenseTensor &x,
                             const CPUContext &dev_ctx,
                             DX_OP dx_op,
                             DY_OP dy_op) {
-  using MT = typename MPTypeTrait<T>::Type;
-
   std::vector<int64_t> index_array(max_dim, 0);
   const T *x_data = x.data<T>();
   const T *y_data = y.data<T>();
   const Tout *out_data = out.data<Tout>();
   const Tout *dout_data = dout.data<Tout>();
 
-  DenseTensor dx_mp, dy_mp;
-  MT *dx_mp_data = nullptr;
-  MT *dy_mp_data = nullptr;
-  if (dx != nullptr) {
-    dx_mp.Resize(dx->dims());
-    dev_ctx.Alloc<MT>(&dx_mp);
-    dx_mp_data = dx_mp.data<MT>();
-    memset(dx_mp_data, 0, dx->numel() * sizeof(MT));
-  }
-  if (dy != nullptr) {
-    dy_mp.Resize(dy->dims());
-    dev_ctx.Alloc<MT>(&dy_mp);
-    dy_mp_data = dy_mp.data<MT>();
-    memset(dy_mp_data, 0, dy->numel() * sizeof(MT));
-  }
   const int64_t out_size = std::accumulate(out_dims_array,
                                            out_dims_array + max_dim,
                                            static_cast<int64_t>(1),
                                            std::multiplies<int64_t>());
+
+  // An operand expanded along a dimension (its size is 1 while the output
+  // size is larger) must have its gradient terms reduced along that
+  // dimension. The terms are materialized over the broadcast output shape
+  // (row-major, same order as out/dout) and reduced with torch-compatible
+  // cascade summation, matching the arithmetic and accumulation order of
+  // torch's broadcast backward (materialize the per-element gradient tensor,
+  // then at::sum). An operand that was not expanded is written directly:
+  // its aligned index equals the output index.
+  std::vector<int64_t> dx_reduce_axes, dy_reduce_axes;
+  for (int d = 0; d < max_dim; ++d) {
+    if (x_dims_array[d] == 1 && out_dims_array[d] > 1) {
+      dx_reduce_axes.push_back(d);
+    }
+    if (y_dims_array[d] == 1 && out_dims_array[d] > 1) {
+      dy_reduce_axes.push_back(d);
+    }
+  }
+
+  const std::vector<int64_t> out_shape(out_dims_array,
+                                       out_dims_array + max_dim);
+  // When a functor's term equals dout bit-for-bit, the reduction reads dout
+  // directly instead of the materialized terms, mirroring torch's sum_to_size
+  // on the raw gradient. Requires T == Tout so the terms really are dout.
+  const bool dx_from_dout = !dx_reduce_axes.empty() &&
+                            std::is_same<T, Tout>::value &&
+                            GradTermEqualsDout<DX_OP>::value;
+  const bool dy_from_dout = !dy_reduce_axes.empty() &&
+                            std::is_same<T, Tout>::value &&
+                            GradTermEqualsDout<DY_OP>::value;
+  // Note: a plain std::vector<T> cannot be used here because T can be bool.
+  std::unique_ptr<T[]> dx_terms, dy_terms;
+  T *dx_data = nullptr;
+  T *dy_data = nullptr;
+  if (dx != nullptr) {
+    if (dx_reduce_axes.empty()) {
+      dx_data = dev_ctx.template Alloc<T>(dx);
+    } else if (!dx_from_dout) {
+      dx_terms = std::make_unique<T[]>(out_size);
+    }
+  }
+  if (dy != nullptr) {
+    if (dy_reduce_axes.empty()) {
+      dy_data = dev_ctx.template Alloc<T>(dy);
+    } else if (!dy_from_dout) {
+      dy_terms = std::make_unique<T[]>(out_size);
+    }
+  }
+
+  const bool loop_has_work =
+      (dx != nullptr && !dx_from_dout) || (dy != nullptr && !dy_from_dout);
   int64_t x_index, y_index;
-  for (int64_t out_index = 0; out_index < out_size; ++out_index) {
+  for (int64_t out_index = 0; loop_has_work && out_index < out_size;
+       ++out_index) {
     x_index =
         GetElementwiseIndex<int64_t>(x_dims_array, max_dim, index_array.data());
     y_index =
         GetElementwiseIndex<int64_t>(y_dims_array, max_dim, index_array.data());
-    if (dx_mp_data != nullptr) {
-      dx_mp_data[x_index] += static_cast<MT>(dx_op(x_data[x_index],
-                                                   y_data[y_index],
-                                                   out_data[out_index],
-                                                   dout_data[out_index]));
+    if (dx != nullptr && !dx_from_dout) {
+      const T value = dx_op(x_data[x_index],
+                            y_data[y_index],
+                            out_data[out_index],
+                            dout_data[out_index]);
+      if (dx_data != nullptr) {
+        dx_data[out_index] = value;
+      } else {
+        dx_terms[out_index] = value;
+      }
     }
-    if (dy_mp_data != nullptr) {
-      dy_mp_data[y_index] += static_cast<MT>(dy_op(x_data[x_index],
-                                                   y_data[y_index],
-                                                   out_data[out_index],
-                                                   dout_data[out_index]));
+    if (dy != nullptr && !dy_from_dout) {
+      const T value = dy_op(x_data[x_index],
+                            y_data[y_index],
+                            out_data[out_index],
+                            dout_data[out_index]);
+      if (dy_data != nullptr) {
+        dy_data[out_index] = value;
+      } else {
+        dy_terms[out_index] = value;
+      }
     }
 
     UpdateElementwiseIndexArray<int64_t>(
         out_dims_array, max_dim, index_array.data());
   }
-  if (dx != nullptr) {
-    dev_ctx.Alloc<T>(dx);
-    CastKernel<MT, CPUContext>(
-        dev_ctx, dx_mp, CppTypeToDataType<T>::Type(), dx);
+  if (dx != nullptr && !dx_reduce_axes.empty()) {
+    dx_data = dev_ctx.template Alloc<T>(dx);
+    ReduceGradTermsCascade<T>(
+        dx_from_dout ? reinterpret_cast<const T *>(dout_data) : dx_terms.get(),
+        out_shape,
+        dx_reduce_axes,
+        dx_data,
+        dx->numel());
   }
-  if (dy != nullptr) {
-    dev_ctx.Alloc<T>(dy);
-    CastKernel<MT, CPUContext>(
-        dev_ctx, dy_mp, CppTypeToDataType<T>::Type(), dy);
+  if (dy != nullptr && !dy_reduce_axes.empty()) {
+    dy_data = dev_ctx.template Alloc<T>(dy);
+    ReduceGradTermsCascade<T>(
+        dy_from_dout ? reinterpret_cast<const T *>(dout_data) : dy_terms.get(),
+        out_shape,
+        dy_reduce_axes,
+        dy_data,
+        dy->numel());
   }
 }
 
@@ -140,43 +248,87 @@ static void ElemwiseGradBroadcast1CPU(const T *x,
                                       DY_OP dy_op,
                                       T *dx,
                                       T *dy) {
-  using MT = typename MPTypeTrait<T>::Type;
-
   if (is_xsize_larger) {
-    for (size_t j = 0; j < w; ++j) {
-      MT sum_y = static_cast<MT>(0);
-      for (size_t i = 0; i < h; ++i) {
-        size_t x_offset = i * w + j;
+    // x is [h, w] and y is [w]: dx needs no reduction; dy is reduced over the
+    // h rows when y was expanded (h > 1), with torch-compatible cascade
+    // summation over the materialized terms.
+    const bool dy_reduce = (h > 1);
+    // When the dy term equals dout bit-for-bit, reduce dout directly instead
+    // of materializing the terms, mirroring torch's sum_to_size on the raw
+    // gradient. Requires T == Tout so the terms really are dout.
+    const bool dy_from_dout = dy_reduce && std::is_same<T, Tout>::value &&
+                              GradTermEqualsDout<DY_OP>::value;
+    // Note: a plain std::vector<T> cannot be used here because T can be bool.
+    std::unique_ptr<T[]> dy_terms;
+    if (dy != nullptr && dy_reduce && !dy_from_dout) {
+      dy_terms = std::make_unique<T[]>(h * w);
+    }
+    const bool loop_has_work =
+        (dx != nullptr) || (dy != nullptr && !dy_from_dout);
+    for (size_t i = 0; loop_has_work && i < h; ++i) {
+      for (size_t j = 0; j < w; ++j) {
+        const size_t x_offset = i * w + j;
         if (dx != nullptr) {
           dx[x_offset] =
               dx_op(x[x_offset], y[j], out[x_offset], dout[x_offset]);
         }
-        if (dy != nullptr) {
-          sum_y += static_cast<MT>(
-              dy_op(x[x_offset], y[j], out[x_offset], dout[x_offset]));
+        if (dy != nullptr && !dy_from_dout) {
+          const T value =
+              dy_op(x[x_offset], y[j], out[x_offset], dout[x_offset]);
+          if (dy_reduce) {
+            dy_terms[x_offset] = value;
+          } else {
+            dy[x_offset] = value;
+          }
         }
       }
-      if (dy != nullptr) {
-        dy[j] = static_cast<T>(sum_y);
-      }
+    }
+    if (dy != nullptr && dy_reduce) {
+      ReduceGradTermsCascade<T>(
+          dy_from_dout ? reinterpret_cast<const T *>(dout) : dy_terms.get(),
+          {static_cast<int64_t>(h), static_cast<int64_t>(w)},
+          {0},
+          dy,
+          static_cast<int64_t>(w));
     }
   } else {
-    for (size_t j = 0; j < w; ++j) {
-      MT sum_x = static_cast<MT>(0);
-      for (size_t i = 0; i < h; ++i) {
-        size_t y_offset = i * w + j;
+    // y is [h, w] and x is [w]: dy needs no reduction; dx is reduced over the
+    // h rows when x was expanded (h > 1).
+    const bool dx_reduce = (h > 1);
+    const bool dx_from_dout = dx_reduce && std::is_same<T, Tout>::value &&
+                              GradTermEqualsDout<DX_OP>::value;
+    // Note: a plain std::vector<T> cannot be used here because T can be bool.
+    std::unique_ptr<T[]> dx_terms;
+    if (dx != nullptr && dx_reduce && !dx_from_dout) {
+      dx_terms = std::make_unique<T[]>(h * w);
+    }
+    const bool loop_has_work =
+        (dy != nullptr) || (dx != nullptr && !dx_from_dout);
+    for (size_t i = 0; loop_has_work && i < h; ++i) {
+      for (size_t j = 0; j < w; ++j) {
+        const size_t y_offset = i * w + j;
         if (dy != nullptr) {
           dy[y_offset] =
               dy_op(x[j], y[y_offset], out[y_offset], dout[y_offset]);
         }
-        if (dx != nullptr) {
-          sum_x += static_cast<MT>(
-              dx_op(x[j], y[y_offset], out[y_offset], dout[y_offset]));
+        if (dx != nullptr && !dx_from_dout) {
+          const T value =
+              dx_op(x[j], y[y_offset], out[y_offset], dout[y_offset]);
+          if (dx_reduce) {
+            dx_terms[y_offset] = value;
+          } else {
+            dx[y_offset] = value;
+          }
         }
       }
-      if (dx != nullptr) {
-        dx[j] = static_cast<T>(sum_x);
-      }
+    }
+    if (dx != nullptr && dx_reduce) {
+      ReduceGradTermsCascade<T>(
+          dx_from_dout ? reinterpret_cast<const T *>(dout) : dx_terms.get(),
+          {static_cast<int64_t>(h), static_cast<int64_t>(w)},
+          {0},
+          dx,
+          static_cast<int64_t>(w));
     }
   }
 }
@@ -194,47 +346,106 @@ static void ElemwiseGradBroadcast2CPU(const T *x,
                                       DY_OP dy_op,
                                       T *dx,
                                       T *dy) {
-  using MT = typename MPTypeTrait<T>::Type;
-
   if (is_xsize_larger) {
-    for (size_t j = 0; j < n; ++j) {
-      MT sum_y = static_cast<MT>(0);
-      for (size_t i = 0; i < pre; ++i) {
+    // x is [pre, n, post] and y is [n]: dx needs no reduction; dy is reduced
+    // over the pre and post groups (the dims y was expanded along), with
+    // torch-compatible cascade summation over the materialized terms.
+    const bool dy_reduce = (pre > 1 || post > 1);
+    const bool dy_from_dout = dy_reduce && std::is_same<T, Tout>::value &&
+                              GradTermEqualsDout<DY_OP>::value;
+    // Note: a plain std::vector<T> cannot be used here because T can be bool.
+    std::unique_ptr<T[]> dy_terms;
+    if (dy != nullptr && dy_reduce && !dy_from_dout) {
+      dy_terms = std::make_unique<T[]>(pre * n * post);
+    }
+    const bool loop_has_work =
+        (dx != nullptr) || (dy != nullptr && !dy_from_dout);
+    for (size_t i = 0; loop_has_work && i < pre; ++i) {
+      for (size_t j = 0; j < n; ++j) {
         for (size_t k = 0; k < post; ++k) {
-          size_t x_offset = i * n * post + j * post + k;
+          const size_t x_offset = i * n * post + j * post + k;
           if (dx != nullptr) {
             dx[x_offset] =
                 dx_op(x[x_offset], y[j], out[x_offset], dout[x_offset]);
           }
-          if (dy != nullptr) {
-            sum_y += static_cast<MT>(
-                dy_op(x[x_offset], y[j], out[x_offset], dout[x_offset]));
+          if (dy != nullptr && !dy_from_dout) {
+            const T value =
+                dy_op(x[x_offset], y[j], out[x_offset], dout[x_offset]);
+            if (dy_reduce) {
+              dy_terms[x_offset] = value;
+            } else {
+              dy[x_offset] = value;
+            }
           }
         }
       }
-      if (dy != nullptr) {
-        dy[j] = static_cast<T>(sum_y);
+    }
+    if (dy != nullptr && dy_reduce) {
+      std::vector<int64_t> reduce_axes;
+      if (pre > 1) {
+        reduce_axes.push_back(0);
       }
+      if (post > 1) {
+        reduce_axes.push_back(2);
+      }
+      ReduceGradTermsCascade<T>(
+          dy_from_dout ? reinterpret_cast<const T *>(dout) : dy_terms.get(),
+          {static_cast<int64_t>(pre),
+           static_cast<int64_t>(n),
+           static_cast<int64_t>(post)},
+          reduce_axes,
+          dy,
+          static_cast<int64_t>(n));
     }
   } else {
-    for (size_t j = 0; j < n; ++j) {
-      MT sum_x = static_cast<MT>(0);
-      for (size_t i = 0; i < pre; ++i) {
+    // y is [pre, n, post] and x is [n]: dy needs no reduction; dx is reduced
+    // over the pre and post groups (the dims x was expanded along).
+    const bool dx_reduce = (pre > 1 || post > 1);
+    const bool dx_from_dout = dx_reduce && std::is_same<T, Tout>::value &&
+                              GradTermEqualsDout<DX_OP>::value;
+    // Note: a plain std::vector<T> cannot be used here because T can be bool.
+    std::unique_ptr<T[]> dx_terms;
+    if (dx != nullptr && dx_reduce && !dx_from_dout) {
+      dx_terms = std::make_unique<T[]>(pre * n * post);
+    }
+    const bool loop_has_work =
+        (dy != nullptr) || (dx != nullptr && !dx_from_dout);
+    for (size_t i = 0; loop_has_work && i < pre; ++i) {
+      for (size_t j = 0; j < n; ++j) {
         for (size_t k = 0; k < post; ++k) {
-          size_t y_offset = i * n * post + j * post + k;
+          const size_t y_offset = i * n * post + j * post + k;
           if (dy != nullptr) {
             dy[y_offset] =
                 dy_op(x[j], y[y_offset], out[y_offset], dout[y_offset]);
           }
-          if (dx != nullptr) {
-            sum_x += static_cast<MT>(
-                dx_op(x[j], y[y_offset], out[y_offset], dout[y_offset]));
+          if (dx != nullptr && !dx_from_dout) {
+            const T value =
+                dx_op(x[j], y[y_offset], out[y_offset], dout[y_offset]);
+            if (dx_reduce) {
+              dx_terms[y_offset] = value;
+            } else {
+              dx[y_offset] = value;
+            }
           }
         }
       }
-      if (dx != nullptr) {
-        dx[j] = static_cast<T>(sum_x);
+    }
+    if (dx != nullptr && dx_reduce) {
+      std::vector<int64_t> reduce_axes;
+      if (pre > 1) {
+        reduce_axes.push_back(0);
       }
+      if (post > 1) {
+        reduce_axes.push_back(2);
+      }
+      ReduceGradTermsCascade<T>(
+          dx_from_dout ? reinterpret_cast<const T *>(dout) : dx_terms.get(),
+          {static_cast<int64_t>(pre),
+           static_cast<int64_t>(n),
+           static_cast<int64_t>(post)},
+          reduce_axes,
+          dx,
+          static_cast<int64_t>(n));
     }
   }
 }
@@ -271,6 +482,11 @@ void CommonElementwiseBroadcastBackward(const CPUContext &dev_ctx,
     dx->Resize(x_dims);
     dev_ctx.template Alloc<T>(dx);
   }
+  if (dy && dy->IsSharedBufferWith(dout)) {
+    dy->clear();
+    dy->Resize(y_dims);
+    dev_ctx.template Alloc<T>(dy);
+  }
 
   VLOG(3) << "CommonElementwiseBroadcastBackward xdims:"
           << make_ddim(x_dims_array) << " ydim:" << make_ddim(y_dims_array);
@@ -303,6 +519,25 @@ void ElemwiseGradComputeWithBroadcast(const CPUContext &dev_ctx,
                                       DenseTensor *dy,
                                       DX_OP dx_op,
                                       DY_OP dy_op) {
+  // Zero-sized broadcast output (e.g. x=[2,0] vs y=[2,1]): every gradient
+  // term is an empty sum, so both gradients are zero. The fast paths below
+  // would otherwise leave the reduced side unwritten.
+  if (out.numel() == 0) {
+    if (dx != nullptr) {
+      T *dx_data = dev_ctx.template Alloc<T>(dx);
+      if (dx->numel() != 0) {
+        std::memset(dx_data, 0, dx->numel() * sizeof(T));
+      }
+    }
+    if (dy != nullptr) {
+      T *dy_data = dev_ctx.template Alloc<T>(dy);
+      if (dy->numel() != 0) {
+        std::memset(dy_data, 0, dy->numel() * sizeof(T));
+      }
+    }
+    return;
+  }
+
   bool is_xsize_larger = true;
 
   int max_dim = x_dims.size();
@@ -354,6 +589,24 @@ void ElemwiseGradComputeWithBroadcast(const CPUContext &dev_ctx,
     CommonElementwiseBroadcastBackward<T, DX_OP, DY_OP, Tout>(
         dev_ctx, x_dims, y_dims, x, y, out, dout, axis, dx, dy, dx_op, dy_op);
     return;
+  }
+  // for inplace strategy. The eager backward may hand a grad output in as a
+  // view of dout; a reduced output is written while dout is still being read
+  // (the memset of the reduction target alone would corrupt it), so detach
+  // the reduced side first. A non-reduced output writes each element after
+  // reading it and stays safe.
+  const bool reduce_x = post == 1 ? pre > 1 : (pre > 1 || post > 1);
+  if (dx != nullptr && !is_xsize_larger && reduce_x &&
+      dx->IsSharedBufferWith(dout)) {
+    dx->clear();
+    dx->Resize(x_dims);
+    dev_ctx.template Alloc<T>(dx);
+  }
+  if (dy != nullptr && is_xsize_larger && reduce_x &&
+      dy->IsSharedBufferWith(dout)) {
+    dy->clear();
+    dy->Resize(y_dims);
+    dev_ctx.template Alloc<T>(dy);
   }
   if (post == 1) {
     ElemwiseGradBroadcast1CPU(x.data<T>(),
