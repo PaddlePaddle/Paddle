@@ -199,6 +199,9 @@ class MuonShardingOptimizer:
         self.accumulate_steps = sharding_configs.accumulate_steps
         self.comm_overlap = sharding_configs.comm_overlap
         self.comm_buffer_size_MB = sharding_configs.comm_buffer_size_MB
+        self.machine_balanced_2d_partition = (
+            sharding_configs.machine_balanced_2d_partition
+        )
         self.use_reduce_avg = sharding_configs.use_reduce_avg
         self.enable_fuse_optimizer_states = (
             sharding_configs.enable_fuse_optimizer_states
@@ -330,33 +333,70 @@ class MuonShardingOptimizer:
                 self._params_1d.append(p)
 
         # ---- Step 2: Partition 2D params for each color group ----
-        # Owners are planned globally so that every rank agrees, then each rank
-        # keeps the mapping of the groups it belongs to.
-        rank_to_machine = self._build_rank_to_machine()
-        all_color_group_info = self._gather_all_color_group_info()
-        color_group_to_ranks = self._partition_2d_parameters(
-            all_color_group_info, rank_to_machine
-        )
-
         self._rank2params_2d_by_color = {}  # color -> {rank -> [params]}
         self._param2rank_2d_by_color = {}  # color -> {param_name -> rank}
-        for color_key, params_2d in self._params_2d_by_color.items():
-            group = self._color_to_group_info[color_key]['group']
-            group_ranks = tuple(group.ranks) if group else (self._global_rank,)
-            param_by_name = {p.name: p for p in params_2d}
-            self._rank2params_2d_by_color[color_key] = {
-                local_rank: [param_by_name[n] for n in names]
-                for local_rank, names in color_group_to_ranks[
-                    (color_key, group_ranks)
-                ].items()
-            }
-            self._param2rank_2d_by_color[color_key] = {
-                p.name: local_rank
-                for local_rank, ps in self._rank2params_2d_by_color[
-                    color_key
-                ].items()
-                for p in ps
-            }
+        if self.machine_balanced_2d_partition:
+            # Owners are planned globally so that every rank agrees, then each
+            # rank keeps the mapping of the groups it belongs to. Both gathers
+            # below run on the global world, so every rank of the job must take
+            # this branch.
+            rank_to_machine = self._build_rank_to_machine()
+            all_color_group_info = self._gather_all_color_group_info()
+            color_group_to_ranks = (
+                self._partition_2d_parameters_machine_balanced(
+                    all_color_group_info, rank_to_machine
+                )
+            )
+            for color_key, params_2d in self._params_2d_by_color.items():
+                group = self._color_to_group_info[color_key]['group']
+                group_ranks = (
+                    tuple(group.ranks) if group else (self._global_rank,)
+                )
+                param_by_name = {p.name: p for p in params_2d}
+                self._rank2params_2d_by_color[color_key] = {
+                    local_rank: [param_by_name[n] for n in names]
+                    for local_rank, names in color_group_to_ranks[
+                        (color_key, group_ranks)
+                    ].items()
+                }
+                self._param2rank_2d_by_color[color_key] = {
+                    p.name: local_rank
+                    for local_rank, ps in self._rank2params_2d_by_color[
+                        color_key
+                    ].items()
+                    for p in ps
+                }
+        else:
+            # For each color, compute rank-to-params and param-to-rank mappings
+            for color_key, params_2d in self._params_2d_by_color.items():
+                group_info = self._color_to_group_info.get(color_key, {})
+                world_size = group_info.get('world_size', 1)
+
+                if world_size <= 1:
+                    # No partition needed, all params stay on rank 0
+                    self._rank2params_2d_by_color[color_key] = {
+                        0: list(params_2d)
+                    }
+                    self._param2rank_2d_by_color[color_key] = {
+                        p.name: 0 for p in params_2d
+                    }
+                else:
+                    # Greedy partition across ranks
+                    label = color_key if color_key else "default"
+                    self._rank2params_2d_by_color[color_key] = (
+                        self._partition_2d_parameters(
+                            list(params_2d), world_size, label=label
+                        )
+                    )
+                    self._param2rank_2d_by_color[color_key] = {}
+                    for rank, params in self._rank2params_2d_by_color[
+                        color_key
+                    ].items():
+                        for p in params:
+                            self._param2rank_2d_by_color[color_key][
+                                p.name
+                            ] = rank
+
         # Sort params within each color by owner rank for deterministic ordering
         for color_key, params_2d in self._params_2d_by_color.items():
             params_2d.sort(
@@ -614,7 +654,9 @@ class MuonShardingOptimizer:
                 all_color_group_info[color_group_key] = params
         return all_color_group_info
 
-    def _partition_2d_parameters(self, all_color_group_info, rank_to_machine):
+    def _partition_2d_parameters_machine_balanced(
+        self, all_color_group_info, rank_to_machine
+    ):
         """Assign every color's 2D params to owner ranks.
 
         Balances parameter bytes across machines first, spreads owners away
@@ -728,11 +770,15 @@ class MuonShardingOptimizer:
                 machine_free_ranks.remove(owner)
                 owners.append(owner)
 
-                # Crowding is a weighted owner count, not bytes, so it does not
-                # re-measure machine_load. 1/d^2 stays non-zero across the
-                # whole cluster; CROWD_NEAR_WEIGHT being a quarter of
-                # CROWD_SELF_WEIGHT keeps 2 * sum(1/d^2) under one self weight,
-                # so no machine takes a second owner before all have one.
+                # Crowding spreads the owners apart: the machine that just
+                # took one is penalised the most, and its neighbours by
+                # 1 / d^2 of that penalty. A machine with no owner of its own
+                # therefore still counts as crowded when the machines near it
+                # have one. CROWD_SELF_WEIGHT is the penalty on the machine
+                # that just took an owner; CROWD_NEAR_WEIGHT is a quarter of
+                # it, which keeps 2 * sum(1/d^2) under one self weight and so
+                # makes sure no machine gets a second owner before every
+                # machine has one.
                 machine_crowding[machine] += CROWD_SELF_WEIGHT
                 machine_pos = machine_index[machine]
                 for other in machines:
@@ -861,6 +907,70 @@ class MuonShardingOptimizer:
         synchronously in ``reduce_gradients`` instead of via the overlap hook.
         """
         return [b for b in buffers if cls._buffer_color(b) in shared_colors]
+
+    def _partition_2d_parameters(self, params, world_size, label=""):
+        """Partition 2D parameters among ranks, bin-packing each dtype apart.
+
+        A FusedCommBuffer never mixes dtypes, since ``AssignGroupBySize`` keys
+        its groups on dtype. Bin-packing all dtypes together therefore sizes
+        ``active_ranks`` from the total of the whole color group, and a dtype
+        that only holds a small share of the parameters gets spread over far
+        more ranks than its own volume needs. Each of those ranks then builds a
+        tiny buffer of that dtype instead of one fused buffer. Running the same
+        greedy packing once per dtype keeps every dtype on as few ranks as it
+        actually needs.
+
+        Within a dtype, only the first n ranks are assigned parameters such that
+        total size > comm_buffer_size_MB. Remaining ranks get no parameters.
+        """
+        mapping = {}
+        for rank in range(world_size):
+            mapping[rank] = []
+
+        params_by_dtype = defaultdict(list)
+        for p in params:
+            params_by_dtype[p.dtype].append(p)
+
+        # Sorted so the result is fully determined by the input list rather than
+        # by the order the dtypes happen to appear in it. Owner assignment does
+        # not depend on this -- every dtype packs from rank 0 independently --
+        # but the order of each rank's param list does, and that order is what
+        # ``_local_2d`` is built from.
+        for dtype in sorted(params_by_dtype, key=str):
+            parameters = params_by_dtype[dtype]
+            parameters.sort(
+                key=lambda p: functools_reduce(lambda x, y: x * y, p.shape),
+                reverse=True,
+            )
+
+            total_numel = sum(
+                functools_reduce(lambda x, y: x * y, p.shape, 1)
+                for p in parameters
+            )
+            total_size_bytes = total_numel * 4
+            total_size_mb = total_size_bytes / (1024**2)
+
+            buffer_size_mb = (
+                self.comm_buffer_size_MB
+                if self.comm_buffer_size_MB > 0
+                else 256
+            )
+            min_active_ranks = 1
+            if total_size_mb > 0:
+                min_active_ranks = max(
+                    1, int(total_size_mb / buffer_size_mb) + 1
+                )
+
+            active_ranks = min(min_active_ranks, world_size)
+            sizes = [0] * active_ranks
+
+            for param in parameters:
+                rank = sizes.index(min(sizes))
+                mapping[rank].append(param)
+                numel = functools_reduce(lambda x, y: x * y, param.shape, 1)
+                sizes[rank] += numel
+
+        return mapping
 
     def _build_2d_comm_buffers(self):
         """Build communication buffers for 2D (Tensor-wise) parameters using all-reduce."""
