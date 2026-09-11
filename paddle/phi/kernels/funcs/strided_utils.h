@@ -544,9 +544,14 @@ inline void StridedTensorAccumulate(const DenseTensor& out_grad,
 
   if (use_device_scatter_add) {
     // 1. arange(0, storage_numel) over the destination storage.
-    DenseTensor storage_index(DataType::INT64);
-    storage_index.Resize(
-        common::make_ddim(std::vector<int64_t>{storage_numel}));
+    // DenseTensor(DataType) lives in dense_tensor.inl and is hidden from
+    // PADDLE_WITH_CUSTOM_KERNEL TUs, including ATen_resize_custom_kernel_test
+    // which includes this header through as_strided.h. set_meta(const&) is
+    // always visible and overwrites the default-constructed float32 meta.
+    DenseTensor storage_index;
+    storage_index.set_meta(DenseTensorMeta(
+        DataType::INT64,
+        common::make_ddim(std::vector<int64_t>{storage_numel})));
     using arange_signature = void (*)(const DeviceContext&,
                                       const Scalar&,
                                       const Scalar&,
@@ -726,11 +731,14 @@ inline void StridedTensorAccumulateThroughStorage(
 
   auto& pool = DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(input_grad->place());
-  // Resize rather than set_meta: the rvalue set_meta overload requires the
-  // destination meta to be invalid, and a default constructed DenseTensor
-  // already reports a valid one (float32, NCHW, rank -1 dims).
-  DenseTensor storage(input_grad->dtype());
-  storage.Resize(common::make_ddim(std::vector<int64_t>{storage_numel}));
+  // The rvalue set_meta overload requires an invalid destination meta, and a
+  // default constructed DenseTensor already reports a valid one (float32,
+  // NCHW, rank -1 dims). The const-ref overload overwrites dtype/dims instead.
+  // DenseTensor(DataType) is also unavailable under PADDLE_WITH_CUSTOM_KERNEL.
+  DenseTensor storage;
+  storage.set_meta(
+      DenseTensorMeta(input_grad->dtype(),
+                      common::make_ddim(std::vector<int64_t>{storage_numel})));
   dev_ctx->Alloc(&storage, storage.dtype());
   StridedTensorFill<T>(storage, 0, &storage);
 

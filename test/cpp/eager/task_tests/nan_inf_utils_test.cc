@@ -26,12 +26,14 @@
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/api/include/api.h"
 #include "paddle/phi/api/include/strings_api.h"
+#include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 PD_DECLARE_KERNEL(full, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(strings_empty, CPU, ALL_LAYOUT);
 
 COMMON_DECLARE_string(check_nan_inf_blacklist);
+COMMON_DECLARE_bool(use_stride_kernel);
 
 namespace egr {
 
@@ -137,12 +139,35 @@ TEST(NanInfUtils, SkipFloat8Tensor) {
 
 TEST(NanInfUtils, SkipNonContiguousTensor) {
   FLAGS_check_nan_inf_blacklist = "";
+  // is_contiguous() throws when FLAGS_use_stride_kernel is off and the tensor
+  // is actually strided. XPU CI sets that flag to 0, so the skip path has to
+  // enable it for the duration of this test. Restore on every exit, including
+  // assertion failure: a leaked true would hide later stride-kernel bugs.
+  struct RestoreStrideFlag {
+    bool orig;
+    explicit RestoreStrideFlag(bool value) : orig(FLAGS_use_stride_kernel) {
+      FLAGS_use_stride_kernel = value;
+    }
+    ~RestoreStrideFlag() { FLAGS_use_stride_kernel = orig; }
+  } restore_stride_flag(true);
 
   auto tensor = paddle::experimental::full(
       {2, 3}, std::numeric_limits<double>::quiet_NaN(), phi::DataType::FLOAT64);
   CHECK_NAN_INF(tensor);
 
-  auto non_contiguous = paddle::experimental::transpose(tensor, {1, 0});
+  // Do not go through transpose: with FLAGS_use_stride_kernel=0, and on XPU
+  // which does not register float64 transpose, it materializes a contiguous
+  // copy and this assertion fails before the skip path is exercised.
+  auto* src = static_cast<phi::DenseTensor*>(tensor.impl().get());
+  auto view = std::make_shared<phi::DenseTensor>();
+  view->ShareDataWith(*src);
+  phi::DenseTensorMeta meta(
+      src->dtype(), common::make_ddim({3, 2}), common::make_ddim({1, 3}));
+  meta.offset = src->meta().offset;
+  view->set_meta(meta);
+
+  paddle::Tensor non_contiguous;
+  non_contiguous.set_impl(view);
   ASSERT_FALSE(static_cast<const phi::DenseTensor*>(non_contiguous.impl().get())
                    ->meta()
                    .is_contiguous());
