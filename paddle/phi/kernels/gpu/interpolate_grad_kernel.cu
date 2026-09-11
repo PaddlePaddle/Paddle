@@ -14,6 +14,7 @@
 
 #include "paddle/phi/kernels/interpolate_grad_kernel.h"
 
+#include "paddle/common/flags.h"
 #include "paddle/common/layout.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
@@ -26,6 +27,12 @@
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/gpu/interpolate.cuh"
 #include "paddle/phi/kernels/primitive/datamover_primitives.h"
+
+#ifdef PADDLE_WITH_CUDA
+#include "paddle/phi/kernels/gpu/interpolate_bilinear_compat.cuh"
+#endif
+
+COMMON_DECLARE_bool(use_accuracy_compatible_kernel);
 
 namespace phi {
 
@@ -1396,6 +1403,24 @@ static void Interpolate2DCUDABwd(
     Copy(dev_ctx, output_grad, dev_ctx.GetPlace(), false, input_grad);
     return;
   }
+
+#ifdef PADDLE_WITH_CUDA
+  if constexpr (std::is_same<T, float>::value) {
+    if (FLAGS_use_accuracy_compatible_kernel && interp_method == "bilinear" &&
+        data_layout == DataLayout::NCHW && !align_corners && align_mode == 0 &&
+        scale.empty() && !scale_tensor) {
+      funcs::bilinear_compat::LaunchBackward(output_grad_data,
+                                             input_grad_data,
+                                             n * c * in_h * in_w,
+                                             in_h,
+                                             in_w,
+                                             out_h,
+                                             out_w,
+                                             dev_ctx.stream());
+      return;
+    }
+  }
+#endif
 
   using MT = typename std::conditional_t<std::is_integral<T>::value,
                                          float,
