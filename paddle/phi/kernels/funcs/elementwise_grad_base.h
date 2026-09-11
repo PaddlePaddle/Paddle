@@ -1043,6 +1043,8 @@ static void ElemwiseGradBroadcast1CUDA(gpuStream_t stream,
     grid_size_64 = std::min(grid_size_64, max_grid_dim);
     PADDLE_ENFORCE_LE_UINT32_MAX(grid_size_64, "elementwise grad launch dim");
     uint32_t grid_size = static_cast<uint32_t>(grid_size_64);
+    // Sufficient while IndexType is uint32_t. If it becomes int32_t, need to
+    // re-check the upper bounds of `i` and `j` in the kernel.
     if (h * w > std::numeric_limits<int>::max()) {
       ElemwiseGradBroadcast1CUDAKernel<int64_t>
           <<<grid_size, block_size, 0, stream>>>(
@@ -1062,6 +1064,8 @@ static void ElemwiseGradBroadcast1CUDA(gpuStream_t stream,
     grid_size_64 = std::min(grid_size_64, max_grid_dim);
     PADDLE_ENFORCE_LE_UINT32_MAX(grid_size_64, "elementwise grad launch dim");
     uint32_t grid_size = static_cast<uint32_t>(grid_size_64);
+    // Sufficient while IndexType is uint32_t. If it becomes int32_t, re-check
+    // the upper bounds of `m` and `n` in the kernel.
     if (h * w > std::numeric_limits<int>::max()) {
       FastElemwiseGradBroadcast1CUDAKernel<int64_t>
           <<<grid_size, block_size, 0, stream>>>(
@@ -1098,6 +1102,8 @@ static void ElemwiseGradBroadcast2CUDA(gpuStream_t stream,
   PADDLE_ENFORCE_LE_UINT32_MAX(grid_size_64, "elementwise grad launch dim");
   uint32_t grid_size = static_cast<uint32_t>(grid_size_64);
 
+  // This guard is sufficient while IndexType is uint32_t. If IndexType becomes
+  // int32_t, re-check the upper bounds of `ttid` and `j` in kernel.
   if (pre * n * post > std::numeric_limits<int>::max()) {
     ElemwiseGradBroadcast2CUDAKernel<
         int64_t><<<grid_size, block_size, 0, stream>>>(
@@ -1293,6 +1299,8 @@ void CommonGradBroadcastCUDA(const DenseTensor &x,
     if (h > split_h) kh = split_h;
     if (w > split_w) kw = split_w;
 
+    // Sufficient guard while IndexType is uint32_t. If it becomes int32_t,
+    // need to re-check bounds of index `i` and `j` in kernel.
     bool use_int64_index = (w * h) > (std::numeric_limits<int32_t>::max());
 
     if (is_y) {
@@ -1465,6 +1473,8 @@ void CommonGradBroadcastCUDA(const DenseTensor &x,
             << " broadcast_pos.size() " << broadcast_pos.size()
             << " out_dims_array[0] " << out_dims_array[0];
 
+    // Sufficient while IndexType is uint32_t. If it becomes int32_t, need to
+    // re-check the upper bounds of loop tail in the kernel.
     bool use_int64_index = h * w > std::numeric_limits<int32_t>::max();
 
     if (w < 16 || h < 16) {
@@ -1581,6 +1591,8 @@ void CommonGradBroadcastCUDA(const DenseTensor &x,
     grid_size_64 = std::min(grid_size_64, max_grid_dim);
     PADDLE_ENFORCE_LE_UINT32_MAX(grid_size_64, "elementwise grad launch dim");
     uint32_t grid_size = static_cast<uint32_t>(grid_size_64);
+    // Sufficient while IndexType is uint32_t. If it becomes int32_t, re-check
+    // the upper bound of the `i` in the kernel.
     if (pre * mid * post > std::numeric_limits<int32_t>::max()) {
       FastCommonGradBroadcastAllCUDAKernel<int64_t>
           <<<grid_size, block_size, 0, stream>>>(x_data,
@@ -1651,6 +1663,10 @@ void CommonGradBroadcastCUDA(const DenseTensor &x,
       // we need to calc y offset with blockid, so do x_pre/y_pre to get
       // left size.
       if (k_pre != pre) k_pre = pre / k_pre;
+      // Guard is sufficient while IndexType is uint32_t. If it became int32_t
+      // need to re-check the upper bounds of the `i` in the kernel.
+      // `post * k_pre` in the kernel relies on k_pre <= pre from the line
+      // above.
       if (pre * mid * post > std::numeric_limits<int32_t>::max() ||
           k_pre * k_mid * k_post > std::numeric_limits<int32_t>::max()) {
         FastCommonGradBroadcastOneCUDAKernel<int64_t>
@@ -1704,6 +1720,10 @@ void CommonGradBroadcastCUDA(const DenseTensor &x,
       uint32_t grid_size = static_cast<uint32_t>(grid_size_64);
       if (k_pre != pre) k_pre = pre / k_pre;
 
+      // Guard is sufficient while IndexType is uint32_t. If it became int32_t
+      // need to re-check the upper bounds of the `i` loop.
+      // `post * k_pre` in the kernel relies on k_pre <= pre from the line
+      // above.
       if (pre * mid * post > std::numeric_limits<int32_t>::max() ||
           k_pre * k_mid * k_post > std::numeric_limits<int32_t>::max()) {
         FastCommonGradBroadcastOneCUDAKernel<int64_t>
@@ -1908,6 +1928,8 @@ void CommonGradBroadcastCUDA(const DenseTensor &x,
                        stable_x_dims_order,
                        bytes,
                        dev_ctx.stream());
+    // Sufficient while IndexType is uint32_t. If it becomes int32_t, re-check
+    // the upper bound of the `j` loop tail in the kernel.
     if (out_size > std::numeric_limits<int32_t>::max()) {
       CommonGradBroadcastCUDAKernel<int64_t, T, DX_OP, Tout>
           <<<x_blocks, x_block_size, 0, dev_ctx.stream()>>>(x_strides_array_gpu,
@@ -1974,6 +1996,8 @@ void CommonGradBroadcastCUDA(const DenseTensor &x,
                        stable_y_dims_order,
                        bytes,
                        dev_ctx.stream());
+    // Sufficient while IndexType is uint32_t. If it becomes int32_t, re-check
+    // the upper bound of the `j` loop tail in the kernel.
     if (out_size > std::numeric_limits<int32_t>::max()) {
       CommonGradBroadcastCUDAKernel<int64_t, T, DY_OP, Tout>
           <<<y_blocks, y_block_size, 0, dev_ctx.stream()>>>(x_strides_array_gpu,

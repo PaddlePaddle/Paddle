@@ -1,11 +1,10 @@
 # A image for building paddle binaries
 # Use cuda devel base image for both cpu and gpu environment
 # When you modify it, please be aware of cudnn-runtime version
-ARG CUDA_VERSION=11.8
-ARG CUDA_PADDLE=cu118
+ARG CUDA_VERSION=12.8
 ARG BASE_TARGET=cuda${CUDA_VERSION}
 
-FROM nvidia/cuda:11.8.0-cudnn8-devel-ubuntu22.04 as base
+FROM nvidia/cuda:12.8.1-cudnn-devel-ubuntu22.04 as base
 MAINTAINER PaddlePaddle Authors <paddle-dev@baidu.com>
 
 
@@ -28,10 +27,14 @@ RUN apt-get update --allow-unauthenticated && \
       curl \
       wget \
       make \
+      libgl1 \
+      libglib2.0-0 \
       libssl-dev \
       autoconf \
       automake \
       libtool \
+      libmlx5-1 \
+      libibverbs-dev \
       python${PYTHON_VERSION} \
       python${PYTHON_VERSION}-dev \
       python3-pip && \
