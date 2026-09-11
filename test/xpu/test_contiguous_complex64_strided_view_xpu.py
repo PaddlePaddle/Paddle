@@ -141,48 +141,36 @@ class XPUTestContiguousComplex64StridedViewXPU(XPUOpTestWrapper):
             )
 
         def test_negative_stride_contiguous(self):
-            x_np = np.arange(8 * 6 * 6, dtype=np.float32).reshape([8, 6, 6])
+            # The XDNN gather/scatter primitives only walk an operand
+            # forwards, so reversed views cannot be materialized or indexed
+            # on XPU. Creating the view is metadata-only and must keep
+            # working; every consuming kernel must raise instead of silently
+            # returning wrong data.
+            x_np = np.arange(8 * 6, dtype=np.float32).reshape([8, 6])
             if self.in_type_str == "complex64":
                 x_np = x_np.astype(np.complex64) * (1.0 + 2.0j)
             x = paddle.to_tensor(x_np)
-            view = x[:, ::-1]
-            self.assertFalse(view.is_contiguous())
-            self._assert_allclose(view.contiguous().numpy(), x_np[:, ::-1])
+
+            for view_fn in (lambda t: t[::-1], lambda t: t[:, ::-1]):
+                view = view_fn(x)
+                self.assertFalse(view.is_contiguous())
+                with self.assertRaises(OSError):
+                    view.contiguous()
 
             if self.in_type_str != "float32":
                 return
-            # (8, 6) regression: the flip inside the XPU contiguous kernel
-            # used to leave parts of the materialized buffer uninitialized
-            # for this shape (nondeterministically), so exercise the
-            # reversed-view materialization directly, more than once.
-            x_np2 = np.arange(8 * 6, dtype=np.float32).reshape([8, 6])
-            x2 = paddle.to_tensor(x_np2)
-            for _ in range(5):
-                self._assert_allclose(
-                    x2[::-1].contiguous().numpy(), x_np2[::-1]
-                )
-                self._assert_allclose(
-                    x2[:, ::-1].contiguous().numpy(), x_np2[:, ::-1]
-                )
-            idx_np = np.array([2, 5, 2, 0, 5], dtype=np.int64)
-            idx2_np = np.array([[1, 3], [3, 1], [0, 0]], dtype=np.int64)
-            idx = paddle.to_tensor(idx_np)
-            idx2 = paddle.to_tensor(idx2_np)
-            self._assert_allclose(x[::-1, idx].numpy(), x_np[::-1, idx_np])
-            self._assert_allclose(view[idx].numpy(), x_np[:, ::-1][idx_np])
-
-            x_np = np.arange(8 * 6 * 33, dtype=np.float32).reshape([8, 6, 33])
-            x = paddle.to_tensor(x_np)
-            self._assert_allclose(x[::-1, idx2].numpy(), x_np[::-1, idx2_np])
-            self._assert_allclose(
-                x[::-1, :, idx].numpy(), x_np[::-1, :, idx_np]
-            )
-            self._assert_allclose(
-                x[idx, ::-1, :].numpy(), x_np[idx_np, ::-1, :]
-            )
-            self._assert_allclose(
-                x[::-1, idx, ::-1].numpy(), x_np[::-1, idx_np, ::-1]
-            )
+            idx = paddle.to_tensor(np.array([2, 5, 2, 0, 5], dtype=np.int64))
+            # single __getitem__: the negative strides reach the gather
+            # kernel through its stride attributes
+            with self.assertRaises(OSError):
+                x[::-1, idx]
+            # chained __getitem__: the getitem fallback materializes the
+            # reversed view first
+            with self.assertRaises(OSError):
+                x[:, ::-1][idx]
+            # setitem: the scatter kernel walks the same reversed view
+            with self.assertRaises(OSError):
+                x[::-1, idx] = -7
 
         def test_complex64_strided_slice_regression(self):
             # Regression for: XPU complex64 strided-view materialization bug.
@@ -227,23 +215,19 @@ class XPUTestContiguousComplex64StridedViewXPU(XPUOpTestWrapper):
             x = paddle.to_tensor(x_np)
             mesh = dist.ProcessMesh([0], dim_names=["x"])
             dist_x = dist.shard_tensor(x, mesh, [dist.Replicate()])
-            idx_np = np.array([2, 5, 2, 0, 5], dtype=np.int64)
-            idx = paddle.to_tensor(idx_np)
+            idx = paddle.to_tensor(np.array([2, 5, 2, 0, 5], dtype=np.int64))
 
+            # Same contract as test_negative_stride_contiguous: the reversed
+            # axis reaches the gather kernel no matter which tensor type
+            # carries it in, so every expression must raise.
             cases = (
-                (lambda t, i: t[i, ::-1, :], lambda a: a[idx_np, ::-1, :]),
-                (lambda t, i: t[::-1, i], lambda a: a[::-1, idx_np]),
-                (
-                    lambda t, i: t[::-1, i, ::-1],
-                    lambda a: a[::-1, idx_np, ::-1],
-                ),
+                lambda t, i: t[i, ::-1, :],
+                lambda t, i: t[::-1, i],
+                lambda t, i: t[::-1, i, ::-1],
             )
-            for fn, expected_fn in cases:
-                out = fn(dist_x, idx)
-                self.assertTrue(out.is_dist())
-                self.assertEqual(out.process_mesh, mesh)
-                self.assertEqual(out.placements, dist_x.placements)
-                self._assert_allclose(out.numpy(), expected_fn(x_np))
+            for fn in cases:
+                with self.assertRaises(OSError):
+                    fn(dist_x, idx)
 
 
 support_types = get_xpu_op_support_types("slice")

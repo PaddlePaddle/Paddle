@@ -205,6 +205,14 @@ class TestIndexElementwiseNegativeStride(unittest.TestCase):
 
     SHAPES = ((8, 6), (8, 6, 6), (8, 6, 33))
 
+    def setUp(self):
+        # The XDNN gather/scatter primitives cannot walk a reversed axis, so
+        # the XPU kernels raise instead of silently returning wrong data.
+        if paddle.device.get_device().startswith("xpu"):
+            self.skipTest(
+                "Negative strides in advanced indexing are unsupported on XPU."
+            )
+
     def _cases(self, ndim):
         cases = [
             ('x[::-1, idx]', lambda t, i: t[::-1, i]),
@@ -304,6 +312,14 @@ class TestIndexElementwisePutNegativeStride(unittest.TestCase):
     """
 
     SHAPES = ((8, 6), (8, 6, 6))
+
+    def setUp(self):
+        # The XDNN gather/scatter primitives cannot walk a reversed axis, so
+        # the XPU kernels raise instead of silently returning wrong data.
+        if paddle.device.get_device().startswith("xpu"):
+            self.skipTest(
+                "Negative strides in advanced indexing are unsupported on XPU."
+            )
 
     def _cases(self, ndim):
         rev = slice(None, None, -1)
