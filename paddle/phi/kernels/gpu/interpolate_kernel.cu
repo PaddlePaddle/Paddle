@@ -28,6 +28,12 @@
 #include "paddle/phi/kernels/gpu/interpolate.cuh"
 #include "paddle/phi/kernels/primitive/datamover_primitives.h"
 
+#ifdef PADDLE_WITH_CUDA
+#include "paddle/phi/kernels/gpu/interpolate_bilinear_compat.cuh"
+#endif
+
+COMMON_DECLARE_bool(use_accuracy_compatible_kernel);
+
 namespace phi {
 
 template <typename T, typename MT, typename InterpFilter>
@@ -1216,6 +1222,24 @@ static void Interpolate2DCUDAFwd(
     Copy(dev_ctx, input, dev_ctx.GetPlace(), false, output);
     return;
   }
+
+#ifdef PADDLE_WITH_CUDA
+  if constexpr (std::is_same<T, float>::value) {
+    if (FLAGS_use_accuracy_compatible_kernel && interp_method == "bilinear" &&
+        data_layout == DataLayout::NCHW && !align_corners && align_mode == 0 &&
+        scale.empty() && !scale_tensor) {
+      funcs::bilinear_compat::LaunchForward(input_data,
+                                            output_data,
+                                            n * c * out_h * out_w,
+                                            in_h,
+                                            in_w,
+                                            out_h,
+                                            out_w,
+                                            dev_ctx.stream());
+      return;
+    }
+  }
+#endif
 
   using MT = std::conditional_t<std::is_integral<T>::value,
                                 float,
