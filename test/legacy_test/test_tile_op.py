@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import itertools
 import unittest
 
 import gradient_checker
@@ -20,6 +21,7 @@ from decorator_helper import prog_scope
 from op_test import (
     OpTest,
     convert_float_to_uint16,
+    convert_uint16_to_float,
     get_device_place,
     get_places,
     is_custom_device,
@@ -656,6 +658,217 @@ class TestTileAlias(unittest.TestCase):
             # 4. Test both aliases: input -> x, dims -> repeat_times
             out_both = paddle.tile(input=x, dims=repeat_times)
             np.testing.assert_array_equal(out_ref.numpy(), out_both.numpy())
+
+
+# Situation 6: FLAGS_use_accuracy_compatible_kernel, which routes tile_grad to
+# the torch-compatible reduce_sum based implementation. Only tile_grad reads the
+# flag, so it is scoped to the backward check. prim / CINN decomposition
+# replaces tile_grad, so they are disabled to reach the flag guarded entry.
+def run_with_compat_kernel(fn):
+    paddle.set_flags({'FLAGS_use_accuracy_compatible_kernel': True})
+    try:
+        fn()
+    finally:
+        paddle.set_flags({'FLAGS_use_accuracy_compatible_kernel': False})
+
+
+# repeat_times introduces a leading dim: [120] -> [2, 2]
+class TestTileOpRank2Expanding_Compat(TestTileOpRank2Expanding):
+    def test_check_grad(self):
+        run_with_compat_kernel(
+            lambda: self.check_grad(
+                ['X'], 'Out', check_prim=False, check_pir=True
+            )
+        )
+
+
+# multi-axis repeat_times
+class TestTileOpRank3_Compat(TestTileOpRank3):
+    def test_check_grad(self):
+        run_with_compat_kernel(
+            lambda: self.check_grad(
+                ['X'], 'Out', check_prim=False, check_pir=True
+            )
+        )
+
+
+# leading dims plus multi-axis repeat
+class TestTileOpRank4_Compat(TestTileOpRank1):
+    def init_data(self):
+        self.ori_shape = (2, 5, 15)
+        self.repeat_times = (2, 3, 1, 2)
+
+    def test_check_grad(self):
+        run_with_compat_kernel(
+            lambda: self.check_grad(
+                ['X'], 'Out', check_prim=False, check_pir=True
+            )
+        )
+
+
+class TestTileFP16OP_Compat(TestTileFP16OP):
+    def init_data(self):
+        self.dtype = np.float16
+        self.ori_shape = [10, 4, 5]
+        self.repeat_times = [2, 2, 1, 4]
+
+    def test_check_grad(self):
+        run_with_compat_kernel(
+            lambda: self.check_grad(
+                ['X'], 'Out', check_prim=False, check_pir=True
+            )
+        )
+
+
+@unittest.skipIf(
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or not core.is_bfloat16_supported(get_device_place()),
+    "core is not compiled with CUDA and not support the bfloat16",
+)
+class TestTileBF16OP_Compat(TestTileBF16OP):
+    def init_data(self):
+        self.dtype = np.uint16
+        self.ori_shape = [10, 4, 5]
+        self.repeat_times = [2, 2, 1, 4]
+
+    def test_check_grad(self):
+        run_with_compat_kernel(
+            lambda: self.check_grad_with_place(
+                get_device_place(),
+                ['X'],
+                'Out',
+                check_prim=False,
+                check_pir=True,
+            )
+        )
+
+
+def repeat_grad_ref(x_shape, repeat_times, grad):
+    """Reference gradient of torch's Tensor.repeat / paddle.tile.
+
+    Every tile copy contributes its own slice of out_grad, so the gradient is
+    the sum of all those slices. Accumulated in float32 and verified against
+    torch 2.12.
+    """
+    rank = len(x_shape)
+    num_unsqueezed = len(repeat_times) - rank
+    padded_shape = [1] * num_unsqueezed + list(x_shape)
+    out = np.zeros(padded_shape, dtype="float32")
+    grad = grad.astype("float32")
+    for index in itertools.product(*[range(r) for r in repeat_times]):
+        out += grad[
+            tuple(
+                slice(i * d, (i + 1) * d) for i, d in zip(index, padded_shape)
+            )
+        ]
+    for _ in range(num_unsqueezed):
+        out = out.sum(axis=0)
+    return out.reshape(x_shape)
+
+
+class TestTileCompatAgainstRef(unittest.TestCase):
+    """Cross check tile forward/backward against the torch Tensor.repeat
+    semantics, for both FLAGS_use_accuracy_compatible_kernel=True (new entry)
+    and False (old path).
+    """
+
+    # (ori_shape, repeat_times)
+    cases = [
+        ([120], [2, 2]),
+        ([4, 3], [2, 3, 2]),
+        ([2, 4, 15], [2, 1, 4]),
+        ([2, 3, 4, 5], [2, 1, 3, 1]),
+        ([], [2, 3]),
+    ]
+
+    tolerance = {
+        'float32': {'rtol': 1e-6, 'atol': 1e-6},
+        'float16': {'rtol': 1e-2, 'atol': 1e-2},
+        'bfloat16': {'rtol': 3e-2, 'atol': 3e-2},
+    }
+
+    def tearDown(self):
+        paddle.set_flags({'FLAGS_use_accuracy_compatible_kernel': False})
+
+    def _dtypes(self, place):
+        dtypes = ['float32']
+        is_gpu = not isinstance(place, base.CPUPlace)
+        if is_gpu:
+            dtypes.append('float16')
+            if core.is_bfloat16_supported(place):
+                dtypes.append('bfloat16')
+        return dtypes
+
+    def _paddle_run(self, x_np, grad_np, repeat_times, dtype, place, compat):
+        paddle.set_flags({'FLAGS_use_accuracy_compatible_kernel': compat})
+        try:
+            x = paddle.to_tensor(x_np, dtype=dtype, place=place)
+            x.stop_gradient = False
+            out = paddle.tile(x, repeat_times)
+            grad = paddle.to_tensor(grad_np, dtype=dtype, place=place)
+            out.backward(grad)
+            return (
+                out.astype('float32').numpy(),
+                x.grad.astype('float32').numpy(),
+            )
+        finally:
+            paddle.set_flags({'FLAGS_use_accuracy_compatible_kernel': False})
+
+    def _round(self, arr, dtype):
+        if dtype == 'float16':
+            return arr.astype('float16').astype('float32')
+        if dtype == 'bfloat16':
+            return convert_uint16_to_float(convert_float_to_uint16(arr))
+        return arr
+
+    def test_compare_with_ref(self):
+        # dygraph.guard() restores the previous mode on exit, so the global
+        # static/dygraph state is left untouched even if an assertion fails.
+        with base.dygraph.guard():
+            for place in get_places():
+                for dtype in self._dtypes(place):
+                    tol = self.tolerance[dtype]
+                    for ori_shape, repeat_times in self.cases:
+                        x_np = self._round(
+                            np.random.uniform(-1, 1, ori_shape).astype(
+                                "float32"
+                            ),
+                            dtype,
+                        )
+                        ref_out = np.tile(x_np, repeat_times)
+                        grad_np = self._round(
+                            np.random.uniform(-1, 1, ref_out.shape).astype(
+                                "float32"
+                            ),
+                            dtype,
+                        )
+                        ref_grad = repeat_grad_ref(
+                            ori_shape, repeat_times, grad_np
+                        )
+                        for compat in [True, False]:
+                            out, grad = self._paddle_run(
+                                x_np,
+                                grad_np,
+                                repeat_times,
+                                dtype,
+                                place,
+                                compat,
+                            )
+                            msg = (
+                                f"place={place}, dtype={dtype}, "
+                                f"shape={ori_shape}, repeat={repeat_times}, "
+                                f"compat={compat}"
+                            )
+                            np.testing.assert_allclose(
+                                out, ref_out, rtol=0, atol=0, err_msg=msg
+                            )
+                            np.testing.assert_allclose(
+                                grad,
+                                ref_grad,
+                                rtol=tol['rtol'],
+                                atol=tol['atol'],
+                                err_msg=msg,
+                            )
 
 
 if __name__ == "__main__":
