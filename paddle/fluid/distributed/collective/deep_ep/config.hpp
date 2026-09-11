@@ -322,9 +322,9 @@ struct LowLatencyTwoStageLayout {
     total_bytes += recv_buffer_bytes * 2;
 
     // Symmetric signaling buffers
-    constexpr int kMaxNumQPs = 32;
+    const int num_max_chunks = num_max_dispatch_tokens_per_rank; // min_chunk_size = 1
     size_t dispatch_recv_count_buffer_bytes =
-        num_rdma_ranks * kMaxNumQPs * sizeof(int);  // kMaxNumQPs = 32
+        num_rdma_ranks * num_max_chunks * sizeof(int);
     size_t combine_recv_flag_buffer_bytes = dispatch_recv_count_buffer_bytes;
     size_t signaling_buffer_bytes = std::max(dispatch_recv_count_buffer_bytes,
                                              combine_recv_flag_buffer_bytes);
