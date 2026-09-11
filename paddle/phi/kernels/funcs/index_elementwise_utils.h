@@ -127,36 +127,17 @@ inline bool HasEmptyIndex(const std::vector<const DenseTensor*>& index) {
   });
 }
 
-// Rewrites the reversed axes of a strided operand into forward ones.
-//
-// A reversed view (`x[::-1]`) carries a negative stride and its base points at
-// the *highest* address of that axis. Backends whose gather/scatter primitives
-// can only walk an operand forwards cannot consume that description, so on each
-// axis `m` with `S[m] < 0` we substitute `i_m -> dims[m]-1-i_m`. That moves the
-// base to the low end of the axis (`byte_offset += (dims[m]-1)*S[m]*elem_size`,
-// which stays >= 0 because it only walks back to the lowest address the view
-// already reaches) and turns `S[m]` into `|S[m]|`.
-//
-// The substitution reverses the traversal order of `m`, so the caller has to
-// flip the *dense* operand (the contiguous output or value buffer) along the
-// axes returned in `flip_axes` to compensate.
-inline void NormalizeNegativeStrides(const std::vector<int64_t>& dims,
-                                     int64_t elem_size,
-                                     std::vector<int64_t>* strides,
-                                     int64_t* byte_offset,
-                                     std::vector<int64_t>* flip_axes) {
-  for (size_t i = 0; i < strides->size(); ++i) {
-    if ((*strides)[i] >= 0) {
-      continue;
+// True when `strides` reverses an axis that is actually stepped over, i.e.
+// `dims[i] > 1 && strides[i] < 0`. A 1-size axis never uses its stride, so a
+// negative stride there is harmless and must not be reported.
+inline bool HasReversedAxis(const std::vector<int64_t>& dims,
+                            const std::vector<int64_t>& strides) {
+  for (size_t i = 0; i < strides.size(); ++i) {
+    if (dims[i] > 1 && strides[i] < 0) {
+      return true;
     }
-    // A 1-size axis never uses its stride, so reversing it is a no-op and the
-    // dense operand must not be flipped along it.
-    if (dims[i] > 1) {
-      *byte_offset += (dims[i] - 1) * (*strides)[i] * elem_size;
-      flip_axes->push_back(static_cast<int64_t>(i));
-    }
-    (*strides)[i] = -(*strides)[i];
   }
+  return false;
 }
 
 template <int N>

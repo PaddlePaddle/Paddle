@@ -17,6 +17,7 @@ limitations under the License. */
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/complex_kernel.h"
+#include "paddle/phi/kernels/funcs/index_elementwise_utils.h"
 #include "paddle/phi/kernels/xpu/xpu_api_wrapper.h"
 
 namespace phi {
@@ -48,13 +49,14 @@ void ContiguousKernel(const Context& dev_ctx,
   } else {
     auto input_dims = vectorize<int64_t>(input.dims());
     auto input_strides = vectorize<int64_t>(input.strides());
-    std::vector<int64_t> flip_axes;
-    for (size_t i = 0; i < input_strides.size(); ++i) {
-      if (input_strides[i] < 0) {
-        input_data += (input_dims[i] - 1) * input_strides[i];
-        input_strides[i] = -input_strides[i];
-        flip_axes.push_back(static_cast<int64_t>(i));
-      }
+    // The XDNN gather/scatter primitives only walk an operand forwards, so a
+    // reversed axis cannot be materialized here. Fail loudly instead of
+    // handing the negative strides to xpu::as_strided, which silently
+    // produces garbage.
+    if (funcs::HasReversedAxis(input_dims, input_strides)) {
+      PADDLE_THROW(common::errors::Unimplemented(
+          "Materializing a reversed view (a tensor with negative strides) is "
+          "not supported on XPU."));
     }
     r = xpu::as_strided<XPUType>(dev_ctx.x_context(),
                                  input_data,
@@ -63,21 +65,6 @@ void ContiguousKernel(const Context& dev_ctx,
                                  input_strides,
                                  0);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "as_strided");
-    if (!flip_axes.empty()) {
-      xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
-      auto* flipped_data = RAII_GUARD.alloc_l3_or_gm<XPUType>(input.numel());
-      // XPUReverseAxes goes through strided_slice, which unlike xpu::flip
-      // writes every element of its output.
-      r = XPUReverseAxes<XPUType>(dev_ctx.x_context(),
-                                  output_data,
-                                  flipped_data,
-                                  input_dims,
-                                  flip_axes);
-      PADDLE_ENFORCE_XDNN_SUCCESS(r, "reverse_axes");
-      r = xpu::copy<XPUType>(
-          dev_ctx.x_context(), flipped_data, output_data, input.numel());
-      PADDLE_ENFORCE_XDNN_SUCCESS(r, "copy");
-    }
   }
 }
 
@@ -106,18 +93,15 @@ ComplexContiguousKernelImpl(const XPUContext& dev_ctx,
   auto bytes_shape = vectorize<int64_t>(input.dims());
   auto bytes_strides = vectorize<int64_t>(input.strides());
   const int64_t bytes_per_elem = static_cast<int64_t>(sizeof(T));
-  std::vector<int64_t> flip_axes;
   for (auto& s : bytes_strides) {
     s *= bytes_per_elem;
   }
   const auto input_dims = bytes_shape;
   const auto* input_data = reinterpret_cast<const int8_t*>(input.data<T>());
-  for (size_t i = 0; i < input_dims.size(); ++i) {
-    if (bytes_strides[i] < 0) {
-      input_data += (input_dims[i] - 1) * bytes_strides[i];
-      bytes_strides[i] = -bytes_strides[i];
-      flip_axes.push_back(static_cast<int64_t>(i));
-    }
+  if (funcs::HasReversedAxis(input_dims, bytes_strides)) {
+    PADDLE_THROW(common::errors::Unimplemented(
+        "Materializing a reversed view (a tensor with negative strides) is "
+        "not supported on XPU."));
   }
   bytes_shape.push_back(bytes_per_elem);
   bytes_strides.push_back(1);
@@ -137,22 +121,6 @@ ComplexContiguousKernelImpl(const XPUContext& dev_ctx,
                                 bytes_strides,
                                 0);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "as_strided");
-  }
-  if (!flip_axes.empty()) {
-    xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
-    auto* flipped_bytes =
-        RAII_GUARD.alloc_l3_or_gm<int8_t>(input.numel() * bytes_per_elem);
-    r = xpu::flip<int8_t>(dev_ctx.x_context(),
-                          output_bytes,
-                          flipped_bytes,
-                          bytes_shape,
-                          flip_axes);
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "flip");
-    r = xpu::copy<int8_t>(dev_ctx.x_context(),
-                          flipped_bytes,
-                          output_bytes,
-                          input.numel() * bytes_per_elem);
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "copy");
   }
 }
 template <>

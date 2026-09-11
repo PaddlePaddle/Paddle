@@ -18,6 +18,7 @@
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/index_elementwise.h"
+#include "paddle/phi/kernels/funcs/index_elementwise_utils.h"
 #include "paddle/phi/kernels/funcs/stride_utils.h"
 
 namespace phi {
@@ -37,17 +38,13 @@ void XPUIndexElementwiseGetKernel(const Context& dev_ctx,
   std::vector<int64_t> stride_tmp;
   funcs::cal_shape_stride(index_dims, &num_indices, &shape_tmp, &stride_tmp);
 
-  // xpu::index_elementwise_tensor can only walk the x view forwards, so rewrite
-  // its reversed axes. The gather then produces the output reversed along
-  // `flip_axes`, which is undone after the call.
-  std::vector<int64_t> x_strides = input_strides;
-  int64_t x_offset = slice_offset;
-  std::vector<int64_t> flip_axes;
-  funcs::NormalizeNegativeStrides(input_dims,
-                                  phi::SizeOf(input.dtype()),
-                                  &x_strides,
-                                  &x_offset,
-                                  &flip_axes);
+  // The XDNN gather can only walk the x view forwards, so a reversed axis
+  // cannot be served by this kernel. Fail loudly instead of silently
+  // producing wrong data.
+  if (funcs::HasReversedAxis(input_dims, input_strides)) {
+    PADDLE_THROW(common::errors::Unimplemented(
+        "Negative strides in advanced indexing are not supported on XPU."));
+  }
 
   auto sizes = std::array<int64_t, DDim::kMaxRank>{};
   auto strides = std::array<int64_t, DDim::kMaxRank>{};
@@ -59,7 +56,7 @@ void XPUIndexElementwiseGetKernel(const Context& dev_ctx,
   std::vector<int64_t> desired_shape;
   std::array<std::vector<int64_t>, 3> strides_vec;
   funcs::IndexGetStride<3>(input_dims,
-                           x_strides,
+                           input_strides,
                            phi::SizeOf(input.dtype()),
                            std::vector<int64_t>(),
                            std::vector<int64_t>(),
@@ -102,7 +99,7 @@ void XPUIndexElementwiseGetKernel(const Context& dev_ctx,
       std::vector<std::vector<int64_t>>(strides_vec.begin(), strides_vec.end());
 
   const char* in_ptr =
-      reinterpret_cast<const char*>(input.data<T>()) + x_offset;
+      reinterpret_cast<const char*>(input.data<T>()) + slice_offset;
   char* out_ptr = reinterpret_cast<char*>(output->data<T>());
 
   // for checkptr and checksum in XPU
@@ -126,29 +123,6 @@ void XPUIndexElementwiseGetKernel(const Context& dev_ctx,
       data_size_out,                             // int64_t
       is_get);                                   // true for get, false for put
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "index_elementwise_tensor_get");
-
-  if (!flip_axes.empty()) {
-    // The gather walked the reversed axes forwards, so `output` still holds the
-    // result reversed along `flip_axes`. `output` is contiguous with dims ==
-    // input_dims, so those axis indices apply to it unchanged. XPUReverseAxes
-    // cannot alias, hence the scratch round trip; the scratch is only ever
-    // written by XPUReverseAxes, never by the XDNN gather itself.
-    using XPUCopyType = typename XPUCopyTypeTrait<T>::Type;
-    xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
-    auto* flipped = RAII_GUARD.alloc_l3_or_gm<XPUCopyType>(N);
-    r = XPUReverseAxes<XPUCopyType>(
-        dev_ctx.x_context(),
-        reinterpret_cast<const XPUCopyType*>(out_ptr),
-        flipped,
-        input_dims,
-        flip_axes);
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "reverse_axes");
-    r = xpu::copy<XPUCopyType>(dev_ctx.x_context(),
-                               flipped,
-                               reinterpret_cast<XPUCopyType*>(out_ptr),
-                               N);
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "copy");
-  }
 }
 
 template <typename T, typename Context>
