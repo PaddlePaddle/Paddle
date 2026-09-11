@@ -393,9 +393,9 @@ class MuonShardingOptimizer:
                         color_key
                     ].items():
                         for p in params:
-                            self._param2rank_2d_by_color[color_key][
-                                p.name
-                            ] = rank
+                            self._param2rank_2d_by_color[color_key][p.name] = (
+                                rank
+                            )
 
         # Sort params within each color by owner rank for deterministic ordering
         for color_key, params_2d in self._params_2d_by_color.items():
