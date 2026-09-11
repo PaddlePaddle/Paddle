@@ -380,9 +380,6 @@ void MatMulFunctionImplWithBlas(
   out_broadcast_dims[ndim - 2] = M;
   out_broadcast_dims[ndim - 1] = N;
 
-  Out->ResizeAndAllocate(make_ddim(out_broadcast_dims));
-  dev_ctx.template Alloc<T>(Out);
-
   const int batch_dim = ndim - 2;
   // broadcast message
   const bool is_broadcast_dims =
@@ -405,6 +402,12 @@ void MatMulFunctionImplWithBlas(
                       out_broadcast_dims.cbegin() + batch_dim,
                       1LL,
                       std::multiplies<std::int64_t>());
+  // Reject oversized pointer-array batches before allocating output memory.
+  if (is_broadcast_dims && x_batch_size != 1 && y_batch_size != 1) {
+    PADDLE_ENFORCE_LE_INT_MAX(out_batch_size, "broadcast MatMul batch size");
+  }
+  Out->ResizeAndAllocate(make_ddim(out_broadcast_dims));
+  dev_ctx.template Alloc<T>(Out);
   if (out_batch_size == 0) return;
   if (x_batch_size == 1 && y_batch_size == 1) {
     VLOG(3) << "MatMul's case 8";
@@ -421,9 +424,8 @@ void MatMulFunctionImplWithBlas(
   } else if (x_batch_size == 1) {
     if (M == 1 && trans_y) {
       VLOG(3) << "MatMul's case 9";
-      PADDLE_ENFORCE_LE_INT_MAX(y_batch_size * N, "GEMV M");
       blas.GEMV(false,
-                static_cast<int>(y_batch_size * N),
+                y_batch_size * N,
                 K,
                 static_cast<T>(1),
                 y_data,
@@ -482,7 +484,6 @@ void MatMulFunctionImplWithBlas(
   } else if (y_batch_size == 1) {
     if (!trans_x) {
       VLOG(3) << "MatMul's case 11";
-      PADDLE_ENFORCE_LE_INT_MAX(x_batch_size * M, "GEMM M");
       blas.GEMM(CblasNoTrans,
                 trans_y ? CblasTrans : CblasNoTrans,
                 x_batch_size * M,
@@ -526,7 +527,6 @@ void MatMulFunctionImplWithBlas(
                      K * N);
   } else {
     // in the case, can't use stridedgemm
-    PADDLE_ENFORCE_LE_INT_MAX(out_batch_size, "out_batch_size");
     std::vector<const T*> x_ptr(out_batch_size);
     std::vector<const T*> y_ptr(out_batch_size);
     std::vector<T*> out_ptr(out_batch_size);
@@ -554,7 +554,7 @@ void MatMulFunctionImplWithBlas(
                      y_ptr.data(),
                      static_cast<T>(flag),
                      out_ptr.data(),
-                     static_cast<int>(out_batch_size));
+                     out_batch_size);
   }
 }
 
@@ -861,7 +861,6 @@ void MatMulFunctionImplWithCublasLt(
   } else if (x_batch_size == 1) {
     if (M == 1 && trans_y) {
       VLOG(3) << "MatMul with blaslt 9";
-      PADDLE_ENFORCE_LE_INT_MAX(y_batch_size * N, "GEMV M");
       blaslt::Run(dev_ctx,
                   y_data,
                   x_data,
@@ -892,7 +891,6 @@ void MatMulFunctionImplWithCublasLt(
   } else if (y_batch_size == 1) {
     if (!trans_x) {
       VLOG(3) << "MatMul with blaslt 11";
-      PADDLE_ENFORCE_LE_INT_MAX(x_batch_size * M, "GEMM M");
       blaslt::Run(dev_ctx,
                   x_data,
                   y_data,

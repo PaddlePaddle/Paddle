@@ -168,34 +168,34 @@ class Blas {
 #ifdef PADDLE_WITH_MKLML  // @{ Group MKLML: class Blas
   template <typename T>
   T* GEMM_ALLOC(const CBLAS_IDENTIFIER id,
-                const int M,
-                const int N,
-                const int K) const;
+                int64_t M,
+                int64_t N,
+                int64_t K) const;
 
   template <typename T>
   void GEMM_PACK(const CBLAS_IDENTIFIER id,
                  const CBLAS_TRANSPOSE trans,
-                 int M,
-                 int N,
-                 int K,
+                 int64_t M,
+                 int64_t N,
+                 int64_t K,
                  const T alpha,
                  const T* src,
-                 const int ld,
+                 int64_t ld,
                  T* dst) const;
 
   template <typename T>
   void GEMM_COMPUTE(int transA,
                     int transB,
-                    int M,
-                    int N,
-                    int K,
+                    int64_t M,
+                    int64_t N,
+                    int64_t K,
                     const T* A,
-                    const int lda,
+                    int64_t lda,
                     const T* B,
-                    const int ldb,
+                    int64_t ldb,
                     T beta,
                     T* C,
-                    const int ldc) const;
+                    int64_t ldc) const;
 
   template <typename T>
   void GEMM_FREE(T* data) const;
@@ -207,7 +207,7 @@ class Blas {
                       const DenseTensor& mat_b,
                       const MatDescriptor& dim_b,
                       T alpha,
-                      int head_number,
+                      int64_t head_number,
                       DenseTensor* mat_out,
                       T beta,
                       bool mat_y_split_vertical) const;
@@ -222,19 +222,15 @@ class Blas {
                       const DenseTensor& mat_b,
                       const MatDescriptor& dim_b,
                       T alpha,
-                      int head_number,
+                      int64_t head_number,
                       DenseTensor* mat_out,
                       T beta,
                       bool mat_y_split_vertical) const;
 #endif
 
   template <typename T>
-  void MatMul(const int M,
-              const int N,
-              const int K,
-              const T* A,
-              const T* B,
-              T* C) const;
+  void MatMul(
+      int64_t M, int64_t N, int64_t K, const T* A, const T* B, T* C) const;
 
   template <typename T>
   void MatMul(const DenseTensor& mat_a,
@@ -357,31 +353,31 @@ class Blas {
   template <typename T>
   void BatchedGEMM(CBLAS_TRANSPOSE transA,
                    CBLAS_TRANSPOSE transB,
-                   int M,
-                   int N,
-                   int K,
+                   int64_t M,
+                   int64_t N,
+                   int64_t K,
                    T alpha,
                    const T** A,
                    const T** B,
                    T beta,
                    T** C,
-                   int batchCount) const;
+                   int64_t batchCount) const;
 
 #if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA) && \
     !defined(PADDLE_WITH_HIP)
   template <typename T>
   void BatchedGEMMWithHead(CBLAS_TRANSPOSE transA,
                            CBLAS_TRANSPOSE transB,
-                           int W1,
-                           int H1,
-                           int W2,
-                           int H2,
+                           int64_t W1,
+                           int64_t H1,
+                           int64_t W2,
+                           int64_t H2,
                            T alpha,
                            const T* A,
                            const T* B,
                            T beta,
                            T* C,
-                           int batchCount,
+                           int64_t batchCount,
                            int64_t strideA,
                            int64_t strideB,
                            int64_t head_number,
@@ -393,16 +389,16 @@ class Blas {
   template <typename T>
   void BatchedGEMMWithHead(CBLAS_TRANSPOSE transA,
                            CBLAS_TRANSPOSE transB,
-                           int W1,
-                           int H1,
-                           int W2,
-                           int H2,
+                           int64_t W1,
+                           int64_t H1,
+                           int64_t W2,
+                           int64_t H2,
                            T alpha,
                            const T* A,
                            const T* B,
                            T beta,
                            T* C,
-                           int batchCount,
+                           int64_t batchCount,
                            int64_t strideA,
                            int64_t strideB,
                            int64_t head_number,

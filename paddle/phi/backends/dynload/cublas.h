@@ -153,8 +153,19 @@ CUBLAS_WORKSPACE_ROUTINE(DECLARE_DYNAMIC_LOAD_CUBLAS_WRAP)
   __macro(cublasDgemm_v2_64);                \
   __macro(cublasCgemm_v2_64);                \
   __macro(cublasZgemm_v2_64);                \
+  __macro(cublasSgemmStridedBatched_64);     \
+  __macro(cublasDgemmStridedBatched_64);     \
+  __macro(cublasCgemmStridedBatched_64);     \
+  __macro(cublasZgemmStridedBatched_64);     \
   __macro(cublasGemmStridedBatchedEx_64);    \
-  __macro(cublasGemmEx_64);
+  __macro(cublasGemmEx_64);                  \
+  __macro(cublasSgemmBatched_64);            \
+  __macro(cublasDgemmBatched_64);            \
+  __macro(cublasGemmBatchedEx_64);           \
+  __macro(cublasStrsm_v2_64);                \
+  __macro(cublasDtrsm_v2_64);                \
+  __macro(cublasCtrsm_v2_64);                \
+  __macro(cublasZtrsm_v2_64);
 
 CUBLAS_BLAS_ROUTINE_EACH_R5(DECLARE_DYNAMIC_LOAD_CUBLAS_WRAP)
 #endif

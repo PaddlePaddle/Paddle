@@ -130,6 +130,40 @@ TEST(math_function, gemm_gemv_int64_dimensions) {
   EXPECT_EQ(gemv_out, expected_gemv);
 }
 
+TEST(math_function, batched_gemm_matmul_int64_dimensions) {
+  auto* dev_ctx =
+      phi::DeviceContextPool::Instance().GetByPlace(phi::CPUPlace());
+  auto blas = GetBlas<float>(*dev_ctx);
+
+  const int64_t m = 2;
+  const int64_t n = 2;
+  const int64_t k = 3;
+  const std::array<float, 6> a = {1, 2, 3, 4, 5, 6};
+  const std::array<float, 6> b = {1, 0, 0, 1, 1, 1};
+  const std::array<float, 4> expected = {4, 5, 10, 11};
+
+  std::array<float, 4> matmul_out{};
+  blas.MatMul(m, n, k, a.data(), b.data(), matmul_out.data());
+  EXPECT_EQ(matmul_out, expected);
+
+  const float* a_array[] = {a.data()};
+  const float* b_array[] = {b.data()};
+  std::array<float, 4> batched_out{};
+  float* out_array[] = {batched_out.data()};
+  blas.BatchedGEMM(CblasNoTrans,
+                   CblasNoTrans,
+                   m,
+                   n,
+                   k,
+                   1.0f,
+                   a_array,
+                   b_array,
+                   0.0f,
+                   out_array,
+                   int64_t{1});
+  EXPECT_EQ(batched_out, expected);
+}
+
 TEST(math_function, gemm_gemv_reject_unsupported_cpu_dimensions) {
   auto* dev_ctx =
       phi::DeviceContextPool::Instance().GetByPlace(phi::CPUPlace());
@@ -166,6 +200,33 @@ TEST(math_function, gemm_gemv_reject_unsupported_cpu_dimensions) {
   EXPECT_THROW(
       blas.GEMV(false, too_large, 1, 1.0f, &value, &value, 0.0f, &value),
       common::enforce::EnforceNotMet);
+}
+
+TEST(math_function, batched_gemm_matmul_reject_invalid_dimensions) {
+  auto* dev_ctx =
+      phi::DeviceContextPool::Instance().GetByPlace(phi::CPUPlace());
+  auto blas = GetBlas<float>(*dev_ctx);
+  const int64_t too_large =
+      static_cast<int64_t>(std::numeric_limits<int>::max()) + 1;
+  const float value = 1.0f;
+  const float* input[] = {&value};
+  float output_value = 0.0f;
+  float* output[] = {&output_value};
+
+  EXPECT_THROW(blas.BatchedGEMM(CblasNoTrans,
+                                CblasNoTrans,
+                                1,
+                                1,
+                                1,
+                                1.0f,
+                                input,
+                                input,
+                                0.0f,
+                                output,
+                                too_large),
+               common::enforce::EnforceNotMet);
+  EXPECT_THROW(blas.MatMul(too_large, 1, 1, &value, &value, &output_value),
+               common::enforce::EnforceNotMet);
 }
 
 TEST(math_function, dot_with_blas_zero_length) {
