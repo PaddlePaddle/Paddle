@@ -148,7 +148,7 @@ template <typename ElementT,
           int ConfigId = DefaultConfig::kConfigId,
           int SwizzleFactor = DefaultConfig::kSwizzleFactor,
           bool Batched = DefaultConfig::kBatched>
-void MatmulAddVariadic(
+void MatmulVariadicFusion(
     const GemmEpilogueParams &params,
     const typename VariadicFunctor<ElementComputeT>::Arguments &variadic_args) {
   // <- data type of accumulator

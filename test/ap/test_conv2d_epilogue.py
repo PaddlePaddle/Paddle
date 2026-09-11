@@ -1,4 +1,4 @@
-# Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2026 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -37,42 +37,62 @@ def IsSupportDevice():
         return cc == 80
 
     if paddle.is_compiled_with_rocm():
-        return True
+        return False
 
     return False
 
 
-class TestMatmulEpilogue(unittest.TestCase):
+class TestConv2dEpilogue(unittest.TestCase):
     def setUp(self):
+        self.origin_flags = paddle.get_flags(
+            ['FLAGS_manually_trans_conv_filter', 'FLAGS_deny_cinn_ops']
+        )
+        paddle.set_flags(
+            {
+                'FLAGS_manually_trans_conv_filter': True,
+                'FLAGS_deny_cinn_ops': "transpose",
+            }
+        )
+
         dtype = 'float16'
-        x_shape = [32, 16, 16]
+
+        # The cutlass implicit gemm backend requires an NHWC activation.
+        x_shape = [32, 8, 8, 16]
         self.x = paddle.randn(x_shape, dtype=dtype)
         self.x.stop_gradient = False
 
-        y_shape = [16, 16]
-        self.y = paddle.randn(y_shape, dtype=dtype)
-        self.y.stop_gradient = False
+        # Native paddle (KCRS) filter, transposed to KRSC inside the model.
+        w_shape = [16, 16, 3, 3]
+        self.w = paddle.randn(w_shape, dtype=dtype)
+        self.w.stop_gradient = False
 
-        b_shape = [32, 16, 16]
+        # Elementwise residual, same shape as the conv output (NPQK).
+        b_shape = [32, 8, 8, 16]
         self.b = paddle.randn(b_shape, dtype=dtype)
         self.b.stop_gradient = False
 
+    def tearDown(self):
+        paddle.set_flags(self.origin_flags)
+
     def getSubGraph(self):
-        B = pct.DimVar(32)
-        M = pct.DimVar(16)
-        K = pct.DimVar(16)
-        N = pct.DimVar(16)
+        N = pct.DimVar(32)
+        H = pct.DimVar(8)
+        W = pct.DimVar(8)
+        C = pct.DimVar(16)
+        O = pct.DimVar(16)
+        KH = pct.DimVar(3)
+        KW = pct.DimVar(3)
         DType = pct.DTypeVar("T", "float16")
 
         def foo(
-            x: pct.Tensor([B, M, K], DType),
-            w: pct.Tensor([K, N], DType),
-            b: pct.Tensor([B, M, N], DType),
+            x: pct.Tensor([N, H, W, C], DType),
+            w: pct.Tensor([O, C, KH, KW], DType),
+            b: pct.Tensor([N, H, W, O], DType),
         ):
-            y = paddle.matmul(x, w)
-            tmp = paddle.nn.functional.relu(y)
-            tmp2 = tmp + b
-            return tmp2
+            # KCRS -> KRSC
+            w = paddle.transpose(w, [0, 2, 3, 1])
+            y = paddle.nn.functional.conv2d(x, w, padding=1, data_format="NHWC")
+            return paddle.nn.functional.relu(y + b)
 
         return foo
 
@@ -85,14 +105,19 @@ class TestMatmulEpilogue(unittest.TestCase):
             backend_device=backend_device,
         )
         generated_pir_program = GetPirProgram(
-            fused_foo, [self.x, self.y, self.b]
+            fused_foo, [self.x, self.w, self.b]
         )
-        self.assertTrue(
-            'pd_op.ap_variadic' in generated_pir_program, "fusion failed"
-        )
+        if paddle.is_compiled_with_rocm():
+            # There is no conv2d backend for HIP yet, the pass rejects the
+            # subgraph and it stays on the phi kernels.
+            self.assertNotIn('pd_op.ap_variadic', generated_pir_program)
+        else:
+            self.assertIn(
+                'pd_op.ap_variadic', generated_pir_program, "fusion failed"
+            )
         if IsSupportDevice():
-            ap_outs = fused_foo(self.x, self.y, self.b)
-            dy_outs = foo(self.x, self.y, self.b)
+            ap_outs = fused_foo(self.x, self.w, self.b)
+            dy_outs = foo(self.x, self.w, self.b)
             for dy_out, ap_out in zip(dy_outs, ap_outs):
                 np.testing.assert_allclose(dy_out, ap_out, atol=1e-1)
 
