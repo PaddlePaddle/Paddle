@@ -23,7 +23,7 @@ namespace paddle::experimental {
 template <>
 IntArrayBase<Tensor>::IntArrayBase(const Tensor& tensor) {  // NOLINT
   is_from_tensor_ = true;
-  if (tensor.place().GetType() == phi::AllocationType::CPU) {
+  if (tensor.place().GetType() == AllocationType::CPU) {
     AssignDataFromTensor(tensor);
   } else {
     Tensor tensor_tmp;
