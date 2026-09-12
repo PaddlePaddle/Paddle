@@ -101,6 +101,7 @@ USE_PIR_PASS(rms_norm_xpu_fuse_pass);
 USE_PIR_PASS(elementwise_mul_add_xpu_fuse_pass);
 USE_PIR_PASS(conv2d_xpu_fuse_pass);
 USE_PIR_PASS(conv2d_add_xpu_fuse_pass);
+USE_PIR_PASS(concat_conv_xpu_fuse_pass);
 USE_PIR_PASS(fc_xpu_fuse_pass);
 #endif
 
