@@ -243,6 +243,55 @@ class TestIsInError(unittest.TestCase):
             paddle.isin(np.array([1, 2]), np.array([1, 2]))
 
 
+class TestIsInDtypeReject(unittest.TestCase):
+    # Regression test for issue #79160: paddle.isin used to accept bool tensors
+    # in eager mode (the static-only dtype checker is skipped in dygraph) while
+    # rejecting them in static mode. bool is excluded by the documented dtype
+    # contract and unsupported by torch.isin, so it must be rejected
+    # consistently in eager, static and to_static.
+    def _check(self, np_dtype, want_substr):
+        # Force dynamic mode before building the tensors so they are eager
+        # tensors regardless of the mode a previously-run test left behind.
+        paddle.disable_static()
+        x = paddle.to_tensor([1, 0, 1]).astype(np_dtype)
+        t = paddle.to_tensor([1]).astype(np_dtype)
+
+        # eager
+        with self.assertRaises(TypeError) as cm:
+            paddle.isin(x, t)
+        self.assertIn(want_substr, str(cm.exception))
+
+        # to_static (the exact failing path reported in the issue)
+        static_fn = paddle.jit.to_static(
+            paddle.isin,
+            input_spec=[
+                paddle.static.InputSpec([3], dtype=np_dtype),
+                paddle.static.InputSpec([1], dtype=np_dtype),
+            ],
+            full_graph=True,
+        )
+        with self.assertRaises(TypeError):
+            static_fn(x, t)
+
+        # static
+        paddle.enable_static()
+        try:
+            with paddle.static.program_guard(paddle.static.Program()):
+                sx = paddle.static.data('x', [3], np_dtype)
+                st = paddle.static.data('t', [1], np_dtype)
+                with self.assertRaises(TypeError) as cm2:
+                    paddle.isin(sx, st)
+                self.assertIn(want_substr, str(cm2.exception))
+        finally:
+            paddle.disable_static()
+
+    def test_bool_rejected(self):
+        self._check('bool', 'received bool')
+
+    def test_complex_rejected(self):
+        self._check('complex64', 'received complex')
+
+
 class TestIsIn(unittest.TestCase):
     def test_without_gpu(self):
         test(DATA_CASES, DATA_TYPE)
