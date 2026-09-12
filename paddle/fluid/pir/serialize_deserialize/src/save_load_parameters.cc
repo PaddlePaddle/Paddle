@@ -16,6 +16,7 @@ limitations under the License. */
 #include "glog/logging.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/pir/serialize_deserialize/include/interface.h"
+#include "paddle/fluid/pir/serialize_deserialize/src/unicode_file_utils.h"
 #include "paddle/phi/common/port.h"
 #include "paddle/phi/kernels/funcs/data_type_transform.h"
 
@@ -78,7 +79,7 @@ void SaveFunction(const phi::DenseTensor& x,
 
   MkDirRecursively(DirName(file_path).c_str());
   VLOG(6) << "save func save path: " << file_path;
-  std::ofstream fout(file_path, std::ios::binary);
+  auto fout = OpenOutputFile(file_path, std::ios::out | std::ios::binary);
   PADDLE_ENFORCE_EQ(static_cast<bool>(fout),
                     true,
                     common::errors::Unavailable(
@@ -113,7 +114,7 @@ void SaveCombineFunction(const std::vector<const phi::DenseTensor*>& x,
 
   MkDirRecursively(DirName(file_path).c_str());
   VLOG(6) << "save func save path: " << file_path;
-  std::ofstream fout(file_path, std::ios::binary);
+  auto fout = OpenOutputFile(file_path, std::ios::out | std::ios::binary);
   PADDLE_ENFORCE_EQ(static_cast<bool>(fout),
                     true,
                     common::errors::Unavailable(
@@ -151,7 +152,7 @@ void LoadFunction(const std::string& file_path,
                   bool load_as_fp16,
                   phi::DenseTensor* out,
                   phi::Place place) {
-  std::ifstream fin(file_path, std::ios::binary);
+  auto fin = OpenInputFile(file_path, std::ios::in | std::ios::binary);
   PADDLE_ENFORCE_EQ(static_cast<bool>(fin),
                     true,
                     common::errors::Unavailable(
@@ -186,7 +187,7 @@ void LoadCombineFunction(const std::string& file_path,
                          std::vector<phi::DenseTensor*>* out,
                          bool load_as_fp16,
                          phi::Place place) {
-  std::ifstream fin(file_path, std::ios::binary);
+  auto fin = OpenInputFile(file_path, std::ios::in | std::ios::binary);
   PADDLE_ENFORCE_EQ(static_cast<bool>(fin),
                     true,
                     common::errors::Unavailable(
