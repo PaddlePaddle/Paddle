@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/phi/api/lib/api_gen_utils.h"
 #include "paddle/common/flags.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
+#include "paddle/phi/core/memory/allocation/retry_allocator.h"
 #include "paddle/phi/core/memory/malloc.h"
 #include "paddle/phi/core/memory/mem_utils.h"
 #include "paddle/phi/core/memory/stats.h"
@@ -23,6 +24,8 @@ limitations under the License. */
 
 PHI_DECLARE_bool(use_stride_kernel);
 COMMON_DECLARE_bool(enable_compact_mem);
+COMMON_DECLARE_bool(use_virtual_memory_auto_growth);
+COMMON_DECLARE_double(max_reserved_threshold_ratio);
 COMMON_DECLARE_int64(max_reserved_threshold_in_gb);
 COMMON_DECLARE_int64(cur_allocated_threshold_in_gb);
 COMMON_DECLARE_bool(try_allocate);
@@ -828,90 +831,249 @@ void SetReplicatedDistAttrForOutput(
 }
 
 /* ------------------ for Allocator ----------------------- */
+
+// Helper: Find the largest single tensor size from size vector
+static size_t FindMaxSingleRequest(const std::vector<size_t>& size_vec) {
+  size_t max_single_req = 0;
+  for (const auto& s : size_vec) {
+    max_single_req = std::max(max_single_req, s);
+  }
+  return max_single_req;
+}
+
+// Helper: Check memory capacity and determine if action (compact/offload) is needed
+// Returns: pair<need_action, reason_string>
+static std::pair<bool, std::string> CheckMemoryCapacity(
+    size_t max_free_size,
+    size_t large_N_free_size,
+    size_t remaining_hbm,
+    size_t max_single_req,
+    size_t req_total_size) {
+  // Check 1: Can the largest single tensor fit in a contiguous block?
+  // It can fit in either pool's max_free_size or a new block from driver (remaining_hbm)
+  if (max_single_req > std::max(max_free_size, remaining_hbm)) {
+    std::ostringstream oss;
+    oss << "no large enough contiguous block: max_single_req=" << max_single_req
+        << " > max(max_free_size=" << max_free_size
+        << ", remaining_hbm=" << remaining_hbm << ")";
+    return {true, oss.str()};
+  }
+
+  // Check 2: Is total capacity (pool_free + remaining_hbm) sufficient?
+  if (large_N_free_size + remaining_hbm < req_total_size) {
+    std::ostringstream oss;
+    oss << "total capacity insufficient: large_N_free_size=" << large_N_free_size
+        << " + remaining_hbm=" << remaining_hbm
+        << " < req_total_size=" << req_total_size;
+    return {true, oss.str()};
+  }
+
+  return {false, ""};
+}
+
+// Cache for GpuAvailableMemToAlloc - thread local to avoid cross-thread issues
+static thread_local size_t g_cached_remaining_hbm = 0;
+static thread_local size_t g_cached_max_reserved = 0;
+static thread_local int g_cache_call_count = 0;
+constexpr int kCacheRefreshInterval = 100;
+
+// Helper: Get remaining HBM with caching
+static size_t GetRemainingHbmCached(size_t max_reserved, bool force_refresh = false) {
+  // Determine if cache needs refresh:
+  // 1. Force refresh requested
+  // 2. First call (g_cached_max_reserved == 0)
+  // 3. max_reserved changed significantly (>1GB difference, indicating memory growth)
+  // 4. Periodic refresh (every kCacheRefreshInterval calls)
+  bool need_refresh = force_refresh ||
+      (g_cached_max_reserved == 0) ||
+      (max_reserved > g_cached_max_reserved + (1ULL << 30)) ||
+      (++g_cache_call_count >= kCacheRefreshInterval);
+
+  if (need_refresh) {
+    g_cached_remaining_hbm = phi::backends::gpu::GpuAvailableMemToAlloc();
+    g_cached_max_reserved = max_reserved;
+    g_cache_call_count = 0;
+    VLOG(6) << "[Compact] remaining_hbm cache refreshed: "
+            << (g_cached_remaining_hbm >> 20) << "MB";
+  }
+  return g_cached_remaining_hbm;
+}
+
+// Helper: Calculate tensor sizes from meta information
+static std::pair<size_t, std::vector<size_t>> CalTensorSize(
+    const std::vector<phi::MetaTensor*>& meta_tensors,
+    const std::string& api) {
+  size_t req_total_size = 0;
+  std::vector<size_t> sizes;
+  for (auto& meta_tensor : meta_tensors) {
+    if (meta_tensor == nullptr) continue;
+    auto numel = meta_tensor->numel();
+    if (numel == 0) continue;
+    // Use absolute value for negative numel (e.g., -1 indicates dynamic shape)
+    if (numel < 0) {
+      numel = std::abs(numel);
+      VLOG(6) << "[Compact] numel < 0, using abs: " << numel << " in " << api;
+    }
+    size_t tensor_size = static_cast<size_t>(numel) * phi::SizeOf(meta_tensor->dtype());
+    sizes.push_back(tensor_size);
+    req_total_size += tensor_size;
+  }
+  return {req_total_size, sizes};
+}
+
 void CheckAndDoCompact(const std::vector<phi::MetaTensor*>& meta_tensors,
                        std::string api) {
-  if (!FLAGS_enable_compact_mem) return;
+  if (!FLAGS_enable_compact_mem || !FLAGS_use_virtual_memory_auto_growth)
+    return;
 #if defined(PADDLE_WITH_CUDA)
-  const auto current_device_id = phi::backends::gpu::GetCurrentDeviceId();
+  // Get current CUDA device
+  int current_device_id;
+  cudaError_t err = cudaGetDevice(&current_device_id);
+  if (UNLIKELY(err != cudaSuccess)) {
+    if (err == cudaErrorInitializationError) {
+      VLOG(10) << "[Compact] Skipping: CUDA Context not initialized "
+               << "(possibly due to DataLoader fork). API: " << api;
+      cudaGetLastError();  // Clear error
+      return;
+    }
+    VLOG(6) << "[Compact] Skipping: cudaGetDevice failed with error " << err;
+    return;
+  }
+
+  // Get memory statistics
+  const auto& device_prop =
+      phi::backends::gpu::GetDeviceProperties(current_device_id);
+  const size_t total_mem = device_prop.totalGlobalMem;
   const auto max_reserved =
       paddle::memory::DeviceMemoryStatPeakValue("Reserved", current_device_id);
-  const auto max_allocated =
-      paddle::memory::DeviceMemoryStatPeakValue("Allocated", current_device_id);
   const auto cur_allocated = paddle::memory::DeviceMemoryStatCurrentValue(
       "Allocated", current_device_id);
-  float divisor = 1 << 30;
-  // calculate total size by meta information
-  auto CalTensorSize = [&](const std::vector<phi::MetaTensor*>& meta_tensors)
-      -> std::pair<size_t, std::vector<size_t>> {
-    size_t req_total_size = 0;
-    size_t tensor_size = 0;
-    std::vector<size_t> sizes;
+  const size_t pool_free = max_reserved > cur_allocated ?
+      max_reserved - cur_allocated : 0;
 
-    for (auto& meta_tensor : meta_tensors) {
-      if (meta_tensor == nullptr) continue;
-      if (meta_tensor->numel() == 0) continue;
-      if (meta_tensor->numel() < 0) {
-        VLOG(1) << "meta_tensor->numel():" << meta_tensor->numel()
-                << " < 0, skip this tensor in " << api;
-        continue;
-      }
-      tensor_size = meta_tensor->numel() * phi::SizeOf(meta_tensor->dtype());
-      sizes.push_back(tensor_size);
-      req_total_size += tensor_size;
-    }
-    return {req_total_size, sizes};
-  };
-  // judge whether compact is needed according to the following conditions in
-  // sequence.
-  // 1. mem_max_reserved < max_reserved_threshold ==> dont need compact
-  // 2. mem_cur_allocated < cur_allocated_threshold ==> dont need compact
-  // 3. max_free_size > req_total_size ==> dont need compact
-  // 4. large_N_free_size < req_total_size ==> need compact
-  // 5. try_allocate result ==> need compact
-  auto NeedCompact = [&](const std::vector<phi::MetaTensor*>& meta_tensors) {
-    if (max_reserved < FLAGS_max_reserved_threshold_in_gb << 30) return false;
-    if (cur_allocated < FLAGS_cur_allocated_threshold_in_gb << 30) return false;
+  constexpr float kGB = 1 << 30;
+
+  // Condition 1: Check max_reserved threshold (early return)
+  // Use ratio-based threshold by default, fallback to GB-based if explicitly set
+  size_t threshold;
+  if (FLAGS_max_reserved_threshold_in_gb > 0) {
+    // Use explicit GB threshold (backward compatibility)
+    threshold = static_cast<size_t>(FLAGS_max_reserved_threshold_in_gb) << 30;
+    VLOG(10) << "[Compact] Using GB-based threshold: " << FLAGS_max_reserved_threshold_in_gb << "GB";
+  } else {
+    // Use ratio-based threshold (adapts to different GPU sizes)
+    threshold = static_cast<size_t>(total_mem * FLAGS_max_reserved_threshold_ratio);
+    VLOG(10) << "[Compact] Using ratio-based threshold: " << (threshold / kGB)
+             << "GB (" << (FLAGS_max_reserved_threshold_ratio * 100) << "% of " << (total_mem / kGB) << "GB)";
+  }
+
+  if (max_reserved < threshold) {
+    VLOG(10) << "[Compact] Skip: max_reserved=" << (max_reserved / kGB)
+             << "GB < threshold=" << (threshold / kGB) << "GB";
+    return;
+  }
+
+  // Calculate tensor sizes
+  const auto [req_total_size, size_vec] = CalTensorSize(meta_tensors, api);
+  if (req_total_size == 0) {
+    VLOG(10) << "[Compact] Skip: req_total_size=0";
+    return;
+  }
+
+  VLOG(10) << "[Compact] API: " << api
+           << ", device: " << current_device_id
+           << ", total_mem: " << (total_mem / kGB) << "GB"
+           << ", max_reserved: " << (max_reserved / kGB) << "GB"
+           << ", cur_allocated: " << (cur_allocated / kGB) << "GB"
+           << ", pool_free: " << (pool_free / kGB) << "GB"
+           << ", req_total: " << (req_total_size / kGB) << "GB"
+           << ", num_tensors: " << size_vec.size();
+
+  // Pre-calculate max_single_req (size_vec is immutable)
+  const size_t max_single_req = FindMaxSingleRequest(size_vec);
+
+  // Variables to store values from NeedCompact for reuse
+  size_t remaining_hbm_for_post_compact = 0;
+  size_t max_free_before_compact = 0;
+  bool need_offload_first = false;
+
+  auto place = phi::GPUPlace(current_device_id);
+
+  // Lambda: Determine if compact is needed
+  auto NeedCompact = [&]() -> bool {
     const auto [max_free_size, large_N_free_size] =
-        paddle::memory::VmmMaxFreeSize(phi::GPUPlace(current_device_id),
-                                       meta_tensors.size());
-    const auto& [req_total_size, size_vec] = CalTensorSize(meta_tensors);
-    VLOG(10) << "run api: " << api << " req_total_size: " << req_total_size
-             << ", max_free_size: " << max_free_size
-             << ", large_N_free_size: " << large_N_free_size
-             << ", max_reserved: " << max_reserved
-             << ", max_allocated: " << max_allocated
-             << ", cur_allocated: " << cur_allocated;
-    if (req_total_size < max_free_size) return false;
-    if (req_total_size > large_N_free_size) {
-      VLOG(1) << "Need Compact in api: " << api
-              << " req_total_size: " << req_total_size
-              << ", large_N_free_size: " << large_N_free_size
-              << ", max_free_size: " << max_free_size
-              << ", max_reserved: " << max_reserved
-              << ", max_allocated: " << max_allocated
-              << ", cur_allocated: " << cur_allocated;
-      return true;
+        paddle::memory::VmmMaxFreeSize(place, meta_tensors.size());
+
+    VLOG(10) << "[Compact] Pool status: max_free_size=" << (max_free_size / kGB) << "GB"
+             << ", large_N_free_size=" << (large_N_free_size / kGB) << "GB"
+             << ", req_total_size=" << (req_total_size / kGB) << "GB";
+
+    // Condition 2: If largest contiguous block can satisfy request
+    if (req_total_size < max_free_size) {
+      VLOG(10) << "[Compact] Skip: req_total_size < max_free_size";
+      return false;
     }
+
+    // Condition 3: TryAllocBatch simulation (pure CPU, low cost)
     if (FLAGS_try_allocate) {
-      auto alloc_succ = paddle::memory::TryAllocBatch(
-          phi::GPUPlace(current_device_id), size_vec);
-      VLOG(1) << "TryAllocBatch api: " << api << " ret: " << alloc_succ
-              << ", req_total_size: " << req_total_size
-              << ", large_N_free_size: " << large_N_free_size
-              << ", max_free_size: " << max_free_size
-              << ", max_reserved: " << max_reserved
-              << ", max_allocated: " << max_allocated
-              << ", cur_allocated: " << cur_allocated;
-      return !alloc_succ;
+      auto alloc_succ = paddle::memory::TryAllocBatch(place, size_vec);
+      VLOG(10) << "[Compact] TryAllocBatch result: " << (alloc_succ ? "success" : "failed");
+      if (alloc_succ) return false;
     }
-    return false;
+
+    // TryAllocBatch failed, check if driver can help
+    size_t remaining_hbm = GetRemainingHbmCached(max_reserved);
+
+    VLOG(10) << "[Compact] After TryAllocBatch failed: remaining_hbm=" << (remaining_hbm / kGB) << "GB"
+             << ", max_single_req=" << (max_single_req / kGB) << "GB"
+             << ", pool_free=" << (pool_free / kGB) << "GB";
+
+    // Pre-estimate: after compact, pool_free becomes contiguous at tail
+    // and is adjacent to remaining_hbm, so total available = pool_free + remaining_hbm
+    bool compact_alone_sufficient = (pool_free + remaining_hbm >= req_total_size);
+
+    if (!compact_alone_sufficient) {
+      // Need offload first, then compact
+      need_offload_first = true;
+      VLOG(1) << "[Compact] API: " << api
+              << " pre-estimate: pool_free(" << (pool_free / kGB) << "GB)"
+              << " + remaining_hbm(" << (remaining_hbm / kGB) << "GB)"
+              << " < req_total(" << (req_total_size / kGB) << "GB)"
+              << ", will offload first";
+    }
+
+    remaining_hbm_for_post_compact = remaining_hbm;
+    max_free_before_compact = max_free_size;
+    return true;
   };
 
-  if (NeedCompact(meta_tensors)) {
-    VLOG(1) << "Before Compact max_reserved: " << max_reserved / divisor
-            << "GB, max_allocated: " << max_allocated / divisor
-            << "GB, cur_allocated: " << cur_allocated / divisor << "GB";
-    paddle::memory::Compact(phi::GPUPlace(current_device_id));
+  // Main logic
+  if (NeedCompact()) {
+    // If pre-estimate shows compact alone is not enough, offload first
+    if (need_offload_first) {
+      VLOG(1) << "[Compact] API: " << api << " triggering offload before compact...";
+      auto offloaded_size =
+          paddle::memory::allocation::RunOOMCallback(place, req_total_size);
+      if (offloaded_size > 0) {
+        VLOG(1) << "[Compact] Offload completed: offloaded_size=" << (offloaded_size / kGB) << "GB";
+      } else {
+        VLOG(1) << "[Compact] Offload returned 0, no memory freed";
+      }
+    }
+
+    size_t compacted_size = paddle::memory::Compact(place);
+
+    // Get pool status after compact
+    const auto [max_free_after, large_N_free_after] =
+        paddle::memory::VmmMaxFreeSize(place, meta_tensors.size());
+
+    VLOG(1) << "[Compact] API: " << api
+            << ", max_reserved=" << (max_reserved / kGB) << "GB"
+            << ", cur_allocated=" << (cur_allocated / kGB) << "GB"
+            << ", pool_free=" << (pool_free / kGB) << "GB"
+            << ", compacted=" << (compacted_size / kGB) << "GB"
+            << ", max_free_block: " << (max_free_before_compact / kGB) << "GB -> " << (max_free_after / kGB) << "GB"
+            << (need_offload_first ? " (with offload)" : "");
   }
 #endif
 }

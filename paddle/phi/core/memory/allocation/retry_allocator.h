@@ -32,6 +32,8 @@ namespace allocation {
 PADDLE_API void RegisterOOMCallback(
     std::function<size_t(Place, size_t)> callback);
 
+PADDLE_API size_t RunOOMCallback(const phi::Place& place, size_t size);
+
 class PADDLE_API RetryAllocator : public Allocator {
  public:
   RetryAllocator(std::shared_ptr<Allocator> allocator,
