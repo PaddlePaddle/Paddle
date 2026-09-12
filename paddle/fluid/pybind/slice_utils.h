@@ -28,6 +28,7 @@
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 #include "paddle/phi/kernels/funcs/common_infer_shape_functions.h"
 #include "paddle/phi/kernels/funcs/slice_utils.h"
 #include "paddle/phi/kernels/funcs/strided_slice.h"
@@ -443,6 +444,13 @@ static void ParseIndex(const Tensor& tensor,
     } else if (slice_item == Py_None) {
       none_axes->push_back(current_dim + none_count);
       none_count++;
+      // `estimated_dim` counts the axes of the tensor produced by basic
+      // indexing, and that tensor already contains the axis inserted by this
+      // `None` (see the unsqueeze in getTensorWithBasicIndexing). Advancing it
+      // here keeps `advanced_index_dim` in the same coordinate system,
+      // otherwise a `None` placed before an advanced index would bind the index
+      // to the wrong axis.
+      estimated_dim++;
     } else if (PyBool_Check(slice_item)) {
       *has_advanced_index = true;
       none_axes->push_back(current_dim + none_count);
@@ -748,6 +756,16 @@ static std::vector<Tensor> PrepareIndices(const Tensor& tensor,
   return indices;
 }
 
+static bool HasNegativeStride(const Tensor& tensor) {
+  const auto& strides = tensor.strides();
+  for (int i = 0; i < strides.size(); ++i) {
+    if (strides[i] < 0) {
+      return true;
+    }
+  }
+  return false;
+}
+
 static Tensor getValueForBoolTensor(const Tensor& tensor,
                                     const Tensor& self_tensor,
                                     const Tensor& bool_index,
@@ -795,7 +813,14 @@ static Tensor getValueForBoolTensor(const Tensor& tensor,
     ConvertAllInputsToDistTensor(mesh, tensor, self_tensor, bool_index);
   }
 
+  // A full-rank mask leaves no room for a negative-step basic slice, so a
+  // negatively-strided `tensor` here always means `self_tensor` is itself a
+  // reversed view (chained indexing). `masked_select` reads its input as a
+  // dense row-major buffer, so materialize the view before handing it over.
   if (bool_index.shape().size() == tensor_shape.size()) {
+    if (!tensor.is_dist_tensor() && HasNegativeStride(tensor)) {
+      return masked_select_ad_func(tensor.contiguous(), bool_index);
+    }
     return masked_select_ad_func(tensor, bool_index);
   }
 
@@ -868,10 +893,17 @@ static Tensor getValueForBoolTensor(const Tensor& tensor,
                                          accumulate,
                                          is_combined);
   } else {
-    if (bool_index.shape().size() == 1)
-      return gather_ad_func(tensor, bool_2_idx);
+    // Same as the masked_select early return above: this fallback reads the
+    // tensor as a dense row-major buffer, so materialize a reversed view.
+    Tensor dense = tensor;
+    if (!dense.is_dist_tensor() && HasNegativeStride(dense)) {
+      dense = dense.contiguous();
+    }
 
-    return gather_nd_ad_func(tensor, bool_2_idx);
+    if (bool_index.shape().size() == 1)
+      return gather_ad_func(dense, bool_2_idx);
+
+    return gather_nd_ad_func(dense, bool_2_idx);
   }
 }
 
@@ -1414,13 +1446,20 @@ static void ApplyGetitem(const int index_size,
             unsqueeze_ad_func((*transed_index)[0], {-1});
       }
 
+      // Same as the masked_select early return above: `gather_nd` reads its
+      // input as a dense row-major buffer, so materialize a reversed view.
+      Tensor dense_tensor = *transed_tensor;
+      if (!dense_tensor.is_dist_tensor() && HasNegativeStride(dense_tensor)) {
+        dense_tensor = dense_tensor.contiguous();
+      }
+
       const phi::distributed::ProcessMesh* mesh = nullptr;
       if (InputsContainDistTensor(
-              &mesh, *transed_tensor, transed_advanced_index_tensor)) {
+              &mesh, dense_tensor, transed_advanced_index_tensor)) {
         ConvertAllInputsToDistTensor(
-            mesh, *transed_tensor, transed_advanced_index_tensor);
+            mesh, dense_tensor, transed_advanced_index_tensor);
       }
-      *out = gather_nd_ad_func(*transed_tensor, transed_advanced_index_tensor);
+      *out = gather_nd_ad_func(dense_tensor, transed_advanced_index_tensor);
       handle_transpose(*out);
       return;
     }

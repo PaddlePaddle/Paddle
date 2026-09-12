@@ -14,6 +14,7 @@
 
 #include "paddle/phi/kernels/index_elementwise_put_kernel.h"
 
+#include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/full_kernel.h"
@@ -62,6 +63,14 @@ void XPUIndexElementwisePutGradKernel(
     value_dims = vectorize<int64_t>(value_grad->dims());
     value_strides = vectorize<int64_t>(value_grad->strides());
     value_ele_size = phi::SizeOf(value_grad->dtype());
+  }
+
+  // The XDNN scatter can only walk the x view forwards, so a reversed axis
+  // cannot be served by this kernel. Fail loudly instead of silently
+  // producing wrong data.
+  if (funcs::HasReversedAxis(input_dims, input_strides)) {
+    PADDLE_THROW(common::errors::Unimplemented(
+        "Negative strides in advanced indexing are not supported on XPU."));
   }
 
   funcs::IndexPutStride<3>(input_dims,

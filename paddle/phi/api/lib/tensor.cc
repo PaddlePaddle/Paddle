@@ -342,6 +342,10 @@ const void *Tensor::data() const {
     return static_cast<phi::DenseTensor *>(impl_.get())->data();
   } else if (is_selected_rows()) {
     return static_cast<phi::SelectedRows *>(impl_.get())->value().data();
+  } else if (is_dist_tensor()) {
+    const auto &value =
+        static_cast<phi::distributed::DistTensor *>(impl_.get())->value();
+    return value.has_allocation() ? value.data() : nullptr;
   }
   return nullptr;
 }
@@ -353,6 +357,10 @@ void *Tensor::data() {
     return static_cast<phi::SelectedRows *>(impl_.get())
         ->mutable_value()
         ->data();
+  } else if (is_dist_tensor()) {
+    auto *value = static_cast<phi::distributed::DistTensor *>(impl_.get())
+                      ->unsafe_mutable_value();
+    return value->has_allocation() ? value->data() : nullptr;
   }
   return nullptr;
 }

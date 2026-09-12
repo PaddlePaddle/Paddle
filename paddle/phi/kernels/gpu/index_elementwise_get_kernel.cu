@@ -64,7 +64,47 @@ void GPUIndexElementwiseGetKernel(const GPUContext& dev_ctx,
                            &strides_array,
                            &numel,
                            strides_vec);
-  auto offset_calc = funcs::make_offset_calculator_put<3, false, OffsetT>(
+
+  // Every element the kernel reads sits at
+  //   slice_offset + sum_d i_d * input_strides[d] * elesize
+  //                + sum_k idx_k * index_stride[k]
+  // and a reversed axis carries a negative stride, so the low end can dip
+  // below slice_offset.  Check both ends: this turns an out of bounds read
+  // into a diagnosable error instead of an illegal memory access.
+  const int64_t elesize = static_cast<int64_t>(phi::SizeOf(input.dtype()));
+  const int64_t capacity = input.numel() * elesize;
+  funcs::OperandReach reach;
+  funcs::AccumulateReach(input_dims.size(),
+                         input_dims.data(),
+                         input_strides.data(),
+                         elesize,
+                         &reach);
+  funcs::AccumulateReach(num_indices, sizes.data(), strides.data(), 1, &reach);
+  const int64_t lo = slice_offset + reach.lo;
+  const int64_t hi = slice_offset + reach.hi;
+  PADDLE_ENFORCE_GE(lo,
+                    0,
+                    common::errors::InvalidArgument(
+                        "The indexed view starts before the beginning of x: "
+                        "its lowest byte is at %d. slice_offset is %d bytes, "
+                        "the view is %s with element strides %s.",
+                        lo,
+                        slice_offset,
+                        make_ddim(input_dims).to_str(),
+                        make_ddim(input_strides).to_str()));
+  PADDLE_ENFORCE_LE(hi + elesize,
+                    capacity,
+                    common::errors::InvalidArgument(
+                        "The indexed view runs past the end of x: its highest "
+                        "byte is at %d but x only holds %d bytes. slice_offset "
+                        "is %d bytes, the view is %s with element strides %s.",
+                        hi + elesize - 1,
+                        capacity,
+                        slice_offset,
+                        make_ddim(input_dims).to_str(),
+                        make_ddim(input_strides).to_str()));
+
+  auto offset_calc = funcs::make_offset_calculator_put<3, true, OffsetT>(
       desired_shape, strides_array);
 
   const int64_t N = output->numel();
@@ -172,7 +212,9 @@ void IndexElementwiseGetKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(out);
   if (out->numel() == 0) return;
 
-  if (funcs::IsInUint32Range(x.numel() * sizeof(T), out->numel() * sizeof(T))) {
+  if (funcs::IsInInt32Range(x.numel() * sizeof(T),
+                            out->numel() * sizeof(T),
+                            funcs::IndexOperandByteSpan(index_dims))) {
     GPUIndexElementwiseGetKernel<T>(dev_ctx,
                                     x,
                                     index,

@@ -277,12 +277,25 @@ def parse_index(x, indices):
 
     indices = replace_ndarray_and_range(indices)
     indices = replace_ellipsis(x, indices)
-    indices, none_axes = replace_none(indices)
+    _, none_axes = replace_none(indices)
+    if not is_tensor_array:
+        # leave room for the axes inserted by None / single-bool index items,
+        # which `estimated_dim` counts as well
+        advanced_index += [None] * len(indices)
 
     estimated_dim = 0
     dim = 0
-    for i, slice_item in enumerate(indices):
+    for slice_item in indices:
         start, end, step = None, None, None
+        if slice_item is None:
+            # `estimated_dim` counts the axes of the tensor produced by basic
+            # indexing, and that tensor already contains the axis inserted by
+            # this None (see the unsqueeze in get_tensor_with_basic_indexing).
+            # Advancing it here keeps `advanced_index` in the same coordinate
+            # system, otherwise a None placed before an advanced index would
+            # bind the index to the wrong axis.
+            estimated_dim += 1
+            continue
         if type(slice_item) is int:
             if (
                 not is_tensor_array
