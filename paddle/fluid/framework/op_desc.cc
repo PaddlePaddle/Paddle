@@ -23,7 +23,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/shape_inference.h"
 #include "paddle/fluid/framework/var_type_inference.h"
-#include "paddle/fluid/operators/ops_extra_info.h"
+#include "paddle/fluid/framework/ops_extra_info.h"
 #include "paddle/phi/common/complex.h"
 #include "paddle/pir/include/core/block.h"
 #include "paddle/pir/include/core/program.h"

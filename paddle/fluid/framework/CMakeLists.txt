@@ -107,6 +107,11 @@ cc_library(
   DEPS phi)
 
 cc_library(
+  ops_extra_info
+  SRCS ops_extra_info.cc
+  DEPS attribute phi common)
+
+cc_library(
   tensor
   SRCS tensor_util.cc
   DEPS data_type dlpack_tensor phi common)

@@ -40,6 +40,7 @@ set(op_vjp_source_file_tmp ${op_vjp_source_file}.tmp)
 set(cache_grad_op_symbol_shape_file
     ${PIR_DIALECT_BINARY_DIR}/pd_op_cache_grad_op_symbol_shape.cc)
 set(cache_grad_op_symbol_shape_file_tmp ${cache_grad_op_symbol_shape_file}.tmp)
+set(cache_grad_op_symbol_shape_split_num 4)
 
 set(op_source_file ${PIR_DIALECT_BINARY_DIR}/pd_op.cc)
 set(op_source_file_tmp ${op_source_file}.tmp)
@@ -233,12 +234,19 @@ execute_process(
     ${PYTHON_EXECUTABLE} ${cache_grad_op_symbol_shape_gen_file} --op_yaml_files
     ${cache_grad_op_shape_yaml_files} --op_compat_yaml_file
     ${op_compat_yaml_file} --cache_grad_op_symbol_shape_file
-    ${cache_grad_op_symbol_shape_file_tmp})
+    ${cache_grad_op_symbol_shape_file_tmp} --split_num
+    ${cache_grad_op_symbol_shape_split_num})
+
+set(split_cache_grad_op_symbol_shape_files "")
+foreach(idx RANGE 1 ${cache_grad_op_symbol_shape_split_num})
+  list(APPEND split_cache_grad_op_symbol_shape_files
+       ${PIR_DIALECT_BINARY_DIR}/pd_op_cache_grad_op_symbol_shape${idx}.cc)
+endforeach()
 
 set(generated_files_pir
     ${generated_files_pd_op} ${generated_files_onednn_pd_op}
     ${generated_files_pd_api} ${generated_files_python_c}
-    ${generated_files_ops_api} ${cache_grad_op_symbol_shape_file})
+    ${generated_files_ops_api} ${split_cache_grad_op_symbol_shape_files})
 foreach(generated_file ${generated_files_pir})
   if(EXISTS "${generated_file}.tmp" AND EXISTS "${generated_file}")
     execute_process(COMMAND ${CMAKE_COMMAND} -E copy_if_different
@@ -290,7 +298,7 @@ set(op_dialect_srcs
     ${bwd_sparse_op_source_file}
     ${api_source_file}
     ${api_source_file}
-    ${cache_grad_op_symbol_shape_file}
+    ${split_cache_grad_op_symbol_shape_files}
     ${PADDLE_SOURCE_DIR}/paddle/fluid/prim/utils/static/static_tensor_operants.cc
 )
 

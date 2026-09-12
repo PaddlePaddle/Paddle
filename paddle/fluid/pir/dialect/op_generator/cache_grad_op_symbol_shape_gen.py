@@ -14,6 +14,7 @@
 
 import argparse
 import logging
+import math
 import os
 
 import yaml
@@ -114,8 +115,8 @@ class CacheGradOpSymbolShapeCodeGen:
                     )
         return op_info_maps
 
-    def gen_cpp_file_code(self, cpp_file_path):
-        cache_func_code = ""
+    def gen_cpp_files(self, cpp_file_path, split_num=1):
+        cache_func_codes = []
         original_attr_map_items_code = ""
         get_op_name_with_dialect = lambda op_name: (
             self.dialect_name + "." + op_name
@@ -246,33 +247,37 @@ class CacheGradOpSymbolShapeCodeGen:
                     logging.warning(
                         f"{op_phi_name}'s grad op has some exception, please check it in yaml file."
                     )
-                    cache_func_code += UNIMPLEMENTED_CODE_TEMPLATE.format(
-                        op_name=to_pascal_case(op_phi_name),
+                    cache_func_codes.append(
+                        UNIMPLEMENTED_CODE_TEMPLATE.format(
+                            op_name=to_pascal_case(op_phi_name),
+                        )
                     )
                     continue
 
-                cache_func_code += CACHE_GRAD_OP_SYMBOL_SHAPE_FUNC_CODE_TEMPLATE.format(
-                    op_name=to_pascal_case(op_phi_name),
-                    create_grad_op_shape_info_code=create_grad_op_shape_info_code,
-                    grad_op_name=get_op_name_with_dialect(
-                        grad_op_item.op_phi_name[0]
-                    ),
-                    input_shape_list=", ".join(
-                        [
-                            input_name + SHAPE_VAR_NAME_SUFFIX
-                            for input_name in (
-                                grad_op_item.input_name_list
-                                + grad_op_item.mutable_attribute_name_list
-                            )
-                        ]
-                    ),
-                    create_grad_op_output_shape_code=create_grad_op_output_shape_code,
-                    output_shape_list=", ".join(
-                        [
-                            output_name + SHAPE_VAR_NAME_SUFFIX
-                            for output_name in grad_op_item.output_name_list
-                        ]
-                    ),
+                cache_func_codes.append(
+                    CACHE_GRAD_OP_SYMBOL_SHAPE_FUNC_CODE_TEMPLATE.format(
+                        op_name=to_pascal_case(op_phi_name),
+                        create_grad_op_shape_info_code=create_grad_op_shape_info_code,
+                        grad_op_name=get_op_name_with_dialect(
+                            grad_op_item.op_phi_name[0]
+                        ),
+                        input_shape_list=", ".join(
+                            [
+                                input_name + SHAPE_VAR_NAME_SUFFIX
+                                for input_name in (
+                                    grad_op_item.input_name_list
+                                    + grad_op_item.mutable_attribute_name_list
+                                )
+                            ]
+                        ),
+                        create_grad_op_output_shape_code=create_grad_op_output_shape_code,
+                        output_shape_list=", ".join(
+                            [
+                                output_name + SHAPE_VAR_NAME_SUFFIX
+                                for output_name in grad_op_item.output_name_list
+                            ]
+                        ),
+                    )
                 )
 
                 if len(op_info_item.kernel_map['func']) == 1:
@@ -285,10 +290,13 @@ class CacheGradOpSymbolShapeCodeGen:
                     if kernel_func_name == op_origin_name:
                         continue
                     inplace_suffix = '_' if is_inplace_version else ''
-                    cache_func_code += UNIMPLEMENTED_CODE_TEMPLATE.format(
-                        op_name=to_pascal_case(kernel_func_name)
-                        + inplace_suffix
+                    cache_func_codes.append(
+                        UNIMPLEMENTED_CODE_TEMPLATE.format(
+                            op_name=to_pascal_case(kernel_func_name)
+                            + inplace_suffix
+                        )
                     )
+
         get_original_attr_map_func_code = (
             GET_ORIGINAL_ATTR_MAP_FUNC_CODE_TEMPLATE.format(
                 original_attr_map_items=original_attr_map_items_code
@@ -299,12 +307,18 @@ class CacheGradOpSymbolShapeCodeGen:
         if not os.path.exists(directory_path):
             os.makedirs(directory_path, exist_ok=True)
 
-        with open(cpp_file_path, 'w') as f:
-            f.write(
-                CPP_FILE_TEMPLATE.format(
-                    body=get_original_attr_map_func_code + cache_func_code,
-                )
-            )
+        # Split into N buckets and write each to a separate file
+        bucket_size = math.ceil(len(cache_func_codes) / split_num)
+        for i in range(split_num):
+            start = i * bucket_size
+            bucket = cache_func_codes[start : start + bucket_size]
+            file_path = cpp_file_path.replace(".cc", f"{i + 1}.cc")
+            body = ""
+            if i == 0:
+                body += get_original_attr_map_func_code
+            body += "\n".join(bucket)
+            with open(file_path, 'w') as f:
+                f.write(CPP_FILE_TEMPLATE.format(body=body))
 
 
 def ParseArguments():
@@ -314,6 +328,7 @@ def ParseArguments():
     parser.add_argument('--op_yaml_files', type=str)
     parser.add_argument('--op_compat_yaml_file', type=str)
     parser.add_argument('--cache_grad_op_symbol_shape_file', type=str)
+    parser.add_argument('--split_num', type=int, default=1)
     return parser.parse_args()
 
 
@@ -327,4 +342,4 @@ if __name__ == '__main__':
         op_yaml_files,
         op_compat_yaml_file,
     )
-    code_gen.gen_cpp_file_code(cache_grad_op_symbol_shape_file)
+    code_gen.gen_cpp_files(cache_grad_op_symbol_shape_file, args.split_num)
