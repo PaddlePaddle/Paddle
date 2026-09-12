@@ -19,6 +19,7 @@ cc_test(ATen_any_test SRCS ATen_any_test.cc)
 cc_test(ATen_as_strided_test SRCS ATen_as_strided_test.cc)
 cc_test(ATen_autograd_test SRCS ATen_autograd_test.cc)
 cc_test(ATen_chunk_test SRCS ATen_chunk_test.cc)
+cc_test(ATen_cholesky_test SRCS ATen_cholesky_test.cc)
 cc_test(ATen_clamp_test SRCS ATen_clamp_test.cc)
 cc_test(ATen_coalesce_test SRCS ATen_coalesce_test.cc)
 cc_test(ATen_dense_sparse_conversion_test
