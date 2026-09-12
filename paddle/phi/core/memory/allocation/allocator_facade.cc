@@ -86,7 +86,7 @@ PHI_DEFINE_EXPORTED_int64(
 
 PHI_DEFINE_EXPORTED_bool(
     use_system_allocator,
-    false,
+    true,
     "Whether to use system allocator to allocate CPU and GPU memory. "
     "Only used for unittests.");
 
