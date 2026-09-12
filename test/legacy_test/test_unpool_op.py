@@ -269,11 +269,18 @@ class TestUnpoolOpException(unittest.TestCase):
             indices_rank_error,
         )
         if not (core.is_compiled_with_cuda() or is_custom_device()):
-            self.assertRaisesRegex(
-                ValueError,
-                r"index should less than output",
-                indices_value_error,
-            )
+            if core.is_compiled_with_xpu():
+                self.assertRaisesRegex(
+                    ValueError,
+                    r"out of range",
+                    indices_value_error,
+                )
+            else:
+                self.assertRaisesRegex(
+                    ValueError,
+                    r"index should less than output",
+                    indices_value_error,
+                )
         self.assertRaisesRegex(
             ValueError,
             r"Attr\(data_format\) should be 'NCHW'",
