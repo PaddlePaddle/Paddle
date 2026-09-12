@@ -596,7 +596,7 @@ def manual_seed(seed: int) -> None:
 
     """
     seed = int(seed)
-    place = paddle.framework._current_expected_place()
+    place = paddle.framework._current_expected_place_()
     if isinstance(place, core.CPUPlace):
         core.default_cpu_generator().manual_seed(seed)
     else:
