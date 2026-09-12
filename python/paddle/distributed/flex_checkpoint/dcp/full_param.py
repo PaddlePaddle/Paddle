@@ -818,6 +818,321 @@ class HVCommGroupFullParamAssembler(BaseAssembler):
         return ready_tensor_names
 
 
+class HOnlyCommGroupFullParamAssembler(BaseAssembler):
+    """
+    Implements the assembly logic using only horizontal (h_group) communication.
+
+    Unlike HVCommGroupFullParamAssembler which broadcasts vertically then
+    all-gathers horizontally (giving every rank the full parameters),
+    this version ONLY performs all-gather within h_group. Each rank outputs
+    only the parameters that its horizontal group collectively owns.
+
+    This is suitable for scenarios where vertical ranks handle different
+    parameter partitions independently (e.g., pipeline stages that only
+    need their own stage's full parameters).
+
+    Note: v_group is optionally accepted for metadata gathering (AOAEngine
+    requires global shard info for shape propagation), but NO data
+    communication happens on v_group.
+    """
+
+    def __init__(
+        self,
+        sharded_state_dict: ShardedStateDict,
+        horizontal_group: Group,
+        vertical_group: Group | None = None,
+        aoa_config: dict[str, list[str]] | None = None,
+        num_splits: int = 1,
+        idx: int = 0,
+        memory_growth_threshold: int = 8 * (2**30),  # 8GB
+    ):
+        super().__init__(sharded_state_dict, aoa_config, num_splits, idx)
+        self.h_group = horizontal_group
+        self.v_group = vertical_group
+        self.h_nranks = horizontal_group.nranks
+        self.memory_growth_threshold = memory_growth_threshold
+
+        self.h_ranks: list[int] = []
+        self.horizontal_index: dict[int, int] = {}
+        self.cur_horizontal_index: int = -1
+
+    def _global_all_gather_fn(self, info):
+        """Gather info across both h_group and v_group for global metadata."""
+        h_obj_list = []
+        paddle.distributed.all_gather_object(h_obj_list, info, self.h_group)
+
+        if self.v_group is not None and self.v_group.nranks > 1:
+            v_obj_list = []
+            paddle.distributed.all_gather_object(
+                v_obj_list, h_obj_list, self.v_group
+            )
+            return [x for sublist in v_obj_list for x in sublist]
+        return h_obj_list
+
+    def all_gather_fn(self, info, **kwargs):
+        h_group = kwargs.get('h_group', self.h_group)
+        gathered_info = []
+        paddle.distributed.all_gather_object(gathered_info, info, h_group)
+        return gathered_info
+
+    def _build_global_state_shard_info(self):
+        """Build global shard info using both h_group and v_group for AOAEngine."""
+        state_shard_info = defaultdict(list)
+        for key, val in self.sharded_state_dict.items():
+            desc = build_shard_desc(val)
+            state_shard_info[key].append(desc)
+
+        gathered_info = self._global_all_gather_fn(dict(state_shard_info))
+        return merge_shard_info_list(gathered_info)
+
+    def _build_h_state_shard_info(self):
+        """Build shard info only within h_group for filtering local sources."""
+        state_shard_info = defaultdict(list)
+        for key, val in self.sharded_state_dict.items():
+            desc = build_shard_desc(val)
+            state_shard_info[key].append(desc)
+
+        gathered_info = self.all_gather_fn(
+            dict(state_shard_info), h_group=self.h_group
+        )
+        return merge_shard_info_list(gathered_info)
+
+    def prepare(self):
+        """Build horizontal topology, prepare metadata, and build the read plan."""
+        assert self.use_dist, (
+            "HOnlyCommGroupFullParamAssembler only supports distributed training."
+        )
+        self._build_h_topology()
+
+        # Use global shard info for AOAEngine shape propagation
+        global_state_shard_info = self._build_global_state_shard_info()
+        self._prepare_metainfo(global_state_shard_info)
+
+        # Filter: only keep destinations whose ALL sources exist within h_group
+        h_state_shard_info = self._build_h_state_shard_info()
+        self._filter_to_h_group_only(h_state_shard_info)
+
+        self._build_read_plan(
+            all_gather_args={'h_group': self.h_group}
+        )
+
+    def _filter_to_h_group_only(self, h_state_shard_info):
+        """Remove destinations that require sources outside h_group."""
+        h_source_keys = set(h_state_shard_info.keys())
+
+        # Find destinations whose all sources are within h_group
+        valid_destinations = []
+        for tgt_name, mappings in self.destination_sharded_mappings.items():
+            all_sources_local = all(
+                m.source_slice.key in h_source_keys for m in mappings
+            )
+            if all_sources_local:
+                valid_destinations.append(tgt_name)
+
+        # Remove invalid destinations
+        invalid_destinations = set(self.destination_sharded_mappings.keys()) - set(valid_destinations)
+        for name in invalid_destinations:
+            del self.destination_sharded_mappings[name]
+            del self.destination_sharded_weight_desc[name]
+
+        # Rebuild source_to_target_names
+        self.source_to_target_names = defaultdict(set)
+        for tgt_name, mappings in self.destination_sharded_mappings.items():
+            for m in mappings:
+                self.source_to_target_names[m.source_slice.key].add(tgt_name)
+
+        # Re-filter sharded_state_dict
+        self.filtered_sharded_state_dict = {
+            k: v
+            for k, v in self.sharded_state_dict.items()
+            if k in self.source_to_target_names
+        }
+
+        self.source_consumers = deepcopy(self.source_to_target_names)
+
+    def _build_h_topology(self):
+        """Build a simple 1D topology within the horizontal group."""
+        paddle.distributed.all_gather_object(
+            self.h_ranks, self.cur_rank, self.h_group
+        )
+        self.horizontal_index = {
+            rank: i for i, rank in enumerate(self.h_ranks)
+        }
+        self.cur_horizontal_index = self.horizontal_index[self.cur_rank]
+
+    def run(self) -> Generator[tuple[str, paddle.Tensor], None, None]:
+        """Main execution generator using horizontal-only communication."""
+        self.prepare()
+
+        while len(self.read_items) > 0:
+            ready_tensor_names = self._process_one_batch()
+
+            yield from self._assemble_and_yield_ready_tensors(
+                ready_tensor_names
+            )
+
+    def get_batch_read_items(self):
+        """
+        Select a batch of read items for one round of h_group all_gather.
+
+        Tries to fill one item per h_group rank with matching shape/dtype.
+        Falls back to single-item broadcast if memory threshold is exceeded.
+        """
+        read_items = self.read_items
+        h_nranks = self.h_nranks
+        horizontal_index = self.horizontal_index
+
+        batch_read_items = [None] * h_nranks
+        read_item_index = [None] * h_nranks
+        cnt = 0
+        cur_shape = None
+        cur_dtype = None
+
+        for i, item in enumerate(read_items):
+            src_rank = item.src_rank
+            h_index = horizontal_index[src_rank]
+
+            if batch_read_items[h_index] is None and cnt == 0:
+                batch_read_items[h_index] = item
+                read_item_index[h_index] = i
+                cnt += 1
+                cur_dtype = item.dtype
+                cur_shape = item.slice_shape
+                element_size = paddle.core.size_of_dtype(
+                    getattr(paddle, cur_dtype)
+                )
+                memory_growth = (
+                    element_size * math.prod(cur_shape) * h_nranks
+                )
+                if memory_growth > self.memory_growth_threshold:
+                    return (
+                        batch_read_items,
+                        read_item_index,
+                        OperationType.GLOBAL_BROADCAST,
+                    )
+                if cnt == h_nranks:
+                    return (
+                        batch_read_items,
+                        read_item_index,
+                        OperationType.BROADCAST_ALLGATHER,
+                    )
+
+            if batch_read_items[h_index] is None and cnt != 0:
+                if item.slice_shape == cur_shape and item.dtype == cur_dtype:
+                    batch_read_items[h_index] = item
+                    read_item_index[h_index] = i
+                    cnt += 1
+                    if cnt == h_nranks:
+                        return (
+                            batch_read_items,
+                            read_item_index,
+                            OperationType.BROADCAST_ALLGATHER,
+                        )
+
+        assert cur_shape is not None
+        assert cur_dtype is not None
+
+        # Pad unfilled slots with dummy items
+        for i, item in enumerate(batch_read_items):
+            if item is None:
+                src_rank = self.h_ranks[i]
+                common_attrs = {
+                    "tensor_name": INTERNAL_PADDING_TENSOR_NAME,
+                    "src_rank": src_rank,
+                    "src_global_offset": (0,) * len(cur_shape),
+                    "dst_global_offset": (0,) * len(cur_shape),
+                    "src_local_offset": (0,) * len(cur_shape),
+                    "dst_local_offset": (0,) * len(cur_shape),
+                    "slice_shape": cur_shape,
+                    "global_shape": cur_shape,
+                    "target_tensor_names": None,
+                    "file_name": "padding_vfile",
+                    "dtype": cur_dtype,
+                    "comm_group": None,
+                }
+                padding_read_item = ExtendReadItem(
+                    dst_rank=None, **common_attrs
+                )
+                batch_read_items[i] = padding_read_item
+
+        return (
+            batch_read_items,
+            read_item_index,
+            OperationType.BROADCAST_ALLGATHER,
+        )
+
+    def _process_one_batch(self) -> list[str]:
+        """Performs H-AllGather or H-Broadcast for one batch of items."""
+
+        batch_items, batch_indices, op_type = self.get_batch_read_items()
+
+        if op_type == OperationType.BROADCAST_ALLGATHER:
+            read_item = batch_items[self.cur_horizontal_index]
+        else:
+            values = [x for x in batch_items if x is not None]
+            if len(values) == 1:
+                read_item = values[0]
+            else:
+                raise ValueError(
+                    "When the comm op is GLOBAL_BROADCAST, read_items should be of length 1!"
+                )
+            batch_items = [read_item]
+
+        if self.cur_rank == read_item.src_rank:
+            buffer = (
+                paddle.empty(read_item.slice_shape, read_item.dtype)
+                if read_item.tensor_name == INTERNAL_PADDING_TENSOR_NAME
+                else self.filtered_sharded_state_dict[
+                    read_item.tensor_name
+                ].local_tensor.clone()
+            )
+        else:
+            buffer = paddle.empty(read_item.slice_shape, dtype=read_item.dtype)
+
+        if op_type == OperationType.BROADCAST_ALLGATHER:
+            # Only H-all_gather, no V-broadcast
+            tensor_list = []
+            paddle.distributed.all_gather(
+                tensor_list, buffer, group=self.h_group
+            )
+        else:
+            # Single item broadcast within h_group
+            paddle.distributed.broadcast(
+                buffer, src=read_item.src_rank, group=self.h_group
+            )
+            tensor_list = [buffer]
+
+        # Store received tensors (skip padding)
+        for idx, item in enumerate(batch_items):
+            if item.tensor_name != INTERNAL_PADDING_TENSOR_NAME:
+                shard_desc = ShardedWeightDesc(
+                    key=item.tensor_name,
+                    local_shape=item.slice_shape,
+                    global_shape=item.global_shape,
+                    global_offset=item.src_global_offset,
+                    dtype=item.dtype,
+                )
+                self.sharded_desc_to_tensor[shard_desc] = tensor_list[idx]
+
+        # Update ref_map and find ready tensors
+        ready_tensor_names = []
+        for item in batch_items:
+            if item.target_tensor_names:
+                for name in item.target_tensor_names:
+                    self.ref_map[name].remove(item)
+                    if not self.ref_map[name]:
+                        ready_tensor_names.append(name)
+                        del self.ref_map[name]
+
+        # Remove processed items from read_items
+        for index in sorted(
+            [i for i in batch_indices if i is not None], reverse=True
+        ):
+            del self.read_items[index]
+
+        return ready_tensor_names
+
+
 @paddle.no_grad()
 def full_param(
     sharded_state_dict: ShardedStateDict,
@@ -826,10 +1141,21 @@ def full_param(
 ):
     h_group = kwargs.pop("h_group", None)
     v_group = kwargs.pop("v_group", None)
+    h_only = kwargs.pop("h_only", False)
     process_group = kwargs.pop("process_group", None)
     num_splits = kwargs.pop("num_splits", 1)
     memory_growth_threshold = kwargs.pop("memory_growth_threshold", 8 * (2**30))
     idx = kwargs.pop("shard_idx", 0)
+    if h_only and h_group:
+        return HOnlyCommGroupFullParamAssembler(
+            sharded_state_dict,
+            h_group,
+            v_group,
+            aoa_config,
+            num_splits,
+            idx,
+            memory_growth_threshold,
+        )
     assert (h_group and v_group) or not (h_group or v_group), (
         "Both horizontal and vertical groups must be provided when using FullParamAssembler."
     )
