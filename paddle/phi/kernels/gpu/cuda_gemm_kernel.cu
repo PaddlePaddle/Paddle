@@ -14,7 +14,9 @@
 
 #include "paddle/phi/kernels/gpu/cuda_gemm_kernel.h"
 #include <glog/logging.h>
+#include "paddle/common/enforce.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -109,7 +111,21 @@ template <typename InputType,
           int32_t BLOCK_SIZE>
 void cudaCoreGemmKernel(GemmParams const& params) {
   dim3 block(BLOCK_SIZE);
-  dim3 grid(params.m / TILE_M, params.n / TILE_N);
+  int64_t grid_x_64 = params.m / TILE_M;
+  int64_t grid_y_64 = params.n / TILE_N;
+  const auto& prop =
+      backends::gpu::GetDeviceProperties(backends::gpu::GetCurrentDeviceId());
+  PADDLE_ENFORCE_LE(grid_x_64,
+                    prop.maxGridSize[0],
+                    common::errors::InvalidArgument(
+                        "cuda gemm grid.x exceeds device limit."));
+  PADDLE_ENFORCE_LE(grid_y_64,
+                    prop.maxGridSize[1],
+                    common::errors::InvalidArgument(
+                        "cuda gemm grid.y exceeds device limit."));
+  PADDLE_ENFORCE_LE_UINT32_MAX(grid_x_64, "cuda gemm grid.x");
+  PADDLE_ENFORCE_LE_UINT32_MAX(grid_y_64, "cuda gemm grid.y");
+  dim3 grid(static_cast<uint32_t>(grid_x_64), static_cast<uint32_t>(grid_y_64));
   int8_gemm<OutputType, TILE_M, TILE_N, BLOCK_SIZE>
       <<<grid, block, 0, params.stream>>>(
           reinterpret_cast<InputType const*>(params.act),
@@ -168,8 +184,10 @@ void CudaGemm(const Context& dev_ctx,
 
   auto out_dims = output->dims();
 
-  const int m = input_dims[0];
-  const int n = weight_dims[0];
+  const int64_t m64 = input_dims[0];
+  const int64_t n64 = weight_dims[0];
+  PADDLE_ENFORCE_LE_INT_MAX(m64, "cuda gemm m");
+  PADDLE_ENFORCE_LE_INT_MAX(n64, "cuda gemm n");
 
   PADDLE_ENFORCE_EQ(
       input_dims[1],
@@ -178,7 +196,12 @@ void CudaGemm(const Context& dev_ctx,
           "The input dims[1] %d should be equal to weight dims[1] %d.",
           input_dims[1],
           weight_dims[1]));
-  const int k = weight_dims[1];
+  const int64_t k64 = weight_dims[1];
+  PADDLE_ENFORCE_LE_INT_MAX(k64, "cuda gemm k");
+
+  const int m = static_cast<int>(m64);
+  const int n = static_cast<int>(n64);
+  const int k = static_cast<int>(k64);
 
   GemmParams params = {
       reinterpret_cast<const void*>(input.data<T>()),

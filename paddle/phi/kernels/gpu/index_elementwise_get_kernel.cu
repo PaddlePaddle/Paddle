@@ -15,6 +15,7 @@
 #include "paddle/phi/kernels/index_elementwise_get_kernel.h"
 #include <cstdio>
 
+#include "paddle/common/enforce.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/index_elementwise.cu.h"
@@ -73,7 +74,9 @@ void GPUIndexElementwiseGetKernel(const GPUContext& dev_ctx,
   const dim3 block(nt);
   const int64_t grid_x = (N + block.x * vt - 1) / (block.x * vt);
   const int64_t max_grid_dim = dev_ctx.GetCUDAMaxGridDimSize()[0];
-  const dim3 grid(std::min(max_grid_dim, grid_x));
+  const int64_t grid_x_limit = std::min(max_grid_dim, grid_x);
+  PADDLE_ENFORCE_LE_UINT32_MAX(grid_x_limit, "index elementwise get grid.x");
+  const dim3 grid(static_cast<uint32_t>(grid_x_limit));
   auto stream = dev_ctx.stream();
 
   using dtype = funcs::OpaqueType<sizeof(T)>;
@@ -112,7 +115,10 @@ void GPUIndexElementwiseGetKernel(const GPUContext& dev_ctx,
       const int64_t end_idx = std::min((chunk + 1) * max_grid_dim * nt * vt, N);
       const int64_t chunk_size = end_idx - start_idx;
       const int64_t chunk_grid_x = (chunk_size + nt * vt - 1) / (nt * vt);
-      const dim3 chunk_grid(std::min(chunk_grid_x, max_grid_dim));
+      const int64_t chunk_grid_x_limit = std::min(chunk_grid_x, max_grid_dim);
+      PADDLE_ENFORCE_LE_UINT32_MAX(chunk_grid_x_limit,
+                                   "index elementwise get chunk grid.x");
+      const dim3 chunk_grid(static_cast<uint32_t>(chunk_grid_x_limit));
 
       funcs::index_elementwise_with_tensor_kernel<nt, vt>
           <<<chunk_grid, block, 0, stream>>>(
