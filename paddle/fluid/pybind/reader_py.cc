@@ -467,7 +467,9 @@ void BindReader(py::module *module) {
       .def("size", &reader::DenseTensorBlockingQueue::Size)
       .def("capacity", &reader::DenseTensorBlockingQueue::Cap)
       .def("close", &reader::DenseTensorBlockingQueue::Close)
-      .def("kill", &reader::DenseTensorBlockingQueue::Kill)
+      .def("kill",
+           &reader::DenseTensorBlockingQueue::Kill,
+           py::arg("reason") = "")
       .def("wait_for_inited",
            &reader::DenseTensorBlockingQueue::WaitForInited,
            py::call_guard<py::gil_scoped_release>());
@@ -486,7 +488,9 @@ void BindReader(py::module *module) {
       .def("size", &reader::OrderedMultiDeviceDenseTensorBlockingQueue::Size)
       .def("capacity", &reader::OrderedMultiDeviceDenseTensorBlockingQueue::Cap)
       .def("close", &reader::OrderedMultiDeviceDenseTensorBlockingQueue::Close)
-      .def("kill", &reader::OrderedMultiDeviceDenseTensorBlockingQueue::Kill)
+      .def("kill",
+           &reader::OrderedMultiDeviceDenseTensorBlockingQueue::Kill,
+           py::arg("reason") = "")
       .def("wait_for_inited",
            &reader::OrderedMultiDeviceDenseTensorBlockingQueue::WaitForInited,
            py::call_guard<py::gil_scoped_release>())
