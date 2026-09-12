@@ -1019,7 +1019,7 @@ XPUOpMap& get_kl3_ops() {
       {"squeeze_excitation_block", XPUKernelSet({FLOAT32, FLOAT16})},
       {"resnet_basic_block_grad", XPUKernelSet({FLOAT32})},
       {"resnet_basic_block", XPUKernelSet({FLOAT32})},
-      {"fused_bias_act", XPUKernelSet({FLOAT16, BFLOAT16})},
+      {"fused_bias_act", XPUKernelSet({FLOAT32, FLOAT16, BFLOAT16, INT32})},
       {"fused_bias_residual_layernorm",
        XPUKernelSet({FLOAT32, BFLOAT16, FLOAT16})},
       {"fused_gemm_epilogue", XPUKernelSet({FLOAT32, FLOAT16, BFLOAT16})},
