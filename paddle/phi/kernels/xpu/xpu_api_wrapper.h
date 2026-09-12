@@ -92,10 +92,15 @@ inline XPUFCCalcType FCCalcType<XPUTypeFP16>() {
 template <>
 inline XPUFCCalcType FCCalcType<XPUTypeBF16>() {
   XPUFCCalcTypeMap calc_type_map = {
-      // TF32 is the default, do not need to be listed here.
+      // Allow opting into TF32 via env var for performance if needed.
+      {"XPU_PADDLE_FC_TF32", XPUFCCalcType::FC_TF32},
       {"XPU_PADDLE_FC_FLOAT", XPUFCCalcType::FC_FLOAT},
       {"XPU_PADDLE_FC_LOCAL_INT16", XPUFCCalcType::FC_FLOAT}};
-  auto default_calc_type = XPUFCCalcType::FC_TF32;
+  // Use FC_FLOAT (float32 accumulation) by default to match GPU behavior,
+  // where cuBLAS uses CUBLAS_COMPUTE_32F for bfloat16 matmul. FC_TF32 uses
+  // only 10-bit mantissa accumulation and causes large precision gaps
+  // (max_abs_diff in the tens of thousands) for large-K reductions.
+  auto default_calc_type = XPUFCCalcType::FC_FLOAT;
   return GetFCCalcTypeFromEnv(calc_type_map, default_calc_type);
 }
 
