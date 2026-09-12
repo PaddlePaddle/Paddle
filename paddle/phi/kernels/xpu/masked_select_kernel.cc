@@ -75,7 +75,7 @@ void MaskedSelectKernel(const Context& dev_ctx,
 
   PADDLE_ENFORCE_XDNN_SUCCESS(
       xpu::nonzero_count(
-          dev_ctx.x_context(), mask_data, out_size, mask.numel()),
+          dev_ctx.x_context(), mask_data, out_size, mask_expand.numel()),
       "nonzero_count ");
   memory_utils::Copy(CPUPlace(),
                      static_cast<void*>(&out_size_cpu),
