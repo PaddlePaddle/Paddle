@@ -1856,20 +1856,7 @@ void LinearV2InferMeta(const MetaTensor& input,
   auto input_mat_dims = flatten_to_2d(input_dims, input_dims.size() - 1);
 
   auto input_rank = input_dims.size();
-  int64_t K_from_input = input_mat_dims[1];
-  int64_t K_from_weight = weight_reduce_dim;
-  const bool check_dim =
-      (!config.is_runtime && K_from_input != -1) || config.is_runtime;
-  if (check_dim) {
-    PADDLE_ENFORCE_EQ(
-        K_from_input,
-        K_from_weight,
-        common::errors::InvalidArgument(
-            "The last dimension of X should be equal with Y's first dimension."
-            "But received X[-1] = [%d], Y[0] = [%d].",
-            K_from_input,
-            K_from_weight));
-  }
+
   std::vector<int64_t> out_dims;
   out_dims.reserve(input_rank);
 
