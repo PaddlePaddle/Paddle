@@ -44,10 +44,16 @@ struct CPUIntDivider {
   Value divisor;
 };
 
-template <int NARGS, typename index_t = uint32_t, bool signed_strides = false>
+template <int NARGS, typename index_t = uint32_t>
 struct CPUOffsetCalculator {
-  using stride_t =
-      std::conditional_t<signed_strides, std::make_signed_t<index_t>, index_t>;
+  // Offsets are signed so that reversed views (negative strides) work, and
+  // 64-bit so that being signed costs no reach.  The GPU calculator has to
+  // trade the two off against each other -- there a narrow offset saves
+  // registers, so it dispatches between a 32-bit and a 64-bit variant -- but on
+  // the CPU a 64-bit add is as cheap as a 32-bit one and there is nothing to
+  // dispatch on.  Only the divmod over `linear_idx` benefits from `index_t`
+  // staying 32-bit, and that is independent of the offset width.
+  using stride_t = int64_t;
   using offset_type = std::array<stride_t, std::max<int>(NARGS, 1)>;
 
   CPUOffsetCalculator(int dims,
@@ -94,31 +100,29 @@ struct CPUOffsetCalculator {
   stride_t strides_[MAX_DIMS][std::max<int>(NARGS, 1)];
 };
 
-template <int N, bool signed_strides = false>
-static CPUOffsetCalculator<N, uint32_t, signed_strides>
-CPUmake_offset_calculator_put(std::vector<int64_t> desired_shape,
-                              std::array<int64_t*, N> strides_array) {
-  return CPUOffsetCalculator<N, uint32_t, signed_strides>(
+template <int N>
+static CPUOffsetCalculator<N, uint32_t> CPUmake_offset_calculator_put(
+    std::vector<int64_t> desired_shape, std::array<int64_t*, N> strides_array) {
+  return CPUOffsetCalculator<N, uint32_t>(
       desired_shape.size(), desired_shape.data(), strides_array.data());
 }
 
-template <int N, bool signed_strides = false>
-static CPUOffsetCalculator<N, uint32_t, signed_strides>
-CPUmake_offset_calculator(int ndim,
-                          const int64_t* shape,
-                          const std::vector<std::vector<int64_t>>& strides) {
+template <int N>
+static CPUOffsetCalculator<N, uint32_t> CPUmake_offset_calculator(
+    int ndim,
+    const int64_t* shape,
+    const std::vector<std::vector<int64_t>>& strides) {
   std::array<const int64_t*, N> strides_array;
   for (int i = 0; i < N; ++i) {
     strides_array[i] = strides[i].data();
   }
 
-  return CPUOffsetCalculator<N, uint32_t, signed_strides>(
-      ndim, shape, strides_array.data());
+  return CPUOffsetCalculator<N, uint32_t>(ndim, shape, strides_array.data());
 }
 
-template <int N, bool signed_strides = false>
-static CPUOffsetCalculator<N, uint32_t, signed_strides>
-CPUmake_offset_calculator(const DenseTensorIteratorBase& iter) {
+template <int N>
+static CPUOffsetCalculator<N, uint32_t> CPUmake_offset_calculator(
+    const DenseTensorIteratorBase& iter) {
   PADDLE_ENFORCE_LE(N,
                     iter.ntensors(),
                     ::common::errors::InvalidArgument(
@@ -127,7 +131,7 @@ CPUmake_offset_calculator(const DenseTensorIteratorBase& iter) {
   for (int i = 0; i < N; i++) {
     strides[i] = iter.operands_[i].stride_bytes.data();
   }
-  return CPUOffsetCalculator<N, uint32_t, signed_strides>(
+  return CPUOffsetCalculator<N, uint32_t>(
       iter.ndim(), iter.shape().data(), strides.data());
 }
 
