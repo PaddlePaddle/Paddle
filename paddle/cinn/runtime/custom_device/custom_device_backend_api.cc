@@ -15,6 +15,7 @@
 // paddle/cinn/runtime/custom_device/custom_device_backend_api.cc
 
 #include "paddle/cinn/runtime/custom_device/custom_device_backend_api.h"
+#include <array>
 #include <mutex>
 #include <unordered_map>
 #include "glog/logging.h"
@@ -167,7 +168,36 @@ class DefaultRuntimeStrategy : public CustomRuntimeStrategy {
 // Default compilation strategy
 // Responsible for vendor-specific Fusion/Schedule/Pass
 class DefaultCompileStrategy : public CustomCompileStrategy {
-  // Currently utilizes the base class default implementation
+ public:
+  explicit DefaultCompileStrategy(C_CinnInterface* cif) : cif_(cif) {}
+
+  bool ApplyCustomPass(const std::string& pass_name, void* ir_func) override {
+    if (cif_ && cif_->apply_custom_pass) {
+      C_Status status =
+          cif_->apply_custom_pass(cif_->dev_ptr, pass_name.c_str(), ir_func);
+      return status == C_SUCCESS;
+    }
+    return false;
+  }
+
+  std::vector<std::string> QueryPassPipeline() override {
+    if (!cif_ || !cif_->query_pass_pipeline) return {};
+    int count = 0;
+    cif_->query_pass_pipeline(cif_->dev_ptr, nullptr, &count);
+    if (count <= 0) return {};
+    std::vector<std::array<char, 128>> buf(count);
+    cif_->query_pass_pipeline(
+        cif_->dev_ptr, reinterpret_cast<char(*)[128]>(buf.data()), &count);
+    std::vector<std::string> result;
+    result.reserve(count);
+    for (int i = 0; i < count; ++i) {
+      result.emplace_back(buf[i].data());
+    }
+    return result;
+  }
+
+ private:
+  C_CinnInterface* cif_;
 };
 
 }  // namespace
@@ -181,7 +211,7 @@ void CinnCustomDevicePlugin::InitWrappers(C_CinnInterface* cif) {
   // Utilize the Default implementation classes defined above
   toolchain_ = std::make_unique<DefaultCompilerToolchain>(cif);
   runtime_strategy_ = std::make_unique<DefaultRuntimeStrategy>(cif);
-  compile_strategy_ = std::make_unique<DefaultCompileStrategy>();
+  compile_strategy_ = std::make_unique<DefaultCompileStrategy>(cif);
 }
 
 // 2. Implement GetInstance
