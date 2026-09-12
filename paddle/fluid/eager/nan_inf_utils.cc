@@ -128,6 +128,19 @@ void CheckTensorHasNanOrInf(const std::string& api_name, const Tensor& tensor) {
       return;
     }
 
+    // The checker scans the tensor's memory flat, i.e. it reads `ptr[i]` for
+    // every i in [0, numel), which is only valid for a contiguous tensor. On a
+    // strided view the scanned range is unrelated to the elements the view
+    // actually owns, and for a broadcast view (a stride of 0 blows numel up far
+    // beyond the storage) it runs past the end of the allocation and faults.
+    // Skip those tensors; their storage is still checked wherever the
+    // contiguous tensor that produced it is checked.
+    if (!dense_tensor->meta().is_contiguous()) {
+      VLOG(4) << "Tensor[" << tensor_name
+              << "] is not contiguous, skip nan inf check: " << api_name;
+      return;
+    }
+
     auto& place = dense_tensor->place();
     if (phi::is_gpu_place(place)) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)

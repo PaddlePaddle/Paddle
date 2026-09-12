@@ -12,34 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #include "paddle/phi/kernels/as_strided_kernel.h"
+#include "paddle/common/ddim.h"
 #include "paddle/common/flags.h"
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/strided_utils.h"
 
 COMMON_DECLARE_bool(use_stride_kernel);
 
 namespace phi {
-void ValidateZeroSizeTensorShape(const std::vector<int64_t>& dims,
-                                 const std::vector<int64_t>& strides,
-                                 const DenseTensor& input) {
-  if (input.numel() != 0) {
-    return;
-  }
-  PADDLE_ENFORCE_EQ(dims.size(),
-                    strides.size(),
-                    common::errors::InvalidArgument(
-                        "The size of dims and strides should be equal."));
-  for (size_t i = 0; i < dims.size(); i++) {
-    if (dims[i] == 0) {
-      return;
-    }
-  }
-
-  PADDLE_THROW(common::errors::InvalidArgument(
-      "When input is zero-size tensor, the shape attribute must also be "
-      "zero-size."));
-}
-
 template <typename Context>
 void AsStridedKernel(const Context& dev_ctx,
                      const DenseTensor& input,
@@ -62,6 +43,7 @@ void AsStridedKernel(const Context& dev_ctx,
       0,
       common::errors::InvalidArgument(
           "The offset must be non-negative, but got %d.", offset));
+  ValidateStridedViewStorage(dims, stride, offset, input);
   out->set_meta(meta);
   out->ResetHolder(input.Holder());
   out->ShareInplaceVersionCounterWith(input);

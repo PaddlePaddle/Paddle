@@ -2284,10 +2284,10 @@ class TestDygraphInplaceSet(unittest.TestCase):
         x = paddle.to_tensor(self.x_np).astype(self.dtype)
         new_x = paddle.to_tensor(self.new_x_np).astype(self.dtype)
         no_inplace_x4 = self.non_inplace_api_processing(
-            x, new_x=new_x, stride=self.new_stride
+            x, new_x=new_x, stride=new_x.strides
         )
         inplace_x4 = self.inplace_api_processing(
-            x, new_x=new_x, stride=self.new_stride
+            x, new_x=new_x, stride=new_x.strides
         )
         np.testing.assert_array_equal(no_inplace_x4.numpy(), inplace_x4.numpy())
 
@@ -2324,10 +2324,10 @@ class TestDygraphInplaceSet(unittest.TestCase):
         x = paddle.to_tensor(self.x_np).astype(self.dtype)
         new_x = paddle.to_tensor(self.new_x_np).astype(self.dtype)
         no_inplace_x8 = self.non_inplace_api_processing(
-            x, new_x=new_x, stride=self.new_stride, offset=self.new_offset
+            x, new_x=new_x, stride=new_x.strides, offset=self.new_offset
         )
         inplace_x8 = self.inplace_api_processing(
-            x, new_x=new_x, stride=self.new_stride, offset=self.new_offset
+            x, new_x=new_x, stride=new_x.strides, offset=self.new_offset
         )
         np.testing.assert_array_equal(no_inplace_x8.numpy(), inplace_x8.numpy())
 
