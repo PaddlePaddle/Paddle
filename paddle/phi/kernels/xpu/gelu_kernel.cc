@@ -31,11 +31,21 @@ void GeluKernel(const Context& dev_ctx,
   if (out && out->numel() == 0) {
     return;
   }
-  int r = xpu::gelu<XPUType>(dev_ctx.x_context(),
-                             reinterpret_cast<const XPUType*>(x.data<T>()),
-                             reinterpret_cast<XPUType*>(out->data<T>()),
-                             out->numel(),
-                             approximate);
+  int r = 0;
+  if constexpr (std::is_same_v<T, phi::dtype::bfloat16>) {
+    r = xpu::gelu_nvidia_highprecision<XPUType>(
+        dev_ctx.x_context(),
+        reinterpret_cast<const XPUType*>(x.data<T>()),
+        reinterpret_cast<XPUType*>(out->data<T>()),
+        out->numel(),
+        approximate);
+  } else {
+    r = xpu::gelu<XPUType>(dev_ctx.x_context(),
+                           reinterpret_cast<const XPUType*>(x.data<T>()),
+                           reinterpret_cast<XPUType*>(out->data<T>()),
+                           out->numel(),
+                           approximate);
+  }
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "gelu");
 }
 }  // namespace phi
