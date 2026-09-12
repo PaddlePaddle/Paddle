@@ -91,27 +91,14 @@ void RepeatInterleaveWithTensorIndexKernel(const Context& dev_ctx,
     // infer out shape
     if (index_type == DataType::INT32) {
       funcs::RepeatsTensor2IndexTensorFunctor<Context, int>()(
-          dev_ctx, repeats_tensor, &index);
+          dev_ctx, repeats_tensor, &index, output_size);
 
     } else if (index_type == DataType::INT64) {
       funcs::RepeatsTensor2IndexTensorFunctor<Context, int64_t>()(
-          dev_ctx, repeats_tensor, &index);
+          dev_ctx, repeats_tensor, &index, output_size);
     }
     auto output_dim = vectorize(x.dims());
-    if (output_size > 0) {
-      PADDLE_ENFORCE_EQ(
-          output_size,
-          index.dims()[0],
-          common::errors::InvalidArgument(
-              "When output_size is provided, it should equal to "
-              "sum of repeats tensor. But received output_size = %d, "
-              "sum of repeats = %d.",
-              output_size,
-              index.dims()[0]));
-      output_dim[dim] = output_size;
-    } else {
-      output_dim[dim] = index.dims()[0];
-    }
+    output_dim[dim] = index.dims()[0];
     out->Resize(output_dim);
     dev_ctx.template Alloc<T>(out);
     return;
@@ -123,25 +110,11 @@ void RepeatInterleaveWithTensorIndexKernel(const Context& dev_ctx,
   auto* in_data = x.data<T>();
   if (index_type == DataType::INT64) {
     funcs::RepeatsTensor2IndexTensorFunctor<Context, int64_t>()(
-        dev_ctx, repeats_tensor, &index);
+        dev_ctx, repeats_tensor, &index, output_size);
 
     const int64_t* index_data = index.data<int64_t>();
     auto output_dim = vectorize(x.dims());
-    if (output_size > 0) {
-      // Validate output_size for tensor repeats on GPU
-      PADDLE_ENFORCE_EQ(
-          output_size,
-          index.dims()[0],
-          common::errors::InvalidArgument(
-              "When output_size is provided, it should equal to "
-              "sum of repeats tensor. But received output_size = %d, "
-              "sum of repeats = %d.",
-              output_size,
-              index.dims()[0]));
-      output_dim[dim] = output_size;
-    } else {
-      output_dim[dim] = index.dims()[0];
-    }
+    output_dim[dim] = index.dims()[0];
     out->Resize(output_dim);
     T* out_data = dev_ctx.template Alloc<T>(out);
     int64_t numel = out->numel();
@@ -155,25 +128,11 @@ void RepeatInterleaveWithTensorIndexKernel(const Context& dev_ctx,
            stream>>>(in_data, out_data, index_data, numel, stride, size, delta);
   } else {
     funcs::RepeatsTensor2IndexTensorFunctor<Context, int>()(
-        dev_ctx, repeats_tensor, &index);
+        dev_ctx, repeats_tensor, &index, output_size);
 
     const int* index_data = index.data<int>();
     auto output_dim = vectorize(x.dims());
-    if (output_size > 0) {
-      // Validate output_size for tensor repeats on GPU
-      PADDLE_ENFORCE_EQ(
-          output_size,
-          index.dims()[0],
-          common::errors::InvalidArgument(
-              "When output_size is provided, it should equal to "
-              "sum of repeats tensor. But received output_size = %d, "
-              "sum of repeats = %d.",
-              output_size,
-              index.dims()[0]));
-      output_dim[dim] = output_size;
-    } else {
-      output_dim[dim] = index.dims()[0];
-    }
+    output_dim[dim] = index.dims()[0];
     out->Resize(output_dim);
     T* out_data = dev_ctx.template Alloc<T>(out);
     int64_t numel = out->numel();

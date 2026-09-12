@@ -29,7 +29,8 @@ class RepeatsTensor2IndexTensorFunctor {
  public:
   void operator()(const Context &ctx,
                   const DenseTensor &repeats,
-                  DenseTensor *index);
+                  DenseTensor *index,
+                  int64_t output_size = -1);
 };
 
 #if defined(__NVCC__) || defined(__HIPCC__)
@@ -38,7 +39,8 @@ class RepeatsTensor2IndexTensorFunctor<GPUContext, RepeatsT> {
  public:
   void operator()(const GPUContext &ctx,
                   const DenseTensor &repeats,
-                  DenseTensor *index);
+                  DenseTensor *index,
+                  int64_t output_size = -1);
 };
 #else
 template <typename RepeatsT>
@@ -46,7 +48,8 @@ class RepeatsTensor2IndexTensorFunctor<CPUContext, RepeatsT> {
  public:
   void operator()(const CPUContext &ctx,
                   const DenseTensor &repeats,
-                  DenseTensor *index);
+                  DenseTensor *index,
+                  int64_t output_size = -1);
 };
 #endif
 
@@ -56,7 +59,8 @@ class RepeatsTensor2IndexTensorFunctor<XPUContext, RepeatsT> {
  public:
   void operator()(const XPUContext &ctx,
                   const DenseTensor &repeats,
-                  DenseTensor *index);
+                  DenseTensor *index,
+                  int64_t output_size = -1);
 };
 #endif
 

@@ -171,6 +171,27 @@ class TestCUDAGraphInDygraphMode(unittest.TestCase):
         y = paddle.cast(x, dtype='float16')
         graph.capture_end()
 
+    def test_repeat_interleave_tensor_repeats_with_output_size(self):
+        if not can_use_cuda_graph():
+            return
+
+        x_np = np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]]).astype('float32')
+        repeats_np = np.array([2, 1, 3]).astype('int32')
+
+        x = paddle.to_tensor(x_np).cuda()
+        repeats = paddle.to_tensor(repeats_np).cuda()
+
+        graph = CUDAGraph()
+        graph.capture_begin()
+        out = paddle.repeat_interleave(x, repeats, axis=1, output_size=6)
+        graph.capture_end()
+
+        graph.replay()
+        np.testing.assert_allclose(
+            out.numpy(), np.repeat(x_np, repeats_np, axis=1), rtol=1e-5
+        )
+        graph.reset()
+
     def test_cuda_graph_with_enable_replace(self):
         """Test that CUDAGraph created with enable_replace=True captures and replays correctly."""
         if not can_use_cuda_graph():
