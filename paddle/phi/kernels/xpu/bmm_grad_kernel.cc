@@ -30,6 +30,11 @@ void MatMul(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(out);
   xpu::Context* xpu_ctx = dev_ctx.x_context();
   int fc_calc_type = FCCalcType<XPUType>();
+  // For float32 bmm_grad, use FC_FLOAT to match forward pass and GPU precision.
+  if (fc_calc_type == XPUFCCalcType::FC_TF32 &&
+      std::is_same<XPUType, float>::value) {
+    fc_calc_type = XPUFCCalcType::FC_FLOAT;
+  }
   if (fc_calc_type == XPUFCCalcType::FC_INT32) {
     MatMulXPUFunction<T, int32_t>(a, b, out, trans_a, trans_b, xpu_ctx);
   } else if (fc_calc_type == XPUFCCalcType::FC_FLOAT) {
