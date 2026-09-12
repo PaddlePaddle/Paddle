@@ -549,9 +549,10 @@ inline void StridedTensorAccumulate(const DenseTensor& out_grad,
     // which includes this header through as_strided.h. set_meta(const&) is
     // always visible and overwrites the default-constructed float32 meta.
     DenseTensor storage_index;
-    storage_index.set_meta(DenseTensorMeta(
+    DenseTensorMeta storage_index_meta(
         DataType::INT64,
-        common::make_ddim(std::vector<int64_t>{storage_numel})));
+        common::make_ddim(std::vector<int64_t>{storage_numel}));
+    storage_index.set_meta(storage_index_meta);
     using arange_signature = void (*)(const DeviceContext&,
                                       const Scalar&,
                                       const Scalar&,
@@ -736,9 +737,10 @@ inline void StridedTensorAccumulateThroughStorage(
   // NCHW, rank -1 dims). The const-ref overload overwrites dtype/dims instead.
   // DenseTensor(DataType) is also unavailable under PADDLE_WITH_CUSTOM_KERNEL.
   DenseTensor storage;
-  storage.set_meta(
-      DenseTensorMeta(input_grad->dtype(),
-                      common::make_ddim(std::vector<int64_t>{storage_numel})));
+  DenseTensorMeta storage_meta(
+      input_grad->dtype(),
+      common::make_ddim(std::vector<int64_t>{storage_numel}));
+  storage.set_meta(storage_meta);
   dev_ctx->Alloc(&storage, storage.dtype());
   StridedTensorFill<T>(storage, 0, &storage);
 
