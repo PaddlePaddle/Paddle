@@ -739,7 +739,9 @@ class NoPipelineParallel(MetaParallelBase):
     def _offload_tensors(self, output_tensor):
         if isinstance(output_tensor, (tuple, list)):
             for t in output_tensor:
-                if not isinstance(t, paddle.Tensor):
+                if not isinstance(t, paddle.Tensor) or isinstance(
+                    t, paddle.base.framework.EagerParamBase
+                ):
                     continue
                 host_tensor = (
                     t.pin_memory() if hasattr(t, "pin_memory") else t.cpu()
