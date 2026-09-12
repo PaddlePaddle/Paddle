@@ -1015,7 +1015,7 @@ class TestCastBf16Pass(PassTest):
                     name='x1', shape=[1, 30], dtype='float32'
                 )
 
-                out = paddle.cast(x1, 'float32')
+                out = paddle.cast(x1, 'bfloat16')
                 out = paddle.assign(out)
                 self.pass_attr_list = [
                     {'onednn_placement_pass': {}},
