@@ -401,7 +401,7 @@ if(WITH_PYTHON)
       legacy_eager_codegen
       COMMAND
         ${CMAKE_COMMAND} -E env
-        "LD_LIBRARY_PATH=$ENV{LD_LIBRARY_PATH}:${CMAKE_CURRENT_BINARY_DIR}/../../pybind:${PADDLE_BINARY_DIR}/third_party/install/mklml/lib"
+        "LD_LIBRARY_PATH=${PADDLE_BINARY_DIR}/third_party/install/xpu/lib:${CMAKE_CURRENT_BINARY_DIR}/../../pybind:${PADDLE_BINARY_DIR}/third_party/install/mklml/lib:$ENV{LD_LIBRARY_PATH}"
         "${CMAKE_CURRENT_BINARY_DIR}/eager_generator"
         "${PADDLE_SOURCE_DIR}/paddle/fluid/eager/api/generated/fluid_generated"
         "${CODE_GEN_SPLIT_FILE_COUNT}"
@@ -561,7 +561,8 @@ if(WITH_PYTHON)
       add_custom_command(
         OUTPUT ${eager_impl_file}
         COMMAND
-          ${CMAKE_COMMAND} -E env "LD_LIBRARY_PATH=$ENV{LD_LIBRARY_PATH}:."
+          ${CMAKE_COMMAND} -E env
+          "LD_LIBRARY_PATH=${PADDLE_BINARY_DIR}/third_party/install/xpu/lib:.:$ENV{LD_LIBRARY_PATH}"
           "${CMAKE_CURRENT_BINARY_DIR}/eager_generator" "${tmp_eager_impl_file}"
         COMMAND ${CMAKE_COMMAND} -E copy_if_different ${tmp_eager_impl_file}
                 ${eager_impl_file}

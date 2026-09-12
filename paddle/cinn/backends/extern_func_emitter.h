@@ -51,6 +51,7 @@ static const char* backend_nvgpu = "nvgpu";
 static const char* backend_hygondcu_hip = "hygonDCU_hip";
 static const char* backend_hygondcu_sycl = "hygonDCU_sycl";
 static const char* backend_custom_device = "custom_device";
+static const char* backend_xpu = "xpu";
 
 /**
  * \brief Base class of the emitter of all the extern functions able to trigger

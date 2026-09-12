@@ -36,3 +36,7 @@ endif()
 if(WITH_CUSTOM_DEVICE)
   add_subdirectory(custom_device)
 endif()
+
+if(WITH_XPU)
+  add_subdirectory(xpu)
+endif()

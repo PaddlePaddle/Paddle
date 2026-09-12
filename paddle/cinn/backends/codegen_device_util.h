@@ -145,6 +145,13 @@ struct CollectHostFunctionVisitor : public ir::IRMutator<> {
           shared_mem_bytes = codegen_dev.GetDynSharedMemOffset();
 #endif
         },
+        [&](common::XpuArch) {
+#ifdef CINN_WITH_CUDA
+          CodeGenCudaDev codegen_dev(cinn::common::DefaultNVGPUTarget());
+          codegen_dev.Compile(ir::LoweredFunc(func));
+          shared_mem_bytes = codegen_dev.GetDynSharedMemOffset();
+#endif
+        },
         [&](common::HygonDCUArchHIP) {
 #ifdef CINN_WITH_HIP
           hip::CodeGenHipDevice codegen_dev(
@@ -180,6 +187,9 @@ struct CollectHostFunctionVisitor : public ir::IRMutator<> {
           call_kernel = runtime::intrinsic::call_custom_device_kernel;
         },
         [&](common::NVGPUArch) {
+          call_kernel = runtime::intrinsic::call_cuda_kernel;
+        },
+        [&](common::XpuArch) {
           call_kernel = runtime::intrinsic::call_cuda_kernel;
         },
         [&](common::HygonDCUArchHIP) {
