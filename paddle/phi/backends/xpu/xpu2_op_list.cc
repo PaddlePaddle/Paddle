@@ -492,7 +492,7 @@ XPUOpMap& get_kl2_ops() {
       {"tril_grad", XPUKernelSet({FLOAT32, INT32, FLOAT16})},
       {"triu_grad", XPUKernelSet({FLOAT32, INT32, FLOAT16})},
       {"tile", XPUKernelSet({INT32, INT64, BOOL, FLOAT64, FLOAT32, FLOAT16})},
-      {"tile_grad", XPUKernelSet({FLOAT32})},
+      {"tile_grad", XPUKernelSet({FLOAT32, FLOAT16})},
       {"transpose2_grad",
        XPUKernelSet({FLOAT32, FLOAT16, BFLOAT16, INT64, INT32, BOOL})},
       {"transpose2",
