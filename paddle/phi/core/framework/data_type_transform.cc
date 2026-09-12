@@ -40,8 +40,11 @@ struct CastDataTypeFunctor {
                                  std::is_same_v<InType, phi::float8_e5m2> ||
                                  std::is_same_v<InType, phi::bfloat16> ||
                                  std::is_same_v<InType, phi::float16>)) {
-      // default value，only to avoid compile error
-      return OutType(0);
+      if constexpr (std::is_same_v<OutType, phi::complex64>) {
+        return OutType(static_cast<float>(in));
+      } else {
+        return OutType(static_cast<double>(in));
+      }
     } else {
       return static_cast<OutType>(in);
     }
