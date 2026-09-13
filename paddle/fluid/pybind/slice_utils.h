@@ -1043,6 +1043,29 @@ static Tensor dealWithValues(const Tensor& tensor,
   return value_tensor;
 }
 
+// Return the local DenseTensor backing `t` (the value of a DistTensor, or
+// the tensor itself for dense inputs).
+inline static const phi::DenseTensor* GetLocalDenseTensor(const Tensor& t) {
+  if (t.is_dist_tensor()) {
+    return &(static_cast<const phi::distributed::DistTensor*>(t.impl().get())
+                 ->value());
+  }
+  return static_cast<const phi::DenseTensor*>(t.impl().get());
+}
+
+// Whether `sub` is a view backed by the same allocation as `base`. The
+// stride-kernel gather locates its input via
+// `base.data() + (sub.data() - base.data())`, which is only sound when both
+// tensors share storage. Dense strided_slice results are views sharing the
+// input holder, but DistTensor inputs materialize strided_slice into a
+// fresh buffer, so they must be gathered directly instead.
+inline static bool SharesStorageWith(const Tensor& sub, const Tensor& base) {
+  const phi::DenseTensor* sub_dense = GetLocalDenseTensor(sub);
+  const phi::DenseTensor* base_dense = GetLocalDenseTensor(base);
+  return sub_dense != nullptr && base_dense != nullptr &&
+         sub_dense->Holder() == base_dense->Holder();
+}
+
 static void DealWithIndex(const int pos_of_new_dim,
                           int64_t* slice_offset,
                           std::vector<Tensor>* transed_index,
@@ -1380,18 +1403,30 @@ static void ApplyGetitem(const int index_size,
                     transed_tensor,
                     &transed_index_int64);
 
+      // `slice_offset` assumes `sub_tensor` is a view of `tensor` sharing
+      // its storage. When they are backed by different allocations (e.g.
+      // DistTensor inputs, for which strided_slice materializes a fresh
+      // buffer instead of returning a view), gather from the materialized
+      // tensor itself with a zero offset, since `AdvancedIndex` derives
+      // `src_sizes`/`src_strides` from it.
+      Tensor gather_base = *self_tensor;
+      if (!SharesStorageWith(*sub_tensor, *tensor)) {
+        gather_base = *transed_tensor;
+        slice_offset = 0;
+      }
+
       // AMP Logic
       if (egr::Controller::Instance().GetAMPLevel() !=
           paddle::imperative::AmpLevel::O0) {
         auto op_name = phi::TransToFluidOpName("index_elementwise_get");
         paddle::small_vector<std::vector<Tensor>, egr::kSlotSmallVectorSize>
-            amp_tensors_vector = {{*self_tensor}};
+            amp_tensors_vector = {{gather_base}};
 
         auto amp_dst_dtype =
             paddle::imperative::GetAmpDestDtype(op_name, amp_tensors_vector);
 
         auto new_self_tensor = paddle::imperative::AmpAutoCast(
-            "self_tensor", *self_tensor, amp_dst_dtype, op_name);
+            "self_tensor", gather_base, amp_dst_dtype, op_name);
         auto new_transed_tensor = paddle::imperative::AmpAutoCast(
             "transed_tensor", *transed_tensor, amp_dst_dtype, op_name);
 
@@ -1426,7 +1461,7 @@ static void ApplyGetitem(const int index_size,
       //   performance.
       const bool is_combined = (index_size == 1) ? false : true;
       const bool accumulate = true;
-      *out = index_elementwise_get_ad_func(*self_tensor,
+      *out = index_elementwise_get_ad_func(gather_base,
                                            ad.indices,
                                            ad.src_sizes,
                                            ad.src_strides,
