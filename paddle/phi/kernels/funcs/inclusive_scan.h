@@ -482,26 +482,6 @@ constexpr size_t GetDeterministicScanBlockThreads() {
   }
 }
 
-// Per-thread reduction mirroring CCCL 3.2's ThreadReduce dispatch (sequential
-// for sizeof(T) >= 8, binary tree otherwise); Paddle's pinned CUB 2.2 is always
-// sequential, which breaks bitwise alignment with torch for smaller types.
-template <size_t kItemsPerThread, typename T>
-__device__ __forceinline__ T
-InclusiveScanThreadSum(const T (&data)[kItemsPerThread]) {
-  if constexpr (sizeof(T) >= 8) {
-    T acc = data[0];
-    for (size_t j = 1; j < kItemsPerThread; ++j) acc = acc + data[j];
-    return acc;
-  } else {
-    T tmp[kItemsPerThread];
-    for (size_t j = 0; j < kItemsPerThread; ++j) tmp[j] = data[j];
-    for (size_t len = kItemsPerThread; len > 1; len /= 2) {
-      for (size_t j = 0; j < len / 2; ++j) tmp[j] = tmp[2 * j] + tmp[2 * j + 1];
-    }
-    return tmp[0];
-  }
-}
-
 // Each CTA reduces the tiles it owns into a single aggregate, so that the final
 // scan pass can seed its prefix from a fixed number of aggregates. This keeps
 // the summation order independent of the launch configuration.
@@ -536,8 +516,9 @@ static __global__ void InclusiveScanCalcBlockSumsCUDAKernel(InputIter x,
       BlockLoadT(temp_storage.load).Load(x, data, remaining, static_cast<T>(0));
     }
     __syncthreads();
-    agg_val += BlockReduceT(temp_storage.reduce)
-                   .Sum(InclusiveScanThreadSum<kItemsPerThread>(data));
+
+    // cub::Sum has different behavior between CUB/CCCL 3.0+ and CUB 2.0+
+    agg_val += BlockReduceT(temp_storage.reduce).Sum(data);
 
     x += kBlockThreads * kItemsPerThread;
     remaining -= kBlockThreads * kItemsPerThread;
@@ -606,17 +587,9 @@ static __global__ void InclusiveScanFinalScanCUDAKernel(
     }
     __syncthreads();
 
-    // Inlined InclusiveSum whose per-thread reduction mirrors CCCL 3.2 (torch's
-    // version); revert to the one-liner once Paddle's CUB reaches 300200.
-    T partial = InclusiveScanThreadSum<kItemsPerThread>(data);
-    T thread_prefix;
-    BlockScanT(temp_storage.scan)
-        .ExclusiveSum(partial, thread_prefix, prefix_op);
-    T acc = thread_prefix;
-    for (int j = 0; j < kItemsPerThread; ++j) {
-      acc = acc + data[j];
-      data[j] = acc;
-    }
+    // cub::InclusiveSum has different behavior between CUB/CCCL 3.0+ and
+    // CUB 2.0+
+    BlockScanT(temp_storage.scan).InclusiveSum(data, data, prefix_op);
 
     __syncthreads();
 
