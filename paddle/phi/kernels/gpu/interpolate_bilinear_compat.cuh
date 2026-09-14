@@ -34,7 +34,7 @@ __device__ __forceinline__ float Coordinate(int64_t index, float scale) {
 
 __device__ __forceinline__ float Weight(int64_t index, float scale) {
   float coordinate = Coordinate(index, scale);
-  auto lower = static_cast<int64_t>(coordinate);
+  int64_t lower = static_cast<int64_t>(coordinate);
   return fminf(__fsub_rn(coordinate, static_cast<float>(lower)), 1.0f);
 }
 
@@ -61,8 +61,8 @@ static __global__ void Forward(const float* input,
     int64_t plane = index / (out_h * out_w);
     float fy = Coordinate(y, scale_h);
     float fx = Coordinate(x, scale_w);
-    auto y0 = static_cast<int64_t>(fy);
-    auto x0 = static_cast<int64_t>(fx);
+    int64_t y0 = static_cast<int64_t>(fy);
+    int64_t x0 = static_cast<int64_t>(fx);
     int64_t y1 = y0 + 1 < in_h ? y0 + 1 : in_h - 1;
     int64_t x1 = x0 + 1 < in_w ? x0 + 1 : in_w - 1;
     float wy = fminf(__fsub_rn(fy, static_cast<float>(y0)), 1.0f);
