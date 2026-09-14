@@ -120,10 +120,15 @@ class TestBilinearAccuracyCompatible(unittest.TestCase):
             actual.view(np.uint32), expected.view(np.uint32)
         )
 
-    def evaluate(self, data, size, grad):
+    def evaluate(self, data, size, grad, **kwargs):
         x = paddle.to_tensor(data, stop_gradient=False)
         y = paddle.nn.functional.interpolate(
-            x, size=size, mode='bilinear', align_corners=False, align_mode=0
+            x,
+            size=size,
+            mode='bilinear',
+            align_corners=False,
+            align_mode=0,
+            **kwargs,
         )
         dx = paddle.grad(y, x, grad_outputs=paddle.to_tensor(grad))[0]
         return y.numpy(), dx.numpy()
@@ -283,6 +288,70 @@ class TestBilinearAccuracyCompatible(unittest.TestCase):
                     data_format='NCW',
                 )
                 self.assertEqual(md5(result.numpy()), digest)
+
+    def test_recomputed_scale_matches_output_size(self):
+        rng = np.random.default_rng(42)
+        data = rng.standard_normal((2, 3, 7, 9)).astype(np.float32)
+        for scale in [0.75, 1.5, (0.5, 0.75), (1.5, 2.25), (0.75, 1.5)]:
+            with self.subTest(scale=scale):
+                factors = [scale, scale] if isinstance(scale, float) else scale
+                size = [
+                    int(np.floor(dim * factor))
+                    for dim, factor in zip(data.shape[2:], factors)
+                ]
+                grad = rng.standard_normal((*data.shape[:2], *size)).astype(
+                    np.float32
+                )
+                expected_y = reference_forward(data, size)
+                expected_dx = reference_backward(data.shape, grad)
+                size_y, size_dx = self.evaluate(data, size, grad)
+                for _ in range(3):
+                    y, dx = self.evaluate(
+                        data,
+                        None,
+                        grad,
+                        scale_factor=scale,
+                        recompute_scale_factor=True,
+                    )
+                    self.assert_bitwise_equal(y, expected_y)
+                    self.assert_bitwise_equal(dx, expected_dx)
+                    self.assert_bitwise_equal(y, size_y)
+                    self.assert_bitwise_equal(dx, size_dx)
+
+    def test_nonrecomputed_scale_keeps_existing_path(self):
+        rng = np.random.default_rng(43)
+        data = rng.standard_normal((2, 3, 7, 9)).astype(np.float32)
+        for scale in [0.75, 1.5, (0.5, 0.75), (1.5, 2.25), (0.75, 1.5)]:
+            factors = [scale, scale] if isinstance(scale, float) else scale
+            size = [
+                int(np.floor(dim * factor))
+                for dim, factor in zip(data.shape[2:], factors)
+            ]
+            grad = rng.standard_normal((*data.shape[:2], *size)).astype(
+                np.float32
+            )
+            for recompute in [False, None]:
+                with self.subTest(scale=scale, recompute=recompute):
+                    kwargs = {
+                        "scale_factor": scale,
+                        "recompute_scale_factor": recompute,
+                    }
+                    paddle.set_flags(
+                        {'FLAGS_use_accuracy_compatible_kernel': False}
+                    )
+                    expected_y, expected_dx = self.evaluate(
+                        data, None, grad, **kwargs
+                    )
+                    paddle.set_flags(
+                        {'FLAGS_use_accuracy_compatible_kernel': True}
+                    )
+                    y, dx = self.evaluate(data, None, grad, **kwargs)
+                    self.assert_bitwise_equal(y, expected_y)
+                    # The original backward uses atomic accumulation, so its
+                    # rounding order can vary across otherwise identical calls.
+                    np.testing.assert_allclose(
+                        dx, expected_dx, rtol=1e-6, atol=1e-6
+                    )
 
     def test_other_modes_keep_existing_path(self):
         data = (

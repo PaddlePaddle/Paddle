@@ -1224,6 +1224,9 @@ static void Interpolate2DCUDAFwd(
   }
 
 #ifdef PADDLE_WITH_CUDA
+  // An absent scale means coordinates are derived from output dimensions.
+  // This includes explicit size and scale_factor + recompute_scale_factor=True,
+  // which the Python API converts to output dimensions before dispatch.
   if constexpr (std::is_same<T, float>::value) {
     if (FLAGS_use_accuracy_compatible_kernel && interp_method == "bilinear" &&
         data_layout == DataLayout::NCHW && !align_corners && align_mode == 0 &&
