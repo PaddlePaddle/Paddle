@@ -80,6 +80,7 @@ class Conv2dEpilogueFusion(abstract_drr.DrrPass):
         #   cutlass takes a single pad value per spatial axis, and SAME / VALID
         #   derive the effective padding at runtime.
         # - KRSC filter, see `_is_krsc_filter`.
+        # - static filter channels, see `_has_static_filter_channels`.
         paddings = self._get_int_list_attr(o.conv2d_op.paddings)
         symmetric_padding = (
             True
@@ -93,16 +94,32 @@ class Conv2dEpilogueFusion(abstract_drr.DrrPass):
             o.conv2d_op.padding_algorithm.match(a_str=lambda x: x) == "EXPLICIT"
         ) and symmetric_padding
         supported_conv_attrs = supported_attrs and explicit_padding
-        return supported_conv_attrs and self._is_krsc_filter(t)
+        return supported_conv_attrs and (
+            self._is_krsc_filter(t) and self._has_static_filter_channels(t)
+        )
 
     def _is_krsc_filter(self, t):
         # cutlass reads the filter as KRSC (`layout::TensorNHWC` on a filter
-        # means "C innermost"), while paddle's native filter is KCRS; the
-        # transposed filter is only recognizable by its innermost dim matching
-        # the activation's channel dimension.
+        # means "C innermost"), while an untransposed paddle filter is KCRS.
+        # The two layouts store C in different slots, and the filter shape
+        # alone cannot always tell them apart: a native KCRS filter whose S
+        # equals C has exactly the same shape as a KRSC one, so matching on
+        # the innermost dim alone would silently read the same buffer the
+        # wrong way.
         input_shape = t.input0.symbolic_shape_to_list()
         weight_shape = t.input1.symbolic_shape_to_list()
-        return weight_shape[3] == input_shape[3]
+        channels = input_shape[3]
+        return (weight_shape[3] == channels) and (weight_shape[1] != channels)
+
+    def _has_static_filter_channels(self, t):
+        weight_shape = t.input1.symbolic_shape_to_list()
+        is_static_c = weight_shape[3].match(
+            int64=lambda channels: True, _=lambda: False
+        )
+        is_static_k = weight_shape[0].match(
+            int64=lambda channels: True, _=lambda: False
+        )
+        return is_static_c and is_static_k
 
     def _epilogue_can_fuse(self, o, t):
         program = ir_tools.copy_fused_ops_to_program(

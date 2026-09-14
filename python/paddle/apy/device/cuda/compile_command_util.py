@@ -13,12 +13,14 @@
 # limitations under the License.
 
 import ap
+import pir
 
 
 class CompileCommandGenerator:
     def __init__(self, enable_autotune):
         self.file_ext = "cu"
         self.enable_autotune = enable_autotune
+        self.compute_capability = 80
         self.op_type2generate_func = ap.OrderedDict(
             [
                 ['matmul', self.generate_compile_command_with_cutlass],
@@ -30,11 +32,16 @@ class CompileCommandGenerator:
         return self.op_type2generate_func[op_type](source_dir, library_name)
 
     def supports(self, op_type):
-        return self.op_type2generate_func.contains(op_type)
+        return self.op_type2generate_func.contains(op_type) and (
+            pir.get_compute_capability() == self.compute_capability
+        )
 
     def generate_compile_command_with_cutlass(self, source_dir, library_name):
         autotune_flag = 1 if self.enable_autotune else 0
-        compile_cmd = "nvcc -std=c++20 -O3 -Xcompiler=-fPIC -arch=sm_80 --expt-relaxed-constexpr"
+        compile_cmd = (
+            "nvcc -std=c++20 -O3 -Xcompiler=-fPIC -arch=sm_"
+            f"{self.compute_capability} --expt-relaxed-constexpr"
+        )
         compile_cmd = compile_cmd + " -I ${AP_CUTLASS_DIR}/include"
         compile_cmd = compile_cmd + " -I ${AP_CUTLASS_DIR}/tools/util/include"
         compile_cmd = compile_cmd + " -I " + source_dir

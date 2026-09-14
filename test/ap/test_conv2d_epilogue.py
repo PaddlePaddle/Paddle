@@ -107,19 +107,96 @@ class TestConv2dEpilogue(unittest.TestCase):
         generated_pir_program = GetPirProgram(
             fused_foo, [self.x, self.w, self.b]
         )
-        if paddle.is_compiled_with_rocm():
-            # There is no conv2d backend for HIP yet, the pass rejects the
-            # subgraph and it stays on the phi kernels.
-            self.assertNotIn('pd_op.ap_variadic', generated_pir_program)
-        else:
+        if IsSupportDevice():
             self.assertIn(
                 'pd_op.ap_variadic', generated_pir_program, "fusion failed"
             )
-        if IsSupportDevice():
             ap_outs = fused_foo(self.x, self.w, self.b)
             dy_outs = foo(self.x, self.w, self.b)
             for dy_out, ap_out in zip(dy_outs, ap_outs):
                 np.testing.assert_allclose(dy_out, ap_out, atol=1e-1)
+        else:
+            # The conv2d backend is compiled for sm_80 only, so any other
+            # device (including ROCm, which has no conv2d backend at all) has
+            # to keep the subgraph on the phi kernels.
+            self.assertNotIn('pd_op.ap_variadic', generated_pir_program)
+
+
+class TestConv2dEpilogueKcrsFilterNotFused(unittest.TestCase):
+    """A KCRS filter with ``S == C`` has the same shape as a channel-last one.
+
+    The filter layout then cannot be confirmed from the graph, so the pass has
+    to refuse the fusion instead of reading the KCRS buffer as if it were
+    channel-last.
+    """
+
+    def setUp(self):
+        self.origin_flags = paddle.get_flags(
+            ['FLAGS_manually_trans_conv_filter', 'FLAGS_deny_cinn_ops']
+        )
+        paddle.set_flags(
+            {
+                # The filter stays KCRS, no transpose in the model.
+                'FLAGS_manually_trans_conv_filter': False,
+                'FLAGS_deny_cinn_ops': "transpose",
+            }
+        )
+
+        dtype = 'float16'
+
+        x_shape = [32, 8, 8, 3]
+        self.x = paddle.randn(x_shape, dtype=dtype)
+        self.x.stop_gradient = False
+
+        # Native KCRS filter, `C == S == 3` so that `[O, C, KH, KW]` and the
+        # channel-last `[O, KH, KW, C]` reading share one shape.
+        w_shape = [8, 3, 3, 3]
+        self.w = paddle.randn(w_shape, dtype=dtype)
+        self.w.stop_gradient = False
+
+        b_shape = [32, 8, 8, 8]
+        self.b = paddle.randn(b_shape, dtype=dtype)
+        self.b.stop_gradient = False
+
+    def tearDown(self):
+        paddle.set_flags(self.origin_flags)
+
+    def getSubGraph(self):
+        N = pct.DimVar(32)
+        H = pct.DimVar(8)
+        W = pct.DimVar(8)
+        C = pct.DimVar(3)
+        O = pct.DimVar(8)
+        KH = pct.DimVar(3)
+        KW = pct.DimVar(3)
+        DType = pct.DTypeVar("T", "float16")
+
+        def foo(
+            x: pct.Tensor([N, H, W, C], DType),
+            w: pct.Tensor([O, C, KH, KW], DType),
+            b: pct.Tensor([N, H, W, O], DType),
+        ):
+            y = paddle.nn.functional.conv2d(x, w, padding=1, data_format="NHWC")
+            return paddle.nn.functional.relu(y + b)
+
+        return foo
+
+    def test_subgraph(self):
+        foo = self.getSubGraph()
+        backend_device = 'dcu' if paddle.is_compiled_with_rocm() else 'cuda'
+        fused_foo = pcc.compile(
+            foo,
+            ap_path=f"{os.path.dirname(paddle.__file__)}/apy/matmul_pass",
+            backend_device=backend_device,
+        )
+        generated_pir_program = GetPirProgram(
+            fused_foo, [self.x, self.w, self.b]
+        )
+        self.assertNotIn(
+            'pd_op.ap_variadic',
+            generated_pir_program,
+            "an ambiguous filter layout must not be fused",
+        )
 
 
 if __name__ == "__main__":
