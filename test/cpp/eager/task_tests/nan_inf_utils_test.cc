@@ -86,6 +86,20 @@ using paddle_flags::FLAGS_check_nan_inf_blacklist;
     EXPECT_TRUE(caught_exception);                      \
   }
 
+// DenseTensorMeta::is_contiguous() throws a Fatal, instead of returning false,
+// when FLAGS_use_stride_kernel is closed (tensor_meta.cc). The tests that build
+// a strided view and then inspect it have to set the flag explicitly. XPU/NPU
+// CI run with the flag off, so both values get covered. Restore on every exit,
+// including assertion failure: a leaked true would hide later stride-kernel
+// bugs.
+struct RestoreStrideFlag {
+  bool orig;
+  explicit RestoreStrideFlag(bool value) : orig(FLAGS_use_stride_kernel) {
+    FLAGS_use_stride_kernel = value;
+  }
+  ~RestoreStrideFlag() { FLAGS_use_stride_kernel = orig; }
+};
+
 TEST(NanInfUtils, BlacklistSkipCheck) {
   auto nan_tensor = paddle::experimental::full(
       {3, 4}, std::numeric_limits<double>::quiet_NaN(), phi::DataType::FLOAT64);
@@ -123,17 +137,7 @@ TEST(NanInfUtils, BlacklistSkipCheck) {
 
 TEST(NanInfUtils, SkipNonContiguousTensor) {
   FLAGS_check_nan_inf_blacklist = "";
-  // is_contiguous() throws when FLAGS_use_stride_kernel is off and the tensor
-  // is actually strided. XPU CI sets that flag to 0, so the skip path has to
-  // enable it for the duration of this test. Restore on every exit, including
-  // assertion failure: a leaked true would hide later stride-kernel bugs.
-  struct RestoreStrideFlag {
-    bool orig;
-    explicit RestoreStrideFlag(bool value) : orig(FLAGS_use_stride_kernel) {
-      FLAGS_use_stride_kernel = value;
-    }
-    ~RestoreStrideFlag() { FLAGS_use_stride_kernel = orig; }
-  } restore_stride_flag(true);
+  RestoreStrideFlag restore_stride_flag(true);
 
   auto tensor = paddle::experimental::full(
       {2, 3}, std::numeric_limits<double>::quiet_NaN(), phi::DataType::FLOAT64);
@@ -156,6 +160,38 @@ TEST(NanInfUtils, SkipNonContiguousTensor) {
                    ->meta()
                    .is_contiguous());
   CHECK_NO_NAN_INF(non_contiguous);
+}
+
+TEST(NanInfUtils, SkipNonContiguousTensorWithoutStrideKernel) {
+  FLAGS_check_nan_inf_blacklist = "";
+  // Regression test: the skip path used to be guarded by
+  // DenseTensorMeta::is_contiguous(), which throws a Fatal when
+  // FLAGS_use_stride_kernel is off, so this call crashed instead of skipping.
+  RestoreStrideFlag restore_stride_flag(false);
+
+  auto tensor = paddle::experimental::full(
+      {2, 3}, std::numeric_limits<double>::quiet_NaN(), phi::DataType::FLOAT64);
+
+  // Build the strided view from the shared buffer: any op would run into the
+  // FLAGS_use_stride_kernel assertion first and hide the checker's behavior.
+  auto* src = static_cast<phi::DenseTensor*>(tensor.impl().get());
+  auto view = std::make_shared<phi::DenseTensor>();
+  view->ShareDataWith(*src);
+  phi::DenseTensorMeta meta(
+      src->dtype(), common::make_ddim({3, 2}), common::make_ddim({1, 3}));
+  meta.offset = src->meta().offset;
+  view->set_meta(meta);
+  // Checked without is_contiguous() on purpose: that predicate throws here.
+  ASSERT_NE(view->meta().strides,
+            phi::DenseTensorMeta::calc_strides(view->meta().dims));
+
+  paddle::Tensor non_contiguous;
+  non_contiguous.set_impl(view);
+  CHECK_NO_NAN_INF(non_contiguous);
+
+  // The skip is specific to the strided tensor: this one still has to catch the
+  // NaN, i.e. the flag must not have disabled the check wholesale.
+  CHECK_NAN_INF(tensor);
 }
 
 TEST(NanInfUtils, Functions) {

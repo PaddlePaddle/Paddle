@@ -130,7 +130,15 @@ void CheckTensorHasNanOrInf(const std::string& api_name, const Tensor& tensor) {
     // beyond the storage) it runs past the end of the allocation and faults.
     // Skip those tensors; their storage is still checked wherever the
     // contiguous tensor that produced it is checked.
-    if (!dense_tensor->meta().is_contiguous()) {
+    //
+    // Compare the strides directly instead of calling
+    // DenseTensorMeta::is_contiguous(): that predicate throws a Fatal, rather
+    // than returning false, as soon as FLAGS_use_stride_kernel is closed
+    // (tensor_meta.cc). This skip must not depend on that flag, since the
+    // backends which close it are exactly the ones more likely to hand a
+    // strided tensor to the checker.
+    const auto& meta = dense_tensor->meta();
+    if (meta.strides != phi::DenseTensorMeta::calc_strides(meta.dims)) {
       VLOG(4) << "Tensor[" << tensor_name
               << "] is not contiguous, skip nan inf check: " << api_name;
       return;
