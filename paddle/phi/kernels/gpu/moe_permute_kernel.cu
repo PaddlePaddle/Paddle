@@ -554,7 +554,10 @@ __global__ __launch_bounds__(BLOCK_DIM_X) void permute_kernel(
           }
 #endif
         } else {
-          vectorized_memcpy(
+          // The row start itself can be unaligned when token_length *
+          // sizeof(TokenT) is not a whole number of 16 B vectors, so the copy
+          // has to check before vectorising.
+          try_vectorized_memcpy(
               &X[(int64_t)row * (int64_t)token_length],
               &X_unzipped[(int64_t)out_row * (int64_t)token_length],
               token_length);
