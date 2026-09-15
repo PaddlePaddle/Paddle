@@ -990,9 +990,8 @@ void MoePermuteKernel(const Context &dev_ctx,
   expert_offset_end_tensor.Resize({kMaxNumExperts});
   // One entry per (block, expert); written by permute_block_count_kernel and
   // turned into a prefix sum by permute_chain_scan_kernel, so no pre-fill.
-  global_expertwise_block_cumsum.Resize(
-      {static_cast<int64_t>(cumsum_blocknum),
-       static_cast<int64_t>(num_experts)});
+  global_expertwise_block_cumsum.Resize({static_cast<int64_t>(cumsum_blocknum),
+                                         static_cast<int64_t>(num_experts)});
 
   dev_ctx.template Alloc<int>(&expert_offset_tensor);
   dev_ctx.template Alloc<int>(&expert_offset_end_tensor);
