@@ -248,8 +248,10 @@ SpmdInfo ElementwiseBinaryInferSpmd(const DistMetaTensor& x,
   int y_ndim = static_cast<int>(y_shape.size());
   TensorDistAttr x_dist_attr_src = x.dist_attr();
   TensorDistAttr y_dist_attr_src = y.dist_attr();
-  std::vector<int64_t> x_dims_mapping = x_dist_attr_src.dims_mapping();
-  std::vector<int64_t> y_dims_mapping = y_dist_attr_src.dims_mapping();
+  std::vector<std::vector<int64_t>> x_dims_mapping =
+      x_dist_attr_src.multi_dims_mapping();
+  std::vector<std::vector<int64_t>> y_dims_mapping =
+      y_dist_attr_src.multi_dims_mapping();
   PADDLE_ENFORCE_EQ(x_ndim,
                     x_dims_mapping.size(),
                     common::errors::InvalidArgument(
@@ -271,12 +273,17 @@ SpmdInfo ElementwiseBinaryInferSpmd(const DistMetaTensor& x,
 
   // Step2: Sharding Propagation
   // Step2.1: Merge input shardings
-  std::unordered_map<std::string, int64_t> axis_to_dim_map =
-      ShardingMergeForTensors(
-          {{x_axes, x_dims_mapping}, {y_axes, y_dims_mapping}});
+  const auto& axes_size =
+      GetAxesSizes({{x_axes, x_shape}, {y_axes, y_shape}}, true);
+  const auto& mesh_shape = x.dist_attr().process_mesh().shape();
+  std::unordered_map<std::string, std::vector<int64_t>> axis_to_dim_map =
+      ShardingMergeForTensorsElementWise(
+          {{x_axes, x_dims_mapping}, {y_axes, y_dims_mapping}},
+          axes_size,
+          mesh_shape);
 
   // Step2.2: Infer output dims mapping from merged input dims mapping
-  std::vector<int64_t> out_dims_mapping =
+  std::vector<std::vector<int64_t>> out_dims_mapping =
       GetDimsMappingForAxes(out_axes, axis_to_dim_map);
 
   // initialize output dist_attr's process_mesh, batch_dim and dynamic dims with
@@ -297,12 +304,12 @@ SpmdInfo ElementwiseBinaryInferSpmd(const DistMetaTensor& x,
   VLOG(4) << "ElementwiseSPMDRule InferForward:";
   VLOG(4) << "Input0 shape: [" << str_join(x_shape) << "] "
           << "src_dims_mapping: [" << str_join(x_dims_mapping) << "] "
-          << "dst_dims_mapping: [" << str_join(x_dist_attr_dst.dims_mapping())
-          << "]";
+          << "dst_dims_mapping: ["
+          << str_join(x_dist_attr_dst.multi_dims_mapping()) << "]";
   VLOG(4) << "Input1 shape: [" << str_join(y_shape) << "] "
           << "src_dims_mapping: [" << str_join(y_dims_mapping) << "] "
-          << "dst_dims_mapping: [" << str_join(y_dist_attr_dst.dims_mapping())
-          << "]";
+          << "dst_dims_mapping: ["
+          << str_join(y_dist_attr_dst.multi_dims_mapping()) << "]";
   VLOG(4) << "Output dims_mapping: [" + str_join(out_dims_mapping) + "]\n\n";
 
   return {{x_dist_attr_dst, y_dist_attr_dst}, {out_dist_attr}};
@@ -562,7 +569,7 @@ SpmdInfo ElementwiseBinaryGradInferSpmd(const DistMetaTensor& x,
             << ". The global dim of out_grad is " << out_grad.dims();
     // Step 1: remove the useless dimensions which is not appear in input x.
     int64_t diff = out_grad.dims().size() - x.dims().size();
-    auto dims_mapping = out_grad_dist_attr.dims_mapping();
+    auto dims_mapping = out_grad_dist_attr.multi_dims_mapping();
     dims_mapping.erase(dims_mapping.begin(), dims_mapping.begin() + diff);
     // Step 2: get the explicit reduce dimensions
     std::vector<int64_t> explicit_reduce_dims =
@@ -571,12 +578,12 @@ SpmdInfo ElementwiseBinaryGradInferSpmd(const DistMetaTensor& x,
             << " elements.";
     for (const auto& dim : explicit_reduce_dims) {
       VLOG(4) << "Explicit reduce dims is " << dim;
-      dims_mapping[dim] = -1;
+      dims_mapping[dim] = std::vector<int64_t>{};
     }
     x_dist_attr.set_dims_mapping(dims_mapping);
-    x_dist_attr.set_default_dynamic_dims(dims_mapping);
+    x_dist_attr.set_default_dynamic_dims(dims_mapping.size());
     x_grad_dist_attr.set_dims_mapping(dims_mapping);
-    x_grad_dist_attr.set_default_dynamic_dims(dims_mapping);
+    x_grad_dist_attr.set_default_dynamic_dims(dims_mapping.size());
     // Step 3: set partial dimension
     for (int64_t i = 0; i < diff; ++i) {
       if (out_grad.dist_attr().dims_mapping()[i] != -1) {
@@ -597,7 +604,7 @@ SpmdInfo ElementwiseBinaryGradInferSpmd(const DistMetaTensor& x,
             << ". The global dim of out_grad is " << out_grad.dims();
     // Step 1: remove the useless dimensions which is not appear in input y.
     int64_t diff = out_grad.dims().size() - y.dims().size();
-    auto dims_mapping = out_grad_dist_attr.dims_mapping();
+    auto dims_mapping = out_grad_dist_attr.multi_dims_mapping();
     dims_mapping.erase(dims_mapping.begin(), dims_mapping.begin() + diff);
     // Step 2: get the explicit reduce dimensions
     std::vector<int64_t> explicit_reduce_dims =
@@ -606,12 +613,12 @@ SpmdInfo ElementwiseBinaryGradInferSpmd(const DistMetaTensor& x,
             << " elements.";
     for (const auto& dim : explicit_reduce_dims) {
       VLOG(4) << "Explicit reduce dims is " << dim;
-      dims_mapping[dim] = -1;
+      dims_mapping[dim] = std::vector<int64_t>{};
     }
     y_dist_attr.set_dims_mapping(dims_mapping);
-    y_dist_attr.set_default_dynamic_dims(dims_mapping);
+    y_dist_attr.set_default_dynamic_dims(dims_mapping.size());
     y_grad_dist_attr.set_dims_mapping(dims_mapping);
-    y_grad_dist_attr.set_default_dynamic_dims(dims_mapping);
+    y_grad_dist_attr.set_default_dynamic_dims(dims_mapping.size());
     // Step 3: set partial dimension
     for (int64_t i = 0; i < diff; ++i) {
       if (out_grad.dist_attr().dims_mapping()[i] != -1) {
