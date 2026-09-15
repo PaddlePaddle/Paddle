@@ -14,12 +14,17 @@
 
 #pragma once
 
-#ifdef __NVCC__
-#include <cub/version.cuh>
 // Thrust iterators that replace cub::TransformInputIterator /
-// cub::CountingInputIterator (both removed in CCCL 3.0).
+// cub::CountingInputIterator (both removed in CCCL 3.0). These types are
+// provided by thrust on CUDA and by rocThrust on HIP, so include them on both
+// compilation paths.
+#if defined(__NVCC__) || defined(__HIPCC__)
 #include <thrust/iterator/counting_iterator.h>
 #include <thrust/iterator/transform_iterator.h>
+#endif
+
+#ifdef __NVCC__
+#include <cub/version.cuh>
 #include "cub/cub.cuh"
 #endif
 #ifdef __HIPCC__

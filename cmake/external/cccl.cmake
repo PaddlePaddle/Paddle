@@ -7,8 +7,11 @@ set(CCCL_PREFIX_DIR ${CCCL_PATH})
 set(CCCL_SOURCE_DIR ${PADDLE_SOURCE_DIR}/third_party/cccl)
 
 # The latest commit has bugs in windows, so we set a fix commit.
-# CUDA 12.0+ uses CCCL 3.1.0; only CUDA < 12.0 keeps the old fix commit.
-if(${CMAKE_CUDA_COMPILER_VERSION} LESS 12.0)
+# CCCL 3.1.0 is only verified with CUDA 13.x (CCCL 3.x's compatibility matrix
+# guarantees just the latest patch of each 12.x series). CUDA < 13.0 therefore
+# keeps the old fix commit to avoid forcing still-supported 12.x toolkits onto
+# an unverified CCCL version.
+if(${CMAKE_CUDA_COMPILER_VERSION} LESS 13.0)
   set(CCCL_TAG 1f6e4bcae0fbf1bbed87f88544d8d2161c490fc1)
   set(CCCL_PATCH_FILE ${PADDLE_SOURCE_DIR}/patches/cccl/util_device.cuh.patch)
 else()
