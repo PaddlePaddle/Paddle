@@ -151,10 +151,14 @@ struct write_output_op_fixed {
   OutputIterT out;
   // flag contains inclusive scan of valid keys
   // perform gather using valid keys
-  // __thrust_exec_check_disable__ was removed in CCCL 3.0; use
-  // _CCCL_EXEC_CHECK_DISABLE instead.
-  _CCCL_EXEC_CHECK_DISABLE __host__ __device__ std::size_t operator()(
-      key_flag_tuple_fixed x) {
+  // __thrust_exec_check_disable__ was removed in CCCL 3.0 and renamed to
+  // _CCCL_EXEC_CHECK_DISABLE; keep both for dual compat with 2.x / 3.x.
+#ifdef _CCCL_EXEC_CHECK_DISABLE
+  _CCCL_EXEC_CHECK_DISABLE
+#else
+  __thrust_exec_check_disable__
+#endif
+  __host__ __device__ std::size_t operator()(key_flag_tuple_fixed x) {
     if (x.key < m) {
       // -1 because inclusive scan
       out[x.flag - 1] = in[x.key];
