@@ -81,7 +81,7 @@ void GPUIndexElementwisePutKernel(const GPUContext& dev_ctx,
   if (numel == 0 || funcs::HasEmptyIndex(index)) {
     return;
   }
-  auto offset_calc = funcs::make_offset_calculator_put<3, true, OffsetT>(
+  auto offset_calc = funcs::MakeOffsetCalculatorPut<3, true, OffsetT>(
       desired_shape, strides_array);
 
   const int64_t N = numel;
@@ -192,7 +192,7 @@ void GPUIndexElementwisePutWithTensorKernel(
     return;
   }
 
-  auto offset_calc = funcs::make_offset_calculator_put<3, true, OffsetT>(
+  auto offset_calc = funcs::MakeOffsetCalculatorPut<3, true, OffsetT>(
       desired_shape, strides_array);
 
   const int64_t N = numel;

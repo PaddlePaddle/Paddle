@@ -101,14 +101,14 @@ struct CPUOffsetCalculator {
 };
 
 template <int N>
-static CPUOffsetCalculator<N, uint32_t> CPUmake_offset_calculator_put(
+static CPUOffsetCalculator<N, uint32_t> MakeCPUOffsetCalculatorPut(
     std::vector<int64_t> desired_shape, std::array<int64_t*, N> strides_array) {
   return CPUOffsetCalculator<N, uint32_t>(
       desired_shape.size(), desired_shape.data(), strides_array.data());
 }
 
 template <int N>
-static CPUOffsetCalculator<N, uint32_t> CPUmake_offset_calculator(
+static CPUOffsetCalculator<N, uint32_t> MakeCPUOffsetCalculator(
     int ndim,
     const int64_t* shape,
     const std::vector<std::vector<int64_t>>& strides) {
@@ -121,7 +121,7 @@ static CPUOffsetCalculator<N, uint32_t> CPUmake_offset_calculator(
 }
 
 template <int N>
-static CPUOffsetCalculator<N, uint32_t> CPUmake_offset_calculator(
+static CPUOffsetCalculator<N, uint32_t> MakeCPUOffsetCalculator(
     const DenseTensorIteratorBase& iter) {
   PADDLE_ENFORCE_LE(N,
                     iter.ntensors(),

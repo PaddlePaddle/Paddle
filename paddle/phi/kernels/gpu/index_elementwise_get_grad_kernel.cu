@@ -118,7 +118,7 @@ void GPUIndexElementwiseGetGrad(const GPUContext& dev_ctx,
                            &strides_array,
                            &numel,
                            strides_vec);
-  auto offset_calc = funcs::make_offset_calculator_put<3, true, OffsetT>(
+  auto offset_calc = funcs::MakeOffsetCalculatorPut<3, true, OffsetT>(
       desired_shape, strides_array);
 
   auto max_grid_size =
@@ -259,7 +259,7 @@ __global__ void IndexingBackwardKernel(const int64_t* sorted_indices,
   }
 }
 
-// The sliceSize == 1 case can reduce all duplicate gradients with one warp.
+// The slice_size == 1 case can reduce all duplicate gradients with one warp.
 // This mirrors the specialized CUDA path used by PyTorch and avoids routing
 // the reduction through the generic feature-unrolled kernel.
 template <typename scalar_t>
@@ -335,7 +335,7 @@ __global__ void IndexingBackwardKernelStride1(const int64_t* sorted_indices,
   }
 }
 
-// The 1 < sliceSize <= WARP_SIZE case lets a single thread own one feature
+// The 1 < slice_size <= WARP_SIZE case lets a single thread own one feature
 // column, so all duplicates of an index can be reduced in `opmath_t` registers
 // and written back exactly once. The generic feature-unrolled kernel instead
 // read-modify-writes `grad_weight` per duplicate, which rounds to `scalar_t`
@@ -561,7 +561,7 @@ void IndexPutWithSortKernel(const GPUContext& dev_ctx,
   // as `(self_.data) < T > (...)`, i.e. a comparison against a type name.
   DenseTensor self_ =
       self_contiguous ? self : Contiguous<T, GPUContext>(dev_ctx, self);
-  DenseTensor expandedValue = value;
+  DenseTensor expanded_value = value;
 
   // Reinterpret x_grad with the shape of the indexed view so that the linear
   // index is built against the axes the indices actually address. This is a
@@ -577,61 +577,61 @@ void IndexPutWithSortKernel(const GPUContext& dev_ctx,
     axis_indices[layout.dims_before + i] = *indices[i];
   }
 
-  auto [linearIndex, nElemBefore, strideBefore, sliceSize] =
+  auto [linear_index, n_elem_before, stride_before, slice_size] =
       funcs::computeLinearIndex(dev_ctx, view_src, axis_indices, false);
 
-  int64_t num_indices = linearIndex.numel();
+  int64_t num_indices = linear_index.numel();
 
-  if (expandedValue.numel() < num_indices * nElemBefore * sliceSize) {
-    auto expanded_size = vectorize<int64_t>(expandedValue.dims());
-    auto size1 = vectorize<int64_t>(expandedValue.dims());
-    auto size2 = vectorize<int64_t>(linearIndex.dims());
+  if (expanded_value.numel() < num_indices * n_elem_before * slice_size) {
+    auto expanded_size = vectorize<int64_t>(expanded_value.dims());
+    auto size1 = vectorize<int64_t>(expanded_value.dims());
+    auto size2 = vectorize<int64_t>(linear_index.dims());
     if (funcs::are_expandable(size1, size2)) {
       expanded_size = funcs::infer_size_dimvector(size1, size2);
     }
-    if (nElemBefore > 1) {
-      expanded_size.insert(expanded_size.begin(), nElemBefore);
+    if (n_elem_before > 1) {
+      expanded_size.insert(expanded_size.begin(), n_elem_before);
     }
-    if (sliceSize > 1) {
-      expanded_size.insert(expanded_size.end(), sliceSize);
+    if (slice_size > 1) {
+      expanded_size.insert(expanded_size.end(), slice_size);
     }
 
     DenseTensor expanded_tensor;
     ExpandKernel<T, GPUContext>(
-        dev_ctx, expandedValue, IntArray(expanded_size), &expanded_tensor);
-    expandedValue = expanded_tensor;
+        dev_ctx, expanded_value, IntArray(expanded_size), &expanded_tensor);
+    expanded_value = expanded_tensor;
   }
-  if (!expandedValue.meta().is_contiguous()) {
-    expandedValue = Contiguous<T, GPUContext>(dev_ctx, expandedValue);
+  if (!expanded_value.meta().is_contiguous()) {
+    expanded_value = Contiguous<T, GPUContext>(dev_ctx, expanded_value);
   }
 
-  if (num_indices > 0 && sliceSize > 0) {
-    linearIndex = Reshape<IndexT, GPUContext>(dev_ctx, linearIndex, {-1});
+  if (num_indices > 0 && slice_size > 0) {
+    linear_index = Reshape<IndexT, GPUContext>(dev_ctx, linear_index, {-1});
 
     DenseTensor sorted_indices;
-    sorted_indices.Resize(linearIndex.dims());
+    sorted_indices.Resize(linear_index.dims());
     dev_ctx.Alloc<IndexT>(&sorted_indices);
     DenseTensor orig_indices;
-    orig_indices.Resize(linearIndex.dims());
+    orig_indices.Resize(linear_index.dims());
     dev_ctx.Alloc<IndexT>(&orig_indices);
 
     auto stream = dev_ctx.stream();
 
-    auto shape = IntArray(vectorize<int64_t>(linearIndex.dims()));
-    auto divisor = Full<IndexT, GPUContext>(dev_ctx, shape, Scalar(sliceSize));
+    auto shape = IntArray(vectorize<int64_t>(linear_index.dims()));
+    auto divisor = Full<IndexT, GPUContext>(dev_ctx, shape, Scalar(slice_size));
 
-    DenseTensor linearIndex_d =
-        FloorDivide<IndexT, GPUContext>(dev_ctx, linearIndex, divisor);
+    DenseTensor linear_index_d =
+        FloorDivide<IndexT, GPUContext>(dev_ctx, linear_index, divisor);
 
     DenseTensor range;
     range.Resize({num_indices});
     dev_ctx.Alloc<IndexT>(&range);
     ArangeKernel<IndexT>(
         dev_ctx, Scalar(0), Scalar(num_indices), Scalar(1), &range);
-    int64_t nbits = funcs::GetNumBits(funcs::LargestIndex(self_) / sliceSize);
+    int64_t nbits = funcs::GetNumBits(funcs::LargestIndex(self_) / slice_size);
 
     funcs::RadixSortPairs<IndexT, IndexT>(dev_ctx,
-                                          linearIndex_d.data<IndexT>(),
+                                          linear_index_d.data<IndexT>(),
                                           sorted_indices.data<IndexT>(),
                                           range.data<IndexT>(),
                                           orig_indices.data<IndexT>(),
@@ -649,44 +649,44 @@ void IndexPutWithSortKernel(const GPUContext& dev_ctx,
         std::min(static_cast<int64_t>(max_grid_size[0]),
                  (num_indices + INDICES_PER_BLOCK - 1) / INDICES_PER_BLOCK),
         std::min(static_cast<int64_t>(max_grid_size[1]),
-                 (sliceSize + WARP_SIZE * UNROLL - 1) / (WARP_SIZE * UNROLL)),
+                 (slice_size + WARP_SIZE * UNROLL - 1) / (WARP_SIZE * UNROLL)),
         std::min(std::max(static_cast<int64_t>(1),
-                          static_cast<int64_t>(nElemBefore)),
+                          static_cast<int64_t>(n_elem_before)),
                  static_cast<int64_t>(max_grid_size[2])));
     dim3 block(WARP_SIZE, INDICES_PER_BLOCK);
 
-    if (sliceSize == 1) {
+    if (slice_size == 1) {
       IndexingBackwardKernelStride1<T>
           <<<grid, block, 0, stream>>>(sorted_indices.data<IndexT>(),
                                        orig_indices.data<IndexT>(),
-                                       expandedValue.data<T>(),
+                                       expanded_value.data<T>(),
                                        self_.data<T>(),
                                        num_indices,
-                                       sliceSize,
-                                       strideBefore,
-                                       nElemBefore,
+                                       slice_size,
+                                       stride_before,
+                                       n_elem_before,
                                        accumulate);
-    } else if (sliceSize <= WARP_SIZE) {
+    } else if (slice_size <= WARP_SIZE) {
       IndexingBackwardKernelSmallStride<T>
           <<<grid, block, 0, stream>>>(sorted_indices.data<IndexT>(),
                                        orig_indices.data<IndexT>(),
-                                       expandedValue.data<T>(),
+                                       expanded_value.data<T>(),
                                        self_.data<T>(),
                                        num_indices,
-                                       sliceSize,
-                                       strideBefore,
-                                       nElemBefore,
+                                       slice_size,
+                                       stride_before,
+                                       n_elem_before,
                                        accumulate);
     } else {
       IndexingBackwardKernel<T, UNROLL>
           <<<grid, block, 0, stream>>>(sorted_indices.data<IndexT>(),
                                        orig_indices.data<IndexT>(),
-                                       expandedValue.data<T>(),
+                                       expanded_value.data<T>(),
                                        self_.data<T>(),
                                        num_indices,
-                                       sliceSize,
-                                       strideBefore,
-                                       nElemBefore,
+                                       slice_size,
+                                       stride_before,
+                                       n_elem_before,
                                        accumulate);
     }
 
@@ -780,7 +780,7 @@ void IndexElementwiseGetGradKernel(const Context& dev_ctx,
 #ifdef PADDLE_WITH_CUDA
     // PyTorch routes every accumulating advanced index backward through the
     // sort based kernel, so how much the duplicate reduction rounds depends on
-    // sliceSize alone and not on how the index expression was spelled. Do the
+    // slice_size alone and not on how the index expression was spelled. Do the
     // same here.
     SortedPathLayout layout;
     if (DeriveSortedPathLayout(input_dims,
