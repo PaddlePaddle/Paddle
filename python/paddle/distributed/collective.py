@@ -530,17 +530,40 @@ class _ZeroSMPool:
     Window registration is a setup-time, collective, rank-symmetric operation, so
     it cannot be applied per call to activations from Paddle's own allocator:
     their addresses change every step. The pool instead owns a small set of
-    long-lived registered blocks and hands out slices of them, returning a block
-    to the free list once the tensor slicing it is collected. Blocks are bucketed
-    to powers of two so that a varying shape (MoE token counts, for instance)
-    reuses one block instead of registering a new window every step.
+    long-lived registered blocks and hands out slices of them. Blocks are
+    bucketed to powers of two so that a varying shape (MoE token counts, for
+    instance) reuses one block instead of registering a new window every step.
+
+    Which block an allocation gets is decided by a counter, not by a free list: a
+    bucket owns a ring of :attr:`_RING_SIZE` blocks and the n-th allocation takes
+    slot ``n % _RING_SIZE``, registering it if it is not there yet. Registration
+    therefore depends on the sequence of allocations and nothing else, which is
+    what the caller can keep rank-symmetric. A free list cannot be used for this:
+    a block would return to it when the tensor slicing it is collected, and that
+    is a local garbage-collection event, so the ranks would disagree on how many
+    windows to register and hang inside NCCL.
+
+    What the caller owes the pool is therefore the allocation sequence: all ranks
+    have to reach the same allocations, for the same byte sizes, in the same
+    order, and to agree on whether an input needs staging. A block is reissued
+    once ``_RING_SIZE`` further allocations of its bucket have happened, and a
+    handed-out tensor that is still referenced by then is refused rather than
+    silently overwritten.
     """
 
     _instances: dict[str, _ZeroSMPool] = {}
+    # Blocks a bucket keeps in rotation. It bounds the windows a bucket
+    # registers, and it is how long a handed-out tensor stays valid: the ring
+    # comes back around after this many allocations of the same bucket. A
+    # collective usually needs two buffers of the same size at once, so leave
+    # room for a few steps of those.
+    _RING_SIZE = 8
 
     def __init__(self, group: Group) -> None:
         self._group = group
-        self._free: dict[tuple, list] = {}
+        self._rings: dict[tuple, list[paddle.Tensor]] = {}
+        self._handed: dict[tuple, list[weakref.ref | None]] = {}
+        self._served: dict[tuple, int] = {}
         self._spans: list[tuple[int, int]] = []
 
     @classmethod
@@ -563,60 +586,24 @@ class _ZeroSMPool:
         """
         cls._instances.pop(group.name, None)
 
-    def _agree(self, values: list[int]) -> list[int]:
-        """Return the group-wide maximum of ``values``.
+    @staticmethod
+    def _bucket(numel: int, element_size: int) -> int:
+        """Index of the power-of-two byte size that fits ``numel`` elements."""
+        return max(0, (numel * element_size - 1).bit_length())
 
-        Registration is collective: every rank has to create a window of the
-        same byte size, the same number of times, in the same order. None of
-        that can be decided locally. A dynamic shape (MoE token counts) puts
-        the ranks in different buckets, and even a fixed shape lets their free
-        lists drift apart, because a block only returns to the list once the
-        tensor slicing it is collected, which is a local garbage-collection
-        event. So the ranks vote instead of guessing, and a disagreement costs
-        an extra window rather than a hang. The vote itself runs on a plain
-        unregistered buffer, so it keeps using the SM-based path.
+    @staticmethod
+    def _capacity(bucket: int, element_size: int) -> int:
+        """Elements a block of the ``bucket``-th power-of-two byte size holds."""
+        return max((1 << bucket) // element_size, 1)
+
+    def _register(self, dtype: DTypeLike, bucket: int) -> paddle.Tensor:
+        """Allocate and register one block of ``bucket``.
+
+        Bucketing in bytes is what keeps a varying shape on one window: it is
+        also the unit a window is made of, so ranks that disagreed on the dtype
+        would register different sizes for the same element count.
         """
-        vote = paddle.to_tensor(values, dtype="int64")
-        paddle.distributed.all_reduce(
-            vote,
-            op=paddle.distributed.ReduceOp.MAX,
-            group=self._group,
-            sync_op=True,
-        )
-        return vote.tolist()
-
-    def _plan(
-        self, dtype: DTypeLike, numel: int, needs_block: bool
-    ) -> tuple[bool, int]:
-        """Agree with the group on whether to take a block, and how big.
-
-        The capacity is negotiated in bytes because that is what a window is
-        made of: ranks that disagree on the dtype would otherwise register
-        different sizes for the same element count.
-        """
-        element_size = core.size_of_dtype(dtype)
-        nbytes = 1 << max(0, (numel * element_size - 1).bit_length())
-        if self._group.nranks > 1:
-            needs, nbytes = self._agree([int(needs_block), nbytes])
-            needs_block = bool(needs)
-        return needs_block, max(nbytes // element_size, 1)
-
-    def _block(
-        self, dtype: DTypeLike, capacity: int
-    ) -> tuple[paddle.Tensor, tuple]:
-        key = (dtype, capacity)
-        cached = self._free.setdefault(key, [])
-        reuse = bool(cached)
-        if self._group.nranks > 1:
-            # A rank that can reuse a block still has to register one when any
-            # other rank has to, otherwise the two disagree on the call count.
-            # The vote is taken before the decision, never as the right operand
-            # of an ``and``: skipping it on one rank is the very asymmetry this
-            # is here to remove.
-            any_miss = self._agree([0 if reuse else 1])[0]
-            reuse = reuse and not any_miss
-        if reuse:
-            return cached.pop(), key
+        capacity = self._capacity(bucket, core.size_of_dtype(dtype))
         block = _nccl_symmetric_empty([capacity], dtype)
         if _register_comm_buffer(block, group=self._group) == 0:
             raise RuntimeError(
@@ -626,39 +613,95 @@ class _ZeroSMPool:
             )
         start = block.data_ptr()
         self._spans.append((start, start + capacity * block.element_size()))
-        return block, key
+        return block
 
     def _take(
-        self, shape: ShapeLike, dtype: DTypeLike, capacity: int
+        self,
+        shape: ShapeLike,
+        dtype: DTypeLike,
+        capacity: ShapeLike | None = None,
     ) -> paddle.Tensor:
-        block, key = self._block(dtype, capacity)
-        out = block[: math.prod(shape)].reshape(shape)
-        # Keep the block alive through the view and recycle it afterwards.
-        weakref.finalize(out, self._free[key].append, block)
+        numel = math.prod(shape)
+        room = numel if capacity is None else math.prod(capacity)
+        if room < numel:
+            raise ValueError(
+                f"a zero-SM buffer of {numel} elements does not fit the "
+                f"capacity of {room} it was asked to come from"
+            )
+        bucket = self._bucket(room, core.size_of_dtype(dtype))
+        key = (dtype, bucket)
+        ring = self._rings.setdefault(key, [])
+        handed = self._handed.setdefault(key, [])
+        served = self._served.get(key, 0)
+        self._served[key] = served + 1
+        slot = served % self._RING_SIZE
+        if slot == len(ring):
+            ring.append(self._register(dtype, bucket))
+            handed.append(None)
+        previous = handed[slot]
+        if previous is not None and previous() is not None:
+            raise RuntimeError(
+                f"a tensor of {1 << bucket} bytes handed out by the zero-SM "
+                f"pool is still referenced after {self._RING_SIZE} further "
+                f"allocations of that size, so its block cannot be reissued. "
+                f"Release it earlier, or raise _ZeroSMPool._RING_SIZE."
+            )
+        out = ring[slot][:numel].reshape(shape)
+        # The ring owns the block, so this only records what was handed out:
+        # reissuing the slot has to be able to tell whether it is still in use.
+        handed[slot] = weakref.ref(out)
         return out
 
-    def empty(self, shape: ShapeLike, dtype: DTypeLike) -> paddle.Tensor:
-        """Return an uninitialized registered tensor of ``shape``."""
-        _, capacity = self._plan(dtype, math.prod(shape), True)
+    def empty(
+        self,
+        shape: ShapeLike,
+        dtype: DTypeLike,
+        capacity: ShapeLike | None = None,
+    ) -> paddle.Tensor:
+        """Return an uninitialized registered tensor of ``shape``.
+
+        All ranks of the group must reach this with the same byte size, in the
+        same order: a registration one rank does not make hangs the others. When
+        the local shape is not that size, pass the size the whole group agreed on
+        as ``capacity`` and get a tensor of the local ``shape`` carved out of it,
+        rather than slicing the result afterwards: the pool tracks what it hands
+        out, and a slice it never saw would not stop the block being reissued.
+        """
         return self._take(shape, dtype, capacity)
 
     def owns(self, tensor: paddle.Tensor) -> bool:
+        """Whether ``tensor``'s memory sits in one of the registered windows."""
         ptr = tensor.data_ptr()
         return any(lo <= ptr < hi for lo, hi in self._spans)
+
+    def handed_out(self, tensor: paddle.Tensor) -> bool:
+        """Whether ``tensor`` is one the pool handed out and still tracks.
+
+        Stricter than :meth:`owns`, which only answers whether the memory is
+        registered: a tensor sliced out of a pooled one passes that while being
+        invisible to the ring, so the block underneath it could be reissued
+        while it is still in use.
+        """
+        return any(
+            ref is not None and ref() is tensor
+            for handed in self._handed.values()
+            for ref in handed
+        )
 
     def stage(self, tensor: paddle.Tensor) -> paddle.Tensor:
         """Return a registered tensor holding ``tensor``'s data.
 
-        A tensor already backed by the pool is returned as is, so a caller that
-        allocates its input from this pool pays no copy. Whether the copy is
-        needed is a group-wide decision: one rank staging while another does not
-        would make the registration counts diverge.
+        A tensor the pool handed out and still tracks is returned as is, so a
+        caller that allocates its input from this pool pays no copy. Being merely
+        inside a registered window is not enough: a slice the pool never handed
+        out keeps no slot alive, so passing it through would let the ring reissue
+        the block underneath while the collective is still reading it. Such a
+        tensor is copied into a tracked block instead. All ranks have to agree on
+        whether the copy is needed: one rank staging while another does not makes
+        the registration counts diverge.
         """
-        needs, capacity = self._plan(
-            tensor.dtype, math.prod(tensor.shape), not self.owns(tensor)
-        )
-        if not needs:
+        if self.handed_out(tensor):
             return tensor
-        staged = self._take(tensor.shape, tensor.dtype, capacity)
+        staged = self._take(tensor.shape, tensor.dtype)
         staged.copy_(tensor, False)
         return staged

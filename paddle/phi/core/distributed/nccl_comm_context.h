@@ -137,6 +137,18 @@ class NCCLCommContext final : public CommContext {
   // a collective over that buffer may take a symmetric-memory path.
   bool IsRegistered(const void* ptr, size_t size) const;
 
+  // True when the loaded NCCL provides the single-call all-to-all, the only
+  // all-to-all entry point that can reach the zero-SM path. A group of
+  // Send/Recv calls always runs a point-to-point device kernel instead.
+  bool IsAllToAllAvailable() const;
+
+  // Symmetric all-to-all: rank j receives in_tensor[i * count, (i + 1) * count)
+  // from rank i, so every rank must contribute and receive the same count.
+  // Only call it when IsAllToAllAvailable() is true.
+  void AllToAll(DenseTensor* out_tensor,
+                const DenseTensor& in_tensor,
+                gpuStream_t stream);
+
   static constexpr size_t kNCCLWindowAlignment = 4096;
 
 #if NCCL_VERSION_CODE >= 21100
