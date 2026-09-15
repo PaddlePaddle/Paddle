@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import subprocess
 import sys
 import unittest
 
@@ -272,6 +273,189 @@ class TestCase1(TestTakeAlongAxisOp):
             -dim_size, dim_size, size=(1, 1, 5)
         ).astype(self.index_type)
         self.axis_type = "int64"
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(),
+    "deterministic path only runs on CUDA",
+)
+class TestTakeAlongAxisGradDeterministic(TestTakeAlongAxisDuplicatedIndices):
+    """Exercises TakeAlongAxisGradDeterministicKernel (FLAGS_cudnn_deterministic).
+
+    test_check_grad  – gradient values must match the numeric reference.
+    test_deterministic_grad – two identical backward passes must produce
+                              bit-identical results.
+    """
+
+    def init_data(self):
+        self.dtype = np.float64
+        self.x_type = "float64"
+        self.x_shape = (5, 6, 7)
+        self.index_type = "int64"
+        self.axis = 2
+        # index 0 appears 4 times and index 1 appears 3 times along axis=2,
+        # so multiple out_grad values accumulate into the same x_grad cell.
+        self.index = (
+            np.asarray([0, 0, 1, 1, 1, 0, 0])
+            .astype(self.index_type)
+            .reshape([1, 1, 7])
+        )
+        self.axis_type = "int64"
+
+    def setUp(self):
+        self.init_data()
+        self.op_type = "take_along_axis"
+        self.prim_op_type = "prim"
+        self.python_api = paddle.tensor.take_along_axis
+        self.public_python_api = paddle.tensor.take_along_axis
+        self.check_cinn = True
+        self.xnp = np.random.random(self.x_shape).astype(self.x_type)
+        # index (1,1,7) broadcast to (5,6,7): same shape as xnp
+        self.index_broadcast = np.broadcast_to(self.index, self.x_shape).astype(
+            self.index_type
+        )
+        self.inputs = {'Input': self.xnp, 'Index': self.index_broadcast}
+        self.attrs = {'Axis': self.axis}
+        self.outputs = {
+            'Result': np.take_along_axis(
+                self.xnp, self.index_broadcast, self.axis
+            )
+        }
+
+    def test_check_grad(self):
+        paddle.set_flags({'FLAGS_cudnn_deterministic': True})
+        try:
+            self.check_grad(['Input'], 'Result', check_pir=True)
+        finally:
+            paddle.set_flags({'FLAGS_cudnn_deterministic': False})
+
+    def test_deterministic_grad(self):
+        paddle.disable_static()
+        paddle.set_flags({'FLAGS_cudnn_deterministic': True})
+        try:
+            x = paddle.to_tensor(
+                self.xnp, place=paddle.CUDAPlace(0), stop_gradient=False
+            )
+            idx = paddle.to_tensor(
+                self.index_broadcast, place=paddle.CUDAPlace(0)
+            )
+
+            out1 = paddle.take_along_axis(x, idx, self.axis)
+            out1.sum().backward()
+            grad1 = x.grad.numpy().copy()
+            x.clear_grad()
+
+            out2 = paddle.take_along_axis(x, idx, self.axis)
+            out2.sum().backward()
+            grad2 = x.grad.numpy().copy()
+
+            np.testing.assert_array_equal(
+                grad1,
+                grad2,
+                err_msg="Deterministic grad produced different results "
+                "across two identical backward passes.",
+            )
+        finally:
+            paddle.set_flags({'FLAGS_cudnn_deterministic': False})
+            paddle.enable_static()
+
+
+class TestTakeAlongAxisGradDeterministicInt32Index(
+    TestTakeAlongAxisGradDeterministic
+):
+    """int32 indices must run normally on the deterministic backward path."""
+
+    def init_data(self):
+        super().init_data()
+        self.index_type = "int32"
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(),
+    "deterministic path only runs on CUDA",
+)
+class TestTakeAlongAxisGradDeterministicIndexOutOfBounds(unittest.TestCase):
+    """Out-of-range indices must be rejected by the deterministic backward path."""
+
+    def _run_out_of_bounds(self, index_value):
+        # axis=2 has size 4, so both index_value == 4 (positive overflow) and
+        # index_value == -5 (negative overflow, still negative after += 4) are
+        # out of the valid [-4, 4) range and must trip the bounds check.
+        #
+        # The grad op is invoked directly instead of through backward(): a full
+        # forward+backward would trap in the forward kernel first and never
+        # reach grad kernel, which is the code path under test here.
+        code = f"""
+import numpy as np
+import paddle
+paddle.disable_static()
+paddle.set_device("gpu")
+paddle.set_flags({{'FLAGS_cudnn_deterministic': True}})
+arr = paddle.to_tensor(
+    np.random.random((2, 3, 4)).astype("float32"), place=paddle.CUDAPlace(0)
+)
+idx = paddle.full((2, 3, 4), {index_value}, dtype="int64")
+out_grad = paddle.ones((2, 3, 4), dtype="float32")
+paddle._C_ops.take_along_axis_grad(arr, idx, out_grad, 2)
+# Force synchronization so the device-side trap error surfaces.
+paddle.device.cuda.synchronize()
+"""
+        proc = subprocess.run(
+            [sys.executable, "-c", code],
+            capture_output=True,
+            text=True,
+        )
+        self.assertNotEqual(proc.returncode, 0)
+        # Device-side printf may go to stdout; the traceback lands on stderr.
+        combined = (proc.stdout + proc.stderr).lower()
+        self.assertTrue(
+            "index is out of bounds" in combined
+            or "cuda error" in combined
+            or "hip error" in combined
+            or "device-side assert" in combined
+            or "trap" in combined
+            or "abort" in combined,
+            f"Expected an out-of-bounds index error, got:\n{combined}",
+        )
+
+    def test_positive_out_of_bounds(self):
+        self._run_out_of_bounds(4)
+
+    def test_negative_out_of_bounds(self):
+        self._run_out_of_bounds(-5)
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(),
+    "deterministic path only runs on CUDA",
+)
+class TestTakeAlongAxisGradDeterministicDifferentIndexDtype(unittest.TestCase):
+    """Unsupported index dtype must be rejected on the deterministic backward.
+
+    A full forward+backward would be rejected by the forward gather kernel
+    first, which shares the same int32/int64 dtype check, and would never
+    reach the backward kernel under test.
+    """
+
+    def setUp(self):
+        paddle.disable_static()
+        paddle.set_device("gpu")
+        paddle.set_flags({'FLAGS_cudnn_deterministic': True})
+        self.arr = paddle.to_tensor(
+            np.random.random((2, 3, 4)).astype("float32"),
+            place=paddle.CUDAPlace(0),
+        )
+        self.out_grad = paddle.ones((2, 3, 4), dtype="float32")
+
+    def tearDown(self):
+        paddle.set_flags({'FLAGS_cudnn_deterministic': False})
+        paddle.enable_static()
+
+    def test_int16_index_rejected(self):
+        idx = paddle.full((2, 3, 4), 1, dtype="int16")
+        with self.assertRaises(ValueError):
+            paddle._C_ops.take_along_axis_grad(self.arr, idx, self.out_grad, 2)
+            paddle.device.cuda.synchronize()
 
 
 class TestTakeAlongAxisAPI(unittest.TestCase):
