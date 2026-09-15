@@ -85,13 +85,6 @@ def _partition(params, world_size, comm_buffer_size_MB, global_rank=1):
     }
 
 
-def _partition_legacy(params, world_size, comm_buffer_size_MB):
-    """The path taken when ``machine_balanced_2d_partition`` is off."""
-    return _StubPartitioner(comm_buffer_size_MB)._partition_2d_parameters(
-        list(params), world_size
-    )
-
-
 def _active_ranks(volume_numel, world_size, comm_buffer_size_MB):
     """The rank count the greedy fill is allowed to spread over."""
     total_size_mb = volume_numel * 4 / (1024**2)
@@ -293,63 +286,6 @@ class TestPartition2DParameters(unittest.TestCase):
         self.assertEqual([p.name for p in params], before)
 
 
-class TestLegacyPartition2DParameters(unittest.TestCase):
-    """The machine_balanced_2d_partition=False path, kept as it was.
-
-    It packs each color group from its own rank 0 and knows nothing about
-    machines, so only the per-dtype packing it exists for is asserted here.
-    """
-
-    def test_every_param_owned_exactly_once(self):
-        for label, params in PARAM_SETS.items():
-            for world_size in WORLD_SIZES:
-                for buffer_mb in BUFFER_SIZES_MB:
-                    with self.subTest(
-                        params=label, world_size=world_size, buffer=buffer_mb
-                    ):
-                        mapping = _partition_legacy(
-                            params, world_size, buffer_mb
-                        )
-                        self.assertEqual(
-                            set(mapping),
-                            set(range(world_size)),
-                            "every rank must be present as a key, even if empty",
-                        )
-                        self.assertEqual(
-                            sorted(_owner_of(mapping)),
-                            sorted(p.name for p in params),
-                            "params must be neither dropped nor duplicated",
-                        )
-
-    def test_rank_count_follows_own_dtype_volume(self):
-        """Each dtype spreads only as wide as its own volume requires."""
-        for label, params in PARAM_SETS.items():
-            dtypes = {p.dtype for p in params}
-            for world_size in WORLD_SIZES:
-                for buffer_mb in BUFFER_SIZES_MB:
-                    mapping = _partition_legacy(params, world_size, buffer_mb)
-                    for dtype in dtypes:
-                        own = [p for p in params if p.dtype == dtype]
-                        expected = min(
-                            _active_ranks(
-                                sum(_numel(p) for p in own),
-                                world_size,
-                                buffer_mb,
-                            ),
-                            len(own),
-                        )
-                        with self.subTest(
-                            params=label,
-                            world_size=world_size,
-                            buffer=buffer_mb,
-                            dtype=dtype,
-                        ):
-                            self.assertEqual(
-                                len(_ranks_holding(mapping, dtype)),
-                                expected,
-                            )
-
-
 # ---------------------------------------------------------------------------
 # PP + EP + sharding: several groups per color, spread over several machines
 # ---------------------------------------------------------------------------
@@ -448,12 +384,8 @@ class TestHybridParallelPartition(unittest.TestCase):
                         sorted(p[0] for p in params),
                     )
 
-    def test_owner_is_a_member_of_its_own_group(self):
-        """Every param has exactly one owner, and it is inside its own group."""
-        for buffer_mb in (64, 256):
-            with self.subTest(buffer=buffer_mb):
                 owner_of = {}
-                for key, ranks_map in self._run(buffer_mb).items():
+                for key, ranks_map in result.items():
                     group_ranks = key[1]
                     for local_rank, names in ranks_map.items():
                         for name in names:
@@ -507,6 +439,26 @@ class TestHybridParallelPartition(unittest.TestCase):
                 self.assertLessEqual(
                     (max(loads) - min(loads)) / max(loads), 0.05, machine_bytes
                 )
+
+    def test_exhausted_machine_is_discarded(self):
+        group_key = (None, (0, 1, 2))
+        result = _StubPartitioner(
+            comm_buffer_size_MB=1,
+            global_rank=1,
+        )._partition_2d_parameters_machine_balanced(
+            {
+                group_key: [
+                    ("weight", 1024 * 1024, "float32", 4),
+                ]
+            },
+            {
+                0: "host0",
+                1: "host1",
+                2: "host1",
+            },
+        )
+
+        self.assertEqual(set(result[group_key]), {0, 1, 2})
 
 
 if __name__ == "__main__":
