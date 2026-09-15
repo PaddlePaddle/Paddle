@@ -648,5 +648,86 @@ TEST(math_function, gemv) {
   GemvTest<double>(3, 13, true);
 }
 
+// Covers the strided batched path, in particular N == 1, where the row-major
+// operands are handed to cuBLAS without the usual A/B swap.
+template <typename T>
+void BatchedGemmStridedTest(int64_t batch,
+                            int64_t m,
+                            int64_t n,
+                            int64_t k,
+                            bool trans_a,
+                            bool trans_b) {
+  phi::CPUPlace cpu_place;
+  phi::GPUPlace gpu_place(0);
+  phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
+  auto* context = reinterpret_cast<phi::GPUContext*>(pool.Get(phi::GPUPlace()));
+
+  phi::DenseTensor mat_a, mat_b, mat_c;
+  T* data_a = mat_a.mutable_data<T>({batch, m, k}, cpu_place);
+  T* data_b = mat_b.mutable_data<T>({batch, k, n}, cpu_place);
+  T* data_c = mat_c.mutable_data<T>({batch, m, n}, cpu_place);
+  for (int64_t i = 0; i < mat_a.numel(); ++i) {
+    data_a[i] = static_cast<T>((i % 7) - 3);
+  }
+  for (int64_t i = 0; i < mat_b.numel(); ++i) {
+    data_b[i] = static_cast<T>((i % 5) - 2);
+  }
+
+  phi::DenseTensor g_a, g_b, g_c;
+  T* g_data_a = g_a.mutable_data<T>(mat_a.dims(), gpu_place);
+  T* g_data_b = g_b.mutable_data<T>(mat_b.dims(), gpu_place);
+  T* g_data_c = g_c.mutable_data<T>(mat_c.dims(), gpu_place);
+  phi::Copy(*context, mat_a, gpu_place, true, &g_a);
+  phi::Copy(*context, mat_b, gpu_place, true, &g_b);
+
+  // `trans_a`/`trans_b` reinterpret the same buffers as [k, m] / [n, k], so the
+  // element count is unchanged and only the indexing below differs.
+  GetBlas<T>(*context).BatchedGEMM(trans_a ? CblasTrans : CblasNoTrans,
+                                   trans_b ? CblasTrans : CblasNoTrans,
+                                   m,
+                                   n,
+                                   k,
+                                   static_cast<T>(1),
+                                   g_data_a,
+                                   g_data_b,
+                                   static_cast<T>(0),
+                                   g_data_c,
+                                   batch,
+                                   m * k,
+                                   k * n);
+  phi::Copy(*context, g_c, cpu_place, true, &mat_c);
+
+  for (int64_t b = 0; b < batch; ++b) {
+    const T* a = data_a + b * m * k;
+    const T* bb = data_b + b * k * n;
+    const T* c = data_c + b * m * n;
+    for (int64_t i = 0; i < m; ++i) {
+      for (int64_t j = 0; j < n; ++j) {
+        T sum = static_cast<T>(0);
+        for (int64_t p = 0; p < k; ++p) {
+          sum += (trans_a ? a[p * m + i] : a[i * k + p]) *
+                 (trans_b ? bb[j * k + p] : bb[p * n + j]);
+        }
+        ASSERT_FLOAT_EQ(c[i * n + j], sum)
+            << "batch " << b << " (" << i << ", " << j << ")";
+      }
+    }
+  }
+}
+
+TEST(math_function, batched_gemm_strided_column_output) {
+  for (bool trans_a : {false, true}) {
+    for (bool trans_b : {false, true}) {
+      // N == 1: the torch-aligned un-swapped layout.
+      BatchedGemmStridedTest<float>(3, 5, 1, 4, trans_a, trans_b);
+      BatchedGemmStridedTest<double>(3, 5, 1, 4, trans_a, trans_b);
+      BatchedGemmStridedTest<float>(2, 1, 1, 6, trans_a, trans_b);
+      // N > 1: the swapped layout, kept as a regression guard.
+      BatchedGemmStridedTest<float>(3, 5, 2, 4, trans_a, trans_b);
+      BatchedGemmStridedTest<double>(3, 5, 2, 4, trans_a, trans_b);
+    }
+  }
+}
+
 }  // namespace tests
 }  // namespace phi
