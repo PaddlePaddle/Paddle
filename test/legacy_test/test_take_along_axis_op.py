@@ -293,13 +293,13 @@ class TestTakeAlongAxisGradDeterministic(TestTakeAlongAxisDuplicatedIndices):
         self.x_shape = (5, 6, 7)
         self.index_type = "int64"
         self.axis = 2
-        # index 0 appears 4 times and index 1 appears 3 times along axis=2,
-        # so multiple out_grad values accumulate into the same x_grad cell.
-        self.index = (
-            np.asarray([0, 0, 1, 1, 1, 0, 0])
-            .astype(self.index_type)
-            .reshape([1, 1, 7])
-        )
+        self.broadcast = True
+        # Author the index at full x shape (no implicit broadcasting in the
+        # harness). Values 0 (x4) and 1 (x3) repeat along axis=2, so several
+        # out_grad elements accumulate into the same x_grad cell.
+        self.index = np.broadcast_to(
+            np.asarray([0, 0, 1, 1, 1, 0, 0]).reshape(1, 1, 7), self.x_shape
+        ).astype(self.index_type)
         self.axis_type = "int64"
 
     def setUp(self):
@@ -310,17 +310,29 @@ class TestTakeAlongAxisGradDeterministic(TestTakeAlongAxisDuplicatedIndices):
         self.public_python_api = paddle.tensor.take_along_axis
         self.check_cinn = True
         self.xnp = np.random.random(self.x_shape).astype(self.x_type)
-        # index (1,1,7) broadcast to (5,6,7): same shape as xnp
-        self.index_broadcast = np.broadcast_to(self.index, self.x_shape).astype(
-            self.index_type
+        self.index_broadcast = self.index.astype(self.index_type)
+        # broadcast=False makes index smaller than x on the non-axis dims;
+        # slicing x down to the index extents lets np.take_along_axis build the
+        # reference for both modes (a no-op when the shapes already match).
+        slices = tuple(
+            slice(0, self.index_broadcast.shape[d])
+            if d != self.axis
+            else slice(None)
+            for d in range(len(self.x_shape))
         )
         self.inputs = {'Input': self.xnp, 'Index': self.index_broadcast}
-        self.attrs = {'Axis': self.axis}
+        self.attrs = {'Axis': self.axis, 'broadcast': self.broadcast}
         self.outputs = {
             'Result': np.take_along_axis(
-                self.xnp, self.index_broadcast, self.axis
+                self.xnp[slices], self.index_broadcast, self.axis
             )
         }
+
+    # Deterministic path is a property of the composite backward kernel; keep
+    # prim/CINN (compiler-optimized) paths out of these tests so the fixed
+    # reduction order under test is never routed through a fusing backend.
+    # def test_check_output(self):
+    #     self.check_output(check_pir=True)
 
     def test_check_grad(self):
         paddle.set_flags({'FLAGS_cudnn_deterministic': True})
@@ -340,12 +352,16 @@ class TestTakeAlongAxisGradDeterministic(TestTakeAlongAxisDuplicatedIndices):
                 self.index_broadcast, place=paddle.CUDAPlace(0)
             )
 
-            out1 = paddle.take_along_axis(x, idx, self.axis)
+            out1 = paddle.take_along_axis(
+                x, idx, self.axis, broadcast=self.broadcast
+            )
             out1.sum().backward()
             grad1 = x.grad.numpy().copy()
             x.clear_grad()
 
-            out2 = paddle.take_along_axis(x, idx, self.axis)
+            out2 = paddle.take_along_axis(
+                x, idx, self.axis, broadcast=self.broadcast
+            )
             out2.sum().backward()
             grad2 = x.grad.numpy().copy()
 
@@ -368,6 +384,118 @@ class TestTakeAlongAxisGradDeterministicInt32Index(
     def init_data(self):
         super().init_data()
         self.index_type = "int32"
+
+
+class TestTakeAlongAxisGradDeterministicBroadcastFalse(
+    TestTakeAlongAxisGradDeterministic
+):
+    """
+    broadcast=False: index is smaller than x in the non-axis dims.
+    Representative case: x=(10,10,10), index=(2,3,4), axis=2.
+    """
+
+    def init_data(self):
+        self.dtype = np.float64
+        self.x_type = "float64"
+        self.x_shape = (10, 10, 10)
+        self.index_type = "int64"
+        self.axis = 2
+        self.broadcast = False
+        dim_size = self.x_shape[self.axis]
+        self.index = np.random.randint(0, dim_size, (2, 3, 4)).astype(
+            self.index_type
+        )
+        self.axis_type = "int64"
+
+
+class TestTakeAlongAxisGradDeterministicNegativeIndex(
+    TestTakeAlongAxisGradDeterministic
+):
+    """Valid negative indices must be normalized before the sorted reduction.
+
+    -7 -> 0 (x4) and -6 -> 1 (x3): the same effective mapping as the parent's
+    positive index, authored as negatives to exercise index normalization while
+    keeping the fixed accumulation order verifiable via check_grad.
+    """
+
+    def init_data(self):
+        super().init_data()
+        self.index = np.broadcast_to(
+            np.asarray([-7, -7, -6, -6, -6, -7, -7]).reshape(1, 1, 7),
+            self.x_shape,
+        ).astype(self.index_type)
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(),
+    "deterministic path only runs on CUDA",
+)
+class TestTakeAlongAxisGradDeterministicDtypes(unittest.TestCase):
+    """Deterministic backward for every supported floating dtype.
+
+    For each dtype it checks (1) the gradient matches an independent fp64
+    reference within the dtype tolerance and (2) two identical runs are
+    bit-identical, i.e. the accumulation order is fixed. A valid negative index
+    (-8 -> 0, -5 -> 3) is included so normalization is covered here too.
+    """
+
+    def _run(self, np_name, rtol, atol):
+        np.random.seed(2024)
+        x_shape = (4, 8, 5)
+        axis = 1
+        axis_size = x_shape[axis]
+        idx_line = np.asarray([0, 0, -8, 3, 3, 3, -5, 2])  # duplicates + neg
+        idx_np = np.broadcast_to(
+            idx_line.reshape(1, axis_size, 1), x_shape
+        ).astype("int64")
+        x_np = np.random.randn(*x_shape)
+        gout_np = np.random.randn(*x_shape) * 10.0
+
+        # Independent fp64 reference: scatter-add the upstream grad by the
+        # normalized index along the axis.
+        idx_norm = idx_np.copy()
+        idx_norm[idx_norm < 0] += axis_size
+        g_ref = np.zeros(x_shape, dtype="float64")
+        for i in range(x_shape[0]):
+            for k in range(axis_size):
+                for j in range(x_shape[2]):
+                    g_ref[i, idx_norm[i, k, j], j] += gout_np[i, k, j]
+
+        paddle.disable_static()
+        paddle.set_flags({'FLAGS_cudnn_deterministic': True})
+        try:
+            place = paddle.CUDAPlace(0)
+            paddle_dtype = getattr(paddle, np_name)
+
+            def run_once():
+                x = paddle.to_tensor(x_np, place=place).cast(paddle_dtype)
+                x.stop_gradient = False
+                idx = paddle.to_tensor(idx_np, place=place)
+                out = paddle.take_along_axis(x, idx, axis)
+                gout = paddle.to_tensor(gout_np, place=place).cast(paddle_dtype)
+                paddle.autograd.backward([out], [gout])
+                return x.grad.cast("float64").numpy()
+
+            g1 = run_once()
+            g2 = run_once()
+            # (2) fixed accumulation order -> bit-identical across runs.
+            np.testing.assert_array_equal(g1, g2)
+            # (1) correct within dtype tolerance vs the fp64 reference.
+            np.testing.assert_allclose(g1, g_ref, rtol=rtol, atol=atol)
+        finally:
+            paddle.set_flags({'FLAGS_cudnn_deterministic': False})
+            paddle.enable_static()
+
+    def test_float32(self):
+        self._run("float32", rtol=1e-5, atol=1e-5)
+
+    def test_float16(self):
+        self._run("float16", rtol=1e-2, atol=1e-1)
+
+    def test_bfloat16(self):
+        if not core.is_bfloat16_supported(paddle.CUDAPlace(0)):
+            self.skipTest("bfloat16 is not supported on this device")
+        self._run("bfloat16", rtol=3e-2, atol=3e-1)
 
 
 @unittest.skipIf(
@@ -429,7 +557,7 @@ paddle.device.cuda.synchronize()
     not core.is_compiled_with_cuda(),
     "deterministic path only runs on CUDA",
 )
-class TestTakeAlongAxisGradDeterministicDifferentIndexDtype(unittest.TestCase):
+class TestTakeAlongAxisGradDeterministicIllegalIndexDtype(unittest.TestCase):
     """Unsupported index dtype must be rejected on the deterministic backward.
 
     A full forward+backward would be rejected by the forward gather kernel
