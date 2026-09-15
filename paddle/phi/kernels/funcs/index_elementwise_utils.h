@@ -68,11 +68,11 @@ inline void AccumulateReach(int64_t ndim,
     if (dims[i] <= 1) {
       continue;  // a 1-size axis never uses its stride, a 0-size one is empty
     }
-    const int64_t r = (dims[i] - 1) * strides[i] * scale;
-    if (r < 0) {
-      reach->lo += r;
+    const int64_t axis_reach = (dims[i] - 1) * strides[i] * scale;
+    if (axis_reach < 0) {
+      reach->lo += axis_reach;
     } else {
-      reach->hi += r;
+      reach->hi += axis_reach;
     }
   }
 }

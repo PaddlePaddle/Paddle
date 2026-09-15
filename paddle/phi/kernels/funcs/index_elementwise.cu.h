@@ -182,11 +182,12 @@ struct OffsetCalculator {
       int64_t lo = 0;
       int64_t hi = 0;
       for (int i = 0; i < dims; i++) {
-        const int64_t reach = (shape[i] - 1) * (strides[arg][i] / element_size);
-        if (reach < 0) {
-          lo += reach;
+        const int64_t axis_reach =
+            (shape[i] - 1) * (strides[arg][i] / element_size);
+        if (axis_reach < 0) {
+          lo += axis_reach;
         } else {
-          hi += reach;
+          hi += axis_reach;
         }
       }
       PADDLE_ENFORCE_GE(
