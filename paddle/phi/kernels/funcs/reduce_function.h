@@ -971,8 +971,7 @@ CubTensorReduceImpl(const Tx* x_data,
                     const KPDevice& dev_ctx,
                     KPStream stream) {
   auto reducer = ReduceOp<Ty>();
-  cub::TransformInputIterator<Ty, TransformOp, const Tx*> trans_x(x_data,
-                                                                  transform);
+  thrust::transform_iterator<TransformOp, const Tx*> trans_x(x_data, transform);
   size_t temp_storage_bytes = 0;
   cub::DeviceReduce::Reduce(nullptr,
                             temp_storage_bytes,

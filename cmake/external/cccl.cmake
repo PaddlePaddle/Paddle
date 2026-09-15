@@ -7,7 +7,15 @@ set(CCCL_PREFIX_DIR ${CCCL_PATH})
 set(CCCL_SOURCE_DIR ${PADDLE_SOURCE_DIR}/third_party/cccl)
 
 # The latest commit has bugs in windows, so we set a fix commit.
-set(CCCL_TAG 1f6e4bcae0fbf1bbed87f88544d8d2161c490fc1)
+# CUDA 13.0+ requires CCCL 3.1.0, while earlier CUDA versions use a fix commit.
+if(${CMAKE_CUDA_COMPILER_VERSION} LESS 13.0)
+  set(CCCL_TAG 1f6e4bcae0fbf1bbed87f88544d8d2161c490fc1)
+  set(CCCL_PATCH_FILE ${PADDLE_SOURCE_DIR}/patches/cccl/util_device.cuh.patch)
+else()
+  set(CCCL_TAG v3.1.0)
+  set(CCCL_PATCH_FILE
+      ${PADDLE_SOURCE_DIR}/patches/cccl/util_device.cuh.v3.1.0.patch)
+endif()
 execute_process(COMMAND git --git-dir=${CCCL_SOURCE_DIR}/.git
                         --work-tree=${CCCL_SOURCE_DIR} checkout ${CCCL_TAG})
 
@@ -15,8 +23,7 @@ set(CCCL_INCLUDE_DIR ${CCCL_SOURCE_DIR})
 message("CCCL_INCLUDE_DIR is ${CCCL_INCLUDE_DIR}")
 include_directories(${CCCL_INCLUDE_DIR})
 
-file(TO_NATIVE_PATH ${PADDLE_SOURCE_DIR}/patches/cccl/util_device.cuh.patch
-     native_src)
+file(TO_NATIVE_PATH ${CCCL_PATCH_FILE} native_src)
 set(CCCL_PATCH_COMMAND git checkout -- . && git checkout ${CCCL_TAG} && git
                        apply ${native_src})
 

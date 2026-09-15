@@ -2382,9 +2382,9 @@ void launch(TensorInfo<const T, IndexType> input,
          stream>>>(desired, counts, num_blocks, blocks_per_slice, kthCounts);
 
   // Use cub::DeviceScan::InclusiveSumByKey
-  using counting_iter_t = cub::CountingInputIterator<uint32_t>;
+  using counting_iter_t = thrust::counting_iterator<uint32_t>;
   using slice_idx_iter_t =
-      cub::TransformInputIterator<uint32_t, BlockIdxToKey, counting_iter_t>;
+      thrust::transform_iterator<BlockIdxToKey, counting_iter_t>;
   slice_idx_iter_t slice_idx_iter(counting_iter_t(0),
                                   BlockIdxToKey(blocks_per_slice));
 

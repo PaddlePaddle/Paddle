@@ -15,9 +15,40 @@
 #pragma once
 
 #ifdef __NVCC__
+#include <cub/version.cuh>
+// Thrust iterators that replace cub::TransformInputIterator /
+// cub::CountingInputIterator (both removed in CCCL 3.0).
+#include <thrust/iterator/counting_iterator.h>
+#include <thrust/iterator/transform_iterator.h>
 #include "cub/cub.cuh"
 #endif
 #ifdef __HIPCC__
 #include <hipcub/hipcub.hpp>
 namespace cub = hipcub;
+#endif
+
+// CUB/CCCL 2.x vs 3.x: several reduction operators and warp helpers were
+// removed in CCCL 3.0.  Aliases and wrappers below restore them in the cub::
+// namespace so all call sites can remain unchanged.
+// CUB_VERSION exists on both old and new CCCL; CCCL_VERSION is 3.x-only.
+// Guarded by __NVCC__: cuda::ptx functions are device-only and not available
+// when compiled by g++ for CPU-only .cc files that transitively include cub.h.
+#if defined(__NVCC__) && defined(CUB_VERSION) && CUB_VERSION >= 300000
+#include <cuda/functional>      // cuda::maximum
+#include <cuda/ptx>             // cuda::ptx::get_sreg_*
+#include <cuda/std/functional>  // cuda::std::plus, equal_to
+namespace cub {
+// Type aliases
+using Sum = ::cuda::std::plus<>;
+using Equality = ::cuda::std::equal_to<>;
+using Max = ::cuda::maximum<>;
+// Warp helper functions -- __forceinline__ implies inline, safe in multi-TU
+// headers
+__device__ __forceinline__ unsigned int LaneId() {
+  return ::cuda::ptx::get_sreg_laneid();
+}
+__device__ __forceinline__ unsigned int LaneMaskLt() {
+  return ::cuda::ptx::get_sreg_lanemask_lt();
+}
+}  // namespace cub
 #endif

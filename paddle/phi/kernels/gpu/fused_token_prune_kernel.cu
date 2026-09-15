@@ -172,10 +172,9 @@ void FusedTokenPruneOpCUDAKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_LE_INT_MAX(bsz, "bsz");
   int num_segments = static_cast<int>(bsz);
 
-  cub::CountingInputIterator<int64_t> counting_iter(0);
-  cub::TransformInputIterator<int64_t,
-                              SegmentOffsetIter,
-                              cub::CountingInputIterator<int64_t>>
+  thrust::counting_iterator<int64_t> counting_iter(0);
+  thrust::transform_iterator<SegmentOffsetIter,
+                             thrust::counting_iterator<int64_t>>
       segment_offsets_t(counting_iter, SegmentOffsetIter(max_seq_len));
   // Determine temporary device storage requirements
   PADDLE_ENFORCE_GPU_SUCCESS(cub::DeviceSegmentedRadixSort::SortPairsDescending(
@@ -223,9 +222,8 @@ void FusedTokenPruneOpCUDAKernel(const Context& dev_ctx,
     PADDLE_ENFORCE_LE_INT_MAX(bsz * slimmed_x_len, "bsz * slimmed_x_len");
     num_items = static_cast<int>(bsz * slimmed_x_len);
     temp_storage_bytes = -1;
-    cub::TransformInputIterator<int64_t,
-                                SegmentOffsetIter,
-                                cub::CountingInputIterator<int64_t>>
+    thrust::transform_iterator<SegmentOffsetIter,
+                               thrust::counting_iterator<int64_t>>
         segment_offsets_t2(counting_iter, SegmentOffsetIter(slimmed_x_len));
     PADDLE_ENFORCE_GPU_SUCCESS(cub::DeviceSegmentedRadixSort::SortKeys(
         nullptr,
