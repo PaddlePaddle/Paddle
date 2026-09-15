@@ -26,7 +26,6 @@
 #include "paddle/phi/kernels/funcs/gather_scatter_functor.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
-COMMON_DECLARE_bool(use_accuracy_compatible_kernel);
 COMMON_DECLARE_bool(cudnn_deterministic);
 
 namespace phi {
@@ -157,7 +156,7 @@ void CummaxGradKernel(const Context& dev_ctx,
     axis = axis + x.dims().size();
   }
 
-  if (FLAGS_use_accuracy_compatible_kernel && FLAGS_cudnn_deterministic) {
+  if (FLAGS_cudnn_deterministic) {
     ScatterAddDeterministic<T, Context>(
         dev_ctx, x, indices, out_grad, axis, dtype, x_grad);
     return;
@@ -191,7 +190,7 @@ void CumminGradKernel(const Context& dev_ctx,
     axis = axis + x.dims().size();
   }
 
-  if (FLAGS_use_accuracy_compatible_kernel && FLAGS_cudnn_deterministic) {
+  if (FLAGS_cudnn_deterministic) {
     ScatterAddDeterministic<T, Context>(
         dev_ctx, x, indices, out_grad, axis, dtype, x_grad);
     return;

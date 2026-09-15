@@ -668,7 +668,7 @@ void InclusiveScan(const T *x,
     // Same condition as torch: the deterministic scan is only used when the
     // scan dimension covers the whole tensor.
     if constexpr (IsPlusOp<BinaryOp>::value && IsInexact<T>::value) {
-      if (FLAGS_use_accuracy_compatible_kernel && FLAGS_cudnn_deterministic) {
+      if (FLAGS_cudnn_deterministic) {
         InclusiveDeterministicScan<T>(
             x, y, static_cast<int64_t>(mid_dim), reverse, dev_ctx);
         return;
