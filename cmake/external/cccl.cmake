@@ -7,13 +7,12 @@ set(CCCL_PREFIX_DIR ${CCCL_PATH})
 set(CCCL_SOURCE_DIR ${PADDLE_SOURCE_DIR}/third_party/cccl)
 
 # The latest commit has bugs in windows, so we set a fix commit.
-# CCCL 3.x officially supports the latest patch of each CUDA 12.x / 13.x minor
-# release, but 12.0/12.1 are not part of its verified/tested range. We therefore
-# gate CCCL 3.1.0 on CUDA >= 12.3 (matching the 12.2+ floor NVIDIA RAPIDS uses
-# with CCCL 3.1.0, and covering the CUDA 12.8 CI image). CUDA < 12.3 keeps the
-# old fix commit so still-supported early 12.x toolkits are not forced onto an
-# unverified CCCL version.
-if(${CMAKE_CUDA_COMPILER_VERSION} LESS 12.3)
+# CCCL 3.x officially supports the latest patch of each CUDA 12.x / 13.x minor,
+# but only some of those are actually verified here. We enable CCCL 3.1.0 solely
+# on the configurations we test: CUDA >= 12.8 (the CI build image) and CUDA 13.x.
+# CUDA < 12.8 keeps the old fix commit so earlier 12.x toolkits are not forced
+# onto an unverified CCCL version.
+if(${CMAKE_CUDA_COMPILER_VERSION} LESS 12.8)
   set(CCCL_TAG 1f6e4bcae0fbf1bbed87f88544d8d2161c490fc1)
   set(CCCL_PATCH_FILE ${PADDLE_SOURCE_DIR}/patches/cccl/util_device.cuh.patch)
 else()
