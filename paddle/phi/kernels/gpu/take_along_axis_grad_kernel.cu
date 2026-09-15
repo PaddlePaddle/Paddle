@@ -14,14 +14,131 @@
 
 #include "paddle/phi/kernels/take_along_axis_grad_kernel.h"
 
+#include <limits>
+#include <type_traits>
+#include <vector>
+
+#include "paddle/common/enforce.h"
+#include "paddle/common/flags.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/place.h"
+#include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/utils/data_type.h"
+#include "paddle/phi/kernels/arange_kernel.h"
+#include "paddle/phi/kernels/cast_kernel.h"
+#include "paddle/phi/kernels/expand_kernel.h"
 #include "paddle/phi/kernels/funcs/gather_scatter_functor.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/reshape_kernel.h"
+#ifdef PADDLE_WITH_CUDA
+#include "paddle/phi/kernels/funcs/index_put_with_sort.cu.h"
+#endif
+
+COMMON_DECLARE_bool(cudnn_deterministic);
 
 namespace phi {
+
+#ifdef PADDLE_WITH_CUDA
+
+template <typename T>
+constexpr bool kTakeAlongAxisDeterministicSupported =
+    std::is_same_v<T, float> || std::is_same_v<T, double> ||
+    std::is_same_v<T, phi::dtype::float16> ||
+    std::is_same_v<T, phi::dtype::bfloat16>;
+
+// Deterministic take_along_axis backward, numerically bit-aligned with torch.
+//
+// Routes through the shared IndexPutWithSortKernel, which is in same with
+// torch's `index_put_with_sort_kernel`.
+// Turn the single `index` into a full set of per-dimension index tensors to
+// use IndexPutWithSortKernel like torch's `_scatter_via_index_put`:
+//  the `axis` dimension uses `index` itself;
+//  other dimension uses an arange broadcast to match `index`'s shape.
+//
+// Returns false (falling back to the atomic scatter-add path) when:
+//   1. the dtype is integral -- accumulation is exact and order-independent,
+//   2. inputs are non-contiguous -- coordinate recovery assumes contiguity,
+//   3. the element count exceeds INT_MAX -- CUB refuses to sort that many keys.
+template <typename T, typename Context>
+bool TakeAlongAxisGradDeterministic(const Context& dev_ctx,
+                                    const DenseTensor& x,
+                                    const DenseTensor& index,
+                                    const DenseTensor& out_grad,
+                                    int axis,
+                                    DenseTensor* x_grad) {
+  if constexpr (!kTakeAlongAxisDeterministicSupported<T>) {
+    return false;
+  } else {
+    int64_t numel = index.numel();
+    if (numel == 0) return true;
+    if (numel > std::numeric_limits<int>::max()) return false;
+    if (out_grad.numel() != numel) return false;
+    if (!index.meta().is_contiguous() || !out_grad.meta().is_contiguous()) {
+      return false;
+    }
+
+    int ndim = static_cast<int>(index.dims().size());
+    if (ndim == 0 || ndim > DDim::kMaxRank) return false;
+    // The per-dim index construction below requires `index` and `x_grad` to
+    // agree on rank, and a valid scatter axis.
+    if (ndim != static_cast<int>(x_grad->dims().size())) return false;
+    if (axis < 0 || axis >= ndim) return false;
+
+    auto index_shape = vectorize<int64_t>(index.dims());
+
+    // Build one index tensor per dimension (torch's _scatter_via_index_put).
+    std::vector<DenseTensor> index_holders(ndim);
+    std::vector<const DenseTensor*> indices_ptrs(ndim);
+    const auto& index_type = index.dtype();
+    for (int d = 0; d < ndim; ++d) {
+      if (d == axis) {
+        if (index_type == DataType::INT32) {
+          index_holders[d] =
+              Cast<int32_t, Context>(dev_ctx, index, DataType::INT64);
+        } else {
+          index_holders[d] = index;
+        }
+      } else {
+        DenseTensor arange_d;
+        arange_d.Resize({index_shape[d]});
+        dev_ctx.template Alloc<int64_t>(&arange_d);
+        ArangeKernel<int64_t>(
+            dev_ctx, Scalar(0), Scalar(index_shape[d]), Scalar(1), &arange_d);
+
+        std::vector<int64_t> view_shape(ndim, 1);
+        view_shape[d] = index_shape[d];
+        DenseTensor reshaped =
+            Reshape<int64_t, Context>(dev_ctx, arange_d, view_shape);
+
+        DenseTensor expanded;
+        ExpandKernel<int64_t, Context>(
+            dev_ctx, reshaped, IntArray(index_shape), &expanded);
+        index_holders[d] = expanded;
+      }
+      indices_ptrs[d] = &index_holders[d];
+    }
+
+    auto x_grad_dims = vectorize<int64_t>(x_grad->dims());
+    auto x_grad_strides = vectorize<int64_t>(x_grad->strides());
+    auto index_use_strides = vectorize<int64_t>(index.strides());
+
+    funcs::IndexPutWithSortKernel<T, int64_t>(dev_ctx,
+                                              x,
+                                              out_grad,
+                                              indices_ptrs,
+                                              x_grad_dims,
+                                              x_grad_strides,
+                                              index_shape,
+                                              index_use_strides,
+                                              /*slice_offset=*/0,
+                                              /*accumulate=*/true,
+                                              x_grad);
+    return true;
+  }
+}
+#endif
 
 template <typename T, typename Context>
 void TakeAlongAxisGradKernel(const Context& dev_ctx,
@@ -43,6 +160,14 @@ void TakeAlongAxisGradKernel(const Context& dev_ctx,
   funcs::SetConstant<Context, T> functor;
   functor(dev_ctx, x_grad, static_cast<T>(0));
   const auto& index_type = index.dtype();
+
+#ifdef PADDLE_WITH_CUDA
+  if (FLAGS_cudnn_deterministic &&
+      TakeAlongAxisGradDeterministic<T, Context>(
+          dev_ctx, x, index, out_grad, axis, x_grad)) {
+    return;
+  }
+#endif
 
   if (index_type == DataType::INT32) {
     funcs::gpu_scatter_add_kernel<T, int32_t>(
