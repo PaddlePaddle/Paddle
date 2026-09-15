@@ -42,7 +42,6 @@ inline constexpr int ceil_pow2(int v) {
 }
 
 inline constexpr int kCumsumBlockSize = 40;
-inline constexpr int kCumsumInvalidTag = -1;
 inline constexpr int kMaxNumExperts = 384;
 inline constexpr int kMaxNumExpertsForOptKernel = 32;
 

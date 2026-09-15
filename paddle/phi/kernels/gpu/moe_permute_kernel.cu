@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <cstdlib>
 #include <limits>
 
 #include "paddle/common/enforce.h"
@@ -33,61 +32,19 @@ namespace cg = cooperative_groups;
 
 namespace phi {
 
-using moe::kCumsumInvalidTag;
 using moe::kMaxNumExperts;
 using moe::kPermuteBlockDimX;
 using moe::kPermuteBlockSize;
 
 // ============================================================================
-//   Cross-block cumsum: a dependency-free prescan instead of a spin chain
+//                    Cross-block cumsum for the permute kernel
 // ============================================================================
-// Phase 1b needs, for every (block, expert), how many rows the preceding
-// same-parity blocks assigned to that expert.  The shipped code computes it
-// with a chain: block b spins on global_expertwise_block_cumsum[b*E+e] until a
-// predecessor publishes a value, then publishes b+2.  The chain is
-// gridDim.x/2 deep and every hop is an L2 atomic round trip, so the kernel's
-// runtime is set by the chain rather than by the data it moves.  Standalone
-// bench, grid 4812 / token_length 2048 / 8 local experts / topk 10, kernel
-// only, median of 100:
-//   do_gather=false (no token traffic at all)  chain 1068.6 us  prescan 61.6 us
-//   full kernel, bf16                          chain 1297.3 us  prescan 822.0 us
-// Both dtypes take the same time with the chain (bf16 1297.3, fp8 1295.8)
-// although bf16 moves twice the bytes -- the tell that the limiter is not
-// memory.
-//
-// The two kernels below produce exactly the same prefix sums with no
-// inter-block dependency: permute_block_count_kernel fills the buffer with the
-// per-block per-expert row counts and permute_chain_scan_kernel turns it into
-// the exclusive prefix sum over same-parity blocks, in place.  The offsets are
-// the same integers, so every row lands in the same output slot and the output
-// is bit-identical.  Set MOE_PERMUTE_PRESCAN=0 to get the chain back.
-inline bool moe_permute_prescan() {
-  static const bool v = [] {
-    const char *s = std::getenv("MOE_PERMUTE_PRESCAN");
-    return (s == nullptr) || !(s[0] == '0' && s[1] == '\0');
-  }();
-  return v;
-}
-
-// Phase 2 gathers the token rows.  The shipped path walks the block's 32 rows
-// strictly serially: per row one cuda::pipeline wait, two block syncs, a single
-// cp_async_bulk_shared_to_global issued by thread 0 and a
-// cp_async_bulk_wait_group_read<0> drain, i.e. 255 of the 256 threads wait on
-// thread 0 and only one row (2 or 4 KB) is ever in flight per block.
-// MOE_PERMUTE_VECGATHER=1 (default) instead gives one warp per source row --
-// 8 rows in flight per block -- and moves them with 16 B vector loads/stores
-// straight through registers: no shared-memory staging, no pipeline, no drain.
-// Pure data movement, no arithmetic, so the output is bit-identical.
-// Same bench (prescan on):  bf16 797.7 -> 246.8 us    fp8 814.2 -> 192.9 us
-// Set MOE_PERMUTE_VECGATHER=0 to get the shipped phase 2 back; the two live in
-// separate instantiations so the A/B is not confounded by register allocation.
-inline bool moe_permute_vecgather() {
-  static const bool v = [] {
-    const char *s = std::getenv("MOE_PERMUTE_VECGATHER");
-    return (s == nullptr) || !(s[0] == '0' && s[1] == '\0');
-  }();
-  return v;
-}
+// Phase 1b of permute_kernel needs, for every (block, expert), how many rows
+// the preceding same-parity blocks assigned to that expert.  The two kernels
+// below compute it without any inter-block dependency:
+// permute_block_count_kernel fills the buffer with the per-block per-expert
+// row counts, permute_chain_scan_kernel turns it in place into the exclusive
+// prefix sum over same-parity blocks.
 
 template <typename IndexT,
           int ROWS_PER_BLOCK = kPermuteBlockSize,
@@ -132,7 +89,7 @@ __global__ __launch_bounds__(BLOCK_DIM_X) void permute_block_count_kernel(
 
 // grid = (num_experts, 2): one block per (expert, parity).  Turns the per-block
 // counts into the exclusive prefix sum over same-parity blocks, in place.
-template <int BLOCK_DIM_X = 256>
+template <int BLOCK_DIM_X = kPermuteBlockDimX>
 __global__ __launch_bounds__(BLOCK_DIM_X) void permute_chain_scan_kernel(
     int *__restrict__ cumsum, const int grid_x, const int num_experts) {
   const int expert_id = blockIdx.x;
@@ -206,14 +163,13 @@ __global__ __launch_bounds__(BLOCK_DIM_X) void permute_kernel(
     int *__restrict__ zipped_expertwise_rowmap,
     ProbT *__restrict__ probs_unzipped,
     ScaleT *__restrict__ XScale_unzipped,
-    int *global_expertwise_block_cumsum,
+    const int *__restrict__ global_expertwise_block_cumsum,
     int *__restrict__ expert_indices,
     const int total_zipped_tokens_num,
     const int token_length,
     const int scale_length,
     const int num_experts,
-    const int topk,
-    const bool prescan) {
+    const int topk) {
 #if defined(__CUDA_ARCH__) && (__CUDA_ARCH__ >= 900)
   static_assert(ROWS_PER_BLOCK == 32, "ROWS_PER_BLOCK must equal warp size");
 
@@ -232,14 +188,13 @@ __global__ __launch_bounds__(BLOCK_DIM_X) void permute_kernel(
   // ===================== Shared memory layout =============================
   // Section 1 (Phase 1a-1b): uint32_t[num_experts] expert bitmask
   // Section 1 (Phase 2):     int[ROWS_PER_BLOCK * TOPK] output_rows (reuses)
-  // Section 2 (USE_TMA):     ping/pong + routemap + probs
+  // Section 2 (USE_TMA):     routemap + probs
   extern __shared__ char smem_raw[];
   uint32_t *expert_bitmask = reinterpret_cast<uint32_t *>(smem_raw);
 
   // TMA region starts after max(bitmask, output_rows), 32-byte aligned.
-  // VEC_GATHER never stages token rows in shared memory, so it reserves no
-  // ping/pong buffers (the launcher's smem computation must agree).
-  constexpr int kTokBufs = VEC_GATHER ? 0 : 2;
+  // Token rows are never staged in shared memory: phase 2 streams them
+  // through registers (the launcher's smem computation must agree).
   constexpr int output_rows_bytes = ROWS_PER_BLOCK * TOPK * sizeof(int);
   [[maybe_unused]] char *tma_base =
       smem_raw + (((max(static_cast<int>(kMaxNumExperts * sizeof(uint32_t)),
@@ -253,8 +208,6 @@ __global__ __launch_bounds__(BLOCK_DIM_X) void permute_kernel(
   }
 
   // ===================== TMA setup ========================================
-  [[maybe_unused]] TokenT *ping_buffer = nullptr;
-  [[maybe_unused]] TokenT *pong_buffer = nullptr;
   [[maybe_unused]] IndexT *shared_routemap = nullptr;
   [[maybe_unused]] ProbT *shared_probs = nullptr;
 
@@ -269,11 +222,7 @@ __global__ __launch_bounds__(BLOCK_DIM_X) void permute_kernel(
   [[maybe_unused]] auto pipe = cuda::make_pipeline(cg_block, &pstate);
 
   if constexpr (USE_TMA) {
-    ping_buffer = reinterpret_cast<TokenT *>(tma_base);
-    pong_buffer =
-        reinterpret_cast<TokenT *>(tma_base + token_length * sizeof(TokenT));
-    shared_routemap = reinterpret_cast<IndexT *>(
-        tma_base + kTokBufs * token_length * sizeof(TokenT));
+    shared_routemap = reinterpret_cast<IndexT *>(tma_base);
     shared_probs =
         reinterpret_cast<ProbT *>(reinterpret_cast<char *>(shared_routemap) +
                                   ROWS_PER_BLOCK * topk * sizeof(IndexT));
@@ -292,17 +241,6 @@ __global__ __launch_bounds__(BLOCK_DIM_X) void permute_kernel(
                        local_elems * sizeof(ProbT),
                        pipe);
     pipe.producer_commit();
-
-    if constexpr (do_gather && !VEC_GATHER) {
-      pipe.producer_acquire();
-      cuda::memcpy_async(
-          cg_block,
-          ping_buffer,
-          X + static_cast<int64_t>(block_row_base) * token_length,
-          token_length * sizeof(TokenT),
-          pipe);
-      pipe.producer_commit();
-    }
   }
 #endif
 
@@ -356,44 +294,25 @@ __global__ __launch_bounds__(BLOCK_DIM_X) void permute_kernel(
   __syncthreads();
 
   // ===================== Phase 1b: Progressive cumsum + global writes =======
-  // Chain layout (even blockIdx = prefix, odd = suffix):
-  //   prefix: block 0 →  block 2 →  block 4 → ...  (recv from blockIdx-2)
-  //   suffix: block 1 →  block 3 →  block 5 → ...  (recv from blockIdx-2)
-  // Root blocks (prefix: blockIdx==0, suffix: blockIdx==1) have no predecessor.
-  // When mask==0u for an expert, lane 0 still receives & forwards the offset
-  // (with local_count==0) so the chain never breaks.
+  // Blocks are split by parity (even blockIdx = prefix, odd = suffix) and
+  // global_expertwise_block_cumsum[blockIdx.x * num_experts + expert_id] holds
+  // the number of rows the preceding same-parity blocks gave to that expert.
+  // It was filled by permute_block_count_kernel + permute_chain_scan_kernel,
+  // which the launcher only runs when there is more than one block.
   int reg_output_row[TOPK];
 #pragma unroll
   for (int k = 0; k < TOPK; k++) reg_output_row[k] = -1;
 
-  const bool is_chain_root = (use_prefix ? blockIdx.x == 0 : blockIdx.x == 1);
-
   for (int expert_id = warp_id; expert_id < num_experts;
        expert_id += warp_num) {
     const uint32_t mask = expert_bitmask[expert_id];
-    const int local_count = __popc(mask);
 
-    // --- Inter-block cumsum: lane 0 receives from predecessor, sends to
-    //     successor.  Always executes regardless of mask to keep chain alive.
     int chain_offset = 0;
-    if (lane_id == 0) {
-      if (prescan) {
-        // Already the exclusive prefix sum over same-parity blocks.
-        chain_offset =
-            global_expertwise_block_cumsum[blockIdx.x * num_experts +
-                                           expert_id];
-      } else if (!is_chain_root) {
-        const int recv_idx = blockIdx.x * num_experts + expert_id;
-        while ((chain_offset =
-                    atomicAdd(&global_expertwise_block_cumsum[recv_idx], 0)) ==
-               kCumsumInvalidTag) {
-        }
-      }
-      if (!prescan) {
-        const int send_idx = (blockIdx.x + 2) * num_experts + expert_id;
-        atomicExch(&global_expertwise_block_cumsum[send_idx],
-                   chain_offset + local_count);
-      }
+    if (lane_id == 0 && gridDim.x > 1) {
+      chain_offset =
+          global_expertwise_block_cumsum[static_cast<int64_t>(blockIdx.x) *
+                                             num_experts +
+                                         expert_id];
     }
 
     // --- Intra-block position assignment (only when this expert has tokens)
@@ -451,19 +370,17 @@ __global__ __launch_bounds__(BLOCK_DIM_X) void permute_kernel(
     }
     __syncthreads();
 
-
     if constexpr (VEC_GATHER) {
-      // ------------------------------------------------------------------
-      // One warp per source row: warp_num (= 8) rows are in flight per block
-      // instead of 1, and every access is a 16 B vector.  Pure data movement
-      // through registers -- no shared-memory staging, no pipeline wait, no
-      // per-row cp_async_bulk drain, and no thread does anything the shipped
-      // path did not also do to the same bytes.
-      // Needs token_length * sizeof(TokenT) % 16 == 0; the launcher checks the
-      // same predicate and falls back to the shipped path otherwise.
-      // ------------------------------------------------------------------
+      // One warp per source row, so warp_num rows are in flight per block, and
+      // every access is a 16 B vector straight through registers: no shared
+      // memory staging and no cross-warp synchronisation.  Requires
+      // token_length * sizeof(TokenT) to be a whole number of 16 B vectors,
+      // which is what the launcher checks before selecting this path.
       constexpr int kVecElems = 16 / sizeof(TokenT);
-      constexpr int kChunkVec = 2;  // 16 B x 2 per lane in flight
+      // Two vectors per lane per step, so the stores of one vector overlap the
+      // load of the next instead of serialising on it.
+      constexpr int kVecPerLane = 2;
+      constexpr int kVecPerStep = kVecPerLane * 32;
       using VecT = VectorType<TokenT, kVecElems>;
       const int nvec = token_length / kVecElems;
       const int nrows = block_row_end - block_row_base;
@@ -471,10 +388,10 @@ __global__ __launch_bounds__(BLOCK_DIM_X) void permute_kernel(
         const int row = block_row_base + r;
         const VecT *src = reinterpret_cast<const VecT *>(
             X + static_cast<int64_t>(row) * token_length);
-        for (int v0 = 0; v0 < nvec; v0 += 32 * kChunkVec) {
-          VecT reg[kChunkVec];
+        for (int v0 = 0; v0 < nvec; v0 += kVecPerStep) {
+          VecT reg[kVecPerLane];
 #pragma unroll
-          for (int c = 0; c < kChunkVec; c++) {
+          for (int c = 0; c < kVecPerLane; c++) {
             const int idx = v0 + c * 32 + lane_id;
             if (idx < nvec) reg[c] = src[idx];
           }
@@ -485,15 +402,15 @@ __global__ __launch_bounds__(BLOCK_DIM_X) void permute_kernel(
             VecT *dst = reinterpret_cast<VecT *>(
                 X_unzipped + static_cast<int64_t>(out_row) * token_length);
 #pragma unroll
-            for (int c = 0; c < kChunkVec; c++) {
+            for (int c = 0; c < kVecPerLane; c++) {
               const int idx = v0 + c * 32 + lane_id;
               if (idx < nvec) dst[idx] = reg[c];
             }
           }
         }
         if constexpr (has_scale) {
-          // try_vectorized_memcpy moves the whole scale row with a single
-          // thread when it is one 16 B vector; spread it over the warp.
+          // The scale row is short, so spread it over the lanes of the warp
+          // that owns the token row rather than over the whole block.
 #pragma unroll
           for (int k = 0; k < TOPK; k++) {
             const int out_row = shared_output_rows[r * TOPK + k];
@@ -506,78 +423,29 @@ __global__ __launch_bounds__(BLOCK_DIM_X) void permute_kernel(
           }
         }
       }
-      return;
-    }
-
-    // Data movement loop — no per-row __syncthreads needed (output_rows
-    // are already fully materialized in smem). Only TMA pipeline needs sync.
-    for (int row = block_row_base; row < block_row_end; row++) {
-      const int internal_row = row - block_row_base;
-
-      if constexpr (USE_TMA) {
-#if CUDA_VERSION >= 12080
-        pipe.consumer_wait();
-        cg_block.sync();
-        if (row + 1 < block_row_end) {
-          TokenT *prefetch_buffer =
-              (internal_row % 2 == 0) ? pong_buffer : ping_buffer;
-          pipe.producer_acquire();
-          cuda::memcpy_async(cg_block,
-                             prefetch_buffer,
-                             X + static_cast<int64_t>(row + 1) * token_length,
-                             token_length * sizeof(TokenT),
-                             pipe);
-          pipe.producer_commit();
-        }
-#endif
-      }
-
-      [[maybe_unused]] TokenT *current_buffer = nullptr;
-      if constexpr (USE_TMA) {
-        current_buffer = (internal_row % 2 == 0) ? ping_buffer : pong_buffer;
-      }
-
-      // Read output rows from shared memory (no sync needed)
+    } else {
+      // Fallback for token rows that are not a whole number of 16 B vectors:
+      // the whole block cooperates on one source row at a time.  The row start
+      // itself can be unaligned, so the copy has to check before vectorising.
+      for (int row = block_row_base; row < block_row_end; row++) {
+        const int internal_row = row - block_row_base;
 #pragma unroll
-      for (int k = 0; k < TOPK; k++) {
-        const int out_row = shared_output_rows[internal_row * TOPK + k];
-        if (out_row < 0) continue;
+        for (int k = 0; k < TOPK; k++) {
+          const int out_row = shared_output_rows[internal_row * TOPK + k];
+          if (out_row < 0) continue;
 
-        if constexpr (USE_TMA) {
-#if CUDA_VERSION >= 12080
-          if (threadIdx.x == 0) {
-            cuda::device::experimental::cp_async_bulk_shared_to_global(
-                &X_unzipped[(int64_t)out_row * (int64_t)token_length],
-                current_buffer,
-                token_length * sizeof(TokenT));
-            cuda::device::experimental::cp_async_bulk_commit_group();
-          }
-#endif
-        } else {
-          // The row start itself can be unaligned when token_length *
-          // sizeof(TokenT) is not a whole number of 16 B vectors, so the copy
-          // has to check before vectorising.
           try_vectorized_memcpy(
               &X[(int64_t)row * (int64_t)token_length],
               &X_unzipped[(int64_t)out_row * (int64_t)token_length],
               token_length);
-        }
 
-        if constexpr (has_scale) {
-          try_vectorized_memcpy(
-              &XScale[(int64_t)row * (int64_t)scale_length],
-              &XScale_unzipped[(int64_t)out_row * (int64_t)scale_length],
-              scale_length);
+          if constexpr (has_scale) {
+            try_vectorized_memcpy(
+                &XScale[(int64_t)row * (int64_t)scale_length],
+                &XScale_unzipped[(int64_t)out_row * (int64_t)scale_length],
+                scale_length);
+          }
         }
-      }
-
-      if constexpr (USE_TMA) {
-#if CUDA_VERSION >= 12080
-        if (threadIdx.x == 0) {
-          cuda::device::experimental::cp_async_bulk_wait_group_read<0>();
-        }
-        pipe.consumer_release();
-#endif
       }
     }
   }
@@ -657,17 +525,16 @@ void launch_permute_kernel(const GPUContext &dev_ctx,
             is_aligned_in_bytes(sizeof(IntT) * topk * ROWS_PER_BLOCK);
 #endif
 
-
-  // Phase-2 gather with 16 B vectors, one warp per source row.  Needs the token
-  // row to be a whole number of 16 B vectors, otherwise fall back.
+  // Phase 2 moves the token rows with 16 B vectors, one warp per source row.
+  // It needs every token row to be a whole number of 16 B vectors; otherwise
+  // phase 2 falls back to the block-cooperative element copy.
   const bool vec_gather =
-      DoGather && is_aligned_in_bytes(token_length * sizeof(TokenT)) &&
-      moe_permute_vecgather();
+      DoGather && is_aligned_in_bytes(token_length * sizeof(TokenT));
 
-  // Replace the gridDim.x/2-deep cross-block spin chain by two kernels with no
-  // inter-block dependency.  Only worth it when there is more than one block.
-  const bool prescan = grid_x > 1 && moe_permute_prescan();
-  if (prescan) {
+  // Phase 1b reads the cross-block cumsum from global memory.  With a single
+  // block there are no preceding blocks, so the offsets are all zero and the
+  // kernel skips the read.
+  if (grid_x > 1) {
     permute_block_count_kernel<IntT, ROWS_PER_BLOCK, BLOCK_DIM_X>
         <<<grid, block, num_experts * sizeof(uint32_t), dev_ctx.stream()>>>(
             routemap_ptr,
@@ -675,8 +542,8 @@ void launch_permute_kernel(const GPUContext &dev_ctx,
             total_zipped_tokens_num,
             num_experts,
             topk);
-    permute_chain_scan_kernel<256>
-        <<<dim3(num_experts, 2), 256, 0, dev_ctx.stream()>>>(
+    permute_chain_scan_kernel<kPermuteBlockDimX>
+        <<<dim3(num_experts, 2), kPermuteBlockDimX, 0, dev_ctx.stream()>>>(
             cumsum_ptr, static_cast<int>(grid_x), num_experts);
   }
 
@@ -694,13 +561,10 @@ void launch_permute_kernel(const GPUContext &dev_ctx,
       if constexpr (VecGather && !DoGather) {
         return;
       } else {
-        constexpr int kTokBufs = VecGather ? 0 : 2;
-
         int smem = base_smem;
         if constexpr (UseTMA) {
           smem = ((smem + 31) & ~31);
-          smem += kTokBufs * token_length * sizeof(TokenT) +
-                  sizeof(IntT) * TOPK * ROWS_PER_BLOCK +
+          smem += sizeof(IntT) * TOPK * ROWS_PER_BLOCK +
                   sizeof(ProbT) * TOPK * ROWS_PER_BLOCK;
         }
 
@@ -720,24 +584,24 @@ void launch_permute_kernel(const GPUContext &dev_ctx,
           PADDLE_ENFORCE_GPU_SUCCESS(cudaFuncSetAttribute(
               kernel_ptr, cudaFuncAttributeMaxDynamicSharedMemorySize, smem));
         }
-        kernel_ptr<<<grid, block, smem, dev_ctx.stream()>>>(x_ptr,
-                                                            routemap_ptr,
-                                                            prob_ptr,
-                                                            scale_ptr,
-                                                            offset_ptr,
-                                                            offset_end_ptr,
-                                                            x_out_ptr,
-                                                            rowmap_out_ptr,
-                                                            prob_out_ptr,
-                                                            scale_out_ptr,
-                                                            cumsum_ptr,
-                                                            expert_indices_ptr,
-                                                            total_zipped_tokens_num,
-                                                            token_length,
-                                                            scale_length,
-                                                            num_experts,
-                                                            topk,
-                                                            prescan);
+        kernel_ptr<<<grid, block, smem, dev_ctx.stream()>>>(
+            x_ptr,
+            routemap_ptr,
+            prob_ptr,
+            scale_ptr,
+            offset_ptr,
+            offset_end_ptr,
+            x_out_ptr,
+            rowmap_out_ptr,
+            prob_out_ptr,
+            scale_out_ptr,
+            cumsum_ptr,
+            expert_indices_ptr,
+            total_zipped_tokens_num,
+            token_length,
+            scale_length,
+            num_experts,
+            topk);
       }
     });
   });
@@ -1108,12 +972,12 @@ void MoePermuteKernel(const Context &dev_ctx,
   const int64_t cumsum_blocknum_i64 =
       (rows + kEffectiveBlockSize - 1) / kEffectiveBlockSize;
   PADDLE_ENFORCE_LE(
-      cumsum_blocknum_i64 + 2,
+      cumsum_blocknum_i64,
       static_cast<int64_t>(std::numeric_limits<int32_t>::max()) /
           static_cast<int64_t>(num_experts),
       common::errors::InvalidArgument(
           "The cumsum buffer size of moe_permute should be <= INT_MAX, but got "
-          "(%ld + 2) * %d.",
+          "%ld * %d.",
           cumsum_blocknum_i64,
           num_experts));
   const int cumsum_blocknum = static_cast<int>(cumsum_blocknum_i64);
@@ -1124,8 +988,10 @@ void MoePermuteKernel(const Context &dev_ctx,
 
   expert_offset_tensor.Resize({kMaxNumExperts});
   expert_offset_end_tensor.Resize({kMaxNumExperts});
+  // One entry per (block, expert); written by permute_block_count_kernel and
+  // turned into a prefix sum by permute_chain_scan_kernel, so no pre-fill.
   global_expertwise_block_cumsum.Resize(
-      {static_cast<int64_t>(cumsum_blocknum + 2),
+      {static_cast<int64_t>(cumsum_blocknum),
        static_cast<int64_t>(num_experts)});
 
   dev_ctx.template Alloc<int>(&expert_offset_tensor);
@@ -1138,16 +1004,6 @@ void MoePermuteKernel(const Context &dev_ctx,
                       -1,
                       zipped_expertwise_rowmap->numel() * sizeof(int),
                       dev_ctx.stream()));
-
-  // The chain needs the buffer pre-tagged with kCumsumInvalidTag; the
-  // prescan writes every entry itself, so skip the fill there.
-  if (cumsum_blocknum > 1 && !moe_permute_prescan()) {
-    PADDLE_ENFORCE_GPU_SUCCESS(
-        cudaMemsetAsync(global_expertwise_block_cumsum.data<int>(),
-                        -1,
-                        global_expertwise_block_cumsum.numel() * sizeof(int),
-                        dev_ctx.stream()));
-  }
 
   if (is_buffer_overridden) {
     dispatch_preprocess_w_override(dev_ctx,
