@@ -643,42 +643,66 @@ class MuonShardingOptimizer:
         return [b for b in buffers if cls._buffer_color(b) in shared_colors]
 
     def _partition_2d_parameters(self, params, world_size, label=""):
-        """Partition 2D parameters among ranks using greedy bin-packing.
+        """Partition 2D parameters among ranks, bin-packing each dtype apart.
 
-        Only assign parameters to the first n ranks such that total size > comm_buffer_size_MB.
-        Remaining ranks get no parameters.
+        A FusedCommBuffer never mixes dtypes, since ``AssignGroupBySize`` keys
+        its groups on dtype. Bin-packing all dtypes together therefore sizes
+        ``active_ranks`` from the total of the whole color group, and a dtype
+        that only holds a small share of the parameters gets spread over far
+        more ranks than its own volume needs. Each of those ranks then builds a
+        tiny buffer of that dtype instead of one fused buffer. Running the same
+        greedy packing once per dtype keeps every dtype on as few ranks as it
+        actually needs.
+
+        Within a dtype, only the first n ranks are assigned parameters such that
+        total size > comm_buffer_size_MB. Remaining ranks get no parameters.
         """
         mapping = {}
         for rank in range(world_size):
             mapping[rank] = []
 
-        parameters = list(params)
-        parameters.sort(
-            key=lambda p: functools_reduce(lambda x, y: x * y, p.shape),
-            reverse=True,
-        )
+        params_by_dtype = defaultdict(list)
+        for p in params:
+            params_by_dtype[p.dtype].append(p)
 
-        total_numel = sum(
-            functools_reduce(lambda x, y: x * y, p.shape, 1) for p in parameters
-        )
-        total_size_bytes = total_numel * 4
-        total_size_mb = total_size_bytes / (1024**2)
+        # Sorted so the result is fully determined by the input list rather than
+        # by the order the dtypes happen to appear in it. Owner assignment does
+        # not depend on this -- every dtype packs from rank 0 independently --
+        # but the order of each rank's param list does, and that order is what
+        # ``_local_2d`` is built from.
+        for dtype in sorted(params_by_dtype, key=str):
+            parameters = params_by_dtype[dtype]
+            parameters.sort(
+                key=lambda p: functools_reduce(lambda x, y: x * y, p.shape),
+                reverse=True,
+            )
 
-        buffer_size_mb = (
-            self.comm_buffer_size_MB if self.comm_buffer_size_MB > 0 else 256
-        )
-        min_active_ranks = 1
-        if total_size_mb > 0:
-            min_active_ranks = max(1, int(total_size_mb / buffer_size_mb) + 1)
+            total_numel = sum(
+                functools_reduce(lambda x, y: x * y, p.shape, 1)
+                for p in parameters
+            )
+            total_size_bytes = total_numel * 4
+            total_size_mb = total_size_bytes / (1024**2)
 
-        active_ranks = min(min_active_ranks, world_size)
-        sizes = [0] * active_ranks
+            buffer_size_mb = (
+                self.comm_buffer_size_MB
+                if self.comm_buffer_size_MB > 0
+                else 256
+            )
+            min_active_ranks = 1
+            if total_size_mb > 0:
+                min_active_ranks = max(
+                    1, int(total_size_mb / buffer_size_mb) + 1
+                )
 
-        for param in parameters:
-            rank = sizes.index(min(sizes))
-            mapping[rank].append(param)
-            numel = functools_reduce(lambda x, y: x * y, param.shape, 1)
-            sizes[rank] += numel
+            active_ranks = min(min_active_ranks, world_size)
+            sizes = [0] * active_ranks
+
+            for param in parameters:
+                rank = sizes.index(min(sizes))
+                mapping[rank].append(param)
+                numel = functools_reduce(lambda x, y: x * y, param.shape, 1)
+                sizes[rank] += numel
 
         return mapping
 

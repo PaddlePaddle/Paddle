@@ -12,8 +12,15 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <algorithm>
+#include <type_traits>
+
+#include "paddle/common/hostdevice.h"
+#include "paddle/phi/common/bfloat16.h"
+#include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/device_context.h"
+#include "paddle/phi/core/enforce.h"
 
 #pragma once
 
@@ -260,7 +267,7 @@ void gpu_scatter_input_grad_kernel(DenseTensor self,
                                    const DeviceContext& dev_ctx);
 
 template <typename tensor_t, typename index_t>
-void gpu_scatter_mul_min_max_input_grad_kernel(DenseTensor self UNUSED,
+void gpu_scatter_mul_min_max_input_grad_kernel(DenseTensor self,
                                                int dim,
                                                const DenseTensor& index,
                                                const DenseTensor& out,
@@ -310,6 +317,152 @@ void gpu_scatter_mul_min_max_value_grad_kernel(DenseTensor self,
                                                const std::string& reduce,
                                                bool include_self,
                                                const DeviceContext& dev_ctx);
+
+// Only the floating-point instantiations need the round trip below. An integer
+// ``(g * m) / m`` is either exactly ``g`` or an overflow, and torch never takes
+// a gradient through an integer tensor to begin with.
+template <typename tensor_t>
+constexpr bool MulInputGradNeedsRoundTrip() {
+  return std::is_floating_point<tensor_t>::value ||
+         std::is_same<tensor_t, phi::dtype::float16>::value ||
+         std::is_same<tensor_t, phi::dtype::bfloat16>::value;
+}
+
+// Reproduces the rounding torch leaves on the positions of ``x_grad`` that no
+// index reaches, for ``reduce`` in {mul, multiply}.
+//
+// ``FunctionsManual.cpp::scatter_reduce_backward`` computes the input gradient
+// over the *whole* tensor at once:
+//
+//   masked_self = self.masked_fill(self == 0, 1)
+//   grad_self   = grad * masked_self.scatter_reduce(dim, index, src, "prod")
+//               / masked_self
+//
+// Where no index lands, the inner scatter leaves ``masked_self`` untouched and
+// the expression collapses to ``(grad * m) / m``. That is ``grad`` in exact
+// arithmetic, but it rounds twice, so it can land 1 ulp away from ``grad``.
+// Paddle used to hand ``out_grad`` straight through there -- the exact
+// derivative, yet not the value torch reports. Applying the same round trip
+// here is what makes the two frameworks agree bit for bit; the positions an
+// index does reach are overwritten afterwards, and take their base gradient
+// from the untouched ``out_grad`` rather than from this buffer.
+//
+// The zero mask is part of the contract: where ``x`` is zero torch divides by
+// one, which is exact and must not be turned into a division by zero.
+template <typename tensor_t>
+struct MulInputGradRoundTripFunctor {
+  const tensor_t* x_data;
+  tensor_t* grad_data;
+
+  HOSTDEVICE void operator()(size_t i) const {
+    const tensor_t m = x_data[i] == static_cast<tensor_t>(0)
+                           ? static_cast<tensor_t>(1)
+                           : x_data[i];
+    grad_data[i] = static_cast<tensor_t>(grad_data[i] * m) / m;
+  }
+};
+
+// A 0-D operand becomes a 1-D operand holding a single element, the way
+// ``ensure_nonempty_*`` does in torch. ``Resize`` rewrites the metadata of the
+// tensor passed here and nothing else, so a shallow view can be promoted
+// without touching the caller's tensor or the underlying buffer.
+inline void PromoteZeroDimOperand(DenseTensor* tensor) {
+  if (tensor->dims().size() == 0) {
+    tensor->Resize(DDim({1}));
+  }
+}
+
+// Brings the operands of ``put_along_axis`` into the representation that the
+// gather/scatter functor below can actually address, and raises the diagnosis
+// that only the kernel is able to give.
+//
+// torch represents a 0-D tensor as a 1-D tensor holding a single element
+// (``ensure_nonempty_dim`` / ``ensure_nonempty_size`` /
+// ``ensure_nonempty_vec``) and restrides self, index and src into that
+// representation before entering its scatter kernel, so its shape check and its
+// kernel agree on one set of ranks.
+// ``PutAlongAxisInferMeta`` follows the same rule. The functor, however,
+// indexes
+// ``dims()`` and ``strides()`` directly and sizes ``CoordinateManager`` from
+// ``index.dims().size()``: a rank-0 operand would read a slot that
+// ``calc_strides`` never wrote, and a rank-0 ``index`` would give ``ndim ==
+// 0``, leaving ``CoordinateManager::indices`` empty while it is still indexed.
+// So the promotion has to happen here as well.
+//
+// ``Resize`` rewrites the metadata of the tensors passed here and nothing else,
+// so a shallow view can be promoted without touching the caller's tensor or the
+// underlying buffer. ``self`` is the one operand a kernel may have to promote
+// in place, since the scatter writes through it: the ``put_along_axis`` kernels
+// pass their output and restore its shape once the scatter is done, so the
+// promotion never reaches the caller.
+//
+// ``axis`` is normalized at the same time. It reaches the kernel exactly as the
+// caller wrote it, so it can still be negative when the op is entered through
+// ``_C_ops`` rather than the python wrapper.
+inline void PreparePutAlongAxisOperands(DenseTensor* self,
+                                        DenseTensor* index,
+                                        DenseTensor* value,
+                                        int* axis) {
+  const int rank = std::max<int>(static_cast<int>(self->dims().size()), 1);
+  if (*axis < 0) {
+    *axis += rank;
+  }
+  PromoteZeroDimOperand(self);
+  PromoteZeroDimOperand(index);
+  PromoteZeroDimOperand(value);
+
+  // A 0-size scatter dimension leaves no valid index value at all, so every
+  // element of a non-empty ``index`` is out of bounds. torch reports this from
+  // the scatter kernel as an index out-of-bounds error rather than from its
+  // shape check, so the diagnosis is raised here instead of in the InferMeta.
+  //
+  // The shared gather/scatter functor cannot do it: it early-returns on any
+  // 0-size operand, and that early return is relied upon by the grad kernels of
+  // ``take_along_axis``, ``cummax``/``cummin`` and friends, which legitimately
+  // scatter a non-empty index into a 0-size buffer.
+  if (index->numel() == 0) {
+    return;
+  }
+  PADDLE_ENFORCE_NE(
+      self->dims()[*axis],
+      0,
+      common::errors::OutOfRange(
+          "The index is out of bounds, please check whether the index and "
+          "input's shape meet the requirements. It should be greater or equal "
+          "to [0] and less than [0], which leaves no valid index value at all "
+          "because dimension [%d] of the input has size 0.",
+          *axis));
+}
+
+// Companion of ``PreparePutAlongAxisOperands`` for the backward pass.
+//
+// ``PutAlongAxisGradKernel`` reaches the same functor and forwards the shapes
+// and strides of every operand it is given: ``index`` sizes
+// ``CoordinateManager``, ``out_grad`` is the ``self`` of the value-grad
+// functors, and ``value`` is restrided by the mul/min/max input-grad functor.
+// A 0-D tensor has ``numel() == 1``, so it gets past both 0-size early returns
+// of the grad kernel and would reach the functor with rank 0.
+//
+// The 0-size diagnosis raised by the forward helper is not repeated here: by
+// the time this runs, both 0-size cases have already returned. ``axis`` is
+// normalized for the same reason as in the forward kernel -- the grad kernel
+// receives the attribute exactly as the caller wrote it.
+inline void PreparePutAlongAxisGradOperands(DenseTensor* x,
+                                            DenseTensor* index,
+                                            DenseTensor* value,
+                                            DenseTensor* out,
+                                            DenseTensor* out_grad,
+                                            int* axis) {
+  const int rank = std::max<int>(static_cast<int>(x->dims().size()), 1);
+  if (*axis < 0) {
+    *axis += rank;
+  }
+  PromoteZeroDimOperand(x);
+  PromoteZeroDimOperand(index);
+  PromoteZeroDimOperand(value);
+  PromoteZeroDimOperand(out);
+  PromoteZeroDimOperand(out_grad);
+}
 
 }  // namespace funcs
 }  // namespace phi

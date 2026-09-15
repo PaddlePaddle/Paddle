@@ -206,6 +206,9 @@ void weight_permute_gpu(const GPUContext& dev_ctx,
                         const int32_t arch,
                         const std::string& algo) {
   int64_t numel = shape[0] * shape[1];
+  // `numel <= INT32_MAX` bounds every index in the int32 branch.
+  // CUDA_KERNEL_LOOP_TYPE also keeps its loop counter in int64, so the strided
+  // iteration cannot wrap even when numel == INT32_MAX.
   if (numel <= std::numeric_limits<int>::max()) {
     weight_permute_gpu_impl<GPUContext, int>(
         dev_ctx, input_data, output_data, shape, arch, algo);

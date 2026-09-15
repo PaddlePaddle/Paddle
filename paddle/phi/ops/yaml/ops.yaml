@@ -4426,8 +4426,8 @@
   args : (Tensor arr, Tensor indices, Tensor values, int axis, str reduce = "assign", bool include_self = true)
   output : Tensor(out)
   infer_meta :
-    func : UnchangedInferMeta
-    param : [arr]
+    func : PutAlongAxisInferMeta
+    param : [arr, indices, values, axis, reduce]
     spmd_rule : PutAlongAxisInferSpmd
   kernel :
     func : put_along_axis

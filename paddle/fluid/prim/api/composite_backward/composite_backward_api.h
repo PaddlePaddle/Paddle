@@ -2164,11 +2164,11 @@ void var_grad(const Tensor& x,
     auto axis_vec = axis.GetData();
     auto x_dims = common::vectorize<int64_t>(x.dims());
     int64_t x_rank = x_dims.size();
-    if (axis_vec.empty()) {
-      for (int64_t i = 0; i < x_rank; ++i) {
-        axis_vec.push_back(i);
-      }
-    }
+    // An empty `axis` stays empty here. torch's var_backward divides by
+    // _safe_size(sizes, dim), which is 1 for dim=[], while the forward still
+    // reduces everything. paddle.var maps axis=None to the full axis list
+    // before the op is built, so an empty axis reaching this rule is a real
+    // dim=[]. Keep in sync with phi::VarGradKernel.
     for (size_t i = 0; i < axis_vec.size(); ++i) {
       if (axis_vec[i] < 0) {
         axis_vec[i] += x_rank;
@@ -2177,14 +2177,28 @@ void var_grad(const Tensor& x,
 
     auto ones_x =
         full<T>(common::vectorize(x.dims()), 1.0, x.dtype(), x.place());
-    auto n_tensor = sum<T>(ones_x, axis, x.dtype(), true);
+    // `count_tensor` is the mean's divisor, so it follows the forward and
+    // reduces everything for an empty axis. `divisor` is the gradient's
+    // divisor and only multiplies the sizes listed in `axis_vec`, which is 1
+    // for an empty axis.
+    auto count_tensor = sum<T>(ones_x, axis, x.dtype(), true);
 
-    auto correction_tensor = full<T>(
-        common::vectorize(n_tensor.dims()), correction, x.dtype(), x.place());
+    int64_t n = 1;
+    for (int64_t i : axis_vec) {
+      n *= x_dims[i];
+    }
+    auto n_tensor = full<T>(common::vectorize(count_tensor.dims()),
+                            static_cast<double>(n),
+                            x.dtype(),
+                            x.place());
+    auto correction_tensor = full<T>(common::vectorize(count_tensor.dims()),
+                                     correction,
+                                     x.dtype(),
+                                     x.place());
     auto divisor = n_tensor - correction_tensor;
 
     auto sum_val = sum<T>(x, axis, x.dtype(), true);
-    auto mean_val = sum_val / n_tensor;
+    auto mean_val = sum_val / count_tensor;
 
     auto diff = x - mean_val;
 

@@ -64,7 +64,7 @@ PROTECTED_COMPAT_MANGLED_CXX_PREFIXES = (
     "_ZNK6caffe2",
 )
 
-REQUIRED_ABI_APPROVERS = ("SigureMo", "BingooYang")
+REQUIRED_ABI_APPROVERS = ("wanghuancoder", "BingooYang")
 DEFAULT_GITHUB_REPOSITORY = "PaddlePaddle/Paddle"
 GITHUB_API_URL = "https://api.github.com"
 
@@ -447,8 +447,20 @@ def check_abi_issues_approval(
 
 
 def format_approval_failure(approval: ApprovalCheckResult) -> str:
+    def _format_required_reviewers(reviewer: Iterable[str]) -> str:
+        reviewer_list = list(reviewer)
+        if not reviewer_list:
+            raise AssertionError(
+                "_format_reviewer() should not be called with an empty iterable"
+            )
+        if len(reviewer_list) == 1:
+            return reviewer_list[0]
+        if len(reviewer_list) == 2:
+            return " or ".join(reviewer_list)
+        return ", ".join(reviewer_list[:-1]) + " or " + reviewer_list[-1]
+
     lines = [
-        "You must have one RD (SigureMo or BingooYang) approval for protected "
+        f"You must have one RD ({_format_required_reviewers(REQUIRED_ABI_APPROVERS)}) approval for protected "
         "ABI symbol removals.",
     ]
     if approval.reason:
