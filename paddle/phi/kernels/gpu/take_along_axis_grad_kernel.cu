@@ -95,17 +95,19 @@ bool TakeAlongAxisGradDeterministic(const Context& dev_ctx,
   if constexpr (!kTakeAlongAxisDeterministicSupported<T>) {
     return false;
   } else {
+    // Validate dtype first, before the empty-input shortcut below: an empty
+    // index with an unsupported dtype must still fall back to the scatter path
+    // so it raises the proper InvalidArgument instead of silently succeeding.
+    const auto& index_type = index.dtype();
+    if (index_type != DataType::INT32 && index_type != DataType::INT64) {
+      return false;
+    }
+
     int64_t numel = index.numel();
     if (numel == 0) return true;
     if (numel > std::numeric_limits<int>::max()) return false;
     if (out_grad.numel() != numel) return false;
     if (!index.meta().is_contiguous() || !out_grad.meta().is_contiguous()) {
-      return false;
-    }
-    // Only int32/int64 indices are supported here; anything else falls back to
-    // the scatter path (which raises the proper error).
-    const auto& index_type = index.dtype();
-    if (index_type != DataType::INT32 && index_type != DataType::INT64) {
       return false;
     }
 
