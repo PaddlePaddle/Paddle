@@ -104,7 +104,7 @@ void GPUIndexElementwiseGetKernel(const GPUContext& dev_ctx,
                         make_ddim(input_dims).to_str(),
                         make_ddim(input_strides).to_str()));
 
-  auto offset_calc = funcs::make_offset_calculator_put<3, true, OffsetT>(
+  auto offset_calc = funcs::MakeOffsetCalculatorPut<3, true, OffsetT>(
       desired_shape, strides_array);
 
   const int64_t N = output->numel();

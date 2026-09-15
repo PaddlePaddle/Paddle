@@ -239,14 +239,14 @@ struct OffsetCalculator {
 };
 
 template <int N, bool signed_strides = false, typename OffsetT = uint32_t>
-static OffsetCalculator<N, OffsetT, signed_strides> make_offset_calculator_put(
+static OffsetCalculator<N, OffsetT, signed_strides> MakeOffsetCalculatorPut(
     std::vector<int64_t> desired_shape, std::array<int64_t*, N> strides_array) {
   return OffsetCalculator<N, OffsetT, signed_strides>(
       desired_shape.size(), desired_shape.data(), strides_array.data());
 }
 
 template <int N, bool signed_strides = false, typename OffsetT = uint32_t>
-static OffsetCalculator<N, OffsetT, signed_strides> make_offset_calculator(
+static OffsetCalculator<N, OffsetT, signed_strides> MakeOffsetCalculator(
     int ndim,
     const int64_t* shape,
     const std::vector<std::vector<int64_t>>& strides) {
@@ -260,7 +260,7 @@ static OffsetCalculator<N, OffsetT, signed_strides> make_offset_calculator(
 }
 
 template <int N, bool signed_strides = false, typename OffsetT = uint32_t>
-static OffsetCalculator<N, OffsetT, signed_strides> make_offset_calculator(
+static OffsetCalculator<N, OffsetT, signed_strides> MakeOffsetCalculator(
     const DenseTensorIteratorBase& iter) {
   PADDLE_ENFORCE_LE(N,
                     iter.ntensors(),

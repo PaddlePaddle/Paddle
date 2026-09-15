@@ -89,14 +89,14 @@ TEST(IndexElementwiseOffset, CPUUses64BitOffsets) {
   {
     std::array<int64_t*, 1> strides = {int32_overflow_stride};
     auto offset_calc =
-        phi::funcs::CPUmake_offset_calculator_put<1>({shape[0]}, strides);
+        phi::funcs::MakeCPUOffsetCalculatorPut<1>({shape[0]}, strides);
     EXPECT_EQ(offset_calc.cpu_get(1)[0], int32_overflow_stride[0]);
   }
 
   {
     std::array<int64_t*, 1> strides = {uint32_overflow_stride};
     auto offset_calc =
-        phi::funcs::CPUmake_offset_calculator_put<1>({shape[0]}, strides);
+        phi::funcs::MakeCPUOffsetCalculatorPut<1>({shape[0]}, strides);
     EXPECT_EQ(offset_calc.cpu_get(1)[0], uint32_overflow_stride[0]);
   }
 }
