@@ -449,37 +449,45 @@ static bool DeriveSortedPathLayout(const std::vector<int64_t>& input_dims,
                                    int64_t grad_numel,
                                    SortedPathLayout* layout) {
   const size_t ndim = input_dims.size();
-  const size_t nidx = index_strides.size();
-  if (nidx == 0 || ndim == 0 || input_strides.size() != ndim ||
-      index_dims.size() < nidx) {
+  const size_t num_indexed_axes = index_strides.size();
+  if (num_indexed_axes == 0 || ndim == 0 || input_strides.size() != ndim ||
+      index_dims.size() < num_indexed_axes) {
     return false;
   }
 
-  size_t db = 0;
-  while (db < ndim && input_strides[db] != 0) ++db;
-  size_t nblock = 0;
-  while (db + nblock < ndim && input_strides[db + nblock] == 0) ++nblock;
-  if (nblock == 0) return false;
-  for (size_t i = db + nblock; i < ndim; ++i) {
+  size_t dims_before = 0;
+  while (dims_before < ndim && input_strides[dims_before] != 0) ++dims_before;
+  size_t num_zero_stride_axes = 0;
+  while (dims_before + num_zero_stride_axes < ndim &&
+         input_strides[dims_before + num_zero_stride_axes] == 0) {
+    ++num_zero_stride_axes;
+  }
+  if (num_zero_stride_axes == 0) return false;
+  for (size_t i = dims_before + num_zero_stride_axes; i < ndim; ++i) {
     if (input_strides[i] == 0) return false;
   }
 
-  std::vector<int64_t> view(input_dims.begin(), input_dims.begin() + db);
-  std::vector<int64_t> vstride(input_strides.begin(),
-                               input_strides.begin() + db);
-  for (size_t i = 0; i < nidx; ++i) {
+  std::vector<int64_t> view_dims(input_dims.begin(),
+                                 input_dims.begin() + dims_before);
+  std::vector<int64_t> view_strides(input_strides.begin(),
+                                    input_strides.begin() + dims_before);
+  for (size_t i = 0; i < num_indexed_axes; ++i) {
     if (index_dims[i] < 0) return false;
-    view.push_back(index_dims[i]);
-    vstride.push_back(index_strides[i] / elesize);
+    view_dims.push_back(index_dims[i]);
+    view_strides.push_back(index_strides[i] / elesize);
   }
-  view.insert(view.end(), input_dims.begin() + db + nblock, input_dims.end());
-  vstride.insert(
-      vstride.end(), input_strides.begin() + db + nblock, input_strides.end());
+  view_dims.insert(view_dims.end(),
+                   input_dims.begin() + dims_before + num_zero_stride_axes,
+                   input_dims.end());
+  view_strides.insert(
+      view_strides.end(),
+      input_strides.begin() + dims_before + num_zero_stride_axes,
+      input_strides.end());
 
-  if (!IsNonOverlapping(view, vstride)) return false;
+  if (!IsNonOverlapping(view_dims, view_strides)) return false;
 
   int64_t numel = 1;
-  for (int64_t s : view) numel *= s;
+  for (int64_t s : view_dims) numel *= s;
   if (numel <= 0 || numel > grad_numel) return false;
 
   // Every element the sort based kernel touches sits at
@@ -488,11 +496,12 @@ static bool DeriveSortedPathLayout(const std::vector<int64_t>& input_dims,
   // rather than just numel also covers the strided cases, where the region is
   // sparse and reaches further than its element count; a reversed axis has a
   // negative stride and pulls the low end below slice_offset.
-  const int64_t base = slice_offset / elesize;
+  const int64_t slice_offset_elems = slice_offset / elesize;
   funcs::OperandReach reach;
-  funcs::AccumulateReach(view.size(), view.data(), vstride.data(), 1, &reach);
-  const int64_t lo = base + reach.lo;
-  const int64_t hi = base + reach.hi;
+  funcs::AccumulateReach(
+      view_dims.size(), view_dims.data(), view_strides.data(), 1, &reach);
+  const int64_t lo = slice_offset_elems + reach.lo;
+  const int64_t hi = slice_offset_elems + reach.hi;
   PADDLE_ENFORCE_GE(
       lo,
       0,
@@ -502,8 +511,8 @@ static bool DeriveSortedPathLayout(const std::vector<int64_t>& input_dims,
           "%s with strides %s.",
           lo,
           slice_offset,
-          make_ddim(view).to_str(),
-          make_ddim(vstride).to_str()));
+          make_ddim(view_dims).to_str(),
+          make_ddim(view_strides).to_str()));
   PADDLE_ENFORCE_LT(
       hi,
       grad_numel,
@@ -514,18 +523,18 @@ static bool DeriveSortedPathLayout(const std::vector<int64_t>& input_dims,
           hi,
           grad_numel,
           slice_offset,
-          make_ddim(view).to_str(),
-          make_ddim(vstride).to_str()));
+          make_ddim(view_dims).to_str(),
+          make_ddim(view_strides).to_str()));
 
-  std::vector<int64_t> contig(view.size(), 1);
-  for (int i = static_cast<int>(view.size()) - 2; i >= 0; --i) {
-    contig[i] = contig[i + 1] * view[i + 1];
+  std::vector<int64_t> contig_strides(view_dims.size(), 1);
+  for (int i = static_cast<int>(view_dims.size()) - 2; i >= 0; --i) {
+    contig_strides[i] = contig_strides[i + 1] * view_dims[i + 1];
   }
-  layout->is_whole_tensor =
-      (slice_offset == 0 && numel == grad_numel && vstride == contig);
-  layout->dims_before = static_cast<int64_t>(db);
-  layout->view_dims = std::move(view);
-  layout->view_strides = std::move(vstride);
+  layout->is_whole_tensor = (slice_offset == 0 && numel == grad_numel &&
+                             view_strides == contig_strides);
+  layout->dims_before = static_cast<int64_t>(dims_before);
+  layout->view_dims = std::move(view_dims);
+  layout->view_strides = std::move(view_strides);
   layout->view_offset = slice_offset;
   return true;
 }
@@ -547,7 +556,10 @@ void IndexPutWithSortKernel(const GPUContext& dev_ctx,
   }
 
   const bool self_contiguous = self.meta().is_contiguous();
-  auto self_ =
+  // Must be spelled with an explicit type rather than `auto`: `auto` would give
+  // this variable a dependent type, and `self_.data<T>()` would then be parsed
+  // as `(self_.data) < T > (...)`, i.e. a comparison against a type name.
+  DenseTensor self_ =
       self_contiguous ? self : Contiguous<T, GPUContext>(dev_ctx, self);
   DenseTensor expandedValue = value;
 
@@ -560,13 +572,13 @@ void IndexPutWithSortKernel(const GPUContext& dev_ctx,
   view_meta.strides = DenseTensorMeta::calc_strides(view_meta.dims);
   view_src.set_meta(view_meta);
 
-  std::vector<DenseTensor> aligned(layout.view_dims.size());
+  std::vector<DenseTensor> axis_indices(layout.view_dims.size());
   for (size_t i = 0; i < indices.size(); ++i) {
-    aligned[layout.dims_before + i] = *indices[i];
+    axis_indices[layout.dims_before + i] = *indices[i];
   }
 
   auto [linearIndex, nElemBefore, strideBefore, sliceSize] =
-      funcs::computeLinearIndex(dev_ctx, view_src, aligned, false);
+      funcs::computeLinearIndex(dev_ctx, view_src, axis_indices, false);
 
   int64_t num_indices = linearIndex.numel();
 
@@ -594,7 +606,6 @@ void IndexPutWithSortKernel(const GPUContext& dev_ctx,
   }
 
   if (num_indices > 0 && sliceSize > 0) {
-    DenseTensor& src_ = self_;
     linearIndex = Reshape<IndexT, GPUContext>(dev_ctx, linearIndex, {-1});
 
     DenseTensor sorted_indices;
@@ -649,7 +660,7 @@ void IndexPutWithSortKernel(const GPUContext& dev_ctx,
           <<<grid, block, 0, stream>>>(sorted_indices.data<IndexT>(),
                                        orig_indices.data<IndexT>(),
                                        expandedValue.data<T>(),
-                                       src_.data<T>(),
+                                       self_.data<T>(),
                                        num_indices,
                                        sliceSize,
                                        strideBefore,
@@ -660,7 +671,7 @@ void IndexPutWithSortKernel(const GPUContext& dev_ctx,
           <<<grid, block, 0, stream>>>(sorted_indices.data<IndexT>(),
                                        orig_indices.data<IndexT>(),
                                        expandedValue.data<T>(),
-                                       src_.data<T>(),
+                                       self_.data<T>(),
                                        num_indices,
                                        sliceSize,
                                        strideBefore,
@@ -671,7 +682,7 @@ void IndexPutWithSortKernel(const GPUContext& dev_ctx,
           <<<grid, block, 0, stream>>>(sorted_indices.data<IndexT>(),
                                        orig_indices.data<IndexT>(),
                                        expandedValue.data<T>(),
-                                       src_.data<T>(),
+                                       self_.data<T>(),
                                        num_indices,
                                        sliceSize,
                                        strideBefore,

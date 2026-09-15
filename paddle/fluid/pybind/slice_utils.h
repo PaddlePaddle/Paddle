@@ -895,15 +895,15 @@ static Tensor getValueForBoolTensor(const Tensor& tensor,
   } else {
     // Same as the masked_select early return above: this fallback reads the
     // tensor as a dense row-major buffer, so materialize a reversed view.
-    Tensor dense = tensor;
-    if (!dense.is_dist_tensor() && HasNegativeStride(dense)) {
-      dense = dense.contiguous();
+    Tensor dense_tensor = tensor;
+    if (!dense_tensor.is_dist_tensor() && HasNegativeStride(dense_tensor)) {
+      dense_tensor = dense_tensor.contiguous();
     }
 
     if (bool_index.shape().size() == 1)
-      return gather_ad_func(dense, bool_2_idx);
+      return gather_ad_func(dense_tensor, bool_2_idx);
 
-    return gather_nd_ad_func(dense, bool_2_idx);
+    return gather_nd_ad_func(dense_tensor, bool_2_idx);
   }
 }
 
@@ -1052,17 +1052,18 @@ inline static const phi::DenseTensor* GetLocalDenseTensor(const Tensor& t) {
   return static_cast<const phi::DenseTensor*>(t.impl().get());
 }
 
-// Whether `sub` is a view backed by the same allocation as `base`. The
-// stride-kernel gather locates its input via
-// `base.data() + (sub.data() - base.data())`, which is only sound when both
-// tensors share storage. Dense strided_slice results are views sharing the
-// input holder, but DistTensor inputs materialize strided_slice into a
-// fresh buffer, so they must be gathered directly instead.
-inline static bool SharesStorageWith(const Tensor& sub, const Tensor& base) {
-  const phi::DenseTensor* sub_dense = GetLocalDenseTensor(sub);
-  const phi::DenseTensor* base_dense = GetLocalDenseTensor(base);
-  return sub_dense != nullptr && base_dense != nullptr &&
-         sub_dense->Holder() == base_dense->Holder();
+// Whether `sub_tensor` is a view backed by the same allocation as `tensor`.
+// The stride-kernel gather locates its input via
+// `tensor.data() + (sub_tensor.data() - tensor.data())`, which is only sound
+// when both tensors share storage. Dense strided_slice results are views
+// sharing the input holder, but DistTensor inputs materialize strided_slice
+// into a fresh buffer, so they must be gathered directly instead.
+inline static bool SharesStorageWith(const Tensor& sub_tensor,
+                                     const Tensor& tensor) {
+  const phi::DenseTensor* sub_dense = GetLocalDenseTensor(sub_tensor);
+  const phi::DenseTensor* tensor_dense = GetLocalDenseTensor(tensor);
+  return sub_dense != nullptr && tensor_dense != nullptr &&
+         sub_dense->Holder() == tensor_dense->Holder();
 }
 
 static void DealWithIndex(const int pos_of_new_dim,
