@@ -5789,7 +5789,7 @@
 
 # python API: paddle.nn.initializer.TruncatedNormal
 - op : truncated_gaussian_random
-  args : (int[] shape, float mean, float std, int seed, float a, float b, DataType dtype=DataType::FLOAT32, Place place={})
+  args : (int[] shape, double mean, double std, int seed, double a, double b, DataType dtype=DataType::FLOAT32, Place place={})
   output : Tensor(out)
   infer_meta :
     func : TruncatedGaussianRandomInferMeta

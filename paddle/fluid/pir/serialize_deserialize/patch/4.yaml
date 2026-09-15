@@ -162,3 +162,17 @@ op_patches:
       - action : modify_attr
         object : alpha
         type : pir::DoubleAttribute
+  - op_name : pd_op.truncated_gaussian_random
+    actions:
+      - action : modify_attr
+        object : mean
+        type : pir::DoubleAttribute
+      - action : modify_attr
+        object : std
+        type : pir::DoubleAttribute
+      - action : modify_attr
+        object : a
+        type : pir::DoubleAttribute
+      - action : modify_attr
+        object : b
+        type : pir::DoubleAttribute
