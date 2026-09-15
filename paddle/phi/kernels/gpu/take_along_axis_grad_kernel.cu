@@ -21,13 +21,14 @@
 #include "paddle/common/enforce.h"
 #include "paddle/common/flags.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/backends/gpu/gpu_launch_config.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/utils/data_type.h"
 #include "paddle/phi/kernels/arange_kernel.h"
-#include "paddle/phi/kernels/cast_kernel.h"
 #include "paddle/phi/kernels/expand_kernel.h"
 #include "paddle/phi/kernels/funcs/gather_scatter_functor.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
@@ -48,6 +49,27 @@ constexpr bool kTakeAlongAxisDeterministicSupported =
     std::is_same_v<T, phi::dtype::float16> ||
     std::is_same_v<T, phi::dtype::bfloat16>;
 
+// Validate each index is in [-axis_size, axis_size) and normalize negatives to
+// [0, axis_size).
+template <typename IndexT>
+__global__ void TakeAlongAxisCheckNormalizeKernel(const IndexT* __restrict__ in,
+                                                  int64_t* __restrict__ out,
+                                                  int64_t numel,
+                                                  int64_t axis_size) {
+  CUDA_KERNEL_LOOP_TYPE(i, numel, int64_t) {
+    int64_t v = static_cast<int64_t>(in[i]);
+    PADDLE_ENFORCE(
+        v >= -axis_size && v < axis_size,
+        "The index is out of bounds, please check whether the index and "
+        "input's shape meet the requirements. It should be greater or equal "
+        "to [%lld] and less than [%lld], but received [%lld]",
+        static_cast<long long>(-axis_size),  // NOLINT
+        static_cast<long long>(axis_size),   // NOLINT
+        static_cast<long long>(v));          // NOLINT
+    out[i] = v < 0 ? v + axis_size : v;
+  }
+}
+
 // Deterministic take_along_axis backward, numerically bit-aligned with torch.
 //
 // Routes through the shared IndexPutWithSortKernel, which is in same with
@@ -58,9 +80,11 @@ constexpr bool kTakeAlongAxisDeterministicSupported =
 //  other dimension uses an arange broadcast to match `index`'s shape.
 //
 // Returns false (falling back to the atomic scatter-add path) when:
-//   1. the dtype is integral -- accumulation is exact and order-independent,
+//   1. the value dtype T is integral -- accumulation is exact and
+//      order-independent, so determinism is already guaranteed,
 //   2. inputs are non-contiguous -- coordinate recovery assumes contiguity,
-//   3. the element count exceeds INT_MAX -- CUB refuses to sort that many keys.
+//   3. the element count exceeds INT_MAX -- CUB refuses to sort that many keys,
+//   4. the index dtype is neither int32 nor int64.
 template <typename T, typename Context>
 bool TakeAlongAxisGradDeterministic(const Context& dev_ctx,
                                     const DenseTensor& x,
@@ -78,6 +102,12 @@ bool TakeAlongAxisGradDeterministic(const Context& dev_ctx,
     if (!index.meta().is_contiguous() || !out_grad.meta().is_contiguous()) {
       return false;
     }
+    // Only int32/int64 indices are supported here; anything else falls back to
+    // the scatter path (which raises the proper error).
+    const auto& index_type = index.dtype();
+    if (index_type != DataType::INT32 && index_type != DataType::INT64) {
+      return false;
+    }
 
     int ndim = static_cast<int>(index.dims().size());
     if (ndim == 0 || ndim > DDim::kMaxRank) return false;
@@ -87,19 +117,35 @@ bool TakeAlongAxisGradDeterministic(const Context& dev_ctx,
     if (axis < 0 || axis >= ndim) return false;
 
     auto index_shape = vectorize<int64_t>(index.dims());
+    int64_t axis_size = x_grad->dims()[axis];
 
     // Build one index tensor per dimension (torch's _scatter_via_index_put).
     std::vector<DenseTensor> index_holders(ndim);
     std::vector<const DenseTensor*> indices_ptrs(ndim);
-    const auto& index_type = index.dtype();
     for (int d = 0; d < ndim; ++d) {
       if (d == axis) {
+        // Validate range and normalize negatives; also unifies int32/int64.
+        DenseTensor axis_index;
+        axis_index.Resize(index.dims());
+        dev_ctx.template Alloc<int64_t>(&axis_index);
+        auto config = backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel);
+        auto stream = dev_ctx.stream();
         if (index_type == DataType::INT32) {
-          index_holders[d] =
-              Cast<int32_t, Context>(dev_ctx, index, DataType::INT64);
+          TakeAlongAxisCheckNormalizeKernel<int32_t>
+              <<<config.block_per_grid, config.thread_per_block, 0, stream>>>(
+                  index.data<int32_t>(),
+                  axis_index.data<int64_t>(),
+                  numel,
+                  axis_size);
         } else {
-          index_holders[d] = index;
+          TakeAlongAxisCheckNormalizeKernel<int64_t>
+              <<<config.block_per_grid, config.thread_per_block, 0, stream>>>(
+                  index.data<int64_t>(),
+                  axis_index.data<int64_t>(),
+                  numel,
+                  axis_size);
         }
+        index_holders[d] = axis_index;
       } else {
         DenseTensor arange_d;
         arange_d.Resize({index_shape[d]});
