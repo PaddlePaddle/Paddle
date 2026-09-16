@@ -230,7 +230,7 @@ TEST_F(MemoryHistoryRecorderTest, LabelGuardNestsAndPops) {
 
 TEST_F(MemoryHistoryRecorderTest, StackGuardIsNoOpWhenDisabled) {
   {
-    MemStackGuard guard(42);
+    MemStackGuard guard(false, 42);
     EXPECT_EQ(CurrentMemStackId(), 0u);
   }
   EXPECT_EQ(CurrentMemStackId(), 0u);
@@ -241,10 +241,10 @@ TEST_F(MemoryHistoryRecorderTest, StackGuardNestsAndPops) {
   MemoryHistoryRecorder::Instance().SetEnabled(true, 8);
   EXPECT_EQ(CurrentMemStackId(), 0u);
   {
-    MemStackGuard outer(11);
+    MemStackGuard outer(true, 11);
     EXPECT_EQ(CurrentMemStackId(), 11u);
     {
-      MemStackGuard inner(22);
+      MemStackGuard inner(true, 22);
       EXPECT_EQ(CurrentMemStackId(), 22u);
     }
     // An outer wrapper (e.g. PyLayer.apply) stays active between nested ops.
@@ -257,7 +257,7 @@ TEST_F(MemoryHistoryRecorderTest, GuardsStayBalancedWhenToggledMidScope) {
   MemoryHistoryRecorder::Instance().SetEnabled(true, 8);
   {
     MemLabelGuard label("op");
-    MemStackGuard stack(5);
+    MemStackGuard stack(true, 5);
     // Turning recording off inside the guarded scope must not unbalance the
     // pop in the destructor.
     MemoryHistoryRecorder::Instance().SetEnabled(false, 8);
@@ -275,7 +275,7 @@ TEST_F(MemoryHistoryRecorderTest, RecordMemHistoryPicksUpLabelAndStackId) {
   rec.SetEnabled(true, 8);
   {
     MemLabelGuard label("gaussian_random");
-    MemStackGuard stack(99);
+    MemStackGuard stack(true, 99);
     RecordMemHistory(MemHistoryAction::kAlloc, 0, 0x3000, 512, 7, 0);
   }
   auto trace = rec.GetTrace(0);
@@ -290,7 +290,7 @@ TEST_F(MemoryHistoryRecorderTest, StackIdOnlyAttachedToAllocEvents) {
   auto& rec = MemoryHistoryRecorder::Instance();
   rec.SetEnabled(true, 8);
   {
-    MemStackGuard stack(77);
+    MemStackGuard stack(true, 77);
     RecordMemHistory(MemHistoryAction::kFreeCompleted, 0, 0x3000, 512, 0, 0);
   }
   auto trace = rec.GetTrace(0);
@@ -303,7 +303,7 @@ TEST_F(MemoryHistoryRecorderTest, StackMinSizeGatesStackAttribution) {
   rec.SetEnabled(true, 8);
   SetMemStackMinSize(1024);
   {
-    MemStackGuard stack(55);
+    MemStackGuard stack(true, 55);
     // Below the threshold: no stack recorded.
     RecordMemHistory(MemHistoryAction::kAlloc, 0, 0x1000, 512, 0, 0);
     // At/above the threshold: stack recorded.
