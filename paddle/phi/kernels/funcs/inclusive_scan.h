@@ -517,7 +517,8 @@ static __global__ void InclusiveScanCalcBlockSumsCUDAKernel(InputIter x,
     }
     __syncthreads();
 
-    // cub::Sum has different behavior between CUB/CCCL 3.0+ and CUB 2.0+
+    // cub::Sum has different block reduction order
+    // between CUB/CCCL 3.0+ and CUB 2.x
     agg_val += BlockReduceT(temp_storage.reduce).Sum(data);
 
     x += kBlockThreads * kItemsPerThread;
@@ -587,8 +588,8 @@ static __global__ void InclusiveScanFinalScanCUDAKernel(
     }
     __syncthreads();
 
-    // cub::InclusiveSum has different behavior between CUB/CCCL 3.0+ and
-    // CUB 2.0+
+    // cub::InclusiveSum has different block reduction order
+    // between CUB/CCCL 3.0+ and CUB 2.x
     BlockScanT(temp_storage.scan).InclusiveSum(data, data, prefix_op);
 
     __syncthreads();
