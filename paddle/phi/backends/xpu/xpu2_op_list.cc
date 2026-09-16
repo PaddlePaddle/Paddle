@@ -107,7 +107,7 @@ XPUOpMap& get_kl2_ops() {
       {"conv2d_transpose", XPUKernelSet({FLOAT32, FLOAT16})},
       {"conv2d_transpose_xpu", XPUKernelSet({FLOAT32, FLOAT16})},
       {"cumsum", XPUKernelSet({FLOAT32, FLOAT16, INT32, INT64, BFLOAT16})},
-      {"cumsum_grad", XPUKernelSet({FLOAT32, INT32, INT64})},
+      {"cumsum_grad", XPUKernelSet({FLOAT32, INT32, INT64, FLOAT16, BFLOAT16})},
       {"cumprod", XPUKernelSet({FLOAT32, INT32, INT64})},
       {"deformable_conv_grad", XPUKernelSet({FLOAT32})},
       {"deformable_conv", XPUKernelSet({FLOAT32})},
