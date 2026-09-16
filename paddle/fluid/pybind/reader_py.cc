@@ -199,6 +199,7 @@ class MultiDeviceFeedReader {
 
     futures_.resize(dst_places.size());
     ret_.resize(dst_places.size());
+    ret_status_.resize(dst_places.size());
     exceptions_.assign(dst_places.size(), nullptr);
     ReadAsync();
   }
@@ -209,8 +210,9 @@ class MultiDeviceFeedReader {
     CheckNextStatus();
     ResultDictList result;
     result.reserve(ret_.size());
-    for (auto &item : ret_) {
-      if (item.empty()) {
+    for (size_t i = 0; i < ret_.size(); ++i) {
+      auto &item = ret_[i];
+      if (ret_status_[i] != Status::kSuccess) {
         if (!kKeepOrder) result.emplace_back();
         continue;
       }
@@ -238,9 +240,12 @@ class MultiDeviceFeedReader {
     CheckNextStatus();
     ResultList result;
     result.reserve(ret_.size());
-    for (auto &item : ret_) {
-      if (kKeepOrder && item.empty()) continue;
-      result.emplace_back(std::move(item));
+    for (size_t i = 0; i < ret_.size(); ++i) {
+      if (ret_status_[i] != Status::kSuccess) {
+        if (!kKeepOrder) result.emplace_back();
+        continue;
+      }
+      result.emplace_back(std::move(ret_[i]));
     }
     ReadAsync();
     return result;
@@ -273,6 +278,7 @@ class MultiDeviceFeedReader {
     size_t success_num = 0;
     for (size_t i = 0; i < futures_.size(); ++i) {
       auto each_status = futures_[i].get();
+      ret_status_[i] = each_status;
       if (UNLIKELY(each_status != Status::kSuccess)) {
         if (UNLIKELY(each_status == Status::kException)) {
           PADDLE_ENFORCE_NOT_NULL(
@@ -307,8 +313,8 @@ class MultiDeviceFeedReader {
     for (size_t i = 0; i < readers_.size(); ++i) {
       futures_[i] = pool_->enqueue([this, i] {
         try {
-          readers_[i]->ReadNext(&ret_[i]);
-          return ret_[i].empty() ? Status::kEOF : Status::kSuccess;
+          bool success = readers_[i]->ReadNext(&ret_[i]);
+          return success ? Status::kSuccess : Status::kEOF;
         } catch (...) {
           exceptions_[i] = std::current_exception();
           return Status::kException;
@@ -353,6 +359,7 @@ class MultiDeviceFeedReader {
   std::vector<std::exception_ptr> exceptions_;
 
   std::vector<phi::TensorArray> ret_;
+  std::vector<Status> ret_status_;
   bool drop_last_;
   bool pin_memory_;
   int reader_buffer_size_;
