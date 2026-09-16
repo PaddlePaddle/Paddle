@@ -1099,9 +1099,21 @@ static void DealWithIndex(const int pos_of_new_dim,
          static_cast<size_t>(transed_sub_tensor->dims().size())) {
     transed_index->emplace_back(Tensor());
   }
-  *slice_offset =
-      static_cast<int64_t>(reinterpret_cast<char*>(sub_tensor->data()) -
-                           reinterpret_cast<char*>(tensor->data()));
+  // `sub_tensor` is located inside `tensor`'s storage via the byte distance
+  // `sub_tensor.data() - tensor.data()`. That pointer subtraction is only
+  // defined when both point into the same allocation, which holds when
+  // strided_slice returns a storage-sharing view. DistTensor inputs
+  // materialize strided_slice into a fresh buffer, so guard the subtraction
+  // itself: compute the offset only when the storage is shared, otherwise use
+  // 0 (getitem gathers from the materialized `transed_sub_tensor`; setitem
+  // callers refuse below).
+  if (SharesStorageWith(*sub_tensor, *tensor)) {
+    *slice_offset =
+        static_cast<int64_t>(reinterpret_cast<char*>(sub_tensor->data()) -
+                             reinterpret_cast<char*>(tensor->data()));
+  } else {
+    *slice_offset = 0;
+  }
 
   for (auto& indice : *transed_index) {
     if (indice.defined() && indice.dtype() == DataType::INT32) {
@@ -1148,13 +1160,11 @@ static void DispatchSetitemKernel(const int pos_of_new_dim,
     } else {
       if (*out_is_view) {
         mask_tensor = expand_inplace(transed_sub_tensor, &mask_tensor);
-        int64_t slice_offset = static_cast<int64_t>(
-            reinterpret_cast<char*>(transed_sub_tensor->data()) -
-            reinterpret_cast<char*>(tensor->data()));
         // The in-place put writes back through `tensor.data() + slice_offset`,
         // which only reaches the original storage when the view shares it.
         // DistTensor inputs materialize the view into a fresh buffer, so the
-        // write would be lost; refuse instead of silently corrupting memory.
+        // write would be lost; refuse before computing the (cross-allocation,
+        // otherwise UB) offset instead of silently corrupting memory.
         PADDLE_ENFORCE_EQ(
             SharesStorageWith(*transed_sub_tensor, *tensor),
             true,
@@ -1162,6 +1172,9 @@ static void DispatchSetitemKernel(const int pos_of_new_dim,
                 "Strided in-place index assignment (setitem) is not supported "
                 "when the indexed view does not share storage with the source "
                 "tensor (e.g. DistTensor inputs)."));
+        int64_t slice_offset = static_cast<int64_t>(
+            reinterpret_cast<char*>(transed_sub_tensor->data()) -
+            reinterpret_cast<char*>(tensor->data()));
         *transed_sub_tensor = index_elementwise_put__ad_func(
             *tensor,
             {mask_tensor},
@@ -1411,9 +1424,16 @@ static void ApplyGetitem(const int index_size,
   if (transed_index->size() == 1 &&
       (*transed_index)[0].dtype() == DataType::BOOL) {
     // get value for bool tensor
-    const int64_t slice_offset =
-        reinterpret_cast<const char*>(transed_tensor->data()) -
-        reinterpret_cast<const char*>(self_tensor->data());
+    // `slice_offset` locates `transed_tensor` inside `self_tensor`'s storage.
+    // The pointer subtraction is only defined when they share an allocation
+    // (dense strided_slice returns a view); DistTensor inputs materialize a
+    // fresh buffer, so compute the offset only when shared and otherwise pass
+    // 0 (getValueForBoolTensor then gathers from the materialized view).
+    int64_t slice_offset = 0;
+    if (SharesStorageWith(*transed_tensor, *self_tensor)) {
+      slice_offset = reinterpret_cast<const char*>(transed_tensor->data()) -
+                     reinterpret_cast<const char*>(self_tensor->data());
+    }
     *out = getValueForBoolTensor(*transed_tensor,
                                  (*self_tensor),
                                  (*transed_index)[0],
