@@ -766,6 +766,12 @@ static bool HasNegativeStride(const Tensor& tensor) {
   return false;
 }
 
+// Forward declaration; defined below (needs GetLocalDenseTensor). Used by the
+// bool-index stride gather to detect DistTensor inputs whose strided_slice
+// materializes a fresh buffer rather than sharing storage.
+inline static bool SharesStorageWith(const Tensor& sub_tensor,
+                                     const Tensor& tensor);
+
 static Tensor getValueForBoolTensor(const Tensor& tensor,
                                     const Tensor& self_tensor,
                                     const Tensor& bool_index,
@@ -843,18 +849,31 @@ static Tensor getValueForBoolTensor(const Tensor& tensor,
       indices_int64.push_back(indice);
     }
 
+    // `slice_offset` locates the sub-view inside `self_tensor` via
+    // `self_tensor.data() + slice_offset`, which is only sound when `tensor`
+    // (the strided_slice result) shares `self_tensor`'s storage. DistTensor
+    // inputs materialize strided_slice into a fresh buffer, so gather from that
+    // materialized tensor with a zero offset instead (`AdvancedIndex` derives
+    // `src_sizes`/`src_strides` from it).
+    Tensor gather_base = self_tensor;
+    int64_t gather_offset = slice_offset;
+    if (!SharesStorageWith(tensor, self_tensor)) {
+      gather_base = tensor;
+      gather_offset = 0;
+    }
+
     // AMP Logic
     if (egr::Controller::Instance().GetAMPLevel() !=
         paddle::imperative::AmpLevel::O0) {
       auto op_name = phi::TransToFluidOpName("index_elementwise_get");
       paddle::small_vector<std::vector<Tensor>, egr::kSlotSmallVectorSize>
-          amp_tensors_vector = {{self_tensor}};
+          amp_tensors_vector = {{gather_base}};
 
       auto amp_dst_dtype =
           paddle::imperative::GetAmpDestDtype(op_name, amp_tensors_vector);
 
       auto new_self_tensor = paddle::imperative::AmpAutoCast(
-          "self_tensor", self_tensor, amp_dst_dtype, op_name);
+          "self_tensor", gather_base, amp_dst_dtype, op_name);
       auto new_tensor = paddle::imperative::AmpAutoCast(
           "tensor", tensor, amp_dst_dtype, op_name);
 
@@ -873,7 +892,7 @@ static Tensor getValueForBoolTensor(const Tensor& tensor,
                                              ad.src_strides,
                                              ad.indexed_sizes,
                                              ad.indexed_strides,
-                                             slice_offset,
+                                             gather_offset,
                                              accumulate,
                                              is_combined);
       }
@@ -883,13 +902,13 @@ static Tensor getValueForBoolTensor(const Tensor& tensor,
     const bool is_combined = false;
     const bool accumulate = false;
 
-    return index_elementwise_get_ad_func(self_tensor,
+    return index_elementwise_get_ad_func(gather_base,
                                          ad.indices,
                                          ad.src_sizes,
                                          ad.src_strides,
                                          ad.indexed_sizes,
                                          ad.indexed_strides,
-                                         slice_offset,
+                                         gather_offset,
                                          accumulate,
                                          is_combined);
   } else {
@@ -1132,6 +1151,17 @@ static void DispatchSetitemKernel(const int pos_of_new_dim,
         int64_t slice_offset = static_cast<int64_t>(
             reinterpret_cast<char*>(transed_sub_tensor->data()) -
             reinterpret_cast<char*>(tensor->data()));
+        // The in-place put writes back through `tensor.data() + slice_offset`,
+        // which only reaches the original storage when the view shares it.
+        // DistTensor inputs materialize the view into a fresh buffer, so the
+        // write would be lost; refuse instead of silently corrupting memory.
+        PADDLE_ENFORCE_EQ(
+            SharesStorageWith(*transed_sub_tensor, *tensor),
+            true,
+            common::errors::Unimplemented(
+                "Strided in-place index assignment (setitem) is not supported "
+                "when the indexed view does not share storage with the source "
+                "tensor (e.g. DistTensor inputs)."));
         *transed_sub_tensor = index_elementwise_put__ad_func(
             *tensor,
             {mask_tensor},
@@ -1167,6 +1197,19 @@ static void DispatchSetitemKernel(const int pos_of_new_dim,
                     sub_tensor,
                     transed_sub_tensor,
                     &transed_index_int64);
+
+      // `slice_offset` (from DealWithIndex) writes back through
+      // `tensor.data() + slice_offset`, which only reaches the original
+      // storage when `sub_tensor` shares it. DistTensor inputs materialize
+      // strided_slice into a fresh buffer, so the write would be lost; refuse
+      // instead of silently corrupting memory.
+      PADDLE_ENFORCE_EQ(
+          SharesStorageWith(*sub_tensor, *tensor),
+          true,
+          common::errors::Unimplemented(
+              "Strided in-place index assignment (setitem) is not supported "
+              "when the indexed view does not share storage with the source "
+              "tensor (e.g. DistTensor inputs)."));
 
       AdvancedIndex ad =
           AdvancedIndex(*transed_sub_tensor, transed_index_int64);
@@ -1205,6 +1248,17 @@ static void DispatchSetitemKernel(const int pos_of_new_dim,
                     sub_tensor,
                     transed_sub_tensor,
                     &transed_index_int64);
+
+      // See the guard above: refuse strided in-place setitem when the indexed
+      // view does not share storage with the source tensor (e.g. DistTensor
+      // inputs materialize strided_slice into a fresh buffer).
+      PADDLE_ENFORCE_EQ(
+          SharesStorageWith(*sub_tensor, *tensor),
+          true,
+          common::errors::Unimplemented(
+              "Strided in-place index assignment (setitem) is not supported "
+              "when the indexed view does not share storage with the source "
+              "tensor (e.g. DistTensor inputs)."));
 
       AdvancedIndex ad =
           AdvancedIndex(*transed_sub_tensor, transed_index_int64);
