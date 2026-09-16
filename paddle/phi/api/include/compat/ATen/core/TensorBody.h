@@ -23,6 +23,7 @@
 #include <c10/core/Stream.h>
 #include <c10/core/SymIntArrayRef.h>
 #include <c10/util/OptionalArrayRef.h>
+#include <c10/util/string_view.h>
 #include "paddle/phi/api/include/api.h"
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/common/int_array.h"
@@ -459,6 +460,25 @@ class Tensor : public TensorBase {
 
   at::Tensor unsqueeze(int64_t dim) const;
   at::Tensor& unsqueeze_(int64_t dim) const;
+
+  at::Tensor stft(int64_t n_fft,
+                  ::std::optional<int64_t> hop_length,
+                  ::std::optional<int64_t> win_length,
+                  const ::std::optional<at::Tensor>& window,
+                  bool normalized,
+                  ::std::optional<bool> onesided = ::std::nullopt,
+                  ::std::optional<bool> return_complex = ::std::nullopt,
+                  ::std::optional<bool> align_to_window = ::std::nullopt) const;
+  at::Tensor stft(int64_t n_fft,
+                  ::std::optional<int64_t> hop_length = ::std::nullopt,
+                  ::std::optional<int64_t> win_length = ::std::nullopt,
+                  const ::std::optional<at::Tensor>& window = {},
+                  bool center = true,
+                  c10::string_view pad_mode = "reflect",
+                  bool normalized = false,
+                  ::std::optional<bool> onesided = ::std::nullopt,
+                  ::std::optional<bool> return_complex = ::std::nullopt,
+                  ::std::optional<bool> align_to_window = ::std::nullopt) const;
 
   at::Tensor sum(::std::optional<at::ScalarType> dtype = ::std::nullopt) const;
   at::Tensor sum(at::OptionalIntArrayRef dim,
