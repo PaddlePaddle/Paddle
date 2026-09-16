@@ -11,12 +11,12 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
 #include "paddle/phi/kernels/edit_distance_kernel.h"
 
 #include <algorithm>
 #include <vector>
 
+#include "paddle/common/enforce.h"
 #include "paddle/phi/backends/gpu/cuda/cuda_graph_with_memory_pool.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
@@ -51,33 +51,34 @@ template <typename T>
 __global__ void Levenshtein(T* dist,
                             const int64_t* x1,
                             const int64_t* x2,
-                            const int M,
-                            const int N,
-                            const int start) {
+                            const int64_t M,
+                            const int64_t N,
+                            const int64_t start) {
   int64_t idx =
       static_cast<int64_t>(blockDim.x) * static_cast<int64_t>(blockIdx.x) +
       static_cast<int64_t>(threadIdx.x);
-  int offset = N;
-  int index = start + idx * offset;
-  int row = index / (N + 1);
-  int col = index % (N + 1);
+  int64_t offset = N;
+  int64_t index = start + idx * offset;
+  int64_t row = index / (N + 1);
+  int64_t col = index % (N + 1);
   if (row > 0 && col > 0 && row < M + 1 && col < N + 1) {
     int cost = x1[row - 1] == x2[col - 1] ? 0 : 1;
-    int dels = dist[static_cast<int64_t>(row - 1) * (N + 1) + col] + 1;
-    int ins = dist[static_cast<int64_t>(row) * (N + 1) + col - 1] + 1;
-    int subs = dist[static_cast<int64_t>(row - 1) * (N + 1) + (col - 1)] + cost;
+    int dels = dist[(row - 1) * (N + 1) + col] + 1;
+    int ins = dist[row * (N + 1) + col - 1] + 1;
+    int subs = dist[(row - 1) * (N + 1) + (col - 1)] + cost;
     dist[index] = min(dels, min(ins, subs));
   }
 }
 
 template <typename T>
 __global__ void SetOutput(
-    T* out, const T* dist, const int M, const int N, bool normalized) {
+    T* out, const T* dist, const int64_t M, const int64_t N, bool normalized) {
   int64_t idx =
       static_cast<int64_t>(blockDim.x) * static_cast<int64_t>(blockIdx.x) +
       static_cast<int64_t>(threadIdx.x);
   if (idx == 0) {
-    out[0] = normalized ? dist[M * (N + 1) + N] / N : dist[M * (N + 1) + N];
+    int64_t dist_idx = M * (N + 1) + N;
+    out[0] = normalized ? dist[dist_idx] / N : dist[dist_idx];
   }
 }
 
@@ -155,33 +156,55 @@ void EditDistanceKernel(const Context& dev_ctx,
       dist_t.Resize({m + 1, n + 1});
       dev_ctx.template Alloc<T>(&dist_t);
       auto dist = dist_t.data<T>();
+      PADDLE_ENFORCE_LE_INT_MAX(m, "edit_distance m");
+      PADDLE_ENFORCE_LE_INT_MAX(n, "edit_distance n");
+      PADDLE_ENFORCE_LE(
+          m,
+          std::numeric_limits<int>::max() - n - 1,
+          common::errors::InvalidArgument(
+              "edit_distance anti-diagonal slice exceeds int limit."));
+      const int m_int = static_cast<int>(m);
+      const int n_int = static_cast<int>(n);
       auto hyp_offset = use_length ? num * hyps.dims()[1] : hyp_lod[num];
       auto ref_offset = use_length ? num * refs.dims()[1] : ref_lod[num];
       auto x1 = hyps.data<int64_t>() + hyp_offset;
       auto x2 = refs.data<int64_t>() + ref_offset;
 
-      FillFirstColumn<T><<<1 + m / PADDLE_CUDA_NUM_THREADS,
-                           PADDLE_CUDA_NUM_THREADS,
-                           0,
-                           stream>>>(dist, m, n);
+      int64_t fill_column_grid_64 = 1 + m / PADDLE_CUDA_NUM_THREADS;
+      PADDLE_ENFORCE_LE_UINT32_MAX(fill_column_grid_64,
+                                   "FillFirstColumn grid.x");
+      uint32_t fill_column_grid = static_cast<uint32_t>(fill_column_grid_64);
+      FillFirstColumn<T>
+          <<<fill_column_grid, PADDLE_CUDA_NUM_THREADS, 0, stream>>>(
+              dist, m_int, n_int);
 
-      FillFirstRow<T><<<1 + n / PADDLE_CUDA_NUM_THREADS,
-                        PADDLE_CUDA_NUM_THREADS,
-                        0,
-                        stream>>>(dist, n);
+      int64_t fill_row_grid_64 = 1 + n / PADDLE_CUDA_NUM_THREADS;
+      PADDLE_ENFORCE_LE_UINT32_MAX(fill_row_grid_64, "FillFirstRow grid.x");
+      uint32_t fill_row_grid = static_cast<uint32_t>(fill_row_grid_64);
+      FillFirstRow<T>
+          <<<fill_row_grid, PADDLE_CUDA_NUM_THREADS, 0, stream>>>(dist, n_int);
 
       // Compute the elements of distance matrix in the anti-diagonal direction
       for (int64_t slice = 2; slice < m + n + 1; ++slice) {
-        int z_m = slice < m + 1 ? 0 : slice - m;
-        int z_n = slice < n + 1 ? 0 : slice - n;
-        int size = slice - (z_m + z_n) + 1;  // number of elements in the same
-                                             // anti-diagonal line to update
+        int64_t z_m = slice < m + 1 ? 0 : slice - m;
+        int64_t z_n = slice < n + 1 ? 0 : slice - n;
+        int64_t size =
+            slice - (z_m + z_n) + 1;  // number of elements in the same
+                                      // anti-diagonal line to update
         // the start index at which computes from
-        int start = slice < n + 1 ? slice : (z_n + 1) * (n + 1) - 1;
-        Levenshtein<T><<<1 + (size - 1) / PADDLE_CUDA_NUM_THREADS,
-                         PADDLE_CUDA_NUM_THREADS,
-                         0,
-                         stream>>>(dist, x1, x2, m, n, start);
+        int64_t start = slice < n + 1 ? slice : (z_n + 1) * (n + 1) - 1;
+        int64_t levenshtein_grid_64 = 1 + (size - 1) / PADDLE_CUDA_NUM_THREADS;
+        PADDLE_ENFORCE_LE(
+            levenshtein_grid_64,
+            dev_ctx.GetCUDAMaxGridDimSize()[0],
+            common::errors::InvalidArgument(
+                "edit_distance levenshtein grid.x exceeds device limit."));
+        PADDLE_ENFORCE_LE_UINT32_MAX(levenshtein_grid_64,
+                                     "edit_distance levenshtein grid.x");
+        uint32_t levenshtein_grid = static_cast<uint32_t>(levenshtein_grid_64);
+        Levenshtein<T>
+            <<<levenshtein_grid, PADDLE_CUDA_NUM_THREADS, 0, stream>>>(
+                dist, x1, x2, m, n, start);
       }
       SetOutput<T><<<1, 1, 0, stream>>>(out_data + num, dist, m, n, normalized);
     }

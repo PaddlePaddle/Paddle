@@ -89,7 +89,10 @@ void IndexSampleKernel(const Context& dev_ctx,
   int64_t block_height =
       backends::gpu::RoundToPowerOfTwo(index_length * batch_size) / block_width;
   block_height = MIN(block_height, PREDEFINED_BLOCK_SIZE / block_width);
-  dim3 block_dim(block_width, block_height);
+  PADDLE_ENFORCE_LE_UINT32_MAX(block_width, "index sample block.x");
+  PADDLE_ENFORCE_LE_UINT32_MAX(block_height, "index sample block.y");
+  dim3 block_dim(static_cast<uint32_t>(block_width),
+                 static_cast<uint32_t>(block_height));
   const uint64_t grid_x = (index_length + block_dim.x - 1) / block_dim.x;
   const uint64_t grid_y = (batch_size + block_dim.y - 1) / block_dim.y;
   PADDLE_ENFORCE_LE_UINT32_MAX(grid_x, "grid.x");

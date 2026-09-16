@@ -77,8 +77,8 @@ void GumbelSoftmaxKernelHelper(const Context& dev_ctx,
   // TODO(large-tensor): SoftmaxFunctor not support int64
   PADDLE_ENFORCE_LE_INT_MAX(axis_dim, "axis_dim");
 
-  const int size_to_axis = funcs::SizeToAxis(axis, x.dims());
-  const int size_from_axis = funcs::SizeFromAxis(axis, x.dims());
+  const int64_t size_to_axis = funcs::SizeToAxis(axis, x.dims());
+  const int64_t size_from_axis = funcs::SizeFromAxis(axis, x.dims());
   DenseTensor x_noise_2d, out_2d(*out);
   x_noise_2d.Resize({size_to_axis, size_from_axis});
   out_2d.Resize({size_to_axis, size_from_axis});

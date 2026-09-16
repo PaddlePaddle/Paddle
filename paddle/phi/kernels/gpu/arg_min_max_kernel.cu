@@ -21,6 +21,7 @@
 
 #include <limits>
 #include "paddle/common/ddim.h"
+#include "paddle/common/enforce.h"
 #include "paddle/phi/core/utils/data_type.h"
 #include "paddle/phi/kernels/funcs/cub.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
@@ -109,7 +110,13 @@ void ComputeFullArg(const GPUContext& dev_ctx,
   int64_t max_grid_dimx = dev_ctx.GetCUDAMaxGridDimSize()[0];
   int64_t height = pre * post;
   int64_t width = n;
-  int64_t grid_size = height < max_grid_dimx ? height : max_grid_dimx;
+  int64_t grid_size_64 = height < max_grid_dimx ? height : max_grid_dimx;
+  PADDLE_ENFORCE_LE(grid_size_64,
+                    max_grid_dimx,
+                    common::errors::InvalidArgument(
+                        "ArgCUDAKernel grid.x exceeds device limit."));
+  PADDLE_ENFORCE_LE_UINT32_MAX(grid_size_64, "ArgCUDAKernel grid.x");
+  uint32_t grid_size = static_cast<uint32_t>(grid_size_64);
 
   const T* in_data = input.data<T>();
   IndType* out_data = dev_ctx.template Alloc<IndType>(indices);

@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/gpu/correlation_grad_kernel.h"
+#include "paddle/common/enforce.h"
 #include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -223,51 +224,68 @@ void CorrelationCUDAGradKernel(const Context &dev_ctx,
   rinput2.Resize({N, padded_input_height, padded_input_width, C});
   dev_ctx.template Alloc<T>(&rinput2);
 
-  auto max_grid_dim = static_cast<int64_t>(dev_ctx.GetCUDAMaxGridDimSize()[0]);
+  int64_t max_grid_dim =
+      static_cast<int64_t>(dev_ctx.GetCUDAMaxGridDimSize()[0]);
 
   int64_t grid_size = (rinput1.numel() + 512 - 1) / 512;
   grid_size = std::min(static_cast<int64_t>(grid_size), max_grid_dim);
+  PADDLE_ENFORCE_LE_UINT32_MAX(grid_size, "correlation grad set zero grid.x");
+  uint32_t grid_size_value = static_cast<uint32_t>(grid_size);
 
-  set_zero<<<static_cast<int64_t>(grid_size), 512, 0, dev_ctx.stream()>>>(
-      rinput1.data<T>(), rinput1.numel());
+  set_zero<<<grid_size_value, 512, 0, dev_ctx.stream()>>>(rinput1.data<T>(),
+                                                          rinput1.numel());
   grid_size = std::min(static_cast<int64_t>((rinput2.numel() + 512 - 1) / 512),
                        max_grid_dim);
-  set_zero<<<grid_size, 512, 0, dev_ctx.stream()>>>(rinput2.data<T>(),
-                                                    rinput2.numel());
+  PADDLE_ENFORCE_LE_UINT32_MAX(grid_size, "correlation grad set zero grid.x");
+  grid_size_value = static_cast<uint32_t>(grid_size);
+  set_zero<<<grid_size_value, 512, 0, dev_ctx.stream()>>>(rinput2.data<T>(),
+                                                          rinput2.numel());
   grid_size =
       std::min(static_cast<int64_t>((grad_input1->numel() + 512 - 1) / 512),
                max_grid_dim);
-  set_zero<<<grid_size, 512, 0, dev_ctx.stream()>>>(grad_input1->data<T>(),
-                                                    grad_input1->numel());
+  PADDLE_ENFORCE_LE_UINT32_MAX(grid_size, "correlation grad set zero grid.x");
+  grid_size_value = static_cast<uint32_t>(grid_size);
+  set_zero<<<grid_size_value, 512, 0, dev_ctx.stream()>>>(
+      grad_input1->data<T>(), grad_input1->numel());
   grid_size =
       std::min(static_cast<int64_t>((grad_input2->numel() + 512 - 1) / 512),
                max_grid_dim);
-  set_zero<<<grid_size, 512, 0, dev_ctx.stream()>>>(grad_input2->data<T>(),
-                                                    grad_input2->numel());
+  PADDLE_ENFORCE_LE_UINT32_MAX(grid_size, "correlation grad set zero grid.x");
+  grid_size_value = static_cast<uint32_t>(grid_size);
+  set_zero<<<grid_size_value, 512, 0, dev_ctx.stream()>>>(
+      grad_input2->data<T>(), grad_input2->numel());
 
   auto grad_out_dims = grad_output->dims();
   int GOC = grad_out_dims[1];
   int GOH = grad_out_dims[2];
   int GOW = grad_out_dims[3];
 
-  int blocks_grid = std::min(static_cast<int64_t>(N) * H * W, max_grid_dim);
+  int64_t blocks_grid = std::min(static_cast<int64_t>(N) * H * W, max_grid_dim);
+  PADDLE_ENFORCE_LE_UINT32_MAX(blocks_grid,
+                               "correlation grad channel first grid.x");
+  uint32_t blocks_grid_value = static_cast<uint32_t>(blocks_grid);
   dim3 threads_block(THREADS_PER_BLOCK);
 
-  channel_first<T><<<blocks_grid, threads_block, 0, dev_ctx.stream()>>>(
+  channel_first<T><<<blocks_grid_value, threads_block, 0, dev_ctx.stream()>>>(
       input1.data<T>(), rinput1.data<T>(), N, C, H, W, pad_size);
-  channel_first<T><<<blocks_grid, threads_block, 0, dev_ctx.stream()>>>(
+  channel_first<T><<<blocks_grid_value, threads_block, 0, dev_ctx.stream()>>>(
       input2.data<T>(), rinput2.data<T>(), N, C, H, W, pad_size);
 
   dim3 threadsPerBlock(THREADS_PER_BLOCK);
   dim3 totalBlocksCorr(H, W, C);
-  grid_size =
-      std::min((static_cast<int64_t>(C) * H * W + THREADS_PER_BLOCK - 1) /
-                   THREADS_PER_BLOCK,
-               max_grid_dim);
+  grid_size = (static_cast<int64_t>(C) * H * W + THREADS_PER_BLOCK - 1) /
+              THREADS_PER_BLOCK;
+  PADDLE_ENFORCE_LE(
+      grid_size,
+      max_grid_dim,
+      common::errors::InvalidArgument(
+          "correlation backward input grid.x exceeds device limit."));
+  PADDLE_ENFORCE_LE_UINT32_MAX(grid_size, "correlation backward input grid.x");
+  grid_size_value = static_cast<uint32_t>(grid_size);
 
   for (int n = 0; n < N; n++) {
     correlation_backward_input1<T>
-        <<<grid_size, threadsPerBlock, 0, dev_ctx.stream()>>>(
+        <<<grid_size_value, threadsPerBlock, 0, dev_ctx.stream()>>>(
             n,
             grad_input1->data<T>(),
             C,
@@ -287,7 +305,7 @@ void CorrelationCUDAGradKernel(const Context &dev_ctx,
 
   for (int n = 0; n < N; n++) {
     correlation_backward_input2<T>
-        <<<grid_size, threadsPerBlock, 0, dev_ctx.stream()>>>(
+        <<<grid_size_value, threadsPerBlock, 0, dev_ctx.stream()>>>(
             n,
             grad_input2->data<T>(),
             C,

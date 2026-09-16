@@ -14,6 +14,7 @@
 
 #include "paddle/phi/kernels/pad3d_grad_kernel.h"
 
+#include "paddle/common/enforce.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -369,10 +370,14 @@ void Pad3dGradKernel(const Context& dev_ctx,
   const int64_t out_width = d_out_dims[ncdhw ? 4 : 3];
 
   auto stream = dev_ctx.stream();
-  int block = PADDLE_CUDA_NUM_THREADS;
+  uint32_t block = PADDLE_CUDA_NUM_THREADS;
   const size_t out_size = d_out->numel();
   const size_t in_size = d_in->numel();
-  uint32_t grid = (out_size + block - 1) / block;
+  size_t grid_64 = (out_size + block - 1) / block;
+  uint32_t max_grid_dim = dev_ctx.GetCUDAMaxGridDimSize()[0];
+  grid_64 = std::min(grid_64, static_cast<size_t>(max_grid_dim));
+  PADDLE_ENFORCE_LE_UINT32_MAX(grid_64, "pad3d grad grid.x");
+  uint32_t grid = static_cast<uint32_t>(grid_64);
 
   // Three independent sources of magnitude inside the kernels; all must fit:
   //   out_size: loop bound of the reflect/replicate/circular kernels
@@ -437,7 +442,10 @@ void Pad3dGradKernel(const Context& dev_ctx,
                                          pad_left,
                                          d_out_data);
       } else {
-        grid = (in_size + block - 1) / block;
+        grid_64 = (in_size + block - 1) / block;
+        grid_64 = std::min(grid_64, static_cast<size_t>(max_grid_dim));
+        PADDLE_ENFORCE_LE_UINT32_MAX(grid_64, "pad3d grad const grid.x");
+        grid = static_cast<uint32_t>(grid_64);
         Pad3DGradConstNCDHW<T, int32_t><<<grid, block, 0, stream>>>(in_size,
                                                                     d_in_data,
                                                                     num,
@@ -503,7 +511,10 @@ void Pad3dGradKernel(const Context& dev_ctx,
                                          pad_left,
                                          d_out_data);
       } else {
-        grid = (in_size + block - 1) / block;
+        grid_64 = (in_size + block - 1) / block;
+        grid_64 = std::min(grid_64, static_cast<size_t>(max_grid_dim));
+        PADDLE_ENFORCE_LE_UINT32_MAX(grid_64, "pad3d grad const grid.x");
+        grid = static_cast<uint32_t>(grid_64);
         Pad3DGradConstNDHWC<T, int32_t><<<grid, block, 0, stream>>>(in_size,
                                                                     d_in_data,
                                                                     num,
@@ -572,7 +583,10 @@ void Pad3dGradKernel(const Context& dev_ctx,
                                          pad_left,
                                          d_out_data);
       } else {
-        grid = (in_size + block - 1) / block;
+        grid_64 = (in_size + block - 1) / block;
+        grid_64 = std::min(grid_64, static_cast<size_t>(max_grid_dim));
+        PADDLE_ENFORCE_LE_UINT32_MAX(grid_64, "pad3d grad const grid.x");
+        grid = static_cast<uint32_t>(grid_64);
         Pad3DGradConstNCDHW<T, int64_t><<<grid, block, 0, stream>>>(in_size,
                                                                     d_in_data,
                                                                     num,
@@ -638,7 +652,10 @@ void Pad3dGradKernel(const Context& dev_ctx,
                                          pad_left,
                                          d_out_data);
       } else {
-        grid = (in_size + block - 1) / block;
+        grid_64 = (in_size + block - 1) / block;
+        grid_64 = std::min(grid_64, static_cast<size_t>(max_grid_dim));
+        PADDLE_ENFORCE_LE_UINT32_MAX(grid_64, "pad3d grad const grid.x");
+        grid = static_cast<uint32_t>(grid_64);
         Pad3DGradConstNDHWC<T, int64_t><<<grid, block, 0, stream>>>(in_size,
                                                                     d_in_data,
                                                                     num,
