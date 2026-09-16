@@ -432,7 +432,7 @@ XPUOpMap& get_kl3_ops() {
                      BFLOAT16,
                      FLOAT64})},
       {"index_elementwise_get_grad",
-       XPUKernelSet({INT32, FLOAT32, FLOAT16, BFLOAT16})},
+       XPUKernelSet({INT32, INT64, FLOAT32, FLOAT16, BFLOAT16})},
       {"index_elementwise_put",
        XPUKernelSet({BOOL,
                      INT32,
