@@ -207,6 +207,24 @@ PyObject * eager_api_{}(PyObject *self, PyObject *args, PyObject *kwargs) {{
 
 NOAMP_DYGRAPH_FUNCTION_TEMPLATE = "decltype({}({})) ad_func_out = {}({});"
 
+XPU_LOGICAL_AND_DYGRAPH_FUNCTION_TEMPLATE = """// Avoid unsupported XPU complex128 promotion for bool-only logical_and.
+    if (phi::is_xpu_place(place) &&
+        ({x}.dtype() != phi::DataType::BOOL || {y}.dtype() != phi::DataType::BOOL)) {{
+      auto bool_{x} = {x}.dtype() == phi::DataType::BOOL
+                        ? {x}
+                        : paddle::experimental::cast({x}, phi::DataType::BOOL);
+      auto bool_{y} = {y}.dtype() == phi::DataType::BOOL
+                        ? {y}
+                        : paddle::experimental::cast({y}, phi::DataType::BOOL);
+      decltype({function_name}({bool_args})) ad_func_out =
+          {function_name}({bool_args});
+      PyEval_RestoreThread(tstate);
+      tstate = nullptr;
+      {return_str}
+    }}
+
+    {default_call}"""
+
 
 FUNCTION_SET_DEVICE_TEMPLATE = """{}
     SetPythonStack();
@@ -248,6 +266,7 @@ PYTHON_C_FUNCTION_REG_TEMPLATE = '  {{"{}{}", (PyCFunction)(void(*)(void)) {}eag
 PYTHON_C_WRAPPER_TEMPLATE = """
 #include <Python.h>
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/api/include/api.h"
 #include "paddle/phi/api/include/strings_api.h"
 #include "paddle/phi/backends/device_manager.h"
 #include "paddle/fluid/pybind/eager_utils.h"
@@ -860,6 +879,23 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
             return_str += "    return ToPyObject(ad_func_out, args, kwargs, inplace_var_idx_map, inplace_var_name_map);"
         else:
             return_str = "    return ToPyObject(ad_func_out);"
+
+        if forward_api_name == "logical_and" and not inplace:
+            x = "x"
+            y = "y"
+            call_args = dygraph_function_call_str.split(",")
+            call_args[forward_inputs_position_map[x][1]] = f"bool_{x}"
+            call_args[forward_inputs_position_map[y][1]] = f"bool_{y}"
+            noamp_dygraph_function_str = (
+                XPU_LOGICAL_AND_DYGRAPH_FUNCTION_TEMPLATE.format(
+                    x=x,
+                    y=y,
+                    function_name=fwd_function_name,
+                    bool_args=",".join(call_args),
+                    return_str=return_str.strip(),
+                    default_call=noamp_dygraph_function_str,
+                )
+            )
 
         # Generate Record Event for performance profiling
         pythonc_record_event_str = RECORD_EVENT_TEMPLATE.format(

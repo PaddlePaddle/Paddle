@@ -173,6 +173,11 @@ void LogicalXorKernel(const Context& dev_ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(logical_not, XPU, ALL_LAYOUT, phi::LogicalNotKernel, bool) {}
-PD_REGISTER_KERNEL(logical_and, XPU, ALL_LAYOUT, phi::LogicalAndKernel, bool) {}
+PD_REGISTER_KERNEL(logical_and, XPU, ALL_LAYOUT, phi::LogicalAndKernel, bool) {
+  // XPU logical kernels are bool-only.
+  kernel->InputAt(0).SetDataType(phi::DataType::BOOL);
+  kernel->InputAt(1).SetDataType(phi::DataType::BOOL);
+  kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);
+}
 PD_REGISTER_KERNEL(logical_or, XPU, ALL_LAYOUT, phi::LogicalOrKernel, bool) {}
 PD_REGISTER_KERNEL(logical_xor, XPU, ALL_LAYOUT, phi::LogicalXorKernel, bool) {}
