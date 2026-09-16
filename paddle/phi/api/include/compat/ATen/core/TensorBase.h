@@ -259,12 +259,6 @@ class PADDLE_API TensorBase {
     return compat::_PD_PhiDataTypeToAtenScalarType(tensor_.dtype());
   }
 
-  bool has_names() const {
-    // In PyTorch, has_names() is used to check if any dimension has names.
-    // In Paddle, we don't support named dimension yet, so always return false.
-    return false;
-  }
-
   TensorOptions options() const {
     return TensorOptions().dtype(dtype()).device(device()).layout(layout());
   }

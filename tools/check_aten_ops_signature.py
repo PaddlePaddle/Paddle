@@ -31,7 +31,7 @@ ATEN_OPS_DIR = Path("paddle/phi/api/include/compat/ATen/ops")
 ATEN_TENSOR_BODY = Path("paddle/phi/api/include/compat/ATen/core/TensorBody.h")
 ATEN_TENSOR_BASE = Path("paddle/phi/api/include/compat/ATen/core/TensorBase.h")
 TORCH_INSTALL_HINT = (
-    "pip install torch==2.12.1 --index-url https://download.pytorch.org/whl/cpu"
+    "pip install torch==2.13.0 --index-url https://download.pytorch.org/whl/cpu"
 )
 
 BUILTIN_TYPE_WORDS = {
