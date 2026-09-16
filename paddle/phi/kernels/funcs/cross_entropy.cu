@@ -145,6 +145,12 @@ void CrossEntropyFunctor<DeviceContext, T>::operator()(
                         "allowed size is 2 ^ 31 - 1 elements, but got %lld",
                         out->numel()));
 
+  // Handle zero-size tensor to avoid invalid kernel configuration
+  // (e.g., when class_num is 0, std::log2(0) is undefined behavior)
+  if (class_num_int == 0 || batch_size_int == 0) {
+    return;
+  }
+
   if (softLabel) {
     const T* label_data = labels->data<T>();
     int block = class_num_int > kMaxBlockDim
