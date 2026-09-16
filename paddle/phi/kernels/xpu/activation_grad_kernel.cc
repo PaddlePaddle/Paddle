@@ -14,6 +14,8 @@ limitations under the License. */
 
 #include "paddle/phi/kernels/activation_grad_kernel.h"
 
+#include <type_traits>
+
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/activation_functor.h"
@@ -601,11 +603,33 @@ struct XPUSinGradFunctor : public funcs::BaseActivationFunctor<T> {
     auto dout_data = dout->data<T>();
     auto x_data = x->data<T>();
 
-    int r = xpu::sin_grad<T>(dev_ctx.x_context(),
-                             reinterpret_cast<const XPUType*>(x_data),
-                             reinterpret_cast<const XPUType*>(dout_data),
-                             reinterpret_cast<XPUType*>(dx_data),
-                             len);
+    int r = 0;
+    if constexpr (std::is_same_v<T, float>) {
+      // xpu::sin_grad<float> uses a less accurate cosine approximation on
+      // XPU.  Compute cos(x) explicitly and multiply by dout to match the
+      // CUDA sin_grad formula more closely, which avoids amplification in
+      // composed ops such as paddle.sinc backward.
+      xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
+      XPUType* cos_x = RAII_GUARD.alloc_l3_or_gm<XPUType>(len);
+      PADDLE_ENFORCE_NOT_NULL(
+          cos_x, common::errors::External("XPU has no enough memory"));
+      r = xpu::cos<XPUType>(dev_ctx.x_context(),
+                            reinterpret_cast<const XPUType*>(x_data),
+                            cos_x,
+                            len);
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "cos");
+      r = xpu::mul<XPUType>(dev_ctx.x_context(),
+                            reinterpret_cast<const XPUType*>(dout_data),
+                            cos_x,
+                            reinterpret_cast<XPUType*>(dx_data),
+                            len);
+    } else {
+      r = xpu::sin_grad<T>(dev_ctx.x_context(),
+                           reinterpret_cast<const XPUType*>(x_data),
+                           reinterpret_cast<const XPUType*>(dout_data),
+                           reinterpret_cast<XPUType*>(dx_data),
+                           len);
+    }
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "sin_grad");
   }
 };
