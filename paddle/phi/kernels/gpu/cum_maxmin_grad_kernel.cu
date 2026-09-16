@@ -88,7 +88,7 @@ __global__ void CumMaxMinScatterAddRunKernel(const IndexT* indices,
   }
 }
 
-// Note: if funcs::gpu_scatter_add_kernel has deternistic implementation,
+// Note: if funcs::gpu_scatter_add_kernel has deterministic implementation,
 // this path can be removed.
 template <typename T, typename Context>
 void ScatterAddDeterministic(const Context& dev_ctx,

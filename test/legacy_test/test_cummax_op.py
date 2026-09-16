@@ -270,9 +270,9 @@ def cum_scatter_add_ref(indices, out_grad, axis):
 
 
 class TestCummaxGradDeterministicGPU(unittest.TestCase):
-    """Regression tests for the deterministic cummin gradient path.
+    """Regression tests for the deterministic cummax gradient path.
     ``ScatterAddDeterministic`` in ``cum_maxmin_grad_kernel.cu``
-    is only reached when ``FLAGS_cudnn_deterministic`` are on.
+    is only reached when ``FLAGS_cudnn_deterministic`` is on.
     These tests cover forward+backward, duplicate-maximum run merging,
     several axes (including negative), both ``int32``/``int64`` index
     dtypes, runs longer than a warp, and run-to-run stability.

@@ -1207,8 +1207,8 @@ class TestCumsumInnerDimSklanskyGPU(unittest.TestCase):
     Cumsum along the last axis of a >=2D tensor makes ``GetCumprodDimInfo``
     return ``inner_dim == 1`` with ``outer_dim > 1``; with
     ``FLAGS_use_accuracy_compatible_kernel`` on, ``InclusiveScan`` dispatches to
-    ``InclusiveScanInnerDimSklansky`` (inclusive_scan.h:696-702). This branch is
-    independent of ``FLAGS_cudnn_deterministic``.
+    ``InclusiveScanInnerDimSklansky`` (see ``InclusiveScan`` in
+    inclusive_scan.h).
     """
 
     def setUp(self):

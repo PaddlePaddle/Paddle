@@ -49,7 +49,7 @@ template <typename T>
 struct AddFunctor;
 
 // The deterministic scan hard-codes summation (BlockScan::InclusiveSum), so it
-// only applies to the plus-like ops that cumsum passes in.
+// only applies to plus-like ops (cumsum, cumprod_grad, multinomial).
 template <typename BinaryOp>
 struct IsPlusOp : public std::false_type {};
 
@@ -517,7 +517,9 @@ static __global__ void InclusiveScanCalcBlockSumsCUDAKernel(InputIter x,
     }
     __syncthreads();
 
-    // cub::Sum has different behavior between CUB/CCCL 3.0+ and CUB 2.0+
+    // The per-thread reduction inside BlockReduce::Sum (cub::ThreadReduce) is
+    // sequential before CCCL 2.8, while CCCL 2.8+ uses a binary tree / SIMD
+    // for types smaller than 8 bytes, so the summation order differs.
     agg_val += BlockReduceT(temp_storage.reduce).Sum(data);
 
     x += kBlockThreads * kItemsPerThread;
@@ -587,8 +589,10 @@ static __global__ void InclusiveScanFinalScanCUDAKernel(
     }
     __syncthreads();
 
-    // cub::InclusiveSum has different behavior between CUB/CCCL 3.0+ and
-    // CUB 2.0+
+    // The per-thread reduction inside BlockScan::InclusiveSum
+    // (cub::ThreadReduce) is sequential before CCCL 2.8,
+    // while CCCL 2.8+ uses a binary tree / SIMD for types smaller
+    // than 8 bytes, so the summation order differs.
     BlockScanT(temp_storage.scan).InclusiveSum(data, data, prefix_op);
 
     __syncthreads();
