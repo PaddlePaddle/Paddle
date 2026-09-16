@@ -70,7 +70,7 @@ inline void dynamic_dim_assign(const T1* in, T2* out, int n) {
  */
 class TEST_API DDim {
  public:
-  constexpr static int kMaxRank = 9;
+  constexpr static int kMaxRank = 16;
 
   DDim();
 
