@@ -14,6 +14,8 @@ limitations under the License. */
 
 #include "paddle/phi/kernels/activation_grad_kernel.h"
 
+#include <type_traits>
+
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/activation_functor.h"
@@ -601,12 +603,44 @@ struct XPUSinGradFunctor : public funcs::BaseActivationFunctor<T> {
     auto dout_data = dout->data<T>();
     auto x_data = x->data<T>();
 
-    int r = xpu::sin_grad<T>(dev_ctx.x_context(),
-                             reinterpret_cast<const XPUType*>(x_data),
-                             reinterpret_cast<const XPUType*>(dout_data),
-                             reinterpret_cast<XPUType*>(dx_data),
-                             len);
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "sin_grad");
+    if constexpr (std::is_same<T, phi::bfloat16>::value) {
+      // Backend sin_grad does not provide bfloat16; use float temporaries.
+      xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
+      float* x_float = RAII_GUARD.alloc_l3_or_gm<float>(len);
+      float* dout_float = RAII_GUARD.alloc_l3_or_gm<float>(len);
+      float* dx_float = RAII_GUARD.alloc_l3_or_gm<float>(len);
+      PADDLE_ENFORCE_XDNN_NOT_NULL(x_float);
+      PADDLE_ENFORCE_XDNN_NOT_NULL(dout_float);
+      PADDLE_ENFORCE_XDNN_NOT_NULL(dx_float);
+
+      int r =
+          xpu::cast<XPUType, float>(dev_ctx.x_context(),
+                                    reinterpret_cast<const XPUType*>(x_data),
+                                    x_float,
+                                    len);
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
+      r = xpu::cast<XPUType, float>(dev_ctx.x_context(),
+                                    reinterpret_cast<const XPUType*>(dout_data),
+                                    dout_float,
+                                    len);
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
+      r = xpu::sin_grad<float>(
+          dev_ctx.x_context(), x_float, dout_float, dx_float, len);
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "sin_grad");
+      r = xpu::cast<float, XPUType>(dev_ctx.x_context(),
+                                    dx_float,
+                                    reinterpret_cast<XPUType*>(dx_data),
+                                    len);
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
+    } else {
+      int r =
+          xpu::sin_grad<XPUType>(dev_ctx.x_context(),
+                                 reinterpret_cast<const XPUType*>(x_data),
+                                 reinterpret_cast<const XPUType*>(dout_data),
+                                 reinterpret_cast<XPUType*>(dx_data),
+                                 len);
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "sin_grad");
+    }
   }
 };
 
@@ -852,5 +886,11 @@ PD_REGISTER_ACTIVATION_GRAD_KERNEL(reciprocal_grad, ReciprocalGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(relu6_grad, Relu6GradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(mish_grad, MishGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(softplus_grad, SoftplusGradKernel)
-PD_REGISTER_ACTIVATION_GRAD_KERNEL(sin_grad, SinGradKernel)
+PD_REGISTER_KERNEL(sin_grad,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::SinGradKernel,
+                   float,
+                   phi::float16,
+                   phi::bfloat16) {}
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(cos_grad, CosGradKernel)
