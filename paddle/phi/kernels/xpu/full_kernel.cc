@@ -14,6 +14,9 @@
 
 #include "paddle/phi/kernels/full_kernel.h"
 
+#include <type_traits>
+#include <vector>
+
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/common/memory_utils.h"
@@ -36,11 +39,21 @@ void FullKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(out);
   if (out->numel() > 0) {
     auto out_data = reinterpret_cast<XPUInTDType*>(out->data<T>());
-    int r = xpu::constant(dev_ctx.x_context(),
-                          out_data,
-                          out->numel(),
-                          static_cast<XPUInTDType>(val.to<T>()));
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
+    if constexpr (std::is_same_v<T, int64_t>) {
+      // Avoid XDNN int64 constant failures on non-vector-aligned sizes.
+      std::vector<int64_t> cpu_data(out->numel(), val.to<int64_t>());
+      memory_utils::Copy(dev_ctx.GetPlace(),
+                         out_data,
+                         CPUPlace(),
+                         cpu_data.data(),
+                         out->numel() * sizeof(int64_t));
+    } else {
+      int r = xpu::constant(dev_ctx.x_context(),
+                            out_data,
+                            out->numel(),
+                            static_cast<XPUInTDType>(val.to<T>()));
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
+    }
   }
 }
 
