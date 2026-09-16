@@ -16,7 +16,6 @@
 #include <type_traits>
 #include <vector>
 
-#include "paddle/common/flags.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/cast_kernel.h"
 #include "paddle/phi/kernels/full_kernel.h"
@@ -24,8 +23,6 @@
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
 #include "paddle/phi/kernels/tile_grad_kernel.h"
-
-COMMON_DECLARE_bool(use_accuracy_compatible_kernel);
 
 namespace phi {
 
@@ -90,9 +87,10 @@ bool TileGradCompatKernel(const Context& dev_ctx,
                           const DenseTensor& out_grad,
                           const std::vector<int64_t>& repeat_times_data,
                           DenseTensor* x_grad) {
-  if constexpr (!(std::is_same_v<T, float> || std::is_same_v<T, double> ||
-                  std::is_same_v<T, dtype::float16> ||
-                  std::is_same_v<T, dtype::bfloat16>)) {
+  // float8 types have no SumKernel implementation, so they fall back to the
+  // Eigen-based TileBackward path.
+  if constexpr (std::is_same_v<T, dtype::float8_e4m3fn> ||
+                std::is_same_v<T, dtype::float8_e5m2>) {
     return false;
   } else {
     if (!out_grad.meta().is_contiguous()) {
@@ -185,8 +183,20 @@ void TileGradKernel(const Context& dev_ctx,
     // TensorCopy may change the dims of dx
     x_grad->Resize(x_dims);
   } else {
-    if (FLAGS_use_accuracy_compatible_kernel &&
-        TileGradCompatKernel<T, Context>(
+    // The reduce-based gradient reshapes the tensor, which cannot express a
+    // rank beyond DDim::kMaxRank(9).
+    PADDLE_ENFORCE_LE(
+        dims,
+        DDim::kMaxRank,
+        errors::InvalidArgument(
+            "The rank of the input 'Out@GRAD' for tile_grad op must be less "
+            "than or equal to %d, but the value received is %d.",
+            DDim::kMaxRank,
+            dims));
+    // Prefer the torch-compatible reduce-based implementation. It returns
+    // false and falls back to the Eigen path below for dtypes it does not
+    // support (float8) or when the reduced rank exceeds DDim::kMaxRank.
+    if (TileGradCompatKernel<T, Context>(
             dev_ctx, x_dims, out_grad, repeat_times_data, x_grad)) {
       return;
     }
