@@ -14,6 +14,8 @@
 
 #include "paddle/fluid/framework/new_executor/garbage_collector/fast_garbage_collector.h"
 
+#include "paddle/phi/core/platform/cuda_graph_with_memory_pool.h"
+
 namespace paddle {
 namespace framework {
 
@@ -83,6 +85,18 @@ void InterpreterCoreFastGarbageCollector::Add(Garbage garbage) {
   if (!garbage) {
     return;
   }
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  // During CUDA Graph capturing, cudaFree is not permitted.
+  // Always defer the actual deallocation by keeping garbage in the queue,
+  // it will be freed when the garbage collector is destroyed after capturing.
+  if (platform::IsCUDAGraphCapturing()) {
+    std::lock_guard<memory::SpinLock> guard(spinlock_);
+    cur_memory_size_ += static_cast<int64_t>(garbage->size());
+    garbages_->push_back(std::move(garbage));
+    return;
+  }
+#endif
 
   if (max_memory_size_ > 1) {
     std::unique_ptr<GarbageQueue> pending_delete_garbages;

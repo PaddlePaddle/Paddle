@@ -25,6 +25,7 @@
 
 COMMON_DECLARE_bool(fast_eager_deletion_mode);
 COMMON_DECLARE_bool(new_executor_use_cuda_graph);
+PD_DECLARE_bool(use_system_allocator);
 
 namespace paddle {
 namespace framework {
@@ -62,17 +63,24 @@ inline bool IsInterpretercoreFastGCEnabled() {
                     common::errors::InvalidArgument(
                         "StreamSafeAllocator and AsyncAllocator shouldn't be "
                         "True together."));
-  PADDLE_ENFORCE_EQ(memory::allocation::AllocatorFacade::Instance()
-                                .IsStreamSafeCUDAAllocatorUsed() == false &&
-                        memory::allocation::AllocatorFacade::Instance()
-                                .IsCUDAMallocAsyncAllocatorUsed() == false &&
-                        FLAGS_new_executor_use_cuda_graph,
-                    false,
-                    common::errors::InvalidArgument(
-                        "When FLAGS_new_executor_use_cuda_graph is true, "
-                        "Either IsStreamSafeCUDAAllocatorUsed or "
-                        "IsCUDAMallocAsyncAllocatorUsed must be true, but "
-                        "got false."));
+  // When FLAGS_use_system_allocator is true, IsStreamSafeCUDAAllocatorUsed()
+  // and IsCUDAMallocAsyncAllocatorUsed() always return false regardless of
+  // their internal state. Skip this check in that case since system allocator
+  // manages memory via cudaMalloc/cudaFree directly and does not conflict
+  // with CUDA Graph capture (memory is allocated before capture begins).
+  if (!FLAGS_use_system_allocator) {
+    PADDLE_ENFORCE_EQ(memory::allocation::AllocatorFacade::Instance()
+                                  .IsStreamSafeCUDAAllocatorUsed() == false &&
+                          memory::allocation::AllocatorFacade::Instance()
+                                  .IsCUDAMallocAsyncAllocatorUsed() == false &&
+                          FLAGS_new_executor_use_cuda_graph,
+                      false,
+                      common::errors::InvalidArgument(
+                          "When FLAGS_new_executor_use_cuda_graph is true, "
+                          "Either IsStreamSafeCUDAAllocatorUsed or "
+                          "IsCUDAMallocAsyncAllocatorUsed must be true, but "
+                          "got false."));
+  }
   return (memory::allocation::AllocatorFacade::Instance()
               .IsStreamSafeCUDAAllocatorUsed() &&
           FLAGS_fast_eager_deletion_mode) ||
