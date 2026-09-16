@@ -746,5 +746,19 @@ class TestRepeatInterleave_ZeroSizeRepeatsTensor(unittest.TestCase):
         self._check(repeats_dtype="int64")
 
 
+class TestRepeatInterleaveInvalidOutputSizeForZeroRepeatsGPU(unittest.TestCase):
+    def test_invalid_positive_output_size_raises(self):
+        if not paddle.is_compiled_with_cuda() or paddle.is_compiled_with_rocm():
+            self.skipTest("CUDA-only regression test")
+
+        paddle.disable_static()
+        place = paddle.CUDAPlace(0)
+        x = paddle.to_tensor(np.zeros([0], dtype="float32"), place=place)
+        repeats = paddle.to_tensor(np.zeros([0], dtype="int32"), place=place)
+
+        with self.assertRaises(ValueError):
+            paddle.repeat_interleave(x, repeats, axis=0, output_size=1)
+
+
 if __name__ == '__main__':
     unittest.main()
