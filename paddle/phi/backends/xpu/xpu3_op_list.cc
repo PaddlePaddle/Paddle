@@ -411,7 +411,7 @@ XPUOpMap& get_kl3_ops() {
       {"grid_sampler", XPUKernelSet({FLOAT32})},
       {"grid_sampler_grad", XPUKernelSet({FLOAT32})},
       {"group_norm_silu_xpu", XPUKernelSet({FLOAT32, FLOAT16})},
-      {"hard_sigmoid_grad", XPUKernelSet({FLOAT32})},
+      {"hard_sigmoid_grad", XPUKernelSet({FLOAT32, FLOAT16})},
       {"hard_sigmoid", XPUKernelSet({FLOAT32, FLOAT16})},
       {"hard_swish_grad", XPUKernelSet({FLOAT32, FLOAT16})},
       {"hard_swish", XPUKernelSet({FLOAT32})},
