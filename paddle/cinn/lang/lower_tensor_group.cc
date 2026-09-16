@@ -246,6 +246,12 @@ std::vector<BlockRef> LowerTensorGroup::GenerateFunctionBody(
               bodies.clear();
             }
           },
+          [&](common::XpuArch) {
+            if (!gpu_local) {
+              result.push_back(BlockRef(bodies));
+              bodies.clear();
+            }
+          },
           [&](common::CustomDeviceArch) {
             if (!gpu_local) {
               result.push_back(BlockRef(bodies));

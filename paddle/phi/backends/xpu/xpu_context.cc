@@ -188,6 +188,15 @@ struct XPUContext::Impl {
         << "Please NOTE: xpu device: " << static_cast<int>(place_.device);
 
     context_ = xpu::create_context();
+    PADDLE_ENFORCE_NOT_NULL(
+        context_,
+        common::errors::Fatal(
+            "xpu::create_context() returned nullptr on xpu device %d. This "
+            "usually means the XHPC (libxpuapi.so) build does not match the "
+            "installed XRE / XPU driver, or the device is not available. "
+            "Please check that the XHPC and XRE versions match the XPU "
+            "hardware.",
+            static_cast<int>(place_.device)));
 
     if (std::getenv("XPU_CDNN_CLUSTER_PARALLEL") != nullptr &&
         !is_comm_context) {
