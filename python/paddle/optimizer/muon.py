@@ -887,6 +887,22 @@ class Muon(Optimizer):
         if g_shard_bypass_dygraph_optimizer:
             return
 
+        from paddle.distributed.fsdp._fsdp_context import get_fsdp_context
+
+        fsdp_context = get_fsdp_context()
+        if fsdp_context is not None:
+            fsdp_context.comm_sync_and_reset_status()
+            params_grads = self._fsdp_collect_params_grads(
+                fsdp_context, params_grads
+            )
+            if hasattr(fsdp_context, "bind_decay_param_fun"):
+                fsdp_context.bind_decay_param_fun(self)
+            if self._grad_clip is not None:
+                self._grad_clip.should_comm_on_shard_dim = True
+                self._grad_clip.fsdp_group = (
+                    fsdp_context.buffer_manager._fsdp_group
+                )
+
         if self._grad_clip is not None:
             params_grads = self._grad_clip(params_grads)
 
@@ -903,6 +919,11 @@ class Muon(Optimizer):
         adamw_params = []
         for param, grad in params_grads:
             if grad is None:
+                continue
+
+            if param.name.startswith(self._FSDP_FUSED_PREFIX):
+                self._ensure_accumulators(param, False, self._default_dict)
+                adamw_params.append((param, grad))
                 continue
 
             param_info = self._muon_param_info_map.get(param.name)
@@ -987,6 +1008,37 @@ class Muon(Optimizer):
                 group.get("epsilon", 1e-9),
                 wd,
             )
+
+        if fsdp_context is not None and hasattr(
+            fsdp_context, "broadcast_muon_params"
+        ):
+            fsdp_context.broadcast_muon_params()
+
+    _FSDP_FUSED_PREFIX = "fuse_params_"
+
+    def _fsdp_collect_params_grads(self, fsdp_context, params_grads):
+        muon_entries = (
+            fsdp_context.muon_params_grads()
+            if hasattr(fsdp_context, "muon_params_grads")
+            else [
+                (param, grad)
+                for param, grad in params_grads
+                if grad is not None and getattr(param, "use_muon", False)
+            ]
+        )
+        fused_entries = []
+        for group in fsdp_context.buffer_manager.buffer_groups:
+            if group.use_muon or group.grads_buffer is None:
+                continue
+            if group.params_buffer.data_buffer.stop_gradient:
+                continue
+            fused_entries.append(
+                (
+                    group.params_buffer.data_buffer,
+                    group.grads_buffer.data_buffer,
+                )
+            )
+        return muon_entries + fused_entries
 
     @framework.dygraph_only
     def step(self) -> None:
