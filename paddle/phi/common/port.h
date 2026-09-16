@@ -31,6 +31,7 @@
 #define GOOGLE_GLOG_DLL_DECL
 #include <io.h>  // _popen, _pclose
 #include <stdio.h>
+#include <sys/stat.h>
 #include <windows.h>
 #include <winsock.h>
 
