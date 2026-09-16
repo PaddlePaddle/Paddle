@@ -892,6 +892,15 @@ void* GetFlashAttnDsoHandle() {
   return GetDsoHandleFromSearchPath(flashattn_dir, "flashattn.dll");
 #elif defined(PADDLE_WITH_CUSTOM_DEVICE)
   return GetDsoHandleFromSearchPath(flashattn_dir, FLASHATTN_LIB_NAME);
+#elif defined(PADDLE_WITH_HIP)
+  // Pre-load the ROCm HIP runtime so that transitive dependencies
+  // (e.g., libgalaxyhip.so.5) are resolvable when libflashattn.so is
+  // loaded via dlopen.
+  if (!FLAGS_rocm_dir.empty()) {
+    dlopen((FLAGS_rocm_dir + "/libamdhip64.so").c_str(),
+           RTLD_LAZY | RTLD_GLOBAL);
+  }
+  return GetDsoHandleFromSearchPath(flashattn_dir, "libflashattn.so");
 #else
   return GetDsoHandleFromSearchPath(flashattn_dir, "libflashattn.so");
 #endif
