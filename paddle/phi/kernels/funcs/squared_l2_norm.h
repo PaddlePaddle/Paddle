@@ -62,7 +62,7 @@ void SquaredL2Norm(const GPUContext& dev_ctx,
   }
 
   using FunctorT = phi::kps::SquareFunctor<T1, T2>;
-  thrust::transform_iterator<FunctorT, const T1*> iter(x, FunctorT());
+  cub::TransformInputIterator<T2, FunctorT, const T1*> iter(x, FunctorT());
   size_t temp_storage_bytes = 0;
   void* d_temp_storage = nullptr;
   auto stream = dev_ctx.stream();

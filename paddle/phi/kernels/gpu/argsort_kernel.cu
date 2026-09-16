@@ -288,10 +288,11 @@ void ArgFullSort(const GPUContext& dev_ctx,
   IndType* sorted_indices_ptr = indices->data<IndType>();
 
   // create iter for counting input
-  thrust::counting_iterator<IndType> counting_iter(0);
+  cub::CountingInputIterator<IndType> counting_iter(0);
   // segment_offset is used for move to next row
-  thrust::transform_iterator<SegmentOffsetIter,
-                             thrust::counting_iterator<IndType>>
+  cub::TransformInputIterator<IndType,
+                              SegmentOffsetIter,
+                              cub::CountingInputIterator<IndType>>
       segment_offsets_t(counting_iter, SegmentOffsetIter(num_cols));
 
   // num_rows is the total segments to be sorted

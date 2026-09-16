@@ -58,9 +58,10 @@ bool SortKthvalue(const GPUContext& dev_ctx,
                                : maxGridDimX;
   funcs::InitIndex<int64_t><<<grid_size, block_size, 0, cu_stream>>>(
       input_indices.data<int64_t>(), num_rows, num_cols);
-  thrust::counting_iterator<int64_t> counting_iter(0);
-  thrust::transform_iterator<funcs::SegmentOffsetIter,
-                             thrust::counting_iterator<int64_t>>
+  cub::CountingInputIterator<int64_t> counting_iter(0);
+  cub::TransformInputIterator<int64_t,
+                              funcs::SegmentOffsetIter,
+                              cub::CountingInputIterator<int64_t>>
       segment_offsets_t(counting_iter, funcs::SegmentOffsetIter(num_cols));
   T* sorted_values_ptr;
   int64_t* sorted_indices_ptr;

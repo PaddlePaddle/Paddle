@@ -47,6 +47,15 @@ namespace cub {
 using Sum = ::cuda::std::plus<>;
 using Equality = ::cuda::std::equal_to<>;
 using Max = ::cuda::maximum<>;
+// Iterator aliases: cub::TransformInputIterator / cub::CountingInputIterator
+// were removed in CCCL 3.0. Re-express them on top of thrust so call sites keep
+// the cub:: spelling, which also lets the HIP path (cub == hipcub) use the
+// rocPRIM-compatible hipcub iterators instead of thrust ones.
+template <typename ValueType, typename ConversionOp, typename InputIteratorT>
+using TransformInputIterator =
+    ::thrust::transform_iterator<ConversionOp, InputIteratorT>;
+template <typename ValueType>
+using CountingInputIterator = ::thrust::counting_iterator<ValueType>;
 // Warp helper functions -- __forceinline__ implies inline, safe in multi-TU
 // headers
 __device__ __forceinline__ unsigned int LaneId() {

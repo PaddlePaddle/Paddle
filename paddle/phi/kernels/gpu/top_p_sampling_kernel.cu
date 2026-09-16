@@ -1214,11 +1214,13 @@ void TopPSamplingKernel(const Context& dev_ctx,
 
   size_t temp_storage_bytes = 0;
 
-  thrust::transform_iterator<SegmentOffsetIter, int*> segment_offsets_t_begin(
-      count_iter_begin.data<int>(), SegmentOffsetIter(vocab_size));
+  cub::TransformInputIterator<int, SegmentOffsetIter, int*>
+      segment_offsets_t_begin(count_iter_begin.data<int>(),
+                              SegmentOffsetIter(vocab_size));
 
-  thrust::transform_iterator<SegmentOffsetIter, int*> segment_offsets_t_end(
-      count_iter.data<int>(), SegmentOffsetIter(vocab_size));
+  cub::TransformInputIterator<int, SegmentOffsetIter, int*>
+      segment_offsets_t_end(count_iter.data<int>(),
+                            SegmentOffsetIter(vocab_size));
 
   cub::DeviceSegmentedRadixSort::SortPairsDescending(
       nullptr,

@@ -1195,10 +1195,11 @@ bool SortTopk(const GPUContext& dev_ctx,
       input_indices.data<int64_t>(), num_rows, num_cols);
 
   // create iter for counting input
-  thrust::counting_iterator<int64_t> counting_iter(0);
+  cub::CountingInputIterator<int64_t> counting_iter(0);
   // segment_offset is used for move to next row
-  thrust::transform_iterator<SegmentOffsetIter,
-                             thrust::counting_iterator<int64_t>>
+  cub::TransformInputIterator<int64_t,
+                              SegmentOffsetIter,
+                              cub::CountingInputIterator<int64_t>>
       segment_offsets_t(counting_iter, SegmentOffsetIter(num_cols));
 
   T* sorted_values_ptr;
