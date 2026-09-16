@@ -16,6 +16,7 @@
 
 #include "paddle/common/macros.h"
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/pooling.h"
@@ -356,13 +357,6 @@ void MaxPool2dWithIndexKernel(const Context& dev_ctx,
                         "The Pool2d XPU OP only support 2 dimension pooling, "
                         "but received kernel_size with size %d",
                         kernel_size.size()));
-  PADDLE_ENFORCE_EQ(!adaptive || (kernel_size[0] * kernel_size[1] == 1),
-                    true,
-                    common::errors::InvalidArgument(
-                        "The Pool2d XPU OP does not support (adaptive == "
-                        "true && output_size != 1)"));
-  global_pooling =
-      global_pooling || (adaptive && (kernel_size[0] * kernel_size[1] == 1));
   if (global_pooling) {
     for (size_t i = 0; i < kernel_size.size(); ++i) {
       paddings[i] = 0;
@@ -373,10 +367,65 @@ void MaxPool2dWithIndexKernel(const Context& dev_ctx,
   const int64_t c = x.dims()[1];
   const int64_t in_h = x.dims()[2];
   const int64_t in_w = x.dims()[3];
+  const int64_t out_h = out->dims()[2];
+  const int64_t out_w = out->dims()[3];
   auto input = reinterpret_cast<const XPUType*>(x.data<T>());
   dev_ctx.template Alloc<T>(out);
   auto output = reinterpret_cast<XPUType*>(out->data<T>());
   int r = 0;
+  if (adaptive) {
+    // XDNN rejects int32 index output for some float32 adaptive cases.
+    std::vector<T> input_cpu(x.numel());
+    memory_utils::Copy(CPUPlace(),
+                       input_cpu.data(),
+                       x.place(),
+                       x.data<T>(),
+                       x.numel() * sizeof(T));
+    dev_ctx.Wait();
+
+    std::vector<T> output_cpu(out->numel());
+    std::vector<int> mask_cpu(mask->numel());
+    for (int64_t ni = 0; ni < n; ++ni) {
+      for (int64_t ci = 0; ci < c; ++ci) {
+        const int64_t base = (ni * c + ci) * in_h * in_w;
+        const int64_t out_base = (ni * c + ci) * out_h * out_w;
+        for (int64_t ph = 0; ph < out_h; ++ph) {
+          const int64_t hstart = funcs::AdaptStartIndex(ph, in_h, out_h);
+          const int64_t hend = funcs::AdaptEndIndex(ph, in_h, out_h);
+          for (int64_t pw = 0; pw < out_w; ++pw) {
+            const int64_t wstart = funcs::AdaptStartIndex(pw, in_w, out_w);
+            const int64_t wend = funcs::AdaptEndIndex(pw, in_w, out_w);
+            T max_value = input_cpu[base + hstart * in_w + wstart];
+            int max_index = static_cast<int>(hstart * in_w + wstart);
+            for (int64_t h = hstart; h < hend; ++h) {
+              for (int64_t w = wstart; w < wend; ++w) {
+                const T value = input_cpu[base + h * in_w + w];
+                if (max_value < value) {
+                  max_value = value;
+                  max_index = static_cast<int>(h * in_w + w);
+                }
+              }
+            }
+            output_cpu[out_base + ph * out_w + pw] = max_value;
+            mask_cpu[out_base + ph * out_w + pw] = max_index;
+          }
+        }
+      }
+    }
+
+    memory_utils::Copy(dev_ctx.GetPlace(),
+                       out->data<T>(),
+                       CPUPlace(),
+                       output_cpu.data(),
+                       out->numel() * sizeof(T));
+    memory_utils::Copy(dev_ctx.GetPlace(),
+                       index_data,
+                       CPUPlace(),
+                       mask_cpu.data(),
+                       mask->numel() * sizeof(int));
+    return;
+  }
+
   r = xpu::max_pool2d<XPUType>(dev_ctx.x_context(),
                                input,
                                output,
