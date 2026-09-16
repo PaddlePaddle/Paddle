@@ -21,6 +21,7 @@
 #include "paddle/phi/kernels/fft_kernel.h"
 
 #include "paddle/common/ddim.h"
+#include "paddle/phi/kernels/complex_kernel.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/fft.h"
@@ -78,6 +79,30 @@ void FFTR2CKernel(const Context& dev_ctx,
     return;
   }
   auto norm_type = funcs::get_norm_from_string(normalization, forward);
+
+  // XPU R2C kernel does not support signal sizes <= 8.
+  // For small signal sizes, fall back to C2C-based computation.
+  bool use_c2c_fallback = false;
+  for (const auto& axis : axes) {
+    if (x.dims()[axis] <= 8) {
+      use_c2c_fallback = true;
+      break;
+    }
+  }
+
+  if (use_c2c_fallback && !onesided) {
+    // Convert real input to complex (imag = 0) and use C2C kernel.
+    // For pure real input, C2C produces the same result as R2C + FillConj.
+    DenseTensor imag =
+        Full<T>(dev_ctx, vectorize(x.dims()), Scalar(static_cast<T>(0)));
+    DenseTensor x_complex = Empty<C>(dev_ctx, vectorize(x.dims()));
+    phi::ComplexKernel<T, Context>(dev_ctx, x, imag, &x_complex);
+
+    funcs::FFTC2CFunctor<Context, C, C> fft_c2c_func;
+    fft_c2c_func(dev_ctx, x_complex, out, axes, norm_type, forward);
+    return;
+  }
+
   funcs::FFTR2CFunctor<Context, T, C> fft_r2c_func;
 
   if (onesided) {
