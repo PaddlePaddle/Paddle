@@ -549,6 +549,35 @@ static Tensor InitializedEmptyTensor() {
   return tensor;
 }
 
+// Lightweight variant of InitializedEmptyTensor for the hot path.
+//
+// Skips two components that are wasted for custom op intermediate outputs:
+//   - GenerateUniqueName: atomic counter + string alloc. Intermediate tensors
+//     never need a generated name; SetTensorName() after kernel run overwrites
+//     it anyway (when FLAGS_enable_unique_name / VLOG>=6 are active).
+//   - GradNodeAccumulation: leaf-tensor accumulator. Immediately overwritten by
+//     RunCustomOpNode at GradNode construction time (require_any_grad=true), or
+//     simply unused (require_any_grad=false).
+//
+// Must NOT be used when FLAGS_tensor_md5_checksum_output_path is set, because
+// SaveTensorMD5CheckSumToFile uses t.name() as the file key; an empty name
+// makes the checksum file unreadable. In that case callers fall back to
+// InitializedEmptyTensor(). See the need_name guard below.
+static Tensor MinimalEmptyTensor() {
+  auto tensor = Tensor();
+  auto autograd_meta = egr::EagerUtils::autograd_meta(&tensor);
+  autograd_meta->SetPersistable(false);
+  // Must pass a null shared_ptr<Allocation> (not raw nullptr) to select the
+  // correct DenseTensor(shared_ptr<Allocation>, DenseTensorMeta) overload.
+  // Passing nullptr directly resolves to DenseTensor(Allocator*, ...) which
+  // dereferences the null pointer and segfaults.
+  std::shared_ptr<phi::Allocation> null_alloc = nullptr;
+  tensor.set_impl(std::make_shared<DenseTensor>(
+      null_alloc,
+      phi::DenseTensorMeta(DataType::FLOAT32, common::make_ddim({0}))));
+  return tensor;
+}
+
 PyObject* eager_api_run_custom_op(PyObject* self,
                                   PyObject* args,
                                   PyObject* kwargs) {
@@ -575,19 +604,22 @@ PyObject* eager_api_run_custom_op(PyObject* self,
         egr::GenerateUniqueApiName("custom_op_" + op_type, call_count);
   }
   paddle::CustomOpKernelContext ctx;
-  auto meta_info_map = egr::Controller::Instance().GetOpMetaInfoMap();
-  PADDLE_ENFORCE_NE(meta_info_map.find(op_type),
-                    meta_info_map.end(),
+
+  // O(1) cache lookup; replaces per-call meta_info_map.at() + GetInputs/Attrs.
+  auto it = paddle::framework::g_parsed_op_meta_cache.find(op_type);
+
+  PADDLE_ENFORCE_NE(it,
+                    paddle::framework::g_parsed_op_meta_cache.end(),
                     common::errors::NotFound(
-                        "Can't find %s in Eager OpMetaInfoMap which should be "
-                        "created by LoadOpMetaInfoAndRegisterOp, please make "
+                        "Can't find %s in ParsedOpMetaCache which should be "
+                        "created by RegisterParsedOpMetaCache, please make "
                         "sure you registered your op first and try again. ",
                         op_type));
-  const auto& vec_map = meta_info_map.at(op_type);
-  const auto& inputs = paddle::OpMetaInfoHelper::GetInputs(vec_map[0]);
-  const auto& attrs = paddle::OpMetaInfoHelper::GetAttrs(vec_map[0]);
-  const auto& outputs = paddle::OpMetaInfoHelper::GetOutputs(vec_map[0]);
-  const auto& inplace_map = paddle::OpMetaInfoHelper::GetInplaceMap(vec_map[0]);
+  const paddle::framework::ParsedOpMeta& meta = it->second;
+  const auto& inputs = meta.inputs;
+  const auto& outputs = meta.outputs;
+  const auto& inplace_map = meta.inplace_map;
+  const auto& vec_map = meta.vec_map;
   SetPythonStack();
   for (size_t i = 0; i < inputs.size(); ++i) {
     const auto& input = inputs.at(i);
@@ -654,50 +686,52 @@ PyObject* eager_api_run_custom_op(PyObject* self,
 
   // Parse op_type and inputs first, so that use 1 + inputs.size() + i
   int attr_start_idx = static_cast<int>(1 + inputs.size());
-  for (size_t i = 0; i < attrs.size(); ++i) {
-    const auto& attr = attrs.at(i);
-    std::vector<std::string> attr_name_and_type = paddle::ParseAttrStr(attr);
-    auto attr_type_str = attr_name_and_type[1];
-    VLOG(7) << "Custom operator add attrs " << attr_name_and_type[0]
-            << " to CustomOpKernelContext. Attribute type = " << attr_type_str;
-    PyObject* obj = PyTuple_GET_ITEM(args, attr_start_idx + i);
-    if (attr_type_str == "bool") {
-      ctx.EmplaceBackAttr(
-          CastPyArg2AttrBoolean(obj, attr_start_idx + i));  // NOLINT
-    } else if (attr_type_str == "int") {
-      ctx.EmplaceBackAttr(
-          CastPyArg2AttrInt(obj, attr_start_idx + i));  // NOLINT
-    } else if (attr_type_str == "float") {
-      ctx.EmplaceBackAttr(
-          CastPyArg2AttrFloat(obj, attr_start_idx + i));  // NOLINT
-    } else if (attr_type_str == "double") {
-      ctx.EmplaceBackAttr(
-          CastPyArg2AttrDouble(obj, attr_start_idx + i));  // NOLINT
-    } else if (attr_type_str == "int64_t") {
-      ctx.EmplaceBackAttr(
-          CastPyArg2Long(obj, op_type, attr_start_idx + i));  // NOLINT
-    } else if (attr_type_str == "std::string") {
-      ctx.EmplaceBackAttr(
-          CastPyArg2AttrString(obj, attr_start_idx + i));  // NOLINT
-    } else if (attr_type_str == "std::vector<int>") {      // NOLINT
-      ctx.EmplaceBackAttr(CastPyArg2VectorOfInt(obj, attr_start_idx + i));
-    } else if (attr_type_str == "std::vector<float>") {
-      ctx.EmplaceBackAttr(CastPyArg2VectorOfFloat(obj, attr_start_idx + i));
-    } else if (attr_type_str == "std::vector<int64_t>") {
-      ctx.EmplaceBackAttr(
-          CastPyArg2Longs(obj, op_type, attr_start_idx + i));  // NOLINT
-    } else if (attr_type_str == "std::vector<std::string>") {
-      ctx.EmplaceBackAttr(
-          CastPyArg2VectorOfString(obj, attr_start_idx + i));  // NOLINT
-    } else {
-      PADDLE_THROW(common::errors::Unimplemented(
-          "Unsupported `%s` type value as custom attribute now. "
-          "Supported data types include `bool`, `int`, `float`, "
-          "`int64_t`, `std::string`, `std::vector<int>`, "
-          "`std::vector<float>`, `std::vector<int64_t>`, "
-          "`std::vector<std::string>`, Please check whether "
-          "the attribute data type and data type string are matched.",
-          attr_type_str));
+  // Attr parsing via pre-built enum switch; avoids per-call ParseAttrStr and
+  // string comparisons.
+  for (size_t i = 0; i < meta.attr_types.size(); ++i) {
+    PyObject* obj =
+        PyTuple_GET_ITEM(args, attr_start_idx + static_cast<int>(i));
+    VLOG(7) << "Custom operator add attrs " << meta.attr_names[i]
+            << " to CustomOpKernelContext.";
+    switch (meta.attr_types[i]) {
+      case paddle::framework::CustomAttrType::BOOL:
+        ctx.EmplaceBackAttr(
+            CastPyArg2AttrBoolean(obj, attr_start_idx + i));  // NOLINT
+        break;
+      case paddle::framework::CustomAttrType::INT:
+        ctx.EmplaceBackAttr(
+            CastPyArg2AttrInt(obj, attr_start_idx + i));  // NOLINT
+        break;
+      case paddle::framework::CustomAttrType::FLOAT:
+        ctx.EmplaceBackAttr(
+            CastPyArg2AttrFloat(obj, attr_start_idx + i));  // NOLINT
+        break;
+      case paddle::framework::CustomAttrType::DOUBLE:
+        ctx.EmplaceBackAttr(
+            CastPyArg2AttrDouble(obj, attr_start_idx + i));  // NOLINT
+        break;
+      case paddle::framework::CustomAttrType::INT64:
+        ctx.EmplaceBackAttr(
+            CastPyArg2Long(obj, op_type, attr_start_idx + i));  // NOLINT
+        break;
+      case paddle::framework::CustomAttrType::STRING:
+        ctx.EmplaceBackAttr(
+            CastPyArg2AttrString(obj, attr_start_idx + i));  // NOLINT
+        break;
+      case paddle::framework::CustomAttrType::VEC_INT:
+        ctx.EmplaceBackAttr(CastPyArg2VectorOfInt(obj, attr_start_idx + i));
+        break;
+      case paddle::framework::CustomAttrType::VEC_FLOAT:
+        ctx.EmplaceBackAttr(CastPyArg2VectorOfFloat(obj, attr_start_idx + i));
+        break;
+      case paddle::framework::CustomAttrType::VEC_INT64:
+        ctx.EmplaceBackAttr(
+            CastPyArg2Longs(obj, op_type, attr_start_idx + i));  // NOLINT
+        break;
+      case paddle::framework::CustomAttrType::VEC_STRING:
+        ctx.EmplaceBackAttr(
+            CastPyArg2VectorOfString(obj, attr_start_idx + i));  // NOLINT
+        break;
     }
   }
 
@@ -711,6 +745,10 @@ PyObject* eager_api_run_custom_op(PyObject* self,
 
     ctx.ConstructInplaceIndex(inputs, outputs, inplace_map);
     const auto& inplace_reverse_idx_map = ctx.GetInplaceReverseIndexMap();
+
+    const bool need_name = !FLAGS_tensor_md5_checksum_output_path.empty() ||
+                           FLAGS_enable_unique_name || VLOG_IS_ON(6);
+
     for (size_t out_idx = 0; out_idx < outputs.size(); ++out_idx) {
       const auto& output = outputs.at(out_idx);
       // inplace special case
@@ -734,7 +772,8 @@ PyObject* eager_api_run_custom_op(PyObject* self,
           size_t vector_size = input_range.second - input_range.first;
           empty_tensors.resize(vector_size);
           for (size_t i = 0; i < vector_size; ++i) {
-            empty_tensors[i] = InitializedEmptyTensor();
+            empty_tensors[i] =
+                need_name ? InitializedEmptyTensor() : MinimalEmptyTensor();
           }
           VLOG(7) << "Custom operator add output " << output
                   << " to CustomOpKernelContext. Add vector<tensor> size = "
@@ -747,7 +786,8 @@ PyObject* eager_api_run_custom_op(PyObject* self,
               << " to CustomOpKernelContext. Add initialized Tensor because "
                  "using general or inplace mechanism";
       // general Tensor or inplace Tensor, initialized tensor.
-      ctx.EmplaceBackOutput(InitializedEmptyTensor());
+      ctx.EmplaceBackOutput(need_name ? InitializedEmptyTensor()
+                                      : MinimalEmptyTensor());
     }
 
     VLOG(7) << "Run Kernel of Custom Op: " << op_type;

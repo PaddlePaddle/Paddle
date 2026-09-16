@@ -204,6 +204,11 @@ cc_test(
 cc_test(convert_utils_test SRCS convert_utils_test.cc)
 
 cc_test(
+  custom_operator_utils_test
+  SRCS custom_operator_utils_test.cc
+  DEPS custom_operator)
+
+cc_test(
   test_fs
   SRCS io/test_fs.cc
   DEPS framework_io string_helper)
