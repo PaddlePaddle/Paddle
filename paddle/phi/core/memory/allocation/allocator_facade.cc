@@ -1705,6 +1705,14 @@ class AllocatorFacadePrivate {
         pair.second = std::make_shared<StatAllocator>(pair.second);
       }
     }
+    for (auto& pair : system_allocators_) {
+      const Place& place = pair.first;
+      if (phi::is_cpu_place(place) || phi::is_cuda_pinned_place(place) ||
+          phi::is_gpu_place(place) || phi::is_custom_place(place) ||
+          phi::is_xpu_place(place) || phi::is_xpu_pinned_place(place)) {
+        pair.second = std::make_shared<StatAllocator>(pair.second);
+      }
+    }
   }
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
