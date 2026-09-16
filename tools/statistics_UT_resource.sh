@@ -28,7 +28,7 @@ do
     use_memory=0
     gpu_utilization=0
     memory_utilization=0
-    ctest -R "^${unittest}$" --repeat-until-fail 5 -j 1 &
+    cuda-memcheck ctest -R "^${unittest}$" --repeat-until-fail 5 -j 1 &
     PID=$!
     echo -e "******************************************************"
     echo -e "[$unittest]:    PID:$PID \n"
