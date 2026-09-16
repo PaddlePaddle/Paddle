@@ -329,6 +329,25 @@ struct GPUContext::Impl {
 #endif
   }
 
+  // Bind a cuBLAS/rocBLAS handle to the current GPU stream.
+  // On CUDA (non-Windows, non-legacy_gemm) the pre-allocated workspace is
+  // re-applied after the stream switch because cublasSetStream_v2 resets the
+  // handle's workspace pointer to the default pool.
+  void SetBlasStream(blasHandle_t handle) {
+#ifdef PADDLE_WITH_HIP
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        phi::dynload::rocblas_set_stream(handle, stream()));
+#else
+    PADDLE_RETRY_CUDA_SUCCESS(
+        phi::dynload::cublasSetStream_v2(handle, stream()));
+#if !defined(_WIN32)
+    if (!FLAGS_use_legacy_gemm) {
+      SetCublasWorkspace(handle);
+    }
+#endif
+#endif
+  }
+
   // Persistent cublasLt workspace: grow-only, freed in destructor.
   // Returns {ptr, size}. Thread-safe via mutex for grow path.
   std::pair<void*, size_t> GetCublasLtWorkspace(size_t required_size) {
@@ -740,9 +759,19 @@ struct GPUContext::Impl {
     });
     if (blas_tf32_tensor_core_handle_ && FLAGS_cublas_allow_tf32) {
       std::lock_guard<std::mutex> guard(blas_tf32_mtx_);
+      gpuStream_t cur = stream();
+      if (cur != blas_tf32_handle_stream_) {
+        SetBlasStream(blas_tf32_tensor_core_handle_);
+        blas_tf32_handle_stream_ = cur;
+      }
       callback(blas_tf32_tensor_core_handle_);
     } else {
       std::lock_guard<std::mutex> guard(blas_mtx_);
+      gpuStream_t cur = stream();
+      if (cur != blas_handle_stream_) {
+        SetBlasStream(blas_handle_);
+        blas_handle_stream_ = cur;
+      }
       callback(blas_handle_);
     }
   }
@@ -793,9 +822,19 @@ struct GPUContext::Impl {
     });
     if (blas_tensor_core_handle_ != nullptr) {
       std::lock_guard<std::mutex> guard(blas_tensor_core_mtx_);
+      gpuStream_t cur = stream();
+      if (cur != blas_tensor_core_handle_stream_) {
+        SetBlasStream(blas_tensor_core_handle_);
+        blas_tensor_core_handle_stream_ = cur;
+      }
       callback(blas_tensor_core_handle_);
     } else {
       std::lock_guard<std::mutex> guard(blas_mtx_);
+      gpuStream_t cur = stream();
+      if (cur != blas_handle_stream_) {
+        SetBlasStream(blas_handle_);
+        blas_handle_stream_ = cur;
+      }
       callback(blas_handle_);
     }
   }
@@ -905,6 +944,12 @@ struct GPUContext::Impl {
   std::function<blasHandle_t()> blas_tensor_core_handle_creator_{nullptr};
   blasHandle_t blas_tf32_tensor_core_handle_{nullptr};
   std::function<blasHandle_t()> blas_tf32_tensor_core_handle_creator_{nullptr};
+  // Cached stream per cuBLAS handle — cublasSetStream_v2 is only called when
+  // the current stream differs from the last-set stream, avoiding redundant
+  // API calls on the hot path.
+  gpuStream_t blas_handle_stream_{nullptr};
+  gpuStream_t blas_tensor_core_handle_stream_{nullptr};
+  gpuStream_t blas_tf32_handle_stream_{nullptr};
   blasLtHandle_t blaslt_handle_{nullptr};
   std::function<blasLtHandle_t()> blaslt_handle_creator_{nullptr};
   void* cublas_workspace_{nullptr};

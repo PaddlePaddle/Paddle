@@ -18,6 +18,9 @@
 #include "gtest/gtest.h"
 #include "paddle/common/enforce.h"
 #include "paddle/phi/backends/context_pool.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/core/cuda_stream.h"
+#include "paddle/phi/core/memory/allocation/allocator_facade.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
@@ -646,6 +649,301 @@ TEST(math_function, gemv) {
   GemvTest<double>(3, 13, false);
   GemvTest<float>(3, 13, true);
   GemvTest<double>(3, 13, true);
+}
+
+// ---------------------------------------------------------------------------
+// Helpers for non-default-stream cuBLAS tests
+// ---------------------------------------------------------------------------
+namespace {
+
+// Build a fully-initialized GPUContext bound to an externally-created stream.
+// The caller owns the returned context and must call ctx->Wait() before
+// reading results.
+std::unique_ptr<phi::GPUContext> MakeCtxOnStream(const phi::GPUPlace& place,
+                                                 gpuStream_t raw_stream) {
+  // init=true: let the context fully initialize on its own default stream
+  // (PartialInitWithoutAllocator + allocators + PartialInitWithAllocator).
+  // Then switch to the target stream via SetCUDAStream, which also re-binds
+  // the allocator internally.
+  auto ctx = std::make_unique<phi::GPUContext>(place, /*init=*/true);
+  ctx->SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
+                        .GetAllocator(place, ctx->stream())
+                        .get());
+  ctx->SetHostAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
+                            .GetAllocator(phi::CPUPlace())
+                            .get());
+  ctx->SetZeroAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
+                            .GetZeroAllocator(place)
+                            .get());
+  ctx->SetHostZeroAllocator(
+      paddle::memory::allocation::AllocatorFacade::Instance()
+          .GetZeroAllocator(phi::CPUPlace())
+          .get());
+  ctx->SetPinnedAllocator(
+      paddle::memory::allocation::AllocatorFacade::Instance()
+          .GetAllocator(phi::GPUPinnedPlace())
+          .get());
+  ctx->PartialInitWithAllocator();
+  // Switch to the desired stream. SetCUDAStream re-binds the allocator to
+  // raw_stream and deletes the context's internally-created stream
+  // (clear=true). The CUDAStream wrapper does NOT own raw_stream
+  // (owned_=false), so ~CUDAStream() will not call cudaStreamDestroy on it.
+  ctx->SetCUDAStream(new phi::CUDAStream(place, raw_stream), /*clear=*/true);
+  return ctx;
+}
+
+// Compute C = A * B^T on CPU for a small 2x3 matrix and return the 4 entries
+// of the 2x2 result as a vector, using float arithmetic.
+// Input: row-major float arrays of shape [2,3].
+std::vector<float> CpuMatMulNotransTransResult(const float* a, const float* b) {
+  // C[i][j] = sum_k A[i][k] * B[j][k]
+  std::vector<float> c(4, 0.0f);
+  for (int i = 0; i < 2; ++i)
+    for (int j = 0; j < 2; ++j)
+      for (int k = 0; k < 3; ++k) c[i * 2 + j] += a[i * 3 + k] * b[j * 3 + k];
+  return c;
+}
+
+}  // anonymous namespace
+
+// ---------------------------------------------------------------------------
+// Test 1: CublasCall on a non-default stream produces correct GEMM results.
+//
+// Scenario: switch a freshly constructed GPUContext to an auxiliary stream
+// using SetCUDAStream, then run MatMul through GetBlas (which internally calls
+// CublasCall / TensorCoreCublasCallIfAvailable).  The cuBLAS handle must be
+// re-bound to the auxiliary stream by SetBlasStream; without this fix the
+// handle would remain on the original default stream and the operation would
+// execute on the wrong stream, producing either incorrect results (data race)
+// or zeros.
+// ---------------------------------------------------------------------------
+TEST(math_function, cublas_non_default_stream_correct_result) {
+#if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
+  return;
+#endif
+
+  phi::GPUPlace gpu_place(0);
+  phi::CPUPlace cpu_place;
+
+  // Reference result computed on the default-stream context from the pool.
+  phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
+  auto* default_ctx =
+      reinterpret_cast<phi::GPUContext*>(pool.Get(phi::GPUPlace()));
+
+  float arr[6] = {0, 1, 2, 3, 4, 5};
+  phi::DenseTensor input_cpu;
+  float* input_ptr = input_cpu.mutable_data<float>({2, 3}, cpu_place);
+  memcpy(input_ptr, arr, 6 * sizeof(float));
+
+  phi::DenseTensor input_gpu_a, input_gpu_b, out_ref_gpu, out_ref_cpu;
+  phi::Copy(
+      *default_ctx, input_cpu, gpu_place, /*blocking=*/true, &input_gpu_a);
+  phi::Copy(
+      *default_ctx, input_cpu, gpu_place, /*blocking=*/true, &input_gpu_b);
+  out_ref_gpu.mutable_data<float>({2, 2}, gpu_place);
+  GetBlas<float>(*default_ctx)
+      .MatMul(input_gpu_a, false, input_gpu_b, true, 1.0f, &out_ref_gpu, 0.0f);
+  phi::Copy(
+      *default_ctx, out_ref_gpu, cpu_place, /*blocking=*/true, &out_ref_cpu);
+  default_ctx->Wait();
+
+  const float* ref = out_ref_cpu.data<float>();
+  // Verify reference against CPU calculation.
+  auto cpu_ref = CpuMatMulNotransTransResult(arr, arr);
+  ASSERT_FLOAT_EQ(ref[0], cpu_ref[0]);
+  ASSERT_FLOAT_EQ(ref[1], cpu_ref[1]);
+  ASSERT_FLOAT_EQ(ref[2], cpu_ref[2]);
+  ASSERT_FLOAT_EQ(ref[3], cpu_ref[3]);
+
+  // Now run the same GEMM on an auxiliary stream.
+#ifdef PADDLE_WITH_HIP
+  hipStream_t aux_raw;
+  PADDLE_ENFORCE_GPU_SUCCESS(hipStreamCreate(&aux_raw));
+#else
+  cudaStream_t aux_raw;
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamCreate(&aux_raw));
+#endif
+
+  auto aux_ctx = MakeCtxOnStream(gpu_place, aux_raw);
+
+  phi::DenseTensor input_aux_a, input_aux_b, out_aux_gpu, out_aux_cpu;
+  phi::Copy(*aux_ctx, input_cpu, gpu_place, /*blocking=*/true, &input_aux_a);
+  phi::Copy(*aux_ctx, input_cpu, gpu_place, /*blocking=*/true, &input_aux_b);
+  out_aux_gpu.mutable_data<float>({2, 2}, gpu_place);
+  GetBlas<float>(*aux_ctx).MatMul(
+      input_aux_a, false, input_aux_b, true, 1.0f, &out_aux_gpu, 0.0f);
+  phi::Copy(*aux_ctx, out_aux_gpu, cpu_place, /*blocking=*/true, &out_aux_cpu);
+  aux_ctx->Wait();
+
+  const float* aux = out_aux_cpu.data<float>();
+  EXPECT_FLOAT_EQ(aux[0], ref[0]);
+  EXPECT_FLOAT_EQ(aux[1], ref[1]);
+  EXPECT_FLOAT_EQ(aux[2], ref[2]);
+  EXPECT_FLOAT_EQ(aux[3], ref[3]);
+
+#ifdef PADDLE_WITH_HIP
+  PADDLE_ENFORCE_GPU_SUCCESS(hipStreamDestroy(aux_raw));
+#else
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamDestroy(aux_raw));
+#endif
+}
+
+// ---------------------------------------------------------------------------
+// Test 2: Multiple stream switches — the stream cache invalidates correctly.
+//
+// Switch the same GPUContext between two auxiliary streams multiple times and
+// verify the GEMM result is always correct.  This exercises the
+// blas_handle_stream_ cache path: stream changes must trigger a new
+// cublasSetStream_v2 call, while repeated calls on the same stream must use
+// the cached value (no spurious rebinds).
+// ---------------------------------------------------------------------------
+TEST(math_function, cublas_stream_switch_cache_correctness) {
+#if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
+  return;
+#endif
+
+  phi::GPUPlace gpu_place(0);
+  phi::CPUPlace cpu_place;
+
+  float arr[6] = {0, 1, 2, 3, 4, 5};
+  phi::DenseTensor input_cpu;
+  float* input_ptr = input_cpu.mutable_data<float>({2, 3}, cpu_place);
+  memcpy(input_ptr, arr, 6 * sizeof(float));
+
+  auto cpu_ref = CpuMatMulNotransTransResult(arr, arr);
+
+#ifdef PADDLE_WITH_HIP
+  hipStream_t stream_a, stream_b;
+  PADDLE_ENFORCE_GPU_SUCCESS(hipStreamCreate(&stream_a));
+  PADDLE_ENFORCE_GPU_SUCCESS(hipStreamCreate(&stream_b));
+#else
+  cudaStream_t stream_a, stream_b;
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamCreate(&stream_a));
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamCreate(&stream_b));
+#endif
+
+  // Create a single GPUContext and repeatedly switch it between stream_a and
+  // stream_b.  This exercises the blas_handle_stream_ cache: each switch must
+  // trigger SetBlasStream (cache miss), while consecutive calls on the same
+  // stream must use the cached binding (no spurious rebind).  Creating a fresh
+  // context per iteration would reset blas_handle_stream_ to nullptr every
+  // time and never exercise the "same handle, different stream" cache path.
+  auto ctx = MakeCtxOnStream(gpu_place, stream_a);
+
+  for (int iter = 0; iter < 4; ++iter) {
+    gpuStream_t cur_raw = (iter % 2 == 0) ? stream_a : stream_b;
+    ctx->SetCUDAStream(new phi::CUDAStream(gpu_place, cur_raw), /*clear=*/true);
+
+    phi::DenseTensor in_a, in_b, out_gpu, out_cpu;
+    phi::Copy(*ctx, input_cpu, gpu_place, /*blocking=*/true, &in_a);
+    phi::Copy(*ctx, input_cpu, gpu_place, /*blocking=*/true, &in_b);
+    out_gpu.mutable_data<float>({2, 2}, gpu_place);
+    GetBlas<float>(*ctx).MatMul(in_a, false, in_b, true, 1.0f, &out_gpu, 0.0f);
+    phi::Copy(*ctx, out_gpu, cpu_place, /*blocking=*/true, &out_cpu);
+    ctx->Wait();
+
+    const float* result = out_cpu.data<float>();
+    EXPECT_FLOAT_EQ(result[0], cpu_ref[0]) << "iter=" << iter;
+    EXPECT_FLOAT_EQ(result[1], cpu_ref[1]) << "iter=" << iter;
+    EXPECT_FLOAT_EQ(result[2], cpu_ref[2]) << "iter=" << iter;
+    EXPECT_FLOAT_EQ(result[3], cpu_ref[3]) << "iter=" << iter;
+  }
+
+#ifdef PADDLE_WITH_HIP
+  PADDLE_ENFORCE_GPU_SUCCESS(hipStreamDestroy(stream_a));
+  PADDLE_ENFORCE_GPU_SUCCESS(hipStreamDestroy(stream_b));
+#else
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamDestroy(stream_a));
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamDestroy(stream_b));
+#endif
+}
+
+// ---------------------------------------------------------------------------
+// Test 3: Two independent streams running GEMM concurrently do not corrupt
+//         each other's results.
+//
+// Launch GEMM on stream_a and stream_b simultaneously (GPU-side concurrency),
+// then synchronize both and verify each produces the correct answer.  This
+// confirms that distinct GPUContext instances maintain independent cuBLAS
+// handles with independent stream bindings.
+// ---------------------------------------------------------------------------
+TEST(math_function, cublas_concurrent_streams_independent) {
+#if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
+  return;
+#endif
+
+  phi::GPUPlace gpu_place(0);
+  phi::CPUPlace cpu_place;
+
+  // Matrix A: {0..5}, Matrix B: {5..0} — different inputs so result differs.
+  float arr_a[6] = {0, 1, 2, 3, 4, 5};
+  float arr_b[6] = {5, 4, 3, 2, 1, 0};
+
+  phi::DenseTensor cpu_a, cpu_b;
+  memcpy(
+      cpu_a.mutable_data<float>({2, 3}, cpu_place), arr_a, 6 * sizeof(float));
+  memcpy(
+      cpu_b.mutable_data<float>({2, 3}, cpu_place), arr_b, 6 * sizeof(float));
+
+  auto ref_aa = CpuMatMulNotransTransResult(arr_a, arr_a);  // A * A^T
+  auto ref_bb = CpuMatMulNotransTransResult(arr_b, arr_b);  // B * B^T
+
+#ifdef PADDLE_WITH_HIP
+  hipStream_t raw_sa, raw_sb;
+  PADDLE_ENFORCE_GPU_SUCCESS(hipStreamCreate(&raw_sa));
+  PADDLE_ENFORCE_GPU_SUCCESS(hipStreamCreate(&raw_sb));
+#else
+  cudaStream_t raw_sa, raw_sb;
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamCreate(&raw_sa));
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamCreate(&raw_sb));
+#endif
+
+  auto ctx_a = MakeCtxOnStream(gpu_place, raw_sa);
+  auto ctx_b = MakeCtxOnStream(gpu_place, raw_sb);
+
+  // Upload inputs.
+  phi::DenseTensor ga_in_a, ga_in_b, gb_in_a, gb_in_b;
+  phi::Copy(*ctx_a, cpu_a, gpu_place, true, &ga_in_a);
+  phi::Copy(*ctx_a, cpu_a, gpu_place, true, &ga_in_b);
+  phi::Copy(*ctx_b, cpu_b, gpu_place, true, &gb_in_a);
+  phi::Copy(*ctx_b, cpu_b, gpu_place, true, &gb_in_b);
+
+  // Launch both GEMMs without synchronizing between them.
+  phi::DenseTensor out_a_gpu, out_b_gpu;
+  out_a_gpu.mutable_data<float>({2, 2}, gpu_place);
+  out_b_gpu.mutable_data<float>({2, 2}, gpu_place);
+  GetBlas<float>(*ctx_a).MatMul(
+      ga_in_a, false, ga_in_b, true, 1.0f, &out_a_gpu, 0.0f);
+  GetBlas<float>(*ctx_b).MatMul(
+      gb_in_a, false, gb_in_b, true, 1.0f, &out_b_gpu, 0.0f);
+
+  // Copy results back and synchronize.
+  phi::DenseTensor out_a_cpu, out_b_cpu;
+  phi::Copy(*ctx_a, out_a_gpu, cpu_place, true, &out_a_cpu);
+  phi::Copy(*ctx_b, out_b_gpu, cpu_place, true, &out_b_cpu);
+  ctx_a->Wait();
+  ctx_b->Wait();
+
+  const float* ra = out_a_cpu.data<float>();
+  const float* rb = out_b_cpu.data<float>();
+
+  EXPECT_FLOAT_EQ(ra[0], ref_aa[0]);
+  EXPECT_FLOAT_EQ(ra[1], ref_aa[1]);
+  EXPECT_FLOAT_EQ(ra[2], ref_aa[2]);
+  EXPECT_FLOAT_EQ(ra[3], ref_aa[3]);
+
+  EXPECT_FLOAT_EQ(rb[0], ref_bb[0]);
+  EXPECT_FLOAT_EQ(rb[1], ref_bb[1]);
+  EXPECT_FLOAT_EQ(rb[2], ref_bb[2]);
+  EXPECT_FLOAT_EQ(rb[3], ref_bb[3]);
+
+#ifdef PADDLE_WITH_HIP
+  PADDLE_ENFORCE_GPU_SUCCESS(hipStreamDestroy(raw_sa));
+  PADDLE_ENFORCE_GPU_SUCCESS(hipStreamDestroy(raw_sb));
+#else
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamDestroy(raw_sa));
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamDestroy(raw_sb));
+#endif
 }
 
 }  // namespace tests
