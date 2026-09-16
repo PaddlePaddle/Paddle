@@ -30,6 +30,7 @@
 #include "paddle/cinn/backends/custom_device/codegen_custom_device_dev.h"
 #endif
 #include "paddle/cinn/cinn.h"
+#include "paddle/cinn/common/target.h"
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/ir_mutator.h"
 #include "paddle/cinn/ir/lowered_func.h"
@@ -40,6 +41,10 @@
 #include "paddle/utils/flat_hash_map.h"
 namespace cinn {
 namespace backends {
+
+// Forward declaration — defined in codegen_device_util.cc
+bool RequiresCooperativeLaunch(const ir::LoweredFunc& func,
+                               const common::Target& target);
 
 #define KERNEL_ARGS "kernel_args"
 #define KERNEL_ARGS_NUM "kernel_args_num"
@@ -172,13 +177,18 @@ struct CollectHostFunctionVisitor : public ir::IRMutator<> {
             << "shared_mem: " << shared_mem_bytes.value();
 
     std::optional<const char*> call_kernel;
-    cinn::common::DefaultDeviceTarget().arch.Match(
+    auto target = cinn::common::DefaultDeviceTarget();
+    target.arch.Match(
         [&](std::variant<common::UnknownArch,
                          common::X86Arch,
                          common::ARMArch>) { CINN_NOT_IMPLEMENTED; },
         [&](common::CustomDeviceArch) {
-          call_kernel = runtime::intrinsic::call_custom_device_kernel;
+          call_kernel =
+              RequiresCooperativeLaunch(ir::LoweredFunc(func), target)
+                  ? runtime::intrinsic::call_custom_device_cooperative_kernel
+                  : runtime::intrinsic::call_custom_device_kernel;
         },
+        // TODO(cinn): NVGPUArch should also check RequiresCooperativeLaunch
         [&](common::NVGPUArch) {
           call_kernel = runtime::intrinsic::call_cuda_kernel;
         },
