@@ -20,6 +20,7 @@
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/visit_type.h"
+#include "paddle/phi/kernels/cast_kernel.h"
 #include "paddle/phi/kernels/complex_kernel.h"
 #include "paddle/phi/kernels/impl/full_with_tensor_kernel_impl.h"
 
@@ -76,6 +77,52 @@ void FullKernel<phi::complex64, XPUContext>(const XPUContext& dev_ctx,
         dev_ctx.x_context(), imag_out.data<float>(), out->numel(), imag_part);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
     phi::ComplexKernel<float>(dev_ctx, real_out, imag_out, out);
+  }
+}
+
+template <>
+void FullKernel<phi::complex128, XPUContext>(const XPUContext& dev_ctx,
+                                             const IntArray& shape,
+                                             const Scalar& val,
+                                             DataType dtype,
+                                             DenseTensor* out) {
+  using T = phi::complex128;
+  out->Resize(shape.GetData());
+  dev_ctx.template Alloc<T>(out);
+
+  T complex_val = val.to<T>();
+  double real_part = complex_val.real;
+  double imag_part = complex_val.imag;
+
+  DenseTensor real_out, imag_out;
+  real_out.Resize(out->dims());
+  imag_out.Resize(out->dims());
+  dev_ctx.template Alloc<double>(&real_out);
+  dev_ctx.template Alloc<double>(&imag_out);
+
+  if (out->numel() > 0) {
+    // XPU xpu::constant does not support double, use float intermediates
+    DenseTensor real_out_f, imag_out_f;
+    real_out_f.Resize(out->dims());
+    imag_out_f.Resize(out->dims());
+    dev_ctx.template Alloc<float>(&real_out_f);
+    dev_ctx.template Alloc<float>(&imag_out_f);
+
+    int r = xpu::constant(dev_ctx.x_context(),
+                          real_out_f.data<float>(),
+                          out->numel(),
+                          static_cast<float>(real_part));
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
+    r = xpu::constant(dev_ctx.x_context(),
+                      imag_out_f.data<float>(),
+                      out->numel(),
+                      static_cast<float>(imag_part));
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
+
+    // Cast float intermediates to double for complex128 components
+    DenseTensor real_d = Cast<float>(dev_ctx, real_out_f, DataType::FLOAT64);
+    DenseTensor imag_d = Cast<float>(dev_ctx, imag_out_f, DataType::FLOAT64);
+    phi::ComplexKernel<double>(dev_ctx, real_d, imag_d, out);
   }
 }
 #endif
@@ -171,7 +218,14 @@ PD_REGISTER_KERNEL(full,
                    int64_t,
                    bool,
                    phi::float16,
-                   phi::bfloat16) {}
+                   phi::bfloat16
+#ifdef PADDLE_WITH_XPU_FFT
+                   ,
+                   phi::complex64,
+                   phi::complex128
+#endif
+) {
+}
 
 PD_REGISTER_KERNEL(full_like,
                    XPU,
