@@ -69,7 +69,10 @@ inline XPUFCCalcType FCCalcType() {
   // performance can set env var XPU_PADDLE_FC_TF32.
   auto default_calc_type = XPUFCCalcType::FC_FLOAT;
 #else
-  auto default_calc_type = XPUFCCalcType::FC_INT16;
+  // Fix: Use float32 accumulation by default for non-XRE5 devices to match
+  // GPU default behavior (cuBLAS uses float32). FC_INT16 truncates intermediate
+  // dot products, causing precision gaps in einsum and other matmul-heavy ops.
+  auto default_calc_type = XPUFCCalcType::FC_FLOAT;
 #endif
   return GetFCCalcTypeFromEnv(calc_type_map, default_calc_type);
 }
