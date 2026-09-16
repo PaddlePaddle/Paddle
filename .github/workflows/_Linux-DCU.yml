@@ -124,7 +124,7 @@ jobs:
       - name: Download paddle.tar.gz and update test branch
         timeout-minutes: 30
         run: |
-          docker exec -t ${{ env.container_name }} /bin/bash -c '
+          docker exec ${{ env.container_name }} /bin/bash -c '
           ulimit -n 102400
           rm -rf * .[^.]*
           set -e
@@ -150,7 +150,7 @@ jobs:
           work_dir: ${{ github.workspace }}
           PADDLE_ROOT: ${{ github.workspace }}
         run: |
-          docker exec -t ${{ env.container_name }} /bin/bash -c '
+          docker exec ${{ env.container_name }} /bin/bash -c '
           source /opt/dtk-24.04.1/env.sh
           export LD_LIBRARY_PATH=/usr/local/gcc-12.2/lib64:/usr/local/gcc-12.2/lib:${LD_LIBRARY_PATH}
           bash ${ci_scripts}/run_setup.sh bdist_wheel
@@ -169,7 +169,7 @@ jobs:
           bos_file: ${{ github.workspace }}/../bos/BosClient.py
           paddle_whl: paddlepaddle_dcu-0.0.0-cp310-cp310-linux_x86_64.whl
         run: |
-          docker exec -t ${{ env.container_name }} /bin/bash -c '
+          docker exec ${{ env.container_name }} /bin/bash -c '
           if [ ! -f "${{ env.bos_file }}" ]; then
             wget -q --no-proxy -O ${{ env.home_path }}/bos_new.tar.gz https://xly-devops.bj.bcebos.com/home/bos_new.tar.gz --no-check-certificate
             mkdir ${{ env.home_path }}/bos
@@ -279,7 +279,7 @@ jobs:
 
       - name: Download build.tar.gz
         run: |
-          docker exec -t ${{ env.container_name }} /bin/bash -c '
+          docker exec ${{ env.container_name }} /bin/bash -c '
           rm -rf ./*
           wget -q --tries=5 --no-proxy https://paddle-github-action.bj.bcebos.com/PR/dcu/${PR_ID}/${COMMIT_ID}/build.tar.gz --no-check-certificate
           tar --use-compress-program="pzstd" -xf build.tar.gz --strip-components=1
@@ -288,7 +288,7 @@ jobs:
 
       - name: Run test
         run: |
-          docker exec -t ${{ env.container_name }} /bin/bash -c '
+          docker exec ${{ env.container_name }} /bin/bash -c '
           export PATH=/usr/local/bin:${PATH}
           ln -sf $(which python3.10) /usr/local/bin/python
           ln -sf $(which pip3.10) /usr/local/bin/pip
@@ -303,7 +303,7 @@ jobs:
       - name: Terminate and delete the container
         if: always()
         run: |
-          docker exec -t ${{ env.container_name }} /bin/bash -c '
+          docker exec ${{ env.container_name }} /bin/bash -c '
           rm -rf * .[^.]*
           '
           docker stop ${container_name}
