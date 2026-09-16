@@ -15,6 +15,7 @@
 #pragma once
 
 #include <memory>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -65,7 +66,7 @@ class DenseTensorBlockingQueue {
 
   inline bool IsClosed() const { return queue_.IsClosed(); }
 
-  inline void Kill() { queue_.Kill(); }
+  inline void Kill(const std::string& reason = "") { queue_.Kill(reason); }
 
   inline bool WaitForInited(size_t) { return true; }
 
@@ -145,9 +146,9 @@ class OrderedMultiDeviceDenseTensorBlockingQueue {
     }
   }
 
-  inline void Kill() {
+  inline void Kill(const std::string& reason = "") {
     for (auto& item : queues_) {
-      item->Kill();
+      item->Kill(reason);
     }
   }
 
