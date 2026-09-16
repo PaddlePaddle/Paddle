@@ -71,6 +71,8 @@ if(WITH_TESTING)
   py_test(test_custom_tanh_double_grad SRCS test_custom_tanh_double_grad.py)
   py_test(test_custom_inplace SRCS test_custom_inplace.py)
   py_test(test_custom_optional SRCS test_custom_optional.py)
+  py_test(test_custom_scalar_attr_pir SRCS test_custom_scalar_attr_pir.py)
+  set_tests_properties(test_custom_scalar_attr_pir PROPERTIES TIMEOUT 180)
   #py_test(test_custom_contiguous SRCS test_custom_contiguous.py)
   #set_tests_properties(test_custom_contiguous PROPERTIES TIMEOUT 180)
 
