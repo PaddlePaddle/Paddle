@@ -37,10 +37,6 @@ void ReduceMeanGradKernel(const Context& dev_ctx,
 
   using XPUType = typename XPUTypeTrait<T>::Type;
   reduce_all = recompute_reduce_all(x, dims, reduce_all);
-  dev_ctx.template Alloc<T>(x_grad);
-  const XPUType* dy_data = reinterpret_cast<const XPUType*>(out_grad.data<T>());
-
-  XPUType* x_data = reinterpret_cast<XPUType*>(x_grad->data<T>());
 
   auto reduce_dims = dims.GetData();
 
@@ -68,12 +64,6 @@ void ReduceMeanGradKernel(const Context& dev_ctx,
     }
   }
 
-  float val = 1.0f / static_cast<float>(reduce_numel);
-
-  int r = xpu::constant(
-      dev_ctx.x_context(), x_data, x.numel(), static_cast<XPUType>(val));
-  PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
-
   // use [1] to replace [], because xpu not support []
   if (xdims.size() == 0) {
     xdims = std::vector<int64_t>({1});
@@ -81,6 +71,16 @@ void ReduceMeanGradKernel(const Context& dev_ctx,
   if (ydims.size() == 0) {
     ydims = std::vector<int64_t>({1});
   }
+
+  float val = 1.0f / static_cast<float>(reduce_numel);
+
+  dev_ctx.template Alloc<T>(x_grad);
+  const XPUType* dy_data = reinterpret_cast<const XPUType*>(out_grad.data<T>());
+  XPUType* x_data = reinterpret_cast<XPUType*>(x_grad->data<T>());
+
+  int r = xpu::constant(
+      dev_ctx.x_context(), x_data, x.numel(), static_cast<XPUType>(val));
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
 
   r = xpu::broadcast_mul(
       dev_ctx.x_context(), x_data, dy_data, x_data, xdims, ydims);
@@ -95,4 +95,8 @@ PD_REGISTER_KERNEL(mean_grad,
                    phi::ReduceMeanGradKernel,
                    float,
                    phi::float16,
-                   phi::bfloat16) {}
+                   phi::bfloat16,
+                   int,
+                   int64_t) {
+  kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
+}
