@@ -21,6 +21,8 @@
 #include <cub/block/block_store.cuh>
 #include <cub/util_ptx.cuh>
 #include <cub/util_type.cuh>
+#include <cub/version.cuh>
+#include "paddle/phi/kernels/funcs/cub.h"
 
 namespace phi::funcs {
 
@@ -91,7 +93,7 @@ class BlockRadixTopKGlobalMemory {
     for (int id = tid_; id < RADIX_SIZE; id += BLOCK_SIZE) {
       temp_storage_.shared_bins[id] = 0;
     }
-    cub::CTA_SYNC();
+    __syncthreads();
     UnsignedBits key_mask = ((UnsignedBits)(-1))
                             << ((UnsignedBits)(digit_pos + RADIX_BITS));
 #pragma unroll
@@ -106,18 +108,18 @@ class BlockRadixTopKGlobalMemory {
         atomicAdd(&temp_storage_.shared_bins[digit_in_radix], 1);
       }
     }
-    cub::CTA_SYNC();
+    __syncthreads();
   }
   __device__ __forceinline__ void InclusiveScanBins() {
     int items[SCAN_ITEMS_PER_THREAD];
     BinBlockLoad(temp_storage_.load_store.load_storage)
         .Load(temp_storage_.shared_bins, items, RADIX_SIZE, 0);
-    cub::CTA_SYNC();
+    __syncthreads();
     BlockScanT(temp_storage_.scan_storage).InclusiveSum(items, items);
-    cub::CTA_SYNC();
+    __syncthreads();
     BinBlockStore(temp_storage_.load_store.store_storage)
         .Store(temp_storage_.shared_bins, items, RADIX_SIZE);
-    cub::CTA_SYNC();
+    __syncthreads();
   }
   __device__ __forceinline__ void UpdateTopK(
       int digit_pos,
@@ -131,7 +133,7 @@ class BlockRadixTopKGlobalMemory {
         temp_storage_.share_bucket_id = idx;
       }
     }
-    cub::CTA_SYNC();
+    __syncthreads();
     target_k = temp_storage_.share_target_k;
     int target_bucket_id = temp_storage_.share_bucket_id;
     UnsignedBits key_segment = ((UnsignedBits)target_bucket_id)
@@ -209,7 +211,7 @@ class BlockRadixTopKRegister {
     GenValidArray(is_valid, k);
     BlockExchangeKey{temp_storage_.exchange_storage.key_storage}
         .ScatterToStripedFlagged(keys, keys, ranks_, is_valid);
-    cub::CTA_SYNC();
+    __syncthreads();
   }
   __device__ __forceinline__ void radixTopKToStriped(
       KeyT (&keys)[ITEMS_PER_THREAD],
@@ -221,10 +223,10 @@ class BlockRadixTopKRegister {
     GenValidArray(is_valid, k);
     BlockExchangeKey{temp_storage_.exchange_storage.key_storage}
         .ScatterToStripedFlagged(keys, keys, ranks_, is_valid);
-    cub::CTA_SYNC();
+    __syncthreads();
     BlockExchangeValue{temp_storage_.exchange_storage.value_storage}
         .ScatterToStripedFlagged(values, values, ranks_, is_valid);
-    cub::CTA_SYNC();
+    __syncthreads();
   }
 
  private:
@@ -282,7 +284,7 @@ class BlockRadixTopKRegister {
     for (int id = tid_; id < RADIX_SIZE; id += BLOCK_SIZE) {
       temp_storage_.shared_bins[id] = 0;
     }
-    cub::CTA_SYNC();
+    __syncthreads();
 // #define USE_MATCH
 #ifdef USE_MATCH
     int lane_mask = cub::LaneMaskLt();
@@ -324,18 +326,18 @@ class BlockRadixTopKRegister {
       }
     }
 #endif
-    cub::CTA_SYNC();
+    __syncthreads();
   }
   __device__ __forceinline__ void InclusiveScanBins() {
     int items[SCAN_ITEMS_PER_THREAD];
     BinBlockLoad(temp_storage_.load_store.load_storage)
         .Load(temp_storage_.shared_bins, items, RADIX_SIZE, 0);
-    cub::CTA_SYNC();
+    __syncthreads();
     BlockScanT(temp_storage_.scan_storage).InclusiveSum(items, items);
-    cub::CTA_SYNC();
+    __syncthreads();
     BinBlockStore(temp_storage_.load_store.store_storage)
         .Store(temp_storage_.shared_bins, items, RADIX_SIZE);
-    cub::CTA_SYNC();
+    __syncthreads();
   }
   __device__ __forceinline__ void UpdateTopK(
       UnsignedBits (&unsigned_keys)[ITEMS_PER_THREAD],
@@ -352,7 +354,7 @@ class BlockRadixTopKRegister {
         temp_storage_.share_prev_count = prev_count;
       }
     }
-    cub::CTA_SYNC();
+    __syncthreads();
     target_k = temp_storage_.share_target_k;
     prefix_k += temp_storage_.share_prev_count;
     int target_bucket_id = temp_storage_.share_bucket_id;
@@ -377,7 +379,7 @@ class BlockRadixTopKRegister {
         }
       }
     }
-    cub::CTA_SYNC();
+    __syncthreads();
   }
 
   _TempStorage &temp_storage_;
