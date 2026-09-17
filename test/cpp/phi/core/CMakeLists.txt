@@ -15,14 +15,10 @@ else()
 endif()
 cc_test(test_intrusive_ptr SRCS test_intrusive_ptr.cc)
 cc_test(test_type_info SRCS test_type_info.cc)
-if(WIN32)
-  paddle_test(test_kernel_factory SRCS test_kernel_factory.cc DEPS phi common)
-else()
-  cc_test(
-    test_kernel_factory
-    SRCS test_kernel_factory.cc
-    DEPS phi common)
-endif()
+cc_test(
+  test_kernel_factory
+  SRCS test_kernel_factory.cc
+  DEPS phi common)
 cc_test(
   test_sparse_coo_tensor
   SRCS test_sparse_coo_tensor.cc

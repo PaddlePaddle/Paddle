@@ -71,7 +71,7 @@ set start=%start:~4,10%
 
 if not defined CUDA_TOOLKIT_ROOT_DIR set "CUDA_TOOLKIT_ROOT_DIR=C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v11.2"
 if not defined WITH_TENSORRT set "WITH_TENSORRT=OFF"
-set "PATH=%CUDA_TOOLKIT_ROOT_DIR:/=\%\bin;%CUDA_TOOLKIT_ROOT_DIR:/=\%\libnvvp;%PATH%"
+set "PATH=%CUDA_TOOLKIT_ROOT_DIR:/=\%\bin\x64;%CUDA_TOOLKIT_ROOT_DIR:/=\%\bin;%CUDA_TOOLKIT_ROOT_DIR:/=\%\libnvvp;%PATH%"
 if /I "%WITH_TENSORRT%"=="ON" if defined TENSORRT_ROOT set "PATH=%TENSORRT_ROOT:/=\%\lib;%PATH%"
 
 if "%WITH_GPU%"=="ON" (
