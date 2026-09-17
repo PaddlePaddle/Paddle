@@ -1,4 +1,4 @@
-ARG CUDA_VERSION=11.8
+ARG CUDA_VERSION=12.8
 ARG BASE_TARGET=cuda${CUDA_VERSION}
 FROM amd64/almalinux:8 as base
 
@@ -75,21 +75,10 @@ ENV LD_LIBRARY_PATH=/usr/local/cuda-${CUDA_VERSION}/compat:$LD_LIBRARY_PATH
 ADD ./common/install_cuda.sh install_cuda.sh
 ADD ./common/install_gdrcopy.sh install_gdrcopy.sh
 
-FROM cuda as cuda11.8
-RUN bash ./install_cuda.sh 11.8
-ENV DESIRED_CUDA=11.8
-
-FROM cuda as cuda12.3
-RUN bash ./install_cuda.sh 12.3
-ENV DESIRED_CUDA=12.3
-
-FROM cuda as cuda12.4
-RUN bash ./install_cuda.sh 12.4
-ENV DESIRED_CUDA=12.4
-
-FROM cuda as cuda12.6
-RUN bash ./install_cuda.sh 12.6
-ENV DESIRED_CUDA=12.6
+FROM cuda as cuda12.8
+RUN bash ./install_cuda.sh 12.8 && bash ./install_gdrcopy.sh
+ENV DESIRED_CUDA=12.8
+ENV GDRCOPY_HOME=/usr/local/gdrcopy
 
 FROM cuda as cuda12.9
 RUN bash ./install_cuda.sh 12.9 && bash ./install_gdrcopy.sh

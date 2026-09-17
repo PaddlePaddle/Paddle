@@ -21,22 +21,6 @@ from paddle import base
 from paddle.base import core
 
 
-class TestTF32Switch(unittest.TestCase):
-    def test_on_off(self):
-        if core.is_compiled_with_cuda() or is_custom_device():
-            place = get_device_place()
-            if core.is_compiled_with_cuda():
-                self.assertFalse(core.get_cublas_switch())  # default
-            core.set_cublas_switch(False)
-            self.assertFalse(core.get_cublas_switch())  # turn off
-            core.set_cublas_switch(True)
-            self.assertTrue(core.get_cublas_switch())  # turn on
-
-            core.set_cublas_switch(True)  # restore the switch
-        else:
-            pass
-
-
 class TestTF32OnMatmul(unittest.TestCase):
     def test_dygraph_without_out(self):
         if core.is_compiled_with_cuda() or is_custom_device():

@@ -133,6 +133,8 @@ def dict_to_tuple_helper(output_tensor):
 def convert_tensor_dict_to_tuple(output_tensor_dict):
     output_tensor = []
     for key, tensor in output_tensor_dict.items():
+        if key == "_block_cache_meta":
+            continue
         if isinstance(tensor, (list, tuple)):
             for idx, t in enumerate(tensor):
                 t.key = key + " " + str(idx)

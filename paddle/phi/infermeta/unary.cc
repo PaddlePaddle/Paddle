@@ -5987,7 +5987,7 @@ void UnbindInferMeta(const MetaTensor& x,
                      int axis,
                      std::vector<MetaTensor*> outs) {
   auto in_dims = x.dims();
-  std::vector<int> out_dim;
+  std::vector<int64_t> out_dim;
 
   PADDLE_ENFORCE_GE(
       axis,

@@ -53,6 +53,13 @@ from paddle.base.framework import (
     name_struct,
 )
 from paddle.base.layer_helper_base import LayerHelperBase
+from paddle.distributed.flex_checkpoint.aoa.generation import (
+    format_dtype_cast_attr,
+    format_inv_dtype_cast_attr,
+    resolve_dtype_cast_rule,
+    resolve_names,
+    should_skip,
+)
 from paddle.distributed.flex_checkpoint.dcp.sharded_weight import (
     ShardedStateDict,
     build_sharded_state_dict,
@@ -68,6 +75,10 @@ if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator, Mapping, Sequence
 
     from paddle._typing import DTypeLike, ParamAttrLike, PlaceLike, ShapeLike
+    from paddle.distributed.flex_checkpoint.aoa.generation import (
+        AOAContext,
+        AOANameScope,
+    )
     from paddle.nn.initializer import Initializer
 
 
@@ -2960,6 +2971,130 @@ class Layer:
                 sharded_state_dict.update(sub_sharded)
 
         return sharded_state_dict
+
+    def gen_aoa_statements(
+        self,
+        ctx: AOAContext,
+        *,
+        structured_name_prefix: str = "",
+        aoa_name_scope: AOANameScope | None = None,
+    ) -> list[str]:
+        """Recursively generates checkpoint -> model AOA statements.
+
+        Emits a ``source -> target`` statement per own Parameter / persistable
+        buffer (same source as ``sharded_state_dict``), then recurses into
+        sub-layers, omitting redundant statements (``should_skip``) and names
+        in ``ctx.excluded_names``. Components with a special checkpoint layout
+        override this method; the rest fall back here.
+
+        Args:
+            ctx: Read-only ``AOAContext`` holding the constant name and dtype
+                maps for the whole generation pass.
+            structured_name_prefix: Live module path prefix, ending in ``.``
+                when non-empty, as in ``sharded_state_dict``.
+            aoa_name_scope: Optional checkpoint-side scope for a re-rooted
+                subtree (MTP subtrees, output head), passed down unchanged.
+
+        Returns:
+            Statements for this layer and all its sub-layers.
+        """
+        statements: list[str] = []
+        # Same source as ``sharded_state_dict`` so the generated model-side
+        # names stay in sync with the checkpoint keys it produces.
+        own_state_dict = self.state_dict(
+            structured_name_prefix="", include_sublayers=False
+        )
+        for name in own_state_dict:
+            if structured_name_prefix + name in ctx.excluded_names:
+                continue
+            source_name, target_name = resolve_names(
+                name,
+                ctx.checkpoint_name_prefix,
+                structured_name_prefix,
+                ctx.pp_to_single_mapping,
+                ctx.checkpoint_name_mapping,
+                aoa_name_scope=aoa_name_scope,
+                model_name_prefix=ctx.model_name_prefix,
+            )
+            cast = format_dtype_cast_attr(
+                resolve_dtype_cast_rule(
+                    target_name,
+                    ctx.dtype_cast_rules,
+                    ctx.model_name_prefix,
+                )
+            )
+            if should_skip(source_name, target_name, cast):
+                continue
+            statements.append(f"{source_name} -> {target_name}{cast}")
+        for layer_name, sublayer in self._sub_layers.items():
+            if sublayer is not None:
+                statements += sublayer.gen_aoa_statements(
+                    ctx,
+                    structured_name_prefix=f"{structured_name_prefix}{layer_name}.",
+                    aoa_name_scope=aoa_name_scope,
+                )
+        return statements
+
+    def gen_inv_aoa_statements(
+        self,
+        ctx: AOAContext,
+        *,
+        structured_name_prefix: str = "",
+        aoa_name_scope: AOANameScope | None = None,
+    ) -> list[str]:
+        """Recursively generates model -> checkpoint AOA statements.
+
+        Independently resolves the same checkpoint/model name pair as
+        ``gen_aoa_statements`` and emits it in the opposite order, with the
+        same ``should_skip`` and ``ctx.excluded_names`` omissions.
+
+        Args:
+            ctx: Read-only ``AOAContext`` holding the constant name and dtype
+                maps for the whole generation pass.
+            structured_name_prefix: Live module path prefix, ending in ``.``
+                when non-empty, as in ``sharded_state_dict``.
+            aoa_name_scope: Optional checkpoint-side scope for a re-rooted
+                subtree (MTP subtrees, output head), passed down unchanged.
+
+        Returns:
+            Statements for this layer and all its sub-layers.
+        """
+        statements: list[str] = []
+        # Same source as ``sharded_state_dict`` so the generated model-side
+        # names stay in sync with the checkpoint keys it produces.
+        own_state_dict = self.state_dict(
+            structured_name_prefix="", include_sublayers=False
+        )
+        for name in own_state_dict:
+            if structured_name_prefix + name in ctx.excluded_names:
+                continue
+            target_name, source_name = resolve_names(
+                name,
+                ctx.checkpoint_name_prefix,
+                structured_name_prefix,
+                ctx.pp_to_single_mapping,
+                ctx.checkpoint_name_mapping,
+                aoa_name_scope=aoa_name_scope,
+                model_name_prefix=ctx.model_name_prefix,
+            )
+            cast = format_inv_dtype_cast_attr(
+                resolve_dtype_cast_rule(
+                    source_name,
+                    ctx.dtype_cast_rules,
+                    ctx.model_name_prefix,
+                )
+            )
+            if should_skip(source_name, target_name, cast):
+                continue
+            statements.append(f"{source_name} -> {target_name}{cast}")
+        for layer_name, sublayer in self._sub_layers.items():
+            if sublayer is not None:
+                statements += sublayer.gen_inv_aoa_statements(
+                    ctx,
+                    structured_name_prefix=f"{structured_name_prefix}{layer_name}.",
+                    aoa_name_scope=aoa_name_scope,
+                )
+        return statements
 
     def full(
         self,

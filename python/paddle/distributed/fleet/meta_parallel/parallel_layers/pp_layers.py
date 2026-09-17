@@ -1129,7 +1129,10 @@ class PipelineLayer(nn.Layer):
                                 for _, param in obj:
                                     param.is_firstly_shared = True
                     else:
-                        self.add_sublayer(str(layer_index), instance)
+                        # when vpp is enabled, layer instance will be registered
+                        # by `run_function.append(instance)` as a sublayer of PipelineLayerChunk
+                        if self._num_virtual_pipeline_stages == 1:
+                            self.add_sublayer(str(layer_index), instance)
                         self._alias_shared_layer(
                             instance, self.shared_layers[layer.layer_name]
                         )

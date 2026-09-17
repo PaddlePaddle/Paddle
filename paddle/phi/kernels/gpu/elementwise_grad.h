@@ -189,13 +189,8 @@ void ElementwiseMixedPrecisionAddGrad(const GPUContext &dev_ctx,
   dim3 grid_dim(grid_size, 1, 1);
   dim3 block_dim(block_size, 1, 1);
 
-  // The largest intermediate is the tail start of the highest-numbered
-  // thread, `loop * vec_size + tid`, whose upper bound is
-  // `main_size + (grid_size * block_size - 1)`; the strided increments
-  // `i += stride` are bounded by `(size - 1) + grid_size * block_size`. Both
-  // are covered by `size + grid_size * block_size <= INT_MAX`.
-  //
-  // Avoid `loop * vec_size + tid` overflow when `size % vec_size` != 0.
+  // Guard is enough: `loop * vec_size + tid` and `i += stride` in
+  // kernel are both bounded by `size + grid_size * block_size`.
   const int64_t index_span = static_cast<int64_t>(grid_size) * block_size;
   if (size + index_span <= std::numeric_limits<int>::max()) {
     MixedPrecisionElemwiseAddGradCUDAKernel<T_dy, int>

@@ -15,7 +15,7 @@
 # [AUTO-GENERATED] Unit test for paddle.nn.functional.flash_attention
 # 自动生成的单测，覆盖 paddle.nn.functional.flash_attention 模块中不同代码路径
 # Target: cover uncovered lines in python/paddle/nn/functional/flash_attention.py
-# NOTE: test_ai_flash_attention.py already covers:
+# NOTE: test_coverage_flash_attention.py already covers:
 #   _select_sdp_cuda, _select_sdp, sdp_kernel,
 #   flash_attention basic/dropout/causal,
 #   scaled_dot_product_attention basic/causal

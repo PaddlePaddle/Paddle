@@ -219,5 +219,116 @@ class TestTruncatedGaussianRandomOpBf16(TestTruncatedGaussianRandomOp):
             )
 
 
+class TestTruncatedGaussianRandomOpGlobalSeed(TestTruncatedGaussianRandomOp):
+    """seed == 0 draws from the global generator, a separate kernel branch that
+    none of the op-seed cases above reaches."""
+
+    def setUp(self):
+        super().setUp()
+        self.attrs["seed"] = 0
+
+
+class TestTruncatedGaussianRandomOpGlobalSeedFp64(
+    TestTruncatedGaussianRandomOpFp64
+):
+    def setUp(self):
+        super().setUp()
+        self.attrs["seed"] = 0
+
+
+class TestTruncatedGaussianRandomOpGlobalSeedBf16(
+    TestTruncatedGaussianRandomOpBf16
+):
+    def setUp(self):
+        super().setUp()
+        self.attrs["seed"] = 0
+
+
+def head_tail_fingerprint(tensor, n=512):
+    """Byte signature of a tensor's head and tail.
+
+    Stream reuse shows up as *byte-identical* tensors, so slicing is enough to
+    spot a repeat while keeping the memory footprint independent of how many
+    draws are compared.
+    """
+    return tensor[:n].numpy().tobytes() + tensor[-n:].numpy().tobytes()
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(),
+    "core is not compiled with CUDA",
+)
+class TestTruncatedGaussianRandomNoStreamReuse(unittest.TestCase):
+    """Large-scale initialization must never hand out the same numbers twice.
+
+    The CUDA kernel used to seed a 31-bit LCG (``thrust::minstd_rand``) and to
+    pass ``numel * offset`` through an ``int``, with ``offset`` advanced by only
+    one per call. Consecutive draws on the same generator therefore wrapped
+    around and repeated byte for byte every ``2**32 / numel`` calls -- a scale
+    that real model initialization reaches easily.
+    """
+
+    def setUp(self):
+        paddle.disable_static()
+        paddle.set_device('gpu')
+        paddle.seed(2026)
+
+    def tearDown(self):
+        paddle.enable_static()
+
+    def draw(self, buf):
+        paddle.nn.init.trunc_normal_(buf, mean=0.0, std=0.02)
+        return buf
+
+    def assert_draws_unique(self, numel, num_calls):
+        buf = paddle.empty([numel], dtype='float32')
+        first_seen = {}
+        duplicates = []
+        for call in range(1, num_calls + 1):
+            fingerprint = head_tail_fingerprint(self.draw(buf))
+            if fingerprint in first_seen:
+                duplicates.append((first_seen[fingerprint], call))
+            else:
+                first_seen[fingerprint] = call
+        self.assertEqual(
+            duplicates,
+            [],
+            f"truncated_gaussian_random reused its random stream: with "
+            f"numel={numel} these pairs of draws are identical: {duplicates}",
+        )
+
+    def test_no_repeat_across_one_offset_wraparound(self):
+        # 2**32 / 2**22 == 1024 calls was the old repeat period; go past it.
+        numel = 1 << 22
+        self.assert_draws_unique(numel, (1 << 32) // numel + 8)
+
+    def test_no_repeat_at_moe_expert_weight_scale(self):
+        # numel of grouped_gemm_experts.weight1 under EP=64 in the report; the
+        # old period was 2**32 / 2**26 == 64 calls, so every 32nd MoE layer got
+        # a byte-identical copy of an earlier one.
+        numel = 1 << 26
+        self.assert_draws_unique(numel, (1 << 32) // numel + 8)
+
+    def test_no_shifted_repeat_at_half_a_wraparound(self):
+        """Half a wraparound used to repeat the sequence shifted by two.
+
+        ``2**31 % (2**31 - 2) == 2``, so the draw ``2**31 / numel`` calls later
+        was the earlier draw moved over by two elements -- a repeat that a plain
+        equality check does not catch.
+        """
+        numel = 1 << 22
+        buf = paddle.empty([numel], dtype='float32')
+        first = self.draw(buf).numpy().copy()
+        for _ in range((1 << 31) // numel - 1):
+            self.draw(buf)
+        later = self.draw(buf).numpy()
+        for shift in range(5):
+            self.assertFalse(
+                np.array_equal(first[shift:], later[: numel - shift]),
+                f"truncated_gaussian_random repeated an earlier draw shifted "
+                f"by {shift} elements after half an offset wraparound",
+            )
+
+
 if __name__ == "__main__":
     unittest.main()

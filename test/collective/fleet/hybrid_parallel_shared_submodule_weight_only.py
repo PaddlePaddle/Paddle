@@ -85,6 +85,44 @@ class SharedSubmodulePipe(PipelineLayer):
         super().__init__(layers=layers, seg_method='layer:LocalLayer', **kwargs)
 
 
+class VPPSharedSubmodulePipe(PipelineLayer):
+    """Shared submodule layers spread across two virtual chunks.
+
+    The second shared layer is deliberately placed inside (rather than at the
+    beginning of) the second chunk.  Before the VPP registration fix this made
+    the layer appear both under the chunk and as a direct child of the root
+    PipelineLayer.
+    """
+
+    def __init__(self, **kwargs):
+        layers = [
+            SharedLayerDesc(
+                'shared_transformer',
+                TransformerLayer,
+                shared_weight_attr='transformer_layer_weights',
+                shared_submodule_weight_only=True,
+            ),
+            LayerDesc(LocalLayer),
+            LayerDesc(LocalLayer),
+            LayerDesc(nn.Identity),
+            SharedLayerDesc(
+                'shared_transformer',
+                MTPLayer,
+                shared_weight_attr='transformer_layer_weights',
+                shared_submodule_weight_only=True,
+            ),
+            LayerDesc(LocalLayer),
+            LayerDesc(LocalLayer),
+            LayerDesc(nn.Identity),
+        ]
+        super().__init__(
+            layers=layers,
+            seg_method='layer:LocalLayer',
+            num_virtual_pipeline_stages=2,
+            **kwargs,
+        )
+
+
 class TestSharedSubmoduleWeightOnly(unittest.TestCase):
     def setUp(self):
         strategy = fleet.DistributedStrategy()
@@ -123,6 +161,43 @@ class TestSharedSubmoduleWeightOnly(unittest.TestCase):
                 source_params[name],
                 f'{name} should be aliased to the source transformer layer.',
             )
+
+    def test_shared_submodule_weight_only_vpp_mapping(self):
+        hcg = fleet.get_hybrid_communicate_group()
+        model = VPPSharedSubmodulePipe(topology=hcg.topology())
+
+        chunks = model.get_model_chunks()
+        self.assertIsNotNone(chunks)
+        self.assertEqual(len(chunks), 2)
+
+        # Both shared instances are on stage 0.  Stage 1 has no matching
+        # SharedLayerDesc and therefore has nothing to validate here.
+        if hcg.get_stage_id() != 0:
+            return
+
+        source_layer = next(
+            layer for layer in chunks[0] if isinstance(layer, TransformerLayer)
+        )
+        dest_layer = next(
+            layer for layer in chunks[1] if isinstance(layer, MTPLayer)
+        )
+
+        source_params = dict(source_layer.named_parameters())
+        for name, param in dest_layer.transformer_layer.named_parameters():
+            self.assertIs(
+                param,
+                source_params[name],
+                f'{name} should be aliased to the source transformer layer.',
+            )
+
+        # The VPP instance must be registered by PipelineLayerChunk.append,
+        # not as an additional direct child of the root PipelineLayer.
+        self.assertTrue(
+            any(layer is dest_layer for _, layer in chunks[1].named_children())
+        )
+        self.assertFalse(
+            any(layer is dest_layer for _, layer in model.named_children())
+        )
 
 
 if __name__ == '__main__':

@@ -50,16 +50,25 @@ DenseTensor Tensor2Contiguous(const Context &dev_ctx,
 /**
  * Check if tensor is only transposed and return the original
  * contiguous shape/stride and transpose axis mapping.
+ *
+ * This used to reject tensors with a non-zero offset. Offset is orthogonal to
+ * the question asked here: only dims/strides are reordered, the caller writes
+ * the original offset back, data() adds it on every access, and
+ * is_contiguous() never looks at it.
+ *
+ * The rejection was also costly, because a non-zero offset is the common case:
+ * fused parameter buffers give every weight but the first a non-zero offset,
+ * so w.t() could not fold into cuBLAS transpose_y and had to materialize a
+ * contiguous copy with a non-coalesced read instead.
+ *
+ * The sibling check in contiguous_kernel.cu lost the same test, but that side
+ * also needed its set_meta() fixed; see the comment there.
  */
 inline bool is_only_transposed_tensor(const DDim &shape,
                                       const DDim &stride,
-                                      const uint64_t &offset,
                                       DDim *src_shape,
                                       DDim *src_stride,
                                       std::vector<int> *axis) {
-  if (offset != 0) {
-    return false;
-  }
   std::set<int> visited_idx;
   axis->resize(stride.size());
   for (int i = 0; i < stride.size(); i++) {
@@ -157,12 +166,9 @@ void MatmulStrideKernel(const Context &dev_ctx,
   DDim y_shape = y_meta.dims;
   std::vector<int> y_axis;
 
-  if (!x.meta().is_contiguous() && is_only_transposed_tensor(x_meta.dims,
-                                                             x_meta.strides,
-                                                             x_meta.offset,
-                                                             &x_shape,
-                                                             &x_stride,
-                                                             &x_axis)) {
+  if (!x.meta().is_contiguous() &&
+      is_only_transposed_tensor(
+          x_meta.dims, x_meta.strides, &x_shape, &x_stride, &x_axis)) {
     auto x_trans_dims = x_axis.size();
     if (x_axis.size() >= 2 && x_axis[x_trans_dims - 1] == x_trans_dims - 2 &&
         x_axis[x_trans_dims - 2] == x_trans_dims - 1) {
@@ -178,12 +184,9 @@ void MatmulStrideKernel(const Context &dev_ctx,
     x_ = Tensor2Contiguous<Context>(dev_ctx, x);
   }
 
-  if (!y.meta().is_contiguous() && is_only_transposed_tensor(y_meta.dims,
-                                                             y_meta.strides,
-                                                             y_meta.offset,
-                                                             &y_shape,
-                                                             &y_stride,
-                                                             &y_axis)) {
+  if (!y.meta().is_contiguous() &&
+      is_only_transposed_tensor(
+          y_meta.dims, y_meta.strides, &y_shape, &y_stride, &y_axis)) {
     auto y_trans_dims = y_axis.size();
     if (y_axis.size() >= 2 && y_axis[y_trans_dims - 1] == y_trans_dims - 2 &&
         y_axis[y_trans_dims - 2] == y_trans_dims - 1) {

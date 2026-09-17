@@ -1,0 +1,457 @@
+// Copyright (c) 2024 PaddlePaddle Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+#include "paddle/phi/api/include/tensor.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/enforce.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/fusion/gpu/fused_attention_utils.h"
+#include "paddle/phi/kernels/fusion/gpu/fused_transformer_kernel_launch.h"
+
+namespace phi {
+namespace fusion {
+
+template <typename T, typename Context>
+void FusedAttentionKernel(const Context& dev_ctx,
+                          const DenseTensor& x,
+                          const optional<DenseTensor>& ln_scale,
+                          const optional<DenseTensor>& ln_bias,
+                          const DenseTensor& qkv_weight,
+                          const optional<DenseTensor>& qkv_bias,
+                          const optional<DenseTensor>& cache_kv,
+                          const optional<DenseTensor>& src_mask,
+                          const DenseTensor& out_linear_weight,
+                          const optional<DenseTensor>& out_linear_bias,
+                          const optional<DenseTensor>& ln_scale_2,
+                          const optional<DenseTensor>& ln_bias_2,
+                          int num_heads,
+                          bool transpose_qkv_wb,
+                          bool pre_layer_norm,
+                          float epsilon,
+                          float attn_dropout_rate,
+                          bool is_test,
+                          bool attn_dropout_fix_seed,
+                          int attn_dropout_seed,
+                          const std::string& attn_dropout_implementation,
+                          float dropout_rate,
+                          bool dropout_fix_seed,
+                          int dropout_seed,
+                          const std::string& dropout_implementation,
+                          float ln_epsilon,
+                          bool add_residual,
+                          int ring_id,
+                          DenseTensor* ln_mean,
+                          DenseTensor* ln_var,
+                          DenseTensor* ln_out,
+                          DenseTensor* qkv_out,
+                          DenseTensor* qkv_bias_out,
+                          DenseTensor* transpose_out_2,
+                          DenseTensor* qk_out,
+                          DenseTensor* qktv_out,
+                          DenseTensor* softmax_out,
+                          DenseTensor* attn_dropout_mask_out,
+                          DenseTensor* attn_dropout_out,
+                          DenseTensor* src_mask_out,
+                          DenseTensor* fmha_out,
+                          DenseTensor* out_linear_out,
+                          DenseTensor* dropout_mask_out,
+                          DenseTensor* ln_mean_2,
+                          DenseTensor* ln_var_2,
+                          DenseTensor* bias_dropout_residual_out,
+                          DenseTensor* cache_kv_out,
+                          DenseTensor* out) {
+  using U = FusedLayerNormParamType<T>;
+  if (x.numel() == 0) {
+    if (ln_mean) dev_ctx.template Alloc<U>(ln_mean);
+    if (ln_var) dev_ctx.template Alloc<U>(ln_var);
+    if (ln_out) dev_ctx.template Alloc<T>(ln_out);
+    if (qkv_out) dev_ctx.template Alloc<T>(qkv_out);
+    if (qkv_bias_out) dev_ctx.template Alloc<T>(qkv_bias_out);
+    if (transpose_out_2) dev_ctx.template Alloc<T>(transpose_out_2);
+    if (qk_out) dev_ctx.template Alloc<T>(qk_out);
+    if (qktv_out) dev_ctx.template Alloc<T>(qktv_out);
+    if (softmax_out) dev_ctx.template Alloc<T>(softmax_out);
+    if (attn_dropout_mask_out)
+      dev_ctx.template Alloc<uint8_t>(attn_dropout_mask_out);
+    if (attn_dropout_out) dev_ctx.template Alloc<T>(attn_dropout_out);
+    if (src_mask_out) dev_ctx.template Alloc<T>(src_mask_out);
+    if (fmha_out) dev_ctx.template Alloc<T>(fmha_out);
+    if (out_linear_out) dev_ctx.template Alloc<T>(out_linear_out);
+    if (dropout_mask_out) dev_ctx.template Alloc<uint8_t>(dropout_mask_out);
+    if (ln_mean_2) dev_ctx.template Alloc<U>(ln_mean_2);
+    if (ln_var_2) dev_ctx.template Alloc<U>(ln_var_2);
+    if (bias_dropout_residual_out)
+      dev_ctx.template Alloc<T>(bias_dropout_residual_out);
+    if (cache_kv_out) dev_ctx.template Alloc<T>(cache_kv_out);
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
+
+  // x: qkv's input [batch_size, seq_len, dim_embed]
+  // if transpose_qkv_wb is False
+  // y: qkv's weight: [3, num_head, dim_head, dim_embed]
+  // if transpose_qkv_wb is True
+  // y: qkv's weight: [dim_embed, 3 * dim_embed]
+
+  auto* x_p = &x;
+  auto* ln_scale_p = ln_scale.get_ptr();
+  auto* ln_bias_p = ln_bias.get_ptr();
+
+  auto* qkv_weight_p = &qkv_weight;
+  auto* qkv_bias_p = qkv_bias.get_ptr();
+  auto* cache_kv_p = cache_kv.get_ptr();
+
+  auto* src_mask_p = src_mask.get_ptr();
+  auto* out_linear_weight_p = &out_linear_weight;
+
+  auto* out_linear_bias_p = out_linear_bias.get_ptr();
+
+  auto* ln_scale_2_p = ln_scale_2.get_ptr();
+  auto* ln_bias_2_p = ln_bias_2.get_ptr();
+
+  const bool has_attn_dropout = (attn_dropout_rate != 0.0f);
+
+  const bool is_upscale_in_train =
+      (dropout_implementation == "upscale_in_train");
+  FusedDropoutConfig dropout_param2{dropout_fix_seed,
+                                    is_test,
+                                    is_upscale_in_train,
+                                    dropout_rate,
+                                    nullptr,
+                                    dropout_seed};
+
+  const bool has_dropout = (dropout_param2.probability != 0.0f);
+
+  bool is_upscale_in_train_1 =
+      (attn_dropout_implementation == "upscale_in_train");
+  DenseTensor* seed_1 = nullptr;
+
+  // get data ptr for qkv part.
+  const auto input_x_dims = x_p->dims();
+  const auto qkv_w_dims = qkv_weight_p->dims();
+
+  auto* x_data = x_p->data<T>();
+  auto* qkv_weight_data = qkv_weight_p->data<T>();
+  auto* qkv_bias_data =
+      (qkv_bias_p == nullptr) ? nullptr : qkv_bias_p->data<T>();
+  auto* qkv_out_data =
+      dev_ctx.template Alloc<T>(qkv_out, qkv_out->numel() * sizeof(T));
+  auto* qkv_bias_out_data =
+      (qkv_bias_p == nullptr)
+          ? nullptr
+          : dev_ctx.template Alloc<T>(qkv_bias_out,
+                                      qkv_bias_out->numel() * sizeof(T));
+
+  // get data ptr for FMHA.
+  auto* transpose_out_2_data = dev_ctx.template Alloc<T>(
+      transpose_out_2, transpose_out_2->numel() * sizeof(T));
+  auto* cache_kv_out_data =
+      (cache_kv_out == nullptr)
+          ? nullptr
+          : dev_ctx.template Alloc<T>(cache_kv_out,
+                                      cache_kv_out->numel() * sizeof(T));
+  auto* qk_out_data =
+      dev_ctx.template Alloc<T>(qk_out, qk_out->numel() * sizeof(T));
+  auto* qktv_out_data =
+      dev_ctx.template Alloc<T>(qktv_out, qktv_out->numel() * sizeof(T));
+  auto* src_mask_out_data =
+      (src_mask_p == nullptr)
+          ? nullptr
+          : dev_ctx.template Alloc<T>(src_mask_out,
+                                      src_mask_out->numel() * sizeof(T));
+  auto* softmax_out_data =
+      dev_ctx.template Alloc<T>(softmax_out, softmax_out->numel() * sizeof(T));
+  auto* attn_dropout_mask_out_data =
+      has_attn_dropout ? dev_ctx.template Alloc<uint8_t>(
+                             attn_dropout_mask_out,
+                             attn_dropout_mask_out->numel() * sizeof(uint8_t))
+                       : nullptr;
+  auto* attn_dropout_out_data =
+      has_attn_dropout
+          ? dev_ctx.template Alloc<T>(attn_dropout_out,
+                                      attn_dropout_out->numel() * sizeof(T))
+          : nullptr;
+  auto* fmha_out_data =
+      dev_ctx.template Alloc<T>(fmha_out, fmha_out->numel() * sizeof(T));
+
+  // get data ptr for out_linear.
+  auto* out_linear_weight_data = out_linear_weight_p->data<T>();
+  auto* out_linear_bias_data =
+      (out_linear_bias_p == nullptr) ? nullptr : out_linear_bias_p->data<T>();
+  auto* out_linear_out_data = dev_ctx.template Alloc<T>(
+      out_linear_out, out_linear_out->numel() * sizeof(T));
+
+  // get data ptr for bias+dropout+residual+layernorm
+  auto* dropout_mask_out_data =
+      has_dropout
+          ? dev_ctx.template Alloc<uint8_t>(
+                dropout_mask_out, dropout_mask_out->numel() * sizeof(uint8_t))
+          : nullptr;
+  auto* final_out_data =
+      dev_ctx.template Alloc<T>(out, out->numel() * sizeof(T));
+
+  int batch_size = input_x_dims[0];
+  int max_seq_len = input_x_dims[1];
+  int dim_embed = input_x_dims[2];
+
+  int num_head;
+  int dim_head;
+  int nranks = 1;
+  // get num_head and dim_head in two different ways
+  if (!transpose_qkv_wb) {
+    num_head = qkv_w_dims[1];
+    dim_head = qkv_w_dims[2];
+  } else {
+    nranks = (qkv_w_dims[0] * 3) / qkv_w_dims[1];
+    num_head = num_heads;
+    dim_head = dim_embed / (num_head * nranks);
+  }
+
+  int64_t bsz_seq = static_cast<int64_t>(batch_size) * max_seq_len;
+  int64_t hidden_size = static_cast<int64_t>(num_head) * dim_head;
+  int64_t output_size = 3 * hidden_size;
+  int input_size = dim_embed;
+
+  bool compute_bias = true;
+  if (qkv_bias_p == nullptr) {
+    compute_bias = false;
+  }
+  // (transA, transB, compute_bias) = (false, true, true)
+  bool transB = transpose_qkv_wb ? false : true;
+  PADDLE_ENFORCE_LE_INT_MAX(bsz_seq, "bsz_seq");
+  PADDLE_ENFORCE_LE_INT_MAX(output_size, "output_size");
+  AttentionDropoutConfig attn_dropout_param{is_test,
+                                            &attn_dropout_implementation,
+                                            attn_dropout_rate,
+                                            is_upscale_in_train_1,
+                                            attn_dropout_fix_seed,
+                                            attn_dropout_seed,
+                                            seed_1};
+
+  output_size = hidden_size;
+  // (transA, transB, compute_bias) = (false, false, false)
+  // NOTE(Yuang Liu): For general input size == output size, change the
+  // position won't have effects. For mp, the output size is mp_head * dkey
+  // which is actually the input size. While the input size is hidden size,
+  // which is actually the output size. So for out linear, switch the
+  // input size and output size.
+  PADDLE_ENFORCE_LE_INT_MAX(bsz_seq, "bsz_seq");
+  PADDLE_ENFORCE_LE_INT_MAX(output_size, "output_size");
+  if (pre_layer_norm) {
+    auto* ln_scale_data =
+        (ln_scale_p == nullptr ? nullptr : ln_scale_p->data<U>());
+    auto* ln_bias_data =
+        (ln_bias_p == nullptr ? nullptr : ln_bias_p->data<U>());
+    auto* ln_mean_data =
+        dev_ctx.template Alloc<U>(ln_mean, ln_mean->numel() * sizeof(U));
+    auto* ln_var_data =
+        dev_ctx.template Alloc<U>(ln_var, ln_var->numel() * sizeof(U));
+    auto* ln_out_data =
+        dev_ctx.template Alloc<T>(ln_out, ln_out->numel() * sizeof(T));
+
+    LaunchAttentionLayerNormForward<T>(dev_ctx,
+                                       epsilon,
+                                       static_cast<int>(bsz_seq),
+                                       dim_embed,
+                                       x_data,
+                                       ln_scale_data,
+                                       ln_bias_data,
+                                       ln_out_data,
+                                       ln_mean_data,
+                                       ln_var_data);
+    LaunchAttentionMatMulForward<T>(dev_ctx,
+                                    false,
+                                    transB,
+                                    static_cast<int>(bsz_seq),
+                                    static_cast<int>(3 * hidden_size),
+                                    input_size,
+                                    compute_bias,
+                                    qkv_weight_p,
+                                    ln_out,
+                                    qkv_bias_p,
+                                    qkv_out,
+                                    qkv_bias_out);
+  } else {
+    LaunchAttentionMatMulForward<T>(dev_ctx,
+                                    false,
+                                    transB,
+                                    static_cast<int>(bsz_seq),
+                                    static_cast<int>(3 * hidden_size),
+                                    input_size,
+                                    compute_bias,
+                                    qkv_weight_p,
+                                    x_p,
+                                    qkv_bias_p,
+                                    qkv_out,
+                                    qkv_bias_out);
+  }
+
+  if (transpose_qkv_wb) {
+    // resize the output for fmha compute
+    qkv_out->Resize({batch_size, max_seq_len, 3, num_head, dim_head});
+    qkv_bias_out->Resize({batch_size, max_seq_len, 3, num_head, dim_head});
+  }
+
+  if (qkv_bias_p == nullptr) {
+    LaunchFMHAForward<T>(dev_ctx,
+                         batch_size,
+                         max_seq_len,
+                         num_head,
+                         dim_head,
+                         attn_dropout_param,
+                         *qkv_out,
+                         cache_kv_p,
+                         src_mask_p,
+                         transpose_out_2,
+                         cache_kv_out,
+                         qk_out,
+                         src_mask_out,
+                         softmax_out,
+                         attn_dropout_mask_out,
+                         attn_dropout_out,
+                         qktv_out,
+                         fmha_out);
+  } else {
+    LaunchFMHAForward<T>(dev_ctx,
+                         batch_size,
+                         max_seq_len,
+                         num_head,
+                         dim_head,
+                         attn_dropout_param,
+                         *qkv_bias_out,
+                         cache_kv_p,
+                         src_mask_p,
+                         transpose_out_2,
+                         cache_kv_out,
+                         qk_out,
+                         src_mask_out,
+                         softmax_out,
+                         attn_dropout_mask_out,
+                         attn_dropout_out,
+                         qktv_out,
+                         fmha_out);
+  }
+
+  if (transpose_qkv_wb) {
+    // resize the output back to make the shape compatible with infer shape
+    qkv_out->Resize({batch_size, max_seq_len, 3 * hidden_size});
+    qkv_bias_out->Resize({batch_size, max_seq_len, 3 * hidden_size});
+  }
+
+  // fmha_out: [batch_size, seq_len, num_head, head_dim]
+  // weight:   [embed_dim, embed_dim]
+  // out_linear_out: [batch_size, seq_len, embed_dim]
+  LaunchAttentionMatMulForward<T>(dev_ctx,
+                                  false,
+                                  false,
+                                  static_cast<int>(bsz_seq),
+                                  input_size,
+                                  static_cast<int>(hidden_size),
+                                  false,
+                                  out_linear_weight_p,
+                                  fmha_out,
+                                  nullptr,
+                                  out_linear_out,
+                                  nullptr);
+  // tensor model parallel
+  phi::fusion::AllReduce<T>(*out_linear_out, ring_id, dev_ctx);
+
+  const T* residual_ptr = add_residual ? x_data : nullptr;
+  if (pre_layer_norm) {
+    // output = (residual + dropout(input + bias))
+    LaunchResidualDropoutBiasForward<T>(dev_ctx,
+                                        static_cast<int>(bsz_seq),
+                                        dim_embed,
+                                        dropout_param2,
+                                        ln_epsilon,
+                                        out_linear_out_data,
+                                        residual_ptr,
+                                        out_linear_bias_data,
+                                        final_out_data,
+                                        dropout_mask_out_data);
+  } else {
+    // TODO(Xreki): support post layer_norm case when add_residual is false.
+    PADDLE_ENFORCE_EQ(
+        add_residual,
+        true,
+        errors::InvalidArgument("Attribute add_residual is expected to be true "
+                                "when pre_layer_norm is false."));
+
+    const U* ln_scale_2_ptr = ln_scale_2_p ? ln_scale_2_p->data<U>() : nullptr;
+    const U* ln_bias_2_ptr = ln_bias_2_p ? ln_bias_2_p->data<U>() : nullptr;
+    T* bias_dropout_residual_out_ptr = dev_ctx.template Alloc<T>(
+        bias_dropout_residual_out,
+        bias_dropout_residual_out->numel() * sizeof(T));
+    U* ln_mean_2_ptr =
+        dev_ctx.template Alloc<U>(ln_mean_2, ln_mean_2->numel() * sizeof(U));
+    U* ln_var_2_ptr =
+        dev_ctx.template Alloc<U>(ln_var_2, ln_var_2->numel() * sizeof(U));
+
+    // 0-size
+    if (ln_scale_2_p && ln_scale_2_p->numel() == 0) {
+      // output = (residual + dropout(input + bias))
+      LaunchResidualDropoutBiasForward<T>(dev_ctx,
+                                          static_cast<int>(bsz_seq),
+                                          dim_embed,
+                                          dropout_param2,
+                                          ln_epsilon,
+                                          out_linear_out_data,
+                                          residual_ptr,
+                                          out_linear_bias_data,
+                                          final_out_data,
+                                          dropout_mask_out_data);
+      return;
+    }
+
+    // output = layernorm(residual + dropout(input + bias))
+    LaunchLayernormResidualDropoutBiasForward<T>(dev_ctx,
+                                                 static_cast<int>(bsz_seq),
+                                                 dim_embed,
+                                                 dropout_param2,
+                                                 ln_epsilon,
+                                                 out_linear_out_data,
+                                                 residual_ptr,
+                                                 out_linear_bias_data,
+                                                 ln_scale_2_ptr,
+                                                 ln_bias_2_ptr,
+                                                 bias_dropout_residual_out_ptr,
+                                                 dropout_mask_out_data,
+                                                 final_out_data,
+                                                 ln_mean_2_ptr,
+                                                 ln_var_2_ptr);
+  }
+}
+
+}  // namespace fusion
+}  // namespace phi
+
+PD_REGISTER_KERNEL(fused_attention,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::fusion::FusedAttentionKernel,
+                   phi::float16,
+                   double,
+                   float) {
+  kernel->OutputAt(9).SetDataType(phi::DataType::UINT8);
+  kernel->OutputAt(14).SetDataType(phi::DataType::UINT8);
+  if (kernel_key.dtype() == phi::DataType::FLOAT16) {
+    kernel->OutputAt(0).SetDataType(phi::DataType::FLOAT32);
+    kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);
+    kernel->OutputAt(3).SetDataType(phi::DataType::FLOAT32);
+    kernel->OutputAt(4).SetDataType(phi::DataType::FLOAT32);
+    kernel->OutputAt(15).SetDataType(phi::DataType::FLOAT32);
+    kernel->OutputAt(16).SetDataType(phi::DataType::FLOAT32);
+  }
+}

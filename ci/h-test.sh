@@ -166,7 +166,8 @@ concurrency_list="^test_fp8_deep_gemm$|\
 ^test_compat_scaled_dot_product_attention$|\
 ^test_flash_attention$|\
 ^test_batched_gemm$|\
-^test_parallel_dygraph_muon$"
+^test_parallel_dygraph_muon$|\
+^test_muon_sharding_mixed_dtype_partition$"
 
 cd ${work_dir}/build
 tmp_dir=$(mktemp -d)
