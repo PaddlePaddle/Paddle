@@ -23,7 +23,6 @@ from test_case_base import (
 )
 
 import paddle
-from paddle.jit.sot.psdb import check_no_breakgraph
 
 
 @contextmanager
@@ -36,7 +35,6 @@ def device_guard(place: str):
         paddle.set_device(original_place)
 
 
-@check_no_breakgraph
 def run_diff_logic_by_check_expected_place(x: paddle.Tensor):
     expected_place_str = paddle.get_device()
     if "cpu" in expected_place_str:
@@ -92,12 +90,15 @@ class TestExpectedPlaceGuard(TestCaseBase):
                 self.assert_results(
                     run_diff_logic_by_check_expected_place, x.cpu()
                 )
-            self.assertEqual(ctx.translate_count, 1)
+            self.assertEqual(
+                ctx.translate_count, 1 + 1
+            )  # NOTE(PlumBlossomMaid): +1 because SOT needs to compile the code path containing threading.current_thread() separately
             with device_guard("gpu"):
                 self.assert_results(
-                    run_diff_logic_by_check_expected_place, x.cuda()
+                    run_diff_logic_by_check_expected_place,
+                    x.cuda(),  # NOTE(PlumBlossomMaid): The extra compilation persists across device switches
                 )
-            self.assertEqual(ctx.translate_count, 2)
+            self.assertEqual(ctx.translate_count, 2 + 1)
 
 
 if __name__ == "__main__":
