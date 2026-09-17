@@ -276,7 +276,7 @@ class TestCase1(TestTakeAlongAxisOp):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(),
+    not core.is_compiled_with_cuda() or core.is_compiled_with_rocm(),
     "deterministic path only runs on CUDA",
 )
 class TestTakeAlongAxisGradDeterministic(TestTakeAlongAxisDuplicatedIndices):
@@ -427,7 +427,7 @@ class TestTakeAlongAxisGradDeterministicNegativeIndex(
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(),
+    not core.is_compiled_with_cuda() or core.is_compiled_with_rocm(),
     "deterministic path only runs on CUDA",
 )
 class TestTakeAlongAxisGradDeterministicDtypes(unittest.TestCase):
@@ -499,7 +499,7 @@ class TestTakeAlongAxisGradDeterministicDtypes(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(),
+    not core.is_compiled_with_cuda() or core.is_compiled_with_rocm(),
     "deterministic path only runs on CUDA",
 )
 class TestTakeAlongAxisGradDeterministicIndexOutOfBounds(unittest.TestCase):
@@ -554,7 +554,7 @@ paddle.device.cuda.synchronize()
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(),
+    not core.is_compiled_with_cuda() or core.is_compiled_with_rocm(),
     "deterministic path only runs on CUDA",
 )
 class TestTakeAlongAxisGradDeterministicIllegalIndexDtype(unittest.TestCase):
