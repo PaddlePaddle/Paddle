@@ -157,6 +157,27 @@
   if (num_topk == 8) {                               \
     constexpr int kTopk = 8;                         \
     __VA_ARGS__                                      \
+  } else if (num_topk == 7) {                        \
+    constexpr int kTopk = 7;                         \
+    __VA_ARGS__                                      \
+  } else if (num_topk == 6) {                        \
+    constexpr int kTopk = 6;                         \
+    __VA_ARGS__                                      \
+  } else if (num_topk == 5) {                        \
+    constexpr int kTopk = 5;                         \
+    __VA_ARGS__                                      \
+  } else if (num_topk == 4) {                        \
+    constexpr int kTopk = 4;                         \
+    __VA_ARGS__                                      \
+  } else if (num_topk == 3) {                        \
+    constexpr int kTopk = 3;                         \
+    __VA_ARGS__                                      \
+  } else if (num_topk == 2) {                        \
+    constexpr int kTopk = 2;                         \
+    __VA_ARGS__                                      \
+  } else if (num_topk == 1) {                        \
+    constexpr int kTopk = 1;                         \
+    __VA_ARGS__                                      \
   } else {                                           \
     EP_HOST_ASSERT(false && "Unsupported num_topk"); \
   }
