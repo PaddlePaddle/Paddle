@@ -552,6 +552,134 @@ class TestIndexElementwiseNegativeStrideView(unittest.TestCase):
             paddle.enable_static()
 
 
+class TestIndexElementwiseCPUGradSlicedView(unittest.TestCase):
+    """CPU backward of advanced indexing on a basic slice (non-zero offset).
+
+    ``index_elementwise_get_grad`` / ``index_elementwise_put_grad`` consume the
+    view's byte offset (``slice_offset``) plus its strides to scatter the
+    reduced gradient back. The existing sliced-view coverage
+    (``TestIndexElementwiseGetGradSlicedView`` and friends) is decorated with
+    ``skipUnless(is_compiled_with_cuda())`` and runs on ``CUDAPlace``, so on a
+    CUDA build it exercises the GPU kernels and on a CPU-only build it is
+    skipped entirely -- the CPU kernels' non-zero ``slice_offset`` path is never
+    reached. The pure-bool cases that do run on CPU use ``x[mask]`` with no
+    basic slice, so their ``slice_offset`` is always zero.
+
+    These tests force CPU (via ``set_device('cpu')``) and a basic slice so the
+    CPU grad kernels run with a non-zero offset, comparing against a numpy
+    reference. They run under ``FLAGS_use_stride_kernel`` both on and off, since
+    only the former routes through ``index_elementwise_*_grad`` at all.
+    """
+
+    SHAPE = (8, 6)
+
+    def _slices(self):
+        return [
+            ('x[1::2, idx]', lambda t, i: t[1::2, i], slice(1, None, 2)),
+            ('x[2:7:2, idx]', lambda t, i: t[2:7:2, i], slice(2, 7, 2)),
+            ('x[1:5, idx]', lambda t, i: t[1:5, i], slice(1, 5)),
+        ]
+
+    def test_getitem_grad(self):
+        # ``disable_static(place=CPUPlace())`` does NOT pin ``zeros`` /
+        # ``to_tensor`` to CPU (they still land on the compiled accelerator);
+        # ``set_device('cpu')`` is what actually forces the CPU kernels.
+        paddle.disable_static()
+        original_device = paddle.get_device()
+        paddle.set_device('cpu')
+        original = paddle.get_flags('FLAGS_use_stride_kernel')[
+            'FLAGS_use_stride_kernel'
+        ]
+        # 7 duplicates of column 2 exercise the duplicate reduction; quarter
+        # values keep every partial sum exact regardless of reduction order.
+        index_np = np.array([2, 2, 2, 2, 2, 2, 2, 5], dtype=np.int64)
+        try:
+            for use_stride_kernel in (True, False):
+                paddle.set_flags({'FLAGS_use_stride_kernel': use_stride_kernel})
+                for name, fn, base_slice in self._slices():
+                    with self.subTest(
+                        use_stride_kernel=use_stride_kernel, expr=name
+                    ):
+                        x = paddle.zeros(list(self.SHAPE), dtype='float32')
+                        x.stop_gradient = False
+                        out = fn(x, paddle.to_tensor(index_np))
+
+                        rows = out.shape[0]
+                        steps = np.arange(
+                            rows * index_np.size, dtype=np.float32
+                        )
+                        out_grad_np = ((steps % 8) + 1).reshape(
+                            [rows, index_np.size]
+                        ) / 4
+                        out.backward(
+                            paddle.to_tensor(out_grad_np).reshape(out.shape)
+                        )
+
+                        block = np.zeros(
+                            [rows, self.SHAPE[1]], dtype=np.float32
+                        )
+                        np.add.at(block, (slice(None), index_np), out_grad_np)
+                        expected = np.zeros(self.SHAPE, dtype=np.float32)
+                        expected[base_slice] = block
+                        np.testing.assert_array_equal(x.grad.numpy(), expected)
+        finally:
+            paddle.set_flags({'FLAGS_use_stride_kernel': original})
+            paddle.set_device(original_device)
+            paddle.enable_static()
+
+    def test_setitem_value_grad(self):
+        # See ``test_getitem_grad``: ``set_device('cpu')`` is required to
+        # actually pin the tensors to CPU.
+        paddle.disable_static()
+        original_device = paddle.get_device()
+        paddle.set_device('cpu')
+        original = paddle.get_flags('FLAGS_use_stride_kernel')[
+            'FLAGS_use_stride_kernel'
+        ]
+        # Distinct indices so each written position is unique: the setitem
+        # backward w.r.t. x zeros exactly the written cells and w.r.t. value
+        # gathers the loss weights at those cells, with no last-write-wins or
+        # duplicate accumulation ambiguity.
+        index_np = np.array([0, 2, 5], dtype=np.int64)
+        w_np = np.arange(1, np.prod(self.SHAPE) + 1, dtype=np.float32).reshape(
+            self.SHAPE
+        )
+        try:
+            for use_stride_kernel in (True, False):
+                paddle.set_flags({'FLAGS_use_stride_kernel': use_stride_kernel})
+                for name, fn, base_slice in self._slices():
+                    with self.subTest(
+                        use_stride_kernel=use_stride_kernel, expr=name
+                    ):
+                        base_rows = np.arange(self.SHAPE[0])[base_slice]
+                        rows = base_rows.size
+
+                        x = paddle.zeros(list(self.SHAPE), dtype='float32')
+                        x.stop_gradient = False
+                        val = paddle.ones([rows, index_np.size], 'float32')
+                        val.stop_gradient = False
+
+                        xc = x * 1.0  # non-leaf so setitem grad flows to x
+                        xc[base_slice, paddle.to_tensor(index_np)] = val
+                        (xc * paddle.to_tensor(w_np)).sum().backward()
+
+                        expected_val_grad = w_np[np.ix_(base_rows, index_np)]
+                        np.testing.assert_array_equal(
+                            val.grad.numpy(), expected_val_grad
+                        )
+
+                        expected_x_grad = w_np.copy()
+                        block = expected_x_grad[base_slice]
+                        block[:, index_np] = 0.0
+                        np.testing.assert_array_equal(
+                            x.grad.numpy(), expected_x_grad
+                        )
+        finally:
+            paddle.set_flags({'FLAGS_use_stride_kernel': original})
+            paddle.set_device(original_device)
+            paddle.enable_static()
+
+
 if __name__ == '__main__':
     paddle.enable_static()
     unittest.main()

@@ -859,6 +859,15 @@ static Tensor getValueForBoolTensor(const Tensor& tensor,
     Tensor gather_base = self_tensor;
     int64_t gather_offset = slice_offset;
     if (!SharesStorageWith(tensor, self_tensor)) {
+      // The XPU index backend crashes (segfaults) when gathering from the
+      // materialized, non-shared buffer; refuse with a readable error there
+      // instead of letting the process abort. CPU and GPU gather correctly.
+      if (phi::is_xpu_place(tensor.place())) {
+        PADDLE_THROW(common::errors::Unimplemented(
+            "Strided advanced indexing (getitem) is not supported on XPU when "
+            "the indexed view does not share storage with the source tensor "
+            "(e.g. DistTensor inputs)."));
+      }
       gather_base = tensor;
       gather_offset = 0;
     }
@@ -1486,6 +1495,15 @@ static void ApplyGetitem(const int index_size,
       // `src_sizes`/`src_strides` from it.
       Tensor gather_base = *self_tensor;
       if (!SharesStorageWith(*sub_tensor, *tensor)) {
+        // The XPU index backend crashes (segfaults) when gathering from the
+        // materialized, non-shared buffer; refuse with a readable error there
+        // instead of letting the process abort. CPU and GPU gather correctly.
+        if (phi::is_xpu_place(tensor->place())) {
+          PADDLE_THROW(common::errors::Unimplemented(
+              "Strided advanced indexing (getitem) is not supported on XPU "
+              "when the indexed view does not share storage with the source "
+              "tensor (e.g. DistTensor inputs)."));
+        }
         gather_base = *transed_tensor;
         slice_offset = 0;
       }
