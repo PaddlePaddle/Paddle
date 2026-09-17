@@ -55,6 +55,7 @@ from .io_utils import (
     _reconstruct_dense_tensor_data,
     _unpack_saved_dict,
 )
+from .parallel_pickle_load import parallel_safe_load_pickle
 from .restricted_unpickler import safe_load_pickle
 
 if TYPE_CHECKING:
@@ -388,6 +389,7 @@ def _parse_load_config(configs):
         'keep_name_table',
         'return_numpy',
         'safetensors',
+        'num_workers',
     ]
 
     # input check
@@ -408,6 +410,7 @@ def _parse_load_config(configs):
     inner_config.keep_name_table = configs.get('keep_name_table', None)
     inner_config.return_numpy = configs.get('return_numpy', False)
     inner_config.safetensors = configs.get('safetensors', False)
+    inner_config.num_workers = configs.get('num_workers', None)
 
     return inner_config
 
@@ -1121,6 +1124,10 @@ def load(path: str | BytesIO, **configs: Unpack[_LoadOptions]) -> Any:
             by default.
             (3) return_numpy(bool): If specified as True, return tensor as numpy.ndarray, otherwise return tensor as paddle.Tensor.
             Default False.
+            (4) num_workers(int): Number of threads used to read tensor payloads in parallel. It only
+            takes effect when loading a single file saved with pickle protocol >= 3 on Linux/BSD, and
+            falls back to the serial implementation otherwise. 0 or 1 keeps the original serial
+            behavior. Default 0.
 
     Returns:
         Object(Object): a target object can be used in paddle
@@ -1287,7 +1294,9 @@ def load(path: str | BytesIO, **configs: Unpack[_LoadOptions]) -> Any:
                 ):
                     load_result = _pickle_loads_mac(path, f)
                 else:
-                    load_result = safe_load_pickle(f, encoding='latin1')
+                    load_result = parallel_safe_load_pickle(
+                        path, f, config.num_workers
+                    )
 
                 # TODO(weixin):If `obj` is any object, the judgment condition should be more precise.
                 if isinstance(load_result, dict):
@@ -1404,7 +1413,9 @@ def _legacy_load(path, **configs):
             load_result = load_file(path)
         else:
             with _open_file_buffer(path, 'rb') as f:
-                load_result = safe_load_pickle(f, encoding='latin1')
+                load_result = parallel_safe_load_pickle(
+                    path, f, getattr(config, 'num_workers', None)
+                )
         load_result = _pack_loaded_dict(load_result)
         if (
             not config.keep_name_table
