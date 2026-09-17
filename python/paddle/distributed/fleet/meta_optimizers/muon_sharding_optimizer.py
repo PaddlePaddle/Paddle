@@ -35,6 +35,7 @@ communication group to use:
 
 import math
 import os
+import socket
 import warnings
 from collections import defaultdict
 from functools import reduce as functools_reduce
@@ -43,6 +44,7 @@ import numpy as np
 
 import paddle
 from paddle import framework
+from paddle.base import core
 from paddle.base.framework import EagerParamBase
 from paddle.distributed import fleet
 from paddle.distributed.communication.batch_isend_irecv import (
@@ -63,6 +65,8 @@ from paddle.distributed.fleet.utils.tensor_fusion_helper import (
 g_shard_bypass_dygraph_optimizer = int(
     os.environ.get("FLAGS_shard_bypass_dygraph_optimizer", 0)
 )
+CROWD_SELF_WEIGHT = 1 << 20
+CROWD_NEAR_WEIGHT = CROWD_SELF_WEIGHT // 4
 
 
 def _is_trainable(param):
@@ -195,6 +199,9 @@ class MuonShardingOptimizer:
         self.accumulate_steps = sharding_configs.accumulate_steps
         self.comm_overlap = sharding_configs.comm_overlap
         self.comm_buffer_size_MB = sharding_configs.comm_buffer_size_MB
+        self.machine_balanced_2d_partition = (
+            sharding_configs.machine_balanced_2d_partition
+        )
         self.use_reduce_avg = sharding_configs.use_reduce_avg
         self.enable_fuse_optimizer_states = (
             sharding_configs.enable_fuse_optimizer_states
@@ -326,34 +333,69 @@ class MuonShardingOptimizer:
                 self._params_1d.append(p)
 
         # ---- Step 2: Partition 2D params for each color group ----
-        # For each color, compute rank-to-params and param-to-rank mappings
         self._rank2params_2d_by_color = {}  # color -> {rank -> [params]}
         self._param2rank_2d_by_color = {}  # color -> {param_name -> rank}
-
-        for color_key, params_2d in self._params_2d_by_color.items():
-            group_info = self._color_to_group_info.get(color_key, {})
-            world_size = group_info.get('world_size', 1)
-
-            if world_size <= 1:
-                # No partition needed, all params stay on rank 0
-                self._rank2params_2d_by_color[color_key] = {0: list(params_2d)}
-                self._param2rank_2d_by_color[color_key] = {
-                    p.name: 0 for p in params_2d
-                }
-            else:
-                # Greedy partition across ranks
-                label = color_key if color_key else "default"
-                self._rank2params_2d_by_color[color_key] = (
-                    self._partition_2d_parameters(
-                        list(params_2d), world_size, label=label
-                    )
+        if self.machine_balanced_2d_partition:
+            # Owners are planned globally so that every rank agrees, then each
+            # rank keeps the mapping of the groups it belongs to. Both gathers
+            # below run on the global world, so every rank of the job must take
+            # this branch.
+            rank_to_machine = self._build_rank_to_machine()
+            all_color_group_info = self._gather_all_color_group_info()
+            color_group_to_ranks = (
+                self._partition_2d_parameters_machine_balanced(
+                    all_color_group_info, rank_to_machine
                 )
-                self._param2rank_2d_by_color[color_key] = {}
-                for rank, params in self._rank2params_2d_by_color[
-                    color_key
-                ].items():
-                    for p in params:
-                        self._param2rank_2d_by_color[color_key][p.name] = rank
+            )
+            for color_key, params_2d in self._params_2d_by_color.items():
+                group = self._color_to_group_info[color_key]['group']
+                group_ranks = (
+                    tuple(group.ranks) if group else (self._global_rank,)
+                )
+                param_by_name = {p.name: p for p in params_2d}
+                self._rank2params_2d_by_color[color_key] = {
+                    local_rank: [param_by_name[n] for n in names]
+                    for local_rank, names in color_group_to_ranks[
+                        (color_key, group_ranks)
+                    ].items()
+                }
+                self._param2rank_2d_by_color[color_key] = {
+                    p.name: local_rank
+                    for local_rank, ps in self._rank2params_2d_by_color[
+                        color_key
+                    ].items()
+                    for p in ps
+                }
+        else:
+            # For each color, compute rank-to-params and param-to-rank mappings
+            for color_key, params_2d in self._params_2d_by_color.items():
+                group_info = self._color_to_group_info.get(color_key, {})
+                world_size = group_info.get('world_size', 1)
+
+                if world_size <= 1:
+                    # No partition needed, all params stay on rank 0
+                    self._rank2params_2d_by_color[color_key] = {
+                        0: list(params_2d)
+                    }
+                    self._param2rank_2d_by_color[color_key] = {
+                        p.name: 0 for p in params_2d
+                    }
+                else:
+                    # Greedy partition across ranks
+                    label = color_key if color_key else "default"
+                    self._rank2params_2d_by_color[color_key] = (
+                        self._partition_2d_parameters(
+                            list(params_2d), world_size, label=label
+                        )
+                    )
+                    self._param2rank_2d_by_color[color_key] = {}
+                    for rank, params in self._rank2params_2d_by_color[
+                        color_key
+                    ].items():
+                        for p in params:
+                            self._param2rank_2d_by_color[color_key][p.name] = (
+                                rank
+                            )
 
         # Sort params within each color by owner rank for deterministic ordering
         for color_key, params_2d in self._params_2d_by_color.items():
@@ -565,6 +607,230 @@ class MuonShardingOptimizer:
     # ------------------------------------------------------------------
     # 2D partition (V1-style greedy)
     # ------------------------------------------------------------------
+    @staticmethod
+    def _build_rank_to_machine():
+        """
+        Map every global rank to the machine hosting it.
+        """
+        hostnames = []
+        paddle.distributed.all_gather_object(hostnames, socket.gethostname())
+        return dict(enumerate(hostnames))
+
+    def _gather_all_color_group_info(self):
+        """
+        Collect every color group's 2D params so all ranks partition alike.
+
+        Returns {(color_key, group_ranks): [(name, numel, dtype_str, itemsize)]}
+        """
+        local_color_group_info = {}
+        for color_key, params_2d in self._params_2d_by_color.items():
+            group = self._color_to_group_info[color_key]['group']
+            group_ranks = tuple(group.ranks) if group else (self._global_rank,)
+            # itemsize travels with the entry so remote colors need no dtype
+            # object reconstruction.
+            local_color_group_info[(color_key, group_ranks)] = [
+                (
+                    p.name,
+                    int(functools_reduce(lambda x, y: x * y, p.shape, 1)),
+                    str(p.dtype),
+                    int(core.size_of_dtype(p.dtype)),
+                )
+                for p in params_2d
+            ]
+
+        gathered_color_group_info = []
+        paddle.distributed.all_gather_object(
+            gathered_color_group_info, local_color_group_info
+        )
+
+        all_color_group_info = {}
+        for rank_color_group_info in gathered_color_group_info:
+            for color_group_key, params in rank_color_group_info.items():
+                existing = all_color_group_info.get(color_group_key)
+                assert existing is None or existing == params, (
+                    "group members disagree on the 2D params of "
+                    f"{color_group_key!r}"
+                )
+                all_color_group_info[color_group_key] = params
+        return all_color_group_info
+
+    def _partition_2d_parameters_machine_balanced(
+        self, all_color_group_info, rank_to_machine
+    ):
+        """Assign every color's 2D params to owner ranks.
+
+        Balances parameter bytes across machines first, spreads owners away
+        from machines that already have nearby owners, and balances per-rank
+        bytes last. Every rank partitions over the same ``all_color_group_info``
+        and must reach the same answer, since owners become the reduce dst /
+        broadcast src, so all orderings here are total and all accumulators
+        integer.
+
+        Returns {(color_key, group_ranks): {local_rank_in_group: [name, ...]}}.
+        """
+        # Step 1: order machines.
+        machines = list(
+            dict.fromkeys(rank_to_machine[r] for r in sorted(rank_to_machine))
+        )
+        machine_index = {m: i for i, m in enumerate(machines)}
+
+        machine_load = defaultdict(int)  # machine -> owned parameter bytes
+        rank_load = defaultdict(int)  # global rank -> owned parameter bytes
+        machine_crowding = defaultdict(int)  # machine -> weighted owner count
+
+        # Step 2: one bucket per (color, dtype), since a FusedCommBuffer never
+        # mixes dtypes.
+        buckets = []
+        for color_group_key, color_group_params in all_color_group_info.items():
+            param_by_dtype = defaultdict(list)
+            for name, numel, dtype_str, itemsize in color_group_params:
+                param_by_dtype[dtype_str].append((name, numel, itemsize))
+            for dtype_str, params_info in param_by_dtype.items():
+                buckets.append(
+                    {
+                        'color_group_key': color_group_key,
+                        'dtype_str': dtype_str,
+                        'group_ranks': color_group_key[1],
+                        'params_info': params_info,
+                        'param_bytes': sum(n * it for _, n, it in params_info),
+                        'numel': sum(n for _, n, _ in params_info),
+                    }
+                )
+
+        # Step 3: biggest bucket first, since it constrains the final
+        # distribution most. str() because color keys mix None with strings,
+        # and group_ranks because one color spans several groups under PP/EP.
+        buckets.sort(
+            key=lambda b: (
+                -b['param_bytes'],
+                str(b['color_group_key'][0]),
+                b['dtype_str'],
+                b['group_ranks'],
+            )
+        )
+
+        color_group_to_ranks = {
+            color_group_key: {i: [] for i in range(len(color_group_key[1]))}
+            for color_group_key in all_color_group_info
+        }
+
+        for bucket in buckets:
+            group_ranks = bucket['group_ranks']
+
+            # Step 4: owner count, unchanged from the original partition. The
+            # numel * 4 is the fp32 main_grad width that actually gets
+            # reduced, so comm buffer sizes stay as they are.
+            total_size_mb = bucket['numel'] * 4 / (1024**2)
+            buffer_size_mb = (
+                self.comm_buffer_size_MB
+                if self.comm_buffer_size_MB > 0
+                else 256
+            )
+            min_active_ranks = 1
+            if total_size_mb > 0:
+                min_active_ranks = max(
+                    1, int(total_size_mb / buffer_size_mb) + 1
+                )
+            active_ranks = min(min_active_ranks, len(group_ranks))
+
+            # Step 5: pick owners -- least loaded machine, then least crowded,
+            # then the least loaded free rank on it.
+            candidate_machines = {rank_to_machine[r] for r in group_ranks}
+            free_ranks_in_machine = defaultdict(list)
+            for r in group_ranks:
+                free_ranks_in_machine[rank_to_machine[r]].append(r)
+
+            # Byte loads almost never tie, so without a tolerance the crowding
+            # term would never be reached. Machines within one owner's share of
+            # each other count as equally loaded, which puts every machine in
+            # one tier while loads are still zero.
+            load_tolerance = bucket['param_bytes'] // active_ranks
+
+            owners = []
+            while len(owners) < active_ranks:
+                min_load = min(machine_load[m] for m in candidate_machines)
+                least_loaded_machines = [
+                    m
+                    for m in candidate_machines
+                    if machine_load[m] <= min_load + load_tolerance
+                ]
+                machine = min(
+                    least_loaded_machines,
+                    key=lambda m: (
+                        machine_crowding[m],
+                        machine_load[m],
+                        machine_index[m],
+                    ),
+                )
+                machine_free_ranks = free_ranks_in_machine[machine]
+                if not machine_free_ranks:
+                    candidate_machines.discard(machine)
+                    continue
+                owner = min(machine_free_ranks, key=lambda r: (rank_load[r], r))
+                machine_free_ranks.remove(owner)
+                owners.append(owner)
+
+                # Crowding spreads the owners apart: the machine that just
+                # took one is penalised the most, and its neighbours by
+                # 1 / d^2 of that penalty. A machine with no owner of its own
+                # therefore still counts as crowded when the machines near it
+                # have one. CROWD_SELF_WEIGHT is the penalty on the machine
+                # that just took an owner; CROWD_NEAR_WEIGHT is a quarter of
+                # it, which keeps 2 * sum(1/d^2) under one self weight and so
+                # makes sure no machine gets a second owner before every
+                # machine has one.
+                machine_crowding[machine] += CROWD_SELF_WEIGHT
+                machine_pos = machine_index[machine]
+                for other in machines:
+                    d = abs(machine_index[other] - machine_pos)
+                    if d:
+                        machine_crowding[other] += CROWD_NEAR_WEIGHT // (d * d)
+
+            # Step 6: place params, largest first onto the lightest owner.
+            local_rank_of = {r: i for i, r in enumerate(group_ranks)}
+            for name, numel, itemsize in sorted(
+                bucket['params_info'], key=lambda info: (-info[1], info[0])
+            ):
+                owner = min(
+                    owners,
+                    key=lambda r: (
+                        machine_load[rank_to_machine[r]],
+                        rank_load[r],
+                        r,
+                    ),
+                )
+                color_group_to_ranks[bucket['color_group_key']][
+                    local_rank_of[owner]
+                ].append(name)
+                nbytes = numel * itemsize
+                rank_load[owner] += nbytes
+                machine_load[rank_to_machine[owner]] += nbytes
+
+        # Step 7: report the distribution. adjacent_pair_max tracks the backup
+        # cost of the heaviest neighbouring pair.
+        if self._global_rank == 0:
+            machine_mb = [machine_load[m] / (1024**2) for m in machines]
+            peak = max(machine_mb)
+            spread = (peak - min(machine_mb)) / peak if peak else 0.0
+            adjacent_max = max(
+                (
+                    machine_mb[i] + machine_mb[i + 1]
+                    for i in range(len(machine_mb) - 1)
+                ),
+                default=0.0,
+            )
+            logger.info(
+                "[MuonSharding 2D placement] "
+                f"machines={len(machines)} "
+                f"used={sum(1 for v in machine_mb if v > 0)} "
+                f"owner_ranks={sum(1 for v in rank_load.values() if v > 0)} | "
+                f"per-machine MB={[f'{v:.1f}' for v in machine_mb]} | "
+                f"max={peak:.1f} min={min(machine_mb):.1f} "
+                f"spread={spread:.3f} "
+                f"adjacent_pair_max MB={adjacent_max:.1f}"
+            )
+
+        return color_group_to_ranks
 
     @staticmethod
     def _build_color_to_group_info_from_params(parameter_list, default_group):
