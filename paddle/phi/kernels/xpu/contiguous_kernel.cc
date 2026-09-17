@@ -17,6 +17,7 @@ limitations under the License. */
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/complex_kernel.h"
+#include "paddle/phi/kernels/funcs/index_elementwise_utils.h"
 #include "paddle/phi/kernels/xpu/xpu_api_wrapper.h"
 
 namespace phi {
@@ -46,11 +47,22 @@ void ContiguousKernel(const Context& dev_ctx,
     r = xpu::copy<XPUType>(dev_ctx.x_context(), input_data, output_data, 1);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "copy");
   } else {
+    auto input_dims = vectorize<int64_t>(input.dims());
+    auto input_strides = vectorize<int64_t>(input.strides());
+    // The XDNN gather/scatter primitives only walk an operand forwards, so a
+    // reversed axis cannot be materialized here. Fail loudly instead of
+    // handing the negative strides to xpu::as_strided, which silently
+    // produces garbage.
+    if (funcs::HasReversedAxis(input_dims, input_strides)) {
+      PADDLE_THROW(common::errors::Unimplemented(
+          "Materializing a reversed view (a tensor with negative strides) is "
+          "not supported on XPU."));
+    }
     r = xpu::as_strided<XPUType>(dev_ctx.x_context(),
                                  input_data,
                                  output_data,
-                                 vectorize<int64_t>(input.dims()),
-                                 vectorize<int64_t>(input.strides()),
+                                 input_dims,
+                                 input_strides,
                                  0);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "as_strided");
   }
@@ -84,20 +96,26 @@ ComplexContiguousKernelImpl(const XPUContext& dev_ctx,
   for (auto& s : bytes_strides) {
     s *= bytes_per_elem;
   }
+  const auto input_dims = bytes_shape;
+  const auto* input_data = reinterpret_cast<const int8_t*>(input.data<T>());
+  if (funcs::HasReversedAxis(input_dims, bytes_strides)) {
+    PADDLE_THROW(common::errors::Unimplemented(
+        "Materializing a reversed view (a tensor with negative strides) is "
+        "not supported on XPU."));
+  }
   bytes_shape.push_back(bytes_per_elem);
   bytes_strides.push_back(1);
 
-  const auto* input_bytes = reinterpret_cast<const int8_t*>(input.data<T>());
   auto* output_bytes = reinterpret_cast<int8_t*>(out->data<T>());
 
   int r = 0;
   if (input.numel() == 1) {
     r = xpu::copy<int8_t>(
-        dev_ctx.x_context(), input_bytes, output_bytes, bytes_per_elem);
+        dev_ctx.x_context(), input_data, output_bytes, bytes_per_elem);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "copy");
   } else {
     r = xpu::as_strided<int8_t>(dev_ctx.x_context(),
-                                input_bytes,
+                                input_data,
                                 output_bytes,
                                 bytes_shape,
                                 bytes_strides,

@@ -17,8 +17,12 @@
 #include "paddle/phi/api/include/api.h"
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/common/data_type.h"
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
+#include "paddle/phi/core/distributed/store/store_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/selected_rows.h"
+#include "test/cpp/phi/core/allocator.h"
 
 PD_DECLARE_KERNEL(empty, CPU, ALL_LAYOUT);
 
@@ -406,6 +410,88 @@ void TestDataInterface() {
       common::errors::InvalidArgument("const_tensor should not be NULL, "
                                       "but got %p",
                                       const_tensor_ptr));
+  // Test DistTensor
+  {
+    auto fancy_allocator =
+        std::unique_ptr<phi::Allocator>(new phi::tests::FancyAllocator);
+    auto* alloc = fancy_allocator.get();
+
+    auto dims = common::make_ddim({1, 1});
+    phi::DenseTensorMeta meta(DataType::FLOAT32, dims);
+    auto dist_attr = phi::distributed::TensorDistAttr(common::vectorize(dims));
+    // Make sure the current rank is in the mesh, so the DistTensor
+    // constructor keeps the given global value on this rank (otherwise it
+    // holds an uninitialized local value with a null allocation).
+    std::vector<int64_t> mesh_shape = {1};
+    std::vector<int64_t> process_ids = {phi::distributed::GetCurGlobalRank()};
+    std::vector<std::string> dim_names = {"x"};
+    phi::distributed::ProcessMesh mesh(mesh_shape, process_ids, dim_names);
+    dist_attr.set_process_mesh(mesh);
+
+    // DistTensor with an allocated local value
+    std::shared_ptr<phi::DenseTensor> value =
+        std::make_shared<phi::DenseTensor>(alloc, meta);
+    value->mutable_data<float>(phi::CPUPlace())[0] = static_cast<float>(10.0);
+    auto dist_impl =
+        std::make_shared<phi::distributed::DistTensor>(value, dist_attr);
+    paddle::Tensor dist_tensor(dist_impl);
+    PADDLE_ENFORCE_EQ(dist_tensor.initialized(),
+                      true,
+                      common::errors::InvalidArgument(
+                          "dist_tensor should be initialized, but got %s",
+                          dist_tensor.initialized()));
+    tensor_ptr = dist_tensor.data();
+    PADDLE_ENFORCE_NE(
+        tensor_ptr,
+        nullptr,
+        common::errors::InvalidArgument(
+            "dist_tensor data() should not be NULL, but got %p", tensor_ptr));
+    PADDLE_ENFORCE_EQ(tensor_ptr,
+                      static_cast<void*>(value->data<float>()),
+                      common::errors::InvalidArgument(
+                          "dist_tensor data() should equal the underlying "
+                          "value's data()"));
+    // writing through the returned pointer updates the underlying value
+    static_cast<float*>(tensor_ptr)[0] += static_cast<float>(5.0);
+    PADDLE_ENFORCE_EQ(value->data<float>()[0],
+                      static_cast<float>(15.0),
+                      common::errors::InvalidArgument(
+                          "value->data<float>()[0] should be equal to 15.0, "
+                          "but got %f",
+                          value->data<float>()[0]));
+    const paddle::Tensor& const_dist_tensor = dist_tensor;
+    const_tensor_ptr = const_dist_tensor.data();
+    PADDLE_ENFORCE_NE(
+        const_tensor_ptr,
+        nullptr,
+        common::errors::InvalidArgument("const_dist_tensor data() should not "
+                                        "be NULL, but got %p",
+                                        const_tensor_ptr));
+    PADDLE_ENFORCE_EQ(const_tensor_ptr,
+                      tensor_ptr,
+                      common::errors::InvalidArgument(
+                          "const and non-const data() should return the same "
+                          "pointer"));
+
+    // DistTensor with meta only (no allocation)
+    auto empty_dist_impl =
+        std::make_shared<phi::distributed::DistTensor>(dims, dist_attr);
+    paddle::Tensor empty_dist_tensor(empty_dist_impl);
+    tensor_ptr = empty_dist_tensor.data();
+    PADDLE_ENFORCE_EQ(
+        tensor_ptr,
+        nullptr,
+        common::errors::InvalidArgument(
+            "empty_dist_tensor data() should be NULL, but got %p", tensor_ptr));
+    const paddle::Tensor& const_empty_dist_tensor = empty_dist_tensor;
+    const_tensor_ptr = const_empty_dist_tensor.data();
+    PADDLE_ENFORCE_EQ(
+        const_tensor_ptr,
+        nullptr,
+        common::errors::InvalidArgument("const_empty_dist_tensor data() should "
+                                        "be NULL, but got %p",
+                                        const_tensor_ptr));
+  }
 }
 
 TEST(PhiTensor, All) {

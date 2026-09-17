@@ -81,7 +81,16 @@ void StridedSliceRawKernel(const Context& dev_ctx,
       end = xshape[cur_axe];
     }
     if (end < 0) {
-      if (!(end == -1 && strides_[i] < 0)) {
+      if (end == -1 && strides_[i] < 0) {
+        // `ends = -1` with a negative stride is already the XDNN convention
+        // for a reversed axis (walk down to index 0 inclusive), keep it.
+      } else if (end == -xshape[cur_axe] - 1 && strides_[i] < 0) {
+        // The eager layer emits the phi sentinel `ends = -dim - 1` for a
+        // full reversal (`::-1`), which the generic `end += dim` path below
+        // would clamp to 0. Convert it to `ends = -1`, mirroring
+        // `CheckAndUpdateSliceAttrs` in phi/kernels/funcs/slice_utils.h.
+        end = -1;
+      } else {
         end = end + xshape[cur_axe];
         if (end < 0) {
           end = 0;
