@@ -13,6 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include <cstdint>
+
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
@@ -217,6 +219,91 @@ __global__ void TilingSwapDim1And2(const T* __restrict__ input,
           output_ind += output_inc;
         }
       }
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Bit-exact equivalent of TilingSwapDim1And2 for 2-byte dtypes, differing in
+// three ways:
+//  1) tile coordinates come from a 3D grid, so no runtime integer division is
+//     needed (the scalar version does five per thread);
+//  2) larger tiles, to raise the bytes in flight per thread;
+//  3) global accesses are vectorized. Shared memory is still accessed element
+//     by element, which lets kPad be odd: the column-wise reads on the write
+//     side then stride by an odd number of words and hit no bank conflicts.
+// Out-of-range tiles take the scalar path; the condition depends only on
+// blockIdx, so it is block-uniform and the __syncthreads calls are safe.
+// ---------------------------------------------------------------------------
+template <typename T,
+          int NumThreads,
+          int TileX,
+          int TileY,
+          int VecSize,
+          typename IndexType = int>
+__global__ void TilingSwapDim1And2Vec(const T* __restrict__ input,
+                                      Dim3<IndexType> input_dims,
+                                      T* __restrict__ output) {
+  using VecT = phi::AlignedVector<T, VecSize>;
+  constexpr int kPad = 1;
+  constexpr int RowThreads = TileY / VecSize;  // threads per row, read side
+  constexpr int ReadRows = NumThreads / RowThreads;
+  constexpr int ColThreads = TileX / VecSize;  // threads per row, write side
+  constexpr int WriteRows = NumThreads / ColThreads;
+  static_assert(TileY % VecSize == 0 && TileX % VecSize == 0, "tile/vec");
+  static_assert(NumThreads % RowThreads == 0, "threads/row");
+  static_assert(NumThreads % ColThreads == 0, "threads/col");
+  static_assert(TileX % ReadRows == 0 && TileY % WriteRows == 0, "rows");
+
+  __shared__ T tile_sm[TileX][TileY + kPad];
+
+  const IndexType d1 = input_dims[1];
+  const IndexType d2 = input_dims[2];
+  const IndexType r0 = static_cast<IndexType>(blockIdx.y) * TileX;
+  const IndexType c0 = static_cast<IndexType>(blockIdx.x) * TileY;
+  const IndexType plane = static_cast<IndexType>(blockIdx.z) * d1 * d2;
+  const T* in = input + plane;
+  T* out = output + plane;
+  const int x = threadIdx.x;
+
+  if (r0 + TileX <= d1 && c0 + TileY <= d2) {
+    {
+      const int x_i = x / RowThreads, x_j = x % RowThreads;
+      const T* p = in + (r0 + x_i) * d2 + c0 + x_j * VecSize;
+#pragma unroll
+      for (int i = 0; i < TileX / ReadRows; ++i) {
+        const VecT v = *reinterpret_cast<const VecT*>(p);
+        const int r = x_i + i * ReadRows;
+#pragma unroll
+        for (int k = 0; k < VecSize; ++k) tile_sm[r][x_j * VecSize + k] = v[k];
+        p += static_cast<IndexType>(ReadRows) * d2;
+      }
+    }
+    __syncthreads();
+    {
+      const int y_i = x / ColThreads, y_j = x % ColThreads;
+      T* q = out + (c0 + y_i) * d1 + r0 + y_j * VecSize;
+#pragma unroll
+      for (int i = 0; i < TileY / WriteRows; ++i) {
+        const int c = y_i + i * WriteRows;
+        VecT vb;
+#pragma unroll
+        for (int k = 0; k < VecSize; ++k) vb[k] = tile_sm[y_j * VecSize + k][c];
+        *reinterpret_cast<VecT*>(q) = vb;
+        q += static_cast<IndexType>(WriteRows) * d1;
+      }
+    }
+  } else {
+    for (int idx = x; idx < TileX * TileY; idx += NumThreads) {
+      const int r = idx / TileY, c = idx % TileY;
+      if (r0 + r < d1 && c0 + c < d2)
+        tile_sm[r][c] = in[(r0 + r) * d2 + c0 + c];
+    }
+    __syncthreads();
+    for (int idx = x; idx < TileX * TileY; idx += NumThreads) {
+      const int c = idx / TileX, r = idx % TileX;
+      if (r0 + r < d1 && c0 + c < d2)
+        out[(c0 + c) * d1 + r0 + r] = tile_sm[r][c];
     }
   }
 }
@@ -595,6 +682,41 @@ void SendSwapDim1And2InTranspose(const GPUContext& d,
     // suppose 32 X 32 gives best performance, and 8 warp in block.
     constexpr int kTileSize = 32;
     constexpr int kNumThreads = 256;
+
+    // Vectorized path for 2-byte dtypes, taken only when its hard
+    // preconditions hold; otherwise fall through to the scalar tiling below.
+    if constexpr (sizeof(T) == 2) {
+      // gridDim.y / gridDim.z are limited to 65535.
+      const bool grid_ok_64 =
+          (input_dims[1] + 63) / 64 <= 65535 && input_dims[0] <= 65535;
+      // Both transposed extents must be divisible by VecSize (dim2 on the read
+      // side, dim1 on the write side) and both base pointers must be aligned.
+      const bool vec2_ok =
+          input_dims[1] % 2 == 0 && input_dims[2] % 2 == 0 &&
+          reinterpret_cast<uintptr_t>(input) % (2 * sizeof(T)) == 0 &&
+          reinterpret_cast<uintptr_t>(output) % (2 * sizeof(T)) == 0;
+      // Bigger tiles mean fewer blocks, so require enough tiles to fill the
+      // device; small shapes would otherwise leave SMs idle.
+      constexpr int kVecTile = 64;
+      constexpr int kVecThreads = 128;
+      constexpr int kVecSize = 2;
+      IndexType n_tiles64 = input_dims[0];
+      n_tiles64 *= (input_dims[1] + kVecTile - 1) / kVecTile;
+      n_tiles64 *= (input_dims[2] + kVecTile - 1) / kVecTile;
+      if (vec2_ok && grid_ok_64 && n_tiles64 >= d.GetSMCount()) {
+        dim3 g(static_cast<unsigned>((input_dims[2] + kVecTile - 1) / kVecTile),
+               static_cast<unsigned>((input_dims[1] + kVecTile - 1) / kVecTile),
+               static_cast<unsigned>(input_dims[0]));
+        TilingSwapDim1And2Vec<T,
+                              kVecThreads,
+                              kVecTile,
+                              kVecTile,
+                              kVecSize,
+                              IndexType>
+            <<<g, kVecThreads, 0, d.stream()>>>(input, input_dims, output);
+        return;
+      }
+    }
 
     Dim3<IndexType> input_dims_aligned = {
         input_dims[0],
@@ -1386,6 +1508,12 @@ inline void PermuteDispatch(const GPUContext& dev_ctx,
                             T* dst) {
   int rank = dims.size();
   PermuteType type = cls_ptr->GetPermType();
+  // Clamp to the widest case the switches below actually handle. GetVecSize()
+  // can return 8 for 2-byte dtypes, and neither switch has a case for it, so no
+  // kernel would be launched at all and the output would stay uninitialized. A
+  // narrower vector width is only slower, never wrong.
+  int vec_size = cls_ptr->GetVecSize();
+  if (vec_size > 4) vec_size = 4;
 
 #define TRANSPOSE_DISPATCH_VEC_SIZE(size)                             \
   case size: {                                                        \
@@ -1404,14 +1532,14 @@ inline void PermuteDispatch(const GPUContext& dev_ctx,
   switch (type) {
     case kSwapTranspose:
     case kGeneralTranspose:
-      switch (cls_ptr->GetVecSize()) {
+      switch (vec_size) {
         TRANSPOSE_DISPATCH_VEC_SIZE(1);
         TRANSPOSE_DISPATCH_VEC_SIZE(2);
         TRANSPOSE_DISPATCH_VEC_SIZE(4);
       }
       break;
     default:
-      switch (cls_ptr->GetVecSize()) {
+      switch (vec_size) {
         PERMUTE_DISPATCH_VEC_SIZE(1);
         PERMUTE_DISPATCH_VEC_SIZE(2);
         PERMUTE_DISPATCH_VEC_SIZE(4);

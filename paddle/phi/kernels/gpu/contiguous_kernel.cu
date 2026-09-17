@@ -184,15 +184,19 @@ __global__ void ContiguousDefaultFunc(
   }
 }
 
+// This used to reject tensors with a non-zero offset, which is orthogonal to
+// whether the strides are a pure permutation; see the comment on
+// is_only_transposed_tensor in stride/matmul_stride_kernel.cu. Rejecting them
+// fell back from TransposeKernel to ContiguousCaseOneFunc, one element per
+// thread with no coalescing on the read side.
+//
+// Dropping the test requires the set_meta() fix in ContiguousKernel below,
+// which this test was the only thing keeping unreachable.
 bool is_only_transposed(const DDim& shape,
                         const DDim& stride,
-                        uint64_t offset,
                         DDim& src_shape,           // NOLINT
                         DDim& src_stride,          // NOLINT
                         std::vector<int>& axis) {  // NOLINT
-  if (offset != 0) {
-    return false;
-  }
   std::set<int> visited_idx;
   axis.resize(stride.size());
   for (int i = 0; i < stride.size(); i++) {
@@ -505,14 +509,20 @@ void ContiguousKernel(const Context& dev_ctx,
   DDim src_stride = meta.strides;
   DDim src_shape = meta.dims;
   if (is_only_transposed(
-          meta.dims, meta.strides, meta.offset, src_shape, src_stride, axis)) {
-    meta.strides = meta.calc_strides(meta.dims);
-    out->set_meta(meta);
+          meta.dims, meta.strides, src_shape, src_stride, axis)) {
+    // The input offset belongs to tmp_tensor, not to out: out is freshly
+    // allocated and contiguous, so its offset must be zero. Assigning meta to
+    // out directly was only safe while offset was guaranteed to be zero.
+    const uint64_t in_offset = meta.offset;
     DenseTensor tmp_tensor = input;
     DenseTensorMeta tmp_meta = meta;
     tmp_meta.strides = src_stride;
     tmp_meta.dims = src_shape;
+    tmp_meta.offset = in_offset;
     tmp_tensor.set_meta(tmp_meta);
+    meta.strides = meta.calc_strides(meta.dims);
+    meta.offset = 0;
+    out->set_meta(meta);
     TransposeKernel<T, Context>(dev_ctx, tmp_tensor, axis, out);
     return;
   }

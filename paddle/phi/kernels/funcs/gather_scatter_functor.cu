@@ -178,6 +178,31 @@ __device__ __forceinline__ void ComputeOffset(
   if constexpr (compute_self) *input_offset = _input_offset;
 }
 
+// The subscript read from ``index`` is runtime data: no shape check can bound
+// it, so every kernel that turns it into an offset has to reject it here.
+// Without this the offset arithmetic below silently addresses memory outside
+// the tensor.
+// The three arguments are 64 bit, so the conversion has to be ``%lld`` and the
+// cast has to name that type: ``long`` is 32 bit on Windows, where a ``%ld``
+// makes the formatter take four of the eight bytes and then read every later
+// argument from the wrong offset.
+#define ENFORCE_SCATTER_INDEX_IN_BOUND(index, select_dim_size)            \
+  PADDLE_ENFORCE(                                                         \
+      (index) >= -(select_dim_size) && (index) < (select_dim_size),       \
+      "The index is out of bounds, "                                      \
+      "please check whether the index and "                               \
+      "input's shape meet the requirements. It should "                   \
+      "be greater or equal to [%lld] and less than [%lld], but received " \
+      "[%lld]",                                                           \
+      static_cast<long long>(-(select_dim_size)), /* NOLINT */            \
+      static_cast<long long>(select_dim_size),    /* NOLINT */            \
+      static_cast<long long>(index));             /* NOLINT */
+
+// Both macros below normalize a negative subscript the same way the forward
+// kernels do, so they require ``self_select_dim_size`` -- the length along
+// ``dim`` of the tensor the subscript addresses -- to be in scope. That is the
+// gradient of ``x`` for the input-grad kernels and ``out_grad`` for the
+// value-grad ones; never ``index``, whose own length along ``dim`` may differ.
 #define COMPUTE_OFFSET_SINGLE_OUTPUT(                                     \
     var_name, smem_offset, id_var_name, copy_size)                        \
   extern __shared__ int64_t smem_shape_strides[];                         \
@@ -189,6 +214,8 @@ __device__ __forceinline__ void ComputeOffset(
   if (id_var_name >= numel) return;                                       \
   int64_t var_name = 0;                                                   \
   index_t index = index_data[id_var_name];                                \
+  ENFORCE_SCATTER_INDEX_IN_BOUND(index, self_select_dim_size);            \
+  if (index < 0) index += static_cast<index_t>(self_select_dim_size);     \
   const int64_t* stride_info = smem_shape_strides + smem_offset * ndim;   \
   ComputeOffset<false>(smem_shape_strides,                                \
                        stride_info,                                       \
@@ -210,6 +237,8 @@ __device__ __forceinline__ void ComputeOffset(
   __syncthreads();                                                        \
   if (id_var_name >= numel) return;                                       \
   index_t index = index_data[id_var_name];                                \
+  ENFORCE_SCATTER_INDEX_IN_BOUND(index, self_select_dim_size);            \
+  if (index < 0) index += static_cast<index_t>(self_select_dim_size);     \
   const int64_t* grad_strides = smem_shape_strides + offset1 * ndim;      \
   const int64_t* self_strides = smem_shape_strides + offset2 * ndim;      \
   int64_t var_name1 = 0, var_name2 = 0;                                   \
@@ -277,29 +306,13 @@ __global__ void GatherScatterGPUKernel(
     input_strides = smem_shape_strides +
                     ndim * 2;  // gather pass actually does not need this
     // scatter
-    PADDLE_ENFORCE(
-        index >= -self_select_dim_size && index < self_select_dim_size,
-        "The index is out of bounds, "
-        "please check whether the index and "
-        "input's shape meet the requirements. It should "
-        "be greater or equal to [%d] and less than [%d], but received [%ld]",
-        -self_select_dim_size,
-        self_select_dim_size,
-        (int64_t)index);
+    ENFORCE_SCATTER_INDEX_IN_BOUND(index, self_select_dim_size);
     if (index < 0) {
       index += self_select_dim_size;
     }
   } else {
     // gather
-    PADDLE_ENFORCE(
-        index >= -src_select_dim_size && index < src_select_dim_size,
-        "The index is out of bounds, "
-        "please check whether the index and "
-        "input's shape meet the requirements. It should "
-        "be greater or equal to [%d] and less than [%d], but received [%d]",
-        -src_select_dim_size,
-        src_select_dim_size,
-        (int32_t)index);
+    ENFORCE_SCATTER_INDEX_IN_BOUND(index, src_select_dim_size);
     if (index < 0) {
       index += src_select_dim_size;
     }
@@ -382,6 +395,7 @@ __global__ void ScatterAssignScalarValue(
   __syncthreads();
   if (tid >= numel) return;
   index_t index = index_data[tid];
+  ENFORCE_SCATTER_INDEX_IN_BOUND(index, self_select_dim_size);
   if (index < 0) index += static_cast<index_t>(self_select_dim_size);
 
   // some kernels might store input_strides differently! Be careful when dealing
@@ -428,6 +442,7 @@ __global__ void PickWinnersScatterKernel(
   // out of bound
   if (tid >= numel) return;
   index_t index = index_data[tid];
+  ENFORCE_SCATTER_INDEX_IN_BOUND(index, self_select_dim_size);
   if (index < 0) index += static_cast<index_t>(self_select_dim_size);
 
   const int64_t* input_strides = smem_shape_strides + 2 * ndim;
@@ -470,6 +485,7 @@ __global__ void ScatterWriteByWinnersKernel(
   // out of bound
   if (tid >= numel) return;
   index_t index = index_data[tid];
+  ENFORCE_SCATTER_INDEX_IN_BOUND(index, self_select_dim_size);
   if (index < 0) index += static_cast<index_t>(self_select_dim_size);
 
   const int64_t* src_strides = smem_shape_strides + ndim;
@@ -735,6 +751,7 @@ __global__ void ScatterInputGradGPUKernel(
     const int64_t* __restrict__ shape_strides,
     int dim,
     int ndim,
+    int64_t self_select_dim_size,
     int64_t numel) {
   // no more than 18 int64_t, different from forward kernels
   // the backward kernel does not require src, so src_strides are not needed
@@ -751,6 +768,10 @@ __global__ void ScatterInputGradGPUKernel(
 
   int64_t replace_index = 0;
   index_t index = index_data[tid];
+  // This kernel does not go through COMPUTE_OFFSET_SINGLE_OUTPUT, so it has to
+  // bound-check and normalize the subscript on its own.
+  ENFORCE_SCATTER_INDEX_IN_BOUND(index, self_select_dim_size);
+  if (index < 0) index += static_cast<index_t>(self_select_dim_size);
   const int64_t* grad_strides = smem_shape_strides + ndim;
 
   ComputeOffset<false>(smem_shape_strides,
@@ -781,6 +802,10 @@ void gpu_scatter_input_grad_kernel(DenseTensor self,
   int64_t inner_dim_size = 1;
   int64_t outer_dim_size = 1;
   int select_dim_size = index_dims[dim];
+  // ``select_dim_size`` above is the length of ``index`` along ``dim`` and only
+  // sizes the launch. Normalizing a negative subscript needs the length of the
+  // tensor it addresses instead, which here is the gradient of ``x``.
+  const int64_t self_select_dim_size = grad.dims()[dim];
   for (int64_t i = 0; i < dim; ++i) {
     inner_dim_size *= index_dims[i];
   }
@@ -825,6 +850,7 @@ void gpu_scatter_input_grad_kernel(DenseTensor self,
                                                   shape_strides,
                                                   dim,
                                                   index_dims.size(),
+                                                  self_select_dim_size,
                                                   index_size);
 }
 
@@ -836,7 +862,22 @@ enum GradDispatchTag {
   ValueGrad,
   MeanValueGrad,
   MinMaxValueGrad,
+  MulValueGrad,
 };
+
+// Splits the factors a scatter-mul position receives into "how many of them are
+// zero" and "the product of the ones that are not". The backward of a product
+// is the product of the *other* factors, and once a factor is zero ``out`` has
+// dropped that information, so it has to be collected on the side.
+template <typename tensor_t>
+__device__ __forceinline__ void AccumulateZeroCountAndMaskedProd(
+    const tensor_t value, int* zero_count, tensor_t* masked_prod) {
+  if (value == static_cast<tensor_t>(0)) {
+    phi::CudaAtomicAdd(zero_count, 1);
+  } else {
+    phi::CudaAtomicMul(masked_prod, value);
+  }
+}
 }  // anonymous namespace
 
 template <typename tensor_t, typename index_t, GradDispatchTag dispatch>
@@ -849,13 +890,26 @@ __global__ void ScatterGradPrePassKernel(
     const int64_t* __restrict__ shape_strides,
     int dim,
     int ndim,
+    int64_t self_select_dim_size,
     int64_t numel,
     int64_t grad_numel,
     int* __restrict__ aux_buffer,
-    bool include_self = true) {
+    bool include_self = true,
+    tensor_t* __restrict__ masked_value_prod = nullptr) {
   if constexpr (dispatch == GradDispatchTag::MulInputGrad) {
-    COMPUTE_OFFSET_SINGLE_OUTPUT(replace_index, 1, tid, 2)
-    atomicMax(aux_buffer + replace_index, tid);
+    // ``value``'s offset comes from the third stride block, the same layout
+    // ``MinMaxInputGrad`` below relies on.
+    COMPUTE_OFFSET_DOUBLE_OUTPUT(replace_index_value, replace_index, tid, 2, 1)
+    atomicMax(aux_buffer + replace_index, static_cast<int>(tid));
+    AccumulateZeroCountAndMaskedProd(value_data[replace_index_value],
+                                     aux_buffer + grad_numel + replace_index,
+                                     masked_value_prod + replace_index);
+  } else if constexpr (dispatch == GradDispatchTag::MulValueGrad) {
+    COMPUTE_OFFSET_DOUBLE_OUTPUT(
+        replace_index_grad, replace_index_self, tid, 1, 2)
+    AccumulateZeroCountAndMaskedProd(value_data[replace_index_grad],
+                                     aux_buffer + replace_index_self,
+                                     masked_value_prod + replace_index_self);
   } else if constexpr (dispatch == GradDispatchTag::MinMaxInputGrad) {
     // This is a special case, src is stored in shape_strides + 2 * dim but used
     // as the 2nd param for compute offset
@@ -890,20 +944,35 @@ __global__ void ScatterMulInputGradGPUKernel(
     const index_t* __restrict__ index_data,
     const tensor_t* __restrict__ out_data,
     const tensor_t* __restrict__ x_data,
+    const tensor_t* __restrict__ self_data,
     const int64_t* __restrict__ shape_strides,
     int dim,
     int ndim,
+    int64_t self_select_dim_size,
     int64_t numel,
-    int* __restrict__ aux_buffer) {
+    int64_t grad_numel,
+    int* __restrict__ aux_buffer,
+    const tensor_t* __restrict__ masked_value_prod) {
   COMPUTE_OFFSET_SINGLE_OUTPUT(replace_index, 1, tid, 2)
-  if (tid == aux_buffer[replace_index]) {
-    if (x_data[replace_index] != static_cast<tensor_t>(0)) {
-      grad_data[replace_index] = grad_data[replace_index] *
-                                 out_data[replace_index] /
-                                 x_data[replace_index];
-    } else {
-      grad_data[replace_index] = static_cast<tensor_t>(0);
-    }
+  if (tid != aux_buffer[replace_index]) return;
+  const tensor_t x = x_data[replace_index];
+  // The base gradient is read from ``out_grad`` and not from ``grad_data``:
+  // ``MulInputGradRoundTripFunctor`` has already rewritten the latter with
+  // torch's redundant ``(g * m) / m`` for the sake of the positions no index
+  // reaches, and this position is not one of them.
+  const tensor_t g = self_data[replace_index];
+  // ``out / x`` loses every factor once one of them is zero, so the derivative
+  // has to be rebuilt from the product of the remaining factors instead.
+  const int zero_count = aux_buffer[grad_numel + replace_index] +
+                         (x == static_cast<tensor_t>(0) ? 1 : 0);
+  if (zero_count == 0) {
+    grad_data[replace_index] = g * out_data[replace_index] / x;
+  } else if (zero_count == 1 && x == static_cast<tensor_t>(0)) {
+    grad_data[replace_index] = g * masked_value_prod[replace_index];
+  } else {
+    // ``x`` is not the only zero factor, so the product stays zero whatever
+    // ``x`` becomes.
+    grad_data[replace_index] = static_cast<tensor_t>(0);
   }
 }
 
@@ -917,6 +986,7 @@ __global__ void ScatterMinMaxInputGradGPUKernel(
     const int64_t* __restrict__ shape_strides,
     int dim,
     int ndim,
+    int64_t self_select_dim_size,
     int64_t numel,
     int* __restrict__ aux_buffer) {
   COMPUTE_OFFSET_SINGLE_OUTPUT(replace_index, 1, tid, 2)
@@ -937,7 +1007,7 @@ void gpu_scatter_mul_min_max_input_grad_kernel(DenseTensor self,
                                                const DenseTensor& value,
                                                DenseTensor grad,
                                                const std::string& reduce,
-                                               bool include_self UNUSED,
+                                               bool include_self,
                                                const DeviceContext& dev_ctx) {
   auto* grad_data = grad.data<tensor_t>();
   auto* index_data = index.data<index_t>();
@@ -951,6 +1021,9 @@ void gpu_scatter_mul_min_max_input_grad_kernel(DenseTensor self,
   int64_t inner_dim_size = 1;
   int64_t outer_dim_size = 1;
   int64_t select_dim_size = index_dims[dim];
+  // The subscript addresses the gradient of ``x``, so that is the length a
+  // negative one has to be normalized against.
+  const int64_t self_select_dim_size = grad.dims()[dim];
   for (int i = 0; i < dim; ++i) {
     inner_dim_size *= index_dims[i];
   }
@@ -962,8 +1035,10 @@ void gpu_scatter_mul_min_max_input_grad_kernel(DenseTensor self,
   int64_t n = inner_dim_size * select_dim_size * outer_dim_size;
   int64_t grid = (n + block - 1) / block;
   auto stream = reinterpret_cast<const GPUContext&>(dev_ctx).stream();
+  const bool is_mul = reduce == "mul" || reduce == "multiply";
   DenseTensor aux_tensor;
-  aux_tensor.Resize({grad.numel()});
+  // mul needs a second plane behind the winner tid to count the zero factors.
+  aux_tensor.Resize({is_mul ? grad.numel() * 2 : grad.numel()});
   dev_ctx.Alloc<int>(&aux_tensor);
   int* aux_buffer = aux_tensor.data<int>();
 
@@ -979,8 +1054,9 @@ void gpu_scatter_mul_min_max_input_grad_kernel(DenseTensor self,
     int64_t* host_data = shape_stride_host.data<int64_t>();
     for (int64_t i = 0; i < ndim; i++) {
       host_data[i] = index_dims[i];
-      // notice that the ordering is different from forward, since
-      // value.strides() is not used for mul
+      // notice that the ordering is different from forward: the grad strides
+      // come first here, since that is the only block the mul grad kernel
+      // itself reads. value.strides() is only needed by the pre-pass.
       host_data[i + ndim] = grad.strides()[i];
       host_data[i + (ndim << 1)] = value.strides()[i];
     }
@@ -995,9 +1071,18 @@ void gpu_scatter_mul_min_max_input_grad_kernel(DenseTensor self,
   const int64_t* shape_strides = shape_stride_dev.data<int64_t>();
   size_t shared_mem_bytes = sizeof(int64_t) * ndim;
 
-  if (reduce == "mul" || reduce == "multiply") {
+  if (is_mul) {
+    PADDLE_ENFORCE_LE_INT_MAX(index.numel(), "gather_scatter input grad tid");
     funcs::set_constant(dev_ctx, &aux_tensor, 0);
-    shared_mem_bytes *= 2;  // 1 stride, 1 shape
+    shared_mem_bytes *= 3;  // two strides, 1 shape
+
+    // Product of the non-zero factors ``value`` contributes to each position,
+    // needed to reconstruct the derivative when a factor is zero.
+    DenseTensor masked_prod_tensor;
+    masked_prod_tensor.Resize({grad.numel()});
+    dev_ctx.Alloc<tensor_t>(&masked_prod_tensor);
+    funcs::set_constant(dev_ctx, &masked_prod_tensor, 1);
+    tensor_t* masked_value_prod = masked_prod_tensor.data<tensor_t>();
 
     ScatterGradPrePassKernel<tensor_t, index_t, MulInputGrad>
         <<<grid, block, shared_mem_bytes, stream>>>(grad_data,
@@ -1008,19 +1093,26 @@ void gpu_scatter_mul_min_max_input_grad_kernel(DenseTensor self,
                                                     shape_strides,
                                                     dim,
                                                     ndim,
+                                                    self_select_dim_size,
                                                     index.numel(),
                                                     grad.numel(),
-                                                    aux_buffer);
+                                                    aux_buffer,
+                                                    include_self,
+                                                    masked_value_prod);
     ScatterMulInputGradGPUKernel<tensor_t, index_t>
         <<<grid, block, shared_mem_bytes, stream>>>(grad_data,
                                                     index_data,
                                                     out_data,
                                                     x_data,
+                                                    self_data,
                                                     shape_strides,
                                                     dim,
                                                     ndim,
+                                                    self_select_dim_size,
                                                     index.numel(),
-                                                    aux_buffer);
+                                                    grad.numel(),
+                                                    aux_buffer,
+                                                    masked_value_prod);
   } else if (reduce == "amin" || reduce == "amax") {
     funcs::set_constant(dev_ctx, &aux_tensor, 1);
     shared_mem_bytes *= 3;  // two strides, 1 shape
@@ -1033,6 +1125,7 @@ void gpu_scatter_mul_min_max_input_grad_kernel(DenseTensor self,
                                                     shape_strides,
                                                     dim,
                                                     ndim,
+                                                    self_select_dim_size,
                                                     index.numel(),
                                                     grad.numel(),
                                                     aux_buffer);
@@ -1045,6 +1138,7 @@ void gpu_scatter_mul_min_max_input_grad_kernel(DenseTensor self,
                                                     shape_strides,
                                                     dim,
                                                     ndim,
+                                                    self_select_dim_size,
                                                     index.numel(),
                                                     aux_buffer);
   }
@@ -1057,6 +1151,7 @@ __global__ void ScatterMeanInputGradGPUKernel(
     const int64_t* __restrict__ shape_strides,
     int dim,
     int ndim,
+    int64_t self_select_dim_size,
     int64_t numel,
     int64_t grad_numel,
     int* __restrict__ aux_buffer) {
@@ -1083,6 +1178,9 @@ void gpu_scatter_mean_input_grad_kernel(DenseTensor self,
   int64_t inner_dim_size = 1;
   int64_t outer_dim_size = 1;
   int64_t select_dim_size = index_dims[dim];
+  // The subscript addresses the gradient of ``x``, so that is the length a
+  // negative one has to be normalized against.
+  const int64_t self_select_dim_size = grad.dims()[dim];
   for (int i = 0; i < dim; ++i) {
     inner_dim_size *= index_dims[i];
   }
@@ -1140,6 +1238,7 @@ void gpu_scatter_mean_input_grad_kernel(DenseTensor self,
                                                   shape_strides,
                                                   dim,
                                                   ndim,
+                                                  self_select_dim_size,
                                                   index.numel(),
                                                   grad_size,
                                                   aux_buffer);
@@ -1149,6 +1248,7 @@ void gpu_scatter_mean_input_grad_kernel(DenseTensor self,
                                                   shape_strides,
                                                   dim,
                                                   ndim,
+                                                  self_select_dim_size,
                                                   index.numel(),
                                                   grad_size,
                                                   aux_buffer);
@@ -1162,6 +1262,7 @@ __global__ void ScatterValueGradGPUKernel(
     const int64_t* __restrict__ shape_strides,
     int dim,
     int ndim,
+    int64_t self_select_dim_size,
     int64_t numel,
     int* __restrict__ aux_buffer) {
   COMPUTE_OFFSET_DOUBLE_OUTPUT(
@@ -1187,6 +1288,9 @@ void gpu_scatter_value_grad_kernel(DenseTensor self,
   int64_t inner_dim_size = 1;
   int64_t outer_dim_size = 1;
   int select_dim_size = index_dims[dim];
+  // Here the subscript addresses ``out_grad``, the operand shaped like ``x``;
+  // ``grad`` is the gradient of ``value`` and carries the shape of ``index``.
+  const int64_t self_select_dim_size = self.dims()[dim];
   for (int64_t i = 0; i < dim; ++i) {
     inner_dim_size *= index_dims[i];
   }
@@ -1239,6 +1343,7 @@ void gpu_scatter_value_grad_kernel(DenseTensor self,
                                                   shape_strides,
                                                   dim,
                                                   ndim,
+                                                  self_select_dim_size,
                                                   index.numel(),
                                                   grad.numel(),
                                                   aux_buffer);
@@ -1249,6 +1354,7 @@ void gpu_scatter_value_grad_kernel(DenseTensor self,
                                                   shape_strides,
                                                   dim,
                                                   ndim,
+                                                  self_select_dim_size,
                                                   index.numel(),
                                                   aux_buffer);
 }
@@ -1261,6 +1367,7 @@ __global__ void ScatterMeanValueGradGPUKernel(
     const int64_t* __restrict__ shape_strides,
     int dim,
     int ndim,
+    int64_t self_select_dim_size,
     int64_t numel,
     int* __restrict__ aux_buffer) {
   COMPUTE_OFFSET_DOUBLE_OUTPUT(
@@ -1278,6 +1385,7 @@ __global__ void ScatterAddValueGradGPUKernel(
     const int64_t* __restrict__ shape_strides,
     int dim,
     int ndim,
+    int64_t self_select_dim_size,
     int64_t numel) {
   COMPUTE_OFFSET_DOUBLE_OUTPUT(
       replace_index_grad, replace_index_self, tid, 1, 2)
@@ -1305,6 +1413,9 @@ void gpu_scatter_add_mean_value_grad_kernel(DenseTensor self,
   int64_t inner_dim_size = 1;
   int64_t outer_dim_size = 1;
   int64_t select_dim_size = index_dims[dim];
+  // Here the subscript addresses ``out_grad``, the operand shaped like ``x``;
+  // ``grad`` is the gradient of ``value`` and carries the shape of ``index``.
+  const int64_t self_select_dim_size = self.dims()[dim];
   for (int i = 0; i < dim; ++i) {
     inner_dim_size *= index_dims[i];
   }
@@ -1357,6 +1468,7 @@ void gpu_scatter_add_mean_value_grad_kernel(DenseTensor self,
                                                     shape_strides,
                                                     dim,
                                                     ndim,
+                                                    self_select_dim_size,
                                                     index.numel(),
                                                     grad.numel(),
                                                     aux_buffer);
@@ -1367,6 +1479,7 @@ void gpu_scatter_add_mean_value_grad_kernel(DenseTensor self,
                                                     shape_strides,
                                                     dim,
                                                     ndim,
+                                                    self_select_dim_size,
                                                     index.numel(),
                                                     aux_buffer);
   } else if (reduce == "add") {
@@ -1377,6 +1490,7 @@ void gpu_scatter_add_mean_value_grad_kernel(DenseTensor self,
                                                     shape_strides,
                                                     dim,
                                                     ndim,
+                                                    self_select_dim_size,
                                                     index.numel());
   }
 }
@@ -1388,17 +1502,33 @@ __global__ void ScatterMulValueGradGPUKernel(
     const tensor_t* __restrict__ self_data,
     const tensor_t* __restrict__ value_data,
     const tensor_t* __restrict__ out_data,
+    const tensor_t* __restrict__ x_data,
     const int64_t* __restrict__ shape_strides,
     int dim,
     int ndim,
-    int64_t numel) {
+    int64_t self_select_dim_size,
+    int64_t numel,
+    bool include_self,
+    const int* __restrict__ aux_buffer,
+    const tensor_t* __restrict__ masked_value_prod) {
   COMPUTE_OFFSET_DOUBLE_OUTPUT(
       replace_index_grad, replace_index_self, tid, 1, 2)
-  if (value_data[replace_index_grad] != static_cast<tensor_t>(0)) {
+  const tensor_t value = value_data[replace_index_grad];
+  const bool x_is_zero =
+      include_self && x_data[replace_index_self] == static_cast<tensor_t>(0);
+  // ``out / value`` loses every factor once one of them is zero, so the
+  // derivative has to be rebuilt from the product of the remaining factors.
+  const int zero_count = aux_buffer[replace_index_self] + (x_is_zero ? 1 : 0);
+  if (zero_count == 0) {
     grad_data[replace_index_grad] =
-        self_data[replace_index_self] *
-        (out_data[replace_index_self] / value_data[replace_index_grad]);
+        self_data[replace_index_self] * out_data[replace_index_self] / value;
+  } else if (zero_count == 1 && value == static_cast<tensor_t>(0)) {
+    tensor_t others = masked_value_prod[replace_index_self];
+    if (include_self) others = others * x_data[replace_index_self];
+    grad_data[replace_index_grad] = self_data[replace_index_self] * others;
   } else {
+    // ``value`` is not the only zero factor, so the product stays zero
+    // whatever ``value`` becomes.
     grad_data[replace_index_grad] = static_cast<tensor_t>(0);
   }
 }
@@ -1413,6 +1543,7 @@ __global__ void ScatterMinMaxValueGradGPUKernel(
     const int64_t* __restrict__ shape_strides,
     int dim,
     int ndim,
+    int64_t self_select_dim_size,
     int64_t numel,
     bool include_self,
     int* __restrict__ aux_buffer) {
@@ -1447,6 +1578,9 @@ void gpu_scatter_mul_min_max_value_grad_kernel(DenseTensor self,
   int64_t inner_dim_size = 1;
   int64_t outer_dim_size = 1;
   int64_t select_dim_size = index_dims[dim];
+  // Here the subscript addresses ``out_grad``, the operand shaped like ``x``;
+  // ``grad`` is the gradient of ``value`` and carries the shape of ``index``.
+  const int64_t self_select_dim_size = self.dims()[dim];
   for (int i = 0; i < dim; ++i) {
     inner_dim_size *= index_dims[i];
   }
@@ -1485,16 +1619,52 @@ void gpu_scatter_mul_min_max_value_grad_kernel(DenseTensor self,
   size_t shared_mem_bytes = sizeof(int64_t) * ndim * 3;
 
   if (reduce == "mul" || reduce == "multiply") {
+    PADDLE_ENFORCE_LE_INT_MAX(index.numel(),
+                              "gather_scatter mul value grad tid");
+    // Zero factor count and product of the non-zero ``value`` factors each
+    // position receives, needed to rebuild the derivative around a zero.
+    DenseTensor aux_tensor;
+    aux_tensor.Resize({self.numel()});
+    dev_ctx.Alloc<int>(&aux_tensor);
+    funcs::set_constant(dev_ctx, &aux_tensor, 0);
+    int* aux_buffer = aux_tensor.data<int>();
+
+    DenseTensor masked_prod_tensor;
+    masked_prod_tensor.Resize({self.numel()});
+    dev_ctx.Alloc<tensor_t>(&masked_prod_tensor);
+    funcs::set_constant(dev_ctx, &masked_prod_tensor, 1);
+    tensor_t* masked_value_prod = masked_prod_tensor.data<tensor_t>();
+
+    ScatterGradPrePassKernel<tensor_t, index_t, MulValueGrad>
+        <<<grid, block, shared_mem_bytes, stream>>>(grad_data,
+                                                    index_data,
+                                                    out_data,
+                                                    value_data,
+                                                    x_data,
+                                                    shape_strides,
+                                                    dim,
+                                                    ndim,
+                                                    self_select_dim_size,
+                                                    index.numel(),
+                                                    grad.numel(),
+                                                    aux_buffer,
+                                                    include_self,
+                                                    masked_value_prod);
     ScatterMulValueGradGPUKernel<tensor_t, index_t>
         <<<grid, block, shared_mem_bytes, stream>>>(grad_data,
                                                     index_data,
                                                     self_data,
                                                     value_data,
                                                     out_data,
+                                                    x_data,
                                                     shape_strides,
                                                     dim,
                                                     ndim,
-                                                    index.numel());
+                                                    self_select_dim_size,
+                                                    index.numel(),
+                                                    include_self,
+                                                    aux_buffer,
+                                                    masked_value_prod);
   } else if (reduce == "amin" || reduce == "amax") {
     DenseTensor aux_tensor;
     aux_tensor.Resize({self.numel()});
@@ -1511,6 +1681,7 @@ void gpu_scatter_mul_min_max_value_grad_kernel(DenseTensor self,
                                                     shape_strides,
                                                     dim,
                                                     ndim,
+                                                    self_select_dim_size,
                                                     index.numel(),
                                                     grad.numel(),
                                                     aux_buffer,
@@ -1524,6 +1695,7 @@ void gpu_scatter_mul_min_max_value_grad_kernel(DenseTensor self,
                                                     shape_strides,
                                                     dim,
                                                     ndim,
+                                                    self_select_dim_size,
                                                     index.numel(),
                                                     include_self,
                                                     aux_buffer);

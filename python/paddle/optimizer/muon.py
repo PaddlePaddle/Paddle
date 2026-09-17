@@ -13,6 +13,7 @@
 # limitations under the License.
 from __future__ import annotations
 
+import functools
 import logging
 import math
 import os
@@ -117,6 +118,77 @@ _NS_COEFFICIENT_SETS = {
 }
 
 # ------------------------------------------------------------------
+# Symmetric-GEMM (SYRK) fast path for Newton-Schulz
+# ------------------------------------------------------------------
+
+# The first two matmuls of a Newton-Schulz step have symmetric outputs
+# (``X @ X.T`` and ``A @ A`` with A symmetric), so a SYRK-style kernel only
+# has to compute the lower triangle and mirror-write the upper one. That cuts
+# 1/4 (thin fragments) to 1/3 (square fragments) of the step's FLOPs.
+#
+# quack needs 16-byte alignment on every stride-1 dimension, i.e. 8 elements
+# for fp16/bf16. That covers *both* edges of the fragment: an unaligned short
+# edge trips the (m, m) output ("Invalid mD.strides[0]") and an unaligned long
+# edge trips the (m, n) input ("Invalid mA.strides[0]"), since the long edge is
+# the contiguous K dimension of ``X @ X.T``. Both are hard raises, so the gate
+# has to reject them rather than let the first step die.
+_SYRK_EDGE_ALIGNMENT = 8
+# Major compute capabilities with a CuTe symmetric-GEMM kernel.
+_SYRK_SUPPORTED_MAJOR_CAPABILITIES = (9, 10, 11)
+# fp16/bf16 go through the kernel bit-identically to cuBLAS. fp32 also runs,
+# but its MMA is tf32-grade: measured 6.4e-5 relative error against an fp64
+# reference where paddle.matmul gives 1.8e-6. ns_matmul_dtype=float32 is only
+# ever chosen to *get* that precision (it is the pre-Ampere fallback), so
+# quietly trading it away would defeat the point -- keep fp32 on cuBLAS.
+_SYRK_SUPPORTED_DTYPES = (paddle.bfloat16, paddle.float16)
+
+
+@functools.cache
+def _load_symmetric_gemm():
+    """Return quack's ``gemm_symmetric``, caching the lookup.
+
+    quack is a CuTe-DSL package written against ``torch``, so it is imported
+    inside ``paddle.use_compat_guard`` to proxy ``import torch`` to Paddle. The
+    guard is only needed for the import: the kernel wrappers bind the proxy
+    module at import time, so calls afterwards need no active compat scope.
+    """
+    try:
+        with paddle.use_compat_guard(
+            enable=True, scope={"quack", "cutlass", "triton"}, silent=True
+        ):
+            from quack.gemm_interface import gemm_symmetric
+    except Exception as e:
+        raise RuntimeError(
+            "Muon(use_symmetric_gemm=True) needs quack's symmetric GEMM, but "
+            "'from quack.gemm_interface import gemm_symmetric' failed with "
+            f"{type(e).__name__}: {e}. Install quack-kernels>=0.3.7, or "
+            "import paddlefleet_ops first, which vendors it."
+        ) from e
+    return gemm_symmetric
+
+
+def _symmetric_gemm_is_profitable(shape, dtype, min_short_edge, min_step_flops):
+    """Whether the symmetric-GEMM path beats cuBLAS for this NS fragment.
+
+    *shape* is the post-transpose Newton-Schulz input, i.e. ``(m, n)`` or
+    ``(batch, m, n)``; *dtype* is the matmul dtype. *min_short_edge* and
+    *min_step_flops* are the caller's thresholds, i.e. the ``Muon``
+    constructor arguments of the same name.
+    """
+    if dtype not in _SYRK_SUPPORTED_DTYPES:
+        return False
+    m, n = shape[-2], shape[-1]
+    if m > n:
+        m, n = n, m
+    if m < min_short_edge:
+        return False
+    if m % _SYRK_EDGE_ALIGNMENT or n % _SYRK_EDGE_ALIGNMENT:
+        return False
+    batch = shape[0] if len(shape) == 3 else 1
+    return batch * (4 * m * m * n + 2 * m**3) >= min_step_flops
+
+
+# ------------------------------------------------------------------
 # Default parameter classification
 # ------------------------------------------------------------------
 
@@ -213,6 +285,19 @@ class Muon(Optimizer):
             iterations. ``None`` = auto-detect: bfloat16 on Ampere+ (capability
             >= 8.0), float32 on V100 and older. Pass ``paddle.float32``
             explicitly to force float32. Default: ``None``.
+        use_symmetric_gemm (bool): Compute the two symmetric matmuls of each
+            Newton-Schulz step with quack's SYRK-style ``gemm_symmetric``
+            kernel. Default: ``False``.
+        symmetric_gemm_min_short_edge (int): Minimum short edge of a
+            Newton-Schulz fragment for the symmetric-GEMM path. Below this the
+            kernel cannot fill the GPU and loses to cuBLAS. Only consulted when
+            ``use_symmetric_gemm=True``. The default was measured on sm_10x;
+            raise or lower it if the crossover point moves. Default: ``1024``.
+        symmetric_gemm_min_step_flops (float): Minimum FLOPs of one full
+            Newton-Schulz step, ``batch * (4 * m^2 * n + 2 * m^3)``, for the
+            symmetric-GEMM path. Screens out fragments too small to amortise
+            the launch overhead. Only consulted when
+            ``use_symmetric_gemm=True``. Default: ``2e11``.
         multi_precision (bool): Maintain FP32 master weights when training in
             BF16/FP16. Default: ``False``.
         name (str | None): Optional name for the optimizer instance.
@@ -247,6 +332,9 @@ class Muon(Optimizer):
         multi_precision=False,
         name=None,
         muon_max_group_bytes=2 * 1024 * 1024 * 1024,  # Max 2GB per group
+        use_symmetric_gemm=False,
+        symmetric_gemm_min_short_edge=1024,
+        symmetric_gemm_min_step_flops=2e11,
         **kwargs,
     ):
         if parameters is None:
@@ -324,6 +412,41 @@ class Muon(Optimizer):
             )
         else:
             self._ns_matmul_dtype = ns_matmul_dtype
+        # Symmetric-GEMM fast path. Validate eagerly so a misconfiguration is
+        # a constructor error instead of a silent fallback at the first step.
+        self._use_symmetric_gemm = use_symmetric_gemm
+        self._symmetric_gemm_min_short_edge = symmetric_gemm_min_short_edge
+        self._symmetric_gemm_min_step_flops = symmetric_gemm_min_step_flops
+        if use_symmetric_gemm:
+            if (
+                symmetric_gemm_min_short_edge <= 0
+                or symmetric_gemm_min_step_flops <= 0
+            ):
+                raise ValueError(
+                    "symmetric_gemm_min_short_edge and "
+                    "symmetric_gemm_min_step_flops must be positive, got "
+                    f"{symmetric_gemm_min_short_edge} and "
+                    f"{symmetric_gemm_min_step_flops}."
+                )
+            if self._ns_matmul_dtype not in _SYRK_SUPPORTED_DTYPES:
+                raise ValueError(
+                    "use_symmetric_gemm=True requires bfloat16 or float16 "
+                    "Newton-Schulz matmuls, got "
+                    f"ns_matmul_dtype={self._ns_matmul_dtype}. The symmetric "
+                    "kernel does run on float32, but only at tf32-grade "
+                    "precision, which defeats the reason to pick float32."
+                )
+            cap = (
+                paddle.device.cuda.get_device_capability()
+                if paddle.is_compiled_with_cuda()
+                else (0, 0)
+            )
+            if cap[0] not in _SYRK_SUPPORTED_MAJOR_CAPABILITIES:
+                raise ValueError(
+                    "use_symmetric_gemm=True requires a GPU with compute "
+                    f"capability 9.x/10.x/11.x, got {cap[0]}.{cap[1]}."
+                )
+            _load_symmetric_gemm()
         self._default_dict.update(defaults)
 
     # ------------------------------------------------------------------
@@ -402,6 +525,9 @@ class Muon(Optimizer):
         eps=1e-9,
         ns_coeffs=None,
         ns_matmul_dtype=paddle.bfloat16,
+        use_symmetric_gemm=False,
+        symmetric_gemm_min_short_edge=None,
+        symmetric_gemm_min_step_flops=None,
     ):
         """Approximate the matrix sign function via Newton-Schulz iteration.
 
@@ -414,6 +540,12 @@ class Muon(Optimizer):
                 If None, uses the "simple" preset.
             ns_matmul_dtype: Dtype for matmul iterations. Defaults to
                 bfloat16. Pass paddle.float32 for V100 compatibility.
+            use_symmetric_gemm: Allow the symmetric-GEMM fast path. It is
+                taken only if this shape clears the profitability thresholds.
+            symmetric_gemm_min_short_edge: Short-edge threshold of that gate.
+                Required when use_symmetric_gemm=True.
+            symmetric_gemm_min_step_flops: Per-step FLOPs threshold of that
+                gate. Required when use_symmetric_gemm=True.
         """
         if X.ndim < 2 or X.ndim > 3:
             raise ValueError(
@@ -442,10 +574,24 @@ class Muon(Optimizer):
         )
         X = X_flat.reshape(orig_shape).astype(ns_matmul_dtype)
 
+        symmetric = use_symmetric_gemm and _symmetric_gemm_is_profitable(
+            X.shape,
+            X.dtype,
+            symmetric_gemm_min_short_edge,
+            symmetric_gemm_min_step_flops,
+        )
         if X.ndim == 3:
-            ns_step_fn = Muon._batched_newton_schulz_step
+            ns_step_fn = (
+                Muon._batched_newton_schulz_step_symmetric
+                if symmetric
+                else Muon._batched_newton_schulz_step
+            )
         else:
-            ns_step_fn = Muon._newton_schulz_step
+            ns_step_fn = (
+                Muon._newton_schulz_step_symmetric
+                if symmetric
+                else Muon._newton_schulz_step
+            )
 
         for i in range(steps):
             a, b, c = coeff_sets[i % len(coeff_sets)]
@@ -470,6 +616,22 @@ class Muon(Optimizer):
         B = paddle.baddbmm(A, A, A, beta=b, alpha=c)
         X = paddle.baddbmm(X, B, X, beta=a, alpha=1.0)
         return X
+
+    @staticmethod
+    def _newton_schulz_step_symmetric(X, a, b, c):
+        """2D Newton-Schulz step, symmetric products on the SYRK kernel."""
+        gemm_symmetric = _load_symmetric_gemm()
+        A = gemm_symmetric(X, paddle.transpose(X, perm=[1, 0]))
+        B = gemm_symmetric(A, A, C=A, beta=b, alpha=c)
+        return paddle.addmm(input=X, x=B, y=X, beta=a, alpha=1.0)
+
+    @staticmethod
+    def _batched_newton_schulz_step_symmetric(X, a, b, c):
+        """3D Newton-Schulz step, symmetric products on the SYRK kernel."""
+        gemm_symmetric = _load_symmetric_gemm()
+        A = gemm_symmetric(X, paddle.transpose(X, perm=[0, 2, 1]))
+        B = gemm_symmetric(A, A, C=A, beta=b, alpha=c)
+        return paddle.baddbmm(X, B, X, beta=a, alpha=1.0)
 
     @staticmethod
     def _scaling_fn(orthogonal_update, version, extra_scale_factor=1.0):
@@ -633,6 +795,9 @@ class Muon(Optimizer):
                     eps=epsilon,
                     ns_coeffs=self._ns_coeffs,
                     ns_matmul_dtype=self._ns_matmul_dtype,
+                    use_symmetric_gemm=self._use_symmetric_gemm,
+                    symmetric_gemm_min_short_edge=self._symmetric_gemm_min_short_edge,
+                    symmetric_gemm_min_step_flops=self._symmetric_gemm_min_step_flops,
                 )
                 scaled = Muon._scaling_fn(
                     ns_out, version, self._muon_extra_scale_factor
