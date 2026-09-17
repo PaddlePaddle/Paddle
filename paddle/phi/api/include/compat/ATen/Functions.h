@@ -23,6 +23,7 @@
 #include <ATen/ops/any.h>
 #include <ATen/ops/arange.h>
 #include <ATen/ops/as_strided.h>
+#include <ATen/ops/broadcast_to.h>
 #include <ATen/ops/cat.h>
 #include <ATen/ops/chunk.h>
 #include <ATen/ops/clamp.h>
