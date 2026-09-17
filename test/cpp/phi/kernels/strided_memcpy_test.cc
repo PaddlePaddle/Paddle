@@ -18,8 +18,68 @@ limitations under the License. */
 #include "gtest/gtest.h"
 #include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/common/memory_utils.h"
+#include "paddle/phi/kernels/funcs/strided_utils.h"
 namespace phi {
 namespace tests {
+
+TEST(StridedUtils, CheckedMulInt64Boundaries) {
+  int64_t result = 0;
+  EXPECT_FALSE(
+      CheckedMulInt64(std::numeric_limits<int64_t>::lowest(), -1, &result));
+  EXPECT_FALSE(
+      CheckedMulInt64(-1, std::numeric_limits<int64_t>::lowest(), &result));
+  EXPECT_TRUE(
+      CheckedMulInt64(std::numeric_limits<int64_t>::lowest(), 1, &result));
+  EXPECT_EQ(result, std::numeric_limits<int64_t>::lowest());
+  EXPECT_FALSE(
+      CheckedMulInt64(std::numeric_limits<int64_t>::lowest(), 2, &result));
+  EXPECT_FALSE(
+      CheckedMulInt64(std::numeric_limits<int64_t>::lowest(), -2, &result));
+  EXPECT_FALSE(
+      CheckedMulInt64(std::numeric_limits<int64_t>::max(), 2, &result));
+  EXPECT_TRUE(CheckedMulInt64(-7, -9, &result));
+  EXPECT_EQ(result, 63);
+}
+
+TEST(StridedUtils, HostAccumulateStridedView) {
+  const std::vector<float> values = {1, 2, 3, 4, 5, 6};
+
+  std::vector<float> non_overlapping(6, 0);
+  HostAccumulateStridedView(
+      values.data(), {2, 3}, {3, 1}, 0, non_overlapping.data());
+  EXPECT_EQ(non_overlapping, values);
+
+  std::vector<float> overlapping(4, 0);
+  HostAccumulateStridedView(
+      values.data(), {2, 3}, {1, 1}, 0, overlapping.data());
+  EXPECT_EQ(overlapping, (std::vector<float>{1, 6, 8, 6}));
+
+  std::vector<float> reversed(4, 0);
+  HostAccumulateStridedView(values.data(), {4}, {-1}, 3, reversed.data());
+  EXPECT_EQ(reversed, (std::vector<float>{4, 3, 2, 1}));
+
+  std::vector<float> empty_storage = {7, 8};
+  HostAccumulateStridedView(
+      values.data(), {0, 3}, {1, 1}, 0, empty_storage.data());
+  EXPECT_EQ(empty_storage, (std::vector<float>{7, 8}));
+}
+
+// Empty dims make ComputeStridedViewRange return early, which is the same
+// guard StridedTensorAccumulateThroughStorage uses. Do not instantiate that
+// helper here: it pulls in FillKernel/ContiguousKernel templates that are
+// not exported from phi.dll, so Windows cannot link strided_memcpy_test.exe.
+TEST(StridedUtils, ComputeStridedViewRangeEmptyShape) {
+  auto empty_1d = ComputeStridedViewRange({0}, {1}, 0);
+  EXPECT_TRUE(empty_1d.empty);
+
+  auto empty_middle = ComputeStridedViewRange({2, 0, 3}, {3, 1, 1}, 0);
+  EXPECT_TRUE(empty_middle.empty);
+
+  auto nonempty = ComputeStridedViewRange({2, 3}, {3, 1}, 0);
+  EXPECT_FALSE(nonempty.empty);
+  EXPECT_EQ(nonempty.min_index, 0);
+  EXPECT_EQ(nonempty.max_index, 5);
+}
 
 TEST(StridedMemcpy, CPUCrop) {
   // clang-format off
