@@ -478,7 +478,6 @@ static void VarBaseCopy(std::shared_ptr<imperative::VarBase> &src,  // NOLINT
 void BindImperative(py::module *m_ptr) {
   auto &m = *m_ptr;
 
-#ifndef _WIN32
   // Dygraph DataLoader signal handler
   m.def("_set_process_pids", [](int64_t key, py::object &obj) {
     PADDLE_ENFORCE_EQ(
@@ -489,9 +488,9 @@ void BindImperative(py::module *m_ptr) {
             "Expected data type is tuple or list, but received %s",
             obj.get_type()));
     py::list pids = py::cast<py::list>(obj);
-    std::set<pid_t> pids_set = {};
+    std::set<imperative::pid_t> pids_set = {};
     for (auto &&pid : pids) {
-      pids_set.insert(pid.cast<pid_t>());
+      pids_set.insert(pid.cast<imperative::pid_t>());
     }
     imperative::SetLoadProcessPIDs(key, pids_set);
   });
@@ -607,11 +606,21 @@ void BindImperative(py::module *m_ptr) {
   m.def("_cleanup_mmap_fds",
         []() { memory::allocation::MemoryMapFdSet::Instance().Clear(); });
 
+  m.def("_sweep_mmap_handles", []() {
+#ifdef _WIN32
+    // Reclaim pending shared-memory HANDLEs whose refcount reached 0.
+    // Normally swept on every keeper Insert (i.e. every batch); this hook
+    // lets idle workers (e.g. between epochs) release the last batches'
+    // sections without waiting for the next Insert. No-op on other
+    // platforms.
+    memory::allocation::WindowsHandleKeeper::Instance().SweepClosedMappings();
+#endif
+  });
+
   m.def("_set_max_memory_map_allocation_pool_size", [](int32_t size) {
     memory::allocation::MemoryMapAllocationPool::Instance().SetMaxPoolSize(
         size);
   });
-#endif
 
   m.def("start_imperative_gperf_profiler",
         []() { imperative::StartProfile(); });
