@@ -598,6 +598,7 @@ def _handle_aoa(
     aoa_config,
     safetensors,
     comm_method,
+    num_workers=1,
 ):
     global _metadata_manager
 
@@ -711,6 +712,7 @@ def _handle_aoa(
         safetensors=safetensors,
         worker_groups=worker_groups,
         comm_method=comm_method,
+        num_workers=num_workers,
     )
 
     for dst_desc, src_desc in dst_to_src_desc_mapping.items():
@@ -746,19 +748,22 @@ def local_load_state_dict(
     path: str,
     offload: bool = False,
     use_dist: bool = True,
+    num_workers: int = 1,
 ):
     cur_rank = paddle.distributed.get_rank() if use_dist else 0
     expect_checkpoint_file = f"{cur_rank}_0.distcp"
     ckpt_file = os.path.join(path, expect_checkpoint_file)
     source_state_dict = {}
     if offload:
-        state_dict_numpy = paddle.load(ckpt_file, return_numpy=True)
+        state_dict_numpy = paddle.load(
+            ckpt_file, return_numpy=True, num_workers=num_workers
+        )
         source_state_dict = {
             key: paddle.to_tensor(value, place=paddle.CPUPlace())
             for key, value in state_dict_numpy.items()
         }
     else:
-        source_state_dict = paddle.load(ckpt_file)
+        source_state_dict = paddle.load(ckpt_file, num_workers=num_workers)
     for key, value in state_dict.items():
         if isinstance(value, ShardedWeight):
             local_tensor = value.local_tensor
@@ -788,6 +793,7 @@ def load_state_dict(
     safetensors: bool = False,
     worker_groups: list[Group] | None = None,
     comm_method: str = "broadcast",
+    num_workers: int = 1,
 ) -> None:
     r"""
     Load the state_dict inplace from a checkpoint path.
@@ -804,6 +810,8 @@ def load_state_dict(
         safetensors(bool): Whether to use safetensors format. Default is False.
         worker_groups (list[paddle.distributed.collective.Group]): Communication groups used for tensor communications; if multiple are provided, an appropriate group is chosen; if None, the process_group group is used.
         comm_method (str): Communication method for resharding. Choices are "send_recv", "broadcast", "multi_group_broadcast", and "grouped_send_recv". Default is "broadcast".
+        num_workers(int): Number of threads used by paddle.load to read tensor payloads of each
+            checkpoint file in parallel. 1 keeps the original serial behavior. Default is 1.
     Example:
         .. code-block:: pycon
 
@@ -867,6 +875,7 @@ def load_state_dict(
                 path=path,
                 offload=offload,
                 use_dist=use_dist,
+                num_workers=num_workers,
             )
             logger.info("Checkpoint successfully loaded locally!")
             _metadata_manager.clear()
@@ -885,6 +894,7 @@ def load_state_dict(
             safetensors=safetensors,
             worker_groups=worker_groups,
             comm_method=comm_method,
+            num_workers=num_workers,
         )
         _metadata_manager.clear()
         gc.collect()
@@ -922,6 +932,7 @@ def load_state_dict(
             aoa_config,
             safetensors,
             comm_method,
+            num_workers,
         )
     else:
         load_state_dict_impl(
@@ -935,6 +946,7 @@ def load_state_dict(
             safetensors=safetensors,
             worker_groups=worker_groups,
             comm_method=comm_method,
+            num_workers=num_workers,
         )
     if use_dist:
         _finish_unflatten(flat_shards, padding_info)
@@ -1201,6 +1213,7 @@ def load_state_dict_impl(
     safetensors: bool = False,
     worker_groups: list[Group] | None = None,
     comm_method: str = 'broadcast',
+    num_workers: int = 1,
 ) -> None:
     with paddle.base.dygraph.guard():
         global _metadata_manager
@@ -1291,6 +1304,7 @@ def load_state_dict_impl(
                     os.path.join(path, file),
                     return_numpy=True,
                     safetensors=safetensors,
+                    num_workers=num_workers,
                 )
                 source_state_dict[file] = {
                     key: paddle.to_tensor(value, place=paddle.CPUPlace())
@@ -1298,7 +1312,9 @@ def load_state_dict_impl(
                 }
             else:
                 source_state_dict[file] = paddle.load(
-                    os.path.join(path, file), safetensors=safetensors
+                    os.path.join(path, file),
+                    safetensors=safetensors,
+                    num_workers=num_workers,
                 )
 
         metadata = _metadata_manager.get_metadata_list()[0]
