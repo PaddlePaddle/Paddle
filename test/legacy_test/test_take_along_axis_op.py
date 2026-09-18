@@ -276,7 +276,7 @@ class TestCase1(TestTakeAlongAxisOp):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(),
+    not core.is_compiled_with_cuda() or core.is_compiled_with_rocm(),
     "deterministic path only runs on CUDA",
 )
 class TestTakeAlongAxisGradDeterministic(TestTakeAlongAxisDuplicatedIndices):
@@ -327,12 +327,6 @@ class TestTakeAlongAxisGradDeterministic(TestTakeAlongAxisDuplicatedIndices):
                 self.xnp[slices], self.index_broadcast, self.axis
             )
         }
-
-    # Deterministic path is a property of the composite backward kernel; keep
-    # prim/CINN (compiler-optimized) paths out of these tests so the fixed
-    # reduction order under test is never routed through a fusing backend.
-    # def test_check_output(self):
-    #     self.check_output(check_pir=True)
 
     def test_check_grad(self):
         paddle.set_flags({'FLAGS_cudnn_deterministic': True})
@@ -427,7 +421,7 @@ class TestTakeAlongAxisGradDeterministicNegativeIndex(
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(),
+    not core.is_compiled_with_cuda() or core.is_compiled_with_rocm(),
     "deterministic path only runs on CUDA",
 )
 class TestTakeAlongAxisGradDeterministicDtypes(unittest.TestCase):
@@ -499,7 +493,7 @@ class TestTakeAlongAxisGradDeterministicDtypes(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(),
+    not core.is_compiled_with_cuda() or core.is_compiled_with_rocm(),
     "deterministic path only runs on CUDA",
 )
 class TestTakeAlongAxisGradDeterministicIndexOutOfBounds(unittest.TestCase):
@@ -554,7 +548,7 @@ paddle.device.cuda.synchronize()
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(),
+    not core.is_compiled_with_cuda() or core.is_compiled_with_rocm(),
     "deterministic path only runs on CUDA",
 )
 class TestTakeAlongAxisGradDeterministicIllegalIndexDtype(unittest.TestCase):
