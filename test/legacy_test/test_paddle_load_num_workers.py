@@ -23,6 +23,7 @@ import sys
 import tempfile
 import unittest
 import warnings
+from concurrent.futures import ThreadPoolExecutor
 
 import numpy as np
 
@@ -32,6 +33,14 @@ from paddle.framework import parallel_pickle_load as ppl
 # one shape above the 1MB interception threshold, one below
 BIG_SHAPE = [1024, 512]  # 2MB as float32
 SMALL_SHAPE = [64]
+
+# os.preadv is POSIX only; paddle.load on macOS takes the _pickle_loads_mac path
+HAS_PREADV = hasattr(os, 'preadv')
+PARALLEL_SUPPORTED = HAS_PREADV and sys.platform != 'darwin'
+skip_without_parallel = unittest.skipUnless(
+    PARALLEL_SUPPORTED, "parallel payload reading needs os.preadv on Linux/BSD"
+)
+skip_without_preadv = unittest.skipUnless(HAS_PREADV, "os.preadv is POSIX only")
 
 
 def bitwise_equal(a, b):
@@ -249,6 +258,20 @@ class TestLoadNumWorkersFallback(unittest.TestCase):
     def tearDown(self):
         self.temp_dir.cleanup()
 
+    def payload_bytes(self, path, num_workers=8):
+        """How many bytes were served by the parallel path."""
+        fd = os.open(path, os.O_RDONLY)
+        try:
+            with (
+                ThreadPoolExecutor(num_workers) as pool,
+                open(path, 'rb', buffering=ppl._BUFFER_SIZE) as f,
+            ):
+                wrapped = ppl._ParallelPayloadFile(f, fd, pool, path)
+                pickle.load(wrapped, encoding='latin1')
+            return wrapped.payload_bytes
+        finally:
+            os.close(fd)
+
     def assert_matches_serial(self, **load_kwargs):
         serial = paddle.load(self.path, return_numpy=True)
         parallel = paddle.load(
@@ -257,32 +280,27 @@ class TestLoadNumWorkersFallback(unittest.TestCase):
         for key in serial:
             self.assertTrue(bitwise_equal(serial[key], parallel[key]))
 
+    @skip_without_parallel
     def test_all_protocols_match_serial(self):
-        """protocol 2 stores payloads as latin1 text (no interception, serial);
+        """protocol 2 stores payloads as latin1 text (nothing reaches readinto);
         protocol >= 3 stores raw bytes and is accelerated. Results must match."""
         for protocol in (2, 3, 4, 5):
             paddle.save(self.state_dict, self.path, protocol=protocol)
-            with open(self.path, 'rb', buffering=8192) as f:
-                punched = ppl._HolePunchFile(f)
-                pickle.load(punched, encoding='latin1')
+            payload_bytes = self.payload_bytes(self.path)
             if protocol == 2:
-                self.assertEqual(
-                    punched.holes, [], f"protocol {protocol} should not punch"
-                )
+                self.assertEqual(payload_bytes, 0, f"protocol {protocol}")
             else:
-                self.assertEqual(
-                    len(punched.holes), 1, f"protocol {protocol} should punch"
+                self.assertGreater(
+                    payload_bytes, 1 << 20, f"protocol {protocol}"
                 )
             self.assert_matches_serial()
 
-    def test_only_small_tensors_falls_back(self):
+    @skip_without_parallel
+    def test_only_small_tensors_stay_serial(self):
         paddle.save(
             {f"t{i}": paddle.uniform(SMALL_SHAPE) for i in range(8)}, self.path
         )
-        with open(self.path, 'rb', buffering=8192) as f:
-            punched = ppl._HolePunchFile(f)
-            pickle.load(punched, encoding='latin1')
-        self.assertEqual(punched.holes, [])
+        self.assertEqual(self.payload_bytes(self.path), 0)
         self.assert_matches_serial()
 
     def test_bytesio_input(self):
@@ -295,6 +313,7 @@ class TestLoadNumWorkersFallback(unittest.TestCase):
         for key in serial:
             self.assertTrue(bitwise_equal(serial[key], parallel[key]))
 
+    @skip_without_preadv
     def test_missing_preadv(self):
         paddle.save(self.state_dict, self.path)
         preadv = os.preadv
@@ -314,6 +333,7 @@ class TestLoadNumWorkersFallback(unittest.TestCase):
         finally:
             sys.platform = platform
 
+    @skip_without_parallel
     def test_short_read_falls_back_with_warning(self):
         """A failing preadv must not leak a half filled tensor."""
         paddle.save(self.state_dict, self.path)
@@ -336,34 +356,49 @@ class TestLoadNumWorkersFallback(unittest.TestCase):
         for key in serial:
             self.assertTrue(bitwise_equal(serial[key], parallel[key]))
 
-    def test_out_of_range_payload_falls_back(self):
-        paddle.save(self.state_dict, self.path)
-        serial = paddle.load(self.path, return_numpy=True)
-        original = ppl._HolePunchFile.readinto
 
-        def poisoned(self, b):
-            written = original(self, b)
-            if self.holes:
-                offset, buf = self.holes[-1]
-                self.holes[-1] = (offset + (1 << 40), buf)
-            return written
+@skip_without_preadv
+class TestNonTensorPayloads(unittest.TestCase):
+    """Payloads that the unpickler copies or decodes while parsing.
 
-        ppl._HolePunchFile.readinto = poisoned
-        try:
-            with warnings.catch_warnings(record=True) as caught:
-                warnings.simplefilter("always")
-                parallel = paddle.load(
-                    self.path, return_numpy=True, num_workers=8
-                )
-            messages = [str(w.message) for w in caught]
-        finally:
-            ppl._HolePunchFile.readinto = original
-        self.assertTrue(any("out of range" in m for m in messages), messages)
-        for key in serial:
-            self.assertTrue(bitwise_equal(serial[key], parallel[key]))
+    Filling the buffer after the parse would write into freed memory here, so
+    these objects guard the invariant that ``readinto`` returns filled data.
+    """
+
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.path = os.path.join(self.temp_dir.name, "raw.pkl")
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+
+    def check(self, obj, protocol, repeat=6):
+        with open(self.path, 'wb') as f:
+            pickle.dump(obj, f, protocol=protocol)
+        for _ in range(repeat):
+            with open(self.path, 'rb') as f:
+                got = ppl.parallel_safe_load_pickle(self.path, f, 8)
+            self.assertEqual(got, obj, f"protocol {protocol}")
+
+    def test_bytearray(self):
+        obj = {
+            "a": bytearray(b"a" * 3_000_000),
+            "b": bytearray(b"b" * 3_000_000),
+        }
+        for protocol in (4, 5):
+            self.check(obj, protocol)
+
+    def test_bytes(self):
+        for protocol in (4, 5):
+            self.check({"a": b"y" * 3_000_000}, protocol, repeat=3)
+
+    def test_unicode(self):
+        for protocol in (4, 5):
+            self.check({"s": "x" * 3_000_000}, protocol, repeat=3)
 
 
-class TestHolePunchInternals(unittest.TestCase):
+@skip_without_preadv
+class TestParallelPayloadFile(unittest.TestCase):
     """White box checks on the interception itself."""
 
     def setUp(self):
@@ -373,118 +408,58 @@ class TestHolePunchInternals(unittest.TestCase):
     def tearDown(self):
         self.temp_dir.cleanup()
 
-    def scan(self, buffering=8192):
-        with open(self.path, 'rb', buffering=buffering) as f:
-            punched = ppl._HolePunchFile(f)
-            obj = pickle.load(punched, encoding='latin1')
-        return obj, punched.holes
+    def load_with_stats(self, buffering=ppl._BUFFER_SIZE, num_workers=8):
+        """Load through the wrapper and report how much went the parallel way."""
+        fd = os.open(self.path, os.O_RDONLY)
+        try:
+            with (
+                ThreadPoolExecutor(num_workers) as pool,
+                open(self.path, 'rb', buffering=buffering) as f,
+            ):
+                wrapped = ppl._ParallelPayloadFile(f, fd, pool, self.path)
+                obj = pickle.load(wrapped, encoding='latin1')
+            return obj, wrapped.payload_bytes
+        finally:
+            os.close(fd)
 
-    def test_one_payload_per_large_tensor(self):
-        n_big = 3
-        state_dict = {
-            f"w{i}": paddle.uniform(BIG_SHAPE, dtype='float32')
-            for i in range(n_big)
-        }
-        state_dict["small"] = paddle.uniform(SMALL_SHAPE)
-        paddle.save(state_dict, self.path)
-        _, holes = self.scan()
-        self.assertEqual(len(holes), n_big)
-
-    def test_payload_coverage_and_offsets(self):
+    def test_payload_bytes_cover_the_tensors(self):
         paddle.save(
             {"w": paddle.uniform([2048, 512], dtype='float32')}, self.path
         )
         size = os.path.getsize(self.path)
-        _, holes = self.scan()
-        covered = sum(len(buf) for _, buf in holes)
-        # a small read buffer must leave (almost) nothing on the serial path
-        self.assertGreater(covered / size, 0.99)
-        for offset, buf in holes:
-            self.assertGreaterEqual(offset, 0)
-            self.assertLessEqual(offset + len(buf), size)
+        _, payload_bytes = self.load_with_stats()
+        self.assertGreater(payload_bytes / size, 0.99)
 
     def test_large_buffer_reduces_coverage(self):
-        """Documents why the scan pass uses a small buffer."""
+        """Documents why the wrapper opens the file with a small buffer."""
         paddle.save(
             {"w": paddle.uniform([2048, 512], dtype='float32')}, self.path
         )
-        _, small_buffer = self.scan(buffering=8192)
-        _, large_buffer = self.scan(buffering=1 << 20)
-        self.assertGreater(
-            sum(len(b) for _, b in small_buffer),
-            sum(len(b) for _, b in large_buffer),
-        )
+        _, small_buffer = self.load_with_stats(buffering=8192)
+        _, large_buffer = self.load_with_stats(buffering=1 << 20)
+        self.assertGreater(small_buffer, large_buffer)
 
-    def test_scan_reads_only_metadata(self):
-        """The scan pass must not transfer payload bytes."""
+    def test_content_matches_serial(self):
         paddle.save(
             {"w": paddle.uniform([2048, 512], dtype='float32')}, self.path
         )
-        size = os.path.getsize(self.path)
-
-        class CountingFile:
-            def __init__(self, f):
-                self._f = f
-                self.read_bytes = 0
-
-            def read(self, n=-1):
-                data = self._f.read(n)
-                self.read_bytes += len(data)
-                return data
-
-            def readline(self):
-                data = self._f.readline()
-                self.read_bytes += len(data)
-                return data
-
-            def peek(self, n=1):
-                return self._f.peek(n)
-
-            def seek(self, *args):
-                return self._f.seek(*args)
-
-            def tell(self):
-                return self._f.tell()
-
-            def readinto(self, b):
-                got = self._f.readinto(b)
-                self.read_bytes += got
-                return got
-
-        with open(self.path, 'rb', buffering=8192) as f:
-            counting = CountingFile(f)
-            punched = ppl._HolePunchFile(counting)
-            pickle.load(punched, encoding='latin1')
-        self.assertLess(counting.read_bytes, size // 100)
-
-    def test_fill_holes_writes_file_content(self):
-        paddle.save(
-            {"w": paddle.uniform([2048, 512], dtype='float32')}, self.path
-        )
-        _, holes = self.scan()
-        offset, buf = holes[0]
-        ppl._fill_holes(self.path, holes, 4)
+        obj, _ = self.load_with_stats()
         with open(self.path, 'rb') as f:
-            f.seek(offset)
-            on_disk = f.read(len(buf))
-        self.assertEqual(bytes(buf), on_disk)
+            expected = pickle.load(f, encoding='latin1')
+        self.assertTrue(bitwise_equal(obj["w"], expected["w"]))
 
-    def test_fill_holes_request_count(self):
-        payload = 4 * ppl._READ_CHUNK_SIZE
-        elements = payload // 4
-        paddle.save({"w": paddle.zeros([elements], dtype='float32')}, self.path)
-        _, holes = self.scan()
-        requests = ppl._fill_holes(self.path, holes, 4)
-        self.assertGreaterEqual(requests, 4)
+    def test_small_payload_stays_serial(self):
+        paddle.save({"w": paddle.uniform(SMALL_SHAPE)}, self.path)
+        _, payload_bytes = self.load_with_stats()
+        self.assertEqual(payload_bytes, 0)
 
-    def test_fill_holes_reports_missing_bytes(self):
+    def test_short_read_raises(self):
         paddle.save({"w": paddle.uniform(BIG_SHAPE)}, self.path)
-        _, holes = self.scan()
         preadv = os.preadv
         os.preadv = lambda *args, **kwargs: 0
         try:
             with self.assertRaises(EOFError):
-                ppl._fill_holes(self.path, holes, 2)
+                self.load_with_stats()
         finally:
             os.preadv = preadv
 

@@ -55,7 +55,10 @@ from .io_utils import (
     _reconstruct_dense_tensor_data,
     _unpack_saved_dict,
 )
-from .parallel_pickle_load import parallel_safe_load_pickle
+from .parallel_pickle_load import (
+    _resolve_num_workers,
+    parallel_safe_load_pickle,
+)
 from .restricted_unpickler import safe_load_pickle
 
 if TYPE_CHECKING:
@@ -410,7 +413,9 @@ def _parse_load_config(configs):
     inner_config.keep_name_table = configs.get('keep_name_table', None)
     inner_config.return_numpy = configs.get('return_numpy', False)
     inner_config.safetensors = configs.get('safetensors', False)
-    inner_config.num_workers = configs.get('num_workers', None)
+    inner_config.num_workers = _resolve_num_workers(
+        configs.get('num_workers', None)
+    )
 
     return inner_config
 
