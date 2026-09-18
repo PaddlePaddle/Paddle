@@ -1720,6 +1720,8 @@ class Optimizer:
                     fsdp_context.comm_sync_and_reset_status()
                     if hasattr(fsdp_context, "bind_decay_param_fun"):
                         fsdp_context.bind_decay_param_fun(self)
+                    if hasattr(fsdp_context, "bind_optimizer"):
+                        fsdp_context.bind_optimizer(self)
                     new_params_grads = []
                     for group in fsdp_context.buffer_manager.buffer_groups:
                         if not group.params_buffer.data_buffer.stop_gradient:
