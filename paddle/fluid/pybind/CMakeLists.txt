@@ -145,6 +145,7 @@ set(PYBIND_SRCS
     python_callable_registry.cc
     arg_pre_process.cc
     args_mapper.cc
+    mem_py_stack.cc
     size.cc)
 
 if(WITH_DISTRIBUTE)
