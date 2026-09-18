@@ -1118,5 +1118,131 @@ create_test_class("cumsum", "float64", [3, 4, 0, 3, 4], -2)
 create_test_class("cumsum", "int32", [3, 4, 0], 0)
 create_test_class("cumsum", "int64", [3, 4, 0, 3, 4], -1)
 
+
+class TestCumsumDeterministicGPU(unittest.TestCase):
+    """Regression tests for the 1D-shape input deterministic cumsum path."""
+
+    def setUp(self):
+        if not (core.is_compiled_with_cuda() or is_custom_device()):
+            self.skipTest("deterministic cumsum path is GPU only")
+        paddle.disable_static(get_device_place())
+        # Reaching InclusiveScan (hence InclusiveDeterministicScan) from
+        # paddle.cumsum requires both FLAGS_cudnn_deterministic and
+        # FLAGS_use_accuracy_compatible_kernel
+        self._old_flags = paddle.get_flags(
+            [
+                "FLAGS_use_accuracy_compatible_kernel",
+                "FLAGS_cudnn_deterministic",
+            ]
+        )
+        paddle.set_flags(
+            {
+                "FLAGS_use_accuracy_compatible_kernel": True,
+                "FLAGS_cudnn_deterministic": True,
+            }
+        )
+
+    def tearDown(self):
+        if hasattr(self, "_old_flags"):
+            paddle.set_flags(self._old_flags)
+        paddle.enable_static()
+
+    @staticmethod
+    def _det_cumsum(x_tensor, reverse=False):
+        # Forward and backward cumsum go through the SAME op, the only difference
+        # is the ``reverse`` attribute. (False in fwd and True in bwd)
+        return paddle._C_ops.cumsum(x_tensor, 0, True, False, reverse)
+
+    def test_1d_forward_backward(self):
+        # A genuine 1-D tensor with axis=0 gives outer_dim == inner_dim == 1, so
+        # it takes the deterministic scan.
+        rng = np.random.RandomState(33)
+        n = 100003
+        for dtype in ["float32", "float64"]:
+            x_np = rng.randint(-3, 4, size=n).astype(dtype)
+            g_np = rng.randint(-3, 4, size=n).astype(dtype)
+            xt = paddle.to_tensor(x_np)
+            xt.stop_gradient = False
+            y = paddle.cumsum(xt, axis=0)
+            np.testing.assert_array_equal(
+                y.numpy(), np.cumsum(x_np).astype(dtype)
+            )
+            dx = paddle.grad(y, xt, grad_outputs=paddle.to_tensor(g_np))[0]
+            # grad of cumsum is the reverse cumulative sum of the upstream grad.
+            ref = np.cumsum(g_np[::-1])[::-1].astype(dtype)
+            np.testing.assert_array_equal(dx.numpy(), ref)
+
+    def test_low_precision_dtypes(self):
+        # fp16/bf16 cannot hold large prefix sums exactly and accumulate
+        # rounding error over the scan, so use a small magnitude (bounded random
+        # walk) and an fp16-realistic tolerance; n=8500 still spans >1 CTA with a
+        # tail. This checks dtype coverage rather than bit-exactness.
+        rng = np.random.RandomState(7)
+        x_np = (rng.randn(8500) * 0.01).astype("float32")
+        ref = np.cumsum(x_np.astype("float64"))
+        for dtype in ["float16", "bfloat16"]:
+            xt = paddle.to_tensor(x_np, dtype=dtype)
+            out = self._det_cumsum(xt, reverse=False).astype("float32").numpy()
+            np.testing.assert_allclose(out, ref, rtol=5e-2, atol=3e-1)
+
+    def test_run_to_run_stable(self):
+        # The whole point of the deterministic path: repeated runs on the same
+        # input must be bit-for-bit identical, including reverse and long inputs.
+        rng = np.random.RandomState(11)
+        x_np = (rng.randn(100003) * 0.01).astype("float32")
+        for dtype in ["float32", "float64", "float16", "bfloat16"]:
+            xt = paddle.to_tensor(x_np, dtype=dtype)
+            for reverse in (False, True):
+                first = self._det_cumsum(xt, reverse).astype("float32").numpy()
+                for _ in range(3):
+                    again = (
+                        self._det_cumsum(xt, reverse).astype("float32").numpy()
+                    )
+                    np.testing.assert_array_equal(first, again)
+
+
+class TestCumsumInnerDimSklanskyGPU(unittest.TestCase):
+    """Regression tests for the accuracy-compatible inner-dim scan path.
+
+    Cumsum along the last axis of a >=2D tensor makes ``GetCumprodDimInfo``
+    return ``inner_dim == 1`` with ``outer_dim > 1``; with
+    ``FLAGS_use_accuracy_compatible_kernel`` on, ``InclusiveScan`` dispatches to
+    ``InclusiveScanInnerDimSklansky`` (inclusive_scan.h:696-702). This branch is
+    independent of ``FLAGS_cudnn_deterministic``.
+    """
+
+    def setUp(self):
+        if not (core.is_compiled_with_cuda() or is_custom_device()):
+            self.skipTest("inner-dim Sklansky scan path is GPU only")
+        paddle.disable_static(get_device_place())
+        self._old_flags = paddle.get_flags(
+            ["FLAGS_use_accuracy_compatible_kernel"]
+        )
+        paddle.set_flags({"FLAGS_use_accuracy_compatible_kernel": True})
+
+    def tearDown(self):
+        if hasattr(self, "_old_flags"):
+            paddle.set_flags(self._old_flags)
+        paddle.enable_static()
+
+    def test_last_axis_forward_backward(self):
+        # inner_dim == 1, outer_dim > 1 => Sklansky branch. Non power-of-two
+        # scan lengths exercise the tail handling; integer input keeps it exact.
+        rng = np.random.RandomState(44)
+        for shape in [(128, 300), (16, 24, 130)]:
+            for dtype in ["float32", "float64"]:
+                x_np = rng.randint(-3, 4, size=shape).astype(dtype)
+                g_np = rng.randint(-3, 4, size=shape).astype(dtype)
+                xt = paddle.to_tensor(x_np)
+                xt.stop_gradient = False
+                y = paddle.cumsum(xt, axis=-1)
+                np.testing.assert_array_equal(
+                    y.numpy(), np.cumsum(x_np, axis=-1).astype(dtype)
+                )
+                dx = paddle.grad(y, xt, grad_outputs=paddle.to_tensor(g_np))[0]
+                ref = np.cumsum(g_np[..., ::-1], axis=-1)[..., ::-1]
+                np.testing.assert_array_equal(dx.numpy(), ref.astype(dtype))
+
+
 if __name__ == '__main__':
     unittest.main()
