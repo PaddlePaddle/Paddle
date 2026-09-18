@@ -276,8 +276,9 @@ class TestCase1(TestTakeAlongAxisOp):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(),
-    "deterministic path only runs on CUDA",
+    not core.is_compiled_with_cuda() or core.is_compiled_with_rocm(),
+    "deterministic path only runs on CUDA (compiled out on ROCm/DCU, where "
+    "RadixSortPairs is unavailable and backward falls back to atomic scatter)",
 )
 class TestTakeAlongAxisGradDeterministic(TestTakeAlongAxisDuplicatedIndices):
     """Exercises TakeAlongAxisGradDeterministicKernel (FLAGS_cudnn_deterministic).
@@ -427,8 +428,9 @@ class TestTakeAlongAxisGradDeterministicNegativeIndex(
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(),
-    "deterministic path only runs on CUDA",
+    not core.is_compiled_with_cuda() or core.is_compiled_with_rocm(),
+    "deterministic path only runs on CUDA (compiled out on ROCm/DCU, where "
+    "RadixSortPairs is unavailable and backward falls back to atomic scatter)",
 )
 class TestTakeAlongAxisGradDeterministicDtypes(unittest.TestCase):
     """Deterministic backward for every supported floating dtype.
@@ -499,8 +501,9 @@ class TestTakeAlongAxisGradDeterministicDtypes(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(),
-    "deterministic path only runs on CUDA",
+    not core.is_compiled_with_cuda() or core.is_compiled_with_rocm(),
+    "deterministic path only runs on CUDA (compiled out on ROCm/DCU, where "
+    "RadixSortPairs is unavailable and backward falls back to atomic scatter)",
 )
 class TestTakeAlongAxisGradDeterministicIndexOutOfBounds(unittest.TestCase):
     """Out-of-range indices must be rejected by the deterministic backward path."""
@@ -554,8 +557,9 @@ paddle.device.cuda.synchronize()
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(),
-    "deterministic path only runs on CUDA",
+    not core.is_compiled_with_cuda() or core.is_compiled_with_rocm(),
+    "deterministic path only runs on CUDA (compiled out on ROCm/DCU, where "
+    "RadixSortPairs is unavailable and backward falls back to atomic scatter)",
 )
 class TestTakeAlongAxisGradDeterministicIllegalIndexDtype(unittest.TestCase):
     """Unsupported index dtype must be rejected on the deterministic backward.
