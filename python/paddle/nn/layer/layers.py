@@ -53,13 +53,7 @@ from paddle.base.framework import (
     name_struct,
 )
 from paddle.base.layer_helper_base import LayerHelperBase
-from paddle.distributed.flex_checkpoint.aoa.generation import (
-    format_dtype_cast_attr,
-    format_inv_dtype_cast_attr,
-    resolve_dtype_cast_rule,
-    resolve_names,
-    should_skip,
-)
+from paddle.distributed.flex_checkpoint.aoa.generation import resolve_names
 from paddle.distributed.flex_checkpoint.dcp.sharded_weight import (
     ShardedStateDict,
     build_sharded_state_dict,
@@ -2983,13 +2977,13 @@ class Layer:
 
         Emits a ``source -> target`` statement per own Parameter / persistable
         buffer (same source as ``sharded_state_dict``), then recurses into
-        sub-layers, omitting redundant statements (``should_skip``) and names
-        in ``ctx.excluded_names``. Components with a special checkpoint layout
-        override this method; the rest fall back here.
+        sub-layers, omitting statements whose source and target names are
+        identical. Components with a special checkpoint layout override this
+        method; the rest fall back here.
 
         Args:
-            ctx: Read-only ``AOAContext`` holding the constant name and dtype
-                maps for the whole generation pass.
+            ctx: Read-only ``AOAContext`` holding the constant name maps for
+                the whole generation pass.
             structured_name_prefix: Live module path prefix, ending in ``.``
                 when non-empty, as in ``sharded_state_dict``.
             aoa_name_scope: Optional checkpoint-side scope for a re-rooted
@@ -3005,9 +2999,7 @@ class Layer:
             structured_name_prefix="", include_sublayers=False
         )
         for name in own_state_dict:
-            if structured_name_prefix + name in ctx.excluded_names:
-                continue
-            source_name, target_name = resolve_names(
+            checkpoint_name, model_name = resolve_names(
                 name,
                 ctx.checkpoint_name_prefix,
                 structured_name_prefix,
@@ -3016,16 +3008,9 @@ class Layer:
                 aoa_name_scope=aoa_name_scope,
                 model_name_prefix=ctx.model_name_prefix,
             )
-            cast = format_dtype_cast_attr(
-                resolve_dtype_cast_rule(
-                    target_name,
-                    ctx.dtype_cast_rules,
-                    ctx.model_name_prefix,
-                )
-            )
-            if should_skip(source_name, target_name, cast):
+            if checkpoint_name == model_name:
                 continue
-            statements.append(f"{source_name} -> {target_name}{cast}")
+            statements.append(f"{checkpoint_name} -> {model_name}")
         for layer_name, sublayer in self._sub_layers.items():
             if sublayer is not None:
                 statements += sublayer.gen_aoa_statements(
@@ -3046,11 +3031,11 @@ class Layer:
 
         Independently resolves the same checkpoint/model name pair as
         ``gen_aoa_statements`` and emits it in the opposite order, with the
-        same ``should_skip`` and ``ctx.excluded_names`` omissions.
+        same identical-name omission.
 
         Args:
-            ctx: Read-only ``AOAContext`` holding the constant name and dtype
-                maps for the whole generation pass.
+            ctx: Read-only ``AOAContext`` holding the constant name maps for
+                the whole generation pass.
             structured_name_prefix: Live module path prefix, ending in ``.``
                 when non-empty, as in ``sharded_state_dict``.
             aoa_name_scope: Optional checkpoint-side scope for a re-rooted
@@ -3066,9 +3051,7 @@ class Layer:
             structured_name_prefix="", include_sublayers=False
         )
         for name in own_state_dict:
-            if structured_name_prefix + name in ctx.excluded_names:
-                continue
-            target_name, source_name = resolve_names(
+            checkpoint_name, model_name = resolve_names(
                 name,
                 ctx.checkpoint_name_prefix,
                 structured_name_prefix,
@@ -3077,16 +3060,9 @@ class Layer:
                 aoa_name_scope=aoa_name_scope,
                 model_name_prefix=ctx.model_name_prefix,
             )
-            cast = format_inv_dtype_cast_attr(
-                resolve_dtype_cast_rule(
-                    source_name,
-                    ctx.dtype_cast_rules,
-                    ctx.model_name_prefix,
-                )
-            )
-            if should_skip(source_name, target_name, cast):
+            if checkpoint_name == model_name:
                 continue
-            statements.append(f"{source_name} -> {target_name}{cast}")
+            statements.append(f"{model_name} -> {checkpoint_name}")
         for layer_name, sublayer in self._sub_layers.items():
             if sublayer is not None:
                 statements += sublayer.gen_inv_aoa_statements(
