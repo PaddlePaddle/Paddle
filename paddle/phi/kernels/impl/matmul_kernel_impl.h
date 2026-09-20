@@ -380,9 +380,6 @@ void MatMulFunctionImplWithBlas(
   out_broadcast_dims[ndim - 2] = M;
   out_broadcast_dims[ndim - 1] = N;
 
-  Out->ResizeAndAllocate(make_ddim(out_broadcast_dims));
-  dev_ctx.template Alloc<T>(Out);
-
   const int batch_dim = ndim - 2;
   // broadcast message
   const bool is_broadcast_dims =
@@ -405,6 +402,14 @@ void MatMulFunctionImplWithBlas(
                       out_broadcast_dims.cbegin() + batch_dim,
                       1LL,
                       std::multiplies<std::int64_t>());
+  // Reject oversized pointer-array batches before allocating output memory.
+  // Case 14 builds a host/device pointer array per batch, so a batch size at
+  // the 2^31 scale is rejected up front instead of OOMing later.
+  if (is_broadcast_dims && x_batch_size != 1 && y_batch_size != 1) {
+    PADDLE_ENFORCE_LE_INT_MAX(out_batch_size, "broadcast MatMul batch size");
+  }
+  Out->ResizeAndAllocate(make_ddim(out_broadcast_dims));
+  dev_ctx.template Alloc<T>(Out);
   if (out_batch_size == 0) return;
   if (x_batch_size == 1 && y_batch_size == 1) {
     VLOG(3) << "MatMul's case 8";
