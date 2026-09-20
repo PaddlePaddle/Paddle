@@ -277,8 +277,7 @@ class TestCase1(TestTakeAlongAxisOp):
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda() or core.is_compiled_with_rocm(),
-    "deterministic path only runs on CUDA (compiled out on ROCm/DCU, where "
-    "RadixSortPairs is unavailable and backward falls back to atomic scatter)",
+    "deterministic path only runs on CUDA",
 )
 class TestTakeAlongAxisGradDeterministic(TestTakeAlongAxisDuplicatedIndices):
     """Exercises TakeAlongAxisGradDeterministicKernel (FLAGS_cudnn_deterministic).
@@ -328,12 +327,6 @@ class TestTakeAlongAxisGradDeterministic(TestTakeAlongAxisDuplicatedIndices):
                 self.xnp[slices], self.index_broadcast, self.axis
             )
         }
-
-    # Deterministic path is a property of the composite backward kernel; keep
-    # prim/CINN (compiler-optimized) paths out of these tests so the fixed
-    # reduction order under test is never routed through a fusing backend.
-    # def test_check_output(self):
-    #     self.check_output(check_pir=True)
 
     def test_check_grad(self):
         paddle.set_flags({'FLAGS_cudnn_deterministic': True})
@@ -429,8 +422,7 @@ class TestTakeAlongAxisGradDeterministicNegativeIndex(
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda() or core.is_compiled_with_rocm(),
-    "deterministic path only runs on CUDA (compiled out on ROCm/DCU, where "
-    "RadixSortPairs is unavailable and backward falls back to atomic scatter)",
+    "deterministic path only runs on CUDA",
 )
 class TestTakeAlongAxisGradDeterministicDtypes(unittest.TestCase):
     """Deterministic backward for every supported floating dtype.
@@ -502,8 +494,7 @@ class TestTakeAlongAxisGradDeterministicDtypes(unittest.TestCase):
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda() or core.is_compiled_with_rocm(),
-    "deterministic path only runs on CUDA (compiled out on ROCm/DCU, where "
-    "RadixSortPairs is unavailable and backward falls back to atomic scatter)",
+    "deterministic path only runs on CUDA",
 )
 class TestTakeAlongAxisGradDeterministicIndexOutOfBounds(unittest.TestCase):
     """Out-of-range indices must be rejected by the deterministic backward path."""
@@ -558,8 +549,7 @@ paddle.device.cuda.synchronize()
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda() or core.is_compiled_with_rocm(),
-    "deterministic path only runs on CUDA (compiled out on ROCm/DCU, where "
-    "RadixSortPairs is unavailable and backward falls back to atomic scatter)",
+    "deterministic path only runs on CUDA",
 )
 class TestTakeAlongAxisGradDeterministicIllegalIndexDtype(unittest.TestCase):
     """Unsupported index dtype must be rejected on the deterministic backward.
