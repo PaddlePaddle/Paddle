@@ -672,14 +672,16 @@ class FusedCommBuffer:
             )
 
         grad_var = param.main_grad if self.use_main_grad else param.grad
+        grad_shape = param.shape
 
         if grad_var is not None:
+            grad_shape = grad_var.shape
             grad_var.stop_gradient = True
             grad_var.flatten_()
             tmp_var.add_(grad_var)
             grad_var._clear()
 
-        tmp_var.get_tensor()._set_dims(param.shape)
+        tmp_var.get_tensor()._set_dims(grad_shape)
         if self.use_main_grad:
             if not self._free_grads_in_comm:
                 param.main_grad = tmp_var
