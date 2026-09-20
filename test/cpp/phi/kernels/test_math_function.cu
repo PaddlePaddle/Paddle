@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include <cstdint>
+#include <cstring>
 #include <limits>
 
 #include "gtest/gtest.h"
@@ -646,6 +647,216 @@ TEST(math_function, gemv) {
   GemvTest<double>(3, 13, false);
   GemvTest<float>(3, 13, true);
   GemvTest<double>(3, 13, true);
+}
+
+// `static_cast<T>(int)` and `ASSERT_FLOAT_EQ` do not work for phi::complex64 /
+// phi::complex128, so value construction and comparison go through these
+// helpers. The operands are small integers, which are exactly representable in
+// every dtype used here, so the reference is accumulated in double and the
+// comparison stays exact.
+template <typename T>
+inline T BatchedGemmValue(int value) {
+  return static_cast<T>(value);
+}
+
+template <>
+inline phi::complex64 BatchedGemmValue<phi::complex64>(int value) {
+  return phi::complex64(static_cast<float>(value), 0.0f);
+}
+
+template <>
+inline phi::complex128 BatchedGemmValue<phi::complex128>(int value) {
+  return phi::complex128(static_cast<double>(value), 0.0);
+}
+
+// phi::float16 / phi::bfloat16 convert to float by reinterpreting their 16-bit
+// payload as CUDA's `half` / `__nv_bfloat16` (paddle/phi/common/float16.h and
+// bfloat16.h). That type pun is undefined behaviour, and nvcc's host pass does
+// fold the bf16 load to a stale value at -O2/-O3, so the payload is decoded
+// here instead of through the conversion operator.
+inline double BatchedGemmRealPart(const phi::float16& value) {
+  __half raw;
+  std::memcpy(&raw, &value.x, sizeof(raw));
+  return static_cast<double>(__half2float(raw));
+}
+
+inline double BatchedGemmRealPart(const phi::bfloat16& value) {
+  const uint32_t bits = static_cast<uint32_t>(value.x) << 16;
+  float raw = 0.0f;
+  std::memcpy(&raw, &bits, sizeof(raw));
+  return static_cast<double>(raw);
+}
+
+template <typename T>
+inline double BatchedGemmRealPart(const T& value) {
+  return static_cast<double>(value);
+}
+
+inline double BatchedGemmRealPart(const phi::complex64& value) {
+  return static_cast<double>(value.real);
+}
+
+inline double BatchedGemmRealPart(const phi::complex128& value) {
+  return static_cast<double>(value.real);
+}
+
+template <typename T>
+inline double BatchedGemmImagPart(const T&) {
+  return 0.0;
+}
+
+inline double BatchedGemmImagPart(const phi::complex64& value) {
+  return static_cast<double>(value.imag);
+}
+
+inline double BatchedGemmImagPart(const phi::complex128& value) {
+  return static_cast<double>(value.imag);
+}
+
+// Covers the strided batched path, in particular N == 1, where the row-major
+// operands are handed to cuBLAS without the usual A/B swap.
+//
+// `T` is the operand type and `U` the accumulator/output type. They are equal
+// for the ordinary batched GEMM (bmm, baddbmm, matmul and their gradients) and
+// differ for the fp16/bf16 operands with a float32 output that
+// bmm_kernel_impl.h uses when bmm's out_dtype is float32: that call goes
+// through a plain `funcs::Blas<Context>` with 1.0f / 0.0f, so it resolves to a
+// different BatchedGEMM overload -- with its own copy of the N == 1
+// rearrangement -- than the `BlasT<T>` form. Both are exercised here.
+template <typename T, typename U = T>
+void BatchedGemmStridedTest(int64_t batch,
+                            int64_t m,
+                            int64_t n,
+                            int64_t k,
+                            bool trans_a,
+                            bool trans_b) {
+  phi::CPUPlace cpu_place;
+  phi::GPUPlace gpu_place(0);
+  phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
+  auto* context = reinterpret_cast<phi::GPUContext*>(pool.Get(phi::GPUPlace()));
+
+  phi::DenseTensor mat_a, mat_b, mat_c;
+  T* data_a = mat_a.mutable_data<T>({batch, m, k}, cpu_place);
+  T* data_b = mat_b.mutable_data<T>({batch, k, n}, cpu_place);
+  U* data_c = mat_c.mutable_data<U>({batch, m, n}, cpu_place);
+  for (int64_t i = 0; i < mat_a.numel(); ++i) {
+    data_a[i] = BatchedGemmValue<T>(static_cast<int>((i % 7) - 3));
+  }
+  for (int64_t i = 0; i < mat_b.numel(); ++i) {
+    data_b[i] = BatchedGemmValue<T>(static_cast<int>((i % 5) - 2));
+  }
+
+  phi::DenseTensor g_a, g_b, g_c;
+  T* g_data_a = g_a.mutable_data<T>(mat_a.dims(), gpu_place);
+  T* g_data_b = g_b.mutable_data<T>(mat_b.dims(), gpu_place);
+  U* g_data_c = g_c.mutable_data<U>(mat_c.dims(), gpu_place);
+  phi::Copy(*context, mat_a, gpu_place, true, &g_a);
+  phi::Copy(*context, mat_b, gpu_place, true, &g_b);
+
+  // A plain `funcs::Blas` rather than `GetBlas<U>`: `BlasT` binds the first
+  // template argument to U, which would make the `float alpha ... float *C`
+  // overloads unreachable (blas.h BlasT::BatchedGEMM). For U == T both forms
+  // resolve to the same overload.
+  phi::funcs::Blas<phi::GPUContext> blas(*context);
+  // `trans_a`/`trans_b` reinterpret the same buffers as [k, m] / [n, k], so the
+  // element count is unchanged and only the indexing below differs.
+  blas.BatchedGEMM(trans_a ? CblasTrans : CblasNoTrans,
+                   trans_b ? CblasTrans : CblasNoTrans,
+                   m,
+                   n,
+                   k,
+                   BatchedGemmValue<U>(1),
+                   g_data_a,
+                   g_data_b,
+                   BatchedGemmValue<U>(0),
+                   g_data_c,
+                   batch,
+                   m * k,
+                   k * n);
+  phi::Copy(*context, g_c, cpu_place, true, &mat_c);
+
+  for (int64_t b = 0; b < batch; ++b) {
+    const T* a = data_a + b * m * k;
+    const T* bb = data_b + b * k * n;
+    const U* c = data_c + b * m * n;
+    for (int64_t i = 0; i < m; ++i) {
+      for (int64_t j = 0; j < n; ++j) {
+        // The sum is accumulated in double rather than in T so that the
+        // reference does not go through the arithmetic operators of the 16-bit
+        // dtypes either.
+        double sum = 0.0;
+        for (int64_t p = 0; p < k; ++p) {
+          sum += BatchedGemmRealPart(trans_a ? a[p * m + i] : a[i * k + p]) *
+                 BatchedGemmRealPart(trans_b ? bb[j * k + p] : bb[p * n + j]);
+        }
+        ASSERT_DOUBLE_EQ(BatchedGemmRealPart(c[i * n + j]), sum)
+            << "batch " << b << " (" << i << ", " << j << ") real part";
+        // The operands are real, so the imaginary part is exactly zero for
+        // every element.
+        ASSERT_DOUBLE_EQ(BatchedGemmImagPart(c[i * n + j]), 0.0)
+            << "batch " << b << " (" << i << ", " << j << ") imag part";
+      }
+    }
+  }
+}
+
+TEST(math_function, batched_gemm_strided_column_output) {
+  phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
+  const int compute_capability =
+      reinterpret_cast<phi::GPUContext*>(pool.Get(phi::GPUPlace()))
+          ->GetComputeCapability();
+  for (bool trans_a : {false, true}) {
+    for (bool trans_b : {false, true}) {
+      // N == 1: the torch-aligned un-swapped layout.
+      BatchedGemmStridedTest<float>(3, 5, 1, 4, trans_a, trans_b);
+      BatchedGemmStridedTest<double>(3, 5, 1, 4, trans_a, trans_b);
+      BatchedGemmStridedTest<float>(2, 1, 1, 6, trans_a, trans_b);
+      // fp16/complex cublas gemm requires GPU compute capability >= 53.
+      if (compute_capability >= 53) {
+        BatchedGemmStridedTest<phi::float16>(3, 5, 1, 4, trans_a, trans_b);
+        BatchedGemmStridedTest<phi::complex64>(3, 5, 1, 4, trans_a, trans_b);
+        BatchedGemmStridedTest<phi::complex128>(3, 5, 1, 4, trans_a, trans_b);
+        // fp16 operands with a float32 accumulator and output: the
+        // out_dtype=float32 path of bmm/baddbmm, which reaches the `float alpha
+        // ... float *C` overloads. Those overloads only exist in the CUDA
+        // backend (bmm_kernel_impl.h guards the call site the same way), so the
+        // HIP build has no definition to link against.
+#if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
+        BatchedGemmStridedTest<phi::float16, float>(
+            3, 5, 1, 4, trans_a, trans_b);
+#endif
+      }
+      // The bf16 strided path is gated on cc >= 80 by the kernel itself.
+      if (compute_capability >= 80) {
+        BatchedGemmStridedTest<phi::bfloat16>(3, 5, 1, 4, trans_a, trans_b);
+#if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
+        BatchedGemmStridedTest<phi::bfloat16, float>(
+            3, 5, 1, 4, trans_a, trans_b);
+#endif
+      }
+      // N > 1: the swapped layout, kept as a regression guard.
+      BatchedGemmStridedTest<float>(3, 5, 2, 4, trans_a, trans_b);
+      BatchedGemmStridedTest<double>(3, 5, 2, 4, trans_a, trans_b);
+      // fp16/complex cublas gemm requires GPU compute capability >= 53.
+      if (compute_capability >= 53) {
+        BatchedGemmStridedTest<phi::float16>(3, 5, 2, 4, trans_a, trans_b);
+        BatchedGemmStridedTest<phi::complex64>(3, 5, 2, 4, trans_a, trans_b);
+        BatchedGemmStridedTest<phi::complex128>(3, 5, 2, 4, trans_a, trans_b);
+        // The `float alpha ... float *C` overloads are CUDA-only (see above).
+#if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
+        BatchedGemmStridedTest<phi::float16, float>(
+            3, 5, 2, 4, trans_a, trans_b);
+#endif
+      }
+      if (compute_capability >= 80) {
+        BatchedGemmStridedTest<phi::bfloat16>(3, 5, 2, 4, trans_a, trans_b);
+#if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
+        BatchedGemmStridedTest<phi::bfloat16, float>(
+            3, 5, 2, 4, trans_a, trans_b);
+#endif
+      }
+    }
+  }
 }
 
 }  // namespace tests
