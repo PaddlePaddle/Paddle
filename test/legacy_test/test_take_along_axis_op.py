@@ -328,12 +328,6 @@ class TestTakeAlongAxisGradDeterministic(TestTakeAlongAxisDuplicatedIndices):
             )
         }
 
-    # Deterministic path is a property of the composite backward kernel; keep
-    # prim/CINN (compiler-optimized) paths out of these tests so the fixed
-    # reduction order under test is never routed through a fusing backend.
-    # def test_check_output(self):
-    #     self.check_output(check_pir=True)
-
     def test_check_grad(self):
         paddle.set_flags({'FLAGS_cudnn_deterministic': True})
         try:
