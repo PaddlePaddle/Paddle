@@ -729,6 +729,55 @@ void GeneralBinaryGradInferMeta(const MetaTensor& x,
   }
 }
 
+void MatmulGradInferMeta(const MetaTensor& x,
+                         const MetaTensor& y,
+                         bool transpose_x,
+                         bool transpose_y,
+                         MetaTensor* dx,
+                         MetaTensor* dy,
+                         MetaConfig config) {
+  // The forward MatmulInferMeta enforces that the contraction (K) dimension of
+  // X and Y are equal, but matmul_grad routed through
+  // GeneralBinaryGradInferMeta skips this check and blindly shares X/Y meta
+  // with dx/dy. Replicate the forward check here so the backward op rejects
+  // K-mismatched inputs instead of silently returning results (aligning
+  // forward/backward contract and torch).
+  std::vector<int64_t> dims_x = common::vectorize(x.dims());
+  std::vector<int64_t> dims_y = common::vectorize(y.dims());
+  const auto ndims_x = dims_x.size();
+  const auto ndims_y = dims_y.size();
+  if (ndims_x > 0 && ndims_y > 0) {
+    const int64_t lhs_reduce_dim =
+        (ndims_x == 1) ? 0 : ndims_x - 1 - transpose_x;
+    const int64_t rhs_reduce_dim =
+        (ndims_y == 1) ? 0 : ndims_y - 2 + transpose_y;
+    const int64_t K_lhs = dims_x[lhs_reduce_dim];
+    const int64_t K_rhs = dims_y[rhs_reduce_dim];
+    if (config.is_runtime || (K_rhs != -1 && K_lhs != -1)) {
+      PADDLE_ENFORCE_EQ(
+          K_lhs,
+          K_rhs,
+          common::errors::InvalidArgument(
+              "In matmul_grad, the [%d] dimension of Input(X) must be equal "
+              "to the [%d] dimension of Input(Y). But received the [%d] "
+              "dimension of Input(X) is [%d], and the [%d] dimension of "
+              "Input(Y) is [%d].",
+              lhs_reduce_dim,
+              rhs_reduce_dim,
+              lhs_reduce_dim,
+              K_lhs,
+              rhs_reduce_dim,
+              K_rhs));
+    }
+  }
+  if (dx) {
+    dx->share_meta(x);
+  }
+  if (dy) {
+    dy->share_meta(y);
+  }
+}
+
 void GeneralTernaryGradInferMeta(const MetaTensor& x,
                                  const MetaTensor& y,
                                  const MetaTensor& z,
