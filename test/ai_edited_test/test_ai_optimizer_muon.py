@@ -13,8 +13,6 @@
 # limitations under the License.
 
 # [AUTO-GENERATED] Test file for paddle.optimizer.muon
-# 覆盖模块: paddle/optimizer/muon.py
-# 未覆盖行: 135,141,232,236,238,245,307,308,344,345,346,347,348,349,351,356,414,415,417,546,547,548,549,589,602,609,657,662,684,685
 # Covered module: paddle/optimizer/muon.py
 # Uncovered lines: 135,141,232,236,238,245,307,308,344,345,346,347,348,349,351,356,414,415,417,546,547,548,549,589,602,609,657,662,684,685
 
@@ -77,107 +75,89 @@ def quack_symmetric_gemm_blocker():
 
 
 class TestDefaultShouldUseMuon(unittest.TestCase):
-    """测试 _default_should_use_muon 函数
-    Test _default_should_use_muon function"""
+    """Test _default_should_use_muon function"""
 
     def test_should_use_muon_2d(self):
-        """测试2D参数应该使用 Muon
-        Test 2D parameter should use Muon"""
+        """Test 2D parameter should use Muon"""
         result = _default_should_use_muon("weight", (128, 64), [])
         self.assertTrue(result)
 
     def test_should_use_muon_3d(self):
-        """测试3D参数应该使用 Muon
-        Test 3D parameter should use Muon"""
+        """Test 3D parameter should use Muon"""
         result = _default_should_use_muon("weight", (4, 128, 64), [])
         self.assertTrue(result)
 
     def test_should_not_use_muon_1d(self):
-        """测试1D参数不应使用 Muon
-        Test 1D parameter should not use Muon"""
+        """Test 1D parameter should not use Muon"""
         result = _default_should_use_muon("bias", (128,), [])
         self.assertFalse(result)
 
     def test_should_not_use_muon_4d(self):
-        """测试4D参数不应使用 Muon
-        Test 4D parameter should not use Muon"""
+        """Test 4D parameter should not use Muon"""
         result = _default_should_use_muon("conv_weight", (3, 3, 3, 3), [])
         self.assertFalse(result)
 
     def test_should_not_use_muon_exclude_pattern(self):
-        """测试匹配排除模式的参数不应使用 Muon
-        Test parameter matching exclude pattern should not use Muon"""
+        """Test parameter matching exclude pattern should not use Muon"""
         result = _default_should_use_muon("embed_weight", (128, 64), ['embed'])
         self.assertFalse(result)
 
     def test_should_not_use_muon_bias(self):
-        """测试 bias 参数不应使用 Muon
-        Test bias parameter should not use Muon"""
+        """Test bias parameter should not use Muon"""
         result = _default_should_use_muon("linear.bias", (128, 64), ['bias'])
         self.assertFalse(result)
 
     def test_should_use_muon_none_patterns(self):
-        """测试 exclude_patterns 为 None 时抛出 ValueError
-        Test ValueError when exclude_patterns is None"""
+        """Test ValueError when exclude_patterns is None"""
         with self.assertRaises(ValueError):
             _default_should_use_muon("weight", (128, 64), None)
 
     def test_should_use_muon_case_insensitive(self):
-        """测试排除模式匹配不区分大小写
-        Test exclude pattern matching is case-insensitive"""
+        """Test exclude pattern matching is case-insensitive"""
         result = _default_should_use_muon("EMBED_weight", (128, 64), ['embed'])
         self.assertFalse(result)
 
 
 class TestNSCoefficientSets(unittest.TestCase):
-    """测试 Newton-Schulz 系数集
-    Test Newton-Schulz coefficient sets"""
+    """Test Newton-Schulz coefficient sets"""
 
     def test_simple_coefficients(self):
-        """测试 simple 系数集
-        Test simple coefficient set"""
+        """Test simple coefficient set"""
         self.assertIn("simple", _NS_COEFFICIENT_SETS)
         self.assertEqual(len(_NS_COEFFICIENT_SETS["simple"]), 1)
 
     def test_quintic_coefficients(self):
-        """测试 quintic 系数集
-        Test quintic coefficient set"""
+        """Test quintic coefficient set"""
         self.assertIn("quintic", _NS_COEFFICIENT_SETS)
         self.assertEqual(len(_NS_COEFFICIENT_SETS["quintic"]), 5)
 
     def test_polar_express_coefficients(self):
-        """测试 polar_express 系数集
-        Test polar_express coefficient set"""
+        """Test polar_express coefficient set"""
         self.assertIn("polar_express", _NS_COEFFICIENT_SETS)
         self.assertEqual(len(_NS_COEFFICIENT_SETS["polar_express"]), 8)
 
     def test_aol_coefficients(self):
-        """测试 aol 系数集
-        Test aol coefficient set"""
+        """Test aol coefficient set"""
         self.assertIn("aol", _NS_COEFFICIENT_SETS)
         self.assertEqual(len(_NS_COEFFICIENT_SETS["aol"]), 4)
 
     def test_deepseekv4_coefficients(self):
-        """测试 deepseekv4 系数集
-        Test deepseekv4 coefficient set"""
+        """Test deepseekv4 coefficient set"""
         self.assertIn("deepseekv4", _NS_COEFFICIENT_SETS)
         self.assertEqual(len(_NS_COEFFICIENT_SETS["deepseekv4"]), 10)
 
 
 class TestMuonParamInfo(unittest.TestCase):
-    """测试 MuonParamInfo 数据类
-    Test MuonParamInfo dataclass"""
+    """Test MuonParamInfo dataclass"""
 
     def test_default_values(self):
-        """测试 MuonParamInfo 默认值
-        Test MuonParamInfo default values"""
+        """Test MuonParamInfo default values"""
         info = MuonParamInfo()
         self.assertTrue(info.use_muon)
         self.assertIsNone(info.split_concat_func)
 
     def test_custom_values(self):
-        """测试 MuonParamInfo 自定义值
-        Test MuonParamInfo with custom values"""
+        """Test MuonParamInfo with custom values"""
 
         def split_fn(matrix, ortho_fn, **kwargs):
             return ortho_fn(matrix)
@@ -188,31 +168,26 @@ class TestMuonParamInfo(unittest.TestCase):
 
 
 class TestMuonInit(unittest.TestCase):
-    """测试 Muon 优化器初始化
-    Test Muon optimizer initialization"""
+    """Test Muon optimizer initialization"""
 
     def test_muon_none_parameters(self):
-        """测试 parameters=None 时抛出 ValueError
-        Test ValueError when parameters is None"""
+        """Test ValueError when parameters is None"""
         with self.assertRaises(ValueError):
             Muon(parameters=None)
 
     def test_muon_dict_parameters(self):
-        """测试字典参数列表时抛出 TypeError
-        Test TypeError when parameters is a list of dicts"""
+        """Test TypeError when parameters is a list of dicts"""
         linear = paddle.nn.Linear(10, 10)
         with self.assertRaises(TypeError):
             Muon(parameters=[{'params': linear.parameters()}])
 
     def test_muon_non_list_parameters(self):
-        """测试非列表参数时抛出 TypeError
-        Test TypeError when parameters is not a list"""
+        """Test TypeError when parameters is not a list"""
         with self.assertRaises(TypeError):
             Muon(parameters="invalid")
 
     def test_muon_invalid_grad_clip(self):
-        """测试无效 grad_clip 时抛出 TypeError
-        Test TypeError with invalid grad_clip"""
+        """Test TypeError with invalid grad_clip"""
         linear = paddle.nn.Linear(10, 10)
         with self.assertRaises(TypeError):
             Muon(
@@ -222,12 +197,10 @@ class TestMuonInit(unittest.TestCase):
 
 
 class TestMuonScalingFn(unittest.TestCase):
-    """测试 Muon._scaling_fn 静态方法
-    Test Muon._scaling_fn static method"""
+    """Test Muon._scaling_fn static method"""
 
     def test_scaling_fn_version1(self):
-        """测试 version=1 的 scaling 函数
-        Test scaling function with version=1"""
+        """Test scaling function with version=1"""
         tensor = paddle.randn([8, 4])
         result = Muon._scaling_fn(tensor, version=1, extra_scale_factor=0.2)
         # version 1: scale = max(1, dout/din)^0.5 * extra_scale_factor
@@ -240,8 +213,7 @@ class TestMuonScalingFn(unittest.TestCase):
         )
 
     def test_scaling_fn_version2(self):
-        """测试 version=2 的 scaling 函数
-        Test scaling function with version=2"""
+        """Test scaling function with version=2"""
         tensor = paddle.randn([4, 8])
         result = Muon._scaling_fn(tensor, version=2, extra_scale_factor=1.0)
         # version 2: scale = (dout/din)^0.5 * extra_scale_factor
@@ -254,8 +226,7 @@ class TestMuonScalingFn(unittest.TestCase):
         )
 
     def test_scaling_fn_version3(self):
-        """测试 version=3 的 scaling 函数
-        Test scaling function with version=3"""
+        """Test scaling function with version=3"""
         tensor = paddle.randn([4, 8])
         result = Muon._scaling_fn(tensor, version=3, extra_scale_factor=0.2)
         # version 3: scale = max(dout, din)^0.5 * extra_scale_factor
@@ -269,12 +240,10 @@ class TestMuonScalingFn(unittest.TestCase):
 
 
 class TestZeropowerNewtonschulz5(unittest.TestCase):
-    """测试 _zeropower_via_newtonschulz5 静态方法
-    Test _zeropower_via_newtonschulz5 static method"""
+    """Test _zeropower_via_newtonschulz5 static method"""
 
     def test_basic_orthogonalization(self):
-        """测试基本的正交化
-        Test basic orthogonalization"""
+        """Test basic orthogonalization"""
         x = paddle.randn([4, 4], dtype='float32')
         result = Muon._zeropower_via_newtonschulz5(
             x, steps=3, ns_matmul_dtype=paddle.float32
@@ -282,8 +251,7 @@ class TestZeropowerNewtonschulz5(unittest.TestCase):
         self.assertEqual(result.shape, [4, 4])
 
     def test_tall_matrix(self):
-        """测试高矩阵 (rows > cols) 时的转置处理
-        Test tall matrix (rows > cols) transpose handling"""
+        """Test tall matrix (rows > cols) transpose handling"""
         x = paddle.randn([8, 4], dtype='float32')
         result = Muon._zeropower_via_newtonschulz5(
             x, steps=3, ns_matmul_dtype=paddle.float32
@@ -291,8 +259,7 @@ class TestZeropowerNewtonschulz5(unittest.TestCase):
         self.assertEqual(result.shape, [8, 4])
 
     def test_wide_matrix(self):
-        """测试宽矩阵 (rows < cols)
-        Test wide matrix (rows < cols)"""
+        """Test wide matrix (rows < cols)"""
         x = paddle.randn([4, 8], dtype='float32')
         result = Muon._zeropower_via_newtonschulz5(
             x, steps=3, ns_matmul_dtype=paddle.float32
@@ -300,8 +267,7 @@ class TestZeropowerNewtonschulz5(unittest.TestCase):
         self.assertEqual(result.shape, [4, 8])
 
     def test_custom_coeffs(self):
-        """测试使用自定义系数
-        Test with custom coefficients"""
+        """Test with custom coefficients"""
         x = paddle.randn([4, 4], dtype='float32')
         custom_coeffs = [(3.4445, -4.7750, 2.0315)]
         result = Muon._zeropower_via_newtonschulz5(
@@ -310,8 +276,7 @@ class TestZeropowerNewtonschulz5(unittest.TestCase):
         self.assertEqual(result.shape, [4, 4])
 
     def test_zero_steps(self):
-        """测试0步迭代 (仅归一化)
-        Test zero-step iteration (normalization only)"""
+        """Test zero-step iteration (normalization only)"""
         x = paddle.randn([4, 4], dtype='float32')
         result = Muon._zeropower_via_newtonschulz5(
             x, steps=0, ns_matmul_dtype=paddle.float32
@@ -320,12 +285,10 @@ class TestZeropowerNewtonschulz5(unittest.TestCase):
 
 
 class TestSymmetricGemmProfitability(unittest.TestCase):
-    """测试 _symmetric_gemm_is_profitable 门控
-    Test the _symmetric_gemm_is_profitable gate"""
+    """Test the _symmetric_gemm_is_profitable gate"""
 
     def test_supported_dtypes(self):
-        """测试 bf16/fp16 通过门控，fp32/fp64 被拒绝
-        Test bf16/fp16 pass the gate while fp32/fp64 are rejected"""
+        """Test bf16/fp16 pass the gate while fp32/fp64 are rejected"""
         shape = [16, 2048, 2048]
         for dtype, expected in (
             (paddle.bfloat16, True),
@@ -340,8 +303,7 @@ class TestSymmetricGemmProfitability(unittest.TestCase):
             )
 
     def test_large_batched_shapes_are_profitable(self):
-        """测试大 batch 形状通过门控
-        Test large batched shapes clear the gate"""
+        """Test large batched shapes clear the gate"""
         for shape in ([16, 4096, 8192], [64, 2048, 2048], [16, 1024, 4096]):
             self.assertTrue(
                 _symmetric_gemm_is_profitable(
@@ -351,8 +313,7 @@ class TestSymmetricGemmProfitability(unittest.TestCase):
             )
 
     def test_large_2d_shape_is_profitable(self):
-        """测试无 batch 维的大矩阵通过门控
-        Test an unbatched large matrix clears the gate"""
+        """Test an unbatched large matrix clears the gate"""
         self.assertTrue(
             _symmetric_gemm_is_profitable(
                 [4096, 8192], paddle.bfloat16, *SYRK_DEFAULTS
@@ -360,8 +321,7 @@ class TestSymmetricGemmProfitability(unittest.TestCase):
         )
 
     def test_short_edge_is_the_row_dimension(self):
-        """测试短边为行维时同样按短边判定
-        Test the gate uses the short edge even when it is the row dim"""
+        """Test the gate uses the short edge even when it is the row dim"""
         self.assertTrue(
             _symmetric_gemm_is_profitable(
                 [16, 8192, 2048], paddle.bfloat16, *SYRK_DEFAULTS
@@ -374,8 +334,7 @@ class TestSymmetricGemmProfitability(unittest.TestCase):
         )
 
     def test_short_edge_below_minimum(self):
-        """测试短边小于阈值时不走 SYRK
-        Test a short edge below the threshold stays on cuBLAS"""
+        """Test a short edge below the threshold stays on cuBLAS"""
         for shape in ([111, 512, 4096], [16, 512, 1024], [6, 64, 1024]):
             self.assertFalse(
                 _symmetric_gemm_is_profitable(
@@ -385,8 +344,7 @@ class TestSymmetricGemmProfitability(unittest.TestCase):
             )
 
     def test_short_edge_not_aligned(self):
-        """测试短边非 8 元素对齐时不走 SYRK
-        Test an unaligned short edge stays on cuBLAS"""
+        """Test an unaligned short edge stays on cuBLAS"""
         self.assertFalse(
             _symmetric_gemm_is_profitable(
                 [16, 1036, 8192], paddle.bfloat16, *SYRK_DEFAULTS
@@ -394,9 +352,7 @@ class TestSymmetricGemmProfitability(unittest.TestCase):
         )
 
     def test_long_edge_not_aligned(self):
-        """测试长边（K 维）非 8 元素对齐时不走 SYRK
-        Test an unaligned long edge (the K dim) stays on cuBLAS
-
+        """Test an unaligned long edge (the K dim) stays on cuBLAS
         The long edge is the contiguous dimension of ``X @ X.T``, so quack
         raises ``Invalid mA.strides[0]`` on it just like it does on the output
         for an unaligned short edge.
@@ -416,8 +372,7 @@ class TestSymmetricGemmProfitability(unittest.TestCase):
         )
 
     def test_flops_below_threshold(self):
-        """测试单次调用 FLOPs 不足时不走 SYRK
-        Test too few per-call FLOPs stays on cuBLAS"""
+        """Test too few per-call FLOPs stays on cuBLAS"""
         self.assertFalse(
             _symmetric_gemm_is_profitable(
                 [1, 1024, 1024], paddle.bfloat16, *SYRK_DEFAULTS
@@ -430,9 +385,7 @@ class TestSymmetricGemmProfitability(unittest.TestCase):
         )
 
     def test_thresholds_are_caller_supplied(self):
-        """测试门控完全由调用方传入的阈值决定
-        Test the gate is driven entirely by the caller's thresholds
-
+        """Test the gate is driven entirely by the caller's thresholds
         There is no module-level default: the same shape flips verdict purely
         on the thresholds handed in, which is what makes them configurable
         from ``Muon.__init__``.
@@ -461,9 +414,7 @@ class TestSymmetricGemmProfitability(unittest.TestCase):
         )
 
     def test_alignment_is_not_configurable(self):
-        """测试对齐要求不受阈值配置影响
-        Test the alignment requirement is unaffected by threshold overrides
-
+        """Test the alignment requirement is unaffected by threshold overrides
         Alignment is a hard kernel constraint, not a tuning knob, so lowering
         the thresholds must not let an unaligned fragment through.
         """
@@ -473,8 +424,7 @@ class TestSymmetricGemmProfitability(unittest.TestCase):
 
 
 class TestLoadSymmetricGemm(unittest.TestCase):
-    """测试 _load_symmetric_gemm 的导入与缓存
-    Test _load_symmetric_gemm import handling and caching"""
+    """Test _load_symmetric_gemm import handling and caching"""
 
     def setUp(self):
         _load_symmetric_gemm.cache_clear()
@@ -483,8 +433,7 @@ class TestLoadSymmetricGemm(unittest.TestCase):
         _load_symmetric_gemm.cache_clear()
 
     def test_import_failure_raises_runtime_error(self):
-        """测试 quack 不可导入时抛出带指引的 RuntimeError
-        Test an actionable RuntimeError when quack cannot be imported"""
+        """Test an actionable RuntimeError when quack cannot be imported"""
         blocked = {"quack": None, "quack.gemm_interface": None}
         with (
             mock.patch.dict(sys.modules, blocked),
@@ -495,8 +444,7 @@ class TestLoadSymmetricGemm(unittest.TestCase):
         self.assertIsNotNone(ctx.exception.__cause__)
 
     def test_import_success_is_cached(self):
-        """测试导入成功后结果被缓存，不再重复导入
-        Test a successful lookup is cached instead of re-imported"""
+        """Test a successful lookup is cached instead of re-imported"""
         module = types.ModuleType("quack.gemm_interface")
         module.gemm_symmetric = fake_gemm_symmetric
         injected = {
@@ -511,8 +459,7 @@ class TestLoadSymmetricGemm(unittest.TestCase):
 
 
 class TestMuonSymmetricGemmInit(unittest.TestCase):
-    """测试 use_symmetric_gemm 的构造期校验
-    Test constructor validation of use_symmetric_gemm"""
+    """Test constructor validation of use_symmetric_gemm"""
 
     def _param(self):
         p = paddle.create_parameter(shape=[8, 8], dtype='float32')
@@ -520,14 +467,12 @@ class TestMuonSymmetricGemmInit(unittest.TestCase):
         return p
 
     def test_disabled_by_default(self):
-        """测试默认不开启对称 GEMM
-        Test the symmetric GEMM path is off by default"""
+        """Test the symmetric GEMM path is off by default"""
         opt = Muon(parameters=[self._param()])
         self.assertFalse(opt._use_symmetric_gemm)
 
     def test_rejects_float32_ns_matmul_dtype(self):
-        """测试 ns_matmul_dtype=float32 时被拒绝
-        Test ns_matmul_dtype=float32 is rejected"""
+        """Test ns_matmul_dtype=float32 is rejected"""
         with self.assertRaises(ValueError) as ctx:
             Muon(
                 parameters=[self._param()],
@@ -537,8 +482,7 @@ class TestMuonSymmetricGemmInit(unittest.TestCase):
         self.assertIn("bfloat16 or float16", str(ctx.exception))
 
     def test_rejects_unsupported_capability(self):
-        """测试算力不支持的 GPU 被拒绝
-        Test a GPU without a CuTe symmetric kernel is rejected"""
+        """Test a GPU without a CuTe symmetric kernel is rejected"""
         with (
             mock.patch.object(
                 paddle, "is_compiled_with_cuda", return_value=True
@@ -556,8 +500,7 @@ class TestMuonSymmetricGemmInit(unittest.TestCase):
         self.assertIn("compute capability", str(ctx.exception))
 
     def test_rejects_cpu_only_build(self):
-        """测试非 CUDA 编译时被拒绝
-        Test a build without CUDA is rejected"""
+        """Test a build without CUDA is rejected"""
         with (
             mock.patch.object(
                 paddle, "is_compiled_with_cuda", return_value=False
@@ -572,8 +515,7 @@ class TestMuonSymmetricGemmInit(unittest.TestCase):
         self.assertIn("0.0", str(ctx.exception))
 
     def test_enabled_loads_kernel_eagerly(self):
-        """测试条件满足时开启，并在构造期预加载 kernel
-        Test the kernel is loaded eagerly once the config is valid"""
+        """Test the kernel is loaded eagerly once the config is valid"""
         loader = mock.Mock(return_value=fake_gemm_symmetric)
         with (
             mock.patch.object(
@@ -593,9 +535,7 @@ class TestMuonSymmetricGemmInit(unittest.TestCase):
         loader.assert_called_once_with()
 
     def test_thresholds_default_to_documented_values(self):
-        """测试阈值默认值与文档一致
-        Test the threshold defaults match the documented values
-
+        """Test the threshold defaults match the documented values
         The gate tests drive ``_symmetric_gemm_is_profitable`` with
         ``SYRK_DEFAULTS``; this is what keeps that tuple honest.
         """
@@ -609,8 +549,7 @@ class TestMuonSymmetricGemmInit(unittest.TestCase):
         )
 
     def test_thresholds_are_configurable(self):
-        """测试阈值可由用户配置
-        Test the thresholds can be overridden by the user"""
+        """Test the thresholds can be overridden by the user"""
         with (
             mock.patch.object(
                 paddle, "is_compiled_with_cuda", return_value=True
@@ -635,8 +574,7 @@ class TestMuonSymmetricGemmInit(unittest.TestCase):
         self.assertEqual(opt._symmetric_gemm_min_step_flops, 1e9)
 
     def test_rejects_non_positive_thresholds(self):
-        """测试非正阈值被拒绝
-        Test non-positive thresholds are rejected"""
+        """Test non-positive thresholds are rejected"""
         for kwargs in (
             {"symmetric_gemm_min_short_edge": 0},
             {"symmetric_gemm_min_short_edge": -1},
@@ -663,8 +601,7 @@ class TestMuonSymmetricGemmInit(unittest.TestCase):
             self.assertIn("must be positive", str(ctx.exception))
 
     def test_thresholds_unvalidated_when_path_disabled(self):
-        """测试未开启对称 GEMM 时不校验阈值
-        Test the thresholds are not validated while the path is disabled"""
+        """Test the thresholds are not validated while the path is disabled"""
         opt = Muon(
             parameters=[self._param()],
             symmetric_gemm_min_short_edge=0,
@@ -674,8 +611,7 @@ class TestMuonSymmetricGemmInit(unittest.TestCase):
 
 
 class TestSymmetricNewtonSchulzStep(unittest.TestCase):
-    """测试对称 Newton-Schulz 迭代步
-    Test the symmetric Newton-Schulz step implementations"""
+    """Test the symmetric Newton-Schulz step implementations"""
 
     COEFFS = (3.4445, -4.7750, 2.0315)
 
@@ -690,8 +626,7 @@ class TestSymmetricNewtonSchulzStep(unittest.TestCase):
         self.addCleanup(self.loader.stop)
 
     def test_2d_step_matches_dense_step(self):
-        """测试 2D 对称步与稠密步数值一致
-        Test the 2D symmetric step matches the dense step"""
+        """Test the 2D symmetric step matches the dense step"""
         x = paddle.randn([8, 16], dtype='float32') / 4.0
         got = Muon._newton_schulz_step_symmetric(x, *self.COEFFS)
         ref = Muon._newton_schulz_step(x, *self.COEFFS)
@@ -700,8 +635,7 @@ class TestSymmetricNewtonSchulzStep(unittest.TestCase):
         )
 
     def test_3d_step_matches_dense_step(self):
-        """测试 3D 对称步与稠密步数值一致
-        Test the batched symmetric step matches the dense step"""
+        """Test the batched symmetric step matches the dense step"""
         x = paddle.randn([3, 8, 16], dtype='float32') / 4.0
         got = Muon._batched_newton_schulz_step_symmetric(x, *self.COEFFS)
         ref = Muon._batched_newton_schulz_step(x, *self.COEFFS)
@@ -711,8 +645,7 @@ class TestSymmetricNewtonSchulzStep(unittest.TestCase):
 
 
 class TestZeropowerSymmetricDispatch(unittest.TestCase):
-    """测试 _zeropower_via_newtonschulz5 的对称路径选择
-    Test symmetric-path dispatch inside _zeropower_via_newtonschulz5"""
+    """Test symmetric-path dispatch inside _zeropower_via_newtonschulz5"""
 
     def setUp(self):
         paddle.seed(2026)
@@ -751,8 +684,7 @@ class TestZeropowerSymmetricDispatch(unittest.TestCase):
         ), x
 
     def test_2d_takes_symmetric_path(self):
-        """测试 2D 输入命中门控时走对称 kernel
-        Test a 2D input that clears the gate uses the symmetric kernel"""
+        """Test a 2D input that clears the gate uses the symmetric kernel"""
         got, x = self._run([8, 16], True)
         self.assertEqual(len(self.calls), 4)
         ref = Muon._zeropower_via_newtonschulz5(
@@ -763,8 +695,7 @@ class TestZeropowerSymmetricDispatch(unittest.TestCase):
         )
 
     def test_3d_takes_symmetric_path(self):
-        """测试 3D 输入命中门控时走对称 kernel
-        Test a 3D input that clears the gate uses the symmetric kernel"""
+        """Test a 3D input that clears the gate uses the symmetric kernel"""
         got, x = self._run([2, 8, 16], True)
         self.assertEqual(len(self.calls), 4)
         ref = Muon._zeropower_via_newtonschulz5(
@@ -775,21 +706,17 @@ class TestZeropowerSymmetricDispatch(unittest.TestCase):
         )
 
     def test_disabled_flag_keeps_dense_path(self):
-        """测试 use_symmetric_gemm=False 时不调用对称 kernel
-        Test the symmetric kernel is untouched when the flag is off"""
+        """Test the symmetric kernel is untouched when the flag is off"""
         self._run([8, 16], False)
         self.assertEqual(self.calls, [])
 
     def test_unprofitable_shape_keeps_dense_path(self):
-        """测试形状未过门控时回退到 cuBLAS 路径
-        Test a shape that fails the gate falls back to the dense path"""
+        """Test a shape that fails the gate falls back to the dense path"""
         self._run([8, 16], True, thresholds=SYRK_DEFAULTS)
         self.assertEqual(self.calls, [])
 
     def test_each_threshold_gates_independently(self):
-        """测试两个阈值各自都能拦住对称路径
-        Test either threshold on its own can keep the dense path
-
+        """Test either threshold on its own can keep the dense path
         Also covers that both values are really threaded through
         ``_zeropower_via_newtonschulz5`` rather than read from elsewhere.
         """
@@ -802,9 +729,7 @@ class TestZeropowerSymmetricDispatch(unittest.TestCase):
 
 
 class TestSymmetricGemmRealKernel(unittest.TestCase):
-    """测试真实 quack kernel（生产路径，非 mock）
-    Test the real quack kernel, i.e. the production path, unmocked
-
+    """Test the real quack kernel, i.e. the production path, unmocked
     Every other symmetric-GEMM test replaces ``gemm_symmetric`` with a dense
     stand-in, so only this class covers ``use_compat_guard`` importing, the
     Paddle/DLPack hand-off and the sm90/100/110 kernel itself. It skips where
@@ -827,8 +752,7 @@ class TestSymmetricGemmRealKernel(unittest.TestCase):
         paddle.seed(2026)
 
     def test_kernel_output_is_exactly_symmetric(self):
-        """测试 kernel 的镜像写回给出严格对称结果
-        Test the mirror write-back yields an exactly symmetric result"""
+        """Test the mirror write-back yields an exactly symmetric result"""
         gemm_symmetric = _load_symmetric_gemm()
         shape = [4, 2048, 4096]
         x = (paddle.randn(shape, dtype='float32') / shape[-1] ** 0.5).astype(
@@ -852,9 +776,7 @@ class TestSymmetricGemmRealKernel(unittest.TestCase):
         )
 
     def test_gate_rejects_shapes_the_kernel_cannot_take(self):
-        """测试门控拒绝的非对齐形状确实会让 kernel 报错
-        Test the shapes the gate rejects really do break the kernel
-
+        """Test the shapes the gate rejects really do break the kernel
         Guards the gate against drift: if quack ever relaxes its alignment
         rules this fails, and the gate can be loosened deliberately.
         """
@@ -871,8 +793,7 @@ class TestSymmetricGemmRealKernel(unittest.TestCase):
                 gemm_symmetric(x, paddle.transpose(x, perm=[1, 0]))
 
     def test_newton_schulz_matches_cublas(self):
-        """测试 5 步 NS 迭代在两条路径上结果一致
-        Test a 5-step NS iteration agrees between both paths"""
+        """Test a 5-step NS iteration agrees between both paths"""
         shape = [16, 2048, 2048]
         x = (paddle.randn(shape, dtype='float32') / shape[-1] ** 0.5).astype(
             'bfloat16'
@@ -896,8 +817,7 @@ class TestSymmetricGemmRealKernel(unittest.TestCase):
         )
 
     def test_optimizer_step_matches_cublas(self):
-        """测试整步优化器更新在两条路径上结果一致
-        Test a full optimizer step agrees between both paths"""
+        """Test a full optimizer step agrees between both paths"""
         updates = []
         for use_symmetric_gemm in (False, True):
             paddle.seed(2026)
@@ -923,25 +843,21 @@ def _fro_np(x, axis=None):
 
 
 class TestMuonParamInfoHyperball(unittest.TestCase):
-    """测试 MuonParamInfo.use_hyperball 字段
-    Test the MuonParamInfo.use_hyperball field"""
+    """Test the MuonParamInfo.use_hyperball field"""
 
     def test_use_hyperball_defaults_false(self):
-        """默认 use_hyperball 为 False（向后兼容：老代码不受影响）
-        use_hyperball defaults to False (backward compatible)"""
+        """use_hyperball defaults to False (backward compatible)"""
         info = MuonParamInfo()
         self.assertFalse(info.use_hyperball)
 
     def test_use_hyperball_custom_true(self):
-        """可显式设置 use_hyperball=True
-        use_hyperball can be set to True explicitly"""
+        """use_hyperball can be set to True explicitly"""
         info = MuonParamInfo(use_muon=True, use_hyperball=True)
         self.assertTrue(info.use_muon)
         self.assertTrue(info.use_hyperball)
 
     def test_all_four_modes_representable(self):
-        """(use_muon, use_hyperball) 两个正交布尔能组合出四种模式
-        The two orthogonal booleans represent all four modes"""
+        """The two orthogonal booleans represent all four modes"""
         modes = {
             (True, True): "MuonH",
             (False, True): "AdamH",
@@ -954,12 +870,10 @@ class TestMuonParamInfoHyperball(unittest.TestCase):
 
 
 class TestHyperballApply(unittest.TestCase):
-    """测试 Muon._hyperball_apply 静态方法（球面投影收尾）
-    Test the Muon._hyperball_apply static method (Frobenius-sphere projection)"""
+    """Test the Muon._hyperball_apply static method (Frobenius-sphere projection)"""
 
     def test_2d_preserves_frobenius_norm(self):
-        """2D：投影后 ||W||_F 恒等于 R=||w||_F
-        2D: the projection keeps ||W||_F equal to R=||w||_F"""
+        """2D: the projection keeps ||W||_F equal to R=||w||_F"""
         paddle.seed(2026)
         w = paddle.randn([6, 4], dtype='float32')
         u = paddle.randn([6, 4], dtype='float32')
@@ -969,8 +883,7 @@ class TestHyperballApply(unittest.TestCase):
         )
 
     def test_3d_norm_is_per_expert(self):
-        """3D [E,H,I]：范数按最后两维逐专家保持
-        3D [E,H,I]: the norm is preserved per expert (last two dims)"""
+        """3D [E,H,I]: the norm is preserved per expert (last two dims)"""
         paddle.seed(2026)
         w = paddle.randn([3, 4, 5], dtype='float32')
         u = paddle.randn([3, 4, 5], dtype='float32')
@@ -980,8 +893,7 @@ class TestHyperballApply(unittest.TestCase):
         np.testing.assert_allclose(r1, r0, rtol=1e-4, atol=1e-4)
 
     def test_formula_matches_numpy_reference(self):
-        """与 R*Normalize(w - lr*R*Normalize(u)) 的独立 numpy 参考逐元素一致
-        Matches an independent numpy reference of the Eq.(1) update"""
+        """Matches an independent numpy reference of the Eq.(1) update"""
         paddle.seed(7)
         w = paddle.randn([5, 3], dtype='float32')
         u = paddle.randn([5, 3], dtype='float32')
@@ -994,8 +906,7 @@ class TestHyperballApply(unittest.TestCase):
         np.testing.assert_allclose(out.numpy(), ref, rtol=1e-4, atol=1e-5)
 
     def test_zero_lr_returns_w(self):
-        """lr=0 时 R*Normalize(w)==w（w 本就在半径 R 的球面上）
-        lr=0 gives R*Normalize(w)==w (w already sits on the sphere)"""
+        """lr=0 gives R*Normalize(w)==w (w already sits on the sphere)"""
         paddle.seed(1)
         w = paddle.randn([4, 4], dtype='float32')
         out = Muon._hyperball_apply(
@@ -1004,8 +915,7 @@ class TestHyperballApply(unittest.TestCase):
         np.testing.assert_allclose(out.numpy(), w.numpy(), rtol=1e-5, atol=1e-5)
 
     def test_eps_guards_zero_update(self):
-        """update 全零时 eps 防止除零，输出有限且范数仍为 R
-        A zero update must not divide by zero; output stays finite at norm R"""
+        """A zero update must not divide by zero; output stays finite at norm R"""
         w = paddle.ones([3, 3], dtype='float32')
         out = Muon._hyperball_apply(
             w, paddle.zeros([3, 3], dtype='float32'), 0.1
@@ -1016,8 +926,7 @@ class TestHyperballApply(unittest.TestCase):
         )
 
     def test_formula_matches_reference_2d_and_3d(self):
-        """2D 整张、3D 逐专家都逐元素对齐独立 numpy 参考
-        Both 2D (whole matrix) and 3D (per expert) match a numpy reference"""
+        """Both 2D (whole matrix) and 3D (per expert) match a numpy reference"""
         paddle.seed(11)
         lr = 0.3
         for shape in ([5, 3], [4, 3, 6], [2, 8, 8]):
@@ -1043,10 +952,9 @@ class TestHyperballApply(unittest.TestCase):
             )
 
     def test_3d_experts_are_independent(self):
-        """3D：逐专家独立——放大某个专家不影响其它专家的输出，
-        且每个专家仍各自保持自己的 R。
-        3D per-expert independence: scaling one expert leaves the others'
-        output untouched, and every expert keeps its own R."""
+        """3D per-expert independence: scaling one expert leaves the others'
+        output untouched, and every expert keeps its own R.
+        """
         paddle.seed(12)
         w = paddle.randn([3, 4, 5], dtype='float32')
         u = paddle.randn([3, 4, 5], dtype='float32')
@@ -1063,8 +971,7 @@ class TestHyperballApply(unittest.TestCase):
         np.testing.assert_allclose(r_out, r_in, rtol=1e-4, atol=1e-4)
 
     def test_2d_non_square(self):
-        """2D 非方阵（高/宽矩阵）都保持整张 Frobenius 范数
-        Non-square 2D matrices (tall/wide) preserve the whole-matrix norm"""
+        """Non-square 2D matrices (tall/wide) preserve the whole-matrix norm"""
         paddle.seed(13)
         for shape in ([8, 3], [3, 8], [1, 16], [16, 1]):
             w = paddle.randn(shape, dtype='float32')
@@ -1077,19 +984,20 @@ class TestHyperballApply(unittest.TestCase):
 
 
 class TestFrobeniusNormEquivalence(unittest.TestCase):
-    """_fro 的手写实现 vs paddle 范数 API：精度等价 + 速度不劣化。
+    """Manual _fro vs paddle norm APIs: numerically equivalent and not slower.
 
-    Hyperball 的 _fro 用 ``sqrt(sum(x*x, axis=[-2,-1]))`` 手写。本类证明它与
-    ``paddle.linalg.norm`` / ``paddle.norm`` / ``Tensor.norm`` 的 Frobenius 范数
-    数值等价（2D 整张、3D 逐专家），故实现可安全互换；并对速度做一个宽松的健全性保护。
+    Hyperball's _fro is written manually as ``sqrt(sum(x*x, axis=[-2,-1]))``.
+    This class shows it is numerically equivalent to the Frobenius norm from
+    ``paddle.linalg.norm`` / ``paddle.norm`` / ``Tensor.norm`` (2D whole matrix
+    and 3D per expert), so the implementations are interchangeable, and adds a
+    loose sanity guard on speed.
     """
 
     def _manual(self, x):
         return paddle.sqrt(paddle.sum(x * x, axis=[-2, -1], keepdim=True))
 
     def test_precision_matches_apis_fp32(self):
-        """fp32 下手写 == linalg.norm == paddle.norm == tensor.norm（2D/3D）
-        fp32: manual matches all three fro-norm APIs, shape included"""
+        """fp32: manual matches all three fro-norm APIs, shape included"""
         paddle.seed(21)
         for shape in ([6, 4], [3, 8], [3, 4, 5], [2, 16, 16]):
             x = paddle.randn(shape, dtype='float32')
@@ -1113,8 +1021,7 @@ class TestFrobeniusNormEquivalence(unittest.TestCase):
                 )
 
     def test_precision_exact_fp64(self):
-        """fp64 下手写与 linalg.norm 高精度一致（排除 fp32 舍入干扰）
-        fp64: manual and linalg.norm agree to ~1e-12"""
+        """fp64: manual and linalg.norm agree to ~1e-12"""
         paddle.seed(22)
         for shape in ([6, 4], [3, 4, 5]):
             x = paddle.randn(shape, dtype='float64')
@@ -1130,9 +1037,7 @@ class TestFrobeniusNormEquivalence(unittest.TestCase):
         paddle.is_compiled_with_cuda(), "speed sanity check is GPU-only"
     )
     def test_speed_api_not_pathologically_slower(self):
-        """宽松健全性保护（非严格性能门）：fro 范数 API 不应比手写慢 5 倍以上。
-        实测 linalg.norm/tensor.norm 反而更快（融合、无全尺寸 x*x 中间量）。
-        Loose guard against a pathological (e.g. SVD-based) regression, not a
+        """Loose guard against a pathological (e.g. SVD-based) regression, not a
         tight perf SLA; in practice the API is ~2x faster than the manual form.
         """
         import time
@@ -1165,8 +1070,7 @@ def _fro(t):
 
 
 class TestMuonHyperballStep(unittest.TestCase):
-    """测试 MuonH（Muon 方向 + 球面投影）整步更新
-    Test a full MuonH (Muon direction + sphere projection) step"""
+    """Test a full MuonH (Muon direction + sphere projection) step"""
 
     def _run_step(self, weight_decay, lr_ratio=None):
         paddle.seed(2026)
@@ -1191,14 +1095,12 @@ class TestMuonHyperballStep(unittest.TestCase):
         return p, r0
 
     def test_muonh_preserves_norm(self):
-        """MuonH 一步后 ||W||_F 不变（球面约束）
-        After one MuonH step ||W||_F is unchanged (sphere constraint)"""
+        """After one MuonH step ||W||_F is unchanged (sphere constraint)"""
         p, r0 = self._run_step(weight_decay=0.1)
         self.assertAlmostEqual(_fro(p), r0, places=3)
 
     def test_muonh_drops_weight_decay(self):
-        """hyperball 丢弃 WD：不同 weight_decay 得到相同结果
-        Hyperball drops weight decay: different wd -> identical result"""
+        """Hyperball drops weight decay: different wd -> identical result"""
         p_a, _ = self._run_step(weight_decay=0.0)
         p_b, _ = self._run_step(weight_decay=0.5)
         np.testing.assert_allclose(
@@ -1206,8 +1108,7 @@ class TestMuonHyperballStep(unittest.TestCase):
         )
 
     def test_muonh_lr_ratio_zero_freezes(self):
-        """lr_ratio=0 冻结参数（effective_lr=lr*ratio 生效）
-        lr_ratio=0 freezes the param (effective_lr=lr*ratio applies)"""
+        """lr_ratio=0 freezes the param (effective_lr=lr*ratio applies)"""
         p0, _ = self._run_step(weight_decay=0.1, lr_ratio=lambda _: 0.0)
         expected = np.random.RandomState(0).randn(6, 4).astype('float32')
         np.testing.assert_allclose(p0.numpy(), expected, rtol=1e-5, atol=1e-5)
@@ -1216,9 +1117,9 @@ class TestMuonHyperballStep(unittest.TestCase):
         paddle.is_compiled_with_cuda(), "fp16 master-weight path needs CUDA"
     )
     def test_muonh_master_weight_path(self):
-        """multi_precision + fp16：走 master weight 分支，fp32 master 上 ||W||_F 守恒
-        fp16 + multi_precision exercises the master-weight branch; the norm is
-        preserved on the fp32 master across steps"""
+        """fp16 + multi_precision exercises the master-weight branch; the norm is
+        preserved on the fp32 master across steps
+        """
         paddle.seed(2026)
         p = paddle.create_parameter(shape=[6, 4], dtype='float16')
         p.set_value(
@@ -1249,9 +1150,9 @@ class TestMuonHyperballStep(unittest.TestCase):
         self.assertTrue(bool(paddle.isfinite(p).all()))
 
     def test_muonh_3d_per_expert_preserved(self):
-        """3D 专家权重 [E,H,I]：MuonH 一步后每个专家各自的 ||W||_F 守恒
-        3D grouped-expert weight: after one MuonH step each expert keeps its
-        own ||W||_F (batched Newton-Schulz + per-expert projection)"""
+        """3D grouped-expert weight: after one MuonH step each expert keeps its
+        own ||W||_F (batched Newton-Schulz + per-expert projection)
+        """
         paddle.seed(2026)
         p = paddle.create_parameter(shape=[3, 4, 5], dtype='float32')
         p.set_value(np.random.RandomState(0).randn(3, 4, 5).astype('float32'))
@@ -1276,8 +1177,7 @@ class TestMuonHyperballStep(unittest.TestCase):
 
 
 class TestAdamHStep(unittest.TestCase):
-    """测试 AdamH（Adam 方向 + 球面投影）整步更新
-    Test a full AdamH (Adam direction + sphere projection) step"""
+    """Test a full AdamH (Adam direction + sphere projection) step"""
 
     def _build(self, weight_decay):
         paddle.seed(2026)
@@ -1300,16 +1200,14 @@ class TestAdamHStep(unittest.TestCase):
         return p, opt
 
     def test_adamh_preserves_norm(self):
-        """AdamH 一步后 ||W||_F 不变
-        After one AdamH step ||W||_F is unchanged"""
+        """After one AdamH step ||W||_F is unchanged"""
         p, opt = self._build(weight_decay=0.1)
         r0 = _fro(p)
         opt.step()
         self.assertAlmostEqual(_fro(p), r0, places=3)
 
     def test_adamh_creates_adam_accumulators(self):
-        """AdamH 建 moment1+moment2+beta_pow（与普通 AdamW 相同状态）
-        AdamH creates moment1+moment2+beta_pow (same state as plain AdamW)"""
+        """AdamH creates moment1+moment2+beta_pow (same state as plain AdamW)"""
         p, opt = self._build(weight_decay=0.1)
         opt.step()
         acc = opt._accumulators
@@ -1318,8 +1216,7 @@ class TestAdamHStep(unittest.TestCase):
         self.assertIn(p.name, acc[opt._moment2_acc_str])
 
     def test_adamh_advances_beta_pow(self):
-        """AdamH 推进 beta1_pow（步数状态一致）：一步后从初始 beta1 前进
-        AdamH advances beta1_pow: after one step it moves off the initial beta1"""
+        """AdamH advances beta1_pow: after one step it moves off the initial beta1"""
         p, opt = self._build(weight_decay=0.1)
         opt.step()  # accumulators are created during the first step
         b1 = float(opt._get_accumulator(opt._beta1_pow_acc_str, p))
@@ -1327,8 +1224,7 @@ class TestAdamHStep(unittest.TestCase):
         self.assertFalse(abs(b1 - 0.9) < 1e-6)
 
     def test_adamh_drops_weight_decay(self):
-        """AdamH 丢弃 WD：不同 weight_decay 结果一致
-        AdamH drops weight decay: different wd -> identical result"""
+        """AdamH drops weight decay: different wd -> identical result"""
         pa, oa = self._build(weight_decay=0.0)
         pb, ob = self._build(weight_decay=0.7)
         oa.step()
@@ -1339,9 +1235,9 @@ class TestAdamHStep(unittest.TestCase):
         paddle.is_compiled_with_cuda(), "fp16 master-weight path needs CUDA"
     )
     def test_adamh_master_weight_path(self):
-        """multi_precision + fp16：AdamH 走 master weight 分支，master 上范数守恒
-        fp16 + multi_precision exercises AdamH's master-weight branch; the norm
-        is preserved on the fp32 master across steps"""
+        """fp16 + multi_precision exercises AdamH's master-weight branch; the norm
+        is preserved on the fp32 master across steps
+        """
         paddle.seed(2026)
         p = paddle.create_parameter(shape=[5, 5], dtype='float16')
         p.set_value(
@@ -1373,9 +1269,9 @@ class TestAdamHStep(unittest.TestCase):
         self.assertTrue(bool(paddle.isfinite(p).all()))
 
     def test_adamh_3d_per_expert_preserved(self):
-        """3D 专家权重 [E,H,I]：AdamH 一步后每个专家各自的 ||W||_F 守恒
-        3D grouped-expert weight: after one AdamH step each expert keeps its
-        own ||W||_F"""
+        """3D grouped-expert weight: after one AdamH step each expert keeps its
+        own ||W||_F
+        """
         paddle.seed(2026)
         p = paddle.create_parameter(shape=[3, 4, 5], dtype='float32')
         p.set_value(np.random.RandomState(0).randn(3, 4, 5).astype('float32'))
@@ -1401,14 +1297,12 @@ class TestAdamHStep(unittest.TestCase):
 
 
 class TestApplyOptimizeRouting(unittest.TestCase):
-    """测试 _apply_optimize 按 (use_muon, use_hyperball) 路由到四条路径
-    Test _apply_optimize routes the four modes in a single step"""
+    """Test _apply_optimize routes the four modes in a single step"""
 
     def test_four_modes_in_one_step(self):
-        """一次 step 中 MuonH/AdamH/Muon/Adam 同批更新，
-        两个 hyperball 参数各自保持 ||W||_F，四者都被更新。
-        MuonH/AdamH/Muon/Adam updated together; the two hyperball params keep
-        their norm; all four move."""
+        """MuonH/AdamH/Muon/Adam updated together; the two hyperball params keep
+        their norm; all four move.
+        """
         paddle.seed(2026)
         rs = np.random.RandomState(0)
         params, info, before = {}, {}, {}
@@ -1449,8 +1343,7 @@ class TestApplyOptimizeRouting(unittest.TestCase):
 
 
 class TestMuonEpsilon(unittest.TestCase):
-    """测试 per-optimizer muon_epsilon（NS 方向 eps 与 adam_epsilon 解耦）
-    Test the per-optimizer muon_epsilon (NS eps decoupled from adam_epsilon)"""
+    """Test the per-optimizer muon_epsilon (NS eps decoupled from adam_epsilon)"""
 
     def _param(self):
         p = paddle.create_parameter(shape=[4, 4], dtype='float32')
@@ -1458,8 +1351,7 @@ class TestMuonEpsilon(unittest.TestCase):
         return p
 
     def test_default_falls_back_to_adam_epsilon(self):
-        """不设 muon_epsilon 时回落到 adam_epsilon（向后兼容的共享行为）
-        Unset muon_epsilon falls back to adam_epsilon (shared, backward compat)"""
+        """Unset muon_epsilon falls back to adam_epsilon (shared, backward compat)"""
         opt = Muon(
             parameters=[self._param()],
             adam_epsilon=1e-9,
@@ -1469,8 +1361,7 @@ class TestMuonEpsilon(unittest.TestCase):
         self.assertEqual(opt._default_dict["epsilon"], 1e-9)
 
     def test_explicit_value_is_independent(self):
-        """显式 muon_epsilon 与 adam_epsilon 相互独立
-        Explicit muon_epsilon is independent of adam_epsilon"""
+        """Explicit muon_epsilon is independent of adam_epsilon"""
         opt = Muon(
             parameters=[self._param()],
             adam_epsilon=1e-15,
@@ -1481,8 +1372,7 @@ class TestMuonEpsilon(unittest.TestCase):
         self.assertEqual(opt._default_dict["epsilon"], 1e-15)
 
     def test_muon_step_runs_with_custom_epsilon(self):
-        """带自定义 muon_epsilon 的 Muon 方向整步更新可运行且结果有限
-        A Muon-direction step with a custom muon_epsilon runs and stays finite"""
+        """A Muon-direction step with a custom muon_epsilon runs and stays finite"""
         paddle.seed(2026)
         p = self._param()
         p.set_value(np.random.RandomState(0).randn(4, 4).astype('float32'))
