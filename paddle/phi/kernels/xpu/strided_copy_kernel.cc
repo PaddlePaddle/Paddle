@@ -12,11 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/strided_copy_kernel.h"
+#include <algorithm>
+#include <cstdint>
+#include <type_traits>
+
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/complex_kernel.h"
+#include "paddle/phi/kernels/strided_copy_kernel.h"
 namespace phi {
 
 template <typename T, typename Context>
@@ -32,13 +36,6 @@ void StridedCopyKernel(const Context& dev_ctx,
   meta.offset = offset;
   out->set_meta(meta);
 
-  PADDLE_ENFORCE_EQ(input.dims(),
-                    out->dims(),
-                    common::errors::InvalidArgument(
-                        "Input shape(%s) must be equal with out shape(%s).",
-                        input.dims(),
-                        out->dims()));
-
   PADDLE_ENFORCE_EQ(input.numel(),
                     out->numel(),
                     common::errors::InvalidArgument(
@@ -46,7 +43,8 @@ void StridedCopyKernel(const Context& dev_ctx,
                         input.numel(),
                         out->numel()));
 
-  if (input.numel() <= 0) {
+  const auto numel = input.numel();
+  if (numel <= 0) {
     return;
   }
 
@@ -70,9 +68,46 @@ void StridedCopyKernel(const Context& dev_ctx,
     r = xpu::copy<XPUType>(dev_ctx.x_context(), input_data, output_data, 1);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "copy");
   } else {
-    int64_t data_size_in = input.Holder()->size() - input.meta().offset;
-    int64_t data_size_out = out->Holder()->size() - out->meta().offset;
-    int64_t data_size = std::max(data_size_in, data_size_out);
+    const int64_t in_rank = input.dims().size();
+    const int64_t out_rank = out->dims().size();
+    PADDLE_ENFORCE_GE(
+        in_rank,
+        1,
+        common::errors::InvalidArgument(
+            "XPU StridedCopyKernel requires input rank in [1, 9], but got "
+            "input rank = %d.",
+            in_rank));
+    PADDLE_ENFORCE_LE(
+        in_rank,
+        9,
+        common::errors::InvalidArgument(
+            "XPU StridedCopyKernel requires input rank in [1, 9], but got "
+            "input rank = %d.",
+            in_rank));
+    PADDLE_ENFORCE_GE(
+        out_rank,
+        1,
+        common::errors::InvalidArgument(
+            "XPU StridedCopyKernel requires output rank in [1, 9], but got "
+            "output rank = %d.",
+            out_rank));
+    PADDLE_ENFORCE_LE(
+        out_rank,
+        9,
+        common::errors::InvalidArgument(
+            "XPU StridedCopyKernel requires output rank in [1, 9], but got "
+            "output rank = %d.",
+            out_rank));
+
+    const int64_t data_bytes_in = static_cast<int64_t>(input.Holder()->size()) -
+                                  static_cast<int64_t>(input.meta().offset);
+    const int64_t data_bytes_out = static_cast<int64_t>(out->Holder()->size()) -
+                                   static_cast<int64_t>(out->meta().offset);
+    const int64_t data_elems_in = std::max<int64_t>(0, data_bytes_in) /
+                                  static_cast<int64_t>(sizeof(XPUType));
+    const int64_t data_elems_out = std::max<int64_t>(0, data_bytes_out) /
+                                   static_cast<int64_t>(sizeof(XPUType));
+    const int64_t data_size = std::max(data_elems_in, data_elems_out);
     r = xpu::strided_copy<XPUType>(dev_ctx.x_context(),
                                    input_data,
                                    output_data,
@@ -86,6 +121,148 @@ void StridedCopyKernel(const Context& dev_ctx,
 }
 
 #ifdef PADDLE_WITH_XPU_FFT
+template <typename T>
+typename std::enable_if<std::is_same<T, phi::complex64>::value ||
+                        std::is_same<T, phi::complex128>::value>::type
+StridedCopyKernelImpl(const XPUContext& dev_ctx,
+                      const DenseTensor& input,
+                      const std::vector<int64_t>& dims,
+                      const std::vector<int64_t>& out_stride,
+                      int64_t offset,
+                      DenseTensor* out) {
+  DenseTensorMeta meta = input.meta();
+  meta.strides = common::make_ddim(out_stride);
+  meta.dims = common::make_ddim(dims);
+  meta.offset = offset;
+  out->set_meta(meta);
+
+  PADDLE_ENFORCE_EQ(input.numel(),
+                    out->numel(),
+                    common::errors::InvalidArgument(
+                        "Input numel(%d) must be equal with out numel(%d).",
+                        input.numel(),
+                        out->numel()));
+
+  const auto numel = input.numel();
+  if (numel <= 0) {
+    return;
+  }
+
+  PADDLE_ENFORCE_NOT_NULL(out->data<T>(),
+                          common::errors::InvalidArgument(
+                              "StridedCopyKernel's out tensor must complete "
+                              "mutable data before call kernel."));
+  auto* out_data = dev_ctx.template Alloc<T>(out);
+  PADDLE_ENFORCE_NOT_NULL(out_data,
+                          common::errors::InvalidArgument(
+                              "StridedCopyKernel's out tensor must complete "
+                              "mutable data before call kernel."));
+
+  using CopyT = float;
+  const auto* in_ptr = reinterpret_cast<const CopyT*>(input.data<T>());
+  auto* out_ptr = reinterpret_cast<CopyT*>(out_data);
+
+  constexpr const char* kTypeName =
+      std::is_same<T, phi::complex64>::value ? "complex64" : "complex128";
+  PADDLE_ENFORCE_EQ(
+      reinterpret_cast<uintptr_t>(in_ptr) % alignof(CopyT),
+      0UL,
+      common::errors::PreconditionNotMet(
+          "XPU StridedCopyKernel for %s requires %d-byte aligned input "
+          "pointer.",
+          kTypeName,
+          static_cast<int>(alignof(CopyT))));
+  PADDLE_ENFORCE_EQ(
+      reinterpret_cast<uintptr_t>(out_ptr) % alignof(CopyT),
+      0UL,
+      common::errors::PreconditionNotMet(
+          "XPU StridedCopyKernel for %s requires %d-byte aligned output "
+          "pointer.",
+          kTypeName,
+          static_cast<int>(alignof(CopyT))));
+
+  constexpr int64_t kCopyUnitsPerElem = sizeof(T) / sizeof(CopyT);
+  int r = 0;
+
+  if (numel == 1) {
+    r = xpu::copy<CopyT>(
+        dev_ctx.x_context(), in_ptr, out_ptr, kCopyUnitsPerElem);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "copy");
+    return;
+  }
+
+  const int64_t in_rank = input.dims().size();
+  const int64_t out_rank = out->dims().size();
+  PADDLE_ENFORCE_GE(
+      in_rank,
+      1,
+      common::errors::InvalidArgument(
+          "XPU StridedCopyKernel for %s requires input rank in [1, 8], but got "
+          "input rank = %d.",
+          kTypeName,
+          in_rank));
+  PADDLE_ENFORCE_LE(
+      in_rank,
+      8,
+      common::errors::InvalidArgument(
+          "XPU StridedCopyKernel for %s requires input rank in [1, 8], but got "
+          "input rank = %d.",
+          kTypeName,
+          in_rank));
+  PADDLE_ENFORCE_GE(
+      out_rank,
+      1,
+      common::errors::InvalidArgument("XPU StridedCopyKernel for %s requires "
+                                      "output rank in [1, 8], but got "
+                                      "output rank = %d.",
+                                      kTypeName,
+                                      out_rank));
+  PADDLE_ENFORCE_LE(
+      out_rank,
+      8,
+      common::errors::InvalidArgument("XPU StridedCopyKernel for %s requires "
+                                      "output rank in [1, 8], but got "
+                                      "output rank = %d.",
+                                      kTypeName,
+                                      out_rank));
+
+  auto in_strides_vec = common::vectorize<int64_t>(input.strides());
+  auto out_strides_vec = common::vectorize<int64_t>(out->strides());
+  if (kCopyUnitsPerElem > 1) {
+    for (auto& s : in_strides_vec) {
+      s *= kCopyUnitsPerElem;
+    }
+    for (auto& s : out_strides_vec) {
+      s *= kCopyUnitsPerElem;
+    }
+  }
+
+  auto in_dims_vec = common::vectorize<int64_t>(input.dims());
+  auto out_dims_vec = common::vectorize<int64_t>(out->dims());
+  in_dims_vec.push_back(kCopyUnitsPerElem);
+  out_dims_vec.push_back(kCopyUnitsPerElem);
+  in_strides_vec.push_back(1);
+  out_strides_vec.push_back(1);
+  const int64_t data_bytes_in = static_cast<int64_t>(input.Holder()->size()) -
+                                static_cast<int64_t>(input.meta().offset);
+  const int64_t data_bytes_out = static_cast<int64_t>(out->Holder()->size()) -
+                                 static_cast<int64_t>(out->meta().offset);
+  const int64_t data_elems_in =
+      std::max<int64_t>(0, data_bytes_in) / static_cast<int64_t>(sizeof(CopyT));
+  const int64_t data_elems_out = std::max<int64_t>(0, data_bytes_out) /
+                                 static_cast<int64_t>(sizeof(CopyT));
+  const int64_t data_size = std::max(data_elems_in, data_elems_out);
+  r = xpu::strided_copy<CopyT>(dev_ctx.x_context(),
+                               in_ptr,
+                               out_ptr,
+                               data_size,
+                               in_dims_vec,
+                               out_dims_vec,
+                               in_strides_vec,
+                               out_strides_vec);
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "strided_copy");
+}
+
 template <>
 void StridedCopyKernel<phi::complex64, XPUContext>(
     const XPUContext& dev_ctx,
@@ -94,18 +271,8 @@ void StridedCopyKernel<phi::complex64, XPUContext>(
     const std::vector<int64_t>& out_stride,
     int64_t offset,
     DenseTensor* out) {
-  using T = phi::complex64;
-  dev_ctx.template Alloc<T>(out);
-  const DenseTensor real = Real<T, XPUContext>(dev_ctx, input);
-  const DenseTensor imag = Imag<T, XPUContext>(dev_ctx, input);
-  DenseTensor real_out, imag_out;
-  real_out.Resize(out->dims());
-  imag_out.Resize(out->dims());
-  StridedCopyKernel<float, XPUContext>(
-      dev_ctx, real, dims, out_stride, offset, &real_out);
-  StridedCopyKernel<float, XPUContext>(
-      dev_ctx, imag, dims, out_stride, offset, &imag_out);
-  phi::ComplexKernel<float>(dev_ctx, real_out, imag_out, out);
+  StridedCopyKernelImpl<phi::complex64>(
+      dev_ctx, input, dims, out_stride, offset, out);
 }
 template <>
 void StridedCopyKernel<phi::complex128, XPUContext>(
@@ -115,18 +282,8 @@ void StridedCopyKernel<phi::complex128, XPUContext>(
     const std::vector<int64_t>& out_stride,
     int64_t offset,
     DenseTensor* out) {
-  using T = phi::complex128;
-  dev_ctx.template Alloc<T>(out);
-  const DenseTensor real = Real<T, XPUContext>(dev_ctx, input);
-  const DenseTensor imag = Imag<T, XPUContext>(dev_ctx, input);
-  DenseTensor real_out, imag_out;
-  real_out.Resize(out->dims());
-  imag_out.Resize(out->dims());
-  StridedCopyKernel<double, XPUContext>(
-      dev_ctx, real, dims, out_stride, offset, &real_out);
-  StridedCopyKernel<double, XPUContext>(
-      dev_ctx, imag, dims, out_stride, offset, &imag_out);
-  phi::ComplexKernel<double>(dev_ctx, real_out, imag_out, out);
+  StridedCopyKernelImpl<phi::complex128>(
+      dev_ctx, input, dims, out_stride, offset, out);
 }
 #endif
 
