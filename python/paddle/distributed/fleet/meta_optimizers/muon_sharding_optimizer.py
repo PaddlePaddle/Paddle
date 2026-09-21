@@ -325,8 +325,19 @@ class MuonShardingOptimizer:
                 f"trainable parameters before MuonShardingOptimizer is constructed."
             )
             use_muon = param_info.use_muon
+            use_hyperball = getattr(param_info, "use_hyperball", False)
 
-            if use_muon:
+            # Keep the whole tensor on one rank (V1 tensor-wise) when the
+            # optimizer step needs the full matrix:
+            #   - Muon: Newton-Schulz orthogonalisation needs the full 2D matrix.
+            #   - Hyperball: the projection needs the global Frobenius norm
+            #     ||W||_F, which cannot be computed from an element-wise (V2)
+            #     shard without an extra all-reduce. So AdamW+Hyperball params
+            #     are also kept whole here.
+            # Only plain AdamW (no Muon, no Hyperball) is element-wise sharded.
+            keep_whole = use_muon or use_hyperball
+
+            if keep_whole:
                 self._params_2d_by_color[color_key].append(p)
             else:
                 # Non-2D params use element-wise split via FusedCommBuffer
