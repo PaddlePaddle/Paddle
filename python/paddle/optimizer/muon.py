@@ -64,12 +64,23 @@ class MuonParamInfo:
 
     Attributes:
         use_muon: If True, use Muon (orthogonal) updates; otherwise AdamW.
+        use_hyperball: If True, apply the Hyperball constraint after computing
+            the base update direction: project the weight back onto the
+            Frobenius sphere of fixed radius R = ||W_t||_F (which the projection
+            holds constant, so R == ||W_0||_F by construction and is NOT stored
+            in the checkpoint). Composes with either update rule, giving the
+            three supported modes: Muon+Hyperball (use_muon=True,
+            use_hyperball=True), AdamW+Hyperball (use_muon=False,
+            use_hyperball=True), AdamW (use_muon=False, use_hyperball=False).
+            Under Hyperball, weight decay is dropped (the constraint already
+            prevents norm growth).
         split_concat_func: Optional callable that implements the slice strategy.
             Signature: split_concat_func(matrix, ortho_fn, **kwargs) -> sliced_matrix
             If None, whole-matrix orthogonalisation is used.
     """
 
     use_muon: bool = True
+    use_hyperball: bool = False
     split_concat_func: Callable | None = None
 
 
@@ -321,6 +332,7 @@ class Muon(Optimizer):
         ns_coeffs=None,
         nesterov=True,
         adam_epsilon=1e-9,
+        muon_epsilon=None,
         grad_clip=None,
         lr_ratio: Callable[[Tensor], float] | None = None,
         apply_decay_param_fun: Callable[[str], bool] | None = None,
@@ -363,6 +375,11 @@ class Muon(Optimizer):
             "ns_steps": ns_steps,
             "nesterov": nesterov,
             "epsilon": adam_epsilon,
+            # Muon (Newton-Schulz) direction epsilon; None -> reuse adam_epsilon so
+            # behaviour is identical to before this option existed.
+            "muon_epsilon": adam_epsilon
+            if muon_epsilon is None
+            else muon_epsilon,
             "muon_version": muon_version,
             "ns_coeff_type": ns_coeff_type,
         }
@@ -645,6 +662,45 @@ class Muon(Optimizer):
             scale = max(dout, din) ** 0.5
         return orthogonal_update * scale * extra_scale_factor
 
+    @staticmethod
+    def _hyperball_apply(w, update, lr, eps=1e-12):
+        r"""Hyperball step, shared by Muon+Hyperball and AdamW+Hyperball.
+
+        Given the current weight ``w`` and a base-optimizer update direction
+        ``update`` (Newton-Schulz-orthogonalised for Muon, Adam-preconditioned
+        for AdamW), take a unit-direction step of length ``lr * R`` and project
+        back onto the Frobenius sphere of radius ``R``::
+
+            R      = ||w||_F                      (recomputed every step)
+            W_{t+1} = R * Normalize(w - lr * R * Normalize(update))
+
+        The projection holds ``||w||_F`` constant, so ``R == ||W_0||_F`` by
+        construction and is intentionally NOT stored in the checkpoint (aligns
+        with the NeMo / mangocrazz reference implementations). Weight decay is
+        intentionally not applied here (the constraint already prevents norm
+        growth). For 3D grouped-expert params ``[E, H, I]`` the Frobenius norm
+        is taken per expert (last two dims), matching the per-matrix constraint.
+
+        All math is done in float32; the fp32 result is returned (the caller
+        casts to the parameter dtype).
+        """
+
+        def _fro(x):
+            # Frobenius norm over the last two dims, kept for broadcasting.
+            # 2D [H, I] -> [1, 1] (whole matrix); 3D [E, H, I] -> [E, 1, 1].
+            # paddle.norm(p='fro') is numerically identical to
+            # sqrt(sum(x*x)) here but fused (no full-size x*x temp), so it is
+            # faster on large 2D / 3D-expert weights.
+            return paddle.norm(x, p='fro', axis=[-2, -1], keepdim=True)
+
+        w32 = w.astype(paddle.float32)
+        u32 = update.astype(paddle.float32)
+        radius = _fro(w32)
+        normed_update = u32 / (_fro(u32) + eps)
+        trial_w = w32 - lr * radius * normed_update
+        new_w = radius * (trial_w / (_fro(trial_w) + eps))
+        return new_w
+
     # ------------------------------------------------------------------
     # Per-parameter update rules
     # ------------------------------------------------------------------
@@ -700,6 +756,53 @@ class Muon(Optimizer):
             False,
             False,  # amsgrad
         )
+
+    def _adamw_hyperball_update(
+        self,
+        param,
+        grad,
+        lr,
+        moment1,
+        moment2,
+        beta1_pow,
+        beta2_pow,
+        beta1,
+        beta2,
+        epsilon,
+    ):
+        """AdamW direction + Hyperball projection (the "AdamH" mode).
+
+        Computes the Adam preconditioned direction ``u = m / (sqrt(v) + eps)``
+        (the same per-element structure the fused ``adamw_`` op uses), then
+        applies the shared Hyperball projection. The bias-correction factor
+        ``sqrt(1 - beta2^t) / (1 - beta1^t)`` is a global scalar and is washed
+        out by the Frobenius normalisation inside ``_hyperball_apply``, so it is
+        not applied to the direction; ``beta1_pow`` / ``beta2_pow`` are still
+        advanced in place to keep the step-count state consistent. No weight
+        decay is applied (the Hyperball constraint replaces it). Runs in fp32.
+        """
+        with paddle.no_grad():
+            find_master = param.name in self._master_weights
+            w = self._master_weights[param.name] if find_master else param
+
+            g = grad.astype(paddle.float32)
+            # Advance the first/second moments in place (fp32 accumulators).
+            paddle.assign(beta1 * moment1 + (1.0 - beta1) * g, moment1)
+            paddle.assign(beta2 * moment2 + (1.0 - beta2) * g * g, moment2)
+            # Advance bias-correction powers (kept for state consistency only).
+            paddle.assign(beta1_pow * beta1, beta1_pow)
+            paddle.assign(beta2_pow * beta2, beta2_pow)
+
+            # Adam preconditioned direction. The global bias-correction scalar
+            # is intentionally omitted: _hyperball_apply normalises the update
+            # to unit Frobenius norm, so any global multiplier cancels.
+            update = moment1 / (paddle.sqrt(moment2) + epsilon)
+
+            lr_ratio = 1.0 if self._lr_ratio is None else self._lr_ratio(param)
+            new_w = Muon._hyperball_apply(w, update, lr * lr_ratio)
+            if find_master:
+                paddle.assign(new_w, w)
+            paddle.assign(new_w.astype(param.dtype), param)
 
     def _split_group_by_bytes(self, group_params_grads):
         """Split a batched Muon group so each sub-group stays under the byte cap.
@@ -848,6 +951,28 @@ class Muon(Optimizer):
                     self._master_weights[param.name] if find_master else None
                 )
 
+                lr_ratio = (
+                    1.0 if self._lr_ratio is None else self._lr_ratio(param)
+                )
+                effective_lr = lr * lr_ratio
+
+                param_info = self._muon_param_info_map.get(param.name)
+                use_hyperball = bool(
+                    param_info is not None and param_info.use_hyperball
+                )
+
+                if use_hyperball:
+                    # Muon+Hyperball: project onto the fixed-radius sphere.
+                    # No weight decay (the constraint prevents norm growth).
+                    w = master_weight if find_master else param
+                    new_w = Muon._hyperball_apply(
+                        w, orthogonal_update, effective_lr
+                    )
+                    if find_master:
+                        paddle.assign(new_w, master_weight)
+                    paddle.assign(new_w.astype(param.dtype), param)
+                    continue
+
                 with_decay = True
                 if (
                     self._apply_decay_param_fun is not None
@@ -856,11 +981,11 @@ class Muon(Optimizer):
                     with_decay = False
                 if with_decay and weight_decay > 0:
                     if find_master:
-                        master_weight.scale_(1.0 - lr * weight_decay)
+                        master_weight.scale_(1.0 - effective_lr * weight_decay)
                     else:
-                        param.scale_(1.0 - lr * weight_decay)
+                        param.scale_(1.0 - effective_lr * weight_decay)
 
-                final_step = orthogonal_update * lr
+                final_step = orthogonal_update * effective_lr
 
                 if find_master:
                     master_weight.subtract_(final_step)
@@ -962,26 +1087,44 @@ class Muon(Optimizer):
                     group.get("momentum", 0.95),
                     group.get("ns_steps", 5),
                     group.get("nesterov", True),
-                    group.get("epsilon", 1e-9),
+                    group.get("muon_epsilon", group.get("epsilon", 1e-9)),
                     wd,
                     version=group.get("muon_version", 3),
                 )
 
-        # --- Pass 3: AdamW updates ---
+        # --- Pass 3: AdamW updates (plain AdamW or AdamW+Hyperball) ---
         for param, grad in adamw_params:
-            self._adamw_update(
-                param,
-                grad,
-                lr_tensor_f64,
-                self._get_accumulator(self._moment_acc_str, param),
-                self._get_accumulator(self._moment2_acc_str, param),
-                self._get_accumulator(self._beta1_pow_acc_str, param),
-                self._get_accumulator(self._beta2_pow_acc_str, param),
-                group.get("adam_beta1", 0.9),
-                group.get("adam_beta2", 0.95),
-                group.get("epsilon", 1e-9),
-                wd,
+            param_info = self._muon_param_info_map.get(param.name)
+            use_hyperball = bool(
+                param_info is not None and param_info.use_hyperball
             )
+            if use_hyperball:
+                self._adamw_hyperball_update(
+                    param,
+                    grad,
+                    lr_tensor,
+                    self._get_accumulator(self._moment_acc_str, param),
+                    self._get_accumulator(self._moment2_acc_str, param),
+                    self._get_accumulator(self._beta1_pow_acc_str, param),
+                    self._get_accumulator(self._beta2_pow_acc_str, param),
+                    group.get("adam_beta1", 0.9),
+                    group.get("adam_beta2", 0.95),
+                    group.get("epsilon", 1e-9),
+                )
+            else:
+                self._adamw_update(
+                    param,
+                    grad,
+                    lr_tensor_f64,
+                    self._get_accumulator(self._moment_acc_str, param),
+                    self._get_accumulator(self._moment2_acc_str, param),
+                    self._get_accumulator(self._beta1_pow_acc_str, param),
+                    self._get_accumulator(self._beta2_pow_acc_str, param),
+                    group.get("adam_beta1", 0.9),
+                    group.get("adam_beta2", 0.95),
+                    group.get("epsilon", 1e-9),
+                    wd,
+                )
 
     @framework.dygraph_only
     def step(self) -> None:

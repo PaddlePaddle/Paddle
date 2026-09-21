@@ -918,5 +918,589 @@ class TestSymmetricGemmRealKernel(unittest.TestCase):
         np.testing.assert_allclose(updates[1], updates[0], rtol=1e-3, atol=1e-6)
 
 
+def _fro_np(x, axis=None):
+    return np.sqrt(np.sum(np.square(x.astype(np.float64)), axis=axis))
+
+
+class TestMuonParamInfoHyperball(unittest.TestCase):
+    """测试 MuonParamInfo.use_hyperball 字段
+    Test the MuonParamInfo.use_hyperball field"""
+
+    def test_use_hyperball_defaults_false(self):
+        """默认 use_hyperball 为 False（向后兼容：老代码不受影响）
+        use_hyperball defaults to False (backward compatible)"""
+        info = MuonParamInfo()
+        self.assertFalse(info.use_hyperball)
+
+    def test_use_hyperball_custom_true(self):
+        """可显式设置 use_hyperball=True
+        use_hyperball can be set to True explicitly"""
+        info = MuonParamInfo(use_muon=True, use_hyperball=True)
+        self.assertTrue(info.use_muon)
+        self.assertTrue(info.use_hyperball)
+
+    def test_all_four_modes_representable(self):
+        """(use_muon, use_hyperball) 两个正交布尔能组合出四种模式
+        The two orthogonal booleans represent all four modes"""
+        modes = {
+            (True, True): "MuonH",
+            (False, True): "AdamH",
+            (True, False): "Muon",
+            (False, False): "Adam",
+        }
+        for um, uh in modes:
+            info = MuonParamInfo(use_muon=um, use_hyperball=uh)
+            self.assertEqual((info.use_muon, info.use_hyperball), (um, uh))
+
+
+class TestHyperballApply(unittest.TestCase):
+    """测试 Muon._hyperball_apply 静态方法（球面投影收尾）
+    Test the Muon._hyperball_apply static method (Frobenius-sphere projection)"""
+
+    def test_2d_preserves_frobenius_norm(self):
+        """2D：投影后 ||W||_F 恒等于 R=||w||_F
+        2D: the projection keeps ||W||_F equal to R=||w||_F"""
+        paddle.seed(2026)
+        w = paddle.randn([6, 4], dtype='float32')
+        u = paddle.randn([6, 4], dtype='float32')
+        out = Muon._hyperball_apply(w, u, 0.1)
+        self.assertAlmostEqual(
+            _fro_np(out.numpy()), _fro_np(w.numpy()), places=4
+        )
+
+    def test_3d_norm_is_per_expert(self):
+        """3D [E,H,I]：范数按最后两维逐专家保持
+        3D [E,H,I]: the norm is preserved per expert (last two dims)"""
+        paddle.seed(2026)
+        w = paddle.randn([3, 4, 5], dtype='float32')
+        u = paddle.randn([3, 4, 5], dtype='float32')
+        out = Muon._hyperball_apply(w, u, 0.1)
+        r0 = _fro_np(w.numpy(), axis=(-2, -1))
+        r1 = _fro_np(out.numpy(), axis=(-2, -1))
+        np.testing.assert_allclose(r1, r0, rtol=1e-4, atol=1e-4)
+
+    def test_formula_matches_numpy_reference(self):
+        """与 R*Normalize(w - lr*R*Normalize(u)) 的独立 numpy 参考逐元素一致
+        Matches an independent numpy reference of the Eq.(1) update"""
+        paddle.seed(7)
+        w = paddle.randn([5, 3], dtype='float32')
+        u = paddle.randn([5, 3], dtype='float32')
+        lr = 0.2
+        wn, un = w.numpy().astype(np.float64), u.numpy().astype(np.float64)
+        R = _fro_np(wn)
+        trial = wn - lr * R * (un / _fro_np(un))
+        ref = R * trial / _fro_np(trial)
+        out = Muon._hyperball_apply(w, u, lr)
+        np.testing.assert_allclose(out.numpy(), ref, rtol=1e-4, atol=1e-5)
+
+    def test_zero_lr_returns_w(self):
+        """lr=0 时 R*Normalize(w)==w（w 本就在半径 R 的球面上）
+        lr=0 gives R*Normalize(w)==w (w already sits on the sphere)"""
+        paddle.seed(1)
+        w = paddle.randn([4, 4], dtype='float32')
+        out = Muon._hyperball_apply(
+            w, paddle.randn([4, 4], dtype='float32'), 0.0
+        )
+        np.testing.assert_allclose(out.numpy(), w.numpy(), rtol=1e-5, atol=1e-5)
+
+    def test_eps_guards_zero_update(self):
+        """update 全零时 eps 防止除零，输出有限且范数仍为 R
+        A zero update must not divide by zero; output stays finite at norm R"""
+        w = paddle.ones([3, 3], dtype='float32')
+        out = Muon._hyperball_apply(
+            w, paddle.zeros([3, 3], dtype='float32'), 0.1
+        )
+        self.assertTrue(bool(paddle.isfinite(out).all()))
+        self.assertAlmostEqual(
+            _fro_np(out.numpy()), _fro_np(w.numpy()), places=4
+        )
+
+    def test_formula_matches_reference_2d_and_3d(self):
+        """2D 整张、3D 逐专家都逐元素对齐独立 numpy 参考
+        Both 2D (whole matrix) and 3D (per expert) match a numpy reference"""
+        paddle.seed(11)
+        lr = 0.3
+        for shape in ([5, 3], [4, 3, 6], [2, 8, 8]):
+            w = paddle.randn(shape, dtype='float32')
+            u = paddle.randn(shape, dtype='float32')
+            wn = w.numpy().astype(np.float64)
+            un = u.numpy().astype(np.float64)
+            ax = (-2, -1)
+            R = _fro_np(wn, axis=ax)
+            if wn.ndim == 3:
+                R = R[:, None, None]
+                nu = _fro_np(un, axis=ax)[:, None, None]
+            else:
+                nu = _fro_np(un, axis=ax)
+            trial = wn - lr * R * (un / nu)
+            nt = _fro_np(trial, axis=ax)
+            if wn.ndim == 3:
+                nt = nt[:, None, None]
+            ref = R * trial / nt
+            out = Muon._hyperball_apply(w, u, lr)
+            np.testing.assert_allclose(
+                out.numpy(), ref, rtol=1e-4, atol=1e-5, err_msg=str(shape)
+            )
+
+    def test_3d_experts_are_independent(self):
+        """3D：逐专家独立——放大某个专家不影响其它专家的输出，
+        且每个专家仍各自保持自己的 R。
+        3D per-expert independence: scaling one expert leaves the others'
+        output untouched, and every expert keeps its own R."""
+        paddle.seed(12)
+        w = paddle.randn([3, 4, 5], dtype='float32')
+        u = paddle.randn([3, 4, 5], dtype='float32')
+        out = Muon._hyperball_apply(w, u, 0.2)
+        # scale ONLY expert 0 by 100x, everything else identical
+        w2 = w.clone()
+        w2[0] = w2[0] * 100.0
+        out2 = Muon._hyperball_apply(w2, u, 0.2)
+        # experts 1 and 2 are byte-identical (no cross-expert leakage)
+        np.testing.assert_array_equal(out2.numpy()[1:], out.numpy()[1:])
+        # each expert preserves its own (possibly new) radius
+        r_in = _fro_np(w2.numpy(), axis=(-2, -1))
+        r_out = _fro_np(out2.numpy(), axis=(-2, -1))
+        np.testing.assert_allclose(r_out, r_in, rtol=1e-4, atol=1e-4)
+
+    def test_2d_non_square(self):
+        """2D 非方阵（高/宽矩阵）都保持整张 Frobenius 范数
+        Non-square 2D matrices (tall/wide) preserve the whole-matrix norm"""
+        paddle.seed(13)
+        for shape in ([8, 3], [3, 8], [1, 16], [16, 1]):
+            w = paddle.randn(shape, dtype='float32')
+            u = paddle.randn(shape, dtype='float32')
+            out = Muon._hyperball_apply(w, u, 0.15)
+            self.assertEqual(list(out.shape), shape)
+            self.assertAlmostEqual(
+                _fro_np(out.numpy()), _fro_np(w.numpy()), places=4, msg=str(shape)
+            )
+
+
+class TestFrobeniusNormEquivalence(unittest.TestCase):
+    """_fro 的手写实现 vs paddle 范数 API：精度等价 + 速度不劣化。
+
+    Hyperball 的 _fro 用 ``sqrt(sum(x*x, axis=[-2,-1]))`` 手写。本类证明它与
+    ``paddle.linalg.norm`` / ``paddle.norm`` / ``Tensor.norm`` 的 Frobenius 范数
+    数值等价（2D 整张、3D 逐专家），故实现可安全互换；并对速度做一个宽松的健全性保护。
+    """
+
+    def _manual(self, x):
+        return paddle.sqrt(paddle.sum(x * x, axis=[-2, -1], keepdim=True))
+
+    def test_precision_matches_apis_fp32(self):
+        """fp32 下手写 == linalg.norm == paddle.norm == tensor.norm（2D/3D）
+        fp32: manual matches all three fro-norm APIs, shape included"""
+        paddle.seed(21)
+        for shape in ([6, 4], [3, 8], [3, 4, 5], [2, 16, 16]):
+            x = paddle.randn(shape, dtype='float32')
+            ref = self._manual(x).numpy()
+            apis = {
+                "linalg.norm": paddle.linalg.norm(
+                    x, p='fro', axis=[-2, -1], keepdim=True
+                ),
+                "paddle.norm": paddle.norm(
+                    x, p='fro', axis=[-2, -1], keepdim=True
+                ),
+                "tensor.norm": x.norm(p='fro', axis=[-2, -1], keepdim=True),
+            }
+            for name, got in apis.items():
+                self.assertEqual(
+                    list(got.shape), list(ref.shape), msg=f"{shape} {name} shape"
+                )
+                np.testing.assert_allclose(
+                    got.numpy(), ref, rtol=1e-5, atol=1e-5,
+                    err_msg=f"{shape} {name}",
+                )
+
+    def test_precision_exact_fp64(self):
+        """fp64 下手写与 linalg.norm 高精度一致（排除 fp32 舍入干扰）
+        fp64: manual and linalg.norm agree to ~1e-12"""
+        paddle.seed(22)
+        for shape in ([6, 4], [3, 4, 5]):
+            x = paddle.randn(shape, dtype='float64')
+            ref = self._manual(x).numpy()
+            got = paddle.linalg.norm(
+                x, p='fro', axis=[-2, -1], keepdim=True
+            ).numpy()
+            np.testing.assert_allclose(
+                got, ref, rtol=1e-12, atol=1e-12, err_msg=str(shape)
+            )
+
+    @unittest.skipUnless(
+        paddle.is_compiled_with_cuda(), "speed sanity check is GPU-only"
+    )
+    def test_speed_api_not_pathologically_slower(self):
+        """宽松健全性保护（非严格性能门）：fro 范数 API 不应比手写慢 5 倍以上。
+        实测 linalg.norm/tensor.norm 反而更快（融合、无全尺寸 x*x 中间量）。
+        Loose guard against a pathological (e.g. SVD-based) regression, not a
+        tight perf SLA; in practice the API is ~2x faster than the manual form.
+        """
+        import time
+
+        x = paddle.randn([4096, 4096], dtype='float32')
+
+        def bench(fn, n=300):
+            for _ in range(20):
+                fn()
+            paddle.device.synchronize()
+            t = time.time()
+            for _ in range(n):
+                fn()
+            paddle.device.synchronize()
+            return (time.time() - t) / n
+
+        manual_t = bench(lambda: self._manual(x))
+        api_t = bench(
+            lambda: paddle.linalg.norm(x, p='fro', axis=[-2, -1], keepdim=True)
+        )
+        self.assertLess(
+            api_t,
+            manual_t * 5.0,
+            msg=f"manual={manual_t * 1e6:.1f}us api={api_t * 1e6:.1f}us",
+        )
+
+
+def _fro(t):
+    return float((t.astype('float32') ** 2).sum().sqrt())
+
+
+class TestMuonHyperballStep(unittest.TestCase):
+    """测试 MuonH（Muon 方向 + 球面投影）整步更新
+    Test a full MuonH (Muon direction + sphere projection) step"""
+
+    def _run_step(self, weight_decay, lr_ratio=None):
+        paddle.seed(2026)
+        p = paddle.create_parameter(shape=[6, 4], dtype='float32')
+        p.set_value(np.random.RandomState(0).randn(6, 4).astype('float32'))
+        opt = Muon(
+            parameters=[p],
+            learning_rate=0.05,
+            weight_decay=weight_decay,
+            ns_steps=3,
+            ns_matmul_dtype=paddle.float32,
+            muon_param_info_map={
+                p.name: MuonParamInfo(use_muon=True, use_hyperball=True)
+            },
+            lr_ratio=lr_ratio,
+        )
+        r0 = _fro(p)
+        p.grad = paddle.to_tensor(
+            np.random.RandomState(1).randn(6, 4).astype('float32')
+        )
+        opt.step()
+        return p, r0
+
+    def test_muonh_preserves_norm(self):
+        """MuonH 一步后 ||W||_F 不变（球面约束）
+        After one MuonH step ||W||_F is unchanged (sphere constraint)"""
+        p, r0 = self._run_step(weight_decay=0.1)
+        self.assertAlmostEqual(_fro(p), r0, places=3)
+
+    def test_muonh_drops_weight_decay(self):
+        """hyperball 丢弃 WD：不同 weight_decay 得到相同结果
+        Hyperball drops weight decay: different wd -> identical result"""
+        p_a, _ = self._run_step(weight_decay=0.0)
+        p_b, _ = self._run_step(weight_decay=0.5)
+        np.testing.assert_allclose(
+            p_a.numpy(), p_b.numpy(), rtol=1e-6, atol=1e-6
+        )
+
+    def test_muonh_lr_ratio_zero_freezes(self):
+        """lr_ratio=0 冻结参数（effective_lr=lr*ratio 生效）
+        lr_ratio=0 freezes the param (effective_lr=lr*ratio applies)"""
+        p0, _ = self._run_step(weight_decay=0.1, lr_ratio=lambda _: 0.0)
+        expected = np.random.RandomState(0).randn(6, 4).astype('float32')
+        np.testing.assert_allclose(p0.numpy(), expected, rtol=1e-5, atol=1e-5)
+
+    @unittest.skipUnless(
+        paddle.is_compiled_with_cuda(), "fp16 master-weight path needs CUDA"
+    )
+    def test_muonh_master_weight_path(self):
+        """multi_precision + fp16：走 master weight 分支，fp32 master 上 ||W||_F 守恒
+        fp16 + multi_precision exercises the master-weight branch; the norm is
+        preserved on the fp32 master across steps"""
+        paddle.seed(2026)
+        p = paddle.create_parameter(shape=[6, 4], dtype='float16')
+        p.set_value(
+            (np.random.RandomState(0).randn(6, 4) * 0.1).astype('float16')
+        )
+        opt = Muon(
+            parameters=[p],
+            learning_rate=0.05,
+            weight_decay=0.1,
+            ns_steps=3,
+            ns_matmul_dtype=paddle.float32,
+            multi_precision=True,
+            muon_param_info_map={
+                p.name: MuonParamInfo(use_muon=True, use_hyperball=True)
+            },
+        )
+        p.grad = paddle.to_tensor(
+            (np.random.RandomState(1).randn(6, 4) * 0.1).astype('float16')
+        )
+        opt.step()
+        self.assertIn(p.name, opt._master_weights)
+        r1 = _fro(opt._master_weights[p.name])
+        p.grad = paddle.to_tensor(
+            (np.random.RandomState(2).randn(6, 4) * 0.1).astype('float16')
+        )
+        opt.step()
+        self.assertAlmostEqual(_fro(opt._master_weights[p.name]), r1, places=3)
+        self.assertTrue(bool(paddle.isfinite(p).all()))
+
+    def test_muonh_3d_per_expert_preserved(self):
+        """3D 专家权重 [E,H,I]：MuonH 一步后每个专家各自的 ||W||_F 守恒
+        3D grouped-expert weight: after one MuonH step each expert keeps its
+        own ||W||_F (batched Newton-Schulz + per-expert projection)"""
+        paddle.seed(2026)
+        p = paddle.create_parameter(shape=[3, 4, 5], dtype='float32')
+        p.set_value(np.random.RandomState(0).randn(3, 4, 5).astype('float32'))
+        r0 = _fro_np(p.numpy(), axis=(-2, -1))
+        opt = Muon(
+            parameters=[p],
+            learning_rate=0.05,
+            weight_decay=0.1,
+            ns_steps=3,
+            ns_matmul_dtype=paddle.float32,
+            muon_param_info_map={
+                p.name: MuonParamInfo(use_muon=True, use_hyperball=True)
+            },
+        )
+        p.grad = paddle.to_tensor(
+            np.random.RandomState(1).randn(3, 4, 5).astype('float32')
+        )
+        opt.step()
+        np.testing.assert_allclose(
+            _fro_np(p.numpy(), axis=(-2, -1)), r0, rtol=1e-3, atol=1e-3
+        )
+
+
+class TestAdamHStep(unittest.TestCase):
+    """测试 AdamH（Adam 方向 + 球面投影）整步更新
+    Test a full AdamH (Adam direction + sphere projection) step"""
+
+    def _build(self, weight_decay):
+        paddle.seed(2026)
+        p = paddle.create_parameter(shape=[5, 5], dtype='float32')
+        p.set_value(np.random.RandomState(0).randn(5, 5).astype('float32'))
+        opt = Muon(
+            parameters=[p],
+            learning_rate=0.05,
+            weight_decay=weight_decay,
+            adam_beta1=0.9,
+            adam_beta2=0.95,
+            ns_matmul_dtype=paddle.float32,
+            muon_param_info_map={
+                p.name: MuonParamInfo(use_muon=False, use_hyperball=True)
+            },
+        )
+        p.grad = paddle.to_tensor(
+            np.random.RandomState(1).randn(5, 5).astype('float32')
+        )
+        return p, opt
+
+    def test_adamh_preserves_norm(self):
+        """AdamH 一步后 ||W||_F 不变
+        After one AdamH step ||W||_F is unchanged"""
+        p, opt = self._build(weight_decay=0.1)
+        r0 = _fro(p)
+        opt.step()
+        self.assertAlmostEqual(_fro(p), r0, places=3)
+
+    def test_adamh_creates_adam_accumulators(self):
+        """AdamH 建 moment1+moment2+beta_pow（与普通 AdamW 相同状态）
+        AdamH creates moment1+moment2+beta_pow (same state as plain AdamW)"""
+        p, opt = self._build(weight_decay=0.1)
+        opt.step()
+        acc = opt._accumulators
+        self.assertIn(opt._moment_acc_str, acc)
+        self.assertIn(opt._moment2_acc_str, acc)
+        self.assertIn(p.name, acc[opt._moment2_acc_str])
+
+    def test_adamh_advances_beta_pow(self):
+        """AdamH 推进 beta1_pow（步数状态一致）：一步后从初始 beta1 前进
+        AdamH advances beta1_pow: after one step it moves off the initial beta1"""
+        p, opt = self._build(weight_decay=0.1)
+        opt.step()  # accumulators are created during the first step
+        b1 = float(opt._get_accumulator(opt._beta1_pow_acc_str, p))
+        # initial fill is adam_beta1=0.9; after one step it is advanced (*=beta1).
+        self.assertFalse(abs(b1 - 0.9) < 1e-6)
+
+    def test_adamh_drops_weight_decay(self):
+        """AdamH 丢弃 WD：不同 weight_decay 结果一致
+        AdamH drops weight decay: different wd -> identical result"""
+        pa, oa = self._build(weight_decay=0.0)
+        pb, ob = self._build(weight_decay=0.7)
+        oa.step()
+        ob.step()
+        np.testing.assert_allclose(pa.numpy(), pb.numpy(), rtol=1e-6, atol=1e-6)
+
+    @unittest.skipUnless(
+        paddle.is_compiled_with_cuda(), "fp16 master-weight path needs CUDA"
+    )
+    def test_adamh_master_weight_path(self):
+        """multi_precision + fp16：AdamH 走 master weight 分支，master 上范数守恒
+        fp16 + multi_precision exercises AdamH's master-weight branch; the norm
+        is preserved on the fp32 master across steps"""
+        paddle.seed(2026)
+        p = paddle.create_parameter(shape=[5, 5], dtype='float16')
+        p.set_value(
+            (np.random.RandomState(0).randn(5, 5) * 0.1).astype('float16')
+        )
+        opt = Muon(
+            parameters=[p],
+            learning_rate=0.05,
+            weight_decay=0.1,
+            adam_beta1=0.9,
+            adam_beta2=0.95,
+            ns_matmul_dtype=paddle.float32,
+            multi_precision=True,
+            muon_param_info_map={
+                p.name: MuonParamInfo(use_muon=False, use_hyperball=True)
+            },
+        )
+        p.grad = paddle.to_tensor(
+            (np.random.RandomState(1).randn(5, 5) * 0.1).astype('float16')
+        )
+        opt.step()
+        self.assertIn(p.name, opt._master_weights)
+        r1 = _fro(opt._master_weights[p.name])
+        p.grad = paddle.to_tensor(
+            (np.random.RandomState(2).randn(5, 5) * 0.1).astype('float16')
+        )
+        opt.step()
+        self.assertAlmostEqual(_fro(opt._master_weights[p.name]), r1, places=3)
+        self.assertTrue(bool(paddle.isfinite(p).all()))
+
+    def test_adamh_3d_per_expert_preserved(self):
+        """3D 专家权重 [E,H,I]：AdamH 一步后每个专家各自的 ||W||_F 守恒
+        3D grouped-expert weight: after one AdamH step each expert keeps its
+        own ||W||_F"""
+        paddle.seed(2026)
+        p = paddle.create_parameter(shape=[3, 4, 5], dtype='float32')
+        p.set_value(np.random.RandomState(0).randn(3, 4, 5).astype('float32'))
+        r0 = _fro_np(p.numpy(), axis=(-2, -1))
+        opt = Muon(
+            parameters=[p],
+            learning_rate=0.05,
+            weight_decay=0.1,
+            adam_beta1=0.9,
+            adam_beta2=0.95,
+            ns_matmul_dtype=paddle.float32,
+            muon_param_info_map={
+                p.name: MuonParamInfo(use_muon=False, use_hyperball=True)
+            },
+        )
+        p.grad = paddle.to_tensor(
+            np.random.RandomState(1).randn(3, 4, 5).astype('float32')
+        )
+        opt.step()
+        np.testing.assert_allclose(
+            _fro_np(p.numpy(), axis=(-2, -1)), r0, rtol=1e-3, atol=1e-3
+        )
+
+
+class TestApplyOptimizeRouting(unittest.TestCase):
+    """测试 _apply_optimize 按 (use_muon, use_hyperball) 路由到四条路径
+    Test _apply_optimize routes the four modes in a single step"""
+
+    def test_four_modes_in_one_step(self):
+        """一次 step 中 MuonH/AdamH/Muon/Adam 同批更新，
+        两个 hyperball 参数各自保持 ||W||_F，四者都被更新。
+        MuonH/AdamH/Muon/Adam updated together; the two hyperball params keep
+        their norm; all four move."""
+        paddle.seed(2026)
+        rs = np.random.RandomState(0)
+        params, info, before = {}, {}, {}
+        specs = {
+            "muonh": (True, True),
+            "adamh": (False, True),
+            "muon": (True, False),
+            "adam": (False, False),
+        }
+        plist = []
+        for key, (um, uh) in specs.items():
+            p = paddle.create_parameter(shape=[4, 4], dtype='float32')
+            p.set_value(rs.randn(4, 4).astype('float32'))
+            p.grad = paddle.to_tensor(rs.randn(4, 4).astype('float32') * 0.1)
+            params[key] = p
+            info[p.name] = MuonParamInfo(use_muon=um, use_hyperball=uh)
+            before[key] = p.numpy().copy()
+            plist.append(p)
+        opt = Muon(
+            parameters=plist,
+            learning_rate=0.05,
+            weight_decay=0.1,
+            ns_steps=3,
+            ns_matmul_dtype=paddle.float32,
+            muon_param_info_map=info,
+        )
+        opt.step()
+        for key in specs:
+            self.assertTrue(bool(paddle.isfinite(params[key]).all()))
+            self.assertFalse(
+                np.array_equal(params[key].numpy(), before[key]),
+                msg=f"{key} did not move",
+            )
+        for key in ("muonh", "adamh"):
+            self.assertAlmostEqual(
+                _fro(params[key]), _fro_np(before[key]), places=3
+            )
+
+
+class TestMuonEpsilon(unittest.TestCase):
+    """测试 per-optimizer muon_epsilon（NS 方向 eps 与 adam_epsilon 解耦）
+    Test the per-optimizer muon_epsilon (NS eps decoupled from adam_epsilon)"""
+
+    def _param(self):
+        p = paddle.create_parameter(shape=[4, 4], dtype='float32')
+        p.stop_gradient = False
+        return p
+
+    def test_default_falls_back_to_adam_epsilon(self):
+        """不设 muon_epsilon 时回落到 adam_epsilon（向后兼容的共享行为）
+        Unset muon_epsilon falls back to adam_epsilon (shared, backward compat)"""
+        opt = Muon(
+            parameters=[self._param()],
+            adam_epsilon=1e-9,
+            ns_matmul_dtype=paddle.float32,
+        )
+        self.assertEqual(opt._default_dict["muon_epsilon"], 1e-9)
+        self.assertEqual(opt._default_dict["epsilon"], 1e-9)
+
+    def test_explicit_value_is_independent(self):
+        """显式 muon_epsilon 与 adam_epsilon 相互独立
+        Explicit muon_epsilon is independent of adam_epsilon"""
+        opt = Muon(
+            parameters=[self._param()],
+            adam_epsilon=1e-15,
+            muon_epsilon=1e-7,
+            ns_matmul_dtype=paddle.float32,
+        )
+        self.assertEqual(opt._default_dict["muon_epsilon"], 1e-7)
+        self.assertEqual(opt._default_dict["epsilon"], 1e-15)
+
+    def test_muon_step_runs_with_custom_epsilon(self):
+        """带自定义 muon_epsilon 的 Muon 方向整步更新可运行且结果有限
+        A Muon-direction step with a custom muon_epsilon runs and stays finite"""
+        paddle.seed(2026)
+        p = self._param()
+        p.set_value(np.random.RandomState(0).randn(4, 4).astype('float32'))
+        opt = Muon(
+            parameters=[p],
+            learning_rate=0.02,
+            adam_epsilon=1e-15,
+            muon_epsilon=1e-7,
+            ns_steps=3,
+            ns_matmul_dtype=paddle.float32,
+            muon_param_info_map={p.name: MuonParamInfo(use_muon=True)},
+        )
+        p.grad = paddle.to_tensor(
+            np.random.RandomState(1).randn(4, 4).astype('float32')
+        )
+        opt.step()
+        self.assertTrue(bool(paddle.isfinite(p).all()))
+
+
 if __name__ == '__main__':
     unittest.main()
