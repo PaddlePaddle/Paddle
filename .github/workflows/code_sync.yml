@@ -1,0 +1,53 @@
+name: Code Sync
+
+on:
+  push:
+    branches: [develop, release/**]
+
+permissions: read-all
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  COMMIT_ID: ${{ github.sha }}
+  BRANCH: ${{ github.ref_name }}
+
+jobs:
+  code-sync:
+    name: Clone commit and package
+    # 仅在非 fork 库上运行
+    if: ${{ github.event.repository.fork == false }}
+    runs-on:
+      group: HongKong-Clone
+    timeout-minutes: 30
+    steps:
+      - name: Clone specified commit into Paddle
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.sha }}
+          path: Paddle
+          fetch-depth: 1
+
+      - name: Package Paddle into tarball
+        run: |
+          tar -czf Paddle.tar.gz Paddle
+          ls -lh Paddle.tar.gz
+
+      - name: Set up Python environment
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Upload tarball to BOS
+        env:
+          AK: paddle
+          SK: paddle
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install bce-python-sdk==0.9.29
+          wget -q --no-proxy --no-check-certificate \
+            -O bos_tools.py \
+            https://paddle-qa.bj.bcebos.com/CodeSync/develop/PaddlePaddle/PaddleTest/tools/bos_tools.py
+          python bos_tools.py Paddle.tar.gz paddle-github-action/CodeSync/${BRANCH}/${COMMIT_ID}
