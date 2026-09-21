@@ -264,6 +264,61 @@ class TestAsStridedOverlapBackwardXPU(unittest.TestCase):
             )
 
 
+class TestAsStridedZeroStrideBroadcastBackward(unittest.TestCase):
+    """A broadcast (zero stride) dimension maps every one of its indices onto
+    the same element, so its backward folds the whole axis onto a single slot.
+    Accumulating that with an atomic add both serializes on the GPU and, in
+    low precision, saturates: once the running bf16/fp16 sum outgrows the
+    mantissa, adding one more contribution rounds back to the same value and the
+    result stalls far below the true count. The backward must sum the broadcast
+    axis first so the total is exact regardless of how many elements fold in."""
+
+    def setUp(self):
+        self.places = get_places()
+
+    def test_full_broadcast_low_precision(self):
+        # 4096 is a power of two, so the true sum is exact in bf16 and fp16 and
+        # the assertion is unaffected by the output rounding. Without the fix
+        # the running sum saturates near 2**8 (bf16) / 2**11 (fp16), far below.
+        for dtype in ('bfloat16', 'float16'):
+            for shape, stride in (((4096,), (0,)), ((64, 64), (0, 0))):
+                for place in self.places:
+                    with base.dygraph.guard(place):
+                        x = paddle.ones([1], dtype=dtype)
+                        x.stop_gradient = False
+                        y = paddle.as_strided(x, shape=shape, stride=stride)
+                        y.backward(paddle.ones_like(y))
+                        np.testing.assert_allclose(
+                            x.grad.astype('float32').numpy(),
+                            np.array([4096.0], dtype='float32'),
+                        )
+
+    def test_full_broadcast_float32(self):
+        for place in self.places:
+            with base.dygraph.guard(place):
+                x = paddle.to_tensor(np.random.random([1]).astype('float32'))
+                x.stop_gradient = False
+                y = paddle.as_strided(x, shape=(1000, 1000), stride=(0, 0))
+                y.backward(paddle.ones_like(y))
+                np.testing.assert_allclose(
+                    x.grad.numpy(), np.array([1e6], dtype='float32')
+                )
+
+    def test_partial_broadcast_keeps_real_axis(self):
+        # Only the second axis broadcasts. Reducing it must leave the first axis
+        # untouched: grad[i] is the number of columns for every row.
+        for place in self.places:
+            with base.dygraph.guard(place):
+                x = paddle.to_tensor(np.arange(4, dtype='float32') + 1.0)
+                x.stop_gradient = False
+                y = paddle.as_strided(x, shape=(4, 2048), stride=(1, 0))
+                y.backward(paddle.ones_like(y))
+                np.testing.assert_allclose(
+                    x.grad.numpy(),
+                    np.full([4], 2048.0, dtype='float32'),
+                )
+
+
 class TestAsStridedStorageRange(unittest.TestCase):
     """A view must stay inside the allocation of its input, otherwise reads and
     writes through it corrupt unrelated memory."""
