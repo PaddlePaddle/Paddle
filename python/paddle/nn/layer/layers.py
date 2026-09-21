@@ -69,10 +69,7 @@ if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator, Mapping, Sequence
 
     from paddle._typing import DTypeLike, ParamAttrLike, PlaceLike, ShapeLike
-    from paddle.distributed.flex_checkpoint.aoa.generation import (
-        AOAContext,
-        AOANameScope,
-    )
+    from paddle.distributed.flex_checkpoint.aoa.generation import AOAContext
     from paddle.nn.initializer import Initializer
 
 
@@ -2971,7 +2968,7 @@ class Layer:
         ctx: AOAContext,
         *,
         structured_name_prefix: str = "",
-        aoa_name_scope: AOANameScope | None = None,
+        checkpoint_lookup_drop_segment: str | None = None,
     ) -> list[str]:
         """Recursively generates checkpoint -> model AOA statements.
 
@@ -2986,8 +2983,9 @@ class Layer:
                 the whole generation pass.
             structured_name_prefix: Live module path prefix, ending in ``.``
                 when non-empty, as in ``sharded_state_dict``.
-            aoa_name_scope: Optional checkpoint-side scope for a re-rooted
-                subtree (MTP subtrees, output head), passed down unchanged.
+            checkpoint_lookup_drop_segment: Optional path segment the checkpoint
+                does not have, dropped before the checkpoint-name lookup only.
+                Set by the subtree owner and passed down unchanged.
 
         Returns:
             Statements for this layer and all its sub-layers.
@@ -3005,8 +3003,8 @@ class Layer:
                 structured_name_prefix,
                 ctx.pp_to_single_mapping,
                 ctx.checkpoint_name_mapping,
-                aoa_name_scope=aoa_name_scope,
                 model_name_prefix=ctx.model_name_prefix,
+                checkpoint_lookup_drop_segment=checkpoint_lookup_drop_segment,
             )
             if checkpoint_name == model_name:
                 continue
@@ -3016,7 +3014,7 @@ class Layer:
                 statements += sublayer.gen_aoa_statements(
                     ctx,
                     structured_name_prefix=f"{structured_name_prefix}{layer_name}.",
-                    aoa_name_scope=aoa_name_scope,
+                    checkpoint_lookup_drop_segment=checkpoint_lookup_drop_segment,
                 )
         return statements
 
@@ -3025,7 +3023,7 @@ class Layer:
         ctx: AOAContext,
         *,
         structured_name_prefix: str = "",
-        aoa_name_scope: AOANameScope | None = None,
+        checkpoint_lookup_drop_segment: str | None = None,
     ) -> list[str]:
         """Recursively generates model -> checkpoint AOA statements.
 
@@ -3038,8 +3036,9 @@ class Layer:
                 the whole generation pass.
             structured_name_prefix: Live module path prefix, ending in ``.``
                 when non-empty, as in ``sharded_state_dict``.
-            aoa_name_scope: Optional checkpoint-side scope for a re-rooted
-                subtree (MTP subtrees, output head), passed down unchanged.
+            checkpoint_lookup_drop_segment: Optional path segment the checkpoint
+                does not have, dropped before the checkpoint-name lookup only.
+                Set by the subtree owner and passed down unchanged.
 
         Returns:
             Statements for this layer and all its sub-layers.
@@ -3057,8 +3056,8 @@ class Layer:
                 structured_name_prefix,
                 ctx.pp_to_single_mapping,
                 ctx.checkpoint_name_mapping,
-                aoa_name_scope=aoa_name_scope,
                 model_name_prefix=ctx.model_name_prefix,
+                checkpoint_lookup_drop_segment=checkpoint_lookup_drop_segment,
             )
             if checkpoint_name == model_name:
                 continue
@@ -3068,7 +3067,7 @@ class Layer:
                 statements += sublayer.gen_inv_aoa_statements(
                     ctx,
                     structured_name_prefix=f"{structured_name_prefix}{layer_name}.",
-                    aoa_name_scope=aoa_name_scope,
+                    checkpoint_lookup_drop_segment=checkpoint_lookup_drop_segment,
                 )
         return statements
 
