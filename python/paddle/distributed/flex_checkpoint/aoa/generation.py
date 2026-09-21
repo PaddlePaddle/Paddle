@@ -15,14 +15,10 @@
 
 The AOA engine in this package consumes ``source -> target`` statements; this
 module backs the side that produces them, driven by the
-``Layer.gen_aoa_statements`` / ``gen_inv_aoa_statements`` recursion. It holds the
-two frozen, behavior-free containers threaded through that recursion, plus the
-stateless naming helpers used to read them:
-
-- ``AOAContext``: model config and naming protocols, built once at the
-  whole-model entry and forwarded unchanged to every component override.
-- ``AOANameScope``: path information for a subtree whose checkpoint side is
-  re-rooted (MTP subtrees, the output head).
+``Layer.gen_aoa_statements`` / ``gen_inv_aoa_statements`` recursion. It holds
+``AOAContext`` -- the frozen, behavior-free container of model config and naming
+protocols, built once at the whole-model entry and forwarded unchanged to every
+component override -- plus the stateless naming helpers used to read it.
 
 Carrying data only means a component reading ``ctx`` for the forward and inverse
 directions does not couple the two; forwarding a single ``ctx`` also turns a
@@ -52,9 +48,10 @@ class AOAContext:
     Every field is constant across one whole-model generation pass. The
     whole-model entry builds one context (per tower for multi-tower models) and
     forwards it unchanged down the module tree. Per-position path info
-    (``structured_name_prefix`` and the optional ``AOANameScope``) travels
-    alongside ``ctx`` rather than inside it. Maps are ready on construction: an
-    empty mapping is an empty ``dict``, never ``None``.
+    (``structured_name_prefix`` and the optional
+    ``checkpoint_lookup_drop_segment``) travels alongside ``ctx`` rather than
+    inside it. Maps are ready on construction: an empty mapping is an empty
+    ``dict``, never ``None``.
     """
 
     config: object
@@ -80,66 +77,8 @@ class AOAContext:
     ``"model.language_model"``)."""
 
 
-@dataclass(frozen=True)
-class AOANameScope:
-    """Path scope for a subtree whose checkpoint side is re-rooted.
-
-    Built at the whole-model entry for one subtree call, then forwarded as-is
-    during that subtree's recursion. Used wherever the checkpoint layout does
-    not follow the live module path: MTP subtrees (checkpoint keeps them under
-    their own root) and the output head. It is not a new model protocol and
-    holds no leaf mapping.
-    """
-
-    checkpoint_prefix: str
-    """Checkpoint subtree prefix, relative to the shared checkpoint name prefix
-    (unless ``is_checkpoint_prefix_absolute`` is set, in which case it is the
-    full prefix and the shared checkpoint name prefix is not prepended)."""
-
-    logical_model_prefix: str
-    """Logical model prefix used only to match ``checkpoint_name_mapping``."""
-
-    actual_model_prefix: str
-    """Real model single subtree prefix (after PP mapping resolution)."""
-
-    is_checkpoint_prefix_absolute: bool = False
-    """When True, ``checkpoint_prefix`` is already a full checkpoint prefix and
-    ``_scoped_checkpoint_name`` does not prepend ``checkpoint_name_prefix``.
-    Needed whenever the subtree's checkpoint names sit at the checkpoint root
-    rather than under the shared prefix: an MTP boundary that keeps its own
-    params at the root, or the output head, which the ``ForCausalLM`` layout
-    keeps a top-level sibling of the backbone (bare ``lm_head.weight``)."""
-
-
-# --------------------------------------------------------------------------- #
-# Naming & prefix helpers (stateless functions)
-#
-# Public to the component generators: ``join_name``, ``resolve_single_name``,
-# ``resolve_names``, ``resolve_checkpoint_name_from_anchor`` and
-# ``strip_name_suffix``.
-#
-# ``validate_checkpoint_name_mapping`` is public as well but does not belong to
-# the component recursion: it is an entry-side static check the generation entry
-# runs once per context, before any component reads the mapping.
-#
-# Anything underscore-prefixed is internal detail. The only non-trivial logic is
-# absolute-name template matching (``_match_template`` / ``_render_template``).
-# A re-rooted subtree passes an ``AOANameScope`` so its checkpoint side is
-# routed through the logical normal-layer root (``_resolve_scoped_names``).
-# --------------------------------------------------------------------------- #
-
-
 def join_name(prefix: str, name: str) -> str:
-    """Joins a prefix and a name into a dotted path.
-
-    Args:
-        prefix: Leading path segment; may be empty.
-        name: Trailing path segment; may be empty.
-
-    Returns:
-        ``"{prefix}.{name}"``, or whichever operand is non-empty when the other
-        is empty.
-    """
+    """Joins a prefix and a name into a dotted path."""
     if not prefix:
         return name
     if not name:
@@ -153,14 +92,6 @@ def _match_template(template: str, name: str) -> dict[str, str] | None:
     Placeholder segments (``$LAYER_ID`` / ``$EXPERT_ID``) match a decimal-only
     segment and capture its value; a repeated placeholder must capture the same
     value.
-
-    Args:
-        template: Dotted template, possibly containing placeholder segments.
-        name: Dotted name to test against ``template``.
-
-    Returns:
-        The capture dict on a match (possibly empty) or ``None`` on a miss.
-        Callers must test ``is not None`` since an empty dict is falsy.
     """
     t_parts = template.split(".")
     n_parts = name.split(".")
@@ -180,31 +111,12 @@ def _match_template(template: str, name: str) -> dict[str, str] | None:
 
 
 def _render_template(template: str, captures: Mapping[str, str]) -> str:
-    """Fills captured placeholders in a value template, segment by segment.
-
-    Args:
-        template: Dotted value template, possibly containing placeholders.
-        captures: Placeholder -> captured value mapping from ``_match_template``.
-
-    Returns:
-        The template with every captured placeholder replaced by its value.
-    """
+    """Fills captured placeholders in a value template, segment by segment."""
     return ".".join(captures.get(p, p) for p in template.split("."))
 
 
 def _strip_name_prefix(name: str, prefix: str) -> str:
-    """Removes a leading prefix from a dotted name.
-
-    Args:
-        name: Dotted name expected to be at or under ``prefix``.
-        prefix: Prefix path to strip.
-
-    Returns:
-        ``name`` with ``prefix`` removed (empty string when equal).
-
-    Raises:
-        ValueError: If ``name`` is not at or under ``prefix``.
-    """
+    """Removes a leading prefix from a dotted name."""
     if name == prefix:
         return ""
     if name.startswith(prefix + "."):
@@ -213,18 +125,7 @@ def _strip_name_prefix(name: str, prefix: str) -> str:
 
 
 def strip_name_suffix(name: str, suffix: str) -> str:
-    """Removes a trailing suffix from a dotted name.
-
-    Args:
-        name: Dotted name expected to end with ``suffix``.
-        suffix: Suffix path to strip.
-
-    Returns:
-        ``name`` with the trailing ``suffix`` removed (empty string when equal).
-
-    Raises:
-        ValueError: If ``name`` does not end with ``suffix``.
-    """
+    """Removes a trailing suffix from a dotted name."""
     if name == suffix:
         return ""
     if name.endswith("." + suffix):
@@ -241,19 +142,6 @@ def _map_checkpoint_name(
     value is a complete checkpoint name, so a hit is already the final
     checkpoint name and needs no further prefixing -- including when it sits
     outside the shared checkpoint root.
-
-    Args:
-        single_name: Single-space model name, starting at the model root prefix.
-        checkpoint_name_mapping: Absolute model name template -> absolute
-            checkpoint name template.
-
-    Returns:
-        The rendered checkpoint name on exactly one hit, or ``None`` when no
-        template matches. A miss is not an error: the caller falls back to the
-        identity name.
-
-    Raises:
-        ValueError: If more than one template matches (ambiguous config).
     """
     hits = []
     for key_template, value_template in checkpoint_name_mapping.items():
@@ -278,18 +166,6 @@ def _resolve_checkpoint_name(
     A mapping hit is the full checkpoint name already. A miss falls back to the
     identity name, which still has to swap the model root for the checkpoint
     root -- the only place the two root prefixes are needed.
-
-    Args:
-        single_name: Single-space model name, starting at the model root prefix.
-        checkpoint_name_prefix: Checkpoint root prefix, prepended by the
-            identity fallback only.
-        checkpoint_name_mapping: Absolute model name template -> absolute
-            checkpoint name template.
-        model_name_prefix: Model root prefix, stripped by the identity fallback
-            only.
-
-    Returns:
-        The full checkpoint name.
     """
     mapped_name = _map_checkpoint_name(single_name, checkpoint_name_mapping)
     if mapped_name is not None:
@@ -300,127 +176,35 @@ def _resolve_checkpoint_name(
     )
 
 
-def _scoped_checkpoint_name(
-    single_space_name: str,
-    checkpoint_name_prefix: str,
-    checkpoint_name_mapping: Mapping[str, str],
-    aoa_name_scope: AOANameScope,
-    model_name_prefix: str,
+def _drop_checkpoint_lookup_segment(
+    single_name: str, segment: str | None
 ) -> str:
-    """Maps a re-rooted subtree's single-space name to its checkpoint name.
+    """Drops one live path segment before the checkpoint-name lookup.
 
-    Extracts the subtree-relative path off the real model subtree root, replaces
-    it under the logical normal-layer root so the same ``checkpoint_name_mapping``
-    leaf rules apply, then re-anchors the mapped leaf name under the checkpoint
-    subtree root. Relies on leaf templates preserving their root prefix in the
-    value (``model.layers.$LAYER_ID.x`` ->
-    ``<checkpoint root>.layers.$LAYER_ID.y``), which is what makes the logical
-    root strippable from the mapped result.
+    A subtree may be nested one module deeper in the live tree than in the
+    checkpoint (an MTP block holding its transformer layer as a child, where
+    the checkpoint keeps that layer's tensors directly under the layer).
+    Removing the extra segment makes the subtree's names shaped like an
+    ordinary layer's, so the same ``checkpoint_name_mapping`` templates and the
+    same identity fallback apply. Only the lookup input changes; the model-side
+    name keeps the segment.
 
-    Args:
-        single_space_name: Single-space model name under the real subtree root.
-        checkpoint_name_prefix: Checkpoint root prefix to prepend.
-        checkpoint_name_mapping: Absolute model name template -> absolute
-            checkpoint name template.
-        aoa_name_scope: Subtree path scope (real / logical / checkpoint roots).
-        model_name_prefix: Model root prefix.
-
-    Returns:
-        The full checkpoint name anchored under the checkpoint subtree root.
-
-    Raises:
-        ValueError: If a leaf mapping does not preserve the logical root.
+    Absent segments are a no-op so an owner can pass the same value down to
+    children that do not carry it.
     """
-    actual_relative = _strip_name_prefix(
-        single_space_name, aoa_name_scope.actual_model_prefix
-    )
-    logical_name = join_name(
-        aoa_name_scope.logical_model_prefix, actual_relative
-    )
-    mapped_name = _resolve_checkpoint_name(
-        logical_name,
-        checkpoint_name_prefix,
-        checkpoint_name_mapping,
-        model_name_prefix,
-    )
-    # The logical root as it appears in checkpoint space.
-    # checkpoint_name_mapping only contains leaf-level templates and never
-    # rewrites the root prefix (e.g. "layers.$LAYER_ID" stays as-is in values,
-    # under the checkpoint root), so the mapped result always starts with it.
-    logical_checkpoint_root = join_name(
-        checkpoint_name_prefix,
-        _strip_name_prefix(
-            aoa_name_scope.logical_model_prefix, model_name_prefix
-        ),
-    )
-    try:
-        checkpoint_local = _strip_name_prefix(
-            mapped_name, logical_checkpoint_root
-        )
-    except ValueError:
+    if segment is None:
+        return single_name
+    parts = single_name.split(".")
+    count = parts.count(segment)
+    if count == 0:
+        return single_name
+    if count > 1:
         raise ValueError(
-            f"checkpoint_name_mapping does not preserve the logical root: "
-            f"mapped_name={mapped_name!r} does not start with "
-            f"logical_checkpoint_root={logical_checkpoint_root!r}. "
-            f"Scoped resolution requires leaf mapping values to keep both the "
-            f"checkpoint root prefix and the logical_model_prefix structure "
-            f"(single_space_name={single_space_name!r}, "
-            f"logical_model_prefix={aoa_name_scope.logical_model_prefix!r})."
-        ) from None
-    if aoa_name_scope.is_checkpoint_prefix_absolute:
-        # The scope prefix is already a full checkpoint prefix; the shared
-        # checkpoint prefix is deliberately not prepended (an MTP boundary
-        # whose own params, or an output head, sit at the checkpoint root).
-        return join_name(aoa_name_scope.checkpoint_prefix, checkpoint_local)
-    return join_name(
-        checkpoint_name_prefix,
-        join_name(aoa_name_scope.checkpoint_prefix, checkpoint_local),
-    )
-
-
-def _resolve_scoped_names(
-    local_name: str,
-    checkpoint_name_prefix: str,
-    structured_name_prefix: str,
-    pp_to_single_mapping: Mapping[str, str],
-    checkpoint_name_mapping: Mapping[str, str],
-    aoa_name_scope: AOANameScope,
-    model_name_prefix: str,
-) -> tuple[str, str]:
-    """Re-rooted-subtree variant of ``resolve_names``.
-
-    The real model key still resolves through the live structured prefix and
-    ``pp_to_single_mapping``; only the checkpoint side is routed through the
-    logical normal-layer root.
-
-    Args:
-        local_name: Tensor name local to the current layer.
-        checkpoint_name_prefix: Checkpoint root prefix.
-        structured_name_prefix: Pre-mapping live module path accumulated from
-            ancestors, ending in ``.`` when non-empty.
-        pp_to_single_mapping: Structured name -> single name mapping.
-        checkpoint_name_mapping: Absolute model name template -> absolute
-            checkpoint name template.
-        aoa_name_scope: Subtree path scope.
-        model_name_prefix: Model root prefix.
-
-    Returns:
-        A ``(checkpoint_name, single_name)`` pair.
-    """
-    single_name = resolve_single_name(
-        local_name,
-        structured_name_prefix,
-        pp_to_single_mapping,
-        model_name_prefix,
-    )
-    checkpoint_name = _scoped_checkpoint_name(
-        single_name,
-        checkpoint_name_prefix,
-        checkpoint_name_mapping,
-        aoa_name_scope,
-        model_name_prefix,
-    )
-    return checkpoint_name, single_name
+            f"checkpoint lookup segment {segment!r} appears {count} times in "
+            f"{single_name!r}; which one to drop is ambiguous"
+        )
+    parts.remove(segment)
+    return ".".join(parts)
 
 
 def resolve_single_name(
@@ -429,25 +213,7 @@ def resolve_single_name(
     pp_to_single_mapping: Mapping[str, str],
     model_name_prefix: str,
 ) -> str:
-    """Resolves a real model tensor's structured name to its single name.
-
-    Args:
-        local_name: Tensor name local to the current layer.
-        structured_name_prefix: Live module-tree prefix accumulated from
-            ancestors. Like ``Layer.state_dict`` and ``Layer.sharded_state_dict``
-            prefixes, a non-empty value ends in ``.``.
-        pp_to_single_mapping: Structured name -> single name mapping. When non-empty the
-            pre-mapping structured name must hit exactly (no fallback). When empty, only
-            names starting with ``model_name_prefix`` pass through as identity.
-        model_name_prefix: Model root prefix for the identity fallback.
-
-    Returns:
-        The single name for the tensor.
-
-    Raises:
-        KeyError: If ``pp_to_single_mapping`` is non-empty and the structured name misses, or
-            ``pp_to_single_mapping`` is empty and the name doesn't start with model_name_prefix.
-    """
+    """Resolves a real model tensor's structured name to its single name."""
     structured_name = structured_name_prefix + local_name
     if pp_to_single_mapping:
         try:
@@ -477,38 +243,10 @@ def resolve_names(
     checkpoint_name_mapping: Mapping[str, str],
     *,
     model_name_prefix: str,
-    aoa_name_scope: AOANameScope | None = None,
+    checkpoint_lookup_drop_segment: str | None = None,
 ) -> tuple[str, str]:
-    """Resolves a real model tensor to its ``(checkpoint_name, single_name)`` pair.
-
-    Args:
-        local_name: Tensor name local to the current layer.
-        checkpoint_name_prefix: Checkpoint root prefix shared by the generation
-            pass.
-        structured_name_prefix: Pre-mapping live module path accumulated from
-            ancestors, ending in ``.`` when non-empty.
-        pp_to_single_mapping: Structured name -> single name mapping.
-        checkpoint_name_mapping: Absolute model name template -> absolute
-            checkpoint name template.
-        model_name_prefix: Model root prefix.
-        aoa_name_scope: Optional re-rooted subtree scope; when set the
-            checkpoint side is routed through the logical normal-layer root.
-
-    Returns:
-        A stable ``(checkpoint_name, single_name)`` pair. Both directions
-        independently resolve this pair and choose their emission order.
-    """
-    if aoa_name_scope is not None:
-        return _resolve_scoped_names(
-            local_name,
-            checkpoint_name_prefix,
-            structured_name_prefix,
-            pp_to_single_mapping,
-            checkpoint_name_mapping,
-            aoa_name_scope,
-            model_name_prefix,
-        )
-
+    """Resolves a real model tensor to its ``(checkpoint_name, single_name)``
+    pair."""
     # Pre-mapping live structured name -> canonical model name.
     single_name = resolve_single_name(
         local_name,
@@ -519,7 +257,9 @@ def resolve_names(
 
     # single name -> checkpoint name
     checkpoint_name = _resolve_checkpoint_name(
-        single_name,
+        _drop_checkpoint_lookup_segment(
+            single_name, checkpoint_lookup_drop_segment
+        ),
         checkpoint_name_prefix,
         checkpoint_name_mapping,
         model_name_prefix,
@@ -536,7 +276,7 @@ def resolve_checkpoint_name_from_anchor(
     checkpoint_name_mapping: Mapping[str, str],
     *,
     model_name_prefix: str,
-    aoa_name_scope: AOANameScope | None = None,
+    checkpoint_lookup_drop_segment: str | None = None,
 ) -> str:
     """Builds a checkpoint-only name (Q/K/V, gate/up, fused alpha) from an anchor.
 
@@ -544,34 +284,13 @@ def resolve_checkpoint_name_from_anchor(
     enclosing single-name scope, appends the checkpoint-only local name, then
     maps to the checkpoint side. Checkpoint-only names are never sent through
     ``pp_to_single_mapping``.
-
-    Args:
-        anchor_single_name: Resolved single name of a real anchor tensor.
-        anchor_local_name: Local name of that anchor, stripped to reach its
-            scope.
-        checkpoint_local_name: Checkpoint-only local name to place inside the
-            anchor's scope.
-        checkpoint_name_prefix: Checkpoint root prefix.
-        checkpoint_name_mapping: Absolute model name template -> absolute
-            checkpoint name template.
-        model_name_prefix: Model root prefix.
-        aoa_name_scope: Optional re-rooted subtree scope.
-
-    Returns:
-        The full checkpoint name for the synthetic checkpoint-only tensor.
     """
     scope_single = strip_name_suffix(anchor_single_name, anchor_local_name)
     synthetic_single = join_name(scope_single, checkpoint_local_name)
-    if aoa_name_scope is not None:
-        return _scoped_checkpoint_name(
-            synthetic_single,
-            checkpoint_name_prefix,
-            checkpoint_name_mapping,
-            aoa_name_scope,
-            model_name_prefix,
-        )
     return _resolve_checkpoint_name(
-        synthetic_single,
+        _drop_checkpoint_lookup_segment(
+            synthetic_single, checkpoint_lookup_drop_segment
+        ),
         checkpoint_name_prefix,
         checkpoint_name_mapping,
         model_name_prefix,
@@ -606,16 +325,6 @@ def validate_checkpoint_name_mapping(
       otherwise it would survive rendering into a bogus checkpoint name;
     - every placeholder used in a value template is captured by its key template
       (otherwise the value cannot be rendered).
-
-    Args:
-        checkpoint_name_mapping: Absolute model name template -> checkpoint name
-            template mapping to validate.
-        model_name_prefix: Model root prefix every key must sit under. For a
-            multi-tower model this is the current tower's root, since the
-            generation side builds one context per tower.
-
-    Raises:
-        ValueError: On the first violation of any rule.
     """
     for key_template, value_template in checkpoint_name_mapping.items():
         if not key_template or not value_template:
