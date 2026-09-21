@@ -20,6 +20,7 @@
 
 #include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/common/data_type.h"
+#include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
@@ -525,6 +526,97 @@ inline void StridedTensorAccumulate(const DenseTensor& out_grad,
   auto* dev_ctx = pool.Get(input_grad->place());
   const Backend backend = TransToPhiBackend(input_grad->place());
   auto& factory = KernelFactory::Instance();
+
+  // Collapse broadcast (zero stride) dimensions before scattering. A dimension
+  // whose stride is 0 maps every one of its indices to the same storage slot,
+  // so all of its contributions accumulate onto that slot regardless of the
+  // other indices. Scattering each of them and letting the atomic accumulate do
+  // the summation degenerates to value_numel atomic adds on a single address
+  // for a full broadcast (e.g. as_strided([1], (M, N), (0, 0))): that
+  // serializes completely on the GPU and, in low precision, saturates the
+  // destination because repeated bf16/fp16 atomic adds stop making progress
+  // once the running sum outgrows the mantissa. Summing over the broadcast axes
+  // first is exact (addition is associative and commutative) and hands the
+  // reduction to a parallel, higher-precision reduce kernel, then the remaining
+  // non-broadcast geometry is scattered exactly as before. This mirrors the
+  // zero-stride handling in at::as_strided_backward. Gated on `sum` being
+  // registered for this dtype/backend; otherwise the untouched path below still
+  // produces the correct (if slower) result. Restricted to floating and complex
+  // dtypes: those are the only ones a gradient ever carries, the only ones the
+  // atomic path loses precision on, and the only ones `sum` does not promote to
+  // a wider output type (which would disagree with the preset meta below).
+  const DataType grad_dtype = input_grad->dtype();
+  const bool reducible_dtype =
+      grad_dtype == DataType::FLOAT16 || grad_dtype == DataType::BFLOAT16 ||
+      grad_dtype == DataType::FLOAT32 || grad_dtype == DataType::FLOAT64 ||
+      grad_dtype == DataType::COMPLEX64 || grad_dtype == DataType::COMPLEX128;
+  std::vector<int64_t> reduce_axes;
+  for (size_t i = 0; i < dims.size(); ++i) {
+    if (stride[i] == 0 && dims[i] > 1) {
+      reduce_axes.push_back(static_cast<int64_t>(i));
+    }
+  }
+  if (reducible_dtype && !reduce_axes.empty() &&
+      factory.HasKernel(
+          "sum", KernelKey(backend, DataLayout::ALL_LAYOUT, grad_dtype))) {
+    // Geometry with the broadcast axes removed (original order preserved). The
+    // reduced gradient is dense and laid out in row-major order over exactly
+    // these dimensions, matching what the scatter path densifies below.
+    std::vector<int64_t> reduced_dims;
+    std::vector<int64_t> reduced_stride;
+    for (size_t i = 0; i < dims.size(); ++i) {
+      if (stride[i] == 0 && dims[i] > 1) {
+        continue;
+      }
+      reduced_dims.push_back(dims[i]);
+      reduced_stride.push_back(stride[i]);
+    }
+
+    // Densify out_grad in view order and reshape to the logical view dims so
+    // the reduce axes line up with the broadcast dimensions.
+    DenseTensor dense_grad;
+    dense_grad.set_meta(out_grad.meta());
+    StridedTensorContiguous<T>(out_grad, &dense_grad);
+    dense_grad.Resize(DDim(dims.data(), static_cast<int>(dims.size())));
+
+    // Sum over the broadcast axes. keep_dim = false drops them, leaving exactly
+    // `reduced_dims` (a scalar when every axis is a broadcast). out_dtype
+    // UNDEFINED keeps the element type T.
+    DenseTensor reduced;
+    DenseTensorMeta reduced_meta(input_grad->dtype(),
+                                 common::make_ddim(reduced_dims));
+    reduced.set_meta(reduced_meta);
+    using sum_signature = void (*)(const DeviceContext&,
+                                   const DenseTensor&,
+                                   const IntArray&,
+                                   DataType,
+                                   bool,
+                                   DenseTensor*);
+    PD_VISIT_KERNEL(
+        "sum",
+        KernelKey(backend, DataLayout::ALL_LAYOUT, input_grad->dtype()),
+        sum_signature,
+        false,
+        *dev_ctx,
+        dense_grad,
+        IntArray(reduce_axes),
+        DataType::UNDEFINED,
+        false,
+        &reduced);
+
+    // When every axis collapses the reduced view is a single element; give it a
+    // unit dimension so the recursion terminates on the non-overlapping base
+    // case that writes it to `offset`.
+    if (reduced_dims.empty()) {
+      reduced_dims.push_back(1);
+      reduced_stride.push_back(1);
+      reduced.Resize(common::make_ddim(reduced_dims));
+    }
+    StridedTensorAccumulate<T>(
+        reduced, reduced_dims, reduced_stride, offset, input_grad);
+    return;
+  }
+
   // Only the GPU index_put accumulates atomically (CudaAtomicAdd). The CPU
   // kernel uses a plain `+=` inside an OpenMP loop, which loses updates on
   // exactly the duplicated indices that an overlapping view produces by
