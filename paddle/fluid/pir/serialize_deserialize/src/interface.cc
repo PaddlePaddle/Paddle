@@ -17,6 +17,7 @@
 #include "paddle/common/enforce.h"
 #include "paddle/fluid/pir/serialize_deserialize/include/ir_deserialize.h"
 #include "paddle/fluid/pir/serialize_deserialize/include/ir_serialize.h"
+#include "paddle/fluid/pir/serialize_deserialize/src/unicode_file_utils.h"
 #include "paddle/phi/common/port.h"
 
 namespace pir {
@@ -61,7 +62,7 @@ void WriteModule(const pir::Program& program,
   }
 
   MkDirRecursively(DirName(file_path).c_str());
-  std::ofstream fout(file_path, std::ios::binary);
+  auto fout = OpenOutputFile(file_path, std::ios::out | std::ios::binary);
   PADDLE_ENFORCE_EQ(static_cast<bool>(fout),
                     true,
                     common::errors::Unavailable(
@@ -73,7 +74,11 @@ void WriteModule(const pir::Program& program,
 bool ReadModule(const std::string& file_path,
                 pir::Program* program,
                 int64_t pir_version) {
-  std::ifstream f(file_path);
+  auto f = OpenInputFile(file_path, std::ios::in);
+  PADDLE_ENFORCE_EQ(static_cast<bool>(f),
+                    true,
+                    common::errors::Unavailable(
+                        "Cannot open %s to load program.", file_path));
   Json data = Json::parse(f);
   if (pir_version < 0) {
     pir_version = DEVELOP_VERSION;
