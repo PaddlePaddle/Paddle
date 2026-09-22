@@ -20,6 +20,7 @@ import importlib.abc
 import importlib.util
 import inspect
 import sys
+import threading
 import types
 import warnings
 from contextlib import contextmanager
@@ -225,12 +226,34 @@ class TorchProxyMetaFinder:
 
     def __init__(self, scope: set[str] | None = None):
         self._set_scope(scope)
+        # Names whose spec is currently being resolved by
+        # `_find_spec_for_specific_module`. Thread local, because imports made
+        # from different threads resolve independently.
+        self._resolving = threading.local()
+
+    def _resolving_names(self) -> set[str]:
+        names = getattr(self._resolving, "names", None)
+        if names is None:
+            names = set()
+            self._resolving.names = names
+        return names
 
     def _set_scope(self, scope: set[str] | None):
         self._local_enabled_scope = scope or set()
         self._globally_enabled = scope is None
 
     def find_spec(self, fullname, path, target=None):
+        # `_find_spec_for_specific_module` looks up the real spec with
+        # `importlib.util.find_spec`, which re-enters this finder for the very
+        # same name. Answering again restarts the whole lookup, and for a name
+        # that has no spec at all it never converges, so the lookups fan out
+        # instead of returning: a single probe for a missing submodule of a
+        # scoped package was measured to expand into more than 13000 calls,
+        # each one paying a full `sys.modules` sweep to toggle the proxy.
+        # Step aside and let the outer call finish the lookup.
+        if fullname in self._resolving_names():
+            return None
+
         if _is_torch_proxy_blocked_module(fullname):
             return self._find_spec_for_torch_proxy_blocked_module(fullname)
 
@@ -267,7 +290,14 @@ class TorchProxyMetaFinder:
     ):
         # Return a special loader that imports the blocked module without torch proxy
         with use_compat_guard(enable=False):
-            spec = importlib.util.find_spec(fullname)
+            # Suppress this finder for `fullname` only, so that the lookup
+            # below cannot re-enter it and restart the very same resolution.
+            resolving = self._resolving_names()
+            resolving.add(fullname)
+            try:
+                spec = importlib.util.find_spec(fullname)
+            finally:
+                resolving.discard(fullname)
             if spec is None:
                 return None
             original_loader = spec.loader
