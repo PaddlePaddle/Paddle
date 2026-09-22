@@ -41,7 +41,12 @@ int GetMaxLen(const Context& dev_ctx,
                  max_len_tensor->data<int>(),
                  sizeof(int),
                  XPUMemcpyKind::XPU_DEVICE_TO_HOST);
-  PADDLE_ENFORCE_EQ(r, 0, common::errors::Fatal("xpu_memcpy failed."));
+  PADDLE_ENFORCE_EQ(
+      r,
+      0,
+      common::errors::Fatal(
+          "Failed to copy the maximum sequence length from XPU to CPU in "
+          "block_multihead_attention_xpu."));
   return max_len_cpu;
 }
 
@@ -318,46 +323,152 @@ void BlockMultiheadAttentionXPUKernel(
     xpu::VectorParam<int32_t> pos_emb_offset =
         xpu::VectorParam<int32_t>{nullptr, 0, nullptr};
 
-    qkv_split_rope_kernel<T, Context>(dev_ctx,
-                                      qkv,
-                                      rope_emb.get(),
-                                      seq_lens_encoder,
-                                      lods,
-                                      pos_emb_offset,
-                                      bsz,
-                                      rope_emb.get().dims()[2],
-                                      token_num,
-                                      q_num_head,
-                                      kv_num_head,
-                                      dim_head,
-                                      use_neox_style,
-                                      &unpadding_q,
-                                      &unpadding_k,
-                                      &unpadding_v);
+    if (rope_emb) {
+      qkv_split_rope_kernel<T, Context>(dev_ctx,
+                                        qkv_buf,
+                                        rope_emb.get(),
+                                        seq_lens_encoder,
+                                        lods,
+                                        pos_emb_offset,
+                                        bsz,
+                                        rope_emb.get().dims()[2],
+                                        token_num,
+                                        q_num_head,
+                                        kv_num_head,
+                                        dim_head,
+                                        use_neox_style,
+                                        &unpadding_q,
+                                        &unpadding_k,
+                                        &unpadding_v);
+    } else {
+      int ret = baidu::xpu::api::split<XPUType>(
+          xpu_context,
+          reinterpret_cast<const XPUType*>(qkv_buf.data<T>()),
+          {reinterpret_cast<XPUType*>(unpadding_q.data<T>()),
+           reinterpret_cast<XPUType*>(unpadding_k.data<T>()),
+           reinterpret_cast<XPUType*>(unpadding_v.data<T>())},
+          {token_num, total_num_head, dim_head},
+          {q_num_head, kv_num_head, kv_num_head},
+          1);
+      PADDLE_ENFORCE_XDNN_SUCCESS(ret, "split");
+    }
 
     VLOG(3) << "rope end";
     VLOG(3) << "causal: " << causal;
     if (!use_pre_cache) {
-      phi::FlashAttnUnpaddedKernel<T>(dev_ctx,
-                                      unpadding_q,
-                                      unpadding_k,
-                                      unpadding_v,
-                                      cu_seqlens_q,
-                                      cu_seqlens_k,
-                                      paddle::none /*fixed_seed_offset*/,
-                                      causal ? paddle::none : mask,
-                                      max_enc_len_this_time_data,
-                                      max_enc_len_this_time_data,
-                                      1.0f / sqrt(static_cast<float>(dim_head)),
-                                      0.0,
-                                      causal,
-                                      false,
-                                      true /* is_test*/,
-                                      "" /*rng_name*/,
-                                      &fmha_buf,
-                                      &softmax_out,
-                                      &softmax_lse,
-                                      &seed_offset);
+      std::vector<int64_t> attn_mask_shape;
+      float* attn_mask_data = nullptr;
+      if (causal) {
+        attn_mask_shape = {bsz,
+                           q_num_head,
+                           max_enc_len_this_time_data,
+                           max_enc_len_this_time_data};
+        std::vector<float> attn_mask_cpu(bsz * q_num_head *
+                                             max_enc_len_this_time_data *
+                                             max_enc_len_this_time_data,
+                                         0.0f);
+        for (int64_t batch_idx = 0; batch_idx < bsz; ++batch_idx) {
+          for (int64_t head_idx = 0; head_idx < q_num_head; ++head_idx) {
+            for (int64_t query_idx = 0; query_idx < max_enc_len_this_time_data;
+                 ++query_idx) {
+              for (int64_t key_idx = query_idx + 1;
+                   key_idx < max_enc_len_this_time_data;
+                   ++key_idx) {
+                int64_t offset = ((batch_idx * q_num_head + head_idx) *
+                                      max_enc_len_this_time_data +
+                                  query_idx) *
+                                     max_enc_len_this_time_data +
+                                 key_idx;
+                attn_mask_cpu[offset] = -10000.0f;
+              }
+            }
+          }
+        }
+        attn_mask_data = RAII_GUARD.alloc_l3_or_gm<float>(attn_mask_cpu.size());
+        int mask_ret = xpu_memcpy(attn_mask_data,
+                                  attn_mask_cpu.data(),
+                                  attn_mask_cpu.size() * sizeof(float),
+                                  XPUMemcpyKind::XPU_HOST_TO_DEVICE);
+        PADDLE_ENFORCE_EQ(
+            mask_ret,
+            0,
+            common::errors::Fatal(
+                "Failed to copy the generated causal attention mask from CPU "
+                "to XPU in block_multihead_attention_xpu."));
+      }
+      xpu::QKVAttnParam qkv_attn_param(lods,
+                                       q_num_head,
+                                       dim_head,
+                                       xpu::Activation_t::LINEAR,
+                                       -1,
+                                       false,
+                                       max_enc_len_this_time_data,
+                                       q_num_head * dim_head,
+                                       false,
+                                       false,
+                                       2,
+                                       attn_mask_shape);
+      qkv_attn_param.alpha = 1.0f / sqrt(static_cast<float>(dim_head));
+      qkv_attn_param.key_value_head_num = kv_num_head;
+      XPUType* q_trans_buf = RAII_GUARD.alloc_l3_or_gm<XPUType>(
+          bsz * q_num_head * max_enc_len_this_time_data * dim_head);
+      XPUType* k_trans_buf = RAII_GUARD.alloc_l3_or_gm<XPUType>(
+          bsz * kv_num_head * max_enc_len_this_time_data * dim_head);
+      XPUType* v_trans_buf = RAII_GUARD.alloc_l3_or_gm<XPUType>(
+          bsz * kv_num_head * max_enc_len_this_time_data * dim_head);
+      int ret = xpu::transpose<XPUType>(
+          xpu_context,
+          reinterpret_cast<const XPUType*>(unpadding_q.data<T>()),
+          q_trans_buf,
+          {bsz, max_enc_len_this_time_data, q_num_head, dim_head},
+          {0, 2, 1, 3});
+      PADDLE_ENFORCE_XDNN_SUCCESS(ret, "transpose");
+      ret = xpu::transpose<XPUType>(
+          xpu_context,
+          reinterpret_cast<const XPUType*>(unpadding_k.data<T>()),
+          k_trans_buf,
+          {bsz, max_enc_len_this_time_data, kv_num_head, dim_head},
+          {0, 2, 1, 3});
+      PADDLE_ENFORCE_XDNN_SUCCESS(ret, "transpose");
+      ret = xpu::transpose<XPUType>(
+          xpu_context,
+          reinterpret_cast<const XPUType*>(unpadding_v.data<T>()),
+          v_trans_buf,
+          {bsz, max_enc_len_this_time_data, kv_num_head, dim_head},
+          {0, 2, 1, 3});
+      PADDLE_ENFORCE_XDNN_SUCCESS(ret, "transpose");
+      XPUType* qk_buf = RAII_GUARD.alloc_l3_or_gm<XPUType>(
+          bsz * q_num_head * max_enc_len_this_time_data *
+          max_enc_len_this_time_data);
+      float* maxptr_buf = RAII_GUARD.alloc_l3_or_gm<float>(MAXPTR_N);
+      ret = xpu::qk_attention<XPUType, XPUType, XPUType, int16_t, float>(
+          xpu_context,
+          q_trans_buf,
+          k_trans_buf,
+          qk_buf,
+          nullptr,
+          nullptr,
+          maxptr_buf,
+          qkv_attn_param,
+          attn_mask_data);
+      PADDLE_ENFORCE_XDNN_SUCCESS(ret, "qk_attention");
+      XPUType* out_tmp_buf = RAII_GUARD.alloc_l3_or_gm<XPUType>(
+          bsz * max_enc_len_this_time_data * q_num_head * dim_head);
+      ret = xpu::qk_v_attention<XPUType, XPUType, XPUType, int16_t>(
+          xpu_context,
+          qk_buf,
+          v_trans_buf,
+          out_tmp_buf,
+          maxptr_buf,
+          nullptr,
+          nullptr,
+          qkv_attn_param);
+      PADDLE_ENFORCE_XDNN_SUCCESS(ret, "qk_v_attention");
+      ret = xpu::copy(xpu_context,
+                      out_tmp_buf,
+                      reinterpret_cast<XPUType*>(fmha_buf.data<T>()),
+                      fmha_buf.numel());
+      PADDLE_ENFORCE_XDNN_SUCCESS(ret, "copy");
     } else {
       PADDLE_THROW(
           common::errors::Unimplemented("Not supports use_pre_cache now."));
@@ -397,24 +508,6 @@ void BlockMultiheadAttentionXPUKernel(
           "BLHD",
           "HLD");
       PADDLE_ENFORCE_XDNN_SUCCESS(ret, "reshape_cached_kv");
-      ret = xpu::batch_findmax<XPUType>(
-          xpu_context,
-          reinterpret_cast<XPUType*>(const_cast<T*>(key_cache.data<T>())),
-          token_num,
-          kv_num_head * dim_head,
-          bsz,
-          lods.xpu,
-          p_batch_max_ptrs);
-      PADDLE_ENFORCE_XDNN_SUCCESS(ret, "batch_findmax");
-      ret = xpu::copy2d<float>(
-          xpu_context,
-          p_batch_max_ptrs,
-          const_cast<float*>(cache_k_per_batch_maxs.data<float>()),
-          bsz,
-          1,
-          MAXPTR_N,
-          1);
-      PADDLE_ENFORCE_XDNN_SUCCESS(ret, "copy2d");
       ret = xpu::reshape_cached_kv<XPUType, XPUType, int32_t>(
           xpu_context,
           reinterpret_cast<const XPUType*>(unpadding_v.data<T>()),
@@ -432,24 +525,6 @@ void BlockMultiheadAttentionXPUKernel(
           "BLHD",
           "HLD");
       PADDLE_ENFORCE_XDNN_SUCCESS(ret, "reshape_cached_kv");
-      ret = xpu::batch_findmax<XPUType>(
-          xpu_context,
-          reinterpret_cast<XPUType*>(const_cast<T*>(value_cache.data<T>())),
-          token_num,
-          kv_num_head * dim_head,
-          bsz,
-          lods.xpu,
-          p_batch_max_ptrs);
-      PADDLE_ENFORCE_XDNN_SUCCESS(ret, "batch_findmax");
-      ret = xpu::copy2d<float>(
-          xpu_context,
-          p_batch_max_ptrs,
-          const_cast<float*>(cache_v_per_batch_maxs.data<float>()),
-          bsz,
-          1,
-          MAXPTR_N,
-          1);
-      PADDLE_ENFORCE_XDNN_SUCCESS(ret, "copy2d");
     }
     VLOG(3) << "cache end";
   }
@@ -490,22 +565,35 @@ void BlockMultiheadAttentionXPUKernel(
                                   static_cast<int64_t>(start_token_ctx.size()),
                                   nullptr}
             .to_xpu(RAII_GUARD);
-    qkv_split_rope_kernel<T, Context>(dev_ctx,
-                                      qkv,
-                                      rope_emb.get(),
-                                      seq_lens_encoder,
-                                      lods,
-                                      start_token_ctx_VP,
-                                      bsz,
-                                      rope_emb.get().dims()[2],
-                                      token_num,
-                                      q_num_head,
-                                      q_num_head,
-                                      dim_head,
-                                      use_neox_style,
-                                      &unpadding_q,
-                                      &unpadding_k,
-                                      &unpadding_v);
+    if (rope_emb) {
+      qkv_split_rope_kernel<T, Context>(dev_ctx,
+                                        qkv_buf,
+                                        rope_emb.get(),
+                                        seq_lens_encoder,
+                                        lods,
+                                        start_token_ctx_VP,
+                                        bsz,
+                                        rope_emb.get().dims()[2],
+                                        token_num,
+                                        q_num_head,
+                                        q_num_head,
+                                        dim_head,
+                                        use_neox_style,
+                                        &unpadding_q,
+                                        &unpadding_k,
+                                        &unpadding_v);
+    } else {
+      int ret = baidu::xpu::api::split<XPUType>(
+          xpu_context,
+          reinterpret_cast<const XPUType*>(qkv_buf.data<T>()),
+          {reinterpret_cast<XPUType*>(unpadding_q.data<T>()),
+           reinterpret_cast<XPUType*>(unpadding_k.data<T>()),
+           reinterpret_cast<XPUType*>(unpadding_v.data<T>())},
+          {token_num, total_num_head, dim_head},
+          {q_num_head, kv_num_head, kv_num_head},
+          1);
+      PADDLE_ENFORCE_XDNN_SUCCESS(ret, "split");
+    }
 
     std::vector<int32_t> ordered_index_ctx(bsz, 0);
     std::iota(ordered_index_ctx.begin(), ordered_index_ctx.end(), 0);
@@ -677,6 +765,23 @@ PD_REGISTER_KERNEL(block_multihead_attention_xpu,
                    ALL_LAYOUT,
                    phi::fusion::BlockMultiheadAttentionXPUKernel,
                    phi::float16) {
+  kernel->InputAt(3).SetDataType(phi::DataType::INT32);
+  kernel->InputAt(4).SetDataType(phi::DataType::INT32);
+  kernel->InputAt(5).SetDataType(phi::DataType::INT32);
+  kernel->InputAt(6).SetDataType(phi::DataType::INT32);
+  kernel->InputAt(7).SetDataType(phi::DataType::INT32);
+  kernel->InputAt(8).SetDataType(phi::DataType::INT32);
+  kernel->InputAt(9).SetDataType(phi::DataType::INT32);
+  kernel->InputAt(10).SetDataType(phi::DataType::INT32);
+  kernel->InputAt(11).SetDataType(phi::DataType::FLOAT32);
+  kernel->InputAt(12).SetDataType(phi::DataType::FLOAT32);
+  kernel->InputAt(18).SetDataType(phi::DataType::FLOAT32);
+  kernel->InputAt(19).SetDataType(phi::DataType::FLOAT32);
+  kernel->InputAt(20).SetDataType(phi::DataType::FLOAT32);
+  kernel->InputAt(21).SetDataType(phi::DataType::FLOAT32);
+  kernel->InputAt(22).SetDataType(phi::DataType::FLOAT32);
   kernel->InputAt(26).SetBackend(phi::Backend::CPU);
+  kernel->InputAt(26).SetDataType(phi::DataType::INT32);
   kernel->InputAt(27).SetBackend(phi::Backend::CPU);
+  kernel->InputAt(27).SetDataType(phi::DataType::INT32);
 }
