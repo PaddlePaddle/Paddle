@@ -29,6 +29,7 @@ jobs:
           ref: ${{ github.sha }}
           path: Paddle
           fetch-depth: 1
+          submodules: recursive
 
       - name: Package Paddle into tarball
         run: |
