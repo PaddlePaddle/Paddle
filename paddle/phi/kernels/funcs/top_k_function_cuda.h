@@ -91,71 +91,9 @@ struct float_bit_mask<phi::bfloat16> : float_bit_mask<rocprim::bfloat16> {};
 namespace cub = hipcub;
 #else
 
-#if defined(CUB_VERSION) && CUB_VERSION >= 300000
-// CUB 3.x BaseTraits<FLOATING_POINT,...> requires cuda::std::numeric_limits and
-// cuda::is_floating_point to be specialized. phi::float16/bfloat16 only provide
-// std:: specializations; we mirror them for cuda::std:: and cuda:: here.
-// cuda::is_floating_point is a type alias for
-// bool_constant<is_floating_point_v<T>>, so we only need to specialize the
-// variable template is_floating_point_v.
-namespace cuda {
-template <>
-inline constexpr bool is_floating_point_v<phi::dtype::float16> = true;
-template <>
-inline constexpr bool is_floating_point_v<phi::dtype::bfloat16> = true;
-}  // namespace cuda
-template <>
-class cuda::std::numeric_limits<phi::dtype::float16> {
- public:
-  static constexpr bool is_specialized = true;
-  static _CCCL_HOST_DEVICE _CCCL_FORCEINLINE phi::dtype::float16 max() {
-    return phi::dtype::raw_uint16_to_float16(0x7bff);
-  }
-  static _CCCL_HOST_DEVICE _CCCL_FORCEINLINE phi::dtype::float16 min() {
-    return phi::dtype::raw_uint16_to_float16(0x0400);
-  }
-  static _CCCL_HOST_DEVICE _CCCL_FORCEINLINE phi::dtype::float16 lowest() {
-    return phi::dtype::raw_uint16_to_float16(0xfbff);
-  }
-};
-template <>
-class cuda::std::numeric_limits<phi::dtype::bfloat16> {
- public:
-  static constexpr bool is_specialized = true;
-  static _CCCL_HOST_DEVICE _CCCL_FORCEINLINE phi::dtype::bfloat16 max() {
-    return phi::dtype::raw_uint16_to_bfloat16(0x7f7f);
-  }
-  static _CCCL_HOST_DEVICE _CCCL_FORCEINLINE phi::dtype::bfloat16 min() {
-    return phi::dtype::raw_uint16_to_bfloat16(0x0080);
-  }
-  static _CCCL_HOST_DEVICE _CCCL_FORCEINLINE phi::dtype::bfloat16 lowest() {
-    return phi::dtype::raw_uint16_to_bfloat16(0xff7f);
-  }
-};
-#endif  // CUB_VERSION >= 300000
-// set cub base traits in order to handle float16
-namespace cub {
-template <>
-struct NumericTraits<phi::float16>
-#if defined(CUB_VERSION) && CUB_VERSION >= 300000
-    : BaseTraits<FLOATING_POINT, true, uint16_t, phi::float16> {
-};
-#else
-    : BaseTraits<FLOATING_POINT, true, false, uint16_t, phi::float16> {
-};
-#endif
-
-template <>
-struct NumericTraits<phi::bfloat16>
-#if defined(CUB_VERSION) && CUB_VERSION >= 300000
-    : BaseTraits<FLOATING_POINT, true, uint16_t, phi::bfloat16> {
-};
-#else
-    : BaseTraits<FLOATING_POINT, true, false, uint16_t, phi::bfloat16> {
-};
-#endif
-
-}  // namespace cub
+// phi half/bfloat16 CUB NumericTraits registration and the CCCL 3.x
+// cuda::std::numeric_limits / cuda::is_floating_point specializations now live
+// in paddle/phi/kernels/funcs/cub.h (included above) so they are defined once.
 #endif
 
 namespace phi {
