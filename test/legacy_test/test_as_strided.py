@@ -19,6 +19,7 @@ from op_test import get_device, get_places
 
 import paddle
 from paddle import base
+from paddle.framework import core
 
 
 class TestAsStrided(unittest.TestCase):
@@ -319,6 +320,11 @@ class TestAsStridedZeroStrideBroadcastBackward(unittest.TestCase):
                 )
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda() or core.is_compiled_with_rocm(),
+    "deterministic path only runs on CUDA (compiled out on ROCm/DCU, where "
+    "RadixSortPairs is unavailable and the backward keeps the atomic scatter)",
+)
 class TestAsStridedNonZeroOverlapDeterministic(unittest.TestCase):
     """A non-zero-stride overlapping view (e.g. shape (M, N) stride (1, 1))
     maps several logical elements onto the same storage slot without any axis

@@ -20,7 +20,7 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/cast_kernel.h"
 #include "paddle/phi/kernels/funcs/index_put_utils.h"
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
 #include "paddle/phi/kernels/funcs/index_put_with_sort.cu.h"
 #endif
 
@@ -177,7 +177,9 @@ void IndexPutKernel(const Context& dev_ctx,
     ptr_value = &value;
   }
 
-#ifdef PADDLE_WITH_CUDA
+// The sort-based deterministic path relies on RadixSortPairs (CUB), which is
+// not available on HIP/ROCm; keep the atomic path there.
+#if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
   // The default accumulate path (LaunchIndexPutCudaKernel) scatters with
   // CudaAtomicAdd, whose summation order is nondeterministic across runs, so
   // duplicated indices give run-to-run bitwise drift. When
@@ -220,7 +222,7 @@ void IndexPutKernel(const Context& dev_ctx,
                                               out);
     return;
   }
-#endif
+#endif  // PADDLE_WITH_CUDA && !PADDLE_WITH_HIP
 
   LaunchIndexPutCudaKernel<T, Context>(
       dev_ctx, x, res_indices_v, *ptr_value, accumulate, out);
