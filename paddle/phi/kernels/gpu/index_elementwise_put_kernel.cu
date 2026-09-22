@@ -81,19 +81,46 @@ void GPUIndexElementwisePutKernel(const GPUContext& dev_ctx,
   if (numel == 0 || funcs::HasEmptyIndex(index)) {
     return;
   }
+  // The caller picks the offset type from the operands' byte spans, which does
+  // not bound the iteration space: a small index tensor broadcast over a large
+  // input still produces numel > INT32_MAX. Re-dispatch to the 64-bit
+  // instantiation in that case instead of rejecting the call. `output` has
+  // already been allocated and, if needed, copied above, so the inner call sees
+  // it initialized on this place and skips both.
+  if constexpr (sizeof(OffsetT) == 4) {
+    if (numel > static_cast<int64_t>(std::numeric_limits<int32_t>::max())) {
+      GPUIndexElementwisePutKernel<T, uint64_t>(dev_ctx,
+                                                input,
+                                                value,
+                                                index,
+                                                input_dims,
+                                                input_strides,
+                                                index_dims,
+                                                index_strides,
+                                                slice_offset,
+                                                output);
+      return;
+    }
+  }
   auto offset_calc = funcs::MakeOffsetCalculatorPut<3, true, OffsetT>(
       desired_shape, strides_array);
 
   const int64_t N = numel;
-  PADDLE_ENFORCE_EQ(true,
-                    (N >= 0 && N <= std::numeric_limits<int32_t>::max()),
-                    common::errors::PreconditionNotMet(
-                        "the value of N should be in [0, "
-                        "std::numeric_limits<int32_t>::max()]"));
   constexpr int nt = 128;
   constexpr int vt = 4;
   const dim3 block(nt);
-  const dim3 grid((N + block.x * vt - 1) / (block.x * vt));
+  const int64_t grid_x = (N + nt * vt - 1) / (nt * vt);
+  const int64_t max_grid_x =
+      static_cast<int64_t>(dev_ctx.GetCUDAMaxGridDimSize()[0]);
+  PADDLE_ENFORCE_LE(grid_x,
+                    max_grid_x,
+                    common::errors::PreconditionNotMet(
+                        "the required grid size %d for N = %d exceeds the "
+                        "device limit %d",
+                        grid_x,
+                        N,
+                        max_grid_x));
+  const dim3 grid(static_cast<unsigned int>(grid_x));
   auto stream = dev_ctx.stream();
 
   char* out_ptr = reinterpret_cast<char*>(output_);
@@ -111,7 +138,7 @@ void GPUIndexElementwisePutKernel(const GPUContext& dev_ctx,
   } else {
     auto index_ptrs = funcs::GetIndexDataPtrs<int64_t>(index);
     funcs::index_elementwise_kernel<nt, vt, T><<<grid, block, 0, stream>>>(
-        N, value_T, [=] __device__(int idx, const T value_tmp) {
+        N, value_T, [=] __device__(int64_t idx, const T value_tmp) {
           const auto offsets = offset_calc.get(idx);
           char* const out_data =
               out_ptr + static_cast<int64_t>(offsets[0]) + slice_offset;
