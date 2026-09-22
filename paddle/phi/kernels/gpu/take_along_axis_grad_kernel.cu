@@ -33,7 +33,9 @@
 #include "paddle/phi/kernels/funcs/gather_scatter_functor.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/reshape_kernel.h"
-#ifdef PADDLE_WITH_CUDA
+// The sort-based deterministic path relies on RadixSortPairs (CUB), which is
+// not available on HIP/ROCm; keep the atomic path there.
+#if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
 #include "paddle/phi/kernels/funcs/index_put_with_sort.cu.h"
 #endif
 
@@ -41,7 +43,9 @@ COMMON_DECLARE_bool(cudnn_deterministic);
 
 namespace phi {
 
-#ifdef PADDLE_WITH_CUDA
+// The deterministic helper and its gate rely on RadixSortPairs (CUB), which is
+// not available on HIP/ROCm; keep the atomic path there.
+#if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
 
 template <typename T>
 constexpr bool kTakeAlongAxisDeterministicSupported =
@@ -209,7 +213,9 @@ void TakeAlongAxisGradKernel(const Context& dev_ctx,
   functor(dev_ctx, x_grad, static_cast<T>(0));
   const auto& index_type = index.dtype();
 
-#ifdef PADDLE_WITH_CUDA
+// The sort-based deterministic path relies on RadixSortPairs (CUB), which is
+// not available on HIP/ROCm; keep the atomic path there.
+#if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
   if (FLAGS_cudnn_deterministic &&
       TakeAlongAxisGradDeterministic<T, Context>(
           dev_ctx, x, index, out_grad, axis, x_grad)) {
