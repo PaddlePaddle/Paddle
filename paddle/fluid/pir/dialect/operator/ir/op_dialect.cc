@@ -491,9 +491,9 @@ class AttributeManager {
   ~AttributeManager() {  // NOLINT
     for (size_t i = 0; i < char_pointers_.size(); i++) {
       for (size_t j = 0; j < pointers_size_[i]; j++) {
-        delete char_pointers_[i][j];
+        delete[] char_pointers_[i][j];
       }
-      delete char_pointers_[i];
+      delete[] char_pointers_[i];
     }
     char_pointers_.clear();
     pointers_size_.clear();
