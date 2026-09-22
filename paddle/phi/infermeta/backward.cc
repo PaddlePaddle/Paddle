@@ -742,6 +742,15 @@ void MatmulGradInferMeta(const MetaTensor& x,
   // with dx/dy. Replicate the forward check here so the backward op rejects
   // K-mismatched inputs instead of silently returning results (aligning
   // forward/backward contract and torch).
+  //
+  // Unlike the forward, only enforce when both contraction dims are concrete
+  // (!= -1). The forward runs this check at graph-build time with
+  // is_runtime=false so an unknown (-1) dim short-circuits it, whereas the
+  // backward InferMeta is invoked with the default MetaConfig (is_runtime=true)
+  // even at graph-build time. Keying on `config.is_runtime` here would wrongly
+  // reject legal dynamic-shape graphs (e.g. InputSpec([-1, -1])). A real
+  // runtime tensor never carries a -1 dim, so requiring both dims to be
+  // concrete still catches every genuine K mismatch (including K=0 vs N).
   std::vector<int64_t> dims_x = common::vectorize(x.dims());
   std::vector<int64_t> dims_y = common::vectorize(y.dims());
   const auto ndims_x = dims_x.size();
@@ -753,7 +762,7 @@ void MatmulGradInferMeta(const MetaTensor& x,
         (ndims_y == 1) ? 0 : ndims_y - 2 + transpose_y;
     const int64_t K_lhs = dims_x[lhs_reduce_dim];
     const int64_t K_rhs = dims_y[rhs_reduce_dim];
-    if (config.is_runtime || (K_rhs != -1 && K_lhs != -1)) {
+    if (K_lhs != -1 && K_rhs != -1) {
       PADDLE_ENFORCE_EQ(
           K_lhs,
           K_rhs,
