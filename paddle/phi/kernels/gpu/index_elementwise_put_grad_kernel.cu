@@ -85,6 +85,26 @@ void GPUIndexElementwisePutGradKernel(
   if (numel == 0 || funcs::HasEmptyIndex(index)) {
     return;
   }
+  // The caller picks the offset type from the operands' byte spans, which does
+  // not bound the iteration space: a small index tensor broadcast over a large
+  // input still produces numel > INT32_MAX, and a 32-bit linear index would
+  // silently wrap. Re-dispatch to the 64-bit instantiation instead. x_grad has
+  // already been filled by the caller, so nothing is redone here.
+  if constexpr (sizeof(OffsetT) == 4) {
+    if (numel > static_cast<int64_t>(std::numeric_limits<int32_t>::max())) {
+      GPUIndexElementwisePutGradKernel<T, IndexT, uint64_t>(dev_ctx,
+                                                            out_grad,
+                                                            index,
+                                                            input_dims,
+                                                            input_strides,
+                                                            index_dims,
+                                                            index_strides,
+                                                            slice_offset,
+                                                            x_grad,
+                                                            value_grad);
+      return;
+    }
+  }
   auto offset_calc = funcs::MakeOffsetCalculatorPut<3, true, OffsetT>(
       desired_shape, strides_array);
   const int64_t N = numel;
@@ -92,7 +112,18 @@ void GPUIndexElementwisePutGradKernel(
   constexpr int nt = 128;
   constexpr int vt = 4;
   const dim3 block(nt);
-  const dim3 grid((N + block.x * vt - 1) / (block.x * vt));
+  const int64_t grid_x = (N + nt * vt - 1) / (nt * vt);
+  const int64_t max_grid_x =
+      static_cast<int64_t>(dev_ctx.GetCUDAMaxGridDimSize()[0]);
+  PADDLE_ENFORCE_LE(grid_x,
+                    max_grid_x,
+                    common::errors::PreconditionNotMet(
+                        "the required grid size %d for N = %d exceeds the "
+                        "device limit %d",
+                        grid_x,
+                        N,
+                        max_grid_x));
+  const dim3 grid(static_cast<unsigned int>(grid_x));
   auto stream = dev_ctx.stream();
 
   using dtype = funcs::OpaqueType<sizeof(T)>;
@@ -134,11 +165,13 @@ void GPUIndexElementwisePutGradKernel(
     auto index_ptrs = funcs::GetIndexDataPtrs<IndexT>(index);
     const char* out_ptr = reinterpret_cast<const char*>(out_grad.data<T>());
     char* value_ptr = reinterpret_cast<char*>(value_grad->data<T>());
-    PADDLE_ENFORCE_EQ(true,
-                      funcs::IsInInt32Range(value_grad->numel()),
-                      common::errors::PreconditionNotMet(
-                          "the numel of input or output should be in [0, "
-                          "std::numeric_limits<int32_t>::max()]"));
+    if constexpr (sizeof(OffsetT) == 4) {
+      PADDLE_ENFORCE_EQ(true,
+                        funcs::IsInInt32Range(value_grad->numel()),
+                        common::errors::PreconditionNotMet(
+                            "the numel of input or output should be in [0, "
+                            "std::numeric_limits<int32_t>::max()]"));
+    }
     funcs::index_elementwise_with_tensor_kernel<nt, vt>
         <<<grid, block, 0, stream>>>(N, [=] __device__(int64_t idx) {
           const auto offsets = offset_calc.get(idx);
@@ -161,11 +194,13 @@ void GPUIndexElementwisePutGradKernel(
   } else {
     auto index_ptrs = funcs::GetIndexDataPtrs<IndexT>(index);
     char* out_ptr = reinterpret_cast<char*>(x_grad->data<T>());
-    PADDLE_ENFORCE_EQ(true,
-                      funcs::IsInInt32Range(value_grad->numel()),
-                      common::errors::PreconditionNotMet(
-                          "the numel of input or output should be in [0, "
-                          "std::numeric_limits<int32_t>::max()]"));
+    if constexpr (sizeof(OffsetT) == 4) {
+      PADDLE_ENFORCE_EQ(true,
+                        funcs::IsInInt32Range(value_grad->numel()),
+                        common::errors::PreconditionNotMet(
+                            "the numel of input or output should be in [0, "
+                            "std::numeric_limits<int32_t>::max()]"));
+    }
     char* value_ptr = reinterpret_cast<char*>(value_grad->data<T>());
     funcs::index_elementwise_with_tensor_kernel<nt, vt>
         <<<grid, block, 0, stream>>>(N, [=] __device__(int64_t idx) {
