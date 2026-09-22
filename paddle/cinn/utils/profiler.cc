@@ -17,7 +17,13 @@
 #include "paddle/common/flags.h"
 
 #ifdef CINN_WITH_NVTX
+// See paddle/cinn/utils/profiler.h: follow the CCCL-driven NVTX entry point so
+// the legacy <nvToolsExt.h> never coexists with nvtx3/nvToolsExt.h.
+#if defined(PADDLE_CCCL_NVTX3)
+#include <nvtx3/nvToolsExt.h>
+#else
 #include <nvToolsExt.h>
+#endif
 #endif
 #ifdef CINN_WITH_CUDA
 #include <cuda_profiler_api.h>
