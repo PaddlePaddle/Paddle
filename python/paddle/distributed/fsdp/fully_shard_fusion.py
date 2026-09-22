@@ -299,6 +299,32 @@ class TensorFusionBuffer:
             self.tmp_data_buffer._clear_data()
             self.tmp_data_buffer = None
 
+    def release_data_buffer(self):
+        """Free a grad buffer's storage; ``ensure_data_buffer`` re-creates it.
+
+        Used for replicated dense-Muon grads on non-owner ranks: once the grad has
+        been reduced to the owner (the only rank that runs the update), every other
+        copy is dead weight until the next backward.
+        """
+        if self.is_params or self.data_buffer is None:
+            return
+        self.data_buffer._clear_data()
+        self._data_released = True
+
+    def ensure_data_buffer(self):
+        """Re-create a grad buffer previously freed by ``release_data_buffer``."""
+        if not getattr(self, "_data_released", False):
+            return
+        self.data_buffer = paddle.zeros(
+            shape=[
+                self.total_buffer_size // self.fsdp_degree
+                if self.is_sharded
+                else self.total_buffer_size
+            ],
+            dtype=self.main_grad_dtype,
+        )
+        self._data_released = False
+
 
 class FSDPBufferManager:
     def __init__(
@@ -421,7 +447,21 @@ class FSDPBufferManager:
                 if group.use_muon
                 else None
             )
-            shard_buffer = (not group.use_muon) or muon_align is not None
+            # Element-shard dense Muon groups (2D, muon_align is None) just like
+            # AdamW -- reuse the whole init/forward/reduce_scatter path. The only
+            # Muon-specific work is at the optimizer step, where the owner
+            # P2P-gathers the param+grad shards into a full matrix for Newton-Schulz
+            # and scatters the result back.
+            dense_muon_shard = (
+                group.use_muon
+                and muon_align is None
+                and group.fsdp_group.nranks > 1
+            )
+            shard_buffer = (
+                (not group.use_muon)
+                or muon_align is not None
+                or dense_muon_shard
+            )
             group.params_buffer = TensorFusionBuffer(
                 gid,
                 params,
@@ -432,6 +472,15 @@ class FSDPBufferManager:
                 shard_align_numel=muon_align,
             )
             if not params[0].stop_gradient:
+                # Element-shard the grad buffer too for dense Muon (standard FSDP
+                # reduce_scatter); the owner reconstructs the whole grad at the
+                # optimizer step alongside the param. Expert Muon uses matrix-aligned
+                # sharding (muon_align); non-Muon keeps its element-wise shard.
+                grads_shard_buffer = (
+                    (not group.use_muon)
+                    or muon_align is not None
+                    or dense_muon_shard
+                )
                 group.grads_buffer = TensorFusionBuffer(
                     gid,
                     params,
@@ -441,7 +490,8 @@ class FSDPBufferManager:
                     if group.is_expert_param or group.dtype == paddle.float32
                     else self.main_grad_dtype,
                     grad_div=self._fsdp_group.nranks,
-                    shard_buffer=not group.use_muon,
+                    shard_buffer=grads_shard_buffer,
+                    shard_align_numel=muon_align,
                 )
             group.muon_shard_numel = group.params_buffer.shard_align_numel
             if group.muon_shard_numel is not None:
@@ -574,6 +624,9 @@ class FSDPCommManager:
             if unit_id != self._last_backward_unit_id:
                 self._last_backward_unit_id = unit_id
                 self._flush_expert_grads_after_unit(unit_id)
+            # Sharded expert grad buffers bind their main_grad here rather than at
+            # forward, so the full-length tmp lives only for this unit's backward.
+            self._bind_sharded_expert_main_grads(params)
 
         if self.enable_overlap:
             keep = set(req_gids)
@@ -675,8 +728,30 @@ class FSDPCommManager:
         self.need_zero_grads = False
         for group in self.buffer_manager.buffer_groups:
             if group.grads_buffer is not None:
+                # A non-owner dense-Muon buffer may have been freed after the last
+                # reduce-to-owner; bring it back before zeroing.
+                group.grads_buffer.ensure_data_buffer()
                 group.grads_buffer.data_buffer.zero_()
                 group.grads_buffer.grad_scaled = False
+
+    def _release_dense_grad_buffer(self, grads_buffer):
+        """Drop a replicated dense-Muon grad buffer on a non-owner rank.
+
+        Only the owner runs the Muon update, so after reduce-to-owner every other
+        rank's full fp32 copy is dead weight. The ``main_grad`` views have to go
+        first: they share the buffer's allocation, so clearing the buffer alone
+        would not release the memory. ``_maybe_zero_grads`` re-creates it at the
+        next backward.
+        """
+        for param in self.buffer_manager.model.parameters():
+            if getattr(param, "_fusion_buffer", None) is not grads_buffer:
+                continue
+            mg = getattr(param, "main_grad", None)
+            if mg is not None:
+                mg._clear_data()
+                param.main_grad = None
+                param._main_grad_addr = None
+        grads_buffer.release_data_buffer()
 
     def _ensure_grads_writable(self, param):
         gid = self.buffer_manager.param_to_buffer_id.get(param.name)
@@ -689,6 +764,30 @@ class FSDPCommManager:
             self._wait_for_grad_comm(
                 queue_limit=len(self.grad_reduce_queue) - 1
             )
+
+    def _bind_sharded_expert_main_grads(self, params):
+        """Bind sharded-grad MoE ``main_grad`` at a unit's backward entry.
+
+        A sharded grad buffer accumulates into a full-length tmp, so binding at
+        forward would keep one such tmp alive per expert layer for the whole
+        forward pass -- far more than the shard saves. Binding here keeps each tmp
+        alive only from this unit's backward until it reduces, mirroring the AdamW
+        grad hook. MoE backward writes straight into ``main_grad``, so the binding
+        must precede the unit's grad computation, which is exactly where
+        ``all_gather_params(is_backward=True)`` runs.
+        """
+        self._maybe_zero_grads()
+        for param in params:
+            if not param.trainable:
+                continue
+            if not getattr(param, "is_moe_param", False):
+                continue
+            if not hasattr(param, "get_main_grad"):
+                continue
+            buf = getattr(param, "_fusion_buffer", None)
+            if buf is None or not buf.is_sharded:
+                continue
+            buf.rebind_main_grad(param)
 
     def reduce_scatter_grads(self, param):
         self._maybe_zero_grads()
@@ -769,6 +868,17 @@ class FSDPCommManager:
                         group=grads_buffer.fsdp_group,
                         sync_op=True,
                     )
+                    # The reduced grad now lives on the owner, the only rank that
+                    # updates this group -- free every other copy before the
+                    # optimizer allocates state. Must run after the reduce (all
+                    # ranks hold the buffer during the collective), so it saves
+                    # resident memory, not the backward peak.
+                    if (
+                        grads_buffer.fsdp_group.ranks[group.muon_owner_rank]
+                        != paddle.distributed.get_rank()
+                    ):
+                        self._release_dense_grad_buffer(grads_buffer)
+                        continue
                 # No reduce_scatter here, so apply grad_scale once per accumulation cycle.
                 if (
                     grads_buffer.grad_scale != 1.0
@@ -781,6 +891,21 @@ class FSDPCommManager:
                 continue
             grads_buffer.do_reduce_scatter().wait()
             grads_buffer.accumulate_reduced_grad()
+        # Each sharded-grad param's main_grad is a view into the reduce tmp; after
+        # the grad is reduce-scattered into the shard, that view is the only thing
+        # keeping the (already handle-cleared) tmp alive, until the post-step reset
+        # nulls main_grad -- too late, the optimizer would allocate its state first.
+        # The Muon/AdamW update reads the fused grad shard, never main_grad, so drop
+        # the views now to release the tmps before the optimizer runs.
+        for param in self.buffer_manager.model.parameters():
+            buf = getattr(param, "_fusion_buffer", None)
+            if buf is None or not buf.is_sharded:
+                continue
+            mg = getattr(param, "main_grad", None)
+            if mg is not None:
+                mg._clear_data()
+                param.main_grad = None
+                param._main_grad_addr = None
 
 
 class FusionBackwardHook(PyLayer):
@@ -1159,6 +1284,84 @@ class FullyShardFusion:
                 param.main_grad = None
 
     @paddle.autograd.no_grad()
+    def _p2p_gather_full(self, shard, fsdp_group, owner_local):
+        """P2P-gather even element shards to the owner; return the full flat tensor.
+
+        Non-owner ranks isend their shard and return None. The owner irecvs every
+        other rank's shard and concatenates in rank order (= global element order),
+        so only the owner materializes the full tensor. Shards are equal-size by
+        construction (each param padded to a multiple of fsdp_degree).
+        """
+        ranks = fsdp_group.ranks
+        my = paddle.distributed.get_rank()
+        owner_global = ranks[owner_local]
+        if my != owner_global:
+            for w in paddle.distributed.batch_isend_irecv(
+                [
+                    paddle.distributed.P2POp(
+                        paddle.distributed.isend,
+                        shard,
+                        owner_global,
+                        fsdp_group,
+                    )
+                ]
+            ):
+                w.wait()
+            return None
+        s = shard.shape[0]
+        recv = {}
+        ops = []
+        for i, r in enumerate(ranks):
+            if r == my:
+                continue
+            buf = paddle.empty([s], dtype=shard.dtype)
+            recv[i] = buf
+            ops.append(
+                paddle.distributed.P2POp(
+                    paddle.distributed.irecv, buf, r, fsdp_group
+                )
+            )
+        if ops:
+            for w in paddle.distributed.batch_isend_irecv(ops):
+                w.wait()
+        pieces = [shard if r == my else recv[i] for i, r in enumerate(ranks)]
+        return paddle.concat(pieces)
+
+    @paddle.autograd.no_grad()
+    def _p2p_scatter_full(self, full, shard, fsdp_group, owner_local):
+        """Scatter the owner's updated full tensor back to each rank's shard."""
+        ranks = fsdp_group.ranks
+        my = paddle.distributed.get_rank()
+        owner_global = ranks[owner_local]
+        s = shard.shape[0]
+        if my != owner_global:
+            buf = paddle.empty([s], dtype=shard.dtype)
+            for w in paddle.distributed.batch_isend_irecv(
+                [
+                    paddle.distributed.P2POp(
+                        paddle.distributed.irecv, buf, owner_global, fsdp_group
+                    )
+                ]
+            ):
+                w.wait()
+            paddle.assign(buf, shard)
+            return
+        ops = []
+        for i, r in enumerate(ranks):
+            piece = full[i * s : (i + 1) * s]
+            if r == my:
+                paddle.assign(piece, shard)
+            else:
+                ops.append(
+                    paddle.distributed.P2POp(
+                        paddle.distributed.isend, piece.clone(), r, fsdp_group
+                    )
+                )
+        if ops:
+            for w in paddle.distributed.batch_isend_irecv(ops):
+                w.wait()
+
+    @paddle.autograd.no_grad()
     def muon_params_grads(self):
         my_rank = paddle.distributed.get_rank()
         out = []
@@ -1169,11 +1372,42 @@ class FullyShardFusion:
                 out.extend(self._muon_sharded_params_grads(group))
                 continue
             owner = group.muon_owner_rank
+            params_buffer = group.params_buffer
+            grads_buffer = group.grads_buffer
+            if params_buffer.is_sharded and owner is not None:
+                # dense Muon, element-sharded: the owner P2P-gathers the param and
+                # grad shards into whole matrices for Newton-Schulz, then scatters
+                # the updated param back in `broadcast_muon_params`. All ranks call
+                # the gather (non-owners isend their shard); only the owner returns
+                # pairs. The full param temp is kept on the owner across the step.
+                param_full = self._p2p_gather_full(
+                    params_buffer.data_buffer, group.fsdp_group, owner
+                )
+                grad_full = self._p2p_gather_full(
+                    grads_buffer.data_buffer, group.fsdp_group, owner
+                )
+                if group.fsdp_group.ranks[owner] != my_rank:
+                    continue
+                group._muon_param_full = param_full
+                for param in group.params:
+                    if not param.trainable:
+                        continue
+                    offset = params_buffer.param_offsets[param.name]
+                    numel = param._numel()
+                    view = paddle._C_ops.view_slice(
+                        param_full, offset, offset + numel
+                    )
+                    view.get_tensor()._set_dims(param.shape)
+                    param.get_tensor()._share_data_with(view.get_tensor())
+                    grad = paddle._C_ops.view_slice(
+                        grad_full, offset, offset + numel
+                    )
+                    grad.get_tensor()._set_dims(param.shape)
+                    out.append((param, grad))
+                continue
             if owner is not None:
                 if group.fsdp_group.ranks[owner] != my_rank:
                     continue
-            params_buffer = group.params_buffer
-            grads_buffer = group.grads_buffer
             for param in group.params:
                 if not param.trainable:
                     continue
@@ -1215,8 +1449,16 @@ class FullyShardFusion:
             view.get_tensor()._set_dims(dims)
             param.get_tensor()._share_data_with(view.get_tensor())
             param.original_shape = dims
+            # The grad buffer is either replicated (index by absolute offset) or
+            # sharded on the same matrix boundaries as the params (index relative
+            # to its own shard, like `lo` above).
+            gbegin = (
+                begin - grads_buffer.shard_start
+                if grads_buffer.is_sharded
+                else begin
+            )
             grad = paddle._C_ops.view_slice(
-                grads_buffer.data_buffer, begin, begin + span
+                grads_buffer.data_buffer, gbegin, gbegin + span
             )
             grad.get_tensor()._set_dims(dims)
             out.append((param, grad))
@@ -1235,6 +1477,27 @@ class FullyShardFusion:
                 continue
             if not group.use_muon or group.muon_owner_rank is None:
                 continue
+            params_buffer = group.params_buffer
+            if params_buffer.is_sharded:
+                # dense Muon, element-sharded: scatter the owner's updated full
+                # matrix back to each rank's param shard, then reset the model
+                # params to the sharded state (cleared storage, full dims) so the
+                # next forward re-materializes them via all_gather.
+                full = getattr(group, "_muon_param_full", None)
+                self._p2p_scatter_full(
+                    full,
+                    params_buffer.data_buffer,
+                    group.fsdp_group,
+                    group.muon_owner_rank,
+                )
+                group._muon_param_full = None
+                for param in group.params:
+                    stop_gradient = param.stop_gradient
+                    shape = param.shape
+                    param._clear_data()
+                    param.stop_gradient = stop_gradient
+                    param.get_tensor()._set_dims(shape)
+                continue
             paddle.distributed.broadcast(
                 group.params_buffer.data_buffer,
                 src=group.fsdp_group.ranks[group.muon_owner_rank],
@@ -1251,6 +1514,13 @@ class FullyShardFusion:
             if not getattr(param, "is_moe_param", False):
                 continue
             if not hasattr(param, "get_main_grad"):
+                continue
+            # A sharded grad buffer accumulates into a full-length tmp; binding it
+            # at forward would hold one per expert layer for the whole forward.
+            # Those bind at the unit's backward entry instead
+            # (`_bind_sharded_expert_main_grads`).
+            buf = getattr(param, "_fusion_buffer", None)
+            if buf is not None and buf.is_sharded:
                 continue
             param._fusion_buffer.rebind_main_grad(param)
 

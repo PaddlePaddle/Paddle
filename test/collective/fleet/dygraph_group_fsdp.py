@@ -13,13 +13,17 @@
 # limitations under the License.
 
 
+import numpy as np
+
 import paddle
 import paddle.nn.functional as F
 from paddle import nn
 from paddle.autograd import PyLayer
 from paddle.distributed import fleet
 from paddle.distributed.fleet.utils import mix_precision_utils
+from paddle.distributed.fsdp import fully_shard_fusion
 from paddle.distributed.fsdp.fully_shard import fully_shard
+from paddle.optimizer.muon import MuonParamInfo
 
 HIDDEN = 16
 INTER = 32
@@ -28,6 +32,9 @@ NUM_LAYERS = 6
 STEPS = 5
 TOKENS = 64
 ACCUM_STEPS = 2
+MUON_MATS = 4
+MUON_LAYERS = 2
+MUON_STEPS = 1
 
 
 class EPAllGather(PyLayer):
@@ -289,5 +296,180 @@ def run_moe(ep_degree):
         )
 
 
+class MuonStackedLayer(TransformerLayer):
+    """Layer whose weights are 3D stacks, like Muon expert params.
+
+    Subclasses TransformerLayer only so FSDP treats it as a unit:
+    ``is_fsdp_unit`` matches class names along the MRO.
+    """
+
+    def __init__(self, hidden, inter, num_mats):
+        nn.Layer.__init__(self)
+        self.attn = nn.Linear(hidden, hidden, bias_attr=False)
+        self.w_up = self.create_parameter(shape=[num_mats, hidden, inter])
+        self.w_down = self.create_parameter(shape=[num_mats, inter, hidden])
+
+    def forward(self, x):
+        x = x + self.attn(x)
+        for i in range(self.w_up.shape[0]):
+            h = F.silu(paddle.matmul(x, self.w_up[i]))
+            x = x + paddle.matmul(h, self.w_down[i])
+        return x
+
+
+class MuonModel(nn.Layer):
+    def __init__(self):
+        super().__init__()
+        self.embed = nn.Linear(HIDDEN, HIDDEN, bias_attr=False)
+        self.layers = nn.LayerList(
+            [
+                MuonStackedLayer(HIDDEN, INTER, MUON_MATS)
+                for _ in range(MUON_LAYERS)
+            ]
+        )
+        self.head = nn.Linear(HIDDEN, 2, bias_attr=False)
+
+    def forward(self, x):
+        x = self.embed(x)
+        for layer in self.layers:
+            x = layer(x)
+        return self.head(x)
+
+
+def tag_muon_params(model):
+    info_map = {}
+    for layer in model.layers:
+        for param in (layer.w_up, layer.w_down):
+            param.use_muon = True
+            info_map[param.name] = MuonParamInfo(use_muon=True)
+    return info_map
+
+
+def train_muon(model, info_map, ns_per_matrix, data):
+    model = fully_shard(model)
+    fsdp_context = model._fsdp_context
+    model = mix_precision_utils.MixPrecisionLayer(model, dtype="bfloat16")
+    optimizer = paddle.optimizer.Muon(
+        learning_rate=0.001,
+        parameters=[p for p in model.parameters() if p.trainable],
+        weight_decay=0.0,
+        muon_param_info_map=info_map,
+        ns_per_matrix=ns_per_matrix,
+        multi_precision=True,
+    )
+    optimizer = mix_precision_utils.MixPrecisionOptimizer(optimizer)
+    losses = []
+    for x in data:
+        model.train()
+        with paddle.amp.auto_cast(level="O1", dtype="bfloat16"):
+            loss = model(x).mean()
+        losses.append(float(loss.astype("float32")))
+        loss.backward()
+        optimizer.step()
+        optimizer.clear_grad()
+    return losses, fsdp_context, optimizer._inner_opt
+
+
+def muon_groups_of(fsdp_context):
+    return [
+        group
+        for group in fsdp_context.buffer_manager.buffer_groups
+        if group.use_muon and group.grads_buffer is not None
+    ]
+
+
+def gather_muon_params(fsdp_context):
+    """Every Muon group's full params buffer, gathered on all ranks."""
+    buffers = {}
+    for gid, group in enumerate(fsdp_context.buffer_manager.buffer_groups):
+        if not group.use_muon or group.grads_buffer is None:
+            continue
+        params_buffer = group.params_buffer
+        buffer = params_buffer.data_buffer
+        if params_buffer.is_sharded:
+            parts = []
+            paddle.distributed.all_gather(parts, buffer, group=group.fsdp_group)
+            buffer = paddle.concat(parts)
+        buffers[gid] = buffer.astype("float32").numpy()
+    return buffers
+
+
+def run_muon_shard():
+    """Muon params sharded on matrix boundaries must match the replicated path.
+
+    Reuses the topology ``run_moe`` already initialized. These params are not
+    tagged as experts, so their FSDP group is the sharding group and spans
+    every rank, which is what makes a matrix-aligned shard possible on 2 cards.
+
+    One step, compared bitwise: both paths start from the same weights, so an
+    exact match pins down the shard mapping, the replicated-grad all_reduce and
+    the per-matrix Newton-Schulz. Running longer would not be bitwise
+    comparable -- the sharded buffer is all-gathered before each forward, and
+    the resulting GEMM layout moves the loss by ~1e-5 per step even when the
+    weights are identical.
+    """
+    paddle.seed(2026)
+    sharded_model = MuonModel()
+    paddle.seed(2026)
+    replicated_model = MuonModel()
+    replicated_model.set_state_dict(sharded_model.state_dict())
+    sharded_info = tag_muon_params(sharded_model)
+    replicated_info = tag_muon_params(replicated_model)
+
+    paddle.seed(2026)
+    data = [paddle.randn([TOKENS, HIDDEN]) for _ in range(MUON_STEPS)]
+
+    # Baseline: hide the shard plan so Muon groups stay replicated and take the
+    # owner-rank path. ns_per_matrix has to be passed by hand here, since only
+    # the sharded path turns it on by itself.
+    origin_shard_numel = fully_shard_fusion._muon_3d_shard_numel
+    fully_shard_fusion._muon_3d_shard_numel = lambda *args, **kwargs: None
+    try:
+        replicated_losses, replicated_ctx, _ = train_muon(
+            replicated_model, replicated_info, True, data
+        )
+    finally:
+        fully_shard_fusion._muon_3d_shard_numel = origin_shard_numel
+
+    replicated_groups = muon_groups_of(replicated_ctx)
+    assert replicated_groups
+    for group in replicated_groups:
+        assert group.muon_shard_numel is None
+        assert group.muon_owner_rank is not None
+        assert not group.params_buffer.is_sharded
+    replicated_params = gather_muon_params(replicated_ctx)
+
+    sharded_losses, sharded_ctx, sharded_opt = train_muon(
+        sharded_model, sharded_info, False, data
+    )
+
+    sharded_groups = muon_groups_of(sharded_ctx)
+    assert len(sharded_groups) == len(replicated_groups)
+    for group in sharded_groups:
+        # Every weight here is [MUON_MATS, HIDDEN, INTER] or its transpose, so
+        # the shard unit is one matrix; a silent fallback leaves this None.
+        assert group.muon_shard_numel == HIDDEN * INTER, (
+            f"expected matrix-aligned sharding, got {group.muon_shard_numel}"
+        )
+        assert group.params_buffer.is_sharded
+        assert group.muon_owner_rank is None
+    # The sharded path must switch Newton-Schulz to per-matrix by itself.
+    assert sharded_opt._ns_per_matrix
+    sharded_params = gather_muon_params(sharded_ctx)
+
+    assert sharded_losses == replicated_losses, (
+        f"the two paths did not start from the same weights: "
+        f"sharded={sharded_losses}, replicated={replicated_losses}"
+    )
+    assert sorted(sharded_params) == sorted(replicated_params)
+    for gid, expected in replicated_params.items():
+        np.testing.assert_array_equal(
+            sharded_params[gid],
+            expected,
+            err_msg=f"matrix-sharded Muon changed the update of group {gid}",
+        )
+
+
 if __name__ == '__main__':
     run_moe(2)
+    run_muon_shard()
