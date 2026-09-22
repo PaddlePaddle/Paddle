@@ -219,6 +219,25 @@ void GPUIndexElementwisePutWithTensorKernel(
     return;
   }
 
+  // Same re-dispatch as the scalar overload: the offset type comes from the
+  // operands' byte spans, and a broadcast `value` keeps its span small while
+  // the iteration space still grows past INT32_MAX.
+  if constexpr (sizeof(OffsetT) == 4) {
+    if (numel > static_cast<int64_t>(std::numeric_limits<int32_t>::max())) {
+      GPUIndexElementwisePutWithTensorKernel<T, uint64_t>(dev_ctx,
+                                                          input,
+                                                          value,
+                                                          index,
+                                                          input_dims,
+                                                          input_strides,
+                                                          index_dims,
+                                                          index_strides,
+                                                          slice_offset,
+                                                          output);
+      return;
+    }
+  }
+
   auto offset_calc = funcs::MakeOffsetCalculatorPut<3, true, OffsetT>(
       desired_shape, strides_array);
 
@@ -227,7 +246,18 @@ void GPUIndexElementwisePutWithTensorKernel(
   constexpr int nt = 128;
   constexpr int vt = 4;
   const dim3 block(nt);
-  const dim3 grid((N + block.x * vt - 1) / (block.x * vt));
+  const int64_t grid_x = (N + nt * vt - 1) / (nt * vt);
+  const int64_t max_grid_x =
+      static_cast<int64_t>(dev_ctx.GetCUDAMaxGridDimSize()[0]);
+  PADDLE_ENFORCE_LE(grid_x,
+                    max_grid_x,
+                    common::errors::PreconditionNotMet(
+                        "the required grid size %d for N = %d exceeds the "
+                        "device limit %d",
+                        grid_x,
+                        N,
+                        max_grid_x));
+  const dim3 grid(static_cast<unsigned int>(grid_x));
   auto stream = dev_ctx.stream();
 
   using dtype = funcs::OpaqueType<sizeof(T)>;
