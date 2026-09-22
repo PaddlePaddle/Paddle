@@ -23,6 +23,53 @@ from paddle.base import core
 from paddle.base.variable_index import _setitem_static
 
 
+def none_before_advanced_index_cases(for_static=False):
+    """``(name, shape, index)`` triples where ``None`` sits before or between
+    advanced indices.
+
+    ``None`` inserts an axis into the tensor produced by basic indexing, so the
+    axis an advanced index binds to shifts by the number of preceding ``None``s.
+    The 1-D case carries more ``None``s than the tensor has axes, which is what
+    overflows ``advanced_index_dim`` when it is only sized after the rank.
+
+    ``for_static=True`` drops the cases that static setitem cannot express yet.
+    It finishes through ``set_value``, whose own ``none_axes`` handling inserts
+    at most one axis per input axis, so several ``None``s landing on the same
+    input axis end up spread apart and the value tensor stops matching the
+    target shape. That is unrelated to advanced indexing -- basic
+    ``x[None, None, :] = v`` fails identically -- so it is left to a separate
+    fix.
+    """
+    i = [0, 2, 1]
+    j = [1, 0, 2]
+    mask = np.array([True, False, True])
+    cases = [
+        ('x[None, :, i]', (3, 4, 5, 6), (None, slice(None), i)),
+        ('x[:, None, i]', (3, 4, 5, 6), (slice(None), None, i)),
+        ('x[None, i]', (3, 4, 5, 6), (None, i)),
+        ('x[i, None]', (3, 4, 5, 6), (i, None)),
+        ('x[None, None, i]', (3, 4, 5, 6), (None, None, i)),
+        ('x[None, None, None, i]', (3, 4, 5, 6), (None, None, None, i)),
+        ('x[None, ..., i]', (3, 4, 5, 6), (None, Ellipsis, i)),
+        ('x[None, 0, i]', (3, 4, 5, 6), (None, 0, i)),
+        ('x[None, i, j]', (3, 4, 5, 6), (None, i, j)),
+        ('x[i, None, j]', (3, 4, 5, 6), (i, None, j)),
+        ('x[:, i, None, j]', (3, 4, 5, 6), (slice(None), i, None, j)),
+        ('x[None, i, None, j]', (3, 4, 5, 6), (None, i, None, j)),
+        ('x[None, mask]', (3, 4, 5, 6), (None, mask)),
+        ('x1d[None * 5, i]', (5,), (None, None, None, None, None, i)),
+    ]
+    if for_static:
+        multi_none = {
+            'x[None, None, i]',
+            'x[None, None, None, i]',
+            'x[None, i, None, j]',
+            'x1d[None * 5, i]',
+        }
+        cases = [case for case in cases if case[0] not in multi_none]
+    return cases
+
+
 class TestSetitemInDygraph(unittest.TestCase):
     def setUp(self):
         paddle.disable_static()
@@ -567,6 +614,29 @@ class TestSetitemInDygraph(unittest.TestCase):
         tensor_np[mask_np] = value_np
         np.testing.assert_equal(tensor.numpy(), tensor_np)
 
+    def test_none_before_advanced_index(self):
+        # `None` used to be pushed into none_axes without advancing
+        # estimated_dim, so the advanced index bound to an axis shifted by the
+        # number of preceding `None`s and most of these raised "value tensor
+        # cannot be broadcast".
+        for name, shape, index in none_before_advanced_index_cases():
+            with self.subTest(expr=name):
+                np_data = np.zeros(shape, dtype='float32').astype(self.ndtype)
+                if self.dtype == 'bfloat16':
+                    np_data = convert_uint16_to_float(
+                        convert_float_to_uint16(np_data)
+                    )
+                if self.dtype in ('complex64', 'complex128'):
+                    np_data = np_data + 1j * np_data
+
+                x = paddle.to_tensor(np_data, dtype=self.dtype)
+                np_data[index] = 10.0
+                x[index] = 10.0
+
+                if self.dtype == 'bfloat16':
+                    x = paddle.cast(x, dtype='float32')
+                np.testing.assert_allclose(x.numpy(), np_data)
+
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
@@ -672,6 +742,25 @@ class TestSetitemInStatic(unittest.TestCase):
             res = self.exe.run(fetch_list=[y])
 
         np.testing.assert_allclose(res[0], np_data)
+
+    def test_none_before_advanced_index(self):
+        # replace_none() strips `None` out of the index before the loop that
+        # tracks estimated_dim, so the advanced index used to bind to an axis
+        # shifted by the number of preceding `None`s.
+        for name, shape, index in none_before_advanced_index_cases(
+            for_static=True
+        ):
+            with self.subTest(expr=name):
+                np_data = np.zeros(shape, dtype='float32')
+                with paddle.static.program_guard(
+                    paddle.static.Program(), paddle.static.Program()
+                ):
+                    x = paddle.zeros(shape, dtype='float32')
+                    y = _setitem_static(x, index, 10.0)
+                    res = self.exe.run(fetch_list=[y])
+
+                np_data[index] = 10.0
+                np.testing.assert_allclose(res[0], np_data)
 
     def test_combined_index_1(self):
         # int tensor + slice (without decreasing axes)

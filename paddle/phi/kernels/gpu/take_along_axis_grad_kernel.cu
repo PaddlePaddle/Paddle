@@ -169,18 +169,22 @@ bool TakeAlongAxisGradDeterministic(const Context& dev_ctx,
     }
 
     auto x_grad_dims = vectorize<int64_t>(x_grad->dims());
-    auto x_grad_strides = vectorize<int64_t>(x_grad->strides());
-    auto index_use_strides = vectorize<int64_t>(index.strides());
+
+    // take_along_axis builds a full per-dim index set covering every axis, so
+    // the indexed view is the whole contiguous x_grad: no axes precede the
+    // indexed block (dims_before == 0), the view shape is x_grad's shape, and
+    // there is no slice offset.
+    funcs::SortedPathLayout layout;
+    layout.dims_before = 0;
+    layout.view_dims = x_grad_dims;
+    layout.view_strides = vectorize<int64_t>(x_grad->strides());
+    layout.view_offset = 0;
+    layout.is_whole_tensor = true;
 
     funcs::IndexPutWithSortKernel<T, int64_t>(dev_ctx,
-                                              x,
                                               out_grad,
                                               indices_ptrs,
-                                              x_grad_dims,
-                                              x_grad_strides,
-                                              index_shape,
-                                              index_use_strides,
-                                              /*slice_offset=*/0,
+                                              layout,
                                               /*accumulate=*/true,
                                               x_grad);
     return true;

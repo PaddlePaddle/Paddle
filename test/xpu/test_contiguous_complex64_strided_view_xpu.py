@@ -22,6 +22,7 @@ from get_test_cover_info import (
 )
 
 import paddle
+import paddle.distributed as dist
 
 paddle.enable_static()
 
@@ -139,6 +140,38 @@ class XPUTestContiguousComplex64StridedViewXPU(XPUOpTestWrapper):
                 out1.numpy(), np.array([1.0 + 2.0j], dtype=np.complex64)
             )
 
+        def test_negative_stride_contiguous(self):
+            # The XDNN gather/scatter primitives only walk an operand
+            # forwards, so reversed views cannot be materialized or indexed
+            # on XPU. Creating the view is metadata-only and must keep
+            # working; every consuming kernel must raise instead of silently
+            # returning wrong data.
+            x_np = np.arange(8 * 6, dtype=np.float32).reshape([8, 6])
+            if self.in_type_str == "complex64":
+                x_np = x_np.astype(np.complex64) * (1.0 + 2.0j)
+            x = paddle.to_tensor(x_np)
+
+            for view_fn in (lambda t: t[::-1], lambda t: t[:, ::-1]):
+                view = view_fn(x)
+                self.assertFalse(view.is_contiguous())
+                with self.assertRaises(NotImplementedError):
+                    view.contiguous()
+
+            if self.in_type_str != "float32":
+                return
+            idx = paddle.to_tensor(np.array([2, 5, 2, 0, 5], dtype=np.int64))
+            # single __getitem__: the negative strides reach the gather
+            # kernel through its stride attributes
+            with self.assertRaises(NotImplementedError):
+                x[::-1, idx]
+            # chained __getitem__: the getitem fallback materializes the
+            # reversed view first
+            with self.assertRaises(NotImplementedError):
+                x[:, ::-1][idx]
+            # setitem: the scatter kernel walks the same reversed view
+            with self.assertRaises(NotImplementedError):
+                x[::-1, idx] = -7
+
         def test_complex64_strided_slice_regression(self):
             # Regression for: XPU complex64 strided-view materialization bug.
             #
@@ -173,6 +206,34 @@ class XPUTestContiguousComplex64StridedViewXPU(XPUOpTestWrapper):
             # Both paths below trigger Trans2Contiguous -> XPU contiguous kernel.
             self._assert_allclose(t.contiguous().numpy(), expected)
             self._assert_allclose(t.cpu().numpy(), expected)
+
+        def test_negative_stride_dist_tensor_advanced_index(self):
+            if self.in_type_str != "float32":
+                self.skipTest("DistTensor regression is covered on float32.")
+
+            x_np = np.arange(8 * 6 * 6, dtype=np.float32).reshape([8, 6, 6])
+            x = paddle.to_tensor(x_np)
+            mesh = dist.ProcessMesh([0], dim_names=["x"])
+            dist_x = dist.shard_tensor(x, mesh, [dist.Replicate()])
+            idx_np = np.array([2, 5, 2, 0, 5], dtype=np.int64)
+            idx = paddle.to_tensor(idx_np)
+
+            # DistTensor strided_slice materializes the local result before
+            # advanced indexing, so the XPU gather receives contiguous data.
+            cases = (
+                (lambda t, i: t[i, ::-1, :], lambda a: a[idx_np, ::-1, :]),
+                (lambda t, i: t[::-1, i], lambda a: a[::-1, idx_np]),
+                (
+                    lambda t, i: t[::-1, i, ::-1],
+                    lambda a: a[::-1, idx_np, ::-1],
+                ),
+            )
+            for fn, expected_fn in cases:
+                out = fn(dist_x, idx)
+                self.assertTrue(out.is_dist())
+                self.assertEqual(out.process_mesh, mesh)
+                self.assertEqual(out.placements, dist_x.placements)
+                self._assert_allclose(out.numpy(), expected_fn(x_np))
 
 
 support_types = get_xpu_op_support_types("slice")

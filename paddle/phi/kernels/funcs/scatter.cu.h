@@ -465,8 +465,7 @@ void GPUScatterAdd(const GPUContext& dev_ctx,
   const char* src_ptr = reinterpret_cast<const char*>(src_restrided.data<T>());
   const char* index_ptr = reinterpret_cast<const char*>(index.data<IndexT>());
 
-  auto offset_calc =
-      make_offset_calculator_put<3>(desired_shape, strides_array);
+  auto offset_calc = MakeOffsetCalculatorPut<3>(desired_shape, strides_array);
 
   auto reduce_add = [=] __device__(int i) {
     const auto offsets = offset_calc.get(i);
