@@ -13,12 +13,18 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/index_put_kernel.h"
+#include "paddle/common/flags.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/cast_kernel.h"
 #include "paddle/phi/kernels/funcs/index_put_utils.h"
+#ifdef PADDLE_WITH_CUDA
+#include "paddle/phi/kernels/funcs/index_put_with_sort.cu.h"
+#endif
+
+COMMON_DECLARE_bool(cudnn_deterministic);
 
 namespace phi {
 
@@ -170,6 +176,51 @@ void IndexPutKernel(const Context& dev_ctx,
   } else {
     ptr_value = &value;
   }
+
+#ifdef PADDLE_WITH_CUDA
+  // The default accumulate path (LaunchIndexPutCudaKernel) scatters with
+  // CudaAtomicAdd, whose summation order is nondeterministic across runs, so
+  // duplicated indices give run-to-run bitwise drift. When
+  // FLAGS_cudnn_deterministic is set, route to the sort-based accumulate, which
+  // groups colliding indices and adds them in a fixed order (same result, just
+  // deterministic). Scoped to a single index into a 1-D destination: that is
+  // exactly the flat scatter the strided-view backward emits
+  // (StridedTensorAccumulate builds a 1-D storage and one linear index), and it
+  // matches index_elementwise_get_grad's single-index use of the same helper.
+  // Other shapes keep the atomic path.
+  if (accumulate && FLAGS_cudnn_deterministic && int_indices_v.size() == 1 &&
+      x.dims().size() == 1) {
+    // IndexPutWithSortKernel accumulates into `out` in place and does not copy
+    // `x` in, so reproduce LaunchIndexPutCudaKernel's prologue: an
+    // uninitialized destination starts as a copy of x (plain index_put
+    // semantics); an already initialized one (e.g. the pre-zeroed strided
+    // gradient buffer) is left as is.
+    bool is_initialized = out->initialized();
+    dev_ctx.template Alloc<T>(out);
+    if (!is_initialized) {
+      Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+    }
+    // input_dims/strides and index_dims/strides are unused by the helper (it
+    // derives geometry from `out` and `indices`); pass the natural values.
+    const auto x_dims_v = vectorize<int64_t>(x.dims());
+    const auto x_strides_v = vectorize<int64_t>(common::stride(x.dims()));
+    const auto idx_dims_v = vectorize<int64_t>(res_indices_v[0]->dims());
+    const auto idx_strides_v =
+        vectorize<int64_t>(common::stride(res_indices_v[0]->dims()));
+    funcs::IndexPutWithSortKernel<T, int64_t>(dev_ctx,
+                                              x,
+                                              *ptr_value,
+                                              res_indices_v,
+                                              x_dims_v,
+                                              x_strides_v,
+                                              idx_dims_v,
+                                              idx_strides_v,
+                                              /*slice_offset=*/0,
+                                              /*accumulate=*/true,
+                                              out);
+    return;
+  }
+#endif
 
   LaunchIndexPutCudaKernel<T, Context>(
       dev_ctx, x, res_indices_v, *ptr_value, accumulate, out);
