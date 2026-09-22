@@ -522,6 +522,21 @@ class TestTopKAPI(unittest.TestCase):
             with self.assertRaises(ValueError):
                 paddle.topk(x, k=0)
 
+            # An empty reduction axis (size 0) cannot supply the requested
+            # k (>=1) elements, so topk must raise instead of silently
+            # returning all-NaN (aligns with the forward "index k out of
+            # range" semantics).
+            empty_axis = paddle.empty([1024, 0], dtype="float32")
+            with self.assertRaises(ValueError):
+                paddle.topk(empty_axis, k=10, axis=-1)
+
+            # A legit empty output (empty batch, non-empty reduction axis)
+            # still returns an empty tensor of the expected shape and must
+            # not be blocked by the check above.
+            empty_batch = paddle.empty([0, 5], dtype="float32")
+            values, _ = paddle.topk(empty_batch, k=3, axis=-1)
+            self.assertEqual(list(values.shape), [0, 3])
+
 
 if __name__ == "__main__":
     paddle.enable_static()
