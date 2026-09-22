@@ -29,7 +29,18 @@ jobs:
           ref: ${{ github.sha }}
           path: Paddle
           fetch-depth: 1
-          submodules: recursive
+
+      - name: Sync submodules with retry
+        working-directory: Paddle
+        run: |
+          git submodule sync --recursive
+          if ! git submodule update --init --force --recursive --depth 1; then
+            echo "submodule update failed; purging module caches and retrying"
+            git submodule deinit -f --all || true
+            rm -rf .git/modules
+            git submodule sync --recursive
+            git submodule update --init --force --recursive --depth 1
+          fi
 
       - name: Package Paddle into tarball
         run: |
