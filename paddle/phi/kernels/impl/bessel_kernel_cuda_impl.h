@@ -97,7 +97,9 @@ struct CudaI0Functor {
     auto len = std::get<1>(coeff_pair_B);
     MT y = (MT{32.0} / x) - MT{2.0};
 
-    return static_cast<T>(std::exp(x) * Chbevl<T>(y, B, len) / std::sqrt(x));
+    const MT half_exp = std::exp(x / MT{2.0});
+    return static_cast<T>(
+        half_exp * (Chbevl<T>(y, B, len) / std::sqrt(x)) * half_exp);
   }
 };
 
