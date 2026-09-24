@@ -18,6 +18,7 @@ import gc
 import json
 import math
 import os
+import time
 from collections import defaultdict
 from copy import deepcopy
 from dataclasses import replace
@@ -32,6 +33,7 @@ from paddle.distributed.fleet.utils.log_util import logger
 from ..aoa.aoa_engine import (
     AOAEngine,
 )
+from .fast_resumable import check_resumable_locally_fast
 from .metadata import LocalTensorIndex, LocalTensorMetadata, Metadata
 from .metadata_manager import MetadataManager
 from .reshard_comm import CommunicatorFactory
@@ -598,6 +600,7 @@ def _handle_aoa(
     aoa_config,
     safetensors,
     comm_method,
+    num_workers=1,
 ):
     global _metadata_manager
 
@@ -711,6 +714,7 @@ def _handle_aoa(
         safetensors=safetensors,
         worker_groups=worker_groups,
         comm_method=comm_method,
+        num_workers=num_workers,
     )
 
     for dst_desc, src_desc in dst_to_src_desc_mapping.items():
@@ -746,19 +750,22 @@ def local_load_state_dict(
     path: str,
     offload: bool = False,
     use_dist: bool = True,
+    num_workers: int = 1,
 ):
     cur_rank = paddle.distributed.get_rank() if use_dist else 0
     expect_checkpoint_file = f"{cur_rank}_0.distcp"
     ckpt_file = os.path.join(path, expect_checkpoint_file)
     source_state_dict = {}
     if offload:
-        state_dict_numpy = paddle.load(ckpt_file, return_numpy=True)
+        state_dict_numpy = paddle.load(
+            ckpt_file, return_numpy=True, num_workers=num_workers
+        )
         source_state_dict = {
             key: paddle.to_tensor(value, place=paddle.CPUPlace())
             for key, value in state_dict_numpy.items()
         }
     else:
-        source_state_dict = paddle.load(ckpt_file)
+        source_state_dict = paddle.load(ckpt_file, num_workers=num_workers)
     for key, value in state_dict.items():
         if isinstance(value, ShardedWeight):
             local_tensor = value.local_tensor
@@ -788,6 +795,8 @@ def load_state_dict(
     safetensors: bool = False,
     worker_groups: list[Group] | None = None,
     comm_method: str = "broadcast",
+    num_workers: int = 1,
+    fast_resumable_check: bool = True,
 ) -> None:
     r"""
     Load the state_dict inplace from a checkpoint path.
@@ -804,6 +813,9 @@ def load_state_dict(
         safetensors(bool): Whether to use safetensors format. Default is False.
         worker_groups (list[paddle.distributed.collective.Group]): Communication groups used for tensor communications; if multiple are provided, an appropriate group is chosen; if None, the process_group group is used.
         comm_method (str): Communication method for resharding. Choices are "send_recv", "broadcast", "multi_group_broadcast", and "grouped_send_recv". Default is "broadcast".
+        num_workers(int): Number of threads used by paddle.load to read tensor payloads of each
+            checkpoint file in parallel. 1 keeps the original serial behavior. Default is 1.
+        fast_resumable_check (bool): Whether to use the fast local-resume check that avoids loading the full metadata file. When True (default), an unsharded checkpoint can skip the expensive ``paddle.load`` of the metadata file and ``MetadataManager`` build. Set to False to force the original code path.
     Example:
         .. code-block:: pycon
 
@@ -853,11 +865,42 @@ def load_state_dict(
     if not safetensors and aoa_config is None:
         metadata_files, _ = get_checkpoint_files(path, unique_id=unique_id)
         assert len(metadata_files) == 1, "Only support one metadata file now."
-        metadata = paddle.load(os.path.join(path, metadata_files[0]))
-        _metadata_manager.set_metadata_list([metadata])
-        resumable_locally = check_resumable_locally(
-            path, state_dict, _metadata_manager, use_dist, process_group
-        )
+        metadata_path = os.path.join(path, metadata_files[0])
+
+        # Try to settle the question from state_dict_metadata and the rank's own
+        # checkpoint file first; only a checkpoint that is actually sharded needs
+        # storage_metadata, and therefore the full metadata load below.
+        resumable_locally = None
+        if fast_resumable_check:
+            resumable_locally = check_resumable_locally_fast(
+                metadata_path, path, state_dict, use_dist, process_group
+            )
+        if resumable_locally is None:
+            if fast_resumable_check:
+                logger.info(
+                    "[flex_checkpoint] fast resumable check declined, falling "
+                    f"back to a full load of '{metadata_path}'."
+                )
+            else:
+                logger.info(
+                    "[flex_checkpoint] fast_resumable_check=False, loading "
+                    f"'{metadata_path}' in full."
+                )
+            stock_start = time.time()
+            metadata = paddle.load(metadata_path)
+            _metadata_manager.set_metadata_list([metadata])
+            resumable_locally = check_resumable_locally(
+                path, state_dict, _metadata_manager, use_dist, process_group
+            )
+            logger.info(
+                f"[flex_checkpoint] stock resumable check returned "
+                f"{resumable_locally} in {time.time() - stock_start:.3f}s."
+            )
+        else:
+            logger.info(
+                "[flex_checkpoint] fast resumable check decided "
+                f"{resumable_locally}; the full metadata load was skipped."
+            )
         if resumable_locally:
             logger.info(
                 f"Checkpoint '{path}' resumable locally, skipping reshard."
@@ -867,6 +910,7 @@ def load_state_dict(
                 path=path,
                 offload=offload,
                 use_dist=use_dist,
+                num_workers=num_workers,
             )
             logger.info("Checkpoint successfully loaded locally!")
             _metadata_manager.clear()
@@ -885,6 +929,7 @@ def load_state_dict(
             safetensors=safetensors,
             worker_groups=worker_groups,
             comm_method=comm_method,
+            num_workers=num_workers,
         )
         _metadata_manager.clear()
         gc.collect()
@@ -922,6 +967,7 @@ def load_state_dict(
             aoa_config,
             safetensors,
             comm_method,
+            num_workers,
         )
     else:
         load_state_dict_impl(
@@ -935,6 +981,7 @@ def load_state_dict(
             safetensors=safetensors,
             worker_groups=worker_groups,
             comm_method=comm_method,
+            num_workers=num_workers,
         )
     if use_dist:
         _finish_unflatten(flat_shards, padding_info)
@@ -1201,6 +1248,7 @@ def load_state_dict_impl(
     safetensors: bool = False,
     worker_groups: list[Group] | None = None,
     comm_method: str = 'broadcast',
+    num_workers: int = 1,
 ) -> None:
     with paddle.base.dygraph.guard():
         global _metadata_manager
@@ -1291,6 +1339,7 @@ def load_state_dict_impl(
                     os.path.join(path, file),
                     return_numpy=True,
                     safetensors=safetensors,
+                    num_workers=num_workers,
                 )
                 source_state_dict[file] = {
                     key: paddle.to_tensor(value, place=paddle.CPUPlace())
@@ -1298,7 +1347,9 @@ def load_state_dict_impl(
                 }
             else:
                 source_state_dict[file] = paddle.load(
-                    os.path.join(path, file), safetensors=safetensors
+                    os.path.join(path, file),
+                    safetensors=safetensors,
+                    num_workers=num_workers,
                 )
 
         metadata = _metadata_manager.get_metadata_list()[0]
