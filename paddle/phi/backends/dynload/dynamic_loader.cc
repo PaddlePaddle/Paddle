@@ -162,6 +162,7 @@ static constexpr char cupti_lib_path[] = CUPTI_LIB_PATH;  // NOLINT
 // NOTE: In order to adapt to the default installation path of cuda
 #if defined(_WIN32) && defined(PADDLE_WITH_CUDA)
 static constexpr char cuda_lib_path[] = CUDA_TOOLKIT_ROOT_DIR "/bin";
+static constexpr char cuda_lib_x64_path[] = CUDA_TOOLKIT_ROOT_DIR "/bin/x64";
 #else
 static constexpr char cuda_lib_path[] = "/usr/local/cuda/lib64";  // NOLINT
 #endif
@@ -186,13 +187,14 @@ static constexpr const char* win_nvjpeg_lib =
 static constexpr const char* win_cusolver_lib =
     "cusolver64_" CUDA_VERSION_MAJOR CUDA_VERSION_MINOR
     ".dll;cusolver64_" CUDA_VERSION_MAJOR
-    ".dll;cusolver64_11.dll;cusolver64_10.dll";
+    ".dll;cusolver64_12.dll;cusolver64_11.dll;cusolver64_10.dll";
 static constexpr const char* win_cusparse_lib =
     "cusparse64_" CUDA_VERSION_MAJOR CUDA_VERSION_MINOR
-    ".dll;cusparse64_" CUDA_VERSION_MAJOR ".dll;cusparse64_10.dll";
+    ".dll;cusparse64_" CUDA_VERSION_MAJOR ".dll;cusparse64_12.dll";
 static constexpr const char* win_cufft_lib =
     "cufft64_" CUDA_VERSION_MAJOR CUDA_VERSION_MINOR
-    ".dll;cufft64_" CUDA_VERSION_MAJOR ".dll;cufft64_11.dll;cufft64_10.dll";
+    ".dll;cufft64_" CUDA_VERSION_MAJOR
+    ".dll;cufft64_12.dll;cufft64_11.dll;cufft64_10.dll";
 #endif
 
 static inline std::string join(const std::string& part1,
@@ -372,6 +374,10 @@ static inline void* GetDsoHandleFromSearchPath(
   }
 #endif
   std::vector<std::string> dso_names = split(dso_name, ";");
+  auto search_extra_paths = extra_paths;
+#if defined(_WIN32) && defined(PADDLE_WITH_CUDA)
+  search_extra_paths.emplace_back(cuda_lib_x64_path);
+#endif
   void* dso_handle = nullptr;
   for (auto const& dso : dso_names) {
     // 1. search in user config path by FLAGS
@@ -382,9 +388,10 @@ static inline void* GetDsoHandleFromSearchPath(
     }
     // 3. search in extra paths
     if (nullptr == dso_handle) {
-      for (auto const& path : extra_paths) {
+      for (auto const& path : search_extra_paths) {
         VLOG(3) << "extra_paths: " << path;
         dso_handle = GetDsoHandleFromSpecificPath(path, dso, dynload_flags);
+        if (nullptr != dso_handle) break;
       }
     }
     if (nullptr != dso_handle) break;

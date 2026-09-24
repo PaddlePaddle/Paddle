@@ -971,13 +971,14 @@ TEST(test_torch_library, TestLibraryPrintInfoWithDispatchKey) {
                          __FILE__,
                          __LINE__);
 
-  testing::internal::CaptureStdout();
-  library.print_info();
-  auto output = testing::internal::GetCapturedStdout();
+  std::ostringstream output;
+  library.print_info(output);
+  auto output_str = output.str();
 
-  ASSERT_NE(output.find("Library Info: IMPL"), std::string::npos);
-  ASSERT_NE(output.find("namespace=runtime_library_info"), std::string::npos);
-  ASSERT_NE(output.find("dispatch_key="), std::string::npos);
+  ASSERT_NE(output_str.find("Library Info: IMPL"), std::string::npos);
+  ASSERT_NE(output_str.find("namespace=runtime_library_info"),
+            std::string::npos);
+  ASSERT_NE(output_str.find("dispatch_key="), std::string::npos);
 }
 
 int fn_with_int_const(int const x) { return x + 1; }
