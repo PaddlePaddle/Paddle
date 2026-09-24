@@ -15,6 +15,7 @@
 import unittest
 
 import paddle
+from paddle.base import core
 
 
 class TestEmptyCache(unittest.TestCase):
@@ -22,6 +23,32 @@ class TestEmptyCache(unittest.TestCase):
         x = paddle.randn((2, 10, 12)).astype('float32')
         del x
         self.assertIsNone(paddle.device.cuda.empty_cache())
+
+
+class TestEmptyPinnedCache(unittest.TestCase):
+    def test_empty_pinned_cache_no_crash(self):
+        """Test that empty_pinned_cache doesn't crash when no pinned memory allocated"""
+        if not paddle.is_compiled_with_cuda():
+            return
+
+        # Call empty_pinned_cache without any pinned memory allocation
+        # Should not crash
+        core.cuda_pinned_empty_cache()
+
+    def test_empty_pinned_cache_with_allocation(self):
+        """Test that empty_pinned_cache works correctly with pinned memory"""
+        if not paddle.is_compiled_with_cuda():
+            return
+
+        # Allocate pinned memory
+        x = paddle.randn((128, 1024, 1024)).astype('float32')
+        x = x.pin_memory()
+
+        # Delete the tensor
+        del x
+
+        # Call empty_pinned_cache, should not crash
+        core.cuda_pinned_empty_cache()
 
 
 if __name__ == '__main__':
