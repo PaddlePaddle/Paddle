@@ -15,7 +15,13 @@
 #include "paddle/phi/kernels/abs_kernel.h"
 
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
+#include "paddle/phi/backends/xpu/xpu_context.h"
+#include "paddle/phi/common/type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/activation_kernel.h"
+#include "paddle/phi/kernels/complex_kernel.h"
+#include "paddle/phi/kernels/elementwise_add_kernel.h"
+#include "paddle/phi/kernels/elementwise_multiply_kernel.h"
 
 namespace phi {
 
@@ -32,6 +38,28 @@ void AbsKernel(const Context& dev_ctx, const DenseTensor& x, DenseTensor* out) {
                             x.numel());
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "abs");
 }
+
+#ifdef PADDLE_WITH_XPU_FFT
+template <>
+void AbsKernel<phi::complex64, XPUContext>(const XPUContext& dev_ctx,
+                                           const DenseTensor& x,
+                                           DenseTensor* out) {
+  using T = phi::complex64;
+  using RealT = phi::dtype::Real<T>;
+
+  if (x.numel() == 0) {
+    dev_ctx.template Alloc<RealT>(out);
+    return;
+  }
+
+  const DenseTensor real = Real<T, XPUContext>(dev_ctx, x);
+  const DenseTensor imag = Imag<T, XPUContext>(dev_ctx, x);
+  const DenseTensor real_sq = Multiply<RealT, XPUContext>(dev_ctx, real, real);
+  const DenseTensor imag_sq = Multiply<RealT, XPUContext>(dev_ctx, imag, imag);
+  const DenseTensor sum_sq = Add<RealT, XPUContext>(dev_ctx, real_sq, imag_sq);
+  SqrtKernel<RealT, XPUContext>(dev_ctx, sum_sq, out);
+}
+#endif
 }  // namespace phi
 
 PD_REGISTER_KERNEL(abs,
@@ -43,4 +71,11 @@ PD_REGISTER_KERNEL(abs,
                    phi::bfloat16,
                    int8_t,
                    int32_t,
-                   int64_t) {}
+                   int64_t
+#ifdef PADDLE_WITH_XPU_FFT
+                   ,
+                   phi::complex64
+#endif
+) {
+  kernel->OutputAt(0).SetDataType(phi::dtype::ToReal(kernel_key.dtype()));
+}

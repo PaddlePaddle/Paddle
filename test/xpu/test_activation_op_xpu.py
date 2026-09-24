@@ -478,6 +478,36 @@ for stype in support_types:
     create_test_class(globals(), XPUTestAbsOPZeroSize, stype)
 
 
+class XPUTestAbsOPComplex(XPUOpTestWrapper):
+    def __init__(self):
+        self.op_name = 'abs'
+        self.use_dynamic_create_class = False
+
+    class XPUTestAbsComplex(TestActivationOPBase):
+        def set_case(self):
+            self.op_type = "abs"
+            self.dtype = np.complex64
+
+            # Generate complex numbers with both real and imaginary parts
+            real_part = np.random.uniform(-1, 1, [4, 25]).astype(np.float32)
+            imag_part = np.random.uniform(-1, 1, [4, 25]).astype(np.float32)
+            # Avoid values too close to zero
+            real_part[np.abs(real_part) < 0.005] = 0.02
+            imag_part[np.abs(imag_part) < 0.005] = 0.02
+            x = real_part + 1j * imag_part
+
+            # abs(complex64) returns float32
+            out = np.abs(x).astype(np.float32)
+
+            self.attrs = {'use_xpu': True}
+            self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
+            self.outputs = {'Out': out}
+
+
+# Create test class for complex64
+create_test_class(globals(), XPUTestAbsOPComplex, 'complex64')
+
+
 class XPUTestReluOP(XPUOpTestWrapper):
     def __init__(self):
         self.op_name = 'relu'
