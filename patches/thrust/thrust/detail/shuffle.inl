@@ -19,6 +19,7 @@
  */
 
 #include <thrust/detail/config.h>
+#include <thrust/detail/config/exec_check_disable.h>
 
 // Note: ROCm 7.0+ rocThrust removed cpp11_required.h
 // The cpp dialect check is now handled by config/cpp_dialect.h which is included via config.h
