@@ -193,6 +193,9 @@ class ProcessGroupNCCL final : public ProcessGroupWithStream {
   phi::distributed::NCCLCommContext* GetOrCreateCommContext(
       const Place& place, CommType comm_type = CommType::UNKNOWN);
 
+  phi::DeviceContext* GetOrCreateCalcContext(const Place& place,
+                                             bool use_calc_stream);
+
   void Shutdown();
   void Restart();
   phi::CUDAStream GetStream(const Place& place);
