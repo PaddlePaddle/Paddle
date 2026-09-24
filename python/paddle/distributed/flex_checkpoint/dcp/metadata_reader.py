@@ -246,8 +246,6 @@ def load_state_dict_metadata(
             >>> w1 = paddle.arange(32).reshape([4, 8])
             >>> dist.save_state_dict({"w1": w1}, ckpt_path)
             >>> state_dict_metadata = dist.load_state_dict_metadata(f"{ckpt_path}/0.metadata")
-            >>> print(state_dict_metadata["w1"][0].local_shape)
-            (4, 8)
             >>> # doctest: -SKIP
     """
     if not os.path.isfile(path):
