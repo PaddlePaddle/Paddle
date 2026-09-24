@@ -56,7 +56,7 @@ def _fully_shard_manual_parallel(
     ignored_params,
     enable_tensor_fusion_and_overlap,
 ):
-    FullyShardFusion(
+    module._fsdp_context = FullyShardFusion(
         module,
         enable_tensor_fusion_and_overlap=enable_tensor_fusion_and_overlap,
         mp_policy=mp_policy,
@@ -74,7 +74,7 @@ def _fully_shard_auto_parallel(
     ignored_params,
     enable_tensor_fusion_and_overlap,
 ):
-    FullyShardAuto(
+    module._fsdp_context = FullyShardAuto(
         module,
         mesh,
         enable_tensor_fusion_and_overlap=enable_tensor_fusion_and_overlap,
