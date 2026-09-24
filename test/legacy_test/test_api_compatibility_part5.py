@@ -4407,5 +4407,108 @@ class TestQrAPICompatibility(unittest.TestCase):
         paddle.disable_static()
 
 
+# Test lstsq compatibility
+class TestLstsqAPI(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.np_x = np.array([[1, 3], [3, 2], [5, 6.0]], dtype="float64")
+        self.np_y = np.array(
+            [[3, 4, 6], [5, 3, 4], [1, 2, 1.0]], dtype="float64"
+        )
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+        y = paddle.to_tensor(self.np_y)
+
+        # 1. Paddle positional arguments
+        out1 = paddle.linalg.lstsq(x, y, driver="gelsd")
+        # 2. Paddle keyword arguments
+        out2 = paddle.linalg.lstsq(x=x, y=y, driver="gelsd")
+        # 3. PyTorch keyword arguments (A, B)
+        out3 = paddle.linalg.lstsq(A=x, B=y, driver="gelsd")
+        # 4. PyTorch keyword arguments (input, b)
+        out4 = paddle.linalg.lstsq(input=x, b=y, driver="gelsd")
+        # 5. Mixed arguments
+        out5 = paddle.linalg.lstsq(x, y=y, driver="gelsd")
+
+        for out in [out2, out3, out4, out5]:
+            np.testing.assert_allclose(out[0].numpy(), out1[0].numpy())
+            np.testing.assert_allclose(out[1].numpy(), out1[1].numpy())
+            np.testing.assert_array_equal(out[2].numpy(), out1[2].numpy())
+            np.testing.assert_allclose(out[3].numpy(), out1[3].numpy())
+
+        # Verify the solution against numpy
+        expected = np.linalg.lstsq(self.np_x, self.np_y, rcond=-1)
+        np.testing.assert_allclose(out1[0].numpy(), expected[0], rtol=1e-6)
+        np.testing.assert_allclose(out1[1].numpy(), expected[1], rtol=1e-6)
+        self.assertEqual(int(out1[2].numpy()), expected[2])
+        np.testing.assert_allclose(out1[3].numpy(), expected[3], rtol=1e-6)
+
+        paddle.enable_static()
+
+    def test_lstsq_alias_conflict(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+        y = paddle.to_tensor(self.np_y)
+
+        with self.assertRaises(ValueError):
+            paddle.linalg.lstsq(x=x, input=x, y=y, driver="gelsd")
+        with self.assertRaises(ValueError):
+            paddle.linalg.lstsq(x=x, y=y, B=y, driver="gelsd")
+
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            x = paddle.static.data(name="x", shape=[3, 2], dtype="float64")
+            y = paddle.static.data(name="y", shape=[3, 3], dtype="float64")
+
+            # 1. Paddle positional arguments
+            out1 = paddle.linalg.lstsq(x, y, driver="gelsd")
+            # 2. Paddle keyword arguments
+            out2 = paddle.linalg.lstsq(x=x, y=y, driver="gelsd")
+            # 3. PyTorch keyword arguments (A, B)
+            out3 = paddle.linalg.lstsq(A=x, B=y, driver="gelsd")
+            # 4. PyTorch keyword arguments (input, b)
+            out4 = paddle.linalg.lstsq(input=x, b=y, driver="gelsd")
+
+            exe = paddle.static.Executor()
+            fetches = exe.run(
+                main,
+                feed={
+                    "x": self.np_x,
+                    "y": self.np_y,
+                },
+                fetch_list=[
+                    out1[0],
+                    out1[1],
+                    out1[2],
+                    out1[3],
+                    out2[0],
+                    out2[1],
+                    out2[2],
+                    out2[3],
+                    out3[0],
+                    out3[1],
+                    out3[2],
+                    out3[3],
+                    out4[0],
+                    out4[1],
+                    out4[2],
+                    out4[3],
+                ],
+            )
+            for i in range(4, 16):
+                np.testing.assert_allclose(
+                    fetches[i], fetches[i % 4], rtol=1e-6
+                )
+
+        paddle.disable_static()
+
+
 if __name__ == "__main__":
     unittest.main()
