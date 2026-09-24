@@ -200,7 +200,87 @@ class Conv2DErrorTestCase(Conv2DTestCase):
             self.paddle_nn_layer()
 
 
+class Conv2DDefaultInitTestCase(unittest.TestCase):
+    """Lock the default parameter initializer (see #79706): weight is
+    Uniform(-bound, bound) with bound = 1/sqrt(fan_in), where
+    fan_in = (in_channels // groups) * prod(kernel_size); bias is zeros."""
+
+    def __init__(
+        self,
+        methodName='runTest',
+        num_channels=16,
+        num_filters=32,
+        groups=1,
+    ):
+        super().__init__(methodName)
+        self.num_channels = num_channels
+        self.num_filters = num_filters
+        self.groups = groups
+        self.fan_in = (num_channels // groups) * 3 * 3
+        self.bound = float(self.fan_in) ** -0.5
+
+    def _check_params(self, w, b):
+        self.assertEqual(
+            tuple(w.shape),
+            (self.num_filters, self.num_channels // self.groups, 3, 3),
+        )
+        self.assertLessEqual(float(np.abs(w).max()), self.bound * (1 + 1e-6))
+        expected_std = self.bound / np.sqrt(3.0)
+        self.assertAlmostEqual(
+            float(w.std()), expected_std, delta=0.2 * expected_std
+        )
+        self.assertTrue(np.all(b == 0))
+
+    def _dygraph_params(self, place):
+        with dg.guard(place):
+            paddle.seed(2024)
+            conv = nn.Conv2D(
+                self.num_channels,
+                self.num_filters,
+                3,
+                groups=self.groups,
+            )
+            return conv.weight.numpy(), conv.bias.numpy()
+
+    def _static_params(self, place):
+        paddle.seed(2024)
+        main = base.Program()
+        start = base.Program()
+        with (
+            base.unique_name.guard(),
+            base.program_guard(main, start),
+        ):
+            x = paddle.static.data(
+                "input", [1, self.num_channels, 8, 8], dtype="float32"
+            )
+            conv = nn.Conv2D(
+                self.num_channels,
+                self.num_filters,
+                3,
+                groups=self.groups,
+            )
+            y = conv(x)
+        exe = base.Executor(place)
+        exe.run(start)
+        return exe.run(
+            main,
+            feed={"input": np.zeros([1, self.num_channels, 8, 8], "float32")},
+            fetch_list=[conv.weight, conv.bias],
+        )
+
+    def runTest(self):
+        places = [base.CPUPlace()]
+        if base.core.is_compiled_with_cuda() or is_custom_device():
+            places.append(get_device_place())
+        for place in places:
+            self._check_params(*self._dygraph_params(place))
+            with paddle.pir_utils.IrGuard():
+                self._check_params(*self._static_params(place))
+
+
 def add_cases(suite):
+    suite.addTest(Conv2DDefaultInitTestCase(methodName='runTest'))
+    suite.addTest(Conv2DDefaultInitTestCase(methodName='runTest', groups=4))
     suite.addTest(Conv2DTestCase(methodName='runTest'))
     suite.addTest(
         Conv2DTestCase(methodName='runTest', stride=[1, 2], dilation=2)
