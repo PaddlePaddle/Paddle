@@ -67,6 +67,11 @@ class BufferGroup:
 
 
 class TensorFusionBuffer:
+    class _CompletedTask:
+        # Placeholder for the broadcast (sync) path where callers still .wait().
+        def wait(self):
+            pass
+
     def __init__(
         self,
         unique_key,
@@ -730,12 +735,57 @@ class FSDPCommManager:
             grads_buffer.accumulate_reduced_grad()
 
 
+def _find_exposed_param_names(outputs, own_param_names, _depth=0):
+    """Names of a layer's own parameters that appear verbatim in its outputs.
+
+    A layer normally consumes its parameters internally, but some designs hand
+    a parameter to a downstream consumer instead. The fused linear +
+    cross-entropy LM head is the motivating case: with a positive chunk count
+    it returns ``(hidden_states, weight, bias)`` so the loss module can do the
+    vocab projection chunk by chunk and never materialize the full logits.
+
+    Such a parameter needs different treatment from FSDP: it must not be fed to
+    the identity ``PyLayer`` used for the backward all_gather trigger (eager
+    rejects a leaf var that requires grad there), and it must not be re-sharded
+    when this layer's forward ends, because the consumer has not read it yet.
+    """
+    if not own_param_names:
+        return set()
+
+    if isinstance(outputs, paddle.Tensor):
+        return (
+            {outputs.name} if outputs.name in own_param_names else set()
+        )
+
+    # Outputs are flat in practice; the bound keeps a pathological nesting from
+    # turning a per-forward hook into a deep walk.
+    if _depth >= 2:
+        return set()
+
+    if isinstance(outputs, (tuple, list)):
+        values = outputs
+    elif isinstance(outputs, dict):
+        values = outputs.values()
+    else:
+        return set()
+
+    found = set()
+    for value in values:
+        found |= _find_exposed_param_names(
+            value, own_param_names, _depth + 1
+        )
+    return found
+
+
 class FusionBackwardHook(PyLayer):
     @staticmethod
     def forward(ctx, *inputs, layer, comm_manager, recursive=False):
         ctx.layer = layer
         ctx.comm_manager = comm_manager
         ctx.recursive = recursive
+        # [PATCH ernielite-fsdp] 记录 forward 的输入位置数（slot 数），
+        # backward 必须返回同样数量的"位置"，而不是同样数量的张量。
+        ctx._n_forward_slots = len(inputs)
         return inputs if len(inputs) > 1 else inputs[0]
 
     @staticmethod
@@ -747,6 +797,16 @@ class FusionBackwardHook(PyLayer):
                 trainable_params.append(param)
 
         ctx.comm_manager.all_gather_params(trainable_params, is_backward=True)
+
+        # [PATCH ernielite-fsdp] duplicable slot 的返回结构修正。
+        # ERNIE5 GPTLMHead.forward 在 num_nextn_predict_layers>0 时返回 list
+        # [主分支 logits, MTP logits]，被当作一个 duplicable 输入位置（n_slots==1）。
+        # backward 拿到 2 个梯度，必须作为一个 list 返回该位置，否则 Paddle 报
+        # "number of outputs should be 1, but received 2"。两个梯度属于不同张量，
+        # 不能求和（求和可跑通但梯度错误，是静默数值错误）。
+        n_slots = getattr(ctx, "_n_forward_slots", len(args))
+        if n_slots == 1 and len(args) > 1:
+            return list(args)
         return args
 
 
@@ -1166,7 +1226,22 @@ class FullyShardFusion:
         def comm_hook(grad):
             comm_manager._maybe_zero_grads()
             comm_manager._ensure_grads_writable(param)
-            if grad is not None and grad._is_initialized():
+            # A fused kernel may compute this parameter's gradient in fp32 and
+            # stash it here. Autograd casts whatever it returns down to the
+            # parameter dtype (bf16) before delivering it, and that rounding is
+            # visible as a training-trajectory divergence against non-FSDP runs
+            # which accumulate the fp32 tensor directly. The grads buffer is
+            # fp32, so preferring the stashed tensor keeps the accumulation
+            # lossless. The gradient still has to travel through autograd for
+            # this hook to fire at all, hence the out-of-band hand-off.
+            fp32_grad = getattr(param, "_fused_kernel_fp32_grad", None)
+            if fp32_grad is not None:
+                param._fused_kernel_fp32_grad = None
+                param.get_main_grad(fp32_grad.shape)
+                param.main_grad.add_(fp32_grad)
+                if grad is not None and grad._is_initialized():
+                    grad._clear_data()
+            elif grad is not None and grad._is_initialized():
                 # Share mem with grads_tmp_buffer
                 param.get_main_grad(grad.shape)
                 param.main_grad.add_(grad)
@@ -1190,12 +1265,24 @@ class FullyShardFusion:
 
         def _post_forward_hook(sublayers, recursive=False):
             comm_manager = self.comm_manager
+            own_param_names = {
+                param.name
+                for param in sublayers.parameters(include_sublayers=recursive)
+            }
 
             @paddle.autograd.no_grad()
-            def shard_comm(*_):
-                comm_manager.shard_params(
-                    sublayers.parameters(include_sublayers=recursive)
-                )
+            def shard_comm(layer, inputs, outputs):
+                params = sublayers.parameters(include_sublayers=recursive)
+                exposed = _find_exposed_param_names(outputs, own_param_names)
+                if exposed:
+                    # The layer handed these parameters to a downstream
+                    # consumer (fused linear + cross-entropy LM head), which
+                    # has not read them yet. Clearing the gathered data here
+                    # would corrupt that read, so leave them gathered; the
+                    # per-parameter grad hook shards each one again as soon as
+                    # its gradient has been reduced.
+                    params = [p for p in params if p.name not in exposed]
+                comm_manager.shard_params(params)
 
             return shard_comm
 
@@ -1238,12 +1325,20 @@ class FullyShardFusion:
         _register_recursive(model)
 
     def _register_fusion_layer_hooks(self, layer, recursive=False):
+        own_param_names = {
+            param.name
+            for param in layer.parameters(include_sublayers=recursive)
+        }
+
         def _forward_post_hook(layer, inputs, outputs):
+            exposed = _find_exposed_param_names(outputs, own_param_names)
+
             if isinstance(outputs, dict):
                 for key, value in outputs.items():
                     if (
                         isinstance(value, paddle.Tensor)
                         and not value.stop_gradient
+                        and value.name not in exposed
                     ):
                         outputs[key] = FusionBackwardHook.apply(
                             value,
@@ -1253,15 +1348,34 @@ class FullyShardFusion:
                         )
                 return outputs
             elif isinstance(outputs, tuple):
-                result = FusionBackwardHook.apply(
-                    *outputs,
+                # Exposed parameters are leaf vars that require grad, which the
+                # identity PyLayer below cannot return. Route the remaining
+                # outputs through the hook -- they still anchor the backward
+                # all_gather -- and splice the parameters back untouched.
+                keep = [
+                    i
+                    for i, value in enumerate(outputs)
+                    if not (
+                        isinstance(value, paddle.Tensor)
+                        and value.name in exposed
+                    )
+                ]
+                if not keep:
+                    return outputs
+                hooked = FusionBackwardHook.apply(
+                    *[outputs[i] for i in keep],
                     layer=layer,
                     comm_manager=self.comm_manager,
                     recursive=recursive,
                 )
-                if not isinstance(result, tuple):
-                    result = (result,)
-                return result
+                if not isinstance(hooked, tuple):
+                    hooked = (hooked,)
+                result = list(outputs)
+                for pos, value in zip(keep, hooked):
+                    result[pos] = value
+                return tuple(result)
+            elif isinstance(outputs, paddle.Tensor) and outputs.name in exposed:
+                return outputs
             else:
                 return FusionBackwardHook.apply(
                     outputs,
