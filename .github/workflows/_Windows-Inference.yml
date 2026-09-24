@@ -39,7 +39,7 @@ jobs:
     needs: [check-bypass]
     if: ${{ needs.check-bypass.outputs.can-skip != 'true' && inputs.clone-can-skip != 'true' }}
     runs-on:
-      group: win-infer
+      group: win-infer-test
     timeout-minutes: 240
     env:
       PADDLE_VERSION: 0.0.0
