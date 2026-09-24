@@ -51,6 +51,14 @@ BackendAPI* BackendAPI::get_backend(common::Arch arch) {
             ::common::errors::InvalidArgument(
                 "global symbol (backend_api.custom_device) not found!"));
       },
+      [&](common::XpuArch) {
+        temp_backend_api =
+            GlobalSymbolRegistry::Global().Lookup("backend_api.xpu");
+        PADDLE_ENFORCE_NE(temp_backend_api,
+                          nullptr,
+                          ::common::errors::InvalidArgument(
+                              "global symbol (backend_api.xpu) not found!"));
+      },
       [&](std::variant<common::UnknownArch,
                        common::X86Arch,
                        common::ARMArch,
