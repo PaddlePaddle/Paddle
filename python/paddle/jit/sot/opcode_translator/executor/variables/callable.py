@@ -361,9 +361,39 @@ class UserDefinedFunctionVariable(FunctionVariable):
         if isinstance(
             value, paddle.jit.dy2static.program_translator.StaticFunction
         ):
-            return UserDefinedFunctionVariable(
-                value.dygraph_function, graph, tracker
-            )
+            # Use __func__ when dygraph_function is a bound method,
+            # so that inspect.signature preserves the ``self`` parameter.
+            fn = value.dygraph_function
+            if inspect.ismethod(fn):
+                fn = fn.__func__
+            if value.class_instance is not None:
+                # StaticFunction bound to an instance (via __get__ descriptor).
+                # Wrap as MethodVariable so that load_method preserves the
+                # ``self`` binding in CALL_METHOD dispatch.
+                # Trackers use real StaticFunction attributes
+                # (class_instance, dygraph_function).  Guard evaluation is
+                # safe because method_var.tracker is a non-traceable
+                # DanglingTracker from the BuiltinVariable(getattr, ...)
+                # call in load_method — these GetAttrTracker guards are
+                # never reached.
+                fn_var = UserDefinedFunctionVariable(
+                    fn, graph, DanglingTracker()
+                )
+                instance_var = VariableFactory.from_value(
+                    value.class_instance, graph, DanglingTracker()
+                )
+                method_var = MethodVariable(
+                    instance_var,
+                    fn_var,
+                    graph=graph,
+                    tracker=tracker,
+                )
+                instance_var.tracker = GetAttrTracker(
+                    method_var, "class_instance"
+                )
+                fn_var.tracker = GetAttrTracker(method_var, "dygraph_function")
+                return method_var
+            return UserDefinedFunctionVariable(fn, graph, tracker)
         return None
 
     @property
