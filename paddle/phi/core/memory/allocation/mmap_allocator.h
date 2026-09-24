@@ -14,22 +14,24 @@
 
 #pragma once
 
-#ifndef _WIN32
-
 #include <atomic>
+#include <cstdint>
 #include <memory>
 #include <mutex>
 #include <string>
+#include <unordered_map>
 #include <unordered_set>
 #include <utility>
+#include <vector>
 
+#include "paddle/common/macros.h"
 #include "paddle/phi/core/memory/allocation/allocator.h"
 
 namespace paddle {
 namespace memory {
 namespace allocation {
 
-std::string GetIPCName();
+PADDLE_API std::string GetIPCName();
 
 static constexpr int64_t mmap_alignment = 64;
 
@@ -42,19 +44,19 @@ enum MappedModes {
   MAPPED_UNLINK = 32
 };
 
-class MemoryMapAllocation : public Allocation {
+class PADDLE_API MemoryMapAllocation : public Allocation {
  public:
   explicit MemoryMapAllocation(void *ptr,
                                size_t size,
                                std::string ipc_name,
-                               int fd)
+                               intptr_t fd)
       : Allocation(ptr, size, CPUPlace()),
         ipc_name_(std::move(ipc_name)),
         fd_(fd),
         map_ptr_(ptr),
         map_size_(size) {}
   explicit MemoryMapAllocation(
-      void *ptr, size_t size, std::string ipc_name, int fd, int flags)
+      void *ptr, size_t size, std::string ipc_name, intptr_t fd, int flags)
       : Allocation(ptr, size, CPUPlace()),
         ipc_name_(std::move(ipc_name)),
         fd_(fd),
@@ -63,7 +65,7 @@ class MemoryMapAllocation : public Allocation {
         map_size_(size) {}
 
   inline const std::string &ipc_name() const { return ipc_name_; }
-  inline int shared_fd() const { return fd_; }
+  inline intptr_t shared_fd() const { return fd_; }
 
   virtual void close();
 
@@ -71,7 +73,7 @@ class MemoryMapAllocation : public Allocation {
 
  protected:
   std::string ipc_name_;
-  int fd_ = -1;
+  intptr_t fd_ = -1;
   int flags_ = 0;
   void *map_ptr_ = nullptr;
   size_t map_size_ = 0;
@@ -79,13 +81,13 @@ class MemoryMapAllocation : public Allocation {
   bool closed_fd_ = false;
 };
 
-class RefcountedMemoryMapAllocation : public MemoryMapAllocation {
+class PADDLE_API RefcountedMemoryMapAllocation : public MemoryMapAllocation {
  public:
   RefcountedMemoryMapAllocation(void *ptr,
                                 size_t size,
                                 std::string ipc_name,
+                                intptr_t fd,
                                 int flags,
-                                int fd,
                                 int buffer_id = -1);
 
   void incref();
@@ -99,37 +101,44 @@ class RefcountedMemoryMapAllocation : public MemoryMapAllocation {
   void resetBaseptr();
 };
 
-void AllocateMemoryMap(std::string filename,
-                       int *shared_fd,
-                       int flags,
-                       size_t size,
-                       void **base_ptr_);
+PADDLE_API void AllocateMemoryMap(std::string *filename,
+                                  intptr_t *shared_fd,
+                                  int flags,
+                                  size_t size,
+                                  void **base_ptr_);
 
-std::shared_ptr<RefcountedMemoryMapAllocation>
+PADDLE_API std::shared_ptr<RefcountedMemoryMapAllocation>
 AllocateRefcountedMemoryMapAllocation(std::string filename,
-                                      int shared_fd,
+                                      intptr_t shared_fd,
                                       int flags,
                                       size_t size,
                                       int buffer_id = -1);
 
-class MemoryMapWriterAllocation : public Allocation {
+class PADDLE_API MemoryMapWriterAllocation : public Allocation {
  public:
   explicit MemoryMapWriterAllocation(void *ptr,
                                      size_t size,
                                      std::string ipc_name)
       : Allocation(ptr, size, CPUPlace()), ipc_name_(std::move(ipc_name)) {}
+  explicit MemoryMapWriterAllocation(void *ptr,
+                                     size_t size,
+                                     std::string ipc_name,
+                                     intptr_t fd)
+      : Allocation(ptr, size, CPUPlace()),
+        ipc_name_(std::move(ipc_name)),
+        fd_(fd) {}
 
   inline const std::string &ipc_name() const { return ipc_name_; }
-  inline int shared_fd() const { return fd_; }
+  inline intptr_t shared_fd() const { return fd_; }
 
   ~MemoryMapWriterAllocation() override;
 
  private:
   std::string ipc_name_;
-  int fd_ = -1;
+  intptr_t fd_ = -1;
 };
 
-class MemoryMapReaderAllocation : public Allocation {
+class PADDLE_API MemoryMapReaderAllocation : public Allocation {
  public:
   explicit MemoryMapReaderAllocation(void *ptr,
                                      size_t size,
@@ -146,13 +155,13 @@ class MemoryMapReaderAllocation : public Allocation {
   int fd_ = -1;
 };
 
-std::shared_ptr<MemoryMapWriterAllocation> AllocateMemoryMapWriterAllocation(
-    size_t size);
+PADDLE_API std::shared_ptr<MemoryMapWriterAllocation>
+AllocateMemoryMapWriterAllocation(size_t size);
 
-std::shared_ptr<MemoryMapReaderAllocation> RebuildMemoryMapReaderAllocation(
-    const std::string &ipc_name, size_t size);
+PADDLE_API std::shared_ptr<MemoryMapReaderAllocation>
+RebuildMemoryMapReaderAllocation(const std::string &ipc_name, size_t size);
 
-class MemoryMapFdSet {
+class PADDLE_API MemoryMapFdSet {
  public:
   static MemoryMapFdSet &Instance();  // NOLINT
 
@@ -171,21 +180,61 @@ class MemoryMapFdSet {
   std::mutex mtx_;
 };
 
+#ifdef _WIN32
+// Tracks HANDLEs and mapped views from CreateFileMappingA that must stay
+// open (their refcount is still > 0 when their owner releases them) to keep
+// the named section alive for the processes that have not opened it yet.
+// SweepClosedMappings is called on each Insert() and reclaims entries whose
+// refcount has reached 0. Remaining entries at process exit are cleaned up by
+// the OS (handle closure on process termination).
+// NOTE: this is only needed because a Windows section object is destroyed as
+// soon as its last handle/view is closed, unlike a POSIX shm file which lives
+// on until shm_unlink. An alternative would be to DuplicateHandle the section
+// into the reader process, which is left as a follow-up since it requires
+// plumbing the target process handle down to this layer.
+class PADDLE_API WindowsHandleKeeper {
+ public:
+  static WindowsHandleKeeper &Instance();  // NOLINT
+
+  struct PendingMapping {
+    intptr_t fd;
+    void *map_ptr;
+  };
+
+  void Insert(const std::string &ipc_name, intptr_t fd, void *map_ptr);
+  void SweepClosedMappings();
+  void CloseAll();
+  ~WindowsHandleKeeper();
+
+ private:
+  WindowsHandleKeeper() = default;
+  // Caller must hold mtx_ before calling this.
+  void SweepClosedMappingsLocked();
+  std::unordered_map<std::string, PendingMapping> handles_;
+  std::mutex mtx_;
+};
+#endif
+
 class MemoryMapInfo {
  public:
   explicit MemoryMapInfo(int flags,
                          size_t data_size,
                          std::string file_name,
-                         void *mmap_ptr)
+                         void *mmap_ptr,
+                         intptr_t fd = -1)
       : flags_(flags),
         data_size_(data_size),
-        file_name_(file_name),
-        mmap_ptr_(mmap_ptr) {}
+        file_name_(std::move(file_name)),
+        mmap_ptr_(mmap_ptr),
+        fd_(fd) {}
 
   int flags_ = 0;
   size_t data_size_ = 0;
   std::string file_name_;
   void *mmap_ptr_ = nullptr;
+  // Only used on Windows, where the section object must be kept alive by an
+  // open HANDLE; -1 (unused) on other platforms.
+  intptr_t fd_ = -1;
 };
 
 /* Note(zhangbo):
@@ -197,14 +246,14 @@ created by the _share_filename process will be cached and reused according to
 the data_size of shm, thus eliminating the problem of munmap blocking other
 threads
 */
-class MemoryMapAllocationPool {
+class PADDLE_API MemoryMapAllocationPool {
  public:
-  static MemoryMapAllocationPool &Instance() {
-    if (pool_ == nullptr) {
-      pool_ = new MemoryMapAllocationPool();
-    }
-    return *pool_;
-  }
+  // NOTE: defined in the .cc (not as an inline function-local static) so that
+  // there is exactly one instance when phi is built as a shared library: an
+  // inline function-local static would be duplicated in every module that
+  // includes this header on Windows, which would silently split the pool
+  // between phi.dll and libpaddle.pyd.
+  static MemoryMapAllocationPool &Instance();  // NOLINT
 
   void Insert(const MemoryMapInfo &memory_map);
 
@@ -227,7 +276,8 @@ class MemoryMapAllocationPool {
 
  private:
   MemoryMapAllocationPool() = default;
-  static MemoryMapAllocationPool *pool_;
+  MemoryMapAllocationPool(const MemoryMapAllocationPool &) = delete;
+  MemoryMapAllocationPool &operator=(const MemoryMapAllocationPool &) = delete;
   std::vector<MemoryMapInfo> memory_map_allocations_;
   int max_pool_size_ = 0;
   std::mutex mtx_;
@@ -236,5 +286,3 @@ class MemoryMapAllocationPool {
 }  // namespace allocation
 }  // namespace memory
 }  // namespace paddle
-
-#endif
