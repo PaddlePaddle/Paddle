@@ -14,6 +14,7 @@
 
 #include "paddle/phi/kernels/index_elementwise_put_kernel.h"
 
+#include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/index_elementwise.h"
@@ -53,6 +54,15 @@ void XPUIndexElementwisePutWithTensorKernel(
   std::vector<int64_t> stride_tmp;
   funcs::cal_shape_stride(index_dims, &num_indices, &shape_tmp, &stride_tmp);
 
+  // The XDNN scatter can only walk the x view forwards, so a reversed axis
+  // cannot be served by this kernel. Fail loudly instead of silently
+  // producing wrong data.
+  if (funcs::HasReversedAxis(input_dims, input_strides)) {
+    PADDLE_THROW(common::errors::Unimplemented(
+        "Negative strides in advanced indexing are not supported on XPU."));
+  }
+  const std::vector<int64_t> value_dims = vectorize<int64_t>(value.dims());
+
   auto sizes = std::array<int64_t, 25>{};
   auto strides = std::array<int64_t, 25>{};
   for (int64_t i = 0; i < num_indices; i++) {
@@ -65,7 +75,7 @@ void XPUIndexElementwisePutWithTensorKernel(
   funcs::IndexPutStride<3>(input_dims,
                            input_strides,
                            phi::SizeOf(input.dtype()),
-                           vectorize<int64_t>(value.dims()),
+                           value_dims,
                            vectorize<int64_t>(value.strides()),
                            phi::SizeOf(value.dtype()),
                            shape_tmp,
@@ -162,6 +172,14 @@ void XPUIndexElementwisePutKernel(const Context& dev_ctx,
   std::vector<int64_t> shape_tmp;
   std::vector<int64_t> stride_tmp;
   funcs::cal_shape_stride(index_dims, &num_indices, &shape_tmp, &stride_tmp);
+
+  // The XDNN scatter can only walk the x view forwards, so a reversed axis
+  // cannot be served by this kernel. Fail loudly instead of silently
+  // producing wrong data.
+  if (funcs::HasReversedAxis(input_dims, input_strides)) {
+    PADDLE_THROW(common::errors::Unimplemented(
+        "Negative strides in advanced indexing are not supported on XPU."));
+  }
 
   auto sizes = std::array<int64_t, DDim::kMaxRank + 1>{};
   auto strides = std::array<int64_t, DDim::kMaxRank + 1>{};
