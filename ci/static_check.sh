@@ -203,7 +203,7 @@ aten_ops_signature_inputs=$(
 if [ -n "${aten_ops_signature_inputs}" ]; then
     aten_ops_signature_torch_target=$(mktemp -d)
     pip install --target "${aten_ops_signature_torch_target}" \
-        torch==2.12.1 --index-url https://download.pytorch.org/whl/cpu 1>nul
+        torch==2.13.0 --index-url https://download.pytorch.org/whl/cpu 1>nul
 
     PYTHONPATH="${aten_ops_signature_torch_target}${PYTHONPATH:+:${PYTHONPATH}}" \
         python ${PADDLE_ROOT}/tools/check_aten_ops_signature.py \
