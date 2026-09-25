@@ -2616,6 +2616,135 @@ class TestBlockMultiHeadAttnEncDecQuant(unittest.TestCase):
     or get_cuda_version() < 11040
     or not is_sm_supported,
     "core is not compiled with CUDA and cuda version need larger than or equal to 11.4"
+    " and device's compute capability must be 7.x, 8.x or 9.x",
+)
+class TestBlockMultiHeadAttnOutScaleQuantKernel(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static()
+        self.place = get_device_place()
+        self.batch_size = 1
+        self.num_head = 1
+        self.seq_len = 1
+        self.max_dec_len = 0
+        # Keep hid_dim below 64 so the old grid formula launches with
+        # grid.x=0 even when x86 masks the oversized shift count.
+        self.dim_head = 32
+        self.hid_dim = self.num_head * self.dim_head
+        self.blocksize = 64
+        self.token_num = self.batch_size * self.seq_len
+        self.block_num_per_seq = (
+            self.seq_len + self.max_dec_len + self.blocksize - 1
+        ) // self.blocksize
+        self.max_block_num = self.block_num_per_seq * self.batch_size
+        self.dtype = 'float16'
+        self.shape = (
+            self.batch_size,
+            self.num_head,
+            self.seq_len,
+            self.dim_head,
+        )
+        self.cache_shape = (
+            self.max_block_num,
+            self.num_head,
+            self.blocksize,
+            self.dim_head,
+        )
+
+        self.cache_k = paddle.zeros(self.cache_shape, dtype=self.dtype)
+        self.cache_v = paddle.zeros(self.cache_shape, dtype=self.dtype)
+        self.seq_lens_encoder = paddle.to_tensor(
+            [self.seq_len] * self.batch_size, dtype="int32", place=self.place
+        )
+        self.seq_lens_decoder = paddle.to_tensor(
+            [0] * self.batch_size, dtype="int32", place=self.place
+        )
+        self.seq_lens_this_time = paddle.to_tensor(
+            [self.seq_len] * self.batch_size, dtype="int32", place=self.place
+        )
+        self.padding_offset = paddle.to_tensor(
+            [0], dtype="int32", place=self.place
+        )
+        self.cum_offset = paddle.to_tensor([0], dtype="int32", place=self.place)
+        self.cu_seqlens_q = paddle.to_tensor(
+            [0, self.seq_len], dtype="int32", place=self.place
+        )
+        self.cu_seqlens_k = paddle.to_tensor(
+            [0, self.seq_len], dtype="int32", place=self.place
+        )
+        self.block_tables = paddle.to_tensor(
+            [[0]], dtype="int32", place=self.place
+        )
+
+    def test_out_scale_quant_kernel_launch(self):
+        q = paddle.to_tensor(
+            np.zeros(self.shape), dtype=self.dtype, place=self.place
+        )
+        k = paddle.to_tensor(
+            np.zeros(self.shape), dtype=self.dtype, place=self.place
+        )
+        v = paddle.to_tensor(
+            np.full(self.shape, 0.25), dtype=self.dtype, place=self.place
+        )
+        qkv = paddle.stack(
+            [
+                q.transpose([0, 2, 1, 3]).reshape(
+                    [self.token_num, self.hid_dim]
+                ),
+                k.transpose([0, 2, 1, 3]).reshape(
+                    [self.token_num, self.hid_dim]
+                ),
+                v.transpose([0, 2, 1, 3]).reshape(
+                    [self.token_num, self.hid_dim]
+                ),
+            ],
+            axis=1,
+        ).reshape([self.token_num, -1])
+
+        out = block_multihead_attention(
+            qkv,
+            self.cache_k,
+            self.cache_v,
+            self.seq_lens_encoder,
+            self.seq_lens_decoder,
+            self.seq_lens_this_time,
+            self.padding_offset,
+            self.cum_offset,
+            self.cu_seqlens_q,
+            self.cu_seqlens_k,
+            self.block_tables,
+            None,  # pre_key_cache
+            None,  # pre_value_cache
+            None,  # cache_k_quant_scales
+            None,  # cache_v_quant_scales
+            None,  # cache_k_dequant_scales
+            None,  # cache_v_dequant_scales
+            None,  # qkv_out_scale
+            None,  # qkv_bias
+            None,  # out_shift
+            None,  # out_smooth
+            None,  # max_enc_len_this_time
+            None,  # max_dec_len_this_time
+            None,  # rotary_embs
+            None,  # attn_mask
+            None,  # tgt_mask
+            self.seq_len,
+            self.blocksize,
+            False,  # use_neox_rotary_style
+            out_scale=1.0,
+        )[0]
+
+        # round(quant_max_bound=127.0 * out_scale=1.0 * v=0.25) = 32.
+        np.testing.assert_array_equal(
+            out.numpy(),
+            np.full((self.token_num, self.hid_dim), 32, dtype=np.int8),
+        )
+
+
+@unittest.skipIf(
+    not (core.is_compiled_with_cuda() or is_custom_device())
+    or get_cuda_version() < 11040
+    or not is_sm_supported,
+    "core is not compiled with CUDA and cuda version need larger than or equal to 11.4"
     "and device's compute capability must be 8.x or 90",
 )
 class TestBlockMultiHeadAttnEncDecCacheKVDynamicQuant(unittest.TestCase):
