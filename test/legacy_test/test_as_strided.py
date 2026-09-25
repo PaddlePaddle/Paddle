@@ -19,6 +19,7 @@ from op_test import get_device, get_places
 
 import paddle
 from paddle import base
+from paddle.framework import core
 
 
 class TestAsStrided(unittest.TestCase):
@@ -262,6 +263,178 @@ class TestAsStridedOverlapBackwardXPU(unittest.TestCase):
             np.testing.assert_allclose(
                 x.grad.numpy(), np.array([0, 5, 7, 6], dtype='float32')
             )
+
+
+class TestAsStridedZeroStrideBroadcastBackward(unittest.TestCase):
+    """A broadcast (zero stride) dimension maps every one of its indices onto
+    the same element, so its backward folds the whole axis onto a single slot.
+    Accumulating that with an atomic add both serializes on the GPU and, in
+    low precision, saturates: once the running bf16/fp16 sum outgrows the
+    mantissa, adding one more contribution rounds back to the same value and the
+    result stalls far below the true count. The backward must sum the broadcast
+    axis first so the total is exact regardless of how many elements fold in."""
+
+    def setUp(self):
+        self.places = get_places()
+
+    def test_full_broadcast_low_precision(self):
+        # 4096 is a power of two, so the true sum is exact in bf16 and fp16 and
+        # the assertion is unaffected by the output rounding. Without the fix
+        # the running sum saturates near 2**8 (bf16) / 2**11 (fp16), far below.
+        for dtype in ('bfloat16', 'float16'):
+            for shape, stride in (((4096,), (0,)), ((64, 64), (0, 0))):
+                for place in self.places:
+                    with base.dygraph.guard(place):
+                        x = paddle.ones([1], dtype=dtype)
+                        x.stop_gradient = False
+                        y = paddle.as_strided(x, shape=shape, stride=stride)
+                        y.backward(paddle.ones_like(y))
+                        np.testing.assert_allclose(
+                            x.grad.astype('float32').numpy(),
+                            np.array([4096.0], dtype='float32'),
+                        )
+
+    def test_full_broadcast_float32(self):
+        for place in self.places:
+            with base.dygraph.guard(place):
+                x = paddle.to_tensor(np.random.random([1]).astype('float32'))
+                x.stop_gradient = False
+                y = paddle.as_strided(x, shape=(1000, 1000), stride=(0, 0))
+                y.backward(paddle.ones_like(y))
+                np.testing.assert_allclose(
+                    x.grad.numpy(), np.array([1e6], dtype='float32')
+                )
+
+    def test_partial_broadcast_keeps_real_axis(self):
+        # Only the second axis broadcasts. Reducing it must leave the first axis
+        # untouched: grad[i] is the number of columns for every row.
+        for place in self.places:
+            with base.dygraph.guard(place):
+                x = paddle.to_tensor(np.arange(4, dtype='float32') + 1.0)
+                x.stop_gradient = False
+                y = paddle.as_strided(x, shape=(4, 2048), stride=(1, 0))
+                y.backward(paddle.ones_like(y))
+                np.testing.assert_allclose(
+                    x.grad.numpy(),
+                    np.full([4], 2048.0, dtype='float32'),
+                )
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda() or core.is_compiled_with_rocm(),
+    "deterministic path only runs on CUDA (compiled out on ROCm/DCU, where "
+    "RadixSortPairs is unavailable and the backward keeps the atomic scatter)",
+)
+class TestAsStridedNonZeroOverlapDeterministic(unittest.TestCase):
+    """A non-zero-stride overlapping view (e.g. shape (M, N) stride (1, 1))
+    maps several logical elements onto the same storage slot without any axis
+    collapsing to a single point, so the backward must accumulate. The GPU
+    accumulate path scatters with an atomic add, whose summation order is not
+    fixed across runs, so with non-uniform incoming gradients the result drifts
+    in the low bits from one run to the next. Under FLAGS_cudnn_deterministic
+    the scatter must instead group colliding indices and add them in a fixed
+    order, giving bitwise-identical gradients on repeated runs while staying
+    numerically equal to the true reduction."""
+
+    def setUp(self):
+        self.places = [
+            p for p in get_places() if isinstance(p, paddle.CUDAPlace)
+        ]
+
+    def _reference_grad(self, out_grad, shape, stride, storage_numel):
+        # grad_input[s] = sum of out_grad[idx] over every idx whose flat storage
+        # slot (sum_k idx_k * stride_k) equals s. Accumulated in float64 so the
+        # reference does not itself depend on summation order.
+        grad = np.zeros([storage_numel], dtype='float64')
+        og = out_grad.astype('float64').reshape(shape)
+        it = np.nditer(og, flags=['multi_index'])
+        for val in it:
+            slot = sum(i * s for i, s in zip(it.multi_index, stride))
+            grad[slot] += val
+        return grad
+
+    def _run_backward(self, place, base_np, shape, stride, out_grad_np):
+        with base.dygraph.guard(place):
+            x = paddle.to_tensor(base_np)
+            x.stop_gradient = False
+            y = paddle.as_strided(x, shape=shape, stride=stride)
+            y.backward(paddle.to_tensor(out_grad_np))
+            return x.grad.numpy().copy()
+
+    def test_high_collision_run_to_run_bitwise(self):
+        if not paddle.is_compiled_with_cuda() or not self.places:
+            return
+        shape, stride = (1000, 1000), (1, 1)
+        # storage slots span 0 .. (M-1)*1 + (N-1)*1
+        storage_numel = (
+            (shape[0] - 1) * stride[0] + (shape[1] - 1) * stride[1] + 1
+        )
+        rng = np.random.RandomState(2024)
+        base_np = rng.random([storage_numel]).astype('float32')
+        # Non-uniform gradients: with all-ones the atomic order would not matter.
+        out_grad_np = rng.random(shape).astype('float32')
+
+        old = paddle.get_flags('FLAGS_cudnn_deterministic')[
+            'FLAGS_cudnn_deterministic'
+        ]
+        try:
+            paddle.set_flags({'FLAGS_cudnn_deterministic': True})
+            for place in self.places:
+                first = self._run_backward(
+                    place, base_np, shape, stride, out_grad_np
+                )
+                second = self._run_backward(
+                    place, base_np, shape, stride, out_grad_np
+                )
+                # Deterministic: repeated runs must match to the last bit.
+                np.testing.assert_array_equal(
+                    first,
+                    second,
+                    err_msg="grad not bitwise reproducible under "
+                    "FLAGS_cudnn_deterministic",
+                )
+                # And still equal to the true reduction.
+                ref = self._reference_grad(
+                    out_grad_np, shape, stride, storage_numel
+                )
+                np.testing.assert_allclose(
+                    first.astype('float64'), ref, rtol=1e-5, atol=1e-4
+                )
+        finally:
+            paddle.set_flags({'FLAGS_cudnn_deterministic': old})
+
+    def test_low_collision_still_reproducible(self):
+        if not paddle.is_compiled_with_cuda() or not self.places:
+            return
+        shape, stride = (10, 2), (1, 1)
+        storage_numel = (
+            (shape[0] - 1) * stride[0] + (shape[1] - 1) * stride[1] + 1
+        )
+        rng = np.random.RandomState(7)
+        base_np = rng.random([storage_numel]).astype('float32')
+        out_grad_np = rng.random(shape).astype('float32')
+
+        old = paddle.get_flags('FLAGS_cudnn_deterministic')[
+            'FLAGS_cudnn_deterministic'
+        ]
+        try:
+            paddle.set_flags({'FLAGS_cudnn_deterministic': True})
+            for place in self.places:
+                first = self._run_backward(
+                    place, base_np, shape, stride, out_grad_np
+                )
+                second = self._run_backward(
+                    place, base_np, shape, stride, out_grad_np
+                )
+                np.testing.assert_array_equal(first, second)
+                ref = self._reference_grad(
+                    out_grad_np, shape, stride, storage_numel
+                )
+                np.testing.assert_allclose(
+                    first.astype('float64'), ref, rtol=1e-5, atol=1e-5
+                )
+        finally:
+            paddle.set_flags({'FLAGS_cudnn_deterministic': old})
 
 
 class TestAsStridedStorageRange(unittest.TestCase):
