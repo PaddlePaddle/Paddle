@@ -485,6 +485,9 @@ class Tensor : public TensorBase {
 
   at::Tensor masked_select(const at::Tensor& mask) const;
 
+  // take: Returns a new tensor with the elements of input at the given indices.
+  at::Tensor take(const at::Tensor& index) const;
+
   std::vector<at::Tensor> tensor_split(int64_t sections, int64_t dim) const;
   std::vector<at::Tensor> tensor_split_symint(c10::SymInt sections,
                                               int64_t dim) const;
