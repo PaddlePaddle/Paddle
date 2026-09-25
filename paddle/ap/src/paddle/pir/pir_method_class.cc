@@ -15,12 +15,34 @@
 #include "paddle/ap/include/paddle/pir/pir_method_class.h"
 #include "paddle/ap/include/axpr/module_mgr.h"
 #include "paddle/ap/include/paddle/pir_node.h"
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#include "paddle/phi/backends/gpu/gpu_info.h"
+#endif
 
 namespace ap::paddle {
 
 void ForceLinkPir() {
   // Do nothing.
 }
+
+namespace {
+
+adt::Result<axpr::Value> GetComputeCapability(
+    const axpr::Value&, const std::vector<axpr::Value>& args) {
+  ADT_CHECK(args.size() == 0) << adt::errors::TypeError{
+      "pir.compute_capability() takes no "
+      "arguments, but " +
+      std::to_string(args.size()) + " were given."};
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  if (phi::backends::gpu::GetGPUDeviceCount() > 0) {
+    return static_cast<int64_t>(phi::backends::gpu::GetGPUComputeCapability(
+        phi::backends::gpu::GetCurrentDeviceId()));
+  }
+#endif
+  return static_cast<int64_t>(-1);
+}
+
+}  // namespace
 
 template <typename Builder>
 void DefineMethods(Builder* m) {
@@ -31,6 +53,7 @@ void DefineMethods(Builder* m) {
   m->Def("XPUPlace", &CreateXPUPlace);
   m->Def("IPUPlace", &CreateIPUPlace);
   m->Def("CustomPlace", &CreateCustomPlace);
+  m->Def("get_compute_capability", &GetComputeCapability);
 #define DEF_MAKE_ATTRIBUTE(attr_type) \
   m->Def(attr_type::name(), &MakePirAttributeImpl<attr_type>::Call);
   FOR_EACH_PIR_ATTRIBUTE_TYPE(DEF_MAKE_ATTRIBUTE);
