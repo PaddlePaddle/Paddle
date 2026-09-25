@@ -48,7 +48,7 @@ class ReaderBase {
             "and need_check_feed"));
   }
 
-  PADDLE_API virtual void ReadNext(phi::TensorArray* out);
+  PADDLE_API virtual bool ReadNext(phi::TensorArray* out);
 
   PADDLE_API virtual void Shutdown();
 
@@ -73,7 +73,7 @@ class ReaderBase {
   PADDLE_API virtual ~ReaderBase();
 
  protected:
-  virtual void ReadNextImpl(phi::TensorArray* out UNUSED) {}
+  virtual bool ReadNextImpl(phi::TensorArray* out UNUSED) { return false; }
 
   virtual void ShutdownImpl() {}
 
@@ -162,12 +162,12 @@ class ReaderHolder {
 
   const std::shared_ptr<ReaderBase>& Get() const { return reader_; }
 
-  void ReadNext(phi::TensorArray* out) {
+  bool ReadNext(phi::TensorArray* out) {
     PADDLE_ENFORCE_NOT_NULL(
         reader_,
         common::errors::InvalidArgument(
             "The underlying reader of ReaderHolder should not be null"));
-    reader_->ReadNext(out);
+    return reader_->ReadNext(out);
   }
 
   void ResetAll() {
