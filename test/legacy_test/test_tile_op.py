@@ -658,6 +658,55 @@ class TestTileAlias(unittest.TestCase):
             np.testing.assert_array_equal(out_ref.numpy(), out_both.numpy())
 
 
+@unittest.skipIf(
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "tile_grad for float8 is only registered on GPU",
+)
+class TestTileGradFP8EigenFallback(unittest.TestCase):
+    """float8 has no SumKernel implementation, so TileGradCompatKernel returns
+    False and tile_grad falls back to the Eigen based TileBackward. This test
+    exercises that fallback: if float8 were routed to the reduce_sum path it
+    would raise a "no kernel found for float8" error during backward instead of
+    producing a gradient. Exact values are not asserted because float8
+    accumulates the gradient in float8 (very low precision); the point is that
+    the Eigen fallback is reachable and yields a well-formed gradient.
+    """
+
+    # (ori_shape, repeat_times)
+    cases = [
+        ([4, 5], [2, 3]),
+        ([2, 4, 3], [2, 1, 2]),
+    ]
+
+    def test_fp8_backward_falls_back_to_eigen(self):
+        place = get_device_place()
+        with base.dygraph.guard(place):
+            for dtype in ['float8_e4m3fn', 'float8_e5m2']:
+                for ori_shape, repeat_times in self.cases:
+                    x_np = np.random.randint(-2, 3, size=ori_shape).astype(
+                        "float32"
+                    )
+                    x = paddle.to_tensor(x_np, place=place).astype(dtype)
+                    x.stop_gradient = False
+                    out = paddle.tile(x, repeat_times)
+                    grad_np = np.random.randint(-2, 3, size=out.shape).astype(
+                        "float32"
+                    )
+                    grad = paddle.to_tensor(grad_np, place=place).astype(dtype)
+                    # Would raise here if float8 hit the (unregistered)
+                    # reduce_sum kernel instead of the Eigen fallback.
+                    out.backward(grad)
+
+                    msg = (
+                        f"dtype={dtype}, shape={ori_shape}, "
+                        f"repeat={repeat_times}"
+                    )
+                    self.assertIsNotNone(x.grad, msg)
+                    got = x.grad.astype("float32").numpy()
+                    self.assertEqual(list(got.shape), list(ori_shape), msg)
+                    self.assertTrue(np.isfinite(got).all(), msg)
+
+
 if __name__ == "__main__":
     paddle.enable_static()
     unittest.main()
