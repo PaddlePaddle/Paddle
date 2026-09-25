@@ -20,6 +20,7 @@
 #include <vector>
 
 #include "paddle/phi/core/memory/allocation/allocator.h"
+#include "paddle/phi/core/memory/allocation/memory_history_recorder.h"
 #include "paddle/phi/core/memory/allocation/spin_lock.h"
 #include "paddle/phi/core/memory/allocation/vmm_ipc_allocation.h"
 
@@ -121,6 +122,13 @@ GetAllocateEvent(const GPUPlace& place);
 
 // Get compact count and size when start FLAGS_enable_compact_mem.
 PADDLE_API extern std::vector<size_t> GetCompactSize(const GPUPlace& place);
+
+// Get the unified memory history trace (ALLOC / FREE_REQUESTED /
+// FREE_COMPLETED events) for the given device, in chronological order. Only
+// populated when memory history recording is enabled via
+// MemoryHistoryRecorder::SetEnabled.
+PADDLE_API extern std::vector<MemHistoryTraceEntry> GpuMemoryHistoryTrace(
+    const GPUPlace& place);
 #endif
 
 }  // namespace memory

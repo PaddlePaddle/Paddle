@@ -23,6 +23,7 @@
 #include "paddle/common/flags.h"
 #include "paddle/phi/api/profiler/event_tracing.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
+#include "paddle/phi/core/memory/allocation/memory_history_recorder.h"
 #include "paddle/phi/core/memory/allocation/retry_allocator.h"
 #include "paddle/phi/core/memory/allocation/stat_allocator.h"
 #include "paddle/phi/core/memory/allocation/vmm_allocator_v2_types.h"
@@ -225,6 +226,26 @@ void ClearGpuLastError() {
 #endif
 }
 
+// Whether `allocator` routes through MultiScalePoolAllocator, the only place
+// kAlloc / kFreeCompleted are emitted (the VMM V1 stack). Gates the
+// kFreeRequested hook so other stacks never record unmatched free events.
+bool UnderlyingRecordsMemHistory(
+    const std::shared_ptr<Allocator>& allocator) {  // NOLINT
+  if (allocator == nullptr) {
+    return false;
+  }
+  if (dynamic_cast<MultiScalePoolAllocator*>(allocator.get()) != nullptr) {
+    return true;
+  }
+  if (auto* retry = dynamic_cast<RetryAllocator*>(allocator.get())) {
+    return UnderlyingRecordsMemHistory(retry->GetUnderLyingAllocator());
+  }
+  if (auto* stat = dynamic_cast<StatAllocator*>(allocator.get())) {
+    return UnderlyingRecordsMemHistory(stat->GetUnderLyingAllocator());
+  }
+  return false;
+}
+
 }  // namespace
 
 StreamSafeCUDAAllocation::StreamSafeCUDAAllocation(
@@ -389,6 +410,8 @@ StreamSafeCUDAAllocator::StreamSafeCUDAAllocator(
     bool in_cuda_graph_capturing)
     : underlying_allocator_(std::move(underlying_allocator)),
       vmm_v2_allocator_(GetVMMV2MultiPoolAllocator(underlying_allocator_)),
+      underlying_records_mem_history_(
+          UnderlyingRecordsMemHistory(underlying_allocator_)),
       place_(place),
       default_stream_(default_stream),
       in_cuda_graph_capturing_(in_cuda_graph_capturing) {
@@ -612,6 +635,17 @@ void StreamSafeCUDAAllocator::FreeImpl(phi::Allocation* allocation) {
                           9 /*level*/);
   StreamSafeCUDAAllocation* stream_safe_cuda_allocation =
       static_cast<StreamSafeCUDAAllocation*>(allocation);
+
+  if (underlying_records_mem_history_ && memory::MemHistoryEnabled()) {
+    memory::RecordMemHistory(
+        memory::MemHistoryAction::kFreeRequested,
+        allocation->place().GetDeviceId(),
+        reinterpret_cast<uintptr_t>(allocation->ptr()),
+        allocation->size(),
+        0,
+        reinterpret_cast<uint64_t>(
+            stream_safe_cuda_allocation->GetOwningStream()));
+  }
 
   VLOG(8) << "Try free allocation " << stream_safe_cuda_allocation->ptr();
   if (stream_safe_cuda_allocation->CanBeFreed()) {
