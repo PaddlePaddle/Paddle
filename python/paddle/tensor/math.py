@@ -7477,10 +7477,11 @@ def sinc(
         "sinc",
     )
 
-    tmp = paddle.where(x != 0, x, paddle.full_like(x, 1.0e-20))
+    zero_mask = x == 0
+    tmp = paddle.where(~zero_mask, x, paddle.full_like(x, 1.0e-20))
     tmp = paddle.multiply(tmp, paddle.to_tensor(math.pi, dtype=x.dtype))
     tmp = paddle.divide(tmp.sin(), tmp)
-    result = paddle.where(~paddle.isnan(tmp), tmp, paddle.full_like(x, 1.0))
+    result = paddle.where(zero_mask, paddle.full_like(x, 1.0), tmp)
     return assign(result, out) if out is not None else result
 
 
@@ -7505,12 +7506,14 @@ def sinc_(x: Tensor, name: str | None = None) -> Tensor:
         "sinc_",
     )
 
-    paddle.where_(x != 0, x, paddle.full_like(x, 1.0e-20))
+    zero_mask = x == 0
+    paddle.where_(~zero_mask, x, paddle.full_like(x, 1.0e-20))
     paddle.multiply_(x, paddle.to_tensor(math.pi, dtype=x.dtype))
     tmp = paddle.clone(x)
     paddle.sin_(x)
     paddle.divide_(x, tmp)
-    return paddle.where(~paddle.isnan(x), x, paddle.full_like(x, 1.0))
+    paddle.where_(~zero_mask, x, paddle.full_like(x, 1.0))
+    return x
 
 
 @param_two_alias(["x", "elements"], ["test_x", "test_elements"])
