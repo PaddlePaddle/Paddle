@@ -55,7 +55,7 @@ def seed(seed: int) -> paddle.base.core.Generator:
     elif paddle.is_compiled_with_xpu():
         for i in range(core.get_xpu_device_count()):
             core.default_xpu_generator(i).manual_seed(seed)
-    place = paddle.framework._current_expected_place()
+    place = paddle.framework._current_expected_place_()
     if isinstance(place, paddle.CustomPlace):
         dev_cnt = sum(
             [
