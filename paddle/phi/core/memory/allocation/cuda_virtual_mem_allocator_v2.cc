@@ -1321,6 +1321,19 @@ CUDAVirtualMemAllocatorV2::ReleaseFreeHandleRanges(
         meta->base() < ranges[range_index].first ||
         meta->base() >=
             ranges[range_index].first + ranges[range_index].second) {
+      // This handle falls outside every release range, so it would normally be
+      // retained and rebuilt into a remaining backing. But a remapped-away
+      // source leaves a stale meta here whose handle is no longer mapped at
+      // meta->base(): the handle now lives at the remap destination VA, which
+      // still owns a registered allocation at that base. Rebuilding this stale
+      // entry would register a second underlying allocation at the same base
+      // and trip the "Duplicate underlying allocation base" enforcement. Prune
+      // such stale entries regardless of the release plan; genuinely mapped
+      // handles pass IsHandleMappedAt and stay retained.
+      if (!backing_map_.IsHandleMappedAt(
+              meta->base(), meta->handle(), meta, meta->size())) {
+        retain_mask[i] = false;
+      }
       continue;
     }
     if (backing_map_.CanReleaseHandle(

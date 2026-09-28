@@ -106,6 +106,21 @@ void FreeMemoryMetricsVisitor::Visit(
   sum_size_ = std::max(sum_size_, sum_size);
 }
 
+#ifdef PADDLE_WITH_CUDA
+void FreeMemoryMetricsVisitor::Visit(
+    VMMAutoGrowthBestFitAllocatorV2* allocator) {
+  // The v2 allocator tracks blocks at page granularity and exposes aggregate
+  // free stats directly. total_free is the sum of all mapped-free bytes and
+  // max_free is the largest single contiguous mapped-free block. Accumulate
+  // with std::max across pools, mirroring the v1 visit path.
+  size_t total_free = 0;
+  size_t max_free = 0;
+  allocator->GetFreeBlockStats(&total_free, &max_free);
+  large_size_ = std::max(large_size_, max_free);
+  sum_size_ = std::max(sum_size_, total_free);
+}
+#endif
+
 void TryAllocVisitor::Visit(
     VirtualMemoryAutoGrowthBestFitAllocator* allocator) {
   // TODO(liujinnan): More detailed handling of multi-stream and MultiScalePool
