@@ -64,6 +64,30 @@ except Exception as e:
     raise e
 
 
+def _run_command(args, merge_stderr=False):
+    """
+    Run a command without spawning a shell.
+
+    Return the stripped stdout, or None if the command can not be run or
+    writes to stderr. Staying shell-free keeps ``import paddle`` working on
+    hardened images that ship no /bin/sh.
+    """
+    import subprocess
+
+    try:
+        proc = subprocess.Popen(
+            args,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT if merge_stderr else subprocess.PIPE,
+        )
+        out, err = proc.communicate()
+    except OSError:
+        return None
+    if not merge_stderr and err:
+        return None
+    return out.decode('utf-8', errors='replace').strip()
+
+
 def avx_supported():
     """
     Whether current system(Linux, MacOS, Windows) is supported with AVX.
@@ -72,9 +96,8 @@ def avx_supported():
     has_avx = False
     if sysstr == 'linux':
         try:
-            pipe = os.popen('cat /proc/cpuinfo | grep -i avx')
-            has_avx = pipe.read() != ''
-            pipe.close()
+            with open('/proc/cpuinfo') as cpuinfo:
+                has_avx = 'avx' in cpuinfo.read().lower()
         except Exception as e:
             sys.stderr.write(
                 'Can not get the AVX flag from /proc/cpuinfo.\n'
@@ -82,26 +105,20 @@ def avx_supported():
             )
         return has_avx
     elif sysstr == 'darwin':
-        try:
-            pipe = os.popen('sysctl machdep.cpu.features | grep -i avx')
-            has_avx = pipe.read() != ''
-            pipe.close()
-        except Exception as e:
+        features = _run_command(['sysctl', 'machdep.cpu.features'])
+        if features is None:
             sys.stderr.write(
                 'Can not get the AVX flag from machdep.cpu.features.\n'
-                f'The original error is: {e}\n'
             )
+        else:
+            has_avx = 'avx' in features.lower()
         if not has_avx:
-            import subprocess
-
-            pipe = subprocess.Popen(
-                'sysctl machdep.cpu.leaf7_features | grep -i avx',
-                shell=True,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
+            leaf7_features = _run_command(
+                ['sysctl', 'machdep.cpu.leaf7_features']
             )
-            _ = pipe.communicate()
-            has_avx = True if pipe.returncode == 0 else False
+            has_avx = (
+                leaf7_features is not None and 'avx' in leaf7_features.lower()
+            )
         return has_avx
     elif sysstr == 'windows':
         import ctypes
@@ -181,25 +198,19 @@ def avx_supported():
         return False
 
 
-def run_shell_command(cmd):
-    import subprocess
-
-    out, err = subprocess.Popen(
-        cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True
-    ).communicate()
-    if err:
-        return None
-    else:
-        return out.decode('utf-8').strip()
-
-
 def get_dso_path(core_so, dso_name):
-    if core_so and dso_name:
-        return run_shell_command(
-            f"ldd {core_so}|grep {dso_name}|awk '{{print $3}}'"
-        )
-    else:
+    if not core_so or not dso_name:
         return None
+    ldd_out = _run_command(['ldd', core_so])
+    if not ldd_out:
+        return None
+    for line in ldd_out.splitlines():
+        if dso_name in line:
+            # "libgomp.so.1 => /path/to/libgomp.so.1 (0x00007f...)"
+            fields = line.split()
+            if len(fields) >= 3:
+                return fields[2]
+    return None
 
 
 def load_dso(dso_absolute_path):
@@ -222,13 +233,25 @@ def pre_load(dso_name):
 
 
 def get_libc_ver():
-    ldd_glibc = run_shell_command("ldd --version | awk '/ldd/{print $NF}'")
-    if ldd_glibc is not None:
-        return ("glibc", ldd_glibc)
+    # NOTE: CS_GNU_LIBC_VERSION is answered by libc itself, so it needs
+    # neither a shell nor the ldd script, which is a shell script on glibc.
+    if hasattr(os, 'confstr') and 'CS_GNU_LIBC_VERSION' in os.confstr_names:
+        try:
+            libc_ver = os.confstr('CS_GNU_LIBC_VERSION')
+        except (OSError, ValueError):
+            libc_ver = None
+        if libc_ver:
+            fields = libc_ver.split()
+            if len(fields) == 2:
+                return ("glibc", fields[1])
 
-    ldd_musl = run_shell_command("ldd 2>&1 | awk '/Version/{print $NF}'")
-    if ldd_musl is not None:
-        return ("musl", ldd_musl)
+    # musl does not implement confstr(CS_GNU_LIBC_VERSION), so fall back to
+    # its ldd banner, which is printed on stderr.
+    ldd_musl = _run_command(['ldd'], merge_stderr=True)
+    if ldd_musl:
+        for line in ldd_musl.splitlines():
+            if 'Version' in line:
+                return ("musl", line.split()[-1])
     return (None, None)
 
 
