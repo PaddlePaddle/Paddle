@@ -251,5 +251,13 @@ if(WITH_GPU)
       memory_history_hook_test
       SRCS memory_history_hook_test.cc
       DEPS phi common)
+    nv_test(
+      memory_history_hook_v2_test
+      SRCS memory_history_hook_v2_test.cu
+      DEPS phi common)
+    nv_test(
+      memory_history_snapshot_example
+      SRCS memory_history_snapshot_example.cu
+      DEPS phi common)
   endif()
 endif()
