@@ -57,6 +57,8 @@ class BufferGroup:
     is_expert_param: bool = False
     is_tie: bool = False
     no_decay: bool = False
+    use_muon: bool = False
+    muon_owner_rank: int = None
     fsdp_group: object = None
     params_buffer: 'TensorFusionBuffer' = None
     grads_buffer: 'TensorFusionBuffer' = None
@@ -65,6 +67,11 @@ class BufferGroup:
 
 
 class TensorFusionBuffer:
+    class _CompletedTask:
+        # Placeholder for the broadcast (sync) path where callers still .wait().
+        def wait(self):
+            pass
+
     def __init__(
         self,
         unique_key,
@@ -73,17 +80,23 @@ class TensorFusionBuffer:
         dtype,
         is_params=False,
         main_grad_dtype=None,
+        grad_div=None,
+        shard_buffer=True,
     ):
         # Calculate total buffer size needed (with padding)
         self.unique_key = unique_key
         self.fsdp_group = fsdp_group
         self.fsdp_degree = fsdp_group.nranks
-        self.is_sharded = fsdp_group.nranks > 1
+        self.is_sharded = shard_buffer and fsdp_group.nranks > 1
         self.is_params = is_params
         self.dtype = dtype
         self.main_grad_dtype = (
             main_grad_dtype if main_grad_dtype is not None else dtype
         )
+        self.grad_div = grad_div if grad_div is not None else fsdp_group.nranks
+        self.grad_accum_steps = 1
+        self.grad_scale = 1.0 / self.grad_div
+        self.grad_scaled = False
         self.total_buffer_size = 0
         self.param_offsets = {}
         self.tmp_data_buffer = None
@@ -146,7 +159,11 @@ class TensorFusionBuffer:
         else:
             # Create fused grads_buffer with shard
             self.data_buffer = paddle.zeros(
-                shape=[self.total_buffer_size // self.fsdp_degree],
+                shape=[
+                    self.total_buffer_size // self.fsdp_degree
+                    if self.is_sharded
+                    else self.total_buffer_size
+                ],
                 dtype=self.main_grad_dtype,
             )
 
@@ -240,7 +257,7 @@ class TensorFusionBuffer:
     def do_reduce_scatter(self):
         tmp_buffer = self.get_tmp_buffer()
         shard = tmp_buffer._slice(0, self.data_buffer.shape[0])
-        tmp_buffer.scale_(1.0 / self.fsdp_degree)
+        tmp_buffer.scale_(self.grad_scale)
         return paddle.distributed.reduce_scatter(
             shard,
             tmp_buffer,
@@ -301,7 +318,7 @@ class FSDPBufferManager:
 
         param_to_unit_id = {}
         for unit_id, m in enumerate(self.model.modules()):
-            if type(m).__name__ in self.fsdp_unit_layers:
+            if self.is_fsdp_unit(m):
                 for p in m.parameters():
                     param_to_unit_id[p.name] = unit_id
 
@@ -326,15 +343,27 @@ class FSDPBufferManager:
                 param.name == self.tie_param_name,
                 # A buffer must not mix params with and without weight decay.
                 bool(getattr(param, "no_weight_decay", False)),
+                # Nor Muon with AdamW: Muon needs the whole matrix, so its buffer isn't split element-wise.
+                bool(getattr(param, "use_muon", False)),
             )
             keyed_params.setdefault(key, []).append(param)
 
         def sort_key(item):
-            _, trainable, unit_id, is_expert_param, _, is_tie, _ = item[0]
+            (
+                _,
+                trainable,
+                unit_id,
+                is_expert_param,
+                _,
+                is_tie,
+                _,
+                use_muon,
+            ) = item[0]
             return (
                 0 if is_tie else (1 if not trainable else 2),
                 unit_id if unit_id is not None else float('inf'),
                 is_expert_param,
+                use_muon,
             )
 
         self.buffer_groups = [
@@ -347,6 +376,7 @@ class FSDPBufferManager:
                 fsdp_group=fsdp_group,
                 is_tie=is_tie,
                 no_decay=no_decay,
+                use_muon=use_muon,
             )
             for (
                 dtype,
@@ -356,6 +386,7 @@ class FSDPBufferManager:
                 fsdp_group,
                 is_tie,
                 no_decay,
+                use_muon,
             ), params in sorted(keyed_params.items(), key=sort_key)
         ]
 
@@ -363,7 +394,12 @@ class FSDPBufferManager:
         for gid, group in enumerate(self.buffer_groups):
             params = group.params
             group.params_buffer = TensorFusionBuffer(
-                gid, params, group.fsdp_group, group.dtype, is_params=True
+                gid,
+                params,
+                group.fsdp_group,
+                group.dtype,
+                is_params=True,
+                shard_buffer=not group.use_muon,
             )
             if not params[0].stop_gradient:
                 group.grads_buffer = TensorFusionBuffer(
@@ -374,10 +410,34 @@ class FSDPBufferManager:
                     main_grad_dtype=paddle.float32
                     if group.is_expert_param or group.dtype == paddle.float32
                     else self.main_grad_dtype,
+                    grad_div=self._fsdp_group.nranks,
+                    shard_buffer=not group.use_muon,
                 )
             group.grads_use_sum = len(params)
             for param in params:
                 self.param_to_buffer_id[param.name] = gid
+
+        self._assign_muon_owners()
+
+    def _assign_muon_owners(self):
+        loads = {}
+        for group in self.buffer_groups:
+            if not group.use_muon or group.grads_buffer is None:
+                continue
+            nranks = group.fsdp_group.nranks
+            if nranks == 1:
+                continue
+            key = id(group.fsdp_group)
+            if key not in loads:
+                loads[key] = [0] * nranks
+            sizes = loads[key]
+            owner = sizes.index(min(sizes))
+            group.muon_owner_rank = owner
+            sizes[owner] += group.params_buffer.total_buffer_size
+
+    def is_fsdp_unit(self, layer):
+        unit_names = self.fsdp_unit_layers
+        return any(cls.__name__ in unit_names for cls in type(layer).__mro__)
 
 
 class FSDPCommManager:
@@ -575,6 +635,7 @@ class FSDPCommManager:
         for group in self.buffer_manager.buffer_groups:
             if group.grads_buffer is not None:
                 group.grads_buffer.data_buffer.zero_()
+                group.grads_buffer.grad_scaled = False
 
     def _ensure_grads_writable(self, param):
         gid = self.buffer_manager.param_to_buffer_id.get(param.name)
@@ -599,9 +660,6 @@ class FSDPCommManager:
             group.is_expert_param or not group.grads_buffer.is_sharded
         ):
             return
-
-        if group.grads_use_cnt == group.grads_use_sum:
-            self._reduce_group_grads(group)
 
     def _reduce_group_grads(self, group):
         # Reduce-scatter one group's fused grad buffer over its own fsdp_group.
@@ -628,7 +686,7 @@ class FSDPCommManager:
         if unit_id is None:
             return
         for group in reversed(self.buffer_manager.buffer_groups):
-            if not group.is_expert_param or group.fsdp_unit_id is None:
+            if group.fsdp_unit_id is None:
                 continue
             if group.fsdp_unit_id > unit_id:
                 self._reduce_group_grads(group)
@@ -652,11 +710,71 @@ class FSDPCommManager:
                 continue
             group.grads_use_cnt = 0
             if not grads_buffer.is_sharded:
+                # Replicated buffer: sum grads across the group by reducing to the owner only (keeps the clip norm from double-counting).
+                if group.muon_owner_rank is not None:
+                    paddle.distributed.reduce(
+                        grads_buffer.data_buffer,
+                        dst=grads_buffer.fsdp_group.ranks[
+                            group.muon_owner_rank
+                        ],
+                        op=paddle.distributed.ReduceOp.SUM,
+                        group=grads_buffer.fsdp_group,
+                        sync_op=True,
+                    )
+                # No reduce_scatter here, so apply grad_scale once per accumulation cycle.
+                if (
+                    grads_buffer.grad_scale != 1.0
+                    and not grads_buffer.grad_scaled
+                ):
+                    grads_buffer.data_buffer.scale_(grads_buffer.grad_scale)
+                    grads_buffer.grad_scaled = True
                 continue
             if grads_buffer.tmp_data_buffer is None:
                 continue
             grads_buffer.do_reduce_scatter().wait()
             grads_buffer.accumulate_reduced_grad()
+
+
+def _find_exposed_param_names(outputs, own_param_names, _depth=0):
+    """Names of a layer's own parameters that appear verbatim in its outputs.
+
+    A layer normally consumes its parameters internally, but some designs hand
+    a parameter to a downstream consumer instead. The fused linear +
+    cross-entropy LM head is the motivating case: with a positive chunk count
+    it returns ``(hidden_states, weight, bias)`` so the loss module can do the
+    vocab projection chunk by chunk and never materialize the full logits.
+
+    Such a parameter needs different treatment from FSDP: it must not be fed to
+    the identity ``PyLayer`` used for the backward all_gather trigger (eager
+    rejects a leaf var that requires grad there), and it must not be re-sharded
+    when this layer's forward ends, because the consumer has not read it yet.
+    """
+    if not own_param_names:
+        return set()
+
+    if isinstance(outputs, paddle.Tensor):
+        return (
+            {outputs.name} if outputs.name in own_param_names else set()
+        )
+
+    # Outputs are flat in practice; the bound keeps a pathological nesting from
+    # turning a per-forward hook into a deep walk.
+    if _depth >= 2:
+        return set()
+
+    if isinstance(outputs, (tuple, list)):
+        values = outputs
+    elif isinstance(outputs, dict):
+        values = outputs.values()
+    else:
+        return set()
+
+    found = set()
+    for value in values:
+        found |= _find_exposed_param_names(
+            value, own_param_names, _depth + 1
+        )
+    return found
 
 
 class FusionBackwardHook(PyLayer):
@@ -665,6 +783,9 @@ class FusionBackwardHook(PyLayer):
         ctx.layer = layer
         ctx.comm_manager = comm_manager
         ctx.recursive = recursive
+        # [PATCH ernielite-fsdp] 记录 forward 的输入位置数（slot 数），
+        # backward 必须返回同样数量的"位置"，而不是同样数量的张量。
+        ctx._n_forward_slots = len(inputs)
         return inputs if len(inputs) > 1 else inputs[0]
 
     @staticmethod
@@ -676,6 +797,16 @@ class FusionBackwardHook(PyLayer):
                 trainable_params.append(param)
 
         ctx.comm_manager.all_gather_params(trainable_params, is_backward=True)
+
+        # [PATCH ernielite-fsdp] duplicable slot 的返回结构修正。
+        # ERNIE5 GPTLMHead.forward 在 num_nextn_predict_layers>0 时返回 list
+        # [主分支 logits, MTP logits]，被当作一个 duplicable 输入位置（n_slots==1）。
+        # backward 拿到 2 个梯度，必须作为一个 list 返回该位置，否则 Paddle 报
+        # "number of outputs should be 1, but received 2"。两个梯度属于不同张量，
+        # 不能求和（求和可跑通但梯度错误，是静默数值错误）。
+        n_slots = getattr(ctx, "_n_forward_slots", len(args))
+        if n_slots == 1 and len(args) > 1:
+            return list(args)
         return args
 
 
@@ -882,6 +1013,17 @@ class FullyShardFusion:
                 return True
         return False
 
+    def bind_optimizer(self, optimizer):
+        if getattr(optimizer, "_fsdp_state_dict_ctx", None) is self:
+            return
+        optimizer.sharded_state_dict = lambda model_sharded_state_dict=None: (
+            self.optimizer_sharded_state_dict(optimizer)
+        )
+        optimizer.init_state_for_load = lambda *args, **kwargs: (
+            self.init_optimizer_state(optimizer)
+        )
+        optimizer._fsdp_state_dict_ctx = self
+
     def init_optimizer_state(self, optimizer):
         """Create optimizer accumulators on the fused buffers before load."""
         parameter_list = [
@@ -893,6 +1035,10 @@ class FullyShardFusion:
             paddle.base.framework.default_main_program().global_block(),
             parameter_list,
         )
+
+    def all_gather_params(self):
+        for group in self.buffer_manager.buffer_groups:
+            self.comm_manager.all_gather_params(group.params)
 
     def optimizer_sharded_state_dict(self, optimizer):
         """Split the state keyed by ``fuse_params_<gid>`` into per-param flattened shards."""
@@ -995,6 +1141,15 @@ class FullyShardFusion:
 
         return sharded_state
 
+    def set_grad_accum_steps(self, steps):
+        steps = max(int(steps), 1)
+        for group in self.buffer_manager.buffer_groups:
+            grads_buffer = group.grads_buffer
+            if grads_buffer is None:
+                continue
+            grads_buffer.grad_accum_steps = steps
+            grads_buffer.grad_scale = 1.0 / (grads_buffer.grad_div * steps)
+
     def comm_sync_and_reset_status(self):
         self.comm_manager.finish_grads_sync()
         self.comm_manager.reset_params_buffer_status()
@@ -1003,6 +1158,48 @@ class FullyShardFusion:
         for param in self.model.parameters():
             if param.trainable:
                 param.main_grad = None
+
+    @paddle.autograd.no_grad()
+    def muon_params_grads(self):
+        my_rank = paddle.distributed.get_rank()
+        out = []
+        for group in self.buffer_manager.buffer_groups:
+            if not group.use_muon or group.grads_buffer is None:
+                continue
+            owner = group.muon_owner_rank
+            if owner is not None:
+                if group.fsdp_group.ranks[owner] != my_rank:
+                    continue
+            params_buffer = group.params_buffer
+            grads_buffer = group.grads_buffer
+            for param in group.params:
+                if not param.trainable:
+                    continue
+                offset = params_buffer.param_offsets[param.name]
+                numel = param._numel()
+                view = paddle._C_ops.view_slice(
+                    params_buffer.data_buffer, offset, offset + numel
+                )
+                view.get_tensor()._set_dims(param.shape)
+                param.get_tensor()._share_data_with(view.get_tensor())
+                grad = paddle._C_ops.view_slice(
+                    grads_buffer.data_buffer, offset, offset + numel
+                )
+                grad.get_tensor()._set_dims(param.shape)
+                out.append((param, grad))
+        return out
+
+    @paddle.autograd.no_grad()
+    def broadcast_muon_params(self):
+        for group in self.buffer_manager.buffer_groups:
+            if not group.use_muon or group.muon_owner_rank is None:
+                continue
+            paddle.distributed.broadcast(
+                group.params_buffer.data_buffer,
+                src=group.fsdp_group.ranks[group.muon_owner_rank],
+                group=group.fsdp_group,
+                sync_op=True,
+            )
 
     @paddle.autograd.no_grad()
     def _bind_expert_main_grads(self, params):
@@ -1029,7 +1226,22 @@ class FullyShardFusion:
         def comm_hook(grad):
             comm_manager._maybe_zero_grads()
             comm_manager._ensure_grads_writable(param)
-            if grad is not None and grad._is_initialized():
+            # A fused kernel may compute this parameter's gradient in fp32 and
+            # stash it here. Autograd casts whatever it returns down to the
+            # parameter dtype (bf16) before delivering it, and that rounding is
+            # visible as a training-trajectory divergence against non-FSDP runs
+            # which accumulate the fp32 tensor directly. The grads buffer is
+            # fp32, so preferring the stashed tensor keeps the accumulation
+            # lossless. The gradient still has to travel through autograd for
+            # this hook to fire at all, hence the out-of-band hand-off.
+            fp32_grad = getattr(param, "_fused_kernel_fp32_grad", None)
+            if fp32_grad is not None:
+                param._fused_kernel_fp32_grad = None
+                param.get_main_grad(fp32_grad.shape)
+                param.main_grad.add_(fp32_grad)
+                if grad is not None and grad._is_initialized():
+                    grad._clear_data()
+            elif grad is not None and grad._is_initialized():
                 # Share mem with grads_tmp_buffer
                 param.get_main_grad(grad.shape)
                 param.main_grad.add_(grad)
@@ -1053,12 +1265,24 @@ class FullyShardFusion:
 
         def _post_forward_hook(sublayers, recursive=False):
             comm_manager = self.comm_manager
+            own_param_names = {
+                param.name
+                for param in sublayers.parameters(include_sublayers=recursive)
+            }
 
             @paddle.autograd.no_grad()
-            def shard_comm(*_):
-                comm_manager.shard_params(
-                    sublayers.parameters(include_sublayers=recursive)
-                )
+            def shard_comm(layer, inputs, outputs):
+                params = sublayers.parameters(include_sublayers=recursive)
+                exposed = _find_exposed_param_names(outputs, own_param_names)
+                if exposed:
+                    # The layer handed these parameters to a downstream
+                    # consumer (fused linear + cross-entropy LM head), which
+                    # has not read them yet. Clearing the gathered data here
+                    # would corrupt that read, so leave them gathered; the
+                    # per-parameter grad hook shards each one again as soon as
+                    # its gradient has been reduced.
+                    params = [p for p in params if p.name not in exposed]
+                comm_manager.shard_params(params)
 
             return shard_comm
 
@@ -1073,9 +1297,7 @@ class FullyShardFusion:
         model.register_forward_pre_hook(_bind_experts_pre_forward)
 
         def _register_recursive(layer):
-            is_unit = (
-                type(layer).__name__ in self.buffer_manager.fsdp_unit_layers
-            )
+            is_unit = self.buffer_manager.is_fsdp_unit(layer)
 
             if is_unit:
                 # For FSDP Unit, register recursive hooks and stop recursion
@@ -1103,12 +1325,20 @@ class FullyShardFusion:
         _register_recursive(model)
 
     def _register_fusion_layer_hooks(self, layer, recursive=False):
+        own_param_names = {
+            param.name
+            for param in layer.parameters(include_sublayers=recursive)
+        }
+
         def _forward_post_hook(layer, inputs, outputs):
+            exposed = _find_exposed_param_names(outputs, own_param_names)
+
             if isinstance(outputs, dict):
                 for key, value in outputs.items():
                     if (
                         isinstance(value, paddle.Tensor)
                         and not value.stop_gradient
+                        and value.name not in exposed
                     ):
                         outputs[key] = FusionBackwardHook.apply(
                             value,
@@ -1118,15 +1348,34 @@ class FullyShardFusion:
                         )
                 return outputs
             elif isinstance(outputs, tuple):
-                result = FusionBackwardHook.apply(
-                    *outputs,
+                # Exposed parameters are leaf vars that require grad, which the
+                # identity PyLayer below cannot return. Route the remaining
+                # outputs through the hook -- they still anchor the backward
+                # all_gather -- and splice the parameters back untouched.
+                keep = [
+                    i
+                    for i, value in enumerate(outputs)
+                    if not (
+                        isinstance(value, paddle.Tensor)
+                        and value.name in exposed
+                    )
+                ]
+                if not keep:
+                    return outputs
+                hooked = FusionBackwardHook.apply(
+                    *[outputs[i] for i in keep],
                     layer=layer,
                     comm_manager=self.comm_manager,
                     recursive=recursive,
                 )
-                if not isinstance(result, tuple):
-                    result = (result,)
-                return result
+                if not isinstance(hooked, tuple):
+                    hooked = (hooked,)
+                result = list(outputs)
+                for pos, value in zip(keep, hooked):
+                    result[pos] = value
+                return tuple(result)
+            elif isinstance(outputs, paddle.Tensor) and outputs.name in exposed:
+                return outputs
             else:
                 return FusionBackwardHook.apply(
                     outputs,
