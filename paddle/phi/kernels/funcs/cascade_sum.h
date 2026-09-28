@@ -26,6 +26,7 @@
 #include "paddle/phi/common/complex.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/kernels/cpu/cast_impl.h"
 
 // Bit-exact port of the single-threaded CPU cascade summation used by torch,
 // see pytorch/aten/src/ATen/native/cpu/SumKernel.cpp. Torch does not sum
@@ -631,6 +632,7 @@ void CastPreservingLayout(const Src* x_data,
                           std::vector<int64_t>* buffer_strides) {
   const int rank = static_cast<int>(x_shape.size());
   *buffer_strides = CastTargetStrides(x_shape, x_strides);
+  phi::CastOpTransformFunctor<Src, Dst> cast;
   if (*buffer_strides == x_strides) {
     // A dense view covers [0, extent) exactly once, so the conversion is a flat
     // copy that keeps every stride, including the contiguous case.
@@ -640,7 +642,7 @@ void CastPreservingLayout(const Src* x_data,
     }
     buffer->resize(extent);
     for (int64_t k = 0; k < extent; ++k) {
-      (*buffer)[k] = static_cast<Dst>(x_data[k]);
+      (*buffer)[k] = cast(x_data[k]);
     }
     return;
   }
@@ -654,7 +656,7 @@ void CastPreservingLayout(const Src* x_data,
     for (int i = 0; i < rank; ++i) {
       src += index[i] * x_strides[i];
     }
-    (*buffer)[k] = static_cast<Dst>(x_data[src]);
+    (*buffer)[k] = cast(x_data[src]);
     for (int i = rank - 1; i >= 0; --i) {
       if (++index[i] < x_shape[i]) break;
       index[i] = 0;
