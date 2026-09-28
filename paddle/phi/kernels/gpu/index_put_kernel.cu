@@ -202,24 +202,18 @@ void IndexPutKernel(const Context& dev_ctx,
     if (!is_initialized) {
       Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
     }
-    // input_dims/strides and index_dims/strides are unused by the helper (it
-    // derives geometry from `out` and `indices`); pass the natural values.
-    const auto x_dims_v = vectorize<int64_t>(x.dims());
-    const auto x_strides_v = vectorize<int64_t>(common::stride(x.dims()));
-    const auto idx_dims_v = vectorize<int64_t>(res_indices_v[0]->dims());
-    const auto idx_strides_v =
-        vectorize<int64_t>(common::stride(res_indices_v[0]->dims()));
-    funcs::IndexPutWithSortKernel<T, int64_t>(dev_ctx,
-                                              x,
-                                              *ptr_value,
-                                              res_indices_v,
-                                              x_dims_v,
-                                              x_strides_v,
-                                              idx_dims_v,
-                                              idx_strides_v,
-                                              /*slice_offset=*/0,
-                                              /*accumulate=*/true,
-                                              out);
+    // The helper builds the linear index against the axes the indices address.
+    // The single index here covers the whole 1-D destination, so the indexed
+    // view is `out` itself: no axes precede it and there is no slice offset.
+    funcs::SortedPathLayout layout;
+    layout.dims_before = 0;
+    layout.view_dims = vectorize<int64_t>(out->dims());
+    layout.view_strides = vectorize<int64_t>(out->strides());
+    layout.view_offset = 0;
+    layout.is_whole_tensor = true;
+
+    funcs::IndexPutWithSortKernel<T, int64_t>(
+        dev_ctx, *ptr_value, res_indices_v, layout, /*accumulate=*/true, out);
     return;
   }
 #endif  // PADDLE_WITH_CUDA && !PADDLE_WITH_HIP
