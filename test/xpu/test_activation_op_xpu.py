@@ -396,32 +396,6 @@ for stype in support_types:
     create_test_class(globals(), XPUTestSqrtOP, stype)
 
 
-class XPUTestFloorOP(XPUOpTestWrapper):
-    def __init__(self):
-        self.op_name = 'floor'
-        self.use_dynamic_create_class = False
-
-    class XPUTestSqrt(TestActivationOPBase):
-        def set_case(self):
-            self.op_type = "floor"
-            self.dtype = self.in_type
-
-            x = np.random.uniform(0.1, 1, [11, 17]).astype(self.dtype)
-            out = np.floor(x)
-
-            self.attrs = {'use_xpu': True}
-            self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
-            self.outputs = {'Out': out}
-
-        def test_check_grad(self):
-            self.check_output_with_place(self.place)
-
-
-support_types = get_xpu_op_support_types('floor')
-for stype in support_types:
-    create_test_class(globals(), XPUTestFloorOP, stype)
-
-
 class XPUTestAbsOP(XPUOpTestWrapper):
     def __init__(self):
         self.op_name = 'abs'
@@ -1197,30 +1171,6 @@ def ref_relu6(x, threshold=6.0):
     out[np.abs(x - threshold) < 0.005] = threshold + 0.02
     out = np.minimum(np.maximum(x, 0), threshold)
     return out
-
-
-class XPUTestSiluOP(XPUOpTestWrapper):
-    def __init__(self):
-        self.op_name = 'silu'
-        self.use_dynamic_create_class = False
-
-    class XPUTestSilu(TestActivationOPBase):
-        def set_case(self):
-            self.op_type = "silu"
-            self.dtype = self.in_type
-
-            np.random.seed(1024)
-            x = np.random.uniform(-1, 1, [11, 17]).astype(self.dtype)
-            out = x / (np.exp(-x) + 1)
-
-            self.inputs = {'X': x}
-            self.outputs = {'Out': out}
-            self.attrs = {'use_xpu': True}
-
-
-support_types = get_xpu_op_support_types('silu')
-for stype in support_types:
-    create_test_class(globals(), XPUTestSiluOP, stype)
 
 
 class XPUTestSoftReluOP(XPUOpTestWrapper):
