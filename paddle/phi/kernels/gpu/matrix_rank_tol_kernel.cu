@@ -31,6 +31,7 @@
 #include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
 #include "paddle/phi/kernels/funcs/compare_functors.h"
+#include "paddle/phi/kernels/funcs/values_vectors_functor.h"
 #include "paddle/phi/kernels/impl/matrix_rank_kernel_impl.h"
 #include "paddle/phi/kernels/reduce_max_kernel.h"
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
@@ -51,14 +52,6 @@ static void GesvdjBatched(const GPUContext& dev_ctx,
                           phi::dtype::Real<T>* S,
                           int* info,
                           int thin_UV = 1);
-
-template <typename T>
-void SyevjBatched(const GPUContext& dev_ctx,
-                  int batchSize,
-                  int n,
-                  T* A,
-                  phi::dtype::Real<T>* W,
-                  int* info);
 
 template <>
 void GesvdjBatched<float>(const GPUContext& dev_ctx,
@@ -380,247 +373,6 @@ void GesvdjBatched<phi::complex128>(const GPUContext& dev_ctx,
       dynload::cusolverDnDestroyGesvdjInfo(gesvdj_params));
 }
 
-template <>
-void SyevjBatched<float>(const GPUContext& dev_ctx,
-                         int batchSize,
-                         int n,
-                         float* A,
-                         float* W,
-                         int* info) {
-  auto handle = dev_ctx.cusolver_dn_handle();
-  // Compute eigenvalues only
-  const cusolverEigMode_t jobz = CUSOLVER_EIG_MODE_NOVECTOR;
-  // matrix is saved as column-major in cusolver.
-  // numpy and torch use lower triangle to compute eigenvalues, so here use
-  // upper triangle
-  cublasFillMode_t uplo = CUBLAS_FILL_MODE_UPPER;
-  int lda = n;
-  int64_t stride_A = static_cast<int64_t>(lda) * n;
-  int lwork = 0;
-  syevjInfo_t params = NULL;
-  PADDLE_ENFORCE_GPU_SUCCESS(dynload::cusolverDnCreateSyevjInfo(&params));
-  PADDLE_ENFORCE_GPU_SUCCESS(dynload::cusolverDnSsyevj_bufferSize(
-      handle, jobz, uplo, n, A, lda, W, &lwork, params));
-  auto workspace = phi::memory_utils::Alloc(
-      dev_ctx.GetPlace(),
-      lwork * sizeof(float),
-      phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
-  float* workspace_ptr = reinterpret_cast<float*>(workspace->ptr());
-  for (int i = 0; i < batchSize; i++) {
-    PADDLE_ENFORCE_GPU_SUCCESS(dynload::cusolverDnSsyevj(handle,
-                                                         jobz,
-                                                         uplo,
-                                                         n,
-                                                         A + stride_A * i,
-                                                         lda,
-                                                         W + n * i,
-                                                         workspace_ptr,
-                                                         lwork,
-                                                         info,
-                                                         params));
-
-    int error_info;
-    memory_utils::Copy(CPUPlace(),
-                       &error_info,
-                       dev_ctx.GetPlace(),
-                       info,
-                       sizeof(int),
-                       dev_ctx.stream());
-    PADDLE_ENFORCE_EQ(
-        error_info,
-        0,
-        common::errors::PreconditionNotMet(
-            "For batch [%d]: CUSolver eigenvalues is not zero. [%d]",
-            i,
-            error_info));
-  }
-  PADDLE_ENFORCE_GPU_SUCCESS(dynload::cusolverDnDestroySyevjInfo(params));
-}
-
-template <>
-void SyevjBatched<double>(const GPUContext& dev_ctx,
-                          int batchSize,
-                          int n,
-                          double* A,
-                          double* W,
-                          int* info) {
-  auto handle = dev_ctx.cusolver_dn_handle();
-  // Compute eigenvalues only
-  const cusolverEigMode_t jobz = CUSOLVER_EIG_MODE_NOVECTOR;
-  //  upper triangle of A is stored
-  cublasFillMode_t uplo = CUBLAS_FILL_MODE_UPPER;
-  int lda = n;
-  int64_t stride_A = static_cast<int64_t>(lda) * n;
-  int lwork = 0;
-  syevjInfo_t params = NULL;
-  PADDLE_ENFORCE_GPU_SUCCESS(dynload::cusolverDnCreateSyevjInfo(&params));
-  PADDLE_ENFORCE_GPU_SUCCESS(dynload::cusolverDnDsyevj_bufferSize(
-      handle, jobz, uplo, n, A, lda, W, &lwork, params));
-  auto workspace = phi::memory_utils::Alloc(
-      dev_ctx.GetPlace(),
-      lwork * sizeof(double),
-      phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
-  double* workspace_ptr = reinterpret_cast<double*>(workspace->ptr());
-
-  for (int i = 0; i < batchSize; i++) {
-    PADDLE_ENFORCE_GPU_SUCCESS(dynload::cusolverDnDsyevj(handle,
-                                                         jobz,
-                                                         uplo,
-                                                         n,
-                                                         A + stride_A * i,
-                                                         lda,
-                                                         W + n * i,
-                                                         workspace_ptr,
-                                                         lwork,
-                                                         info,
-                                                         params));
-    int error_info;
-    memory_utils::Copy(CPUPlace(),
-                       &error_info,
-                       dev_ctx.GetPlace(),
-                       info,
-                       sizeof(int),
-                       dev_ctx.stream());
-    PADDLE_ENFORCE_EQ(
-        error_info,
-        0,
-        common::errors::PreconditionNotMet(
-            "For batch [%d]: CUSolver eigenvalues is not zero. [%d]",
-            i,
-            error_info));
-  }
-  PADDLE_ENFORCE_GPU_SUCCESS(dynload::cusolverDnDestroySyevjInfo(params));
-}
-
-template <>
-void SyevjBatched<phi::complex64>(const GPUContext& dev_ctx,
-                                  int batchSize,
-                                  int n,
-                                  phi::complex64* A,
-                                  float* W,
-                                  int* info) {
-  auto handle = dev_ctx.cusolver_dn_handle();
-  // Compute eigenvalues only
-  const cusolverEigMode_t jobz = CUSOLVER_EIG_MODE_NOVECTOR;
-  //  upper triangle of A is stored
-  cublasFillMode_t uplo = CUBLAS_FILL_MODE_UPPER;
-  int lda = n;
-  int64_t stride_A = static_cast<int64_t>(lda) * n;
-  int lwork = 0;
-  syevjInfo_t params = NULL;
-  PADDLE_ENFORCE_GPU_SUCCESS(dynload::cusolverDnCreateSyevjInfo(&params));
-  PADDLE_ENFORCE_GPU_SUCCESS(
-      dynload::cusolverDnCheevj_bufferSize(handle,
-                                           jobz,
-                                           uplo,
-                                           n,
-                                           reinterpret_cast<cuComplex*>(A),
-                                           lda,
-                                           W,
-                                           &lwork,
-                                           params));
-  auto workspace = phi::memory_utils::Alloc(
-      dev_ctx.GetPlace(),
-      lwork * sizeof(cuComplex),
-      phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
-  cuComplex* workspace_ptr = reinterpret_cast<cuComplex*>(workspace->ptr());
-
-  for (int i = 0; i < batchSize; i++) {
-    PADDLE_ENFORCE_GPU_SUCCESS(dynload::cusolverDnCheevj(
-        handle,
-        jobz,
-        uplo,
-        n,
-        reinterpret_cast<cuComplex*>(A + stride_A * i),
-        lda,
-        W + n * i,
-        workspace_ptr,
-        lwork,
-        info,
-        params));
-    int error_info;
-    memory_utils::Copy(CPUPlace(),
-                       &error_info,
-                       dev_ctx.GetPlace(),
-                       info,
-                       sizeof(int),
-                       dev_ctx.stream());
-    PADDLE_ENFORCE_EQ(
-        error_info,
-        0,
-        common::errors::PreconditionNotMet(
-            "For batch [%d]: CUSolver eigenvalues is not zero. [%d]",
-            i,
-            error_info));
-  }
-  PADDLE_ENFORCE_GPU_SUCCESS(dynload::cusolverDnDestroySyevjInfo(params));
-}
-
-template <>
-void SyevjBatched<phi::complex128>(const GPUContext& dev_ctx,
-                                   int batchSize,
-                                   int n,
-                                   phi::complex128* A,
-                                   double* W,
-                                   int* info) {
-  auto handle = dev_ctx.cusolver_dn_handle();
-  // Compute eigenvalues only
-  const cusolverEigMode_t jobz = CUSOLVER_EIG_MODE_NOVECTOR;
-  //  upper triangle of A is stored
-  cublasFillMode_t uplo = CUBLAS_FILL_MODE_UPPER;
-  int lda = n;
-  int64_t stride_A = static_cast<int64_t>(lda) * n;
-  int lwork = 0;
-  syevjInfo_t params = NULL;
-  PADDLE_ENFORCE_GPU_SUCCESS(dynload::cusolverDnCreateSyevjInfo(&params));
-  PADDLE_ENFORCE_GPU_SUCCESS(dynload::cusolverDnZheevj_bufferSize(
-      handle,
-      jobz,
-      uplo,
-      n,
-      reinterpret_cast<cuDoubleComplex*>(A),
-      lda,
-      W,
-      &lwork,
-      params));
-  auto workspace = phi::memory_utils::Alloc(
-      dev_ctx.GetPlace(),
-      lwork * sizeof(cuDoubleComplex),
-      phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
-  cuDoubleComplex* workspace_ptr =
-      reinterpret_cast<cuDoubleComplex*>(workspace->ptr());
-
-  for (int i = 0; i < batchSize; i++) {
-    PADDLE_ENFORCE_GPU_SUCCESS(dynload::cusolverDnZheevj(
-        handle,
-        jobz,
-        uplo,
-        n,
-        reinterpret_cast<cuDoubleComplex*>(A + stride_A * i),
-        lda,
-        W + n * i,
-        workspace_ptr,
-        lwork,
-        info,
-        params));
-    int error_info;
-    memory_utils::Copy(CPUPlace(),
-                       &error_info,
-                       dev_ctx.GetPlace(),
-                       info,
-                       sizeof(int),
-                       dev_ctx.stream());
-    PADDLE_ENFORCE_EQ(
-        error_info,
-        0,
-        common::errors::PreconditionNotMet(
-            "For batch [%d]: CUSolver eigenvalues is not zero. [%d]",
-            i,
-            error_info));
-  }
-  PADDLE_ENFORCE_GPU_SUCCESS(dynload::cusolverDnDestroySyevjInfo(params));
-}
-
 template <typename T, typename Context>
 void MatrixRankTolKernel(const Context& dev_ctx,
                          const DenseTensor& x,
@@ -676,8 +428,8 @@ void MatrixRankTolKernel(const Context& dev_ctx,
   auto* eigenvalue_data = dev_ctx.template Alloc<RealType>(&eigenvalue_tensor);
 
   if (hermitian) {
-    SyevjBatched<T>(
-        dev_ctx, batches, rows, x_tmp.data<T>(), eigenvalue_data, info_ptr);
+    funcs::MatrixEighFunctor<Context, T> functor;
+    functor(dev_ctx, x, &eigenvalue_tensor, nullptr, true, false);
 
     phi::AbsKernel<RealType, Context>(
         dev_ctx, eigenvalue_tensor, &eigenvalue_tensor);
@@ -795,8 +547,8 @@ void MatrixRankAtolRtolKernel(const Context& dev_ctx,
   auto* eigenvalue_data = dev_ctx.template Alloc<RealType>(&eigenvalue_tensor);
 
   if (hermitian) {
-    SyevjBatched<T>(
-        dev_ctx, batches, rows, x_tmp.data<T>(), eigenvalue_data, info_ptr);
+    funcs::MatrixEighFunctor<Context, T> functor;
+    functor(dev_ctx, x, &eigenvalue_tensor, nullptr, true, false);
 
     phi::AbsKernel<RealType, Context>(
         dev_ctx, eigenvalue_tensor, &eigenvalue_tensor);

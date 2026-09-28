@@ -67,9 +67,9 @@ static void CheckEighResult(const int batch, const int info) {
 #ifdef PADDLE_WITH_CUDA
 
 #if CUDA_VERSION >= 11031
-static bool use_cusolver_syevj_batched = true;
+constexpr bool kSyevjBatchedAvailable = true;
 #else
-static bool use_cusolver_syevj_batched = false;
+constexpr bool kSyevjBatchedAvailable = false;
 #endif
 
 #define CUDASOLVER_SYEVJ_BATCHED_BUFFERSIZE_ARGTYPES(scalar_t, value_t)     \
@@ -497,14 +497,15 @@ struct MatrixEighFunctor<GPUContext, T> {
     DenseTensor input_trans = TransposeLast2Dim<T>(dev_ctx, input);
     T *input_vector = input_trans.data<T>();
 
+    // cusolverDn<t>syevjBatched is a batched Jacobi solver meant for tiny
+    // matrices: beyond n == 32 it silently loses several digits of accuracy
+    // while still reporting info == 0, so gate it on the matrix size.
     // Precision loss will occur in some cases while using
     // cusolverDnZheevjBatched to calculate in Paddle(cuda11.7) but it works
     // well in Paddle(cuda10.2)
-    use_cusolver_syevj_batched = (use_cusolver_syevj_batched) &&
-                                 (batch_size > 1) &&
-                                 (input.dtype() != DataType::COMPLEX128);
-    bool use_cusolver_syevj = (input.dtype() == DataType::FLOAT32 &&
-                               last_dim >= 32 && last_dim <= 512);
+    const bool use_cusolver_syevj_batched =
+        kSyevjBatchedAvailable && batch_size > 1 && last_dim <= 32 &&
+        input.dtype() != DataType::COMPLEX128;
     auto handle = dev_ctx.cusolver_dn_handle();
 
     syevjInfo_t syevj_params;
@@ -521,19 +522,6 @@ struct MatrixEighFunctor<GPUContext, T> {
                                  &workspace_size,
                                  syevj_params,
                                  batch_size);
-    } else if (use_cusolver_syevj) {
-      PADDLE_ENFORCE_GPU_SUCCESS(
-          dynload::cusolverDnCreateSyevjInfo(&syevj_params));
-      PADDLE_ENFORCE_GPU_SUCCESS(dynload::cusolverDnSsyevj_bufferSize(
-          dev_ctx.cusolver_dn_handle(),
-          jobz,
-          uplo,
-          last_dim,
-          reinterpret_cast<const float *>(input_vector),
-          lda,
-          reinterpret_cast<const float *>(out_value),
-          &workspace_size,
-          syevj_params));
     } else {
       EvdBuffer(dev_ctx.cusolver_dn_handle(),
                 jobz,
@@ -569,19 +557,6 @@ struct MatrixEighFunctor<GPUContext, T> {
                         syevj_params,
                         batch_size);
         break;
-      } else if (use_cusolver_syevj) {
-        PADDLE_ENFORCE_GPU_SUCCESS(
-            dynload::cusolverDnSsyevj(handle,
-                                      jobz,
-                                      uplo,
-                                      last_dim,
-                                      reinterpret_cast<float *>(input_data),
-                                      lda,
-                                      reinterpret_cast<float *>(value_data),
-                                      reinterpret_cast<float *>(work_ptr),
-                                      workspace_size,
-                                      &info_ptr[i],
-                                      syevj_params));
       } else {
         Evd(handle,
             jobz,
@@ -597,7 +572,7 @@ struct MatrixEighFunctor<GPUContext, T> {
     }
     CheckEighResult(dev_ctx, batch_size, info_ptr);
 
-    if (use_cusolver_syevj_batched || use_cusolver_syevj) {
+    if (use_cusolver_syevj_batched) {
       PADDLE_ENFORCE_GPU_SUCCESS(
           dynload::cusolverDnDestroySyevjInfo(syevj_params));
     }
