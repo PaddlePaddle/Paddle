@@ -414,9 +414,6 @@ void MatrixRankTolKernel(const Context& dev_ctx,
     rtol_T = std::numeric_limits<RealType>::epsilon() * std::max(rows, cols);
   }
 
-  // Must Copy X once, because the gesvdj will destroy the content when exit.
-  DenseTensor x_tmp;
-  Copy(dev_ctx, x, dev_ctx.GetPlace(), false, &x_tmp);
   auto info = phi::memory_utils::Alloc(
       dev_ctx.GetPlace(),
       sizeof(int) * batches,
@@ -435,6 +432,9 @@ void MatrixRankTolKernel(const Context& dev_ctx,
         dev_ctx, eigenvalue_tensor, &eigenvalue_tensor);
 
   } else {
+    // Must Copy X once, because the gesvdj will destroy the content when exit.
+    DenseTensor x_tmp;
+    Copy(dev_ctx, x, dev_ctx.GetPlace(), false, &x_tmp);
     DenseTensor U, VH;
     U.Resize(detail::GetUDDim(dim_x, k));
     VH.Resize(detail::GetVHDDim(dim_x, k));
@@ -533,9 +533,6 @@ void MatrixRankAtolRtolKernel(const Context& dev_ctx,
   auto numel = x.numel();
   int batches = numel / (rows * cols);
 
-  // Must Copy X once, because the gesvdj will destroy the content when exit.
-  DenseTensor x_tmp;
-  Copy(dev_ctx, x, dev_ctx.GetPlace(), false, &x_tmp);
   auto info = phi::memory_utils::Alloc(
       dev_ctx.GetPlace(),
       sizeof(int) * batches,
@@ -554,6 +551,9 @@ void MatrixRankAtolRtolKernel(const Context& dev_ctx,
         dev_ctx, eigenvalue_tensor, &eigenvalue_tensor);
 
   } else {
+    // Must Copy X once, because the gesvdj will destroy the content when exit.
+    DenseTensor x_tmp;
+    Copy(dev_ctx, x, dev_ctx.GetPlace(), false, &x_tmp);
     DenseTensor U, VH;
     U.Resize(detail::GetUDDim(dim_x, k));
     VH.Resize(detail::GetVHDDim(dim_x, k));
