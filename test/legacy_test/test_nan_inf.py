@@ -184,6 +184,14 @@ class TestNanInfStack(TestNanInfBase):
         ):
             self.check_stack(" check_nan_inf_backward_static_stack.py")
 
+    def test_forward_trace_not_accumulated(self):
+        cmd = self._python_interp + " check_nan_inf_forward_trace.py"
+        returncode, out, err = self.run_command(cmd)
+        output = out + err
+        assert returncode != 0
+        assert output.find(b'z = paddle.sqrt(x)') != -1
+        assert output.find(b'_stale_frame_marker') == -1
+
 
 class TestNanInfCheckResult(TestNanInfBase):
     def get_reference_num_nan_inf(self, x):
