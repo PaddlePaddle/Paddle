@@ -450,6 +450,27 @@ class TestNearestNeighborInterpActualShape(TestNearestInterpOp):
         self.align_corners = True
 
 
+class TestNearestNeighborInterpGridYClamp(TestNearestInterpOp):
+    """Regression test for grid_y clamp in KeNearestNeighborInterpNCHWFw.
+
+    With out_w = 256 -> block_x = 256, block_y = 1; out_h = 65536 -> grid_y
+    = min(65535, 65536) = 65535 (clamped by cudaDevAttrMaxGridDimY).
+
+    Before the fix the kernel had no y-stride loop, so the last output row
+    was silently skipped. The forward check matches the GPU output against a
+    numpy reference; the backward check verifies gradient contributions
+    cover every output position.
+    """
+
+    def init_test_case(self):
+        self.interp_method = 'nearest'
+        self.input_shape = [1, 1, 2, 256]
+        self.out_h = 65536
+        self.out_w = 256
+        self.scale = []
+        self.align_corners = True
+
+
 class TestNearestInterpOpFP16(TestNearestInterpOp):
     def test_check_output(self):
         self.check_output(
