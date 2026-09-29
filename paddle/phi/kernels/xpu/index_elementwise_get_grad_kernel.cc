@@ -14,9 +14,11 @@
 
 #include "paddle/phi/kernels/index_elementwise_get_kernel.h"
 
+#include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/index_elementwise.h"
+#include "paddle/phi/kernels/funcs/index_elementwise_utils.h"
 #include "paddle/phi/kernels/funcs/stride_utils.h"
 
 namespace phi {
@@ -38,6 +40,14 @@ void XPUIndexElementwiseGetGradKernel(
   std::vector<int64_t> shape_tmp;
   std::vector<int64_t> stride_tmp;
   funcs::cal_shape_stride(index_dims, &num_indices, &shape_tmp, &stride_tmp);
+
+  // The XDNN scatter can only walk the x view forwards, so a reversed axis
+  // cannot be served by this kernel. Fail loudly instead of silently
+  // producing wrong data.
+  if (funcs::HasReversedAxis(input_dims, input_strides)) {
+    PADDLE_THROW(common::errors::Unimplemented(
+        "Negative strides in advanced indexing are not supported on XPU."));
+  }
 
   auto sizes = std::array<int64_t, DDim::kMaxRank + 1>{};
   auto strides = std::array<int64_t, DDim::kMaxRank + 1>{};
