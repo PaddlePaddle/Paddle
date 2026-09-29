@@ -5309,7 +5309,10 @@ def lerp_(
     return _C_ops.lerp_(x, y, weight)
 
 
-def erfinv(x: Tensor, name: str | None = None) -> Tensor:
+@param_one_alias(['x', 'input'])
+def erfinv(
+    x: Tensor, name: str | None = None, *, out: Tensor | None = None
+) -> Tensor:
     r"""
     The inverse error function of x. Please refer to :ref:`api_paddle_erf`
 
@@ -5319,8 +5322,11 @@ def erfinv(x: Tensor, name: str | None = None) -> Tensor:
 
     Args:
         x (Tensor): An N-D Tensor, the data type is float16, bfloat16, float32, float64,
-            uint8, int8, int16, int32, int64.
+            uint8, int8, int16, int32, int64. Alias: ``input``.
         name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Keyword Args:
+        out (Tensor|None, optional): The output Tensor. If set, the result will be stored in this Tensor. Default is None.
 
     Returns:
         out (Tensor), an N-D Tensor, the shape and data type is the same with input
@@ -5339,7 +5345,7 @@ def erfinv(x: Tensor, name: str | None = None) -> Tensor:
 
     """
     if in_dynamic_or_pir_mode():
-        return _C_ops.erfinv(x)
+        return _C_ops.erfinv(x, out=out)
     else:
         check_variable_and_dtype(
             x,
@@ -5358,9 +5364,11 @@ def erfinv(x: Tensor, name: str | None = None) -> Tensor:
             'erfinv',
         )
         helper = LayerHelper('erfinv', **locals())
-        out = helper.create_variable_for_type_inference(dtype=x.dtype)
-        helper.append_op(type='erfinv', inputs={'X': x}, outputs={'Out': out})
-        return out
+        result = helper.create_variable_for_type_inference(dtype=x.dtype)
+        helper.append_op(
+            type='erfinv', inputs={'X': x}, outputs={'Out': result}
+        )
+        return assign(result, out) if out is not None else result
 
 
 @inplace_apis_in_dygraph_only

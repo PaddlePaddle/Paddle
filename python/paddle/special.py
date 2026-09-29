@@ -15,6 +15,7 @@
 from .tensor.compat_softmax import log_softmax, softmax
 from .tensor.math import (
     erf,
+    erfinv,
     expm1,
     i0,
     i0e,
@@ -29,6 +30,7 @@ from .tensor.math import (
 
 __all__ = [
     "erf",
+    "erfinv",
     "i0",
     "i0e",
     "i1",
