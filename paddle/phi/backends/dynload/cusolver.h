@@ -123,6 +123,8 @@ extern void *cusolver_dso_handle;
   __macro(cusolverDnZheevj);                   \
   __macro(cusolverDnDestroySyevjInfo);         \
   __macro(cusolverDnXsyevjSetSortEig);         \
+  __macro(cusolverDnXsyevBatched_bufferSize);  \
+  __macro(cusolverDnXsyevBatched);             \
   __macro(cusolverDnSsyevjBatched_bufferSize); \
   __macro(cusolverDnDsyevjBatched_bufferSize); \
   __macro(cusolverDnCheevjBatched_bufferSize); \
