@@ -76,6 +76,11 @@ class VirtualMemoryAutoGrowthBestFitAllocator : public Allocator {
   phi::Allocation *AllocateImpl(size_t size) override;
   size_t CompactImpl(const Place &place) override;
   void FreeImpl(phi::Allocation *allocation) override;
+  // Release physical GPU memory of fully-free underlying VMM chunks back to
+  // the driver (cuMemUnmap + cuMemRelease), migrated from the v2 allocator so
+  // that empty_cache actually frees device memory under
+  // FLAGS_use_virtual_memory_auto_growth.
+  uint64_t ReleaseImpl(const Place &place) override;
 
  private:
   // AllocateOrCompact will try to allocate memory from free blocks first, if
@@ -84,6 +89,11 @@ class VirtualMemoryAutoGrowthBestFitAllocator : public Allocator {
   phi::Allocation *AllocFromFreeBlocks(size_t size);
   void ExtendOrCompact(size_t size);
   void TryMergeBlock2Blocks(std::list<Block>::iterator iter);
+  // Remove a fully-free virtual address range [begin, end) from the block
+  // bookkeeping, splitting any straddling free block into the surviving
+  // left/right remnants. Used by ReleaseImpl before the physical chunk is
+  // unmapped and released.
+  void RemoveFreeRange(uintptr_t begin, uintptr_t end);
   void DumpInfo(std::string phase) const;
 
   std::shared_ptr<Allocator> underlying_allocator_;
@@ -124,6 +134,7 @@ class VirtualMemoryAutoGrowthBestFitMultiScalePoolAllocator
 
  protected:
   size_t CompactImpl(const Place &place) override;
+  uint64_t ReleaseImpl(const Place &place) override;
 
  private:
   size_t alignment_;
