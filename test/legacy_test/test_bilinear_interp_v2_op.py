@@ -486,6 +486,28 @@ class TestBilinearInterpDataLayout(TestBilinearInterpOp):
         self.data_layout = "NHWC"
 
 
+class TestBilinearInterpGridYClamp(TestBilinearInterpOp):
+    """Regression test for grid_y clamp in KeBilinearInterpNCHWFw.
+
+    With out_w = 256 -> block_x = 256, block_y = 1; out_h = 65536 -> grid_y
+    = min(65535, 65536) = 65535 (clamped by cudaDevAttrMaxGridDimY).
+
+    Before the fix the kernel had no y-stride loop, so the last output row
+    was silently skipped. The forward check matches the GPU output against a
+    numpy reference; the backward check verifies gradient contributions
+    cover every output position.
+    """
+
+    def init_test_case(self):
+        self.interp_method = 'bilinear'
+        self.input_shape = [1, 1, 2, 256]
+        self.out_h = 65536
+        self.out_w = 256
+        self.scale = []
+        self.align_corners = True
+        self.align_mode = 1
+
+
 class TestBilinearInterpOpFP16(TestBilinearInterpOp):
     def test_check_output(self):
         self.check_output(
