@@ -108,9 +108,8 @@ function get_quickly_disable_ut() {
         echo ${disable_ut_quickly}
         echo "========================================="
     else
-
-        exit 102
-        disable_ut_quickly='disable_ut'
+        echo "Failed to fetch the quickly-disabled unit test list; continuing without it."
+        return 1
     fi
 }
 
