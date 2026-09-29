@@ -253,8 +253,24 @@ void MoePermuteKernel(const Context &dev_ctx,
   // Probs will be memset to zero whatsoever
   memset_invalid_rows(token_prob_unzipped_ptr, sizeof(float), 1);
 
-  // Handle 0-size input
-  if (X.numel() == 0) return;
+  // Handle 0-size input: memset_invalid_rows only clears the alignment tail of
+  // each expert, and the rows in between are written by the unzip kernel that
+  // is skipped here, so fill the whole buffers with the padding values.
+  if (X.numel() == 0) {
+    auto fill_padding_value = [&](DenseTensor *out, int byte_value) {
+      if (out->numel() == 0) return;
+      PADDLE_ENFORCE_XPU_SUCCESS(
+          cudaMemsetAsync(out->data(),
+                          byte_value,
+                          out->numel() * SizeOf(out->dtype()),
+                          reinterpret_cast<cudaStream_t>(dev_ctx.stream())));
+    };
+    fill_padding_value(X_unzipped, 0);
+    fill_padding_value(token_prob_unzipped, 0);
+    fill_padding_value(XScale_unzipped, 0);
+    fill_padding_value(zipped_expertwise_rowmap, 0xFF);
+    return;
+  }
 
   // -------- Initialize semaphore for cumsum ---------------
   dispatch_tokens_unzip_stable<T, Context>(dev_ctx,
