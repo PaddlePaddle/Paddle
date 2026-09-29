@@ -15,6 +15,8 @@
 #include <paddle/phi/common/port.h>
 
 #include <array>
+#include <codecvt>
+#include <locale>
 #include <memory>
 #include <stdexcept>
 #include <string>
@@ -123,13 +125,21 @@ constexpr char kSEP = '/';
 constexpr char kSEP = '\\';
 #endif  // _WIN32
 
+#ifdef _WIN32
+static std::wstring Utf8ToWidePath(const std::string &filepath) {
+  std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
+  return converter.from_bytes(filepath);
+}
+#endif
+
 bool FileExists(const std::string &filepath) {
 #if !defined(_WIN32)
   struct stat buffer = {};
   return (stat(filepath.c_str(), &buffer) == 0);
 #else
   struct _stat buffer;
-  return (_stat(filepath.c_str(), &buffer) == 0);
+  auto wide_filepath = Utf8ToWidePath(filepath);
+  return (_wstat(wide_filepath.c_str(), &buffer) == 0);
 #endif  // !_WIN32
 }
 
@@ -151,7 +161,8 @@ void MkDir(const char *path) {
     }
   }
 #else
-  BOOL return_value = CreateDirectory(path, NULL);
+  auto wide_path = Utf8ToWidePath(path);
+  BOOL return_value = CreateDirectoryW(wide_path.c_str(), NULL);
   if (!return_value) {
     if (GetLastError() != ERROR_ALREADY_EXISTS) {
       throw std::runtime_error(path_error);
