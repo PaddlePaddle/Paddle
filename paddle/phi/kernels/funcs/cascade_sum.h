@@ -26,7 +26,7 @@
 #include "paddle/phi/common/complex.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/kernels/cpu/cast_impl.h"
+#include "paddle/phi/kernels/funcs/cast_functor.h"
 
 // Bit-exact port of the single-threaded CPU cascade summation used by torch,
 // see pytorch/aten/src/ATen/native/cpu/SumKernel.cpp. Torch does not sum
