@@ -2117,6 +2117,8 @@ def histogram(
     weight: Tensor | None = None,
     density: bool = False,
     name: str | None = None,
+    *,
+    out: Tensor | None = None,
 ) -> Tensor:
     """
     Computes the histogram of a tensor. The elements are sorted into equal width bins between min and max.
@@ -2133,6 +2135,9 @@ def histogram(
         density (bool, optional): If False, the result will contain the count (or total weight) in each bin. If True, the result is the
             value of the probability density function over the bins, normalized such that the integral over the range of the bins is 1.
         name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+
+    Keyword Args:
+        out (Tensor|None, optional): Output tensor. If specified, the result will be written to this tensor. Default: None.
 
     Returns:
         Tensor, shape is (nbins,), the counts or density of the histogram.
@@ -2154,7 +2159,7 @@ def histogram(
         max = float(max)
 
     if in_dynamic_or_pir_mode():
-        return _C_ops.histogram(input, weight, bins, min, max, density)
+        result = _C_ops.histogram(input, weight, bins, min, max, density)
     else:
         helper = LayerHelper('histogram', **locals())
         check_variable_and_dtype(
@@ -2169,18 +2174,18 @@ def histogram(
                     ['int32', 'int64', 'float32', 'float64'],
                     'histogram',
                 )
-            out = helper.create_variable_for_type_inference(
+            result = helper.create_variable_for_type_inference(
                 dtype=VarDesc.VarType.FP32
             )
         else:
-            out = helper.create_variable_for_type_inference(
+            result = helper.create_variable_for_type_inference(
                 dtype=VarDesc.VarType.INT64
             )
 
         helper.append_op(
             type='histogram',
             inputs={'X': input, 'Weight': weight},
-            outputs={'Out': out},
+            outputs={'Out': result},
             attrs={
                 'bins': bins,
                 'min': min,
@@ -2188,7 +2193,10 @@ def histogram(
                 'density': density,
             },
         )
+    if out is not None:
+        paddle.assign(result, out)
         return out
+    return result
 
 
 def histogram_bin_edges(
