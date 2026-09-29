@@ -692,8 +692,8 @@ if(WITH_PYTHON)
       return()
     endif()
 
-    execute_process(COMMAND ${PYTHON_EXECUTABLE} -m pip install -U
-                            pybind11-stubgen)
+    execute_process(COMMAND ${PYTHON_EXECUTABLE} -m pip install
+                            pybind11-stubgen==2.5.5)
   endfunction()
 
   install_py_pybind11_stubgen()
