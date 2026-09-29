@@ -1,4 +1,4 @@
-# Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2026 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -25,10 +25,24 @@ def make_kernel_arg_translator():
 
 
 def get_anchor_iter_var_names():
-    return ["coord.batch", "coord.row", "coord.column"]
+    # The anchor `conv2d_out` is the 4-D NHWC output, so the epilogue index
+    # programs are written against (n, p, q, k). conv2d is lowered to an
+    # implicit GEMM whose epilogue only knows the GEMM coordinates:
+    #   coord.row    = n * P * Q + p * Q + q
+    #   coord.column = k
+    #   coord.batch  = the split-k slice index, always 0, *not* the batch
+    # so the row index has to be decomposed here. `args.P` / `args.Q` are the
+    # output spatial extents, forwarded to the epilogue functor by the template
+    # below.
+    return [
+        "(coord.row / (args.P * args.Q))",
+        "((coord.row / args.Q) % args.P)",
+        "(coord.row % args.Q)",
+        "coord.column",
+    ]
 
 
-class MatmulVariadicTemplate:
+class Conv2dVariadicTemplate:
     def __init__(
         self,
         program_translator,
@@ -52,8 +66,8 @@ class MatmulVariadicTemplate:
             ]
         )
         self.input_dim_karg_to_shape_access = ap.MutableOrderedDict()
-        self.kernel_name = "MatmulVariadicKernel"
-        self.library_name = "matmul_variadic_kernel"
+        self.kernel_name = "Conv2dVariadicKernel"
+        self.library_name = "conv2d_variadic_kernel"
 
     def _register_name(self, pair):
         registry = self.mut_kernel_arg_id_registry
@@ -68,6 +82,11 @@ class MatmulVariadicTemplate:
         output_karg,
         input0_shape_kargs,
         input1_shape_kargs,
+        strides,
+        paddings,
+        dilations,
+        groups,
+        data_format,
     ):
         kargs_name_pair_list = [
             [input0_karg, "input0"],
@@ -96,6 +115,7 @@ class MatmulVariadicTemplate:
         trivial_code_str = mut_lir_code_gen_ctx.get_stmts_joined_str(
             indent="    "
         )
+        print("trivial_code_str: ", trivial_code_str)
 
         project_module = self.make_project(
             trivial_code_str,
@@ -104,6 +124,11 @@ class MatmulVariadicTemplate:
             output_karg,
             input0_shape_kargs,
             input1_shape_kargs,
+            strides,
+            paddings,
+            dilations,
+            groups,
+            data_format,
         )
         return CodeGenResult(  # noqa: F821
             module=project_module,
@@ -189,26 +214,27 @@ class MatmulVariadicTemplate:
         )
 
     def get_params_input_shape_init_str(
-        self, input_name, input_shape_kargs, indent
+        self, input_name, input_shape_kargs, perm, indent
     ):
         def init_input_shape_with_args(i):
             def get_creator():
                 return f"{input_name}_shape[{i}]"
 
             karg_var_name = self.get_kernel_arg_id_var_name(
-                input_shape_kargs[i]
+                input_shape_kargs[perm[i]]
             )
             self.input_dim_karg_to_shape_access.get_or_create(
                 karg_var_name, get_creator
             )
             return f"{indent}{input_name}_shape[{i}] = {karg_var_name};"
 
-        shape_vector_init_str = (
-            f"{input_name}_shape.resize({len(input_shape_kargs)});\n"
-        )
+        shape_vector_init_str = f"{input_name}_shape.resize({len(perm)});\n"
         return shape_vector_init_str + "\n".join(
-            ap.map(init_input_shape_with_args, range(len(input_shape_kargs)))
+            ap.map(init_input_shape_with_args, range(len(perm)))
         )
+
+    def get_cpp_int_list_str(self, values):
+        return "{" + ", ".join(ap.map(lambda v: f"{v}", values)) + "}"
 
     def make_project(
         self,
@@ -218,6 +244,11 @@ class MatmulVariadicTemplate:
         output_karg,
         input0_shape_kargs,
         input1_shape_kargs,
+        strides,
+        paddings,
+        dilations,
+        groups,
+        data_format,
     ):
         code_template = """
 // auto generated codes
@@ -229,6 +260,11 @@ namespace ap {
 template <typename T>
 struct VariadicEpilogueFunctor {
   struct Arguments {
+    // Extents of the output spatial dimensions. The epilogue of an implicit
+    // GEMM only knows the GEMM_M index `coord.row`, these are what let the
+    // generated statements decompose it back into (n, p, q).
+    int P;
+    int Q;
     ${AP_EPILOGUE_ARGUMENTS_FIELDS}
   };
 
@@ -242,19 +278,25 @@ struct VariadicEpilogueFunctor {
 };
 
 template <int TuningConfigId>
-static void RunMatmulWithVariadicKernel(const GemmEpilogueParams &params, ${AP_KERNEL_ARGS_DECLARE}) {
+static void RunConv2dWithVariadicKernel(const Conv2dEpilogueParams &params, ${AP_KERNEL_ARGS_DECLARE}) {
   using ElementT = ${output_dtype};
   using ElementComputeT = float;
 
   typename VariadicEpilogueFunctor<ElementComputeT>::Arguments epilogue_args;
+  epilogue_args.P = params.P;
+  epilogue_args.Q = params.Q;
 
   ${AP_EPILOGUE_ARGUMENTS_INIT}
 
-  constexpr int AlignA = Alignment<ElementT, ${k_value}>::kValue;
-  constexpr int AlignB = Alignment<ElementT, ${n_value}>::kValue;
+  // The activation and the filter are both indexed along the channel dimension,
+  // while the output is indexed along the output channel dimension.
+  constexpr int AlignA = Alignment<ElementT, ${c_value}>::kValue;
+  constexpr int AlignB = AlignA;
+  constexpr int AlignC = Alignment<ElementT, ${k_value}>::kValue;
 
-  MatmulVariadicFusion<ElementT, ElementComputeT, VariadicEpilogueFunctor,
-                       AlignA, AlignB, TuningConfigId>(params, epilogue_args);
+  Conv2dVariadicFusion<ElementT, ElementComputeT, VariadicEpilogueFunctor,
+                       AlignA, AlignB, AlignC, TuningConfigId>(params,
+                                                              epilogue_args);
 }
 
 } // namespace ap
@@ -262,25 +304,36 @@ static void RunMatmulWithVariadicKernel(const GemmEpilogueParams &params, ${AP_K
 extern "C" {
 
 void ${kernel_name}(void* stream_ptr, ${AP_KERNEL_ARGS_DECLARE}) {
+  // The activation is NHWC (data_format) and the filter is KRSC.
   std::vector<int64_t> ${input0}_shape;
   ${AP_PARAMS_INPUT0_SHAPE_INIT}
 
   std::vector<int64_t> ${input1}_shape;
   ${AP_PARAMS_INPUT1_SHAPE_INIT}
 
-  ap::GemmEpilogueParams params(
-      stream_ptr, ${input0}, ${input1}, nullptr, ${output}, ${input0}_shape, ${input1}_shape, std::vector<int64_t>{});
+  ap::Conv2dEpilogueParams params(stream_ptr,
+                                  ${input0},
+                                  ${input1},
+                                  /*bias=*/nullptr,
+                                  ${output},
+                                  ${input0}_shape,
+                                  ${input1}_shape,
+                                  std::vector<int64_t>{},
+                                  std::vector<int>${strides},
+                                  std::vector<int>${paddings},
+                                  std::vector<int>${dilations},
+                                  ${groups});
 
-#if AP_ENABLE_AUTOTUNE
-  AP_AUTOTUNE_${output_dtype}(ap::RunMatmulWithVariadicKernel, stream_ptr, params, ${AP_KERNEL_ARGS_CALL});
-#else
-  ap::RunMatmulWithVariadicKernel<ap::DefaultConfig::kConfigId>(params, ${AP_KERNEL_ARGS_CALL});
-#endif
+  ap::RunConv2dWithVariadicKernel<ap::DefaultConfig::kConfigId>(params, ${AP_KERNEL_ARGS_CALL});
 }
 }
   """
 
         output_dtype = self.dtype2type_name[output_karg.type.data_type]
+        # The filter is already channel-last (KRSC), only the NCHW activation
+        # needs its logical shape permuted.
+        input0_perm = [0, 1, 2, 3] if data_format == "NHWC" else [0, 2, 3, 1]
+        input1_perm = [0, 1, 2, 3]
         code = (
             code_template.replace(
                 "${AP_EPILOGUE_COMPUTATION_STATEMENTS}", trivial_code_str
@@ -296,13 +349,13 @@ void ${kernel_name}(void* stream_ptr, ${AP_KERNEL_ARGS_DECLARE}) {
             .replace(
                 "${AP_PARAMS_INPUT0_SHAPE_INIT}",
                 self.get_params_input_shape_init_str(
-                    "${input0}", input0_shape_kargs, indent="  "
+                    "${input0}", input0_shape_kargs, input0_perm, indent="  "
                 ),
             )
             .replace(
                 "${AP_PARAMS_INPUT1_SHAPE_INIT}",
                 self.get_params_input_shape_init_str(
-                    "${input1}", input1_shape_kargs, indent="  "
+                    "${input1}", input1_shape_kargs, input1_perm, indent="  "
                 ),
             )
             .replace(
@@ -320,17 +373,22 @@ void ${kernel_name}(void* stream_ptr, ${AP_KERNEL_ARGS_DECLARE}) {
             .replace("${input1}", self.get_kernel_arg_id_var_name(input1_karg))
             .replace("${output}", self.get_kernel_arg_id_var_name(output_karg))
             .replace("${output_dtype}", output_dtype)
-            .replace("${k_value}", f"{input0_shape_kargs[-1].value}")
-            .replace("${n_value}", f"{input1_shape_kargs[-1].value}")
+            .replace("${strides}", self.get_cpp_int_list_str(strides))
+            .replace("${paddings}", self.get_cpp_int_list_str(paddings))
+            .replace("${dilations}", self.get_cpp_int_list_str(dilations))
+            .replace("${groups}", f"{groups}")
+            .replace("${c_value}", f"{input1_shape_kargs[3].value}")
+            .replace("${k_value}", f"{input1_shape_kargs[0].value}")
         )
 
         dir_name = ap.dirname(__file__)
+        # Autotune is not supported by the conv2d backend yet.
         compile_command_generator = (
-            compile_command_util.CompileCommandGenerator(enable_autotune=True)
+            compile_command_util.CompileCommandGenerator(enable_autotune=False)
         )
-        matmul_source_dir = f"{dir_name}/matmul"
+        conv2d_source_dir = f"{dir_name}/matmul"
         compile_cmd = compile_command_generator(
-            "matmul", matmul_source_dir, self.library_name
+            "conv2d", conv2d_source_dir, self.library_name
         )
         file_ext = compile_command_generator.file_ext
 
@@ -357,7 +415,7 @@ void ${kernel_name}(void* stream_ptr, ${AP_KERNEL_ARGS_DECLARE}) {
 def KernelDispatch(ctx):
     import ap
 
-    so_func = ctx.get_so_function("MatmulVariadicKernel")
+    so_func = ctx.get_so_function("Conv2dVariadicKernel")
     stream_ptr = ctx.device_ctx.get_stream_addr_as_void_ptr()
     getters = ctx.kernel_dispatch_const_data.kernel_args_getters
     args = [stream_ptr, *ap.map(lambda getter: getter(ctx), getters)]

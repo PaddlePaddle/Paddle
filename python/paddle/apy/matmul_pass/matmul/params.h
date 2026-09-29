@@ -53,6 +53,7 @@ struct Alignment<float, Dim> {
       ((Dim % 4) == 0) ? 4 : (((Dim % 2) == 0) ? 2 : 1);
 };
 
+// Parameters of `gemm + epilogue` fusion.
 struct GemmEpilogueParams {
   int batch_count;
   int m;
@@ -188,6 +189,117 @@ struct GemmEpilogueParams {
     ASSERT_CHECK(out_ptrs.size() == out_shapes.size());
     epilogue_out_ptrs = out_ptrs;
     epilogue_out_shapes = out_shapes;
+  }
+};
+
+// Parameters of `conv2d + epilogue` fusion.
+//
+// Layout constraints of the first version:
+//   activation: NHWC, filter: KRSC, output: NPQK, bias: [K] (optional)
+struct Conv2dEpilogueParams {
+  int N;
+  int H;
+  int W;
+  int C;
+  int K;
+  int R;
+  int S;
+  int P;
+  int Q;
+  int pad_h;
+  int pad_w;
+  int stride_h;
+  int stride_w;
+  int dilation_h;
+  int dilation_w;
+  int groups;
+
+  const void *input;
+  const void *weight;
+  const void *bias;
+  void *output;
+
+  void *stream_ptr;
+
+  Conv2dEpilogueParams() {}
+  Conv2dEpilogueParams(
+      void *stream_ptr,
+      const void *input,
+      const void *weight,
+      const void *bias,
+      void *output,
+      const std::vector<int64_t> &input_shape,   // [N, H, W, C]
+      const std::vector<int64_t> &weight_shape,  // [K, R, S, C]
+      const std::vector<int64_t> &bias_shape,    // [K] or {}
+      const std::vector<int> &strides,
+      const std::vector<int> &paddings,
+      const std::vector<int> &dilations,
+      int groups = 1) {
+    ASSERT_CHECK(input_shape.size() == 4U);
+    ASSERT_CHECK(weight_shape.size() == 4U);
+    ASSERT_CHECK(strides.size() == 2U);
+    ASSERT_CHECK(dilations.size() == 2U);
+    // Grouped convolution is not supported by the first version.
+    ASSERT_CHECK(groups == 1);
+
+    this->stream_ptr = stream_ptr;
+    this->input = input;
+    this->weight = weight;
+    this->bias = bias;
+    this->output = output;
+    this->groups = groups;
+
+    N = CheckedCastToInt(input_shape[0]);
+    H = CheckedCastToInt(input_shape[1]);
+    W = CheckedCastToInt(input_shape[2]);
+    C = CheckedCastToInt(input_shape[3]);
+
+    K = CheckedCastToInt(weight_shape[0]);
+    R = CheckedCastToInt(weight_shape[1]);
+    S = CheckedCastToInt(weight_shape[2]);
+    ASSERT_CHECK(weight_shape[3] == input_shape[3]);
+
+    stride_h = strides[0];
+    stride_w = strides[1];
+    dilation_h = dilations[0];
+    dilation_w = dilations[1];
+
+    if (paddings.size() == 2U) {
+      // [pad_h, pad_w]
+      pad_h = paddings[0];
+      pad_w = paddings[1];
+    } else {
+      // [pad_top, pad_bottom, pad_left, pad_right], only symmetric padding is
+      // supported because cutlass takes a single pad value per spatial axis.
+      ASSERT_CHECK(paddings.size() == 4U);
+      ASSERT_CHECK(paddings[0] == paddings[1]);
+      ASSERT_CHECK(paddings[2] == paddings[3]);
+      pad_h = paddings[0];
+      pad_w = paddings[2];
+    }
+
+    P = (H + 2 * pad_h - dilation_h * (R - 1) - 1) / stride_h + 1;
+    Q = (W + 2 * pad_w - dilation_w * (S - 1) - 1) / stride_w + 1;
+    ASSERT_CHECK(P > 0);
+    ASSERT_CHECK(Q > 0);
+
+    if (bias) {
+      ASSERT_CHECK(bias_shape.size() == 1U);
+      ASSERT_CHECK(bias_shape[0] == weight_shape[0]);
+    }
+
+#if AP_ENABLE_DEBUG
+    std::cout << "-- [Conv2dEpilogueParams] input: [" << N << ", " << H << ", "
+              << W << ", " << C << "]" << std::endl;
+    std::cout << "-- [Conv2dEpilogueParams] filter: [" << K << ", " << R << ", "
+              << S << ", " << C << "]" << std::endl;
+    std::cout << "-- [Conv2dEpilogueParams] output: [" << N << ", " << P << ", "
+              << Q << ", " << K << "]" << std::endl;
+    std::cout << "-- [Conv2dEpilogueParams] pad: [" << pad_h << ", " << pad_w
+              << "], stride: [" << stride_h << ", " << stride_w
+              << "], dilation: [" << dilation_h << ", " << dilation_w << "]"
+              << std::endl;
+#endif
   }
 };
 

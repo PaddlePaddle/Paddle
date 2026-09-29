@@ -12,6 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Entry of the AP kernel backends: dispatches to the cutlass (CUDA) or the
+// hytlass (HIP) implementation of all the supported fused kernels.
+
 #pragma once
 
 #include <iostream>
@@ -35,6 +38,7 @@
     }                                                                         \
   }
 
+#include "cutlass_patch/cuda/cutlass_conv2d.cuh"  // NOLINT
 #include "cutlass_patch/cuda/cutlass_matmul.cuh"  // NOLINT
 #include "math_function.h"                        // NOLINT
 #include "profile.h"                              // NOLINT

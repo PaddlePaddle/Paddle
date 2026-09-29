@@ -21,7 +21,7 @@ import paddle
 import paddle.incubate.cc as pcc
 import paddle.incubate.cc.typing as pct
 
-os.environ["AP_WORKSPACE_DIR"] = "/tmp/paddle/ap"
+os.environ["AP_WORKSPACE_DIR"] = "/tmp/paddle_ap_workspace"
 
 
 def GetPirProgram(fused_func, tensor_args):
