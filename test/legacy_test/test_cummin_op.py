@@ -248,5 +248,95 @@ class TestCumminAPI(unittest.TestCase):
         self.assertRaises(IndexError, test_axis_outrange)
 
 
+def cum_scatter_add_ref(indices, out_grad, axis):
+    """Reference for the cummax/cummin gradient.
+    The gradient scatter-adds every upstream gradient element into ``x_grad`` at
+    the argmax/argmin source position recorded in ``indices`` along ``axis``.
+    Duplicate targets (a run of equal extrema) accumulate together.
+    """
+    ndim = out_grad.ndim
+    axis = axis % ndim
+    idx = np.moveaxis(indices, axis, 0).copy()
+    g = np.moveaxis(out_grad, axis, 0).copy()
+    row = idx.shape[0]
+    idx2 = idx.reshape(row, -1)
+    g2 = g.reshape(row, -1)
+    grad2 = np.zeros_like(g2)
+    for c in range(idx2.shape[1]):
+        for r in range(row):
+            t = int(idx2[r, c])
+            t = 0 if t < 0 else (row - 1 if t >= row else t)
+            grad2[t, c] += g2[r, c]
+    return np.moveaxis(grad2.reshape(g.shape), 0, axis)
+
+
+class TestCumminGradDeterministicGPU(unittest.TestCase):
+    """Regression tests for the deterministic cummin gradient path.
+    ``ScatterAddDeterministic`` in ``cum_maxmin_grad_kernel.cu``
+    is only reached when ``FLAGS_cudnn_deterministic`` are on.
+    These tests cover forward+backward, duplicate-minimum run merging,
+    several axes (including negative), both ``int32``/``int64`` index
+    dtypes, runs longer than a warp, and run-to-run stability.
+    """
+
+    def setUp(self):
+        if not (base.core.is_compiled_with_cuda() or is_custom_device()):
+            self.skipTest("deterministic cummin grad path is GPU only")
+        paddle.disable_static(get_device_place())
+        self._old_flags = paddle.get_flags(["FLAGS_cudnn_deterministic"])
+        paddle.set_flags({"FLAGS_cudnn_deterministic": True})
+
+    def tearDown(self):
+        if hasattr(self, "_old_flags"):
+            paddle.set_flags(self._old_flags)
+        paddle.enable_static()
+
+    def _grad(self, x_np, g_np, axis, indices_dtype):
+        xt = paddle.to_tensor(x_np)
+        xt.stop_gradient = False
+        out, ind = paddle.cummin(xt, axis=axis, dtype=indices_dtype)
+        gt = paddle.to_tensor(g_np)
+        dx = paddle.grad(out, xt, grad_outputs=gt)[0]
+        return dx.numpy(), ind.numpy()
+
+    def test_grad_matches_reference(self):
+        rng = np.random.RandomState(20)
+        # Integer valued input creates many ties, hence duplicate indices, so
+        # the run-merging branch of the deterministic scatter-add is exercised.
+        cases = [((64, 80), -1), ((64, 80), 0), ((5, 6, 7), 1), ((5, 6, 7), -2)]
+        for shape, axis in cases:
+            x_np = rng.randint(-3, 4, size=shape).astype("float32")
+            g_np = rng.randn(*shape).astype("float32")
+            for idtype in ["int32", "int64"]:
+                dx, ind = self._grad(x_np, g_np, axis, idtype)
+                ref = cum_scatter_add_ref(ind, g_np, axis)
+                np.testing.assert_allclose(dx, ref, rtol=1e-4, atol=1e-4)
+
+    def test_long_run_merge(self):
+        # A dominant first element makes the whole axis a single run of length
+        # 100 (> warp size), exercising the multi-pass warp reduction + tail.
+        x_np = np.random.RandomState(3).randn(8, 100).astype("float32")
+        x_np[:, 0] = -1e4  # global minimum at position 0 of every row
+        g_np = np.random.RandomState(4).randn(8, 100).astype("float32")
+        dx, ind = self._grad(x_np, g_np, -1, "int64")
+        ref = cum_scatter_add_ref(ind, g_np, -1)
+        np.testing.assert_allclose(dx, ref, rtol=1e-4, atol=1e-3)
+        # the entire row gradient must collapse onto column 0.
+        np.testing.assert_allclose(
+            dx[:, 0], g_np.sum(axis=1), rtol=1e-4, atol=1e-3
+        )
+        np.testing.assert_allclose(dx[:, 1:], 0.0, atol=1e-6)
+
+    # especially for deterministic path to test the results stability
+    def test_run_to_run_stable(self):
+        rng = np.random.RandomState(9)
+        x_np = rng.randint(-3, 4, size=(64, 80)).astype("float32")
+        g_np = rng.randn(64, 80).astype("float32")
+        first, _ = self._grad(x_np, g_np, -1, "int64")
+        for _ in range(3):
+            again, _ = self._grad(x_np, g_np, -1, "int64")
+            np.testing.assert_array_equal(first, again)
+
+
 if __name__ == '__main__':
     unittest.main()
