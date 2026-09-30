@@ -93,9 +93,13 @@ void TopkKernel(const Context& dev_ctx,
     indices->Resize(out_dims);
   }
   if (x.numel() == 0) {
-    Full<T, Context>(dev_ctx, out->dims(), NAN, out);
-    Full<int64_t, Context>(dev_ctx, indices->dims(), 0, indices);
-    return;
+    // Reaching here with a non-empty output implies the topk axis has size 0,
+    // which cannot supply the requested k (>=1) elements. Align with the
+    // "selected index k out of range" semantics instead of returning NaN.
+    PADDLE_THROW(errors::InvalidArgument(
+        "topk cannot select k = %d elements from an axis of size 0 "
+        "(selected index k out of range).",
+        static_cast<int>(k)));
   }
   PADDLE_ENFORCE_GE(
       x.numel(),
@@ -414,15 +418,14 @@ void TopkKernelCuda(const Context& dev_ctx,
     indices->Resize(out_dims);
   }
 
-  // Handle empty input
   if (x.numel() == 0) {
-    phi::Full<T, Context>(
-        dev_ctx, phi::vectorize(out->dims()), static_cast<T>(NAN), out);
-    phi::Full<int64_t, Context>(dev_ctx,
-                                phi::vectorize(indices->dims()),
-                                static_cast<int64_t>(0),
-                                indices);
-    return;
+    // Reaching here with a non-empty output implies the topk axis has size 0,
+    // which cannot supply the requested k (>=1) elements. Align with the
+    // "selected index k out of range" semantics instead of returning NaN.
+    PADDLE_THROW(errors::InvalidArgument(
+        "topk cannot select k = %d elements from an axis of size 0 "
+        "(selected index k out of range).",
+        static_cast<int>(k)));
   }
 
   // Now safe to allocate output memory
