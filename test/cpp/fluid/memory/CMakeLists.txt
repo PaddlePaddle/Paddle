@@ -15,6 +15,10 @@ cc_test(
   buffered_allocator_test
   SRCS buffered_allocator_test.cc
   DEPS phi common)
+cc_test(
+  memory_history_recorder_test
+  SRCS memory_history_recorder_test.cc
+  DEPS phi common)
 
 if(WITH_GPU)
   nv_test(
@@ -231,6 +235,17 @@ if(WITH_GPU)
     nv_test(
       multi_scale_allocator_test
       SRCS multi_scale_allocator_test.cc
+      DEPS phi common)
+  endif()
+endif()
+
+if(WITH_GPU)
+  if(WIN32)
+    message(STATUS "Skip memory_history_hook_test on Windows")
+  else()
+    nv_test(
+      memory_history_hook_test
+      SRCS memory_history_hook_test.cc
       DEPS phi common)
   endif()
 endif()

@@ -115,6 +115,7 @@ static PyObject * %s(PyObject *self, PyObject *args, PyObject *kwargs)
     %s
     framework::AttributeMap attrs;
     ConstructAttrMapFromPyArgs("%s", args, %d, PyTuple_GET_SIZE(args) , attrs);
+    paddle::memory::MemStackGuard __mem_stack_guard(paddle::pybind::CaptureCurrentPyStack());
     tstate = PyEval_SaveThread();
     %s
     PyEval_RestoreThread(tstate);
@@ -483,6 +484,7 @@ int run_legacy_generator(int argc, char* argv[]) {
       "\"paddle/fluid/pybind/exception.h\"",
       "\"paddle/fluid/pybind/op_function_common.h\"",
       "\"paddle/fluid/pybind/eager_legacy_custom_python_api.h\"",
+      "\"paddle/fluid/pybind/mem_py_stack.h\"",
       "\"paddle/fluid/pybind/eager.h\""};
 
   std::ofstream out(argv[1], std::ios::out);
