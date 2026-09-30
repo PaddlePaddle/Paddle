@@ -363,6 +363,35 @@ class TestContiguousNonZeroOffset(StrideFlagTestCase):
                     out.numpy(), np.ascontiguousarray(ref)
                 )
 
+    @unittest.skipIf(
+        not paddle.is_compiled_with_cuda()
+        or paddle.device.cuda.get_device_capability() < (8, 9),
+        "float8_e4m3fn needs compute capability 89",
+    )
+    def test_float8_offset_breaks_vector_alignment(self):
+        """A one-byte dtype can start at any byte, unlike the wider ones.
+
+        The float8 tile transpose moves eight bytes at a time, so a view whose
+        offset is not a multiple of eight must not reach it. Its extents are
+        multiples of 128 here, which is what the shape side of that gate asks
+        for, leaving the base pointer as the only thing that can reject it.
+        """
+        shape = [256, 384]
+        n = _numel(shape)
+        for off in (0, 1, 3, 7, 8, 1024):
+            with self.subTest(offset=off):
+                # float8 has no numpy dtype, so the buffer is cast on device
+                # and the reference is read back as the raw bytes.
+                buf = paddle.to_tensor(
+                    _host_values(n + off, "float32", 8400 + off)
+                ).astype("float8_e4m3fn")
+                bits = buf.numpy()
+                view = buf[off : off + n].reshape(shape)
+                self.assertEqual(view.data_ptr() % 8, off % 8)
+                out = paddle.transpose(view, [1, 0]).contiguous()
+                ref = np.ascontiguousarray(bits[off : off + n].reshape(shape).T)
+                np.testing.assert_array_equal(out.numpy(), ref)
+
     def test_assign_materializes_the_same_bits(self):
         """paddle.assign has to materialize the view too, and agree."""
         _, view, host = self._view([1024, 1024], "bfloat16", 1024, 8300)
