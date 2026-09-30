@@ -14,11 +14,20 @@
 
 #include "paddle/phi/kernels/cum_maxmin_kernel.h"
 
+#include <thrust/iterator/counting_iterator.h>
+#include <thrust/iterator/zip_iterator.h>
+#include <thrust/tuple.h>
+
+#include <algorithm>
+#include <limits>
 #include <numeric>
 
 #include "paddle/common/hostdevice.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/memory_utils.h"
+#include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/cub.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace phi {
@@ -85,22 +94,99 @@ __device__ void binary_op_update_v(const T1 lhs,
   }
 }
 
-template <typename T1,
-          typename T2,
-          int num_threads_x,
-          int num_threads_y,
-          class BinaryFunction>
+// Combines two (value, index) pairs for a cummax/cummin scan. `lhs` must be the
+// pair that comes earlier in the scanned sequence, so that ties keep the larger
+// index, matching the semantics of `binary_op_update` above.
+template <typename T1, typename T2, class BinaryFunction>
+struct ScanWithIndicesOp {
+  BinaryFunction binary_op;
+
+  __device__ thrust::tuple<T1, T2> operator()(
+      const thrust::tuple<T1, T2>& lhs,
+      const thrust::tuple<T1, T2>& rhs) const {
+    T1 value = thrust::get<0>(rhs);
+    T2 index = thrust::get<1>(rhs);
+    binary_op_update(
+        thrust::get<0>(lhs), &value, thrust::get<1>(lhs), &index, binary_op);
+    return thrust::make_tuple(value, index);
+  }
+};
+
+// Single-pass device-wide scan for the 1D case. The blocked kernel below only
+// launches one block when there is a single row, leaving most of the GPU idle.
+template <typename T1, typename T2, class BinaryFunction, typename Context>
+void CubScanWithIndices(const Context& dev_ctx,
+                        const T1* x_data,
+                        T1* values_data,
+                        T2* indices_data,
+                        int64_t size,
+                        BinaryFunction binary_op) {
+  auto x_iter = thrust::make_zip_iterator(
+      thrust::make_tuple(x_data, thrust::counting_iterator<T2>(0)));
+  auto out_iter =
+      thrust::make_zip_iterator(thrust::make_tuple(values_data, indices_data));
+  ScanWithIndicesOp<T1, T2, BinaryFunction> op{binary_op};
+
+  phi::Allocator::AllocationPtr allocation;
+  void* temp_storage = nullptr;
+  size_t temp_storage_bytes = 0;
+  for (size_t i = 0; i < 2; ++i) {
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        cub::DeviceScan::InclusiveScan(temp_storage,
+                                       temp_storage_bytes,
+                                       x_iter,
+                                       out_iter,
+                                       op,
+                                       static_cast<int>(size),
+                                       dev_ctx.stream()));
+    if (i == 0 && temp_storage_bytes > 0) {
+      allocation =
+          phi::memory_utils::Alloc(dev_ctx.GetPlace(), temp_storage_bytes);
+      temp_storage = allocation->ptr();
+    }
+  }
+}
+
+constexpr uint32_t kScanInnerNumThreads = 512;
+
+// Split the fixed budget of `kScanInnerNumThreads` threads between the x (scan)
+// and y (row) dimensions, keeping the ratio between them close to the ratio
+// between row_size and num_rows.
+inline uint32_t GetLogNumThreadsXInnerScan(int64_t num_rows, int64_t row_size) {
+  int32_t log_num_threads_x = 0;
+  int32_t log_num_threads_y = 0;
+  // Exponents beyond 32 cannot change the clamped result below, and stopping
+  // there keeps the shift well defined.
+  while (log_num_threads_x < 32 &&
+         (static_cast<int64_t>(1) << log_num_threads_x) < row_size) {
+    ++log_num_threads_x;
+  }
+  while (log_num_threads_y < 32 &&
+         (static_cast<int64_t>(1) << log_num_threads_y) < num_rows) {
+    ++log_num_threads_y;
+  }
+  // 9 == log2(512). The lower bound 4 == log2(16) keeps the previous
+  // configuration for short rows, where a larger x was found to be detrimental.
+  int32_t log_x = (9 + log_num_threads_x - log_num_threads_y) / 2;
+  return static_cast<uint32_t>(std::min(std::max(4, log_x), 9));
+}
+
+template <typename T1, typename T2, class BinaryFunction>
 __global__ void KernelScanInnerWithIndices(const T1* x_data,
                                            T1* values_data,
                                            T2* indices_data,
                                            int64_t num_rows,
                                            int64_t row_size,
+                                           uint32_t num_threads,
+                                           uint32_t log_num_threads_x,
                                            T1 init,
                                            BinaryFunction binary_op) {
-  __shared__ T1 vbuf[num_threads_y][2 * num_threads_x];
-  __shared__ T2 ibuf[num_threads_y][2 * num_threads_x];
-  T1* row_buf = vbuf[threadIdx.y];
-  T2* row_idx_buf = ibuf[threadIdx.y];
+  alignas(sizeof(double)) extern __shared__ char buf[];
+  T1* vbuf = reinterpret_cast<T1*>(buf);
+  T2* ibuf = reinterpret_cast<T2*>(vbuf + 2 * num_threads);
+  const uint32_t num_threads_x = 1U << log_num_threads_x;
+  T1* row_buf = vbuf + 2 * num_threads_x * threadIdx.y;
+  T2* row_idx_buf = ibuf + 2 * num_threads_x * threadIdx.y;
 
   for (int64_t block_row =
            static_cast<int64_t>(blockIdx.x) * static_cast<int64_t>(blockDim.y);
@@ -146,27 +232,42 @@ __global__ void KernelScanInnerWithIndices(const T1* x_data,
       }
       __syncthreads();
 
-      // Parallel reduction (up-sweep).
-      for (int s = num_threads_x, d = 1; s >= 1; s >>= 1, d <<= 1) {
-        if (row < num_rows && threadIdx.x < s) {
-          int offset = (2 * threadIdx.x + 1) * d - 1;
-          binary_op_update(row_buf[offset],
-                           &row_buf[offset + d],
-                           row_idx_buf[offset],
-                           &row_idx_buf[offset + d],
-                           binary_op);
-        }
-        __syncthreads();
-      }
+      // // Parallel reduction (up-sweep).
+      // for (int s = num_threads_x, d = 1; s >= 1; s >>= 1, d <<= 1) {
+      //   if (row < num_rows && threadIdx.x < s) {
+      //     int offset = (2 * threadIdx.x + 1) * d - 1;
+      //     binary_op_update(row_buf[offset],
+      //                      &row_buf[offset + d],
+      //                      row_idx_buf[offset],
+      //                      &row_idx_buf[offset + d],
+      //                      binary_op);
+      //   }
+      //   __syncthreads();
+      // }
 
-      // Down-sweep.
-      for (int s = 2, d = num_threads_x / 2; d >= 1; s <<= 1, d >>= 1) {
-        if (row < num_rows && threadIdx.x < s - 1) {
-          int offset = 2 * (threadIdx.x + 1) * d - 1;
-          binary_op_update(row_buf[offset],
-                           &row_buf[offset + d],
-                           row_idx_buf[offset],
-                           &row_idx_buf[offset + d],
+      // // Down-sweep.
+      // for (int s = 2, d = num_threads_x / 2; d >= 1; s <<= 1, d >>= 1) {
+      //   if (row < num_rows && threadIdx.x < s - 1) {
+      //     int offset = 2 * (threadIdx.x + 1) * d - 1;
+      //     binary_op_update(row_buf[offset],
+      //                      &row_buf[offset + d],
+      //                      row_idx_buf[offset],
+      //                      &row_idx_buf[offset + d],
+      //                      binary_op);
+      //   }
+      //   __syncthreads();
+      // }
+
+      // Parallel reduction with Sklansky
+      for (uint32_t s = 1; s <= num_threads_x; s <<= 1) {
+        if (row < num_rows) {
+          uint32_t a = (threadIdx.x / s) * (2 * s) + s;
+          uint32_t ti = a + (threadIdx.x % s);
+          uint32_t si = a - 1;
+          binary_op_update(row_buf[si],
+                           &row_buf[ti],
+                           row_idx_buf[si],
+                           &row_idx_buf[ti],
                            binary_op);
         }
         __syncthreads();
@@ -267,20 +368,50 @@ void ScanWithIndicesKernel(const Context& dev_ctx,
   const T1* x_data = x.data<T1>();
   T1* values_data = out->data<T1>();
   T2* indices_data = indices->data<T2>();
+  const int64_t axis_size = x.dims()[axis];
+  if (axis_size == x.numel() &&
+      axis_size <= static_cast<int64_t>(std::numeric_limits<int>::max())) {
+    CubScanWithIndices<T1, T2, BinaryFunction, Context>(
+        dev_ctx, x_data, values_data, indices_data, axis_size, op);
+    return;
+  }
+
   if (axis == out_dims.size() - 1) {
     int ndim = x.dims().size();
     int64_t row_size = x.dims()[ndim - 1];
     int64_t num_rows = x.numel() / row_size;
 
-    dim3 threads(16, 32);
-    dim3 grid(std::min(
-        dev_ctx.GetCUDAMaxGridDimSize()[0],
-        static_cast<unsigned int>(std::ceil(static_cast<float>(num_rows) /
-                                            static_cast<float>(threads.y)))));
+    // `cub::DeviceScan` takes `num_items` as `int`, so fall back to the blocked
+    // kernel when the row does not fit.
+    if (num_rows == 1 &&
+        row_size <= static_cast<int64_t>(std::numeric_limits<int>::max())) {
+      CubScanWithIndices<T1, T2, BinaryFunction, Context>(
+          dev_ctx, x_data, values_data, indices_data, row_size, op);
+      return;
+    }
 
-    KernelScanInnerWithIndices<T1, T2, 16, 32>
-        <<<grid, threads, 0, dev_ctx.stream()>>>(
-            x_data, values_data, indices_data, num_rows, row_size, init, op);
+    const uint32_t log_num_threads_x =
+        GetLogNumThreadsXInnerScan(num_rows, row_size);
+    const uint32_t num_threads_x = 1U << log_num_threads_x;
+    const uint32_t num_threads_y = kScanInnerNumThreads / num_threads_x;
+    dim3 threads(num_threads_x, num_threads_y);
+    const int64_t num_blocks =
+        (num_rows + static_cast<int64_t>(threads.y) - 1) / threads.y;
+    dim3 grid(static_cast<unsigned int>(std::min(
+        static_cast<int64_t>(dev_ctx.GetCUDAMaxGridDimSize()[0]), num_blocks)));
+
+    const size_t mem_size =
+        2 * kScanInnerNumThreads * (sizeof(T1) + sizeof(T2));
+    KernelScanInnerWithIndices<T1, T2>
+        <<<grid, threads, mem_size, dev_ctx.stream()>>>(x_data,
+                                                        values_data,
+                                                        indices_data,
+                                                        num_rows,
+                                                        row_size,
+                                                        kScanInnerNumThreads,
+                                                        log_num_threads_x,
+                                                        init,
+                                                        op);
   } else {
     int64_t row_size = x.dims()[axis];
     auto sizes = vectorize(x.dims());
