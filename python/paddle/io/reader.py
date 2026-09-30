@@ -578,20 +578,21 @@ class DataLoader:
             dp_world_size = mesh.get_dim_size("dp")
 
             self.batch_size = int(self.batch_sampler.batch_size / dp_world_size)
-            if isinstance(self.batch_sampler, _InfiniteIterableSampler):
-                shuffle = False
-                drop_last = False
-            else:
-                shuffle = self.batch_sampler.shuffle
-                drop_last = self.batch_sampler.drop_last
-            self.batch_sampler = DistributedBatchSampler(
-                dataset=dataset,
-                batch_size=self.batch_size,
-                num_replicas=dp_world_size,
-                rank=dp_rank,
-                shuffle=shuffle,
-                drop_last=drop_last,
-            )
+            if self.batch_size > 0:
+                if isinstance(self.batch_sampler, _InfiniteIterableSampler):
+                    shuffle = False
+                    drop_last = False
+                else:
+                    shuffle = self.batch_sampler.shuffle
+                    drop_last = self.batch_sampler.drop_last
+                self.batch_sampler = DistributedBatchSampler(
+                    dataset=dataset,
+                    batch_size=self.batch_size,
+                    num_replicas=dp_world_size,
+                    rank=dp_rank,
+                    shuffle=shuffle,
+                    drop_last=drop_last,
+                )
 
         self.drop_last = drop_last
         self.auto_collate_batch = self.batch_sampler is not None
