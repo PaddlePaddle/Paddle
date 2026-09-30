@@ -60,7 +60,7 @@ jobs:
     needs: [check-bypass]
     runs-on:
       #group: Mac-CI
-      - m4-1
+      - m4-5
     timeout-minutes: 60
 
     steps:
