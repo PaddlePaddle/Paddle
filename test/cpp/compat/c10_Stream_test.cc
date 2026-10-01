@@ -22,11 +22,15 @@
 
 #include <atomic>
 #include <chrono>
+#include <future>
 #include <thread>
 
 #include "gtest/gtest.h"
 #include "paddle/phi/api/include/context_pool.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#include "paddle/phi/core/cuda_stream.h"
+#endif
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 namespace {
@@ -233,6 +237,256 @@ TEST(CUDAStreamTest, DefaultStreamUnaffectedBySetCurrentCUDAStream) {
   c10::cuda::setCurrentCUDAStream(original_stream);
   EXPECT_EQ(paddle::GetCurrentCUDAStream(place)->raw_stream(),
             original_stream.stream());
+}
+
+// Verify getCurrentCUDAStream's thread-local semantics: a child thread
+// that has not explicitly set a current stream sees the default stream,
+// while each thread's own explicit set stays local to that thread.
+TEST(CUDAStreamTest, SetCurrentCUDAStreamWriteIsolatedAcrossThreads) {
+  if (!at::cuda::is_available()) {
+    return;
+  }
+
+  auto original_stream = c10::cuda::getCurrentCUDAStream();
+
+  auto pool_a = c10::cuda::getStreamFromPool(/*isHighPriority=*/false);
+  auto pool_b = c10::cuda::getStreamFromPool(/*isHighPriority=*/false);
+
+  c10::cuda::setCurrentCUDAStream(pool_a);
+  EXPECT_EQ(c10::cuda::getCurrentCUDAStream(), pool_a);
+
+  std::thread unset_child([&]() {
+    auto child_stream = c10::cuda::getCurrentCUDAStream(pool_a.device_index());
+    EXPECT_EQ(child_stream,
+              c10::cuda::getDefaultCUDAStream(pool_a.device_index()))
+        << "A thread without c10 TLS must not inherit another thread's "
+           "Paddle GPUContext stream.";
+  });
+  unset_child.join();
+
+  std::thread t([&]() {
+    c10::cuda::setCurrentCUDAStream(pool_b);
+    EXPECT_EQ(c10::cuda::getCurrentCUDAStream(), pool_b);
+  });
+  t.join();
+
+  // Main thread's thread-local is unaffected by the child's set —
+  // getCurrentCUDAStream still hits pool_a from the main thread's TLS,
+  // not pool_b that the child wrote to GPUContext.
+  EXPECT_EQ(c10::cuda::getCurrentCUDAStream(), pool_a)
+      << "Main thread's thread-local current stream should not be affected "
+         "by another thread's setCurrentCUDAStream.";
+
+  // Restore the original current stream.
+  c10::cuda::setCurrentCUDAStream(original_stream);
+}
+
+TEST(CUDAStreamTest, ExplicitDefaultStreamDoesNotFallbackToGPUContext) {
+  if (!at::cuda::is_available()) {
+    return;
+  }
+
+  auto original = c10::cuda::getCurrentCUDAStream();
+  auto default_stream = c10::cuda::getDefaultCUDAStream();
+  auto pool = c10::cuda::getStreamFromPool(/*isHighPriority=*/false);
+  c10::DeviceIndex device_index = pool.device_index();
+
+  c10::cuda::setCurrentCUDAStream(default_stream);
+
+  auto* ctx = static_cast<phi::GPUContext*>(
+      paddle::experimental::DeviceContextPool::Instance().GetMutable(
+          phi::GPUPlace(device_index)));
+  phi::CUDAStream wrapper(phi::GPUPlace(device_index), pool.stream());
+  ctx->SetCUDAStream(&wrapper, /*clear=*/false);
+
+  auto cur = c10::cuda::getCurrentCUDAStream(device_index);
+  EXPECT_EQ(cur, default_stream)
+      << "An explicit c10 default stream must not be treated as unset TLS.";
+
+  c10::cuda::setCurrentCUDAStream(original);
+}
+
+// Application-level pattern (the temp_modify reproducer in
+// PaddleCppAPITest): even when the main thread blocks the c10 current
+// stream via an event chain, a worker that uses its OWN independent
+// non-blocking CUDA stream + CPU-side sync completes promptly and is
+// not affected by the blocked stream.
+//
+// This also documents the application-level pattern needed for CUDA legacy
+// default stream hazards: worker GPU work should use a worker-private stream.
+TEST(CUDAStreamTest, IndependentWorkerStreamAvoidsBlockedCurrentStream) {
+  if (!at::cuda::is_available()) {
+    return;
+  }
+
+  auto original = c10::cuda::getCurrentCUDAStream();
+  auto pool = c10::cuda::getStreamFromPool(/*isHighPriority=*/false);
+  c10::cuda::setCurrentCUDAStream(pool);
+
+#ifdef PADDLE_WITH_HIP
+  hipStream_t enq_stream = nullptr;
+  hipEvent_t event_start = nullptr;
+  hipEvent_t event_end = nullptr;
+  C10_CUDA_CHECK(hipStreamCreateWithFlags(&enq_stream, hipStreamNonBlocking));
+  C10_CUDA_CHECK(hipEventCreateWithFlags(&event_start, hipEventDisableTiming));
+  C10_CUDA_CHECK(hipEventCreateWithFlags(&event_end, hipEventDisableTiming));
+
+  C10_CUDA_CHECK(hipEventRecord(event_start, pool.stream()));
+  C10_CUDA_CHECK(hipStreamWaitEvent(enq_stream, event_start, 0));
+#else
+  cudaStream_t enq_stream = nullptr;
+  cudaEvent_t event_start = nullptr;
+  cudaEvent_t event_end = nullptr;
+  C10_CUDA_CHECK(cudaStreamCreateWithFlags(&enq_stream, cudaStreamNonBlocking));
+  C10_CUDA_CHECK(
+      cudaEventCreateWithFlags(&event_start, cudaEventDisableTiming));
+  C10_CUDA_CHECK(cudaEventCreateWithFlags(&event_end, cudaEventDisableTiming));
+
+  C10_CUDA_CHECK(cudaEventRecord(event_start, pool.stream()));
+  C10_CUDA_CHECK(cudaStreamWaitEvent(enq_stream, event_start, 0));
+#endif
+
+  // Add a blocking callback on enq_stream (~200ms sleep), so pool_stream
+  // (== c10 current stream) is effectively blocked on event_end.
+  std::atomic<bool> callback_done{false};
+#ifdef PADDLE_WITH_HIP
+  C10_CUDA_CHECK(hipStreamAddCallback(
+      enq_stream,
+      [](hipStream_t, hipError_t, void* data) {
+        auto* flag = static_cast<std::atomic<bool>*>(data);
+        std::this_thread::sleep_for(std::chrono::milliseconds(200));
+        flag->store(true, std::memory_order_release);
+      },
+      &callback_done,
+      0));
+  C10_CUDA_CHECK(hipEventRecord(event_end, enq_stream));
+  C10_CUDA_CHECK(hipStreamWaitEvent(pool.stream(), event_end, 0));
+#else
+  C10_CUDA_CHECK(cudaStreamAddCallback(
+      enq_stream,
+      [](cudaStream_t, cudaError_t, void* data) {
+        auto* flag = static_cast<std::atomic<bool>*>(data);
+        std::this_thread::sleep_for(std::chrono::milliseconds(200));
+        flag->store(true, std::memory_order_release);
+      },
+      &callback_done,
+      0));
+  C10_CUDA_CHECK(cudaEventRecord(event_end, enq_stream));
+  C10_CUDA_CHECK(cudaStreamWaitEvent(pool.stream(), event_end, 0));
+#endif
+
+  // Worker thread uses its OWN non-blocking stream. It does NOT touch
+  // c10's current stream (which is blocked). Sync should be immediate.
+  std::packaged_task<void()> task([]() {
+#ifdef PADDLE_WITH_HIP
+    hipStream_t worker_stream = nullptr;
+    C10_CUDA_CHECK(
+        hipStreamCreateWithFlags(&worker_stream, hipStreamNonBlocking));
+    C10_CUDA_CHECK(hipStreamSynchronize(worker_stream));
+    C10_CUDA_CHECK(hipStreamDestroy(worker_stream));
+#else
+    cudaStream_t worker_stream = nullptr;
+    C10_CUDA_CHECK(
+        cudaStreamCreateWithFlags(&worker_stream, cudaStreamNonBlocking));
+    C10_CUDA_CHECK(cudaStreamSynchronize(worker_stream));
+    C10_CUDA_CHECK(cudaStreamDestroy(worker_stream));
+#endif
+  });
+  auto future = task.get_future();
+  std::thread worker(std::move(task));
+
+  // Worker should complete promptly (well under 50ms) — its independent
+  // stream has no dependency on enq_stream / event_end / pool_stream.
+  auto status = future.wait_for(std::chrono::milliseconds(50));
+
+  // Wait for callback to complete so pool_stream unblocks (with timeout
+  // to prevent the test from hanging indefinitely).
+  auto wait_start = std::chrono::steady_clock::now();
+  while (!callback_done.load(std::memory_order_acquire)) {
+    auto elapsed = std::chrono::steady_clock::now() - wait_start;
+    if (elapsed > std::chrono::seconds(5)) {
+      FAIL() << "Callback did not complete within 5s timeout";
+      break;
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+  }
+
+  future.wait();
+  worker.join();
+
+  EXPECT_EQ(status, std::future_status::ready)
+      << "Worker with an independent non-blocking stream should complete "
+         "promptly even when c10's current stream is blocked by an event "
+         "chain on enq_stream.";
+
+#ifdef PADDLE_WITH_HIP
+  C10_CUDA_CHECK(hipEventDestroy(event_end));
+  C10_CUDA_CHECK(hipEventDestroy(event_start));
+  C10_CUDA_CHECK(hipStreamDestroy(enq_stream));
+#else
+  C10_CUDA_CHECK(cudaEventDestroy(event_end));
+  C10_CUDA_CHECK(cudaEventDestroy(event_start));
+  C10_CUDA_CHECK(cudaStreamDestroy(enq_stream));
+#endif
+
+  c10::cuda::setCurrentCUDAStream(original);
+}
+
+// Verify that a worker thread which has explicitly pinned its current
+// stream (via setCurrentCUDAStream(pool_worker)) sees a stable result
+// from getCurrentCUDAStream — the worker's thread-local "pinned"
+// stream remains stable even while the main thread keeps switching its
+// own current stream.
+TEST(CUDAStreamTest, GetCurrentCUDAStreamStableForWorkerThatExplicitlySet) {
+  if (!at::cuda::is_available()) {
+    return;
+  }
+
+  auto original = c10::cuda::getCurrentCUDAStream();
+  auto pool_a = c10::cuda::getStreamFromPool(/*isHighPriority=*/false);
+  auto pool_b = c10::cuda::getStreamFromPool(/*isHighPriority=*/false);
+  auto pool_worker = c10::cuda::getStreamFromPool(/*isHighPriority=*/false);
+
+  // Main thread sets a non-default current stream first.
+  c10::cuda::setCurrentCUDAStream(pool_a);
+
+  std::atomic<bool> stop{false};
+  std::atomic<int> samples_count{0};
+  std::atomic<bool> stable{true};
+
+  // Worker explicitly pins its TLS to pool_worker, then loops reading
+  // its current stream. Main thread keeps switching its own TLS between
+  // pool_a/pool_b in parallel.
+  std::thread worker([&]() {
+    c10::cuda::setCurrentCUDAStream(pool_worker);
+    while (!stop.load(std::memory_order_acquire)) {
+      auto s = c10::cuda::getCurrentCUDAStream();
+      if (s != pool_worker) {
+        stable.store(false, std::memory_order_release);
+      }
+      samples_count.fetch_add(1, std::memory_order_relaxed);
+      std::this_thread::sleep_for(std::chrono::milliseconds(2));
+    }
+  });
+
+  // Main thread keeps switching the current stream.
+  for (int i = 0; i < 30; ++i) {
+    c10::cuda::setCurrentCUDAStream((i % 2 == 0) ? pool_a : pool_b);
+    std::this_thread::sleep_for(std::chrono::milliseconds(5));
+  }
+
+  stop.store(true, std::memory_order_release);
+  worker.join();
+
+  // Worker collected at least a few samples.
+  EXPECT_GT(samples_count.load(std::memory_order_relaxed), 0);
+
+  // Every sample equals pool_worker (worker's pinned stream is stable).
+  EXPECT_TRUE(stable.load(std::memory_order_acquire))
+      << "Worker thread's pinned current stream (pool_worker) should not be "
+         "affected by main thread's setCurrentCUDAStream switches.";
+
+  c10::cuda::setCurrentCUDAStream(original);
 }
 
 #endif  // PADDLE_WITH_CUDA || PADDLE_WITH_HIP
