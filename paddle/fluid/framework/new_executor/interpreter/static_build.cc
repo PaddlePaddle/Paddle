@@ -19,7 +19,7 @@
 #include "paddle/fluid/framework/new_executor/new_executor_defs.h"
 #include "paddle/fluid/framework/new_executor/standalone_executor.h"
 #include "paddle/fluid/operators/controlflow/control_flow_op_helper.h"
-#include "paddle/fluid/operators/controlflow/while_op_helper.h"
+#include "paddle/fluid/framework/controlflow/while_op_helper.h"
 #include "paddle/fluid/platform/onednn_helper.h"
 #include "paddle/phi/core/framework/reader.h"
 #include "paddle/phi/core/operators/reader/buffered_reader.h"

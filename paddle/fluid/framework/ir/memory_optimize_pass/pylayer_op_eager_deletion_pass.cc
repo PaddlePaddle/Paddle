@@ -15,8 +15,8 @@
 #include "paddle/fluid/framework/details/computation_op_handle.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/ir/pass.h"
-#include "paddle/fluid/operators/controlflow/op_variant.h"
-#include "paddle/fluid/operators/controlflow/pylayer_op_helper.h"
+#include "paddle/fluid/framework/controlflow/op_variant.h"
+#include "paddle/fluid/framework/controlflow/pylayer_op_helper.h"
 namespace paddle::framework::ir {
 using OpVariant = operators::OpVariant;
 class PyLayerOpEagerDeletionPass : public Pass {
