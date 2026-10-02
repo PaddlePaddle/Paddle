@@ -152,7 +152,11 @@ def conv2d_forward_naive(
 
 def create_test_cudnn_class(parent):
     @unittest.skipIf(
-        not (core.is_compiled_with_cuda() or is_custom_device()),
+        not (
+            core.is_compiled_with_cuda()
+            or core.is_compiled_with_rocm()
+            or is_custom_device()
+        ),
         "core is not compiled with CUDA",
     )
     class TestCUDNNCase(parent):
@@ -171,7 +175,11 @@ def create_test_cudnn_class(parent):
 
 def create_test_cudnn_fp16_class(parent, grad_check=True):
     @unittest.skipIf(
-        not (core.is_compiled_with_cuda() or is_custom_device()),
+        not (
+            core.is_compiled_with_cuda()
+            or core.is_compiled_with_rocm()
+            or is_custom_device()
+        ),
         "core is not compiled with CUDA",
     )
     class TestConv2DCUDNNFp16(parent):
@@ -206,7 +214,11 @@ def create_test_cudnn_fp16_class(parent, grad_check=True):
 
 def create_test_cudnn_bf16_class(parent):
     @unittest.skipIf(
-        not (core.is_compiled_with_cuda() or is_custom_device())
+        not (
+            core.is_compiled_with_cuda()
+            or core.is_compiled_with_rocm()
+            or is_custom_device()
+        )
         or not core.is_bfloat16_supported(get_device_place()),
         "core is not compiled with CUDA and do not support bfloat16",
     )
@@ -273,7 +285,11 @@ def create_test_channel_last_class(parent):
 
 def create_test_cudnn_channel_last_class(parent):
     @unittest.skipIf(
-        not (core.is_compiled_with_cuda() or is_custom_device()),
+        not (
+            core.is_compiled_with_cuda()
+            or core.is_compiled_with_rocm()
+            or is_custom_device()
+        ),
         "core is not compiled with CUDA",
     )
     class TestCudnnChannelLastCase(parent):
@@ -281,7 +297,11 @@ def create_test_cudnn_channel_last_class(parent):
             self.use_cudnn = True
             self.dtype = (
                 np.float32
-                if (core.is_compiled_with_rocm() or is_custom_device())
+                if (
+                    core.is_compiled_with_cuda()
+                    or core.is_compiled_with_rocm()
+                    or is_custom_device()
+                )
                 else np.float64
             )
 
@@ -299,7 +319,11 @@ def create_test_cudnn_channel_last_class(parent):
 
 def create_test_cudnn_channel_last_fp16_class(parent, grad_check=True):
     @unittest.skipIf(
-        not (core.is_compiled_with_cuda() or is_custom_device()),
+        not (
+            core.is_compiled_with_cuda()
+            or core.is_compiled_with_rocm()
+            or is_custom_device()
+        ),
         "core is not compiled with CUDA",
     )
     class TestCudnnChannelLastFp16(parent):
@@ -308,7 +332,11 @@ def create_test_cudnn_channel_last_fp16_class(parent, grad_check=True):
             self.dtype = np.float16
 
         def test_check_output(self):
-            if core.is_compiled_with_cuda() or is_custom_device():
+            if (
+                core.is_compiled_with_cuda()
+                or core.is_compiled_with_rocm()
+                or is_custom_device()
+            ):
                 place = get_device_place()
                 if core.is_float16_supported(place):
                     self.check_output_with_place(place, atol=2e-2)
@@ -363,7 +391,11 @@ def create_test_padding_VALID_class(parent):
 
 def create_test_cudnn_padding_SAME_class(parent):
     @unittest.skipIf(
-        not (core.is_compiled_with_cuda() or is_custom_device()),
+        not (
+            core.is_compiled_with_cuda()
+            or core.is_compiled_with_rocm()
+            or is_custom_device()
+        ),
         "core is not compiled with CUDA",
     )
     class TestCUDNNPaddingSAMECase(parent):
@@ -371,7 +403,11 @@ def create_test_cudnn_padding_SAME_class(parent):
             self.use_cudnn = True
             self.dtype = (
                 np.float32
-                if (core.is_compiled_with_rocm() or is_custom_device())
+                if (
+                    core.is_compiled_with_cuda()
+                    or core.is_compiled_with_rocm()
+                    or is_custom_device()
+                )
                 else np.float64
             )
 
@@ -386,7 +422,11 @@ def create_test_cudnn_padding_SAME_class(parent):
 
 def create_test_cudnn_padding_VALID_class(parent):
     @unittest.skipIf(
-        not (core.is_compiled_with_cuda() or is_custom_device()),
+        not (
+            core.is_compiled_with_cuda()
+            or core.is_compiled_with_rocm()
+            or is_custom_device()
+        ),
         "core is not compiled with CUDA",
     )
     class TestCUDNNPaddingVALIDCase(parent):
@@ -394,7 +434,11 @@ def create_test_cudnn_padding_VALID_class(parent):
             self.use_cudnn = True
             self.dtype = (
                 np.float32
-                if (core.is_compiled_with_rocm() or is_custom_device())
+                if (
+                    core.is_compiled_with_cuda()
+                    or core.is_compiled_with_rocm()
+                    or is_custom_device()
+                )
                 else np.float64
             )
 
