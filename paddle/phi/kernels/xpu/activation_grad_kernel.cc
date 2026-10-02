@@ -624,12 +624,61 @@ struct XPUCosGradFunctor : public funcs::BaseActivationFunctor<T> {
     auto dout_data = dout->data<T>();
     auto x_data = x->data<T>();
 
-    int r = xpu::cos_grad<T>(dev_ctx.x_context(),
-                             reinterpret_cast<const XPUType*>(x_data),
-                             reinterpret_cast<const XPUType*>(dout_data),
-                             reinterpret_cast<XPUType*>(dx_data),
-                             len);
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "cos_grad");
+    // For bfloat16: the XPU SDK does not provide xpu::cos_grad<bfloat16>,
+    // so we compute cos_grad(x, dout) = -dout * sin(x) manually by
+    // casting to float32, computing sin and mul in float32, then casting back.
+    // Use XPUType (SDK type bfloat16) for cast calls, not phi::dtype::bfloat16.
+    if (std::is_same<T, phi::bfloat16>::value) {
+      xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
+      float* x_float = RAII_GUARD.alloc_l3_or_gm<float>(len);
+      float* sin_x_float = RAII_GUARD.alloc_l3_or_gm<float>(len);
+      float* dx_float = RAII_GUARD.alloc_l3_or_gm<float>(len);
+
+      // Cast bfloat16 x to float32
+      int r =
+          xpu::cast<XPUType, float>(dev_ctx.x_context(),
+                                    reinterpret_cast<const XPUType*>(x_data),
+                                    x_float,
+                                    len);
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast<XPUType, float>");
+
+      // Cast bfloat16 dout to float32
+      float* dout_float = RAII_GUARD.alloc_l3_or_gm<float>(len);
+      r = xpu::cast<XPUType, float>(dev_ctx.x_context(),
+                                    reinterpret_cast<const XPUType*>(dout_data),
+                                    dout_float,
+                                    len);
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast<XPUType, float>");
+
+      // Compute sin(x) in float32
+      r = xpu::sin<float>(dev_ctx.x_context(), x_float, sin_x_float, len);
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "sin<float>");
+
+      // Compute -sin(x) * dout in float32 (cos_grad = -dout * sin(x))
+      r = xpu::mul<float>(
+          dev_ctx.x_context(), dout_float, sin_x_float, dx_float, len);
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "mul<float>");
+
+      r = xpu::neg<float>(dev_ctx.x_context(), dx_float, dx_float, len);
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "neg<float>");
+
+      // Cast float32 result back to bfloat16
+      r = xpu::cast<float, XPUType>(dev_ctx.x_context(),
+                                    dx_float,
+                                    reinterpret_cast<XPUType*>(dx_data),
+                                    len);
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast<float, XPUType>");
+    } else {
+      // For float and float16: use xpu::cos_grad directly (SDK supports these
+      // types)
+      int r =
+          xpu::cos_grad<XPUType>(dev_ctx.x_context(),
+                                 reinterpret_cast<const XPUType*>(x_data),
+                                 reinterpret_cast<const XPUType*>(dout_data),
+                                 reinterpret_cast<XPUType*>(dx_data),
+                                 len);
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "cos_grad");
+    }
   }
 };
 
@@ -853,4 +902,10 @@ PD_REGISTER_ACTIVATION_GRAD_KERNEL(relu6_grad, Relu6GradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(mish_grad, MishGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(softplus_grad, SoftplusGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(sin_grad, SinGradKernel)
-PD_REGISTER_ACTIVATION_GRAD_KERNEL(cos_grad, CosGradKernel)
+PD_REGISTER_KERNEL(cos_grad,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::CosGradKernel,
+                   float,
+                   phi::float16,
+                   phi::bfloat16) {}
