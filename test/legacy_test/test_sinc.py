@@ -29,8 +29,7 @@ from paddle.base import core
 
 
 def np_sinc(x: np.ndarray):
-    tmp = np.sinc(x)
-    return np.where(~np.isnan(tmp), tmp, np.full_like(x, 1.0))
+    return np.where(x == 0, np.full_like(x, 1.0), np.sinc(x))
 
 
 def np_sinc_gradient(x: np.ndarray):
@@ -135,6 +134,44 @@ class TestSincAPI(unittest.TestCase):
         for place in self.place:
             run_dygraph(place)
 
+    def test_non_finite(self):
+        def run_dygraph(place):
+            paddle.disable_static(place)
+            for dtype in self.support_dtypes:
+                x_data = np.asarray(
+                    [[np.nan, np.inf, -np.inf], [0.0, -0.0, 1.0]],
+                    dtype=dtype,
+                )
+                x = paddle.to_tensor(x_data)
+                out = paddle.sinc(x)
+                np.testing.assert_allclose(
+                    out.numpy(), np_sinc(x_data), rtol=1e-6, atol=1e-6
+                )
+
+        def run_static(place):
+            paddle.enable_static()
+            for dtype in self.support_dtypes:
+                x_data = np.asarray(
+                    [[np.nan, np.inf, -np.inf], [0.0, -0.0, 1.0]],
+                    dtype=dtype,
+                )
+                startup_program = paddle.static.Program()
+                main_program = paddle.static.Program()
+                exe = base.Executor(place)
+                with paddle.static.program_guard(main_program, startup_program):
+                    x = paddle.static.data(name='x', shape=[2, 3], dtype=dtype)
+                    res = paddle.sinc(x)
+                    static_result = exe.run(
+                        feed={'x': x_data}, fetch_list=[res]
+                    )[0]
+                np.testing.assert_allclose(
+                    static_result, np_sinc(x_data), rtol=1e-6, atol=1e-6
+                )
+
+        for place in self.place:
+            run_dygraph(place)
+            run_static(place)
+
     def test_input_type_error(self):
         with self.assertRaises(TypeError):
             x = np.random.rand(6).astype('float32')
@@ -185,6 +222,24 @@ class TestSincInplaceAPI(unittest.TestCase):
                     np.testing.assert_allclose(
                         x.numpy(), out_expected, rtol=1e-6, atol=1e-6
                     )
+
+        for place in self.place:
+            run_dygraph(place)
+
+    def test_inplace_non_finite(self):
+        def run_dygraph(place):
+            paddle.disable_static(place)
+            for dtype in self.support_dtypes:
+                x_data = np.asarray(
+                    [[np.nan, np.inf, -np.inf], [0.0, -0.0, 1.0]],
+                    dtype=dtype,
+                )
+                x = paddle.to_tensor(x_data)
+                out = paddle.sinc_(x)
+                self.assertIs(out, x)
+                np.testing.assert_allclose(
+                    x.numpy(), np_sinc(x_data), rtol=1e-6, atol=1e-6
+                )
 
         for place in self.place:
             run_dygraph(place)
@@ -270,6 +325,24 @@ class TestSincAPIFP16(unittest.TestCase):
 
         run_static(self.place)
 
+    def test_non_finite(self):
+        paddle.enable_static()
+        x_data = np.asarray(
+            [[np.nan, np.inf, -np.inf], [0.0, -0.0, 1.0]],
+            dtype=self.dtype,
+        )
+        startup_program = paddle.static.Program()
+        main_program = paddle.static.Program()
+        exe = base.Executor(self.place)
+        with paddle.static.program_guard(main_program, startup_program):
+            x = paddle.static.data(name='x', shape=[2, 3], dtype=self.dtype)
+            res = paddle.sinc(x)
+            static_result = exe.run(feed={'x': x_data}, fetch_list=[res])[0]
+
+        np.testing.assert_allclose(
+            static_result, np_sinc(x_data), rtol=1e-6, atol=1e-6
+        )
+
 
 @unittest.skipIf(
     not (core.is_compiled_with_cuda() or is_custom_device())
@@ -351,6 +424,26 @@ class TestSincAPIBF16(unittest.TestCase):
                 )
 
         run(self.place)
+
+    def test_non_finite(self):
+        paddle.enable_static()
+        x_data_np = np.asarray(
+            [[np.nan, np.inf, -np.inf], [0.0, -0.0, 1.0]],
+            dtype='float32',
+        )
+        x_data = convert_float_to_uint16(x_data_np)
+        startup_program = paddle.static.Program()
+        main_program = paddle.static.Program()
+        exe = base.Executor(self.place)
+        with paddle.static.program_guard(main_program, startup_program):
+            x = paddle.static.data(name='x', shape=[2, 3], dtype=self.dtype)
+            res = paddle.sinc(x)
+            static_result = exe.run(feed={'x': x_data}, fetch_list=[res])[0]
+
+        result = convert_uint16_to_float(static_result)
+        np.testing.assert_allclose(
+            result, np_sinc(x_data_np), rtol=1e-3, atol=1e-2
+        )
 
 
 class TestSincAPI_ZeroSize(unittest.TestCase):
