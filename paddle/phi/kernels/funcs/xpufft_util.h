@@ -73,18 +73,19 @@ class FFTConfig {
   FFTConfig(const std::vector<int64_t>& sizes,
             FFTTransformType fft_type,
             DataType precision)
-      : fft_type_(fft_type), precision_(precision) {
+      : ws_size_(0), fft_type_(fft_type), precision_(precision) {
     const auto batch_size = static_cast<plan_size_type>(sizes[0]);
     std::vector<plan_size_type> signal_sizes(sizes.cbegin() + 1, sizes.cend());
     const int signal_ndim = sizes.size() - 1;
 
-    // Check if the number of elements participating in FFT transformation is
-    // greater than 8 (XPU hardware requirement)
+    // XPU FFT hardware requires all signal dimensions > 8.
+    // The kernel dispatcher falls back to CPU for smaller dimensions
+    // before reaching this constructor.
     for (int i = 0; i < signal_ndim; ++i) {
       if (signal_sizes[i] <= 8) {
         PADDLE_THROW(common::errors::InvalidArgument(
             "XPU FFT requires all axes to have greater than 8 elements, "
-            "but axis %d has size %d.Set XFFT_DEBUG=1 environment variable "
+            "but axis %d has size %d. Set XFFT_DEBUG=1 environment variable "
             "to inspect dimensions.",
             i,
             signal_sizes[i]));
@@ -124,6 +125,17 @@ class FFTConfig {
                                        exec_type,
                                        batch_size,
                                        &ws_size_));
+
+    // Guard against XPU cuFFT library returning insufficient workspace size
+    // which can cause heap corruption during FFT execution.
+    size_t min_workspace = static_cast<size_t>(batch_size);
+    for (const auto& sz : signal_sizes) {
+      min_workspace *= static_cast<size_t>(sz);
+    }
+    min_workspace *= sizeof(phi::complex64);
+    if (ws_size_ < min_workspace) {
+      ws_size_ = min_workspace * 2;
+    }
   }
 
   FFTConfig(const FFTConfig& other) = delete;
