@@ -41,6 +41,11 @@ static void MatMulXPUFunction(const DenseTensor& x,
   int64_t batch_size = mat_dim_a.batch_size_;
   // batch matmul
   int fc_calc_type = FCCalcType<XPUType>();
+  // Override TF32 to FC_FLOAT for float32 bmm to match GPU precision.
+  if (fc_calc_type == XPUFCCalcType::FC_TF32 &&
+      std::is_same<XPUType, float>::value) {
+    fc_calc_type = XPUFCCalcType::FC_FLOAT;
+  }
   decltype(&xblas_fc_batch_wrapper<XPUType, int16_t, float>)
       xblas_fc_batch_api_list[6] = {
           &xblas_fc_batch_wrapper<XPUType, int16_t, float>,
