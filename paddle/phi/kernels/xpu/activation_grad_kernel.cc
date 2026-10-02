@@ -224,6 +224,7 @@ struct XPULogGradFunctor : public funcs::BaseActivationFunctor<T> {
 
 template <typename T>
 struct XPULeakyReluGradFunctor : public funcs::BaseActivationFunctor<T> {
+  using XPUType = typename XPUTypeTrait<T>::Type;
   float alpha;
   typename funcs::BaseActivationFunctor<T>::AttrPair GetAttrs() {
     return {{"alpha", &alpha}};
@@ -246,10 +247,10 @@ struct XPULeakyReluGradFunctor : public funcs::BaseActivationFunctor<T> {
     // y == nullptr here,
     // so we give 2 x to the api
     int r = xpu::leaky_relu_grad(xpu_context,
-                                 reinterpret_cast<const float*>(x_data),
-                                 reinterpret_cast<const float*>(x_data),
-                                 reinterpret_cast<const float*>(y_grad),
-                                 reinterpret_cast<float*>(x_grad),
+                                 reinterpret_cast<const XPUType*>(x_data),
+                                 reinterpret_cast<const XPUType*>(x_data),
+                                 reinterpret_cast<const XPUType*>(y_grad),
+                                 reinterpret_cast<XPUType*>(x_grad),
                                  dx->numel(),
                                  alpha);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "leaky_relu_grad");
@@ -783,6 +784,8 @@ PD_REGISTER_KERNEL(silu_grad,
 
 #define PD_REGISTER_ACTIVATION_GRAD_KERNEL(name, func) \
   PD_REGISTER_KERNEL(name, XPU, ALL_LAYOUT, phi::func, float) {}
+#define PD_REGISTER_ACTIVATION_GRAD_KERNEL_FP16(name, func) \
+  PD_REGISTER_KERNEL(name, XPU, ALL_LAYOUT, phi::func, float, phi::float16) {}
 
 PD_REGISTER_KERNEL(tanh_grad,
                    XPU,
@@ -846,7 +849,7 @@ PD_REGISTER_KERNEL(
     sqrt_grad, XPU, ALL_LAYOUT, phi::SqrtGradKernel, float, phi::float16) {}
 
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(log_grad, LogGradKernel)
-PD_REGISTER_ACTIVATION_GRAD_KERNEL(leaky_relu_grad, LeakyReluGradKernel)
+PD_REGISTER_ACTIVATION_GRAD_KERNEL_FP16(leaky_relu_grad, LeakyReluGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(hardsigmoid_grad, HardSigmoidGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(reciprocal_grad, ReciprocalGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(relu6_grad, Relu6GradKernel)
