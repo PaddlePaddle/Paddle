@@ -15,6 +15,8 @@ limitations under the License. */
 #pragma once
 
 #include <string>
+#include <unordered_map>
+#include <vector>
 
 #include "paddle/fluid/framework/custom_operator_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
@@ -23,6 +25,43 @@ limitations under the License. */
 
 namespace paddle {
 namespace framework {
+
+// Enum for custom operator attribute types (pre-parsed for performance)
+enum class CustomAttrType : uint8_t {
+  BOOL,
+  INT,
+  FLOAT,
+  DOUBLE,
+  INT64,
+  STRING,
+  VEC_INT,
+  VEC_FLOAT,
+  VEC_INT64,
+  VEC_STRING,
+};
+
+// Parsed operator metadata, cached at plugin load time for O(1) lookup
+struct ParsedOpMeta {
+  std::vector<paddle::OpMetaInfo> vec_map;
+  std::vector<std::string> inputs;
+  std::vector<std::string> outputs;
+  std::unordered_map<std::string, std::string> inplace_map;
+  std::vector<std::string> attr_names;
+  std::vector<CustomAttrType> attr_types;
+  bool has_grad_op = false;
+};
+
+// Global cache for parsed operator metadata
+PADDLE_API extern std::unordered_map<std::string, ParsedOpMeta>
+    g_parsed_op_meta_cache;
+
+// Register parsed operator metadata into global cache
+PADDLE_API void RegisterParsedOpMetaCache(
+    const std::unordered_map<std::string, std::vector<paddle::OpMetaInfo>>&
+        diff_map);
+
+// Parse attribute type string to enum
+PADDLE_API CustomAttrType ParseAttrTypeToEnum(const std::string& t);
 
 class CustomOpMaker : public OpProtoAndCheckerMaker {
  public:
