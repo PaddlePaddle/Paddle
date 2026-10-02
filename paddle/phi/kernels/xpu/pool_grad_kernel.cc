@@ -15,6 +15,7 @@
 #include "paddle/phi/kernels/pool_grad_kernel.h"
 
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/pooling.h"
 
@@ -430,8 +431,6 @@ void MaxPool2dWithIndexGradKernel(const Context& dev_ctx,
                                       "dimension pooling!, but received "
                                       "%d-dimension pool kernel size",
                                       kernel_size.size()));
-  global_pooling =
-      global_pooling || (adaptive && (kernel_size[0] * kernel_size[1] == 1));
   if (global_pooling) {
     for (size_t i = 0; i < kernel_size.size(); ++i) {
       paddings[i] = 0;
@@ -442,9 +441,49 @@ void MaxPool2dWithIndexGradKernel(const Context& dev_ctx,
   const int64_t c = dx->dims()[1];
   const int64_t in_h = dx->dims()[2];
   const int64_t in_w = dx->dims()[3];
+  const int64_t out_h = dout.dims()[2];
+  const int64_t out_w = dout.dims()[3];
   auto output_grad = reinterpret_cast<const XPUType*>(dout.data<T>());
 
   int r = 0;
+  if (adaptive) {
+    // Scatter dout by the int32 mask produced by the adaptive fallback.
+    std::vector<int> mask_cpu(mask.numel());
+    std::vector<T> output_grad_cpu(dout.numel());
+    memory_utils::Copy(CPUPlace(),
+                       mask_cpu.data(),
+                       mask.place(),
+                       mask.data<int>(),
+                       mask.numel() * sizeof(int));
+    memory_utils::Copy(CPUPlace(),
+                       output_grad_cpu.data(),
+                       dout.place(),
+                       dout.data<T>(),
+                       dout.numel() * sizeof(T));
+    dev_ctx.Wait();
+
+    std::vector<T> input_grad_cpu(dx->numel(), static_cast<T>(0));
+    const int64_t input_stride = in_h * in_w;
+    const int64_t output_stride = out_h * out_w;
+    for (int64_t ni = 0; ni < n; ++ni) {
+      for (int64_t ci = 0; ci < c; ++ci) {
+        const int64_t base = (ni * c + ci) * input_stride;
+        const int64_t out_base = (ni * c + ci) * output_stride;
+        for (int64_t idx = 0; idx < output_stride; ++idx) {
+          input_grad_cpu[base + mask_cpu[out_base + idx]] +=
+              output_grad_cpu[out_base + idx];
+        }
+      }
+    }
+
+    memory_utils::Copy(dev_ctx.GetPlace(),
+                       dx->data<T>(),
+                       CPUPlace(),
+                       input_grad_cpu.data(),
+                       dx->numel() * sizeof(T));
+    return;
+  }
+
   // pass a nullptr as input to XDNN is fine as long as index_data exists
   r = xpu::max_pool2d_grad<XPUType>(dev_ctx.x_context(),
                                     /*input*/ nullptr,
