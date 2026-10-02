@@ -995,7 +995,7 @@ XPUOpMap& get_kl3_ops() {
       {"sin", XPUKernelSet({FLOAT32, FLOAT16, BFLOAT16})},
       {"sin_grad", XPUKernelSet({FLOAT32})},
       {"cos", XPUKernelSet({FLOAT32, FLOAT16, BFLOAT16})},
-      {"cos_grad", XPUKernelSet({FLOAT32})},
+      {"cos_grad", XPUKernelSet({FLOAT32, FLOAT16, BFLOAT16})},
       {"linspace",
        XPUKernelSet(
            {FLOAT32, FLOAT16, BFLOAT16, INT8, UINT8, INT16, INT32, INT64})},
