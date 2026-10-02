@@ -54,3 +54,4 @@ test_strategy_group,linux,rocm;gpu,120,DIST,test_strategy_group.sh,2,,http_proxy
 test_orthogonal_strategy,linux,rocm;gpu,120,DIST,test_orthogonal_strategy.sh,2,,http_proxy=;https_proxy=,
 test_new_api_per_op_and_group_intranode,linux,gpu,120,DIST,test_new_api_per_op_and_group_intranode.sh,2,,http_proxy=;https_proxy=,
 test_comm_group_num,linux,gpu,120,DIST,test_comm_group_num.sh,2,,http_proxy=;https_proxy=,
+test_process_group_gloo_new_group,linux,,90,DIST,,,,PYTHONPATH=..;http_proxy=;https_proxy=;OMP_NUM_THREADS=1;OPENBLAS_NUM_THREADS=1,WITH_DISTRIBUTE;WITH_GLOO
