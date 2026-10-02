@@ -59,8 +59,8 @@ jobs:
     if: ${{ inputs.clone-can-skip != 'true' && needs.check-bypass.outputs.can-skip != 'true' }}
     needs: [check-bypass]
     runs-on:
-      group: Mac-CI
-    timeout-minutes: 60
+      group: mac-test
+    timeout-minutes: 90
 
     steps:
       - name: Check environment
