@@ -27,6 +27,7 @@
 #include <ATen/ops/chunk.h>
 #include <ATen/ops/clamp.h>
 #include <ATen/ops/coalesce.h>
+#include <ATen/ops/column_stack.h>
 #include <ATen/ops/detach.h>
 #include <ATen/ops/dsplit.h>
 #include <ATen/ops/empty.h>
