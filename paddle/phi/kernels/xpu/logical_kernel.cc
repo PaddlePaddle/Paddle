@@ -15,7 +15,10 @@
 #include "paddle/phi/kernels/logical_kernel.h"
 
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
+#include "paddle/phi/common/type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/cast_kernel.h"
+#include "paddle/phi/kernels/complex_kernel.h"
 
 namespace phi {
 
@@ -161,6 +164,56 @@ void LogicalOrKernel(const Context& dev_ctx,
       dev_ctx, x, y, out, xpu::logical_or<XPUType, XPUType>, "logical_or");
 }
 
+#ifdef PADDLE_WITH_XPU_FFT
+template <typename ComplexT>
+DenseTensor ComplexToBoolForLogicalOr(const XPUContext& dev_ctx,
+                                      const DenseTensor& x) {
+  using RealT = phi::dtype::Real<ComplexT>;
+  DenseTensor real = Real<ComplexT, XPUContext>(dev_ctx, x);
+  DenseTensor imag = Imag<ComplexT, XPUContext>(dev_ctx, x);
+  DenseTensor real_bool =
+      Cast<RealT, XPUContext>(dev_ctx, real, DataType::BOOL);
+  DenseTensor imag_bool =
+      Cast<RealT, XPUContext>(dev_ctx, imag, DataType::BOOL);
+  DenseTensor out;
+  out.Resize(x.dims());
+  LogicalBinaryKernel<bool, bool>(dev_ctx,
+                                  real_bool,
+                                  imag_bool,
+                                  &out,
+                                  xpu::logical_or<bool, bool>,
+                                  "logical_or");
+  return out;
+}
+
+template <typename ComplexT>
+void LogicalOrComplexKernel(const XPUContext& dev_ctx,
+                            const DenseTensor& x,
+                            const DenseTensor& y,
+                            DenseTensor* out) {
+  DenseTensor x_bool = ComplexToBoolForLogicalOr<ComplexT>(dev_ctx, x);
+  DenseTensor y_bool = ComplexToBoolForLogicalOr<ComplexT>(dev_ctx, y);
+  LogicalBinaryKernel<bool, bool>(
+      dev_ctx, x_bool, y_bool, out, xpu::logical_or<bool, bool>, "logical_or");
+}
+
+template <>
+void LogicalOrKernel<phi::complex64, XPUContext>(const XPUContext& dev_ctx,
+                                                 const DenseTensor& x,
+                                                 const DenseTensor& y,
+                                                 DenseTensor* out) {
+  LogicalOrComplexKernel<phi::complex64>(dev_ctx, x, y, out);
+}
+
+template <>
+void LogicalOrKernel<phi::complex128, XPUContext>(const XPUContext& dev_ctx,
+                                                  const DenseTensor& x,
+                                                  const DenseTensor& y,
+                                                  DenseTensor* out) {
+  LogicalOrComplexKernel<phi::complex128>(dev_ctx, x, y, out);
+}
+#endif
+
 template <typename T, typename Context>
 void LogicalXorKernel(const Context& dev_ctx,
                       const DenseTensor& x,
@@ -174,5 +227,24 @@ void LogicalXorKernel(const Context& dev_ctx,
 
 PD_REGISTER_KERNEL(logical_not, XPU, ALL_LAYOUT, phi::LogicalNotKernel, bool) {}
 PD_REGISTER_KERNEL(logical_and, XPU, ALL_LAYOUT, phi::LogicalAndKernel, bool) {}
-PD_REGISTER_KERNEL(logical_or, XPU, ALL_LAYOUT, phi::LogicalOrKernel, bool) {}
+PD_REGISTER_KERNEL(logical_or,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::LogicalOrKernel,
+                   bool
+#ifdef PADDLE_WITH_XPU_FFT
+                   ,
+                   phi::complex64,
+                   phi::complex128
+#endif
+) {
+#ifdef PADDLE_WITH_XPU_FFT
+  if (kernel_key.dtype() == phi::DataType::COMPLEX64 ||
+      kernel_key.dtype() == phi::DataType::COMPLEX128) {
+    kernel->InputAt(0).SetDataType(kernel_key.dtype());
+    kernel->InputAt(1).SetDataType(kernel_key.dtype());
+  }
+#endif
+  kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);
+}
 PD_REGISTER_KERNEL(logical_xor, XPU, ALL_LAYOUT, phi::LogicalXorKernel, bool) {}
