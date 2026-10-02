@@ -27,7 +27,7 @@ struct UnknownArch {};
 
 #define CINN_ARCH_CLASS_NAMES(_macro)                                       \
   _macro(X86Arch) _macro(ARMArch) _macro(NVGPUArch) _macro(HygonDCUArchHIP) \
-      _macro(HygonDCUArchSYCL)
+      _macro(HygonDCUArchSYCL) _macro(XpuArch)
 
 #define DEFINE_CINN_ARCH(class_name) \
   struct class_name {};

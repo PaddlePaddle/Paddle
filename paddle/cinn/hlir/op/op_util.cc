@@ -62,6 +62,11 @@ std::string GetExternFuncNameArchPrefixImpl(common::CustomDeviceArch,
   return "custom_device_";
 }
 
+std::string GetExternFuncNameArchPrefixImpl(common::XpuArch,
+                                            const std::string& func_name) {
+  return "xpu_";
+}
+
 std::string GetExternFuncNameArchPrefix(common::Arch arch,
                                         const std::string& func_name) {
   return std::visit(

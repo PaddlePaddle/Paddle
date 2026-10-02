@@ -191,6 +191,21 @@ LogicalResult TransBufferWithDynamicShapePass::Run(ir::LoweredFunc func) {
         }
 #endif
       },
+      [&](common::XpuArch) {
+#ifdef CINN_WITH_CUDA
+        auto cur_dev_info =
+            common::DevInfoMgr<common::NVGPUArch>::GetDevInfo(0);
+        if (cur_dev_info->IsValid()) {
+          size_t max_shm_per_block = cur_dev_info->GetMaxSharedMemPerBlock();
+          PADDLE_ENFORCE_EQ(
+              (mutator.shared_mem_size_used() <= max_shm_per_block),
+              true,
+              ::common::errors::InvalidArgument(
+                  "The shared memory size used by current kernel is greater "
+                  "than the max shared memory per block"));
+        }
+#endif
+      },
       [&](const common::CustomDeviceArch& arch) {
 #ifdef CINN_WITH_CUSTOM_DEVICE
         size_t max_shm_per_block = phi::DeviceManager::GetMaxSharedMemPerBlock(
