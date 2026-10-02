@@ -149,6 +149,20 @@ void CastKernel(const Context& dev_ctx,
       phi::ComplexKernel<float>(dev_ctx, real, imag, out);
       break;
     }
+    case DataType::COMPLEX128: {
+      if (x.numel() == 0) {
+        dev_ctx.template Alloc<T>(out);
+        return;
+      }
+      DenseTensor real;
+      real.Resize(x.dims());
+      CastXPUKernelImpl<T, double, Context>(dev_ctx, x, &real);
+      dev_ctx.template Alloc<T>(out);
+      DenseTensor imag = Fill<double, Context>(
+          dev_ctx, vectorize<int>(x.dims()), static_cast<double>(0.0));
+      phi::ComplexKernel<double>(dev_ctx, real, imag, out);
+      break;
+    }
 #endif
     default:
       PADDLE_THROW(common::errors::Unavailable(
@@ -175,6 +189,26 @@ void CastKernel<phi::complex64, XPUContext>(const XPUContext& dev_ctx,
   DenseTensor x_real = Real<T, XPUContext>(dev_ctx, x);
   CastKernel<float, XPUContext>(dev_ctx, x_real, out_dtype, out);
 }
+
+template <>
+void CastKernel<phi::complex128, XPUContext>(const XPUContext& dev_ctx,
+                                             const DenseTensor& x,
+                                             DataType out_dtype,
+                                             DenseTensor* out) {
+  using T = phi::complex128;
+  if (x.dtype() == out_dtype) {
+    if (x.dims() == phi::make_ddim({-1})) {
+      *out = x;
+      return;
+    }
+    if (!out->IsSharedWith(x)) {
+      Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+    }
+    return;
+  }
+  DenseTensor x_real = Real<T, XPUContext>(dev_ctx, x);
+  CastKernel<double, XPUContext>(dev_ctx, x_real, out_dtype, out);
+}
 #endif
 }  // namespace phi
 
@@ -189,6 +223,7 @@ PD_REGISTER_KERNEL(cast,
                    phi::bfloat16,
 #ifdef PADDLE_WITH_XPU_FFT
                    phi::complex64,
+                   phi::complex128,
 #endif
                    int64_t,
                    bool,
