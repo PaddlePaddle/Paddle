@@ -884,7 +884,7 @@ XPUOpMap& get_kl3_ops() {
       {"triu_grad",
        XPUKernelSet({FLOAT32, INT32, INT64, FLOAT16, BFLOAT16, BOOL})},
       {"tile", XPUKernelSet({INT32, INT64, BOOL, FLOAT64, FLOAT32, BFLOAT16})},
-      {"tile_grad", XPUKernelSet({FLOAT32, BFLOAT16})},
+      {"tile_grad", XPUKernelSet({FLOAT32, FLOAT16, BFLOAT16})},
       {"transpose2_grad",
        XPUKernelSet({FLOAT32, FLOAT16, BFLOAT16, INT64, INT32, BOOL})},
       {"transpose2",
