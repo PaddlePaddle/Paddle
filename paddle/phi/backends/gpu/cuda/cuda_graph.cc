@@ -221,6 +221,16 @@ void CUDAGraph::EndSegmentCapture() {
   cudaGraph_t graph;
   PADDLE_ENFORCE_GPU_SUCCESS(
       cudaStreamEndCapture(capturing_graph_->stream_, &graph));
+
+  // When capture was invalidated (e.g., due to a disallowed operation during
+  // capturing), cudaStreamEndCapture returns a NULL graph. In this case, we
+  // simply skip the rest of the capture processing.
+  if (graph == nullptr) {
+    VLOG(1) << "CUDA Graph capture was invalidated, skipping segment capture "
+            << "for graph ID " << capturing_graph_->id_;
+    return;
+  }
+
   auto num_nodes = static_cast<size_t>(-1);
   PADDLE_ENFORCE_GPU_SUCCESS(cudaGraphGetNodes(graph, nullptr, &num_nodes));
   if (num_nodes == 0) {
