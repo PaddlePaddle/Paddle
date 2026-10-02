@@ -791,9 +791,6 @@ class Tensor : public TensorBase {
   // chunk - splits tensor into chunks
   std::vector<Tensor> chunk(int64_t chunks, int64_t dim = 0) const;
 
-  // rename - stub for Paddle (Dimname not supported)
-  Tensor rename(::std::optional<at::DimnameList> names) const;
-
   // new_empty - creates uninitialized tensor with same dtype/device
   Tensor new_empty(at::IntArrayRef size, at::TensorOptions options = {}) const;
   Tensor new_empty(at::IntArrayRef size,
