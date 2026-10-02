@@ -428,6 +428,72 @@ def add_std_without_repeat(cflags, compiler_type, use_std17=False):
         cflags.append(cpp_flag)
 
 
+_BLACKWELL_MIN_CUDA_VERSION = (12, 8)
+_BLACKWELL_CUDA_ARCHES = frozenset(
+    {
+        '10.0',
+        '10.0a',
+        '10.1',
+        '10.1a',
+        '10.3',
+        '12.0',
+        '12.0a',
+    }
+)
+
+
+def _format_cuda_version(version):
+    return f"{version[0]}.{version[1]}"
+
+
+def _get_cuda_version_from_nvcc():
+    cuda_home = find_cuda_home()
+    if not cuda_home:
+        return None
+
+    nvcc_name = 'nvcc.exe' if IS_WINDOWS else 'nvcc'
+    nvcc = os.path.join(cuda_home, 'bin', nvcc_name)
+    if not os.path.exists(nvcc):
+        return None
+
+    try:
+        output = subprocess.check_output([nvcc, '--version'], stderr=DEVNULL)
+    except (OSError, subprocess.SubprocessError):
+        return None
+
+    match = re.search(rb'release\s+(\d+)\.(\d+)', output)
+    if not match:
+        return None
+
+    return int(match.group(1)), int(match.group(2))
+
+
+def _check_blackwell_arch_support():
+    cuda_version = _get_cuda_version_from_nvcc()
+    if cuda_version is None:
+        raise ValueError(
+            "Blackwell CUDA arch requires CUDA 12.8 or newer, but nvcc "
+            "version could not be detected. Please set CUDA_HOME to a CUDA "
+            "12.8+ toolkit or choose a different PADDLE_CUDA_ARCH_LIST."
+        )
+
+    if cuda_version < _BLACKWELL_MIN_CUDA_VERSION:
+        raise ValueError(
+            "Blackwell CUDA arch requires CUDA 12.8 or newer, but nvcc "
+            f"reports CUDA {_format_cuda_version(cuda_version)}. Please "
+            "upgrade CUDA or choose a different PADDLE_CUDA_ARCH_LIST."
+        )
+
+
+def _is_blackwell_cuda_arch(arch):
+    return arch.split('+')[0] in _BLACKWELL_CUDA_ARCHES
+
+
+def _check_blackwell_arch_list_support(arch_list):
+    if any(_is_blackwell_cuda_arch(arch) for arch in arch_list):
+        _check_blackwell_arch_support()
+
+
 def _get_cuda_arch_flags(cflags: list[str] | None = None) -> list[str]:
     """
     Determine CUDA arch flags to use.
@@ -527,6 +593,8 @@ def _get_cuda_arch_flags(cflags: list[str] | None = None) -> list[str]:
         for named_arch, archival in named_arches.items():
             _arch_list = _arch_list.replace(named_arch, archival)
         arch_list = _arch_list.split(';')
+
+    _check_blackwell_arch_list_support(arch_list)
 
     flags = []
     for arch in arch_list:
