@@ -30,6 +30,7 @@
 #include "paddle/cinn/runtime/cinn_runtime.h"
 #include "paddle/common/enforce.h"
 #ifdef CINN_WITH_CUSTOM_DEVICE
+#include "paddle/cinn/runtime/custom_device/custom_device_backend_api.h"
 #include "paddle/phi/backends/device_manager.h"
 #endif
 
@@ -561,7 +562,19 @@ bool GetSupportsCooperativeLaunchImpl(NVGPUArch) {
   return supportsCoopLaunch != 0;
 }
 
-bool GetSupportsCooperativeLaunchImpl(CustomDeviceArch) { return true; }
+bool GetSupportsCooperativeLaunchImpl(CustomDeviceArch arch) {
+#ifdef CINN_WITH_CUSTOM_DEVICE
+  // Query the actual plugin capability rather than assuming support.
+  auto place = phi::CustomPlace(arch.device_type, arch.device_id);
+  auto &plugin =
+      cinn::runtime::custom_device::CinnCustomDevicePlugin::GetInstance(place);
+  auto *runtime_strategy = plugin.GetRuntime();
+  if (runtime_strategy) {
+    return runtime_strategy->SupportsCooperativeLaunch();
+  }
+#endif
+  return false;
+}
 
 bool GetSupportsCooperativeLaunchImpl(HygonDCUArchHIP) { return false; }
 
@@ -575,6 +588,20 @@ bool GetSupportsCooperativeLaunch(Arch arch) {
 
 bool Target::get_supports_cooperative_launch() const {
   return GetSupportsCooperativeLaunch(arch);
+}
+
+void Target::PrintHardwareParams() const {
+  VLOG(5) << "===== CINN Target Hardware Parameters =====";
+  VLOG(5) << "  Arch              : " << arch_str();
+  VLOG(5) << "  MaxThreadsPerBlock: " << max_num_threads();
+  VLOG(5) << "  SM Count          : " << get_multi_processor_count();
+  VLOG(5) << "  MaxThreadsPerSM   : " << get_max_threads_per_sm();
+  VLOG(5) << "  MaxBlocksPerSM    : " << get_max_blocks_per_sm();
+  VLOG(5) << "  CooperativeLaunch : "
+          << (get_supports_cooperative_launch() ? "true" : "false");
+  VLOG(5) << "  GetMaxThreads()   : " << GetMaxThreads();
+  VLOG(5) << "  GetMaxBlocks()    : " << GetMaxBlocks();
+  VLOG(5) << "===========================================";
 }
 
 }  // namespace common
