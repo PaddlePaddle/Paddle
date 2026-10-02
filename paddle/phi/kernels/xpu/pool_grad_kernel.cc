@@ -211,10 +211,11 @@ void Pool3dGradKernel(const Context& dev_ctx,
   std::vector<int64_t> strides(strides_t.begin(), strides_t.end());
 
   PADDLE_ENFORCE_EQ(
-      data_format,
-      "NCDHW",
+      data_format == "NCDHW" || data_format == "NDHWC",
+      true,
       common::errors::InvalidArgument("The Pool3d_grad XPU OP only support "
-                                      "data_format is 'NCDHW', but received %s",
+                                      "data_format is 'NCDHW' or 'NDHWC', "
+                                      "but received %s",
                                       data_format));
   if (!dx) {
     return;
@@ -282,7 +283,7 @@ void Pool3dGradKernel(const Context& dev_ctx,
           !channel_last);
 
     } else if (pooling_type == "avg") {
-      if (out_d == 1 && out_h == 1 && out_w == 1 &&
+      if (!channel_last && out_d == 1 && out_h == 1 && out_w == 1 &&
           std::is_same<T, float>::value) {
         xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
         float scale = 1.0 / (in_d * in_h * in_w);
@@ -306,6 +307,45 @@ void Pool3dGradKernel(const Context& dev_ctx,
         return;
       }
 
+      if (channel_last) {
+        // XDNN adaptive_avg_pool3d_grad rejects NDHWC for some shapes.
+        xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
+        XPUType* dout_ncdhw = RAII_GUARD.alloc<XPUType>(dout.numel());
+        XPUType* dx_ncdhw = RAII_GUARD.alloc<XPUType>(dx->numel());
+        PADDLE_ENFORCE_XDNN_NOT_NULL(dout_ncdhw);
+        PADDLE_ENFORCE_XDNN_NOT_NULL(dx_ncdhw);
+
+        r = xpu::transpose<XPUType>(
+            dev_ctx.x_context(),
+            reinterpret_cast<const XPUType*>(dout.data<T>()),
+            dout_ncdhw,
+            {n, out_d, out_h, out_w, c},
+            {0, 4, 1, 2, 3});
+        PADDLE_ENFORCE_XDNN_SUCCESS(r, "transpose");
+
+        r = xpu::adaptive_avg_pool3d_grad<XPUType>(dev_ctx.x_context(),
+                                                   dout_ncdhw,
+                                                   dx_ncdhw,
+                                                   n,
+                                                   c,
+                                                   in_d,
+                                                   in_h,
+                                                   in_w,
+                                                   out_d,
+                                                   out_h,
+                                                   out_w,
+                                                   true);
+        PADDLE_ENFORCE_XDNN_SUCCESS(r, "adaptive_pool3d_grad");
+
+        r = xpu::transpose<XPUType>(dev_ctx.x_context(),
+                                    dx_ncdhw,
+                                    reinterpret_cast<XPUType*>(dx->data<T>()),
+                                    {n, c, in_d, in_h, in_w},
+                                    {0, 2, 3, 4, 1});
+        PADDLE_ENFORCE_XDNN_SUCCESS(r, "transpose");
+        return;
+      }
+
       r = xpu::adaptive_avg_pool3d_grad<XPUType>(
           dev_ctx.x_context(),
           reinterpret_cast<const XPUType*>(dout.data<T>()),
@@ -318,7 +358,7 @@ void Pool3dGradKernel(const Context& dev_ctx,
           out_d,
           out_h,
           out_w,
-          !channel_last);
+          true);
     } else {
       PADDLE_THROW(common::errors::InvalidArgument(
           "Unsupported pooling type for kunlun %s", pooling_type));
