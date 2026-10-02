@@ -247,6 +247,39 @@ void PowKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "pow_tensor_scalar");
 }
 
+// For int64_t scalar pow, cast to float for computation then round back.
+// xpu::pow_tensor_scalar does not support int64_t, so we compute in float32.
+template <>
+void PowKernel<int64_t, XPUContext>(const XPUContext& dev_ctx,
+                                    const DenseTensor& x,
+                                    const Scalar& factor,
+                                    DenseTensor* out) {
+  dev_ctx.template Alloc<int64_t>(out);
+  if (x.numel() == 0) return;
+
+  xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
+  float* x_float = RAII_GUARD.alloc_l3_or_gm<float>(x.numel());
+  float* out_float = RAII_GUARD.alloc_l3_or_gm<float>(x.numel());
+
+  int r = xpu::cast<int64_t, float>(
+      dev_ctx.x_context(), x.data<int64_t>(), x_float, x.numel());
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast int64 to float");
+
+  float pow_factor = static_cast<float>(factor.to<double>());
+  r = xpu::pow_tensor_scalar<float>(
+      dev_ctx.x_context(), x_float, pow_factor, out_float, x.numel());
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "pow_tensor_scalar float");
+
+  // Round to nearest integer before casting back, matching GPU llrint behavior
+  r = xpu::paddle_round<float>(
+      dev_ctx.x_context(), out_float, out_float, x.numel(), 0);
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "paddle_round");
+
+  r = xpu::cast<float, int64_t>(
+      dev_ctx.x_context(), out_float, out->data<int64_t>(), x.numel());
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast float to int64");
+}
+
 template <typename T>
 struct XPUHardSigmoidFunctor : public funcs::BaseActivationFunctor<T> {
   float slope;
@@ -745,8 +778,14 @@ PD_REGISTER_KERNEL(
 PD_REGISTER_KERNEL(
     cos, XPU, ALL_LAYOUT, phi::CosKernel, float, phi::float16, phi::bfloat16) {}
 
-PD_REGISTER_KERNEL(
-    pow, XPU, ALL_LAYOUT, phi::PowKernel, float, phi::float16, phi::bfloat16) {}
+PD_REGISTER_KERNEL(pow,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::PowKernel,
+                   float,
+                   phi::float16,
+                   phi::bfloat16,
+                   int64_t) {}
 
 PD_REGISTER_KERNEL(rsqrt,
                    XPU,
