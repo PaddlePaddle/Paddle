@@ -19,6 +19,13 @@ if(WITH_NCCL)
 
   file(READ ${NCCL_INCLUDE_DIR}/nccl.h NCCL_VERSION_FILE_CONTENTS)
 
+  # The header found above is the one the version checks below report, so it has
+  # to be the one the compiler sees too. Without this the build silently uses
+  # whichever nccl.h sits on the default include path, which is how a
+  # NCCL_ROOT pointing at a newer NCCL ends up compiling against an older
+  # header.
+  include_directories(BEFORE ${NCCL_INCLUDE_DIR})
+
   string(REGEX MATCH "define NCCL_VERSION_CODE +([0-9]+)" NCCL_VERSION
                "${NCCL_VERSION_FILE_CONTENTS}")
   string(REGEX REPLACE "define NCCL_VERSION_CODE +([0-9]+)" "\\1" NCCL_VERSION
