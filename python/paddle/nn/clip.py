@@ -643,6 +643,117 @@ def _allow_pure_bf16_global_norm_clip(*args):
         return old_value
 
 
+class ClipGradByGlobalNormAccuracyCompatible(ClipGradBase):
+    clip_norm: float
+    auto_skip_clip: bool
+
+    def __init__(
+        self,
+        clip_norm: float,
+        auto_skip_clip: bool = False,
+    ):
+        super().__init__()
+        self.clip_norm = float(clip_norm)
+        self.auto_skip_clip = auto_skip_clip
+
+    def _infer_output_dtype(self, dtypes):
+        """Infer output dtype based on input dtypes combination.
+
+        Rules:
+            All fp32       -> fp32
+            All bf16       -> bf16
+            fp32 + bf16    -> fp32
+            fp32 + fp16    -> fp32
+            fp16 + bf16    -> fp32
+            fp64 + any     -> fp64
+        """
+        dtype_set = set(dtypes)
+        if paddle.float64 in dtype_set:
+            return paddle.float64
+        if len(dtype_set) == 1:
+            return dtype_set.pop()
+        # mixed fp16/bf16/fp32 -> fp32
+        return paddle.float32
+
+    def _get_global_norm(self, params_grads):
+        # Group local norms by dtype
+        norm_by_dtype = {}
+        for p, g in params_grads:
+            if g is None or getattr(p, 'need_clip', True) is False:
+                continue
+            norm = paddle.linalg.vector_norm(g, 2.0)
+            dt = g.dtype
+            if dt not in norm_by_dtype:
+                norm_by_dtype[dt] = []
+            norm_by_dtype[dt].append(norm)
+
+        if not norm_by_dtype:
+            return None
+
+        output_dtype = self._infer_output_dtype(norm_by_dtype.keys())
+
+        # Stack per-dtype groups and cast to output dtype
+        all_norms = []
+        for dt, norms in norm_by_dtype.items():
+            stacked = paddle.stack(norms)
+            if dt != output_dtype:
+                stacked = stacked.cast(output_dtype)
+            all_norms.append(stacked)
+
+        if len(all_norms) == 1:
+            combined = all_norms[0]
+        else:
+            combined = paddle.concat(all_norms)
+
+        global_norm_var = paddle.linalg.vector_norm(combined)
+        return global_norm_var
+
+    @imperative_base.no_grad()
+    def _dygraph_clip(self, params_grads):
+        global_norm_var = self._get_global_norm(params_grads)
+        if global_norm_var is None:
+            return params_grads
+
+        global_norm_var = global_norm_var + 1e-6
+        need_clip = False
+        max_global_norm = paddle.full(
+            shape=[], dtype=global_norm_var.dtype, fill_value=self.clip_norm
+        )
+        if not self.auto_skip_clip:
+            need_clip = True
+            clip_var = paddle.divide(
+                x=max_global_norm,
+                y=paddle.maximum(x=global_norm_var, y=max_global_norm),
+            )
+        elif global_norm_var > max_global_norm:
+            need_clip = True
+            clip_var = paddle.divide(x=max_global_norm, y=global_norm_var)
+
+        params_and_grads = []
+        for p, g in params_grads:
+            if g is None:
+                continue
+            if getattr(p, 'need_clip', True) is False:
+                params_and_grads.append((p, g))
+                continue
+            if need_clip:
+                clip_input = (
+                    clip_var.astype(g.dtype)
+                    if clip_var.dtype != g.dtype
+                    else clip_var
+                )
+                if _can_inplace_clip_grad(g, clip_input):
+                    g.multiply_(clip_input)
+                    params_and_grads.append((p, g))
+                else:
+                    new_grad = paddle.multiply(g, clip_input)
+                    params_and_grads.append((p, new_grad))
+            else:
+                params_and_grads.append((p, g))
+
+        return params_and_grads
+
+
 class ClipGradByGlobalNorm(ClipGradBase):
     r"""
     Given a list of Tensor :math:`t\_list` , calculate the global norm for the elements of all tensors in
@@ -727,6 +838,65 @@ class ClipGradByGlobalNorm(ClipGradBase):
 
     @imperative_base.no_grad()
     def _dygraph_clip(self, params_grads):
+        # Try to use accuracy-compatible implementation for better numerical
+        # reproducibility. Fall back to default path when the scenario is
+        # unsupported (distributed comm, SelectedRows grads, cross-mesh grads).
+        if paddle.get_flags("FLAGS_use_accuracy_compatible_kernel")[
+            "FLAGS_use_accuracy_compatible_kernel"
+        ]:
+            use_accuracy_compatible = True
+            if len(params_grads) > 0 and len(params_grads[0]) > 0:
+                src_mesh = params_grads[0][0].process_mesh
+            else:
+                src_mesh = None
+
+            # Fallback: pipeline parallelism requires cross-stage comm, not supported
+            if src_mesh is not None:
+                g_mesh = dist.get_mesh()
+                if (
+                    g_mesh
+                    and "pp" in g_mesh.dim_names
+                    and g_mesh.get_dim_size("pp") > 1
+                ):
+                    use_accuracy_compatible = False
+
+            # Fallback: sharding/MP/FSDP requires allreduce across groups, not supported
+            if (
+                use_accuracy_compatible
+                and self.should_comm_on_shard_dim
+                and (
+                    hasattr(self, 'sharding_group')
+                    or hasattr(self, 'mp_group')
+                    or hasattr(self, 'fsdp_group')
+                )
+            ):
+                use_accuracy_compatible = False
+
+            if use_accuracy_compatible:
+                for p, g in params_grads:
+                    if g is None or getattr(p, 'need_clip', True) is False:
+                        continue
+
+                    # Fallback: SelectedRows sparse grad not supported
+                    if (
+                        in_dynamic_mode() and g.is_selected_rows()
+                    ) or g.type == core.VarDesc.VarType.SELECTED_ROWS:
+                        use_accuracy_compatible = False
+                        break
+
+                    # Fallback: grads on different meshes need cross-mesh, comm not supported
+                    if src_mesh is not None and g.process_mesh != src_mesh:
+                        use_accuracy_compatible = False
+                        break
+
+            if use_accuracy_compatible:
+                accuracy_compatible_clip = (
+                    ClipGradByGlobalNormAccuracyCompatible(
+                        self.clip_norm, self.auto_skip_clip
+                    )
+                )
+                return accuracy_compatible_clip._dygraph_clip(params_grads)
+
         params_and_grads = []
         sum_square_list = []
         sum_square_list_fp16 = []
