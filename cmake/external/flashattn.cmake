@@ -115,7 +115,7 @@ else()
   endif()
 
   if(NOT DEFINED FA_JOB_POOLS_COMPILE)
-    set(FA_JOB_POOLS_COMPILE 4)
+    set(FA_JOB_POOLS_COMPILE 8)
   endif()
 
   if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang"
