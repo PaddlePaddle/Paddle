@@ -4025,7 +4025,7 @@
   traits : paddle::dialect::ForwardOnlyTrait
 
 - op : multinomial
-  args : (Tensor x, Scalar(int) num_samples = 1, bool replacement = false)
+  args : (Tensor x, Scalar(int) num_samples = 1, bool replacement = false, bool check_input_zeros = true)
   output : Tensor(out)
   infer_meta :
     func : MultinomialInferMeta
