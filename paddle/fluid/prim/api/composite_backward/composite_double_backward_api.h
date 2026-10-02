@@ -1054,6 +1054,95 @@ void abs_triple_grad(const Tensor& x,
 }
 
 template <typename T>
+void addcmul_double_grad(const Tensor& tensor1,
+                         const Tensor& tensor2,
+                         const Tensor& grad_out,
+                         const optional<Tensor>& grad_input_grad,
+                         const optional<Tensor>& grad_tensor1_grad,
+                         const optional<Tensor>& grad_tensor2_grad,
+                         const Scalar& value,
+                         Tensor* tensor1_grad,
+                         Tensor* tensor2_grad,
+                         Tensor* grad_out_grad) {
+  const phi::DataType dtype = grad_out.dtype();
+  const bool is_complex =
+      dtype == phi::DataType::COMPLEX64 || dtype == phi::DataType::COMPLEX128;
+  // Compute float16 and bfloat16 in float32 like the kernels, since value can
+  // overflow them and some of their kernels are missing on CPU.
+  const bool need_cast =
+      dtype == phi::DataType::FLOAT16 || dtype == phi::DataType::BFLOAT16;
+  const phi::DataType compute_dtype =
+      need_cast ? phi::DataType::FLOAT32 : dtype;
+  auto promote = [&](const Tensor& x) {
+    return need_cast ? cast<T>(x, compute_dtype) : x;
+  };
+  auto restore = [&](const Tensor& x) {
+    return need_cast ? cast<T>(x, dtype) : x;
+  };
+  // Multiply by a 0-D tensor instead of scale, whose grad does not conjugate
+  // a complex scale in higher order derivatives.
+  auto value_tensor =
+      full<T>(std::vector<int64_t>(), value, compute_dtype, grad_out.place());
+  // The first order grad of one multiplicand is
+  // grad_out * conj(value * other), so its grad w.r.t. other is
+  // conj(grad_other_grad * conj(grad_out) * value), reduced to the shape of
+  // other.
+  auto multiplicand_grad = [&](const optional<Tensor>& grad_other_grad,
+                               const Tensor& other) {
+    if (!grad_other_grad) {
+      return full<T>(
+          common::vectorize(other.dims()), 0, other.dtype(), other.place());
+    }
+    Tensor grad =
+        is_complex
+            ? conj<T>(grad_other_grad.get() * conj<T>(grad_out) * value_tensor)
+            : promote(grad_other_grad.get()) * promote(grad_out) * value_tensor;
+    if (grad.dims() != other.dims()) {
+      // Reduce the broadcast dims, including the ones broadcast from 1 to 0.
+      std::vector<int64_t> axes;
+      const int64_t offset = grad.dims().size() - other.dims().size();
+      for (int64_t i = 0; i < grad.dims().size(); ++i) {
+        if (i < offset ||
+            (other.dims()[i - offset] == 1 && grad.dims()[i] != 1)) {
+          axes.push_back(i);
+        }
+      }
+      if (!axes.empty()) {
+        grad = grad.sum(axes, grad.dtype(), false);
+      }
+      if (grad.dims() != other.dims()) {
+        grad = reshape<T>(grad, other.shape());
+      }
+    }
+    return restore(grad);
+  };
+  if (tensor1_grad) {
+    set_output<T>(multiplicand_grad(grad_tensor2_grad, tensor1), tensor1_grad);
+  }
+  if (tensor2_grad) {
+    set_output<T>(multiplicand_grad(grad_tensor1_grad, tensor2), tensor2_grad);
+  }
+  if (grad_out_grad) {
+    // ddout = ddinput + value * (ddtensor1 * tensor2 + ddtensor2 * tensor1),
+    // broadcast to the shape of grad_out.
+    auto ddout = full<T>(
+        common::vectorize(grad_out.dims()), 0, compute_dtype, grad_out.place());
+    if (grad_input_grad) {
+      ddout = ddout + promote(grad_input_grad.get());
+    }
+    if (grad_tensor1_grad) {
+      ddout = ddout + promote(grad_tensor1_grad.get()) * promote(tensor2) *
+                          value_tensor;
+    }
+    if (grad_tensor2_grad) {
+      ddout = ddout + promote(grad_tensor2_grad.get()) * promote(tensor1) *
+                          value_tensor;
+    }
+    set_output<T>(restore(ddout), grad_out_grad);
+  }
+}
+
+template <typename T>
 void bmm_double_grad(const Tensor& x,
                      const Tensor& y,
                      const Tensor& grad_out,

@@ -62,6 +62,50 @@ bool AccuracyOpInferSymbolicShape(
   return true;
 }
 
+bool AddcmulOpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  const std::vector<std::vector<symbol::DimExpr>> input_shapes = {
+      infer_context->GetShapeOrDataForValue(op->operand_source(0)).shape(),
+      infer_context->GetShapeOrDataForValue(op->operand_source(1)).shape(),
+      infer_context->GetShapeOrDataForValue(op->operand_source(2)).shape()};
+  // NOTE(large-tensor): tensor rank is a small integer
+  size_t out_rank = 0;
+  for (const auto &shape : input_shapes) {
+    out_rank = std::max(out_rank, shape.size());
+  }
+
+  // Broadcast input, tensor1 and tensor2 with right-aligned dimensions.
+  std::vector<symbol::DimExpr> out_shape(out_rank, symbol::DimExpr{1});
+  symbol::DimExprBuilder builder;
+  for (const auto &shape : input_shapes) {
+    const size_t offset = out_rank - shape.size();
+    for (size_t i = 0; i < shape.size(); ++i) {
+      symbol::DimExpr &out_dim = out_shape[i + offset];
+      const symbol::DimExpr &in_dim = shape[i];
+      if (in_dim == 1 || in_dim == out_dim) {
+        continue;
+      }
+      if (out_dim == 1) {
+        out_dim = in_dim;
+        continue;
+      }
+      infer_context->AddBroadcastableCstr(out_dim, in_dim);
+      out_dim = builder.Broadcast(out_dim, in_dim);
+    }
+  }
+
+  infer_context->SetShapeOrDataForValue(
+      op->result(0),
+      symbol::ShapeOrDataDimExprs{
+          symbol::TensorShapeOrDataDimExprs(out_shape)});
+  return true;
+}
+
+bool Addcmul_OpInferSymbolicShape(
+    pir::Operation *op, pir::InferSymbolicShapeContext *infer_context) {
+  return AddcmulOpInferSymbolicShape(op, infer_context);
+}
+
 bool AddNOpInferSymbolicShape(pir::Operation *op,
                               pir::InferSymbolicShapeContext *infer_context) {
   const auto &input_list_shape_or_data =
