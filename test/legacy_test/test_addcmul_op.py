@@ -695,11 +695,13 @@ class TestAddcmulGrad(AddcmulTestBase):
     def test_second_gradient_float16(self):
         # Same as PyTorch, float16 is computed in float32, where value and the
         # intermediate results do not overflow.
-        x, half, upstream = (np.array([v], 'float16') for v in (0, 0.5, 1e-3))
+        x, half, upstream = (np.array([v], 'float16') for v in (0, 0.5, 2**-10))
         seed = np.ones(1, 'float16')
-        # PyTorch's double backward gives value * float16(1e-3) and
-        # value * 0.5, with the final results rounded to float16.
-        for value, expected in ((0.5, (0.0005, 0.25)), (70000, (70, 35008))):
+        # PyTorch's double backward gives value * 2**-10 and value * 0.5. 73728
+        # overflows float16 but both results are exact in it, so they do not
+        # depend on the rounding of the final float32 -> float16 cast, which
+        # truncates on ARM CPUs (PADDLE_WITH_ARM).
+        for value, expected in ((0.5, (2**-11, 0.25)), (73728, (72, 36864))):
             for static in (False, True):
                 with self.subTest(value=value, static=static):
                     grads = self.second_grads(
