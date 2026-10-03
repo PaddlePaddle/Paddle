@@ -13,6 +13,8 @@
 // limitations under the License.
 #pragma once
 
+#include <vector>
+
 #include "paddle/phi/common/data_type.h"
 namespace phi {
 
@@ -227,6 +229,67 @@ inline bool NeedTypePromotion(
   } else {
     return false;
   }
+}
+
+// Type promotion for ops with more than two inputs, e.g. addcmul. Unlike the
+// two inputs case, any mix of data types is promoted, the same as PyTorch.
+inline bool NeedTypePromotion(const std::string& op_name,
+                              const std::vector<DataType>& dtypes) {
+  for (const auto& dtype : dtypes) {
+    if (dtype != dtypes[0]) {
+      return true;
+    }
+  }
+  return false;
+}
+
+// Same as PyTorch, the 0-d tensors only take part in the promotion when their
+// category (bool < integer < floating-point < complex) is higher than the
+// other tensors.
+inline DataType GetPromoteDtype(
+    const std::string& op_name,
+    const std::vector<DataType>& dtypes,
+    const std::vector<std::vector<int64_t>>& shapes) {
+  DataType dtype = DataType::UNDEFINED;
+  DataType zero_dim_dtype = DataType::UNDEFINED;
+  for (size_t i = 0; i < dtypes.size(); ++i) {
+    DataType& promoted = shapes[i].empty() ? zero_dim_dtype : dtype;
+    promoted = promoted == DataType::UNDEFINED
+                   ? dtypes[i]
+                   : promoteTypes(promoted, dtypes[i]);
+  }
+  if (dtype == DataType::UNDEFINED) {
+    return zero_dim_dtype;
+  }
+  if (zero_dim_dtype == DataType::UNDEFINED || is_support_complex(dtype)) {
+    return dtype;
+  }
+  if (is_support_complex(zero_dim_dtype)) {
+    if (!is_support_float(dtype)) {
+      return zero_dim_dtype;
+    }
+    return dtype == DataType::FLOAT64 ? DataType::COMPLEX128
+                                      : DataType::COMPLEX64;
+  }
+  if (is_support_float(dtype)) {
+    return dtype;
+  }
+  if (dtype == DataType::BOOL || is_support_float(zero_dim_dtype)) {
+    return promoteTypes(dtype, zero_dim_dtype);
+  }
+  return dtype;
+}
+
+// Whether a result of dtype from can be written into a tensor of dtype to,
+// the same as torch.can_cast.
+inline bool CanCast(const DataType& from, const DataType& to) {
+  if (is_support_complex(from) && !is_support_complex(to)) {
+    return false;
+  }
+  if (is_support_float(from) && is_support_int(to)) {
+    return false;
+  }
+  return from == DataType::BOOL || to != DataType::BOOL;
 }
 
 inline bool NeedTypePromotionOldIr(const std::string& op_name,

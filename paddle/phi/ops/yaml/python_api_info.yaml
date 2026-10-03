@@ -33,6 +33,18 @@
   args_alias :
     use_default_mapping : True
 
+- op : addcmul
+  name : [paddle.addcmul, paddle.Tensor.addcmul]
+  args_alias :
+    use_default_mapping : True
+
+- op : addcmul_
+  name : [paddle.addcmul_, paddle.Tensor.addcmul_]
+  args_alias :
+    use_default_mapping : True
+  pre_process :
+    func : InplaceShapePreProcess(input, tensor1, tensor2)
+
 - op : all
   name : [paddle.all, paddle.Tensor.all]
   args_alias :

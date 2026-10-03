@@ -27,6 +27,13 @@ from paddle.base.libpaddle.pir import (
 )
 from paddle.base.wrapped_decorator import signature_safe_contextmanager
 
+# The unused output grads of these ops are passed to their vjps as empty values
+# instead of zeros, since their double grads treat a missing grad differently
+# from a zero one, e.g. value * 0 is nan when the value of addcmul is inf.
+ALLOW_EMPTY_OUTPUT_GRAD_OPS = [
+    "pd_op.addcmul_grad",
+]
+
 # TODO(CZ): to be removed when we support dynamic shape by default.
 ALLOW_DYNAMIC_SHAPE_VJP_OPS = [
     "pd_op.abs",
