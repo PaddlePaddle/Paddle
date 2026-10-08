@@ -364,6 +364,24 @@ class TestError(unittest.TestCase):
 
         self.assertRaises(TypeError, test_interpolation)
 
+        # Test error when the reduction dim is empty
+        def test_empty_reduction_quantile():
+            paddle.quantile(paddle.to_tensor([], dtype='float32'), q=0.5)
+
+        self.assertRaises(ValueError, test_empty_reduction_quantile)
+
+        def test_empty_reduction_nanquantile():
+            paddle.nanquantile(paddle.to_tensor([], dtype='float32'), q=0.5)
+
+        self.assertRaises(ValueError, test_empty_reduction_nanquantile)
+
+        # Test error when the reduction dim exceeds 2**24 (float32 rank
+        # precision limit)
+        def test_too_large_quantile():
+            paddle.quantile(paddle.zeros([2**24 + 1], dtype='float32'), q=0.5)
+
+        self.assertRaises(ValueError, test_too_large_quantile)
+
 
 class TestQuantileRuntime(unittest.TestCase):
     """
