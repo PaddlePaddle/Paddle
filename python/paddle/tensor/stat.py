@@ -923,6 +923,16 @@ def _compute_quantile(
                 axis += dims
             out_shape[axis] = 1
 
+    # `x.shape[axis]` is the length of the reduction dim; it feeds
+    # `last_index = x.shape[axis] - 1` and the rank `q*(n-1)` computed in
+    # x.dtype. A length of 0 makes last_index -1 (negative rank -> meaningless
+    # result), and float32 only represents integers exactly up to 2**24, beyond
+    # which the gathered rank index loses precision.
+    if x.shape[axis] == 0:
+        raise ValueError("quantile() input tensor must be non-empty")
+    if x.shape[axis] > 2**24:
+        raise ValueError("quantile() input tensor is too large")
+
     mask = x.isnan()
     valid_counts = mask.logical_not().sum(axis=axis, keepdim=True)
 
