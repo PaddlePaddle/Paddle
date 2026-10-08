@@ -31,6 +31,7 @@
 #include "paddle/phi/kernels/arange_kernel.h"
 #include "paddle/phi/kernels/contiguous_kernel.h"
 #include "paddle/phi/kernels/elementwise_kernel.h"
+#include "paddle/phi/kernels/expand_kernel.h"
 #include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/radix_sort.h"
 #include "paddle/phi/kernels/funcs/stride_utils.h"
@@ -41,6 +42,21 @@ namespace phi {
 namespace funcs {
 
 constexpr int kIndexPutWarpSize = 32;
+
+// Where the indexed axes sit inside the indexed view, plus that view's shape
+// and where that view lives inside x_grad.  The sort based kernel arguments
+// only describe the *restrided* view (indexed axes already replaced by the
+// broadcast index shape), so this has to be recovered by the caller (see
+// DeriveSortedPathLayout in index_elementwise_get_grad_kernel.cu).  A whole
+// tensor consumer such as take_along_axis_grad builds a trivial layout with
+// dims_before == 0 and view_dims == the full contiguous x_grad shape.
+struct SortedPathLayout {
+  int64_t dims_before;
+  std::vector<int64_t> view_dims;     // the view's shape before indexing
+  std::vector<int64_t> view_strides;  // its element strides inside x_grad
+  int64_t view_offset;                // its byte offset inside x_grad
+  bool is_whole_tensor;               // view == the whole contiguous x_grad
+};
 
 template <typename scalar_t, int SZ>
 __global__ void IndexingBackwardKernel(const int64_t* sorted_indices,
@@ -198,94 +214,161 @@ __global__ void IndexingBackwardKernelStride1(const int64_t* sorted_indices,
   }
 }
 
+// The 1 < slice_size <= kIndexPutWarpSize case lets a single thread own one
+// feature column, so all duplicates of an index can be reduced in `opmath_t`
+// registers and written back exactly once. The generic feature-unrolled kernel
+// instead read-modify-writes `grad_weight` per duplicate, which rounds to
+// `scalar_t` on every step and loses precision for float16/bfloat16. This
+// mirrors the specialized CUDA path used by PyTorch.
+template <typename scalar_t>
+__global__ void IndexingBackwardKernelSmallStride(const int64_t* sorted_indices,
+                                                  const int64_t* indices,
+                                                  const scalar_t* grad_output,
+                                                  scalar_t* grad_weight,
+                                                  int64_t numel,
+                                                  int64_t stride,
+                                                  int64_t stride_before,
+                                                  int64_t outer_dim,
+                                                  bool accumulate) {
+  using opmath_t = typename phi::dtype::MPTypeTrait<scalar_t>::Type;
+
+  const int64_t tidx = threadIdx.x;
+  if (tidx >= stride) return;
+
+  for (int64_t z = blockIdx.z; z < outer_dim; z += gridDim.z) {
+    for (int64_t idx =
+             static_cast<int64_t>(blockIdx.x) * blockDim.y + threadIdx.y;
+         idx < numel;
+         idx += static_cast<int64_t>(gridDim.x) * blockDim.y) {
+      const int64_t current_index = sorted_indices[idx];
+      if (idx != 0 && current_index == sorted_indices[idx - 1]) {
+        continue;
+      }
+
+      int64_t num_duplicates = 1;
+      while (idx + num_duplicates < numel &&
+             sorted_indices[idx + num_duplicates] == current_index) {
+        ++num_duplicates;
+      }
+
+      const int64_t weight_row = current_index * stride + z * stride_before;
+      const opmath_t scale = static_cast<opmath_t>(1.0);
+
+      if (!accumulate) {
+        const int64_t grad_row =
+            indices[idx + num_duplicates - 1] * stride + z * numel * stride;
+        grad_weight[weight_row + tidx] = static_cast<scalar_t>(
+            static_cast<opmath_t>(grad_output[grad_row + tidx]) * scale);
+      } else {
+        opmath_t gradient = static_cast<opmath_t>(0.0);
+        for (int64_t i = 0; i < num_duplicates; ++i) {
+          const int64_t grad_row =
+              indices[idx + i] * stride + z * numel * stride;
+          gradient +=
+              static_cast<opmath_t>(grad_output[grad_row + tidx]) * scale;
+        }
+        grad_weight[weight_row + tidx] = static_cast<scalar_t>(
+            static_cast<opmath_t>(grad_weight[weight_row + tidx]) + gradient);
+      }
+    }
+  }
+}
+
 template <typename T, typename IndexT>
 void IndexPutWithSortKernel(const GPUContext& dev_ctx,
-                            const DenseTensor& input,
                             const DenseTensor& value,
                             const std::vector<const DenseTensor*>& indices,
-                            const std::vector<int64_t>& input_dims,
-                            const std::vector<int64_t>& input_strides,
-                            const std::vector<int64_t>& index_dims,
-                            const std::vector<int64_t>& index_strides,
-                            const int64_t slice_offset,
+                            const SortedPathLayout& layout,
                             const bool accumulate,
                             DenseTensor* output) {
   DenseTensor& self = *output;
 
-  if (indices.size() > static_cast<size_t>(self.dims().size())) {
+  if (indices.size() > layout.view_dims.size()) {
     PADDLE_THROW(common::errors::InvalidArgument(
         "Too many indices for tensor of dimension %d (got %d).",
-        self.dims().size(),
+        layout.view_dims.size(),
         indices.size()));
   }
 
-  const bool unsafe = true;
   const bool self_contiguous = self.meta().is_contiguous();
-  auto self_ =
+  // Must be spelled with an explicit type rather than `auto`: `auto` would give
+  // this variable a dependent type, and `self_.data<T>()` would then be parsed
+  // as `(self_.data) < T > (...)`, i.e. a comparison against a type name.
+  DenseTensor self_ =
       self_contiguous ? self : phi::Contiguous<T, GPUContext>(dev_ctx, self);
-  DenseTensor linearIndex, src, expandedValue = value;
-  int64_t nElemBefore, strideBefore, sliceSize;
-  std::vector<int64_t> inversePerm;
-  std::tie(
-      linearIndex, src, nElemBefore, strideBefore, sliceSize, inversePerm) =
-      funcs::makeLinearIndex<T>(dev_ctx, self_, indices, !unsafe);
+  DenseTensor expanded_value = value;
 
-  int64_t num_indices = linearIndex.numel();
+  // Reinterpret x_grad with the shape of the indexed view so that the linear
+  // index is built against the axes the indices actually address. This is a
+  // pure relabelling: the two agree elementwise and both are contiguous.
+  DenseTensor view_src = self_;
+  auto view_meta = self_.meta();
+  view_meta.dims = make_ddim(layout.view_dims);
+  view_meta.strides = DenseTensorMeta::calc_strides(view_meta.dims);
+  view_src.set_meta(view_meta);
 
-  if (expandedValue.numel() < num_indices * nElemBefore * sliceSize) {
-    auto expanded_size = vectorize<int64_t>(expandedValue.dims());
-    auto size1 = vectorize<int64_t>(expandedValue.dims());
-    auto size2 = vectorize<int64_t>(linearIndex.dims());
+  std::vector<DenseTensor> axis_indices(layout.view_dims.size());
+  for (size_t i = 0; i < indices.size(); ++i) {
+    axis_indices[layout.dims_before + i] = *indices[i];
+  }
+
+  auto [linear_index, n_elem_before, stride_before, slice_size] =
+      funcs::computeLinearIndex(dev_ctx, view_src, axis_indices, false);
+
+  int64_t num_indices = linear_index.numel();
+
+  if (expanded_value.numel() < num_indices * n_elem_before * slice_size) {
+    auto expanded_size = vectorize<int64_t>(expanded_value.dims());
+    auto size1 = vectorize<int64_t>(expanded_value.dims());
+    auto size2 = vectorize<int64_t>(linear_index.dims());
     if (funcs::are_expandable(size1, size2)) {
       expanded_size = funcs::infer_size_dimvector(size1, size2);
     }
-    if (nElemBefore > 1) {
-      expanded_size.insert(expanded_size.begin(), nElemBefore);
+    if (n_elem_before > 1) {
+      expanded_size.insert(expanded_size.begin(), n_elem_before);
     }
-    if (sliceSize > 1) {
-      expanded_size.insert(expanded_size.end(), sliceSize);
+    if (slice_size > 1) {
+      expanded_size.insert(expanded_size.end(), slice_size);
     }
 
     DenseTensor expanded_tensor;
     phi::ExpandKernel<T, GPUContext>(
-        dev_ctx, expandedValue, IntArray(expanded_size), &expanded_tensor);
-    expandedValue = expanded_tensor;
+        dev_ctx, expanded_value, IntArray(expanded_size), &expanded_tensor);
+    expanded_value = expanded_tensor;
   }
-  if (!expandedValue.meta().is_contiguous()) {
-    expandedValue = phi::Contiguous<T, GPUContext>(dev_ctx, expandedValue);
+  if (!expanded_value.meta().is_contiguous()) {
+    expanded_value = phi::Contiguous<T, GPUContext>(dev_ctx, expanded_value);
   }
 
-  if (num_indices > 0 && sliceSize > 0) {
-    const bool permuted = !src.meta().is_contiguous();
-    DenseTensor src_ =
-        permuted ? phi::Contiguous<T, GPUContext>(dev_ctx, src) : src;
-    linearIndex = phi::Reshape<IndexT, GPUContext>(dev_ctx, linearIndex, {-1});
+  if (num_indices > 0 && slice_size > 0) {
+    linear_index =
+        phi::Reshape<IndexT, GPUContext>(dev_ctx, linear_index, {-1});
 
     DenseTensor sorted_indices;
-    sorted_indices.Resize(linearIndex.dims());
+    sorted_indices.Resize(linear_index.dims());
     dev_ctx.Alloc<IndexT>(&sorted_indices);
     DenseTensor orig_indices;
-    orig_indices.Resize(linearIndex.dims());
+    orig_indices.Resize(linear_index.dims());
     dev_ctx.Alloc<IndexT>(&orig_indices);
 
     auto stream = dev_ctx.stream();
 
-    auto shape = IntArray(vectorize<int64_t>(linearIndex.dims()));
+    auto shape = IntArray(vectorize<int64_t>(linear_index.dims()));
     auto divisor =
-        phi::Full<IndexT, GPUContext>(dev_ctx, shape, Scalar(sliceSize));
+        phi::Full<IndexT, GPUContext>(dev_ctx, shape, Scalar(slice_size));
 
-    DenseTensor linearIndex_d =
-        phi::FloorDivide<IndexT, GPUContext>(dev_ctx, linearIndex, divisor);
+    DenseTensor linear_index_d =
+        phi::FloorDivide<IndexT, GPUContext>(dev_ctx, linear_index, divisor);
 
     DenseTensor range;
     range.Resize({num_indices});
     dev_ctx.Alloc<IndexT>(&range);
     phi::ArangeKernel<IndexT>(
         dev_ctx, Scalar(0), Scalar(num_indices), Scalar(1), &range);
-    int64_t nbits = funcs::GetNumBits(funcs::LargestIndex(self_) / sliceSize);
+    int64_t nbits = funcs::GetNumBits(funcs::LargestIndex(self_) / slice_size);
 
     funcs::RadixSortPairs<IndexT, IndexT>(dev_ctx,
-                                          linearIndex_d.data<IndexT>(),
+                                          linear_index_d.data<IndexT>(),
                                           sorted_indices.data<IndexT>(),
                                           range.data<IndexT>(),
                                           orig_indices.data<IndexT>(),
@@ -303,49 +386,49 @@ void IndexPutWithSortKernel(const GPUContext& dev_ctx,
         std::min(static_cast<int64_t>(max_grid_size[0]),
                  (num_indices + INDICES_PER_BLOCK - 1) / INDICES_PER_BLOCK),
         std::min(static_cast<int64_t>(max_grid_size[1]),
-                 (sliceSize + kIndexPutWarpSize * UNROLL - 1) /
+                 (slice_size + kIndexPutWarpSize * UNROLL - 1) /
                      (kIndexPutWarpSize * UNROLL)),
         std::min(std::max(static_cast<int64_t>(1),
-                          static_cast<int64_t>(nElemBefore)),
+                          static_cast<int64_t>(n_elem_before)),
                  static_cast<int64_t>(max_grid_size[2])));
     dim3 block(kIndexPutWarpSize, INDICES_PER_BLOCK);
 
-    if (sliceSize == 1) {
+    if (slice_size == 1) {
       IndexingBackwardKernelStride1<T>
           <<<grid, block, 0, stream>>>(sorted_indices.data<IndexT>(),
                                        orig_indices.data<IndexT>(),
-                                       expandedValue.data<T>(),
-                                       src_.data<T>(),
+                                       expanded_value.data<T>(),
+                                       self_.data<T>(),
                                        num_indices,
-                                       sliceSize,
-                                       strideBefore,
-                                       nElemBefore,
+                                       slice_size,
+                                       stride_before,
+                                       n_elem_before,
+                                       accumulate);
+    } else if (slice_size <= kIndexPutWarpSize) {
+      IndexingBackwardKernelSmallStride<T>
+          <<<grid, block, 0, stream>>>(sorted_indices.data<IndexT>(),
+                                       orig_indices.data<IndexT>(),
+                                       expanded_value.data<T>(),
+                                       self_.data<T>(),
+                                       num_indices,
+                                       slice_size,
+                                       stride_before,
+                                       n_elem_before,
                                        accumulate);
     } else {
       IndexingBackwardKernel<T, UNROLL>
           <<<grid, block, 0, stream>>>(sorted_indices.data<IndexT>(),
                                        orig_indices.data<IndexT>(),
-                                       expandedValue.data<T>(),
-                                       src_.data<T>(),
+                                       expanded_value.data<T>(),
+                                       self_.data<T>(),
                                        num_indices,
-                                       sliceSize,
-                                       strideBefore,
-                                       nElemBefore,
+                                       slice_size,
+                                       stride_before,
+                                       n_elem_before,
                                        accumulate);
     }
 
-    if (permuted) {
-      DenseTensor transposed_src;
-      std::vector<int> inversePerm_int(inversePerm.size());
-      std::transform(inversePerm.begin(),
-                     inversePerm.end(),
-                     inversePerm_int.begin(),
-                     [](int64_t x) { return static_cast<int>(x); });
-
-      phi::Transpose<T, GPUContext>(
-          dev_ctx, src_, inversePerm_int, &transposed_src);
-      phi::Copy(dev_ctx, transposed_src, dev_ctx.GetPlace(), false, output);
-    } else if (!self_contiguous) {
+    if (!self_contiguous) {
       phi::Copy(dev_ctx, self_, dev_ctx.GetPlace(), false, output);
     }
   }

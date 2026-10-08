@@ -1725,15 +1725,18 @@ static PyObject* tensor__getitem_dygraph(TensorObject* self,
 
   auto tensor = self->tensor;
   const int rank = tensor.shape().size();
+  const int index_size = PyTuple_GET_SIZE(index_ptr);
   std::vector<int64_t> slice_starts, slice_ends, slice_strides;
   std::vector<int64_t> slice_axes, decrease_axis, infer_flags, none_axes;
 
   bool has_advanced_index = false;
   bool use_strided_slice = false;
+  // `+ index_size` leaves room for the axes inserted by None / single-bool
+  // index items, which `estimated_dim` in ParseIndex also counts.
   std::vector<int> advanced_index_dim(
-      rank == 0 ? 1 : rank * 2,  // special case for zero dim tensor
-      -1);  // content is dim, multiply 2 is to avoid all index are None
-  std::vector<Tensor> advanced_index;  // content is index tensor
+      (rank == 0 ? 1 : rank * 2) + index_size,  // zero dim tensor: at least 1
+      -1);                                      // content is dim
+  std::vector<Tensor> advanced_index;           // content is index tensor
 
   // step1: parsing the index and recording them
   ParseIndex(tensor,
@@ -1783,7 +1786,6 @@ static PyObject* tensor__getitem_dygraph(TensorObject* self,
                                                 &trans_dim,
                                                 &out_is_view);
 
-  const int index_size = PyTuple_GET_SIZE(index_ptr);
   ApplyGetitem(index_size,
                pos_of_new_dim,
                rank_of_new_dim,
@@ -1982,10 +1984,12 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
 
   bool has_advanced_index = false;
   bool use_strided_slice = false;
+  // `+ size` leaves room for the axes inserted by None / single-bool index
+  // items, which `estimated_dim` in ParseIndex also counts.
   std::vector<int> advanced_index_dim(
-      rank == 0 ? 1 : rank * 2,  // special case for zero dim tensor
-      -1);  // content is dim, multiply 2 is to avoid all index are None
-  std::vector<Tensor> advanced_index;  // content is index tensor
+      (rank == 0 ? 1 : rank * 2) + size,  // zero dim tensor: at least 1
+      -1);                                // content is dim
+  std::vector<Tensor> advanced_index;     // content is index tensor
 
   // step1: parsing the index and recording them
   if (size != 1 || !PyBool_Check(PyTuple_GetItem(index_ptr, 0))) {

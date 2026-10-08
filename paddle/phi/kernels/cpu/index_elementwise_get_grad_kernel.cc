@@ -86,7 +86,7 @@ void CPUIndexElementwiseGetGrad(const CPUContext& dev_ctx,
                            &numel,
                            strides_vec);
   auto offset_calc =
-      funcs::CPUmake_offset_calculator_put<3>(desired_shape, strides_array);
+      funcs::MakeCPUOffsetCalculatorPut<3>(desired_shape, strides_array);
   const int64_t N = numel;
   using dtype = funcs::OpaqueType<sizeof(T)>;
   const char* in_ptr = reinterpret_cast<const char*>(value.data<T>());

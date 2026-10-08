@@ -14,7 +14,7 @@ limitations under the License. */
 #include "paddle/phi/backends/custom/custom_context.h"
 
 #include "paddle/common/exception.h"
-#include "paddle/phi/backends/context_pool.h"
+#include "paddle/common/flags.h"
 #include "paddle/phi/backends/device_guard.h"
 #include "paddle/phi/backends/device_manager.h"
 #include "paddle/phi/backends/stream.h"
@@ -22,6 +22,8 @@ limitations under the License. */
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/memory/allocation/allocator_facade.h"
 #include "unsupported/Eigen/CXX11/Tensor"
+
+COMMON_DECLARE_bool(cublas_allow_tf32);
 
 namespace phi {
 
@@ -322,7 +324,7 @@ struct CustomContext::Impl {
       }
     });
 
-    if (blas_tf32_tensor_core_handle_ && phi::AllowTF32Cublas()) {
+    if (blas_tf32_tensor_core_handle_ && FLAGS_cublas_allow_tf32) {
       std::lock_guard<std::mutex> guard(blas_tf32_mtx_);
       callback(blas_tf32_tensor_core_handle_);
     } else {

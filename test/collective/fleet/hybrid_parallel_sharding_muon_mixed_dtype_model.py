@@ -217,6 +217,7 @@ class TestMuonMixedDtypePartition(unittest.TestCase):
         sharding_configs = strategy.hybrid_configs["sharding_configs"]
         sharding_configs.accumulate_steps = 1
         sharding_configs.comm_buffer_size_MB = COMM_BUFFER_SIZE_MB
+        sharding_configs.machine_balanced_2d_partition = True
 
         fleet.init(is_collective=True, strategy=strategy)
 

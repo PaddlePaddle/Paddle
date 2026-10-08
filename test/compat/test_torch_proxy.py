@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import importlib
 import pathlib
 import sys
 import unittest
@@ -125,6 +126,91 @@ class TestTorchProxyLocalEnabledModule(unittest.TestCase):
         paddle.compat.proxy.TORCH_PROXY_FINDER._globally_enabled = False
         paddle.compat.proxy.TORCH_PROXY_FINDER._local_enabled_scope = set()
         paddle.compat.disable_torch_proxy()
+
+
+class TestTorchProxySpecLookupReentrancy(unittest.TestCase):
+    """A name in the enabled scope must be resolved by a single lookup.
+
+    ``_find_spec_for_specific_module`` looks up the real spec with
+    ``importlib.util.find_spec`` while the proxy is disabled, which is what is
+    meant to keep the finder out of its own lookup. That only holds while the
+    finder is registered once: ``enable_torch_proxy`` appends it to
+    ``sys.meta_path`` unconditionally, so nested guards leave duplicates behind,
+    while ``disable_torch_proxy`` drops a single occurrence. With a duplicate
+    left in place the lookup re-enters the finder for the very same name and
+    starts over, and a name that has no spec at all never converges, so the
+    lookups fan out -- each one sweeping all of ``sys.modules`` to toggle the
+    proxy.
+    """
+
+    PACKAGE = "torch_proxy_local_enabled_package"
+
+    def _forget_package(self):
+        for name in list(sys.modules):
+            if name == self.PACKAGE or name.startswith(f"{self.PACKAGE}."):
+                del sys.modules[name]
+
+    def _count_lookups(self, name, importer):
+        finder = paddle.compat.proxy.TORCH_PROXY_FINDER
+        finder_cls = type(finder)
+        original = finder_cls._find_spec_for_specific_module
+        lookups = []
+
+        def counting(self_, fullname, *args, **kwargs):
+            lookups.append(fullname)
+            return original(self_, fullname, *args, **kwargs)
+
+        finder_cls._find_spec_for_specific_module = counting
+        try:
+            with paddle.compat.use_torch_proxy_guard(scope=self.PACKAGE):
+                # The duplicate registration nested guards leave behind. Without
+                # it, disabling the proxy really does take the finder out of the
+                # lookup and nothing can fan out.
+                sys.meta_path.insert(0, finder)
+                registrations = sys.meta_path.count(finder)
+                try:
+                    importer()
+                finally:
+                    sys.meta_path.remove(finder)
+        finally:
+            finder_cls._find_spec_for_specific_module = original
+        return lookups.count(name), registrations
+
+    def test_missing_submodule_is_looked_up_once_per_registration(self):
+        missing = f"{self.PACKAGE}.no_such_submodule"
+
+        def importer():
+            with self.assertRaises(ModuleNotFoundError):
+                importlib.import_module(missing)
+
+        lookups, registrations = self._count_lookups(missing, importer)
+        # Every registered copy of the finder is asked once and none of them
+        # restarts the resolution. Without the reentrancy guard the lookups
+        # compound instead: 2 registrations were measured to cost 4 lookups,
+        # 3 cost 15 and 4 cost 64.
+        self.assertEqual(lookups, registrations)
+
+    def test_existing_submodule_is_looked_up_once_and_still_proxied(self):
+        name = f"{self.PACKAGE}.submodule"
+        imported = {}
+
+        def importer():
+            self._forget_package()
+            imported["module"] = importlib.import_module(name)
+
+        try:
+            lookups, _ = self._count_lookups(name, importer)
+            # The first registration resolves it, so the duplicate is never
+            # reached and the module is still loaded through the proxy loader.
+            self.assertEqual(lookups, 1)
+            module = imported["module"]
+            self.assertTrue(
+                module.__dict__.get(
+                    paddle.compat.proxy.MAGIC_ENABLED_MODULE_ATTR
+                )
+            )
+        finally:
+            self._forget_package()
 
 
 class TestTorchProxyUseMockedModule(unittest.TestCase):

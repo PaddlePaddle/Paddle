@@ -28,6 +28,7 @@
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 #include "paddle/phi/kernels/funcs/common_infer_shape_functions.h"
 #include "paddle/phi/kernels/funcs/slice_utils.h"
 #include "paddle/phi/kernels/funcs/strided_slice.h"
@@ -444,6 +445,13 @@ static void ParseIndex(const Tensor& tensor,
     } else if (slice_item == Py_None) {
       none_axes->push_back(current_dim + none_count);
       none_count++;
+      // `estimated_dim` counts the axes of the tensor produced by basic
+      // indexing, and that tensor already contains the axis inserted by this
+      // `None` (see the unsqueeze in getTensorWithBasicIndexing). Advancing it
+      // here keeps `advanced_index_dim` in the same coordinate system,
+      // otherwise a `None` placed before an advanced index would bind the index
+      // to the wrong axis.
+      estimated_dim++;
     } else if (PyBool_Check(slice_item)) {
       *has_advanced_index = true;
       none_axes->push_back(current_dim + none_count);
@@ -749,6 +757,22 @@ static std::vector<Tensor> PrepareIndices(const Tensor& tensor,
   return indices;
 }
 
+static bool HasNegativeStride(const Tensor& tensor) {
+  const auto& strides = tensor.strides();
+  for (int i = 0; i < strides.size(); ++i) {
+    if (strides[i] < 0) {
+      return true;
+    }
+  }
+  return false;
+}
+
+// Forward declaration; defined below (needs GetLocalDenseTensor). Used by the
+// bool-index stride gather to detect DistTensor inputs whose strided_slice
+// materializes a fresh buffer rather than sharing storage.
+inline static bool SharesStorageWith(const Tensor& sub_tensor,
+                                     const Tensor& tensor);
+
 static Tensor getValueForBoolTensor(const Tensor& tensor,
                                     const Tensor& self_tensor,
                                     const Tensor& bool_index,
@@ -796,7 +820,14 @@ static Tensor getValueForBoolTensor(const Tensor& tensor,
     ConvertAllInputsToDistTensor(mesh, tensor, self_tensor, bool_index);
   }
 
+  // A full-rank mask leaves no room for a negative-step basic slice, so a
+  // negatively-strided `tensor` here always means `self_tensor` is itself a
+  // reversed view (chained indexing). `masked_select` reads its input as a
+  // dense row-major buffer, so materialize the view before handing it over.
   if (bool_index.shape().size() == tensor_shape.size()) {
+    if (!tensor.is_dist_tensor() && HasNegativeStride(tensor)) {
+      return masked_select_ad_func(tensor.contiguous(), bool_index);
+    }
     return masked_select_ad_func(tensor, bool_index);
   }
 
@@ -819,18 +850,31 @@ static Tensor getValueForBoolTensor(const Tensor& tensor,
       indices_int64.push_back(indice);
     }
 
+    // `slice_offset` locates the sub-view inside `self_tensor` via
+    // `self_tensor.data() + slice_offset`, which is only sound when `tensor`
+    // (the strided_slice result) shares `self_tensor`'s storage. DistTensor
+    // inputs materialize strided_slice into a fresh buffer, so gather from that
+    // materialized tensor with a zero offset instead (`AdvancedIndex` derives
+    // `src_sizes`/`src_strides` from it).
+    Tensor gather_base = self_tensor;
+    int64_t gather_offset = slice_offset;
+    if (!SharesStorageWith(tensor, self_tensor)) {
+      gather_base = tensor;
+      gather_offset = 0;
+    }
+
     // AMP Logic
     if (egr::Controller::Instance().GetAMPLevel() !=
         paddle::imperative::AmpLevel::O0) {
       auto op_name = phi::TransToFluidOpName("index_elementwise_get");
       paddle::small_vector<std::vector<Tensor>, egr::kSlotSmallVectorSize>
-          amp_tensors_vector = {{self_tensor}};
+          amp_tensors_vector = {{gather_base}};
 
       auto amp_dst_dtype =
           paddle::imperative::GetAmpDestDtype(op_name, amp_tensors_vector);
 
       auto new_self_tensor = paddle::imperative::AmpAutoCast(
-          "self_tensor", self_tensor, amp_dst_dtype, op_name);
+          "self_tensor", gather_base, amp_dst_dtype, op_name);
       auto new_tensor = paddle::imperative::AmpAutoCast(
           "tensor", tensor, amp_dst_dtype, op_name);
 
@@ -849,7 +893,7 @@ static Tensor getValueForBoolTensor(const Tensor& tensor,
                                              ad.src_strides,
                                              ad.indexed_sizes,
                                              ad.indexed_strides,
-                                             slice_offset,
+                                             gather_offset,
                                              accumulate,
                                              is_combined);
       }
@@ -859,20 +903,27 @@ static Tensor getValueForBoolTensor(const Tensor& tensor,
     const bool is_combined = false;
     const bool accumulate = false;
 
-    return index_elementwise_get_ad_func(self_tensor,
+    return index_elementwise_get_ad_func(gather_base,
                                          ad.indices,
                                          ad.src_sizes,
                                          ad.src_strides,
                                          ad.indexed_sizes,
                                          ad.indexed_strides,
-                                         slice_offset,
+                                         gather_offset,
                                          accumulate,
                                          is_combined);
   } else {
-    if (bool_index.shape().size() == 1)
-      return gather_ad_func(tensor, bool_2_idx);
+    // Same as the masked_select early return above: this fallback reads the
+    // tensor as a dense row-major buffer, so materialize a reversed view.
+    Tensor dense_tensor = tensor;
+    if (!dense_tensor.is_dist_tensor() && HasNegativeStride(dense_tensor)) {
+      dense_tensor = dense_tensor.contiguous();
+    }
 
-    return gather_nd_ad_func(tensor, bool_2_idx);
+    if (bool_index.shape().size() == 1)
+      return gather_ad_func(dense_tensor, bool_2_idx);
+
+    return gather_nd_ad_func(dense_tensor, bool_2_idx);
   }
 }
 
@@ -1011,6 +1062,30 @@ static Tensor dealWithValues(const Tensor& tensor,
   return value_tensor;
 }
 
+// Return the local DenseTensor backing `t` (the value of a DistTensor, or
+// the tensor itself for dense inputs).
+inline static const phi::DenseTensor* GetLocalDenseTensor(const Tensor& t) {
+  if (t.is_dist_tensor()) {
+    return &(static_cast<const phi::distributed::DistTensor*>(t.impl().get())
+                 ->value());
+  }
+  return static_cast<const phi::DenseTensor*>(t.impl().get());
+}
+
+// Whether `sub_tensor` is a view backed by the same allocation as `tensor`.
+// The stride-kernel gather locates its input via
+// `tensor.data() + (sub_tensor.data() - tensor.data())`, which is only sound
+// when both tensors share storage. Dense strided_slice results are views
+// sharing the input holder, but DistTensor inputs materialize strided_slice
+// into a fresh buffer, so they must be gathered directly instead.
+inline static bool SharesStorageWith(const Tensor& sub_tensor,
+                                     const Tensor& tensor) {
+  const phi::DenseTensor* sub_dense = GetLocalDenseTensor(sub_tensor);
+  const phi::DenseTensor* tensor_dense = GetLocalDenseTensor(tensor);
+  return sub_dense != nullptr && tensor_dense != nullptr &&
+         sub_dense->Holder() == tensor_dense->Holder();
+}
+
 static void DealWithIndex(const int pos_of_new_dim,
                           int64_t* slice_offset,
                           std::vector<Tensor>* transed_index,
@@ -1025,9 +1100,21 @@ static void DealWithIndex(const int pos_of_new_dim,
          static_cast<size_t>(transed_sub_tensor->dims().size())) {
     transed_index->emplace_back(Tensor());
   }
-  *slice_offset =
-      static_cast<int64_t>(reinterpret_cast<char*>(sub_tensor->data()) -
-                           reinterpret_cast<char*>(tensor->data()));
+  // `sub_tensor` is located inside `tensor`'s storage via the byte distance
+  // `sub_tensor.data() - tensor.data()`. That pointer subtraction is only
+  // defined when both point into the same allocation, which holds when
+  // strided_slice returns a storage-sharing view. DistTensor inputs
+  // materialize strided_slice into a fresh buffer, so guard the subtraction
+  // itself: compute the offset only when the storage is shared, otherwise use
+  // 0 (getitem gathers from the materialized `transed_sub_tensor`; setitem
+  // callers refuse below).
+  if (SharesStorageWith(*sub_tensor, *tensor)) {
+    *slice_offset =
+        static_cast<int64_t>(reinterpret_cast<char*>(sub_tensor->data()) -
+                             reinterpret_cast<char*>(tensor->data()));
+  } else {
+    *slice_offset = 0;
+  }
 
   for (auto& indice : *transed_index) {
     if (indice.defined() && indice.dtype() == paddle::DataType::INT32) {
@@ -1074,6 +1161,18 @@ static void DispatchSetitemKernel(const int pos_of_new_dim,
     } else {
       if (*out_is_view) {
         mask_tensor = expand_inplace(transed_sub_tensor, &mask_tensor);
+        // The in-place put writes back through `tensor.data() + slice_offset`,
+        // which only reaches the original storage when the view shares it.
+        // DistTensor inputs materialize the view into a fresh buffer, so the
+        // write would be lost; refuse before computing the (cross-allocation,
+        // otherwise UB) offset instead of silently corrupting memory.
+        PADDLE_ENFORCE_EQ(
+            SharesStorageWith(*transed_sub_tensor, *tensor),
+            true,
+            common::errors::Unimplemented(
+                "Strided in-place index assignment (setitem) is not supported "
+                "when the indexed view does not share storage with the source "
+                "tensor (e.g. DistTensor inputs)."));
         int64_t slice_offset = static_cast<int64_t>(
             reinterpret_cast<char*>(transed_sub_tensor->data()) -
             reinterpret_cast<char*>(tensor->data()));
@@ -1113,6 +1212,19 @@ static void DispatchSetitemKernel(const int pos_of_new_dim,
                     transed_sub_tensor,
                     &transed_index_int64);
 
+      // `slice_offset` (from DealWithIndex) writes back through
+      // `tensor.data() + slice_offset`, which only reaches the original
+      // storage when `sub_tensor` shares it. DistTensor inputs materialize
+      // strided_slice into a fresh buffer, so the write would be lost; refuse
+      // instead of silently corrupting memory.
+      PADDLE_ENFORCE_EQ(
+          SharesStorageWith(*sub_tensor, *tensor),
+          true,
+          common::errors::Unimplemented(
+              "Strided in-place index assignment (setitem) is not supported "
+              "when the indexed view does not share storage with the source "
+              "tensor (e.g. DistTensor inputs)."));
+
       AdvancedIndex ad =
           AdvancedIndex(*transed_sub_tensor, transed_index_int64);
       PADDLE_ENFORCE_EQ(
@@ -1150,6 +1262,17 @@ static void DispatchSetitemKernel(const int pos_of_new_dim,
                     sub_tensor,
                     transed_sub_tensor,
                     &transed_index_int64);
+
+      // See the guard above: refuse strided in-place setitem when the indexed
+      // view does not share storage with the source tensor (e.g. DistTensor
+      // inputs materialize strided_slice into a fresh buffer).
+      PADDLE_ENFORCE_EQ(
+          SharesStorageWith(*sub_tensor, *tensor),
+          true,
+          common::errors::Unimplemented(
+              "Strided in-place index assignment (setitem) is not supported "
+              "when the indexed view does not share storage with the source "
+              "tensor (e.g. DistTensor inputs)."));
 
       AdvancedIndex ad =
           AdvancedIndex(*transed_sub_tensor, transed_index_int64);
@@ -1302,9 +1425,16 @@ static void ApplyGetitem(const int index_size,
   if (transed_index->size() == 1 &&
       (*transed_index)[0].dtype() == DataType::BOOL) {
     // get value for bool tensor
-    const int64_t slice_offset =
-        reinterpret_cast<const char*>(transed_tensor->data()) -
-        reinterpret_cast<const char*>(self_tensor->data());
+    // `slice_offset` locates `transed_tensor` inside `self_tensor`'s storage.
+    // The pointer subtraction is only defined when they share an allocation
+    // (dense strided_slice returns a view); DistTensor inputs materialize a
+    // fresh buffer, so compute the offset only when shared and otherwise pass
+    // 0 (getValueForBoolTensor then gathers from the materialized view).
+    int64_t slice_offset = 0;
+    if (SharesStorageWith(*transed_tensor, *self_tensor)) {
+      slice_offset = reinterpret_cast<const char*>(transed_tensor->data()) -
+                     reinterpret_cast<const char*>(self_tensor->data());
+    }
     *out = getValueForBoolTensor(*transed_tensor,
                                  (*self_tensor),
                                  (*transed_index)[0],
@@ -1348,18 +1478,30 @@ static void ApplyGetitem(const int index_size,
                     transed_tensor,
                     &transed_index_int64);
 
+      // `slice_offset` assumes `sub_tensor` is a view of `tensor` sharing
+      // its storage. When they are backed by different allocations (e.g.
+      // DistTensor inputs, for which strided_slice materializes a fresh
+      // buffer instead of returning a view), gather from the materialized
+      // tensor itself with a zero offset, since `AdvancedIndex` derives
+      // `src_sizes`/`src_strides` from it.
+      Tensor gather_base = *self_tensor;
+      if (!SharesStorageWith(*sub_tensor, *tensor)) {
+        gather_base = *transed_tensor;
+        slice_offset = 0;
+      }
+
       // AMP Logic
       if (egr::Controller::Instance().GetAMPLevel() !=
           paddle::imperative::AmpLevel::O0) {
         auto op_name = phi::TransToFluidOpName("index_elementwise_get");
         paddle::small_vector<std::vector<Tensor>, egr::kSlotSmallVectorSize>
-            amp_tensors_vector = {{*self_tensor}};
+            amp_tensors_vector = {{gather_base}};
 
         auto amp_dst_dtype =
             paddle::imperative::GetAmpDestDtype(op_name, amp_tensors_vector);
 
         auto new_self_tensor = paddle::imperative::AmpAutoCast(
-            "self_tensor", *self_tensor, amp_dst_dtype, op_name);
+            "self_tensor", gather_base, amp_dst_dtype, op_name);
         auto new_transed_tensor = paddle::imperative::AmpAutoCast(
             "transed_tensor", *transed_tensor, amp_dst_dtype, op_name);
 
@@ -1394,7 +1536,7 @@ static void ApplyGetitem(const int index_size,
       //   performance.
       const bool is_combined = (index_size == 1) ? false : true;
       const bool accumulate = true;
-      *out = index_elementwise_get_ad_func(*self_tensor,
+      *out = index_elementwise_get_ad_func(gather_base,
                                            ad.indices,
                                            ad.src_sizes,
                                            ad.src_strides,
@@ -1415,13 +1557,20 @@ static void ApplyGetitem(const int index_size,
             unsqueeze_ad_func((*transed_index)[0], {-1});
       }
 
+      // Same as the masked_select early return above: `gather_nd` reads its
+      // input as a dense row-major buffer, so materialize a reversed view.
+      Tensor dense_tensor = *transed_tensor;
+      if (!dense_tensor.is_dist_tensor() && HasNegativeStride(dense_tensor)) {
+        dense_tensor = dense_tensor.contiguous();
+      }
+
       const phi::distributed::ProcessMesh* mesh = nullptr;
       if (InputsContainDistTensor(
-              &mesh, *transed_tensor, transed_advanced_index_tensor)) {
+              &mesh, dense_tensor, transed_advanced_index_tensor)) {
         ConvertAllInputsToDistTensor(
-            mesh, *transed_tensor, transed_advanced_index_tensor);
+            mesh, dense_tensor, transed_advanced_index_tensor);
       }
-      *out = gather_nd_ad_func(*transed_tensor, transed_advanced_index_tensor);
+      *out = gather_nd_ad_func(dense_tensor, transed_advanced_index_tensor);
       handle_transpose(*out);
       return;
     }
