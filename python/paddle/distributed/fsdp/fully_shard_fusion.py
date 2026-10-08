@@ -753,9 +753,7 @@ def _find_exposed_param_names(outputs, own_param_names, _depth=0):
         return set()
 
     if isinstance(outputs, paddle.Tensor):
-        return (
-            {outputs.name} if outputs.name in own_param_names else set()
-        )
+        return {outputs.name} if outputs.name in own_param_names else set()
 
     # Outputs are flat in practice; the bound keeps a pathological nesting from
     # turning a per-forward hook into a deep walk.
@@ -771,9 +769,7 @@ def _find_exposed_param_names(outputs, own_param_names, _depth=0):
 
     found = set()
     for value in values:
-        found |= _find_exposed_param_names(
-            value, own_param_names, _depth + 1
-        )
+        found |= _find_exposed_param_names(value, own_param_names, _depth + 1)
     return found
 
 
