@@ -331,13 +331,15 @@ Library& Library::def(const std::string& schema) & {
   return *this;
 }
 
-void Library::print_info() const {
+void Library::print_info() const { print_info(std::cout); }
+
+void Library::print_info(std::ostream& out) const {
   std::ostringstream oss;
   oss << "Library Info: " << kind_to_string(kind_) << ", namespace=" << ns_;
   if (dispatch_key_) {
     oss << ", dispatch_key=" << c10::toString(*dispatch_key_);
   }
-  std::cout << oss.str() << std::endl;
+  out << oss.str() << std::endl;
 }
 
 }  // namespace torch

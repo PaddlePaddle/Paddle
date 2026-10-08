@@ -14,6 +14,7 @@ limitations under the License. */
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/common/type_traits.h"
 #include "paddle/phi/kernels/funcs/eigen/extensions.h"
 
 namespace paddle {
@@ -135,7 +136,7 @@ TEST(float16, lod_tensor_cpu) {
 TEST(float16, floating) {
   // compile time assert.
   PADDLE_ENFORCE_EQ(
-      std::is_floating_point<float16>::value,
+      phi::dtype::is_floating_point<float16>::value,
       true,
       common::errors::Unavailable("The float16 support in CPU failed."));
 }

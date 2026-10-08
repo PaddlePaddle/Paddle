@@ -933,6 +933,7 @@ class PADDLE_API Library {
 
   // Print current library info
   void print_info() const;
+  void print_info(std::ostream& out) const;
 
  private:
   Kind kind_;

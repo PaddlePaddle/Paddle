@@ -20,6 +20,7 @@
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/place.h"
+#include "paddle/phi/common/type_traits.h"
 #include "paddle/phi/core/dense_tensor.h"
 
 #include "paddle/phi/kernels/funcs/isfinite_functor.h"
@@ -36,7 +37,7 @@ struct is_float_or_double
 template <typename T>
 struct is_other_float
     : std::integral_constant<bool,
-                             std::is_floating_point<T>::value &&
+                             phi::dtype::is_floating_point<T>::value &&
                                  !is_float_or_double<T>::value> {};
 
 // check if complex type
@@ -69,7 +70,7 @@ template <typename T>
 struct IsfiniteFunctor<
     CPUContext,
     T,
-    typename std::enable_if<!std::is_floating_point<T>::value &&
+    typename std::enable_if<!dtype::is_floating_point<T>::value &&
                             !is_complex64_or_complex128<T>::value>::type> {
   void operator()(const CPUContext& dev_ctx,
                   const DenseTensor& in,
@@ -148,7 +149,7 @@ template <typename T>
 struct IsnanFunctor<
     CPUContext,
     T,
-    typename std::enable_if<!std::is_floating_point<T>::value &&
+    typename std::enable_if<!dtype::is_floating_point<T>::value &&
                             !is_complex64_or_complex128<T>::value>::type> {
   void operator()(const CPUContext& dev_ctx,
                   const DenseTensor& in,
@@ -226,7 +227,7 @@ template <typename T>
 struct IsinfFunctor<
     CPUContext,
     T,
-    typename std::enable_if<!std::is_floating_point<T>::value &&
+    typename std::enable_if<!dtype::is_floating_point<T>::value &&
                             !is_complex64_or_complex128<T>::value>::type> {
   void operator()(const CPUContext& dev_ctx,
                   const DenseTensor& in,
