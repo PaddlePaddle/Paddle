@@ -4998,8 +4998,13 @@ void SplitInferMeta(const MetaTensor& x,
 
   auto sections_data = sections.GetData();
   // fill out dims with -1
+  // Only route to the degenerate (no-validation) branch for a *dynamic* unknown
+  // split-axis size (-1). A statically-known 0 must still fall through to the
+  // `sum_of_section == input_axis_dim` check below, so illegal sections (that
+  // do not sum to the empty axis size) are rejected the same way torch does,
+  // instead of being silently accepted.
   if ((sections.FromTensor() && !config.is_runtime) || axis_value == -1 ||
-      (axis_value >= 0 && x.dims().at(axis_value) <= 0)) {
+      (axis_value >= 0 && x.dims().at(axis_value) < 0)) {
     std::vector<DDim> out_dims;
     if ((sections.FromTensor() && !config.is_runtime) ||
         axis_value == -1) {  // NOLINT
