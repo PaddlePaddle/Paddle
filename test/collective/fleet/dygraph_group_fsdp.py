@@ -395,57 +395,59 @@ def gather_muon_params(fsdp_context):
 
 
 def run_muon_shard():
-    """Muon params sharded on matrix boundaries must match the replicated path.
+    """Matrix-aligned Muon sharding must match the dense element-shard path.
 
     Reuses the topology ``run_moe`` already initialized. These params are not
     tagged as experts, so their FSDP group is the sharding group and spans
     every rank, which is what makes a matrix-aligned shard possible on 2 cards.
 
-    One step, compared bitwise: both paths start from the same weights, so an
-    exact match pins down the shard mapping, the replicated-grad all_reduce and
-    the per-matrix Newton-Schulz. Running longer would not be bitwise
-    comparable -- the sharded buffer is all-gathered before each forward, and
-    the resulting GEMM layout moves the loss by ~1e-5 per step even when the
-    weights are identical.
+    Both must reach the same weights. One step, compared bitwise: they start
+    from the same weights, so an exact match pins down the shard mapping, the
+    grad reduction and the owner gather/scatter. Running longer would not be
+    bitwise comparable -- the sharded buffer is all-gathered before each
+    forward, and the resulting GEMM layout moves the loss by ~1e-5 per step
+    even when the weights are identical.
     """
     paddle.seed(2026)
-    sharded_model = MuonModel()
+    matrix_model = MuonModel()
     paddle.seed(2026)
-    replicated_model = MuonModel()
-    replicated_model.set_state_dict(sharded_model.state_dict())
-    sharded_info = tag_muon_params(sharded_model)
-    replicated_info = tag_muon_params(replicated_model)
+    dense_model = MuonModel()
+    dense_model.set_state_dict(matrix_model.state_dict())
+    matrix_info = tag_muon_params(matrix_model)
+    dense_info = tag_muon_params(dense_model)
 
     paddle.seed(2026)
     data = [paddle.randn([TOKENS, HIDDEN]) for _ in range(MUON_STEPS)]
 
-    # Baseline: hide the shard plan so Muon groups stay replicated and take the
-    # owner-rank path. ns_per_matrix has to be passed by hand here, since only
-    # the sharded path turns it on by itself.
+    # Baseline: hide the matrix-aligned shard plan so the Muon groups fall back
+    # to the dense element-shard + owner-gather path. ns_per_matrix is passed by
+    # hand, since only the matrix-aligned path turns it on by itself.
     origin_shard_numel = fully_shard_fusion._muon_3d_shard_numel
     fully_shard_fusion._muon_3d_shard_numel = lambda *args, **kwargs: None
     try:
-        replicated_losses, replicated_ctx, _ = train_muon(
-            replicated_model, replicated_info, True, data
+        dense_losses, dense_ctx, _ = train_muon(
+            dense_model, dense_info, True, data
         )
     finally:
         fully_shard_fusion._muon_3d_shard_numel = origin_shard_numel
 
-    replicated_groups = muon_groups_of(replicated_ctx)
-    assert replicated_groups
-    for group in replicated_groups:
+    dense_groups = muon_groups_of(dense_ctx)
+    assert dense_groups
+    for group in dense_groups:
+        # Element-sharded like AdamW: no matrix granularity, an owner does the
+        # per-step gather, and the buffer is still sharded across ranks.
         assert group.muon_shard_numel is None
         assert group.muon_owner_rank is not None
-        assert not group.params_buffer.is_sharded
-    replicated_params = gather_muon_params(replicated_ctx)
+        assert group.params_buffer.is_sharded
+    dense_params = gather_muon_params(dense_ctx)
 
-    sharded_losses, sharded_ctx, sharded_opt = train_muon(
-        sharded_model, sharded_info, False, data
+    matrix_losses, matrix_ctx, matrix_opt = train_muon(
+        matrix_model, matrix_info, False, data
     )
 
-    sharded_groups = muon_groups_of(sharded_ctx)
-    assert len(sharded_groups) == len(replicated_groups)
-    for group in sharded_groups:
+    matrix_groups = muon_groups_of(matrix_ctx)
+    assert len(matrix_groups) == len(dense_groups)
+    for group in matrix_groups:
         # Every weight here is [MUON_MATS, HIDDEN, INTER] or its transpose, so
         # the shard unit is one matrix; a silent fallback leaves this None.
         assert group.muon_shard_numel == HIDDEN * INTER, (
@@ -453,20 +455,22 @@ def run_muon_shard():
         )
         assert group.params_buffer.is_sharded
         assert group.muon_owner_rank is None
-    # The sharded path must switch Newton-Schulz to per-matrix by itself.
-    assert sharded_opt._ns_per_matrix
-    sharded_params = gather_muon_params(sharded_ctx)
+    # The matrix-aligned path must switch Newton-Schulz to per-matrix by itself.
+    assert matrix_opt._ns_per_matrix
+    matrix_params = gather_muon_params(matrix_ctx)
 
-    assert sharded_losses == replicated_losses, (
+    assert matrix_losses == dense_losses, (
         f"the two paths did not start from the same weights: "
-        f"sharded={sharded_losses}, replicated={replicated_losses}"
+        f"matrix={matrix_losses}, dense={dense_losses}"
     )
-    assert sorted(sharded_params) == sorted(replicated_params)
-    for gid, expected in replicated_params.items():
+    assert sorted(matrix_params) == sorted(dense_params)
+    for gid, expected in dense_params.items():
         np.testing.assert_array_equal(
-            sharded_params[gid],
+            matrix_params[gid],
             expected,
-            err_msg=f"matrix-sharded Muon changed the update of group {gid}",
+            err_msg=(
+                f"matrix-sharded Muon diverged from the dense path, group {gid}"
+            ),
         )
 
 

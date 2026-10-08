@@ -624,6 +624,7 @@ class FSDPCommManager:
             if unit_id != self._last_backward_unit_id:
                 self._last_backward_unit_id = unit_id
                 self._flush_expert_grads_after_unit(unit_id)
+                self._release_params_after_unit(unit_id)
             # Sharded expert grad buffers bind their main_grad here rather than at
             # forward, so the full-length tmp lives only for this unit's backward.
             self._bind_sharded_expert_main_grads(params)
@@ -710,6 +711,12 @@ class FSDPCommManager:
         for group in self.buffer_manager.buffer_groups:
             params_buffer = group.params_buffer
             if params_buffer.status in (BufferState.READY, BufferState.USING):
+                for param in group.params:
+                    stop_gradient = param.stop_gradient
+                    _shape = param.shape
+                    param._clear_data()
+                    param.stop_gradient = stop_gradient
+                    param.get_tensor()._set_dims(_shape)
                 params_buffer.clear_tmp_buffer()
                 params_buffer.status = BufferState.FREED
                 if not params_buffer.is_sharded:
@@ -830,6 +837,29 @@ class FSDPCommManager:
                 continue
             if group.fsdp_unit_id > unit_id:
                 self._reduce_group_grads(group)
+
+    def _release_params_after_unit(self, unit_id):
+        if unit_id is None:
+            return
+        for group in self.buffer_manager.buffer_groups:
+            if group.fsdp_unit_id is None:
+                continue
+            if group.fsdp_unit_id <= unit_id:
+                continue
+            params_buffer = group.params_buffer
+            if not params_buffer.is_sharded:
+                continue
+            if params_buffer.status in (BufferState.READY, BufferState.USING):
+                params_buffer.status = BufferState.FREED
+                for param in group.params:
+                    stop_gradient = param.stop_gradient
+                    _shape = param.shape
+                    param._clear_data()
+                    param.stop_gradient = stop_gradient
+                    param.get_tensor()._set_dims(_shape)
+                params_buffer.clear_tmp_buffer()
+                if self.buffer_cnt_in_using > 0:
+                    self.buffer_cnt_in_using -= 1
 
     def _wait_for_grad_comm(self, queue_limit=2):
         while len(self.grad_reduce_queue) > queue_limit:
