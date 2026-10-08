@@ -31,13 +31,14 @@ def get_anchor_iter_var_names():
     #   coord.row    = n * P * Q + p * Q + q
     #   coord.column = k
     #   coord.batch  = the split-k slice index, always 0, *not* the batch
-    # so the row index has to be decomposed here. `args.P` / `args.Q` are the
-    # output spatial extents, forwarded to the epilogue functor by the template
-    # below.
+    # so the row index has to be decomposed. `n` / `p` / `q` are declared by
+    # the epilogue functor (see the template below) from the
+    # `cutlass::FastDivmod` members of `args`, which turns the decomposition
+    # into a multiply-shift.
     return [
-        "(coord.row / (args.P * args.Q))",
-        "((coord.row / args.Q) % args.P)",
-        "(coord.row % args.Q)",
+        "n",
+        "p",
+        "q",
         "coord.column",
     ]
 
@@ -253,6 +254,7 @@ class Conv2dVariadicTemplate:
         code_template = """
 // auto generated codes
 #include "kernels.h"
+#include "cutlass/fast_math.h"
 #include <vector>
 
 namespace ap {
@@ -260,11 +262,11 @@ namespace ap {
 template <typename T>
 struct VariadicEpilogueFunctor {
   struct Arguments {
-    // Extents of the output spatial dimensions. The epilogue of an implicit
-    // GEMM only knows the GEMM_M index `coord.row`, these are what let the
-    // generated statements decompose it back into (n, p, q).
-    int P;
-    int Q;
+    // The epilogue of an implicit GEMM only knows the GEMM_M index
+    // `coord.row`; `fast_pq` / `fast_q` are the precomputed reciprocals that
+    // decompose it back into (n, p, q) without an integer division.
+    cutlass::FastDivmod fast_pq;
+    cutlass::FastDivmod fast_q;
     ${AP_EPILOGUE_ARGUMENTS_FIELDS}
   };
 
@@ -272,6 +274,12 @@ struct VariadicEpilogueFunctor {
   __forceinline__ __host__ __device__
   T operator()(T x, const Arguments& args, const MatrixCoord& coord) const {
     T out;
+    // `coord.row = n * P * Q + p * Q + q`, decomposed once here so that the
+    // statements below can index with `n` / `p` / `q` directly.
+    int p_times_q_plus_q;
+    int q;
+    const int n = args.fast_pq.divmod(p_times_q_plus_q, coord.row);
+    const int p = args.fast_q.divmod(q, p_times_q_plus_q);
     ${AP_EPILOGUE_COMPUTATION_STATEMENTS}
     return out;
   }
@@ -283,8 +291,8 @@ static void RunConv2dWithVariadicKernel(const Conv2dEpilogueParams &params, ${AP
   using ElementComputeT = float;
 
   typename VariadicEpilogueFunctor<ElementComputeT>::Arguments epilogue_args;
-  epilogue_args.P = params.P;
-  epilogue_args.Q = params.Q;
+  epilogue_args.fast_pq = cutlass::FastDivmod(params.P * params.Q);
+  epilogue_args.fast_q = cutlass::FastDivmod(params.Q);
 
   ${AP_EPILOGUE_ARGUMENTS_INIT}
 
@@ -324,7 +332,11 @@ void ${kernel_name}(void* stream_ptr, ${AP_KERNEL_ARGS_DECLARE}) {
                                   std::vector<int>${dilations},
                                   ${groups});
 
+#if AP_ENABLE_AUTOTUNE
+  AP_AUTOTUNE_${output_dtype}(ap::RunConv2dWithVariadicKernel, stream_ptr, params, ${AP_KERNEL_ARGS_CALL});
+#else
   ap::RunConv2dWithVariadicKernel<ap::DefaultConfig::kConfigId>(params, ${AP_KERNEL_ARGS_CALL});
+#endif
 }
 }
   """
@@ -382,13 +394,12 @@ void ${kernel_name}(void* stream_ptr, ${AP_KERNEL_ARGS_DECLARE}) {
         )
 
         dir_name = ap.dirname(__file__)
-        # Autotune is not supported by the conv2d backend yet.
         compile_command_generator = (
-            compile_command_util.CompileCommandGenerator(enable_autotune=False)
+            compile_command_util.CompileCommandGenerator()
         )
         conv2d_source_dir = f"{dir_name}/matmul"
         compile_cmd = compile_command_generator(
-            "conv2d", conv2d_source_dir, self.library_name
+            "conv2d", conv2d_source_dir, self.library_name, True
         )
         file_ext = compile_command_generator.file_ext
 

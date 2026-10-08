@@ -67,7 +67,7 @@ class Conv2dEpilogueFusion(abstract_drr.DrrPass):
 
     def _is_supported_by_device(self):
         compile_command_generator = (
-            compile_command_util.CompileCommandGenerator(enable_autotune=False)
+            compile_command_util.CompileCommandGenerator()
         )
         return compile_command_generator.supports("conv2d")
 

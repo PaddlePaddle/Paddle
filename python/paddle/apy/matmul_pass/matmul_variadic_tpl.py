@@ -326,11 +326,11 @@ void ${kernel_name}(void* stream_ptr, ${AP_KERNEL_ARGS_DECLARE}) {
 
         dir_name = ap.dirname(__file__)
         compile_command_generator = (
-            compile_command_util.CompileCommandGenerator(enable_autotune=True)
+            compile_command_util.CompileCommandGenerator()
         )
         matmul_source_dir = f"{dir_name}/matmul"
         compile_cmd = compile_command_generator(
-            "matmul", matmul_source_dir, self.library_name
+            "matmul", matmul_source_dir, self.library_name, True
         )
         file_ext = compile_command_generator.file_ext
 
