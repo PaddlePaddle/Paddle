@@ -28,11 +28,11 @@ namespace phi {
 template <typename T, typename Context>
 void TruncatedGaussianRandomKernel(const Context& dev_ctx,
                                    const std::vector<int>& shape,
-                                   float mean,
-                                   float std,
+                                   double mean,
+                                   double std,
                                    int seed,
-                                   float a,
-                                   float b,
+                                   double a,
+                                   double b,
                                    DataType dtype,
                                    DenseTensor* out) {
   auto tensor = out;
@@ -43,7 +43,10 @@ void TruncatedGaussianRandomKernel(const Context& dev_ctx,
 
   std::uniform_real_distribution<MT> dist(std::numeric_limits<float>::min(),
                                           1.0);
-  TruncatedNormal<MT> truncated_normal(mean, std, a, b);
+  TruncatedNormal<MT> truncated_normal(static_cast<MT>(mean),
+                                       static_cast<MT>(std),
+                                       static_cast<MT>(a),
+                                       static_cast<MT>(b));
   int64_t size = tensor->numel();
 
   std::shared_ptr<std::mt19937_64> engine;
@@ -66,4 +69,5 @@ PD_REGISTER_KERNEL(truncated_gaussian_random,
                    phi::TruncatedGaussianRandomKernel,
                    float,
                    double,
+                   phi::float16,
                    phi::bfloat16) {}

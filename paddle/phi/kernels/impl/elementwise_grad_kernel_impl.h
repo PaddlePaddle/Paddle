@@ -202,7 +202,7 @@ struct DivGradDX<dtype::complex<T>> {
 template <typename T>
 struct DivGradDY {
   HOSTDEVICE T operator()(T x UNUSED, T y, T out, T dout) const {
-    return -dout * out / y;
+    return -dout * (out / y);
   }
 };
 
@@ -1553,6 +1553,7 @@ void ElementwisePowGradKernel(const Context& dev_ctx,
 // RemainderGradDx
 template <typename T>
 struct RemainderGradDx {
+  static constexpr bool kGradTermIsDout = true;
   HOSTDEVICE T operator()(T x, T y, T out UNUSED, T dout) const {
     // dx = dout
     return dout;

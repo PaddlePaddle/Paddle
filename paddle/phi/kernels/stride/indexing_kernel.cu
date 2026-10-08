@@ -248,16 +248,16 @@ void LaunchIndexPutKernel_V2(const Context& dev_ctx,
 
   if (is_big_tensor) {
     funcs::OffsetCalculator offset_calc =
-        funcs::make_offset_calculator<3, false, uint64_t>(iter);
+        funcs::MakeOffsetCalculator<3, false, uint64_t>(iter);
     Launch_Index_Put;
   } else {
     funcs::OffsetCalculator offset_calc =
-        funcs::make_offset_calculator<3, false, uint32_t>(iter);
+        funcs::MakeOffsetCalculator<3, false, uint32_t>(iter);
     Launch_Index_Put;
   }
 
   // funcs::OffsetCalculator offset_calc =
-  // funcs::make_offset_calculator<3>(iter);
+  // funcs::MakeOffsetCalculator<3>(iter);
 }
 
 template <typename T, typename Context>
