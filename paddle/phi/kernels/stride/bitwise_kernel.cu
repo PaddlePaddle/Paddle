@@ -43,7 +43,7 @@ namespace phi {
     if (x.numel() == 0 || y.numel() == 0) {                                   \
       zero_size = true;                                                       \
     }                                                                         \
-    if (!FLAGS_use_stride_compute_kernel) {                                   \
+    if (!FLAGS_use_stride_compute_kernel || zero_size) {                      \
       if (!x.meta().is_contiguous()) {                                        \
         x_ = Tensor2Contiguous<Context>(dev_ctx, x);                          \
       } else {                                                                \
