@@ -1,7 +1,7 @@
 name: Bot Approval Required
 
 # 合入门禁：满足以下任一条件本检查即通过（仅统计【当前 head commit】上的评审）——
-#   1) AI review 机器人 risemeup1111 或 Paddle-Bot 对当前 head commit 提交了 APPROVED 评审；或
+#   1) AI review 机器人 Paddle-Review-Bot（取代原 risemeup1111 / Paddle-Bot）对当前 head commit 提交了 APPROVED 评审；或
 #   2) APPROVERS 名单中任意一个账号对当前 head commit 提交了 APPROVED 评审。
 # PR 打开（opened）、推送新 commit（synchronize）或重开 PR（reopened）时自动复检；review 状态变化不会单独触发本 workflow，需通过这些事件重新运行；旧 commit 上的审批在 push 新提交后自动失效。
 # CI 团队成员可通过 check-bypass（skip-ci label / 评论）豁免本检查。
@@ -15,7 +15,7 @@ permissions:
 
 env:
   # AI review 机器人的 GitHub login（空格分隔）。
-  REQUIRED_BOT_LOGINS: "risemeup1111 Paddle-Bot"
+  REQUIRED_BOT_LOGINS: "Paddle-Review-Bot"
   # 机器人未 approve 时，名单中任意一个账号 approve 即可放行（空格分隔）。
   APPROVERS: "sneaxiy From00"
 
