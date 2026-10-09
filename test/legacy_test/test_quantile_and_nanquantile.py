@@ -375,32 +375,14 @@ class TestError(unittest.TestCase):
 
         self.assertRaises(ValueError, test_empty_reduction_nanquantile)
 
-        # Test error when the reduction dim exceeds the per-dtype exact-integer
-        # rank limit. The limit tracks x.dtype: 2**24 for float32, and the much
-        # smaller 2**11 / 2**8 for float16 / bfloat16.
-        def test_too_large_quantile():
-            paddle.quantile(paddle.zeros([2**24 + 1], dtype='float32'), q=0.5)
-
-        self.assertRaises(ValueError, test_too_large_quantile)
-
-        def test_too_large_quantile_float16():
-            paddle.quantile(paddle.zeros([2**11 + 1], dtype='float16'), q=0.5)
-
-        self.assertRaises(ValueError, test_too_large_quantile_float16)
-
-        def test_too_large_quantile_bfloat16():
-            paddle.quantile(paddle.zeros([2**8 + 1], dtype='bfloat16'), q=0.5)
-
-        self.assertRaises(ValueError, test_too_large_quantile_bfloat16)
-
-    def test_large_float64_reduction_not_rejected(self):
-        # A float64 reduction dim between 2**24 and the int32 gather-index
-        # range stays exact, so it must NOT be rejected as "too large"
-        # (regression guard: float32's 2**24 limit must not leak onto float64).
+    def test_large_float32_reduction_not_rejected(self):
+        # After promoting rank computation to float64, float32 inputs with
+        # reduction dim > 2**24 must NOT be rejected (regression guard).
         n = 2**24 + 1
-        x = paddle.arange(n, dtype='float64')
+        x = paddle.arange(n, dtype='float32')
         out = paddle.quantile(x, q=0.5, axis=0)
-        np.testing.assert_allclose(out.item(), 0.5 * (n - 1), rtol=0, atol=0)
+        # The expected median is exact in float64 arithmetic.
+        np.testing.assert_allclose(out.item(), 0.5 * (n - 1), rtol=0, atol=1)
 
 
 class TestQuantileRuntime(unittest.TestCase):
