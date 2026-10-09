@@ -27,6 +27,8 @@
 #include "paddle/phi/core/platform/device/gpu/gpu_info.h"
 #include "paddle/phi/core/scope_guard.h"
 
+#include "paddle/common/flags.h"
+
 namespace paddle {
 namespace memory {
 namespace allocation {
@@ -2466,6 +2468,135 @@ TEST(VMMAutoGrowthBestFitAllocatorV2, RemapUsesStaleUnmappedRange) {
   consume_tail_destination.reset();
   hidden_tail_mapping.allocation.reset();
   EXPECT_GT(allocator.Release(phi::GPUPlace()), 0UL);
+}
+
+// Regression: after an OOM-remap places a destination D@Y inside an existing
+// backing S@X (reusing the stale unmapped range left by an earlier remap that
+// moved Y away as a source), empty_cache's release path could crash with
+//   AlreadyExists: Duplicate underlying allocation base %p in VMM V2 registry.
+//
+// Here D@Y is kept ACTIVE (its tensor is not freed) when empty_cache runs.
+// An active D@Y is never a release candidate, so CollectReleasePlans excludes
+// Y from S@X's partial release plan and ReleaseFreeHandleRanges never visits
+// Y's stale source meta. Before the fix that retained meta was rebuilt into a
+// "remaining" allocation with base == Y and collided with the still-registered
+// D@Y on UnderlyingAllocationRegistry::Add. This models the single-machine
+// scenario purely through D@Y being held active, needing no event injection.
+TEST(VMMAutoGrowthBestFitAllocatorV2,
+     RemapDestActiveStaleMetaDuplicatesBackingBaseOnRelease) {
+  auto underlying = CreateUnderlyingAllocator();
+  VMMAutoGrowthBestFitAllocatorV2 allocator(
+      underlying, 256, phi::GPUPlace(), PoolType::kLarge);
+
+  const size_t handle_size = underlying->handle_size();
+
+  // Establish backing S@X = [X, X+4*hs).
+  auto large = allocator.Allocate(4UL * handle_size);
+  ASSERT_NE(large, nullptr);
+  auto* base_ptr = large->ptr();
+  large.reset();
+
+  // Carve into 4 handles: target@X, first_source@Y, second_source@X+2hs,
+  // tail_guard@X+3hs.
+  auto target = allocator.Allocate(handle_size);
+  auto first_source = allocator.Allocate(handle_size);
+  auto second_source = allocator.Allocate(handle_size);
+  auto tail_guard_source = allocator.Allocate(handle_size);
+  ASSERT_EQ(target->ptr(), base_ptr);
+  auto* first_source_ptr = first_source->ptr();
+  ASSERT_EQ(first_source_ptr,
+            reinterpret_cast<uint8_t*>(base_ptr) + handle_size);
+
+  // Step 1: remap Y away as source → stale meta at Y in S@X's layout.
+  MarkRemapSafeForTest(first_source.get());
+  first_source.reset();
+  ASSERT_EQ(allocator.RemapForAllocation(phi::GPUPlace(), handle_size + 1UL),
+            handle_size);
+
+  // Consume tail dest + block the tail so next remap reuses Y.
+  auto consume_tail_destination = allocator.Allocate(handle_size);
+  ASSERT_NE(consume_tail_destination, nullptr);
+  auto hidden_tail_mapping = underlying->AppendWithBlock(handle_size);
+  ASSERT_TRUE(hidden_tail_mapping.HasAllocation());
+
+  // Step 2: remap second_source → destination lands at Y → D@Y registered.
+  MarkRemapSafeForTest(second_source.get());
+  second_source.reset();
+  ASSERT_EQ(allocator.RemapForAllocation(phi::GPUPlace(), handle_size + 1UL),
+            0UL);
+  ASSERT_EQ(allocator.Compact(phi::GPUPlace()), handle_size);
+
+  // Confirm overlap: S@X and D@Y both in registry.
+  const auto ranges =
+      allocator.underlying_allocations_.CollectRangesByAddress();
+  bool has_sx = false, has_dy = false;
+  for (const auto& r : ranges) {
+    if (r.first == reinterpret_cast<VMMDevicePtr>(base_ptr)) has_sx = true;
+    if (r.first == reinterpret_cast<VMMDevicePtr>(first_source_ptr))
+      has_dy = true;
+  }
+  ASSERT_TRUE(has_sx);
+  ASSERT_TRUE(has_dy);
+
+  // Force D@Y's block ACTIVE to model a live tensor still holding the remap
+  // destination. In this harness the destination is never wrapped by an
+  // upper-layer allocation, so D@Y's block would otherwise be mapped-free and
+  // merge into freed X. Marking it active keeps Y an independent, non-free
+  // block so it is skipped by CollectReleasePlans (active blocks are never
+  // release candidates) — reproducing the single-machine "Y not in plan" path.
+  {
+    bool marked = false;
+    for (auto& block : allocator.all_blocks_) {
+      if (block.ptr_ == first_source_ptr) {
+        block.MarkActive();
+        marked = true;
+        break;
+      }
+    }
+    ASSERT_TRUE(marked) << "Could not locate Y block to mark active";
+  }
+
+  // Step 3: Free target@X → mapped-free, enters release plan.
+  // DO NOT free D@Y — it stays ACTIVE (the tensor is still alive).
+  // tail_guard stays active → S@X is a partial backing.
+  target.reset();
+
+  // Confirm the load-bearing precondition: Y is active (not a release
+  // candidate) while X is mapped-free, so the release plan for S@X covers
+  // ONLY X's handle range and leaves Y's stale meta out of the plan.
+  {
+    const auto* y_block = FindBlockByPtr(allocator, first_source_ptr);
+    ASSERT_NE(y_block, nullptr);
+    EXPECT_TRUE(y_block->IsActive());
+    const auto* x_block = FindBlockByPtr(allocator, base_ptr);
+    ASSERT_NE(x_block, nullptr);
+    EXPECT_TRUE(x_block->IsMappedFree());
+
+    const auto plans =
+        allocator.CollectReleasePlans(/*require_event_ready=*/true);
+    ASSERT_EQ(plans.partial_backings.size(), 1UL);
+    const auto& pb = plans.partial_backings.front();
+    ASSERT_EQ(pb.ranges.size(), 1UL);
+    // Plan range covers X only (offset 0), NOT Y (offset handle_size).
+    EXPECT_EQ(pb.ranges.front().first,
+              reinterpret_cast<VMMDevicePtr>(base_ptr));
+    EXPECT_EQ(pb.ranges.front().second, handle_size);
+  }
+
+  // Step 4: Release. Y is active → excluded from the plan → its stale meta at
+  // Y is never dropped (retain_mask stays true) → a "remaining" group is
+  // rebuilt with base == Y → Add(Y) collides with the still-registered D@Y →
+  // Duplicate crash, driven purely by D@Y being held active.
+  // Before the fix, Release rebuilt the retained stale meta at Y into a
+  // remaining backing with base == Y that collided with the still-active D@Y,
+  // throwing "Duplicate underlying allocation base". With the
+  // ReleaseFreeHandleRanges fix, the stale meta at Y (whose handle is no longer
+  // mapped at meta->base()) is pruned instead of rebuilt, so no duplicate
+  // base == Y allocation is registered and Release succeeds even with D@Y
+  // still active.
+  EXPECT_NO_THROW(allocator.Release(phi::GPUPlace()))
+      << "Release must not throw a Duplicate collision after the "
+         "ReleaseFreeHandleRanges stale-meta pruning fix.";
 }
 
 }  // namespace allocation
