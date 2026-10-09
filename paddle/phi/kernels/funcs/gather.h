@@ -246,11 +246,14 @@ void GatherV2GradFunction(const CPUContext& dev_ctx,
   if (input->numel() == 0) return;
   int axis_index = axis;
   int64_t input_index_dim_size;
-  if (input_dim.size() == out->dims().size()) {
-    input_index_dim_size = input_dim[axis_index];
-  } else {
-    // 0d index
+  // A 0-D index makes out_grad(=input) drop the `axis` dim (so `out` has one
+  // more dim than `input`); the dims after the `axis` dims shift forward,
+  // so `outer` must be counted starting from `axis`.
+  const bool scalar_index = (input_dim.size() != out->dims().size());
+  if (scalar_index) {
     input_index_dim_size = 1;
+  } else {
+    input_index_dim_size = input_dim[axis_index];
   }
 
   int64_t inner_dim_size = 1;
@@ -259,7 +262,8 @@ void GatherV2GradFunction(const CPUContext& dev_ctx,
   for (int i = 0; i < axis_index; i++) {
     inner_dim_size *= input_dim[i];
   }
-  for (int i = axis_index + 1; i < input_dim.size(); i++) {
+  for (int i = scalar_index ? axis_index : axis_index + 1; i < input_dim.size();
+       i++) {
     outer_dim_size *= input_dim[i];
   }
 
