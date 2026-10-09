@@ -16,6 +16,7 @@
 # Covered module: paddle/optimizer/muon.py
 # Uncovered lines: 135,141,232,236,238,245,307,308,344,345,346,347,348,349,351,356,414,415,417,546,547,548,549,589,602,609,657,662,684,685
 
+import functools
 import os
 import sys
 import types
@@ -1246,6 +1247,112 @@ class TestMuonHyperballStep(unittest.TestCase):
         opt.step()
         np.testing.assert_allclose(
             _fro_np(p.numpy(), axis=(-2, -1)), r0, rtol=1e-3, atol=1e-3
+        )
+
+
+def _gate_up_split(matrix, ortho_fn, intermediate_size=None):
+    """gate_up-style slice strategy: split the last axis into two halves."""
+    gate, up = paddle.split(
+        matrix, [intermediate_size, intermediate_size], axis=-1
+    )
+    return paddle.concat([ortho_fn(gate), ortho_fn(up)], axis=-1)
+
+
+class TestHyperballApplySplit(unittest.TestCase):
+    """Hyperball projects each split_concat_func slice on its own sphere"""
+
+    SLICES = (slice(0, 4), slice(4, 8))
+
+    def setUp(self):
+        rs = np.random.RandomState(0)
+        # Unequal slice norms, so a whole-matrix projection would mix them.
+        w = rs.randn(6, 8).astype('float32')
+        w[:, 4:] *= 3.0
+        self.w_np = w
+        self.u_np = rs.randn(6, 8).astype('float32')
+        self.split = functools.partial(_gate_up_split, intermediate_size=4)
+
+    def _slice_norms(self, x):
+        return [_fro_np(x[:, s]) for s in self.SLICES]
+
+    def test_matches_manual_per_slice(self):
+        w, u = paddle.to_tensor(self.w_np), paddle.to_tensor(self.u_np)
+        out = Muon._hyperball_apply(
+            w, u, 0.1, split_concat_func=self.split
+        ).numpy()
+        expected = np.concatenate(
+            [
+                Muon._hyperball_apply(w[:, s], u[:, s], 0.1).numpy()
+                for s in self.SLICES
+            ],
+            axis=1,
+        )
+        np.testing.assert_allclose(out, expected, rtol=1e-6, atol=1e-6)
+        np.testing.assert_allclose(
+            self._slice_norms(out), self._slice_norms(self.w_np), rtol=1e-5
+        )
+
+    def test_whole_matrix_drifts_slice_norms(self):
+        """Without slicing only the total norm is held, the slices drift"""
+        w, u = paddle.to_tensor(self.w_np), paddle.to_tensor(self.u_np)
+        out = Muon._hyperball_apply(w, u, 0.1).numpy()
+        self.assertFalse(
+            np.allclose(
+                self._slice_norms(out), self._slice_norms(self.w_np), rtol=1e-3
+            )
+        )
+
+    def test_muonh_step_keeps_slice_norms(self):
+        """Full MuonH step with a split param (two same-shape params, so the
+        batched Newton-Schulz path is taken): every slice keeps its norm
+        """
+        params, info = [], {}
+        for i in range(2):
+            p = paddle.create_parameter(shape=[6, 8], dtype='float32')
+            p.set_value(self.w_np * (i + 1))
+            p.grad = paddle.to_tensor(self.u_np + i)
+            info[p.name] = MuonParamInfo(
+                use_muon=True, use_hyperball=True, split_concat_func=self.split
+            )
+            params.append(p)
+        r0 = [self._slice_norms(p.numpy()) for p in params]
+        opt = Muon(
+            parameters=params,
+            learning_rate=0.05,
+            ns_steps=3,
+            ns_matmul_dtype=paddle.float32,
+            muon_param_info_map=info,
+        )
+        opt.step()
+        for i, (p, r) in enumerate(zip(params, r0)):
+            self.assertFalse(np.allclose(p.numpy(), self.w_np * (i + 1)))
+            np.testing.assert_allclose(
+                self._slice_norms(p.numpy()), r, rtol=1e-4
+            )
+
+    def test_adamh_step_keeps_slice_norms(self):
+        """Full AdamH step with a split param: every slice keeps its norm"""
+        p = paddle.create_parameter(shape=[6, 8], dtype='float32')
+        p.set_value(self.w_np)
+        p.grad = paddle.to_tensor(self.u_np)
+        info = {
+            p.name: MuonParamInfo(
+                use_muon=False, use_hyperball=True, split_concat_func=self.split
+            )
+        }
+        opt = Muon(
+            parameters=[p],
+            learning_rate=0.05,
+            weight_decay=0.0,
+            ns_matmul_dtype=paddle.float32,
+            muon_param_info_map=info,
+        )
+        opt.step()
+        self.assertFalse(np.allclose(p.numpy(), self.w_np))
+        np.testing.assert_allclose(
+            self._slice_norms(p.numpy()),
+            self._slice_norms(self.w_np),
+            rtol=1e-4,
         )
 
 
