@@ -923,28 +923,8 @@ def _compute_quantile(
                 axis += dims
             out_shape[axis] = 1
 
-    # `x.shape[axis]` is the length of the reduction dim; it feeds
-    # `last_index = x.shape[axis] - 1` and the rank `q*(n-1)`, both computed in
-    # x.dtype, and the gathered index is finally cast to int32 (_compute_index).
-    # A length of 0 makes last_index -1 (negative rank -> meaningless result).
-    # A float dtype represents consecutive integers exactly only up to
-    # 2**(mantissa_bits+1); beyond that the rank/last_index loses precision and
-    # the gathered quantile is silently wrong. The usable length is therefore
-    # the smaller of that per-dtype exact-integer limit and the int32
-    # gather-index range (2**31). The limit must track x.dtype: float64 keeps
-    # working far past 2**24, while float16/bfloat16 lose precision well below
-    # it.
-    _rank_exact_int_limit = {
-        paddle.bfloat16: 2**8,  # 7 mantissa bits
-        paddle.float16: 2**11,  # 10 mantissa bits
-        paddle.float32: 2**24,  # 23 mantissa bits
-        paddle.float64: 2**53,  # 52 mantissa bits
-    }
-    max_len = min(_rank_exact_int_limit.get(x.dtype, 2**24), 2**31)
     if x.shape[axis] == 0:
         raise ValueError("quantile() input tensor must be non-empty")
-    if x.shape[axis] > max_len:
-        raise ValueError("quantile() input tensor is too large")
 
     mask = x.isnan()
     valid_counts = mask.logical_not().sum(axis=axis, keepdim=True)
@@ -953,7 +933,7 @@ def _compute_quantile(
 
     for q_num in q:
         if in_dynamic_or_pir_mode():
-            q_num = paddle.to_tensor(q_num, dtype=x.dtype)
+            q_num = paddle.to_tensor(q_num, dtype=paddle.float64)
         if ignore_nan:
             indices.append(q_num * (valid_counts - 1))
         else:
