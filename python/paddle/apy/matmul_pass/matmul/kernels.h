@@ -38,10 +38,11 @@
     }                                                                         \
   }
 
-#include "cutlass_patch/cuda/cutlass_conv2d.cuh"  // NOLINT
-#include "cutlass_patch/cuda/cutlass_matmul.cuh"  // NOLINT
-#include "math_function.h"                        // NOLINT
-#include "profile.h"                              // NOLINT
+#include "cutlass_patch/cuda/cutlass_attention.cuh"  // NOLINT
+#include "cutlass_patch/cuda/cutlass_conv2d.cuh"     // NOLINT
+#include "cutlass_patch/cuda/cutlass_matmul.cuh"     // NOLINT
+#include "math_function.h"                           // NOLINT
+#include "profile.h"                                 // NOLINT
 #endif
 
 #ifdef __HIPCC__

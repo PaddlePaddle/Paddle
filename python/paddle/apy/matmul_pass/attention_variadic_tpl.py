@@ -318,7 +318,6 @@ void ${kernel_name}(void* stream_ptr, ${AP_KERNEL_ARGS_DECLARE}) {
                                      ${input0},
                                      ${input1},
                                      ${input2},
-                                     /*mask=*/nullptr,
                                      ${output},
                                      ${input0}_shape,
                                      ${input1}_shape,

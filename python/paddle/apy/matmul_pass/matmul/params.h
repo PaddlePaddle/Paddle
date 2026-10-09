@@ -303,4 +303,97 @@ struct Conv2dEpilogueParams {
   }
 };
 
+// Parameters of `memory_efficient_attention + epilogue` fusion.
+//
+// Layout constraints of the first version (BMHK, packed):
+//   query  [B, M, H, Dh], key    [B, N, H, Dh]
+//   value  [B, N, H, Dv], output [B, M, H, Dv]
+// Dh == Dv is required (checked by the pattern constraint).
+struct AttentionEpilogueParams {
+  int B;   // batch
+  int H;   // num_heads
+  int M;   // seqlen_q
+  int N;   // seqlen_k
+  int Dh;  // head_dim (query / key)
+  int Dv;  // head_dim_value (value / output)
+
+  float scale;  // softmax scale; <= 0 means the default 1/sqrt(Dh)
+  bool causal;
+
+  const void *query;
+  const void *key;
+  const void *value;
+  void *output;  // [B, M, H, Dv]
+  void *stream_ptr;
+
+  // BMHK strides (in elements).
+  int64_t q_strideH, q_strideM, q_strideB;
+  int64_t k_strideH, k_strideM, k_strideB;
+  int64_t v_strideH, v_strideM, v_strideB;
+  int64_t o_strideH, o_strideM, o_strideB;
+
+  AttentionEpilogueParams() {}
+  AttentionEpilogueParams(void *stream_ptr,
+                          const void *query,
+                          const void *key,
+                          const void *value,
+                          void *output,
+                          const std::vector<int64_t> &q_shape,  // [B, M, H, Dh]
+                          const std::vector<int64_t> &k_shape,  // [B, N, H, Dh]
+                          const std::vector<int64_t> &v_shape,  // [B, N, H, Dv]
+                          float scale,
+                          bool causal)
+      : scale(scale), causal(causal) {
+    ASSERT_CHECK(q_shape.size() == 4U);
+    ASSERT_CHECK(k_shape.size() == 4U);
+    ASSERT_CHECK(v_shape.size() == 4U);
+
+    this->stream_ptr = stream_ptr;
+    this->query = query;
+    this->key = key;
+    this->value = value;
+    this->output = output;
+
+    B = CheckedCastToInt(q_shape[0]);
+    M = CheckedCastToInt(q_shape[1]);
+    H = CheckedCastToInt(q_shape[2]);
+    Dh = CheckedCastToInt(q_shape[3]);
+    N = CheckedCastToInt(k_shape[1]);
+    Dv = CheckedCastToInt(v_shape[3]);
+
+    // Same batch / num_heads / head_dim on q / k / v (no GQA / MQA).
+    ASSERT_CHECK(k_shape[0] == q_shape[0]);
+    ASSERT_CHECK(v_shape[0] == q_shape[0]);
+    ASSERT_CHECK(k_shape[2] == q_shape[2]);
+    ASSERT_CHECK(v_shape[2] == q_shape[2]);
+    ASSERT_CHECK(k_shape[3] == q_shape[3]);
+    ASSERT_CHECK(v_shape[1] == k_shape[1]);
+    ASSERT_CHECK(Dh == Dv);
+    ASSERT_CHECK(M > 0);
+    ASSERT_CHECK(N > 0);
+
+    q_strideH = Dh;
+    q_strideM = static_cast<int64_t>(H) * Dh;
+    q_strideB = static_cast<int64_t>(M) * H * Dh;
+    k_strideH = Dh;
+    k_strideM = static_cast<int64_t>(H) * Dh;
+    k_strideB = static_cast<int64_t>(N) * H * Dh;
+    v_strideH = Dv;
+    v_strideM = static_cast<int64_t>(H) * Dv;
+    v_strideB = static_cast<int64_t>(N) * H * Dv;
+    o_strideH = Dv;
+    o_strideM = static_cast<int64_t>(H) * Dv;
+    o_strideB = static_cast<int64_t>(M) * H * Dv;
+
+#if AP_ENABLE_DEBUG
+    std::cout << "-- [AttentionEpilogueParams] q: [" << B << ", " << M << ", "
+              << H << ", " << Dh << "]" << std::endl;
+    std::cout << "-- [AttentionEpilogueParams] k: [" << B << ", " << N << ", "
+              << H << ", " << Dh << "]" << std::endl;
+    std::cout << "-- [AttentionEpilogueParams] v/o head_dim_value: " << Dv
+              << ", scale: " << scale << ", causal: " << causal << std::endl;
+#endif
+  }
+};
+
 }  // namespace ap
