@@ -1233,8 +1233,14 @@ class FullyShardFusion:
             fp32_grad = getattr(param, "_fused_kernel_fp32_grad", None)
             if fp32_grad is not None:
                 param._fused_kernel_fp32_grad = None
-                param.get_main_grad(fp32_grad.shape)
-                param.main_grad.add_(fp32_grad)
+                # A list when several fused calls (main + MTP heads) fed the
+                # param: add one by one, in backward order, so the fp32
+                # rounding matches the non-FSDP per-call main_grad.add_.
+                if not isinstance(fp32_grad, (list, tuple)):
+                    fp32_grad = [fp32_grad]
+                param.get_main_grad(fp32_grad[0].shape)
+                for g in fp32_grad:
+                    param.main_grad.add_(g)
                 if grad is not None and grad._is_initialized():
                     grad._clear_data()
             elif grad is not None and grad._is_initialized():
