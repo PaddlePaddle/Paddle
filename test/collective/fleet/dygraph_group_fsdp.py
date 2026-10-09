@@ -238,7 +238,7 @@ def train_moe(model, optimizer, data, accum_steps=1):
     for i in range(0, len(data), accum_steps):
         for x in data[i : i + accum_steps]:
             model.train()
-            with paddle.amp.auto_cast(level="O1", dtype="bfloat16"):
+            with paddle.amp.auto_cast(level="O1", dtype="float16"):
                 loss = model(x).mean()
             loss_md5s.append(loss._md5sum())
             loss.backward()
@@ -261,7 +261,7 @@ def run_moe(ep_degree):
     data = [paddle.randn([TOKENS, HIDDEN]) for _ in range(STEPS)]
 
     stage1_model = mix_precision_utils.MixPrecisionLayer(
-        stage1_model, dtype="bfloat16"
+        stage1_model, dtype="float16"
     )
     stage1_optimizer = build_moe_optimizer(stage1_model)
     stage1_loss_md5s = train_moe(
@@ -278,7 +278,7 @@ def run_moe(ep_degree):
             fsdp_model, enable_tensor_fusion_and_overlap=enable_overlap
         )
         fsdp_model = mix_precision_utils.MixPrecisionLayer(
-            fsdp_model, dtype="bfloat16"
+            fsdp_model, dtype="float16"
         )
         fsdp_loss_md5s = train_moe(
             fsdp_model,
@@ -348,7 +348,7 @@ def tag_muon_params(model):
 def train_muon(model, info_map, ns_per_matrix, data):
     model = fully_shard(model)
     fsdp_context = model._fsdp_context
-    model = mix_precision_utils.MixPrecisionLayer(model, dtype="bfloat16")
+    model = mix_precision_utils.MixPrecisionLayer(model, dtype="float16")
     optimizer = paddle.optimizer.Muon(
         learning_rate=0.001,
         parameters=[p for p in model.parameters() if p.trainable],
@@ -361,7 +361,7 @@ def train_muon(model, info_map, ns_per_matrix, data):
     losses = []
     for x in data:
         model.train()
-        with paddle.amp.auto_cast(level="O1", dtype="bfloat16"):
+        with paddle.amp.auto_cast(level="O1", dtype="float16"):
             loss = model(x).mean()
         losses.append(float(loss.astype("float32")))
         loss.backward()

@@ -861,15 +861,30 @@ class FSDPCommManager:
                 if self.buffer_cnt_in_using > 0:
                     self.buffer_cnt_in_using -= 1
 
+    def _release_reduced_grad_views(self, grads_buffer):
+        if not grads_buffer.is_sharded:
+            return
+        group = self.buffer_manager.buffer_groups[grads_buffer.unique_key]
+        for param in group.params:
+            if getattr(param, "_fusion_buffer", None) is not grads_buffer:
+                continue
+            mg = getattr(param, "main_grad", None)
+            if mg is not None:
+                mg._clear_data()
+                param.main_grad = None
+                param._main_grad_addr = None
+
     def _wait_for_grad_comm(self, queue_limit=2):
         while len(self.grad_reduce_queue) > queue_limit:
             grads_buffer = self.grad_reduce_queue.pop(0)
             if grads_buffer.comm_task is None:
                 grads_buffer.clear_tmp_buffer()
+                self._release_reduced_grad_views(grads_buffer)
                 continue
             grads_buffer.comm_task.wait()
             grads_buffer.comm_task = None
             grads_buffer.accumulate_reduced_grad()
+            self._release_reduced_grad_views(grads_buffer)
 
     def finish_grads_sync(self):
         # Wait for all async reduce_scatter tasks, call before optimizer.step()
@@ -921,6 +936,7 @@ class FSDPCommManager:
                 continue
             grads_buffer.do_reduce_scatter().wait()
             grads_buffer.accumulate_reduced_grad()
+            self._release_reduced_grad_views(grads_buffer)
         # Each sharded-grad param's main_grad is a view into the reduce tmp; after
         # the grad is reduce-scattered into the shard, that view is the only thing
         # keeping the (already handle-cleared) tmp alive, until the post-step reset
