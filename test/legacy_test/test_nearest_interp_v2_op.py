@@ -331,16 +331,8 @@ class TestNearestInterpOp(OpTest):
             out_w = self.out_w
 
         if len(self.input_shape) == 4:
-            output_np = nearest_neighbor_interp_np(
-                input_np,
-                out_h,
-                out_w,
-                scale_h,
-                scale_w,
-                self.out_size,
-                self.actual_shape,
-                self.align_corners,
-                self.data_layout,
+            output_np = self.ref_output(
+                input_np, out_h, out_w, scale_h, scale_w
             )
         elif len(self.input_shape) == 5:
             output_np = nearest_neighbor_interp3d_np(
@@ -386,6 +378,20 @@ class TestNearestInterpOp(OpTest):
                 self.scale = [self.scale[0], self.scale[0]]
             self.attrs['scale'] = self.scale
         self.outputs = {'Out': output_np}
+
+    def ref_output(self, input_np, out_h, out_w, scale_h, scale_w):
+        """Reference output for 4-D input."""
+        return nearest_neighbor_interp_np(
+            input_np,
+            out_h,
+            out_w,
+            scale_h,
+            scale_w,
+            self.out_size,
+            self.actual_shape,
+            self.align_corners,
+            self.data_layout,
+        )
 
     def test_check_output(self):
         self.check_output(
@@ -464,6 +470,11 @@ class TestNearestNeighborInterpGridYClamp(TestNearestInterpOp):
     was silently skipped. The forward check matches the GPU output against a
     numpy reference; the backward check verifies gradient contributions
     cover every output position.
+
+    The output has 16.7M elements, so both references are vectorized here:
+    the per-pixel loop in nearest_neighbor_interp_np and the numeric gradient
+    would take several minutes. They only cover this case's configuration
+    (NCHW, align_corners=True, no scale / OutSize).
     """
 
     def init_test_case(self):
@@ -473,6 +484,39 @@ class TestNearestNeighborInterpGridYClamp(TestNearestInterpOp):
         self.out_w = 256
         self.scale = []
         self.align_corners = True
+
+    @staticmethod
+    def src_index(in_len, out_len):
+        """Per-axis source index with align_corners=True, same as
+        nearest_neighbor_interp_np: output i reads input int(ratio * i + 0.5).
+        """
+        ratio = (in_len - 1.0) / (out_len - 1.0) if out_len > 1 else 0.0
+        return (ratio * np.arange(out_len) + 0.5).astype(np.int64)
+
+    def ref_output(self, x, out_h, out_w, scale_h, scale_w):
+        in_h, in_w = x.shape[2:]
+        idx_h = self.src_index(in_h, out_h)
+        idx_w = self.src_index(in_w, out_w)
+        return x[:, :, idx_h[:, None], idx_w[None, :]]
+
+    def ref_x_grad(self):
+        """d(mean(Out))/dX. Each output (i, j) copies one input element, so
+        that element receives 1 / Out.size per copy; the copy count factorizes
+        into the outer product of per-axis counts."""
+        n, c, in_h, in_w = self.input_shape
+        count_h = np.bincount(self.src_index(in_h, self.out_h), minlength=in_h)
+        count_w = np.bincount(self.src_index(in_w, self.out_w), minlength=in_w)
+        grad = np.outer(count_h, count_w) / (n * c * self.out_h * self.out_w)
+        return np.broadcast_to(grad, self.input_shape).copy()
+
+    def test_check_grad(self):
+        self.check_grad(
+            ['X'],
+            'Out',
+            in_place=True,
+            check_pir=True,
+            user_defined_grads=[self.ref_x_grad()],
+        )
 
 
 class TestNearestInterpOpFP16(TestNearestInterpOp):
