@@ -53,6 +53,16 @@ using phi::distributed::ToNCCLRedType;
 
 uint64_t ProcessGroupNCCL::s_group_call_counter = 0;
 
+namespace {
+
+bool IsCommBufferRegistered(phi::distributed::NCCLCommContext* comm_context,
+                            const phi::DenseTensor& tensor) {
+  return comm_context->IsRegistered(
+      tensor.data(), tensor.numel() * phi::SizeOf(tensor.dtype()));
+}
+
+}  // namespace
+
 ProcessGroupNCCL::NCCLTask::NCCLTask(const Place& place,
                                      int rank,
                                      CommType comm_type,
@@ -332,7 +342,12 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllToAll(
 
   std::vector<int64_t> out_split_sizes;
   std::vector<int64_t> in_split_sizes;
-  if (out_size_each_rank.empty() && in_size_each_rank.empty()) {
+  // Whether the caller asked for the even split. Unlike the split sizes it
+  // yields, this is a rank-symmetric property of a legal all-to-all, which is
+  // what lets the symmetric path below be chosen without asking the group.
+  const bool even_split =
+      out_size_each_rank.empty() && in_size_each_rank.empty();
+  if (even_split) {
     out_split_sizes =
         std::vector<int64_t>(size_, out_tensor->dims()[0] / size_);
     in_split_sizes = std::vector<int64_t>(size_, in_tensor.dims()[0] / size_);
@@ -362,6 +377,30 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllToAll(
             in_dim[0] == 0 ? 0 : in_tensor.numel() / in_dim[0];
         int64_t out_row_size =
             out_dim[0] == 0 ? 0 : out_tensor->numel() / out_dim[0];
+
+        // A single ncclAlltoAll is a symmetric collective, so it can run on the
+        // zero-SM path (Copy Engines intra-node, RMA proxy inter-node), while
+        // the group of Send/Recv calls below always launches a point-to-point
+        // device kernel and therefore occupies SMs. It needs one count shared
+        // by the whole group, which the even split is the only form to
+        // guarantee: with a per-peer count of in_dim[0] / size_ on every rank
+        // and out_dim[0] / size_ received from every rank, a legal all-to-all
+        // forces all those counts to be the same number group-wide. Explicit
+        // split sizes cannot be judged here, since a rank whose own splits are
+        // uniform says nothing about what its peers send to each other, and
+        // taking this path on one rank only would hang the group.
+        if (even_split && in_row_size == out_row_size &&
+            in_tensor.numel() == out_tensor->numel() &&
+            in_tensor.dtype() == out_tensor->dtype() &&
+            comm_context->IsAllToAllAvailable() &&
+            IsCommBufferRegistered(comm_context, in_tensor) &&
+            IsCommBufferRegistered(comm_context, *out_tensor)) {
+          VLOG(3) << "[AllToAll] symmetric ncclAlltoAll path, count per rank: "
+                  << in_tensor.numel() / size_;
+          comm_context->AllToAll(out_tensor, in_tensor, stream);
+          return;
+        }
+
         int64_t in_offset = 0, in_numel = 0, out_offset = 0, out_numel = 0;
         DenseTensor input_partial, output_partial;
 

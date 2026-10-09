@@ -290,6 +290,8 @@ struct IscloseFunctor<GPUContext, T> {
 #else
     cudaMemset(out_data, true, num * sizeof(bool));
 #endif
+    // The index at the kernel's loop peaks at `num - 1 + grid * block`,
+    // this guard is enough
     if (num + grid * block + 1 > std::numeric_limits<unsigned int>::max()) {
       IscloseCUDAKernel<T, int64_t><<<grid, block, 0, dev_ctx.stream()>>>(
           in_data, other_data, rtol, atol, equal_nan, num, out_data);

@@ -112,6 +112,7 @@ from .communication import (  # noqa: F401
     send_object_list,
     stream,
     wait,
+    zero_sm,
 )
 
 # Import the namespace class directly from the submodule so it does not
@@ -127,6 +128,7 @@ from .flex_checkpoint.dcp.load_state_dict import (
     load_state_dict,
 )
 from .flex_checkpoint.dcp.load_transform import LoadTransform
+from .flex_checkpoint.dcp.metadata_reader import load_state_dict_metadata
 from .flex_checkpoint.dcp.save_state_dict import save_state_dict
 from .flex_checkpoint.dcp.sharded_weight import (
     ShardedStateDict,
@@ -220,6 +222,7 @@ __all__ = [
     "load_state_dict",
     "load_merged_state_dict",
     "LoadTransform",
+    "load_state_dict_metadata",
     "shard_optimizer",
     "shard_scaler",
     "ShardingStage1",

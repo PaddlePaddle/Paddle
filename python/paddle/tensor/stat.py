@@ -14,7 +14,6 @@
 
 from __future__ import annotations
 
-import warnings
 from typing import TYPE_CHECKING, Any, Literal, TypeAlias
 
 from typing_extensions import overload
@@ -33,7 +32,12 @@ from paddle.utils.decorator_utils import (
 
 from ..base.data_feeder import check_type, check_variable_and_dtype
 from ..common_ops_import import Variable
-from ..framework import LayerHelper, convert_nptype_to_datatype_or_vartype, core
+from ..framework import (
+    LayerHelper,
+    _current_expected_place_,
+    convert_nptype_to_datatype_or_vartype,
+    core,
+)
 from .manipulation import cast
 from .math import _get_reduce_axis_with_tensor
 
@@ -47,6 +51,52 @@ _Interpolation: TypeAlias = Literal[
     'linear', 'higher', 'lower', 'midpoint', 'nearest'
 ]
 __all__ = []
+
+
+def _normalize_stat_axis(x, axis):
+    if axis is None:
+        return list(range(len(x.shape)))
+    if isinstance(axis, int):
+        return [axis]
+    return list(axis)
+
+
+def _append_stat_op(
+    op_type, x, axis, keepdim, unbiased, correction, name=None, out=None
+):
+    helper = LayerHelper(op_type, **locals())
+    out_tensor = out
+    if out_tensor is None:
+        out_tensor = helper.create_variable_for_type_inference(dtype=x.dtype)
+    helper.append_op(
+        type=op_type,
+        inputs={'x': x},
+        outputs={'out': out_tensor},
+        attrs={
+            'axis': axis,
+            'keepdim': keepdim,
+            'unbiased': True if unbiased is None else bool(unbiased),
+            'correction': float(correction),
+        },
+    )
+    return out_tensor
+
+
+def _check_cpu_stat_dtype(x, op_name):
+    if x.dtype not in (paddle.float16, paddle.bfloat16):
+        return
+    place = (
+        getattr(x, 'place', None)
+        if in_dynamic_mode()
+        else _current_expected_place_()
+    )
+    is_cpu = place is not None and place.is_cpu_place()
+    if not is_cpu and in_dynamic_mode():
+        is_cpu = bool(getattr(x, 'is_cpu', False))
+    if is_cpu:
+        raise ValueError(
+            f'paddle.{op_name} on CPU does not support float16 or bfloat16.'
+        )
 
 
 @param_two_alias(["x", "input"], ["axis", "dim"])
@@ -237,10 +287,12 @@ def var(
     else:
         actual_correction = float(correction)
 
-    if paddle.is_compiled_with_cuda() and in_dynamic_or_pir_mode():
+    axis = _normalize_stat_axis(x, axis)
+    _check_cpu_stat_dtype(x, 'var')
+    if in_dynamic_or_pir_mode():
         return _C_ops.var(
             x,
-            axis if axis is not None else [],
+            axis,
             keepdim,
             unbiased,
             actual_correction,
@@ -249,55 +301,11 @@ def var(
 
     if not in_dynamic_mode():
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], 'var'
+            x, 'x', ['uint16', 'float16', 'float32', 'float64'], 'var'
         )
-
-    u = mean(x, axis, True, name)
-    dtype = paddle.float32 if x.dtype == paddle.float16 else x.dtype
-    out_tensor = paddle.sum(
-        paddle.pow((x - u), 2), axis, keepdim=keepdim, name=name, dtype=dtype
+    return _append_stat_op(
+        'var', x, axis, keepdim, unbiased, actual_correction, name, out
     )
-
-    n = paddle.cast(paddle.numel(x), "int64") / paddle.cast(
-        paddle.numel(out_tensor), "int64"
-    )
-    n = n.astype(dtype)
-
-    if actual_correction != 0:
-        corrected_n = n - actual_correction
-        corrected_n = paddle.maximum(
-            corrected_n, paddle.zeros_like(corrected_n)
-        )
-        if paddle.in_dynamic_mode() and paddle.any(corrected_n <= 0):
-            warnings.warn("Degrees of freedom is <= 0.", stacklevel=2)
-    else:
-        corrected_n = n
-
-    corrected_n.stop_gradient = True
-    out_tensor /= corrected_n
-
-    def _replace_nan(out):
-        indices = paddle.arange(out.numel(), dtype='int64')
-        out_nan = paddle.index_fill(
-            out.flatten(), indices, 0, float('nan')
-        ).reshape(out.shape)
-        return out_nan
-
-    if 0 in x.shape:
-        out_tensor = _replace_nan(out_tensor)
-    if len(x.shape) == 0 and actual_correction == 0:
-        out_tensor = paddle.to_tensor(0, stop_gradient=out_tensor.stop_gradient)
-
-    if out_tensor.dtype != x.dtype:
-        result = out_tensor.astype(x.dtype)
-    else:
-        result = out_tensor
-
-    if out is not None:
-        paddle.assign(result, out)
-        return out
-
-    return result
 
 
 @overload
@@ -390,29 +398,39 @@ def std(*args: Any, **kwargs: Any) -> Tensor:
             1.6329932
 
     """
-    if paddle.is_compiled_with_cuda() and in_dynamic_or_pir_mode():
-        x = args[0] if len(args) > 0 else kwargs.get('x', kwargs.get('input'))
-        axis = (
-            args[1]
-            if len(args) > 1
-            else kwargs.get('axis', kwargs.get('dim', None))
-        )
-        unbiased = args[2] if len(args) > 2 else kwargs.get('unbiased', None)
-        keepdim = args[3] if len(args) > 3 else kwargs.get('keepdim', False)
-        correction = kwargs.get('correction', 1.0)
-        out = kwargs.get('out', None)
+    x = args[0] if len(args) > 0 else kwargs.get('x', kwargs.get('input'))
+    axis = (
+        args[1]
+        if len(args) > 1
+        else kwargs.get('axis', kwargs.get('dim', None))
+    )
+    unbiased = args[2] if len(args) > 2 else kwargs.get('unbiased', None)
+    keepdim = args[3] if len(args) > 3 else kwargs.get('keepdim', False)
+    name = args[4] if len(args) > 4 else kwargs.get('name', None)
+    correction = kwargs.get('correction', 1.0)
+    out = kwargs.get('out', None)
 
-        axis = axis if axis is not None else []
+    if unbiased is not None and correction != 1:
+        raise ValueError("Only one of unbiased and correction may be given")
+    axis = _normalize_stat_axis(x, axis)
+    _check_cpu_stat_dtype(x, 'std')
+    if in_dynamic_or_pir_mode():
         if unbiased is not None:
             correction = 1.0 if unbiased else 0.0
         else:
             correction = float(correction)
         return _C_ops.std(x, axis, keepdim, unbiased, correction, out=out)
 
-    variance = var(*args, **kwargs)
-    if 'out' in kwargs:
-        return paddle.sqrt(variance, out=kwargs['out'])
-    return paddle.sqrt(variance)
+    if not in_dynamic_mode():
+        check_variable_and_dtype(
+            x, 'x', ['uint16', 'float16', 'float32', 'float64'], 'std'
+        )
+    actual_correction = 1.0 if unbiased else 0.0
+    if unbiased is None:
+        actual_correction = float(correction)
+    return _append_stat_op(
+        'std', x, axis, keepdim, unbiased, actual_correction, name, out
+    )
 
 
 def numel(x: Tensor, name: str | None = None) -> Tensor:

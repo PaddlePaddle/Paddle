@@ -41,8 +41,9 @@ from ...base.data_feeder import (
     check_dtype,
     check_type,
     check_variable_and_dtype,
+    promote_types,
 )
-from ...tensor import clip, concat, sqrt, sum
+from ...tensor import clip, concat, sum
 from ...tensor.creation import zeros
 
 # TODO: define the common functions to build a neural network
@@ -2409,8 +2410,11 @@ def cosine_similarity(
     Compute cosine similarity between x1 and x2 along axis.
 
     Parameters:
-        x1 (Tensor): First input. float32/double.
-        x2 (Tensor): Second input. float32/double.
+        x1 (Tensor): First input. float32/double. float16/bfloat16 are
+            supported on non-CPU devices (e.g. GPU, XPU); on CPU they are
+            computed through a float32 accumulation path and the output keeps
+            the reduced input dtype.
+        x2 (Tensor): Second input. Same data type requirement as ``x1``.
         axis (int, optional): Dimension of vectors to compute cosine similarity. Default is 1.
             Alias: ``dim``.
         eps(float, optional): Small value to avoid division by zero. Default is 1e-8.
@@ -2450,20 +2454,105 @@ def cosine_similarity(
             [ 0.97689527,  0.99996042, -0.55138415])
 
     """
-    if x1.shape[axis] == 0 or x2.shape[axis] == 0:
-        return sum(paddle.multiply(x1, x2), axis=axis)
-    bs = paddle.broadcast_shape([x1.shape[axis]], [x2.shape[axis]])
-    w12 = sum(paddle.multiply(x1, x2), axis=axis)
-    w1 = sum(paddle.multiply(x1, x1), axis=axis)
-    w2 = sum(paddle.multiply(x2, x2), axis=axis)
-    m1, m2 = bs[0] / x1.shape[axis], bs[0] / x2.shape[axis]
-    if m1 != 1:
-        w1 = w1 * m1
-    if m2 != 1:
-        w2 = w2 * m2
-    n12 = sqrt(clip(w1 * w2, min=eps * eps))
-    cos_sim = w12 / n12
-    return cos_sim
+    # Note: aligning with torch 2.12, including:
+    # 1. Casting integral input dtypes to floating dtype and reject non-floating
+    #   common dtype since vector_norm has no integer kernel.
+    # 2. Each input is divided by its own norm before the dot product to avoid
+    #   overflow.
+    # 3. Broadcast inputs front so axis indexes the common shape
+    # 4. Clamp the norms(||x1|| and ||x2||) against an eps scalar in float32
+    #   when dtype==bf16/fp16 to avoid clamping to zero in such rare cases.
+
+    float_dtypes = (
+        paddle.float16,
+        paddle.bfloat16,
+        paddle.float32,
+        paddle.float64,
+    )
+    common_dtype = promote_types(x1.dtype, x2.dtype)
+    if common_dtype not in float_dtypes:
+        raise TypeError(
+            "cosine_similarity expected common dtype to be floating point, "
+            f"yet common dtype is {common_dtype}"
+        )
+    if eps < 0:
+        raise ValueError(f"eps must be non-negative, got: {eps}")
+    if x1.dtype not in float_dtypes:
+        x1 = x1.astype(common_dtype)
+    if x2.dtype not in float_dtypes:
+        x2 = x2.astype(common_dtype)
+
+    # p_norm/divide/multiply CPU kernels are not registered for fp16/bf16.
+    # Use fp32 as the accumulation_dtype when the common dtype is fp16/bf16;
+    # otherwise preserve the precision of the common dtype (in particular,
+    # do not demote a float64 input in a mixed reduced/float64 operation).
+    reduced_dtypes = (paddle.float16, paddle.bfloat16)
+    # static graph: the device is unknown at construction time, assume CPU
+    maybe_cpu = not in_dynamic_mode() or x1.place.is_cpu_place()
+    if maybe_cpu and (x1.dtype in reduced_dtypes or x2.dtype in reduced_dtypes):
+        accumulation_dtype = (
+            paddle.float32 if common_dtype in reduced_dtypes else common_dtype
+        )
+        if x1.dtype in reduced_dtypes:
+            x1 = x1.astype(accumulation_dtype)
+        if x2.dtype in reduced_dtypes:
+            x2 = x2.astype(accumulation_dtype)
+
+    # torch expand inputs to broadcast shape first then compute norm when need to broadcast.
+    # torch.expand only sets the broadcast stride to 0 and keeps the original storage, so it
+    # is 0-copy, and TensorIterator runs linalg_vector_norm directly over that stride-0 input,
+    # allocating nothing and re-reading the same O(BD) bytes out of cache.
+    # paddle has no STRIDED p_norm kernel and p_norm only has a single reduction order for
+    # contiguous input, which has accuracy diff with torch when reducing over stride-0 view.
+
+    # So we implement torch's behavior of cosine_similarity with follow steps:
+    # 1. unsqueeze x1 and x2 to the same rank as the broadcast shape. When x1.dims != x2.dims
+    #   and input axis is larger than smaller dims, unsqueeze op ensures vector_norm is
+    #   reduced at the correct dim.
+    # 2. ||repeat(x,m)|| = sqrt(m) * ||x||.
+
+    rank = max(len(x1.shape), len(x2.shape))
+    if len(x1.shape) < rank:
+        x1 = unsqueeze(x1, axis=list(range(rank - len(x1.shape))))
+    if len(x2.shape) < rank:
+        x2 = unsqueeze(x2, axis=list(range(rank - len(x2.shape))))
+    bs = paddle.broadcast_shape(x1.shape, x2.shape)
+    dim = axis + rank if axis < 0 else axis
+    n1 = paddle.linalg.vector_norm(x1, p=2, axis=dim, keepdim=True)
+    n2 = paddle.linalg.vector_norm(x2, p=2, axis=dim, keepdim=True)
+    d1, d2 = x1.shape[dim], x2.shape[dim]
+    if d1 >= 0 and d2 >= 0:
+        if bs[dim] > d1:
+            n1 = n1 * math.sqrt(bs[dim] / d1)
+        if bs[dim] > d2:
+            n2 = n2 * math.sqrt(bs[dim] / d2)
+    else:
+        # For unknown(-1) reduced axis: compute the broadcast repeat factor from
+        # the run-time length, if len==1 -> taking the other side's len.
+        len1 = paddle.shape(x1)[dim].astype(paddle.float32)
+        len2 = paddle.shape(x2)[dim].astype(paddle.float32)
+        common = paddle.where(len1 == 1, len2, len1)
+        n1 = n1 * paddle.sqrt(common / clip(len1, min=1.0)).astype(n1.dtype)
+        n2 = n2 * paddle.sqrt(common / clip(len2, min=1.0)).astype(n2.dtype)
+    n1 = (
+        clip(n1.astype(paddle.float32), min=eps).astype(n1.dtype)
+        if n1.dtype in reduced_dtypes
+        else clip(n1, min=eps)
+    )
+    n2 = (
+        clip(n2.astype(paddle.float32), min=eps).astype(n2.dtype)
+        if n2.dtype in reduced_dtypes
+        else clip(n2, min=eps)
+    )
+    out = sum(
+        paddle.multiply(x1 / n1, x2 / n2),
+        axis=dim,
+    )
+    # when the reduced inputs were promoted to fp32 on CPU, cast the result
+    # back to the common dtype to preserve the output dtype contract
+    if maybe_cpu and out.dtype != common_dtype:
+        return out.astype(common_dtype)
+    return out
 
 
 def linear(

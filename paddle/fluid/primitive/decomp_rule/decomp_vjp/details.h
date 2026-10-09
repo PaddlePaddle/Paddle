@@ -3925,11 +3925,13 @@ void var_grad(const Tensor& x,
     auto axis_vec = axis.GetData();
     auto x_dims = x.dims();
     int64_t x_rank = x_dims.size();
-    if (axis_vec.empty()) {
-      for (int64_t i = 0; i < x_rank; ++i) {
-        axis_vec.push_back(i);
-      }
-    }
+    // An empty `axis` stays empty here. torch's var_backward divides by
+    // _safe_size(sizes, dim), which is 1 for dim=[], while the forward still
+    // reduces everything. paddle.var maps axis=None to the full axis list
+    // before the op is built, so an empty axis reaching this rule is a real
+    // dim=[]. `mean_decomp` below receives the original `axis` and therefore
+    // keeps reducing everything, matching the forward. Keep in sync with
+    // phi::VarGradKernel.
     for (size_t i = 0; i < axis_vec.size(); ++i) {
       if (axis_vec[i] < 0) {
         axis_vec[i] += x_rank;
