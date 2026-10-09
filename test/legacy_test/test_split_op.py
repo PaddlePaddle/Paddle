@@ -849,6 +849,41 @@ class API_TestSplitZeroSize(unittest.TestCase):
         np.testing.assert_allclose(ex_x2, x2_out, rtol=1e-05)
 
 
+class API_TestSplitZeroSizeInvalidSections(unittest.TestCase):
+    def test_static_zero_axis_sections_sum_nonzero(self):
+        # Splitting a statically-known 0-length axis with sections that do
+        # not sum to 0 is illegal (matches torch) and must be rejected,
+        # instead of silently routing through the degenerate branch.
+        with base.program_guard(base.Program(), base.Program()):
+            x = paddle.static.data(
+                name='x_zs_split', shape=[0], dtype="float32"
+            )
+
+            def illegal_split():
+                paddle.split(x, num_or_sections=[1, 1], axis=0)
+
+            self.assertRaises(ValueError, illegal_split)
+
+    def test_zero_axis_sections_sum_zero(self):
+        # Legal: sections sum to 0 == axis size, still yields zero-size out.
+        with base.dygraph.guard():
+            x = paddle.zeros([0], dtype="float32")
+            out = paddle.split(x, num_or_sections=[0, 0], axis=0)
+            self.assertEqual(len(out), 2)
+            self.assertEqual(list(out[0].shape), [0])
+            self.assertEqual(list(out[1].shape), [0])
+
+    def test_dynamic_unknown_axis_unchanged(self):
+        # A *dynamic* unknown split-axis size (-1) still routes to the
+        # degenerate (no-validation) branch, so behavior is unchanged.
+        with base.program_guard(base.Program(), base.Program()):
+            x = paddle.static.data(
+                name='x_dyn_split', shape=[-1], dtype="float32"
+            )
+            out = paddle.split(x, num_or_sections=[1, 1], axis=0)
+            self.assertEqual(len(out), 2)
+
+
 if __name__ == '__main__':
     paddle.enable_static()
     unittest.main()
