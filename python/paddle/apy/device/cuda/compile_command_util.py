@@ -24,6 +24,7 @@ class CompileCommandGenerator:
             [
                 ['matmul', self.generate_compile_command_with_cutlass],
                 ['conv2d', self.generate_compile_command_with_cutlass],
+                ['attention', self.generate_compile_command_with_cutlass],
             ]
         )
 

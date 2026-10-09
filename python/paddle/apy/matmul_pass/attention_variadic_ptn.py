@@ -1,0 +1,436 @@
+# Copyright (c) 2026 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import abstract_drr
+import access_topo_drr  # noqa: F401
+import ap
+import attention_variadic_tpl
+import compile_command_util
+import epilogue_access_topo_simplify
+import index_program_translator_util
+import ir_tools
+import kernel_arg_id_util
+import kernel_arg_translator_util  # noqa: F401
+import low_level_ir_code_gen_ctx_util  # noqa: F401
+import op_compute_translator_util
+import op_conversion_drr_pass  # noqa: F401
+import pir  # noqa: F401
+import program_translator_util
+import topo_drr_pass
+import umprime  # noqa: F401
+import variadic_mixin
+
+
+class AttentionEpilogueFusion(abstract_drr.DrrPass):
+    # mea has a fixed 10-operand / 3-result signature; every operand slot exists
+    # even when the optional inputs are null, and the matcher walks all
+    # num_operands(), so the full signature is declared explicitly (native-op
+    # source patterns do not support packed / variadic operands):
+    #   inputs : query, key, value, bias, cu_seqlens_q, cu_seqlens_k,
+    #            causal_diagonal, seqlen_k, max_seqlen_q, max_seqlen_k
+    #   outputs: output, logsumexp, seed_and_offset
+    def source_pattern(self, o, t):
+        in_num = self.number_of_inputs()
+        out_num = self.number_of_outputs()
+        o.attention_op = o.ap_native_op("pd_op.memory_efficient_attention")
+        o.attention_op(
+            [t.input0, t.input1, t.input2],
+            [t.attn_out],
+        )
+        o.trivial_op = o.ap_trivial_fusion_op()
+        o.trivial_op(
+            [
+                t.attn_out,
+                *ap.map(
+                    lambda index: getattr(t, f"input{index + 3}"),
+                    range(in_num - 3),
+                ),
+            ],
+            ap.map(lambda index: getattr(t, f"output{index}"), range(out_num)),
+        )
+
+    def result_pattern(self, o, t):
+        in_num = self.number_of_inputs()
+        out_num = self.number_of_outputs()
+        o.fustion_op = o.ap_pattern_fusion_op(self.code_gen)
+        o.fustion_op(
+            ap.map(lambda index: getattr(t, f"input{index}"), range(in_num)),
+            ap.map(lambda index: getattr(t, f"output{index}"), range(out_num)),
+        )
+
+    def constraint(self, o, t):
+        return self._is_supported_by_device() and (
+            self._is_supported_by_backend(o, t)
+            and self._epilogue_can_fuse(o, t)
+        )
+
+    def _is_supported_by_device(self):
+        compile_command_generator = (
+            compile_command_util.CompileCommandGenerator()
+        )
+        return compile_command_generator.supports("attention")
+
+    def _is_supported_by_backend(self, o, t):
+        # Limitations of the cutlass FMHA backend (first version):
+        # - BMHK layout: query [B, M, H, Dh], key [B, N, H, Dh],
+        #   value [B, N, H, Dv], output [B, M, H, Dv].
+        # - Q/K/V share the same number of heads (no GQA / MQA) and
+        #   head_dim (Dh == Dv), both must be compile-time constants because
+        #   the template bakes head_dim into `kMaxK` / `Alignment`.
+        # - no optional bias / variable seqlen in the first version.
+        return self._is_bmhk_layout(t) and self._has_static_head_dim(t)
+
+    def _is_bmhk_layout(self, t):
+        query_shape = t.input0.symbolic_shape_to_list()
+        key_shape = t.input1.symbolic_shape_to_list()
+        value_shape = t.input2.symbolic_shape_to_list()
+        # All operands are 4-D [B, seqlen, H, head_dim]. The AP python dialect
+        # only accepts binary `and`, so the conditions are nested in pairs.
+        is_4d = (len(query_shape) == 4) and (
+            (len(key_shape) == 4) and (len(value_shape) == 4)
+        )
+        # Same number of heads on Q / K / V (no GQA / MQA), and Dh == Dv.
+        same_heads = (query_shape[2] == key_shape[2]) and (
+            key_shape[2] == value_shape[2]
+        )
+        same_head_dim = query_shape[3] == value_shape[3]
+        return is_4d and (same_heads and same_head_dim)
+
+    def _has_static_head_dim(self, t):
+        query_shape = t.input0.symbolic_shape_to_list()
+        value_shape = t.input2.symbolic_shape_to_list()
+        is_static_dh = query_shape[3].match(
+            int64=lambda head_dim: True, _=lambda: False
+        )
+        is_static_dv = value_shape[3].match(
+            int64=lambda head_dim: True, _=lambda: False
+        )
+        return is_static_dh and is_static_dv
+
+    def _epilogue_can_fuse(self, o, t):
+        program = ir_tools.copy_fused_ops_to_program(
+            o.trivial_op, tensor_match_ctx=t
+        )
+        program = epilogue_access_topo_simplify.simplify_epilogue_program(
+            program,
+            anchor_data_op_name="attn_out",
+            number_of_inputs=self.number_of_inputs(),
+            number_of_outputs=self.number_of_outputs(),
+        )
+        return program.empty()
+
+    def _insert_load_from_global(self, program, input_names):
+        init_pass_manager = ir_tools.create_pass_manager()
+
+        def AddPass(input_name):
+            ir_pass = topo_drr_pass.InitNaiveLoadFromGlobalAccessTopoPass(
+                input_name
+            )
+            init_pass_manager.add_pass(
+                ir_tools.create_access_topo_drr_one_step_pass(ir_pass)
+            )
+
+        ap.map(AddPass, input_names)
+        init_pass_manager.run(program)
+
+    def _insert_store_to_global(self, program, output_names):
+        init_pass_manager = ir_tools.create_pass_manager()
+        ir_pass = topo_drr_pass.FakeDataStoreToGlobalForYieldAccessTopoPass(
+            output_names
+        )
+        init_pass_manager.add_pass(
+            ir_tools.create_access_topo_drr_one_step_pass(ir_pass)
+        )
+        init_pass_manager.run(program)
+
+    def _make_kernel_arg_translator(self):
+        return attention_variadic_tpl.make_kernel_arg_translator()
+
+    def _get_int_attr(self, attr):
+        return attr.match(a_i32=lambda x: int(x))
+
+    def _get_float_attr(self, attr):
+        return attr.match(a_f32=lambda x: float(x))
+
+    def _get_bool_attr(self, attr):
+        return attr.match(a_bool=lambda x: bool(x))
+
+    def _apply_topo_access_passes(self, mut_program, anchor_data_op_name):
+        init_pass_manager = ir_tools.create_pass_manager()
+        init_down_spider = topo_drr_pass.InitDownSpiderAccessTopoPass(
+            anchor_data_op_name
+        )
+        init_pass_manager.add_pass(
+            ir_tools.create_access_topo_drr_one_step_pass(init_down_spider)
+        )
+        init_pass_manager.run(mut_program)
+        pass_manager = ir_tools.create_pass_manager()
+        pass_manager.add_pass(ir_tools.create_access_topo_drr_pass("default"))
+        pass_manager.add_pass(ir_tools.create_dce_pass())
+        pass_manager.run(mut_program)
+
+    def _simplify_index_program(self, mut_program):
+        pass_manager = ir_tools.create_pass_manager()
+        drr_pass = topo_drr_pass.ConvertUpSpiderStoreDataOpToYieldOpPass()
+        pass_manager.add_pass(
+            ir_tools.create_access_topo_drr_one_step_pass(drr_pass)
+        )
+        drr_pass = topo_drr_pass.ConvertDownSpiderStoreDataOpToYieldOpPass()
+        pass_manager.add_pass(
+            ir_tools.create_access_topo_drr_one_step_pass(drr_pass)
+        )
+        pass_manager.add_pass(ir_tools.create_dce_pass())
+        pass_manager.run(mut_program)
+        return mut_program
+
+    def _make_index_func_unique_id2index_program(
+        self, compute_program, anchor_data_op_name, input_names, output_names
+    ):
+        full_index_program = compute_program.clone()
+        self._apply_topo_access_passes(full_index_program, anchor_data_op_name)
+        print('full_index_program: ', full_index_program)
+
+        def MatchAndCopyInputIndex(dst_input_name):
+            pass_manager = ir_tools.create_pass_manager()
+            removed_programs = ap.MutableList()
+            rm_elementwise_drr_pass = (
+                epilogue_access_topo_simplify.RemoveElementInputIndexPass(
+                    src_data_op_name=anchor_data_op_name,
+                    dst_load_from_global_op_name=dst_input_name,
+                )
+            )
+            rm_elementwise_ir_pass = (
+                ir_tools.create_access_topo_drr_one_step_pass(
+                    rm_elementwise_drr_pass,
+                    matched_pattern_mut_list=removed_programs,
+                )
+            )
+            pass_manager.add_pass(rm_elementwise_ir_pass)
+            rm_broadcast_drr_pass = (
+                epilogue_access_topo_simplify.RemoveBroadcastInputIndexPass(
+                    src_data_op_name=anchor_data_op_name,
+                    dst_load_from_global_op_name=dst_input_name,
+                )
+            )
+            rm_broadcast_ir_pass = (
+                ir_tools.create_access_topo_drr_one_step_pass(
+                    rm_broadcast_drr_pass,
+                    matched_pattern_mut_list=removed_programs,
+                )
+            )
+            pass_manager.add_pass(rm_broadcast_ir_pass)
+            pass_manager.run(full_index_program)
+
+            def Converter(program):
+                return [dst_input_name, self._simplify_index_program(program)]
+
+            return ap.map(Converter, removed_programs)
+
+        input_and_index_programs = ap.flat_map(
+            MatchAndCopyInputIndex, input_names
+        )
+
+        def MatchAndCopyOutputIndex(dst_output_name):
+            print('full_index_program output: ', full_index_program)
+            pass_manager = ir_tools.create_pass_manager()
+            removed_programs = ap.MutableList()
+            drr_pass = epilogue_access_topo_simplify.RemoveOutputIndexPass(
+                src_data_op_name=anchor_data_op_name,
+                dst_store_to_global_op_name=dst_output_name,
+            )
+            ir_pass = ir_tools.create_access_topo_drr_one_step_pass(
+                drr_pass, matched_pattern_mut_list=removed_programs
+            )
+            pass_manager.add_pass(ir_pass)
+            pass_manager.run(full_index_program)
+
+            def Converter(program):
+                return [dst_output_name, self._simplify_index_program(program)]
+
+            print('len removed of output: ', len(removed_programs))
+            return ap.map(Converter, removed_programs)
+
+        output_and_index_programs = ap.flat_map(
+            MatchAndCopyOutputIndex, output_names
+        )
+        return ap.OrderedDict(
+            [*input_and_index_programs, *output_and_index_programs]
+        )
+
+    def _replace_with_load_from_register(
+        self, mut_program, load_ir_value_name, register_var_name
+    ):
+        pass_manager = ir_tools.create_pass_manager()
+        drr_pass = topo_drr_pass.ReplaceWithLoadFromRegisterPass(
+            name=load_ir_value_name, register_var_name=register_var_name
+        )
+        pass_manager.add_pass(
+            ir_tools.create_access_topo_drr_one_step_pass(drr_pass)
+        )
+        pass_manager.add_pass(ir_tools.create_dce_pass())
+        pass_manager.run(mut_program)
+        return mut_program
+
+    def _replace_with_store_to_register(
+        self, mut_program, store_ir_value_name, register_var_name
+    ):
+        pass_manager = ir_tools.create_pass_manager()
+        drr_pass = topo_drr_pass.ReplaceWithStoreToRegisterPass(
+            name=store_ir_value_name, register_var_name=register_var_name
+        )
+        pass_manager.add_pass(
+            ir_tools.create_access_topo_drr_one_step_pass(drr_pass)
+        )
+        pass_manager.add_pass(ir_tools.create_dce_pass())
+        pass_manager.run(mut_program)
+        return mut_program
+
+    def _get_program_translator(self, ctx, o, t):
+        outputs_name_list = ap.map(
+            lambda i: f"output{i}", range(self.number_of_outputs())
+        )
+        other_outputs_name_list = ap.map(
+            lambda i: f"output{i + 1}", range(self.number_of_outputs() - 1)
+        )
+        local_outputs_name_list = ap.map(
+            lambda i: f"out{i}", range(self.number_of_outputs())
+        )
+        inputs_name_list = (
+            ap.map(
+                lambda i: f"input{i + 3}",
+                range(self.number_of_inputs() - 3),
+            )
+            if self.number_of_inputs() > 3
+            else []
+        )
+        mut_program = ir_tools.copy_fused_ops_to_program(
+            o.trivial_op, tensor_match_ctx=t
+        )
+        print("before-umprime: ", mut_program)
+        pass_manager = ir_tools.create_pass_manager()
+        pass_manager.add_pass(ir_tools.create_access_topo_drr_pass("umprime"))
+        pass_manager.add_pass(ir_tools.create_dce_pass())
+        pass_manager.run(mut_program)
+        self._insert_load_from_global(mut_program, input_names=["attn_out"])
+        self._insert_load_from_global(mut_program, input_names=inputs_name_list)
+        self._insert_store_to_global(
+            mut_program, output_names=outputs_name_list
+        )
+        kernel_arg_translator = self._make_kernel_arg_translator()
+        index_func_unique_id2index_program = (
+            self._make_index_func_unique_id2index_program(
+                mut_program,
+                anchor_data_op_name="attn_out",
+                input_names=inputs_name_list,
+                output_names=other_outputs_name_list,
+            )
+        )
+        print(
+            "index_func_unique_id2index_program:\n",
+            index_func_unique_id2index_program,
+        )
+        index_program_translator_map = index_program_translator_util.IndexProgramTranslatorMap(
+            index_func_unique_id2index_program=index_func_unique_id2index_program,
+            kernel_arg_translator=kernel_arg_translator,
+            anchor_iter_var_names=attention_variadic_tpl.get_anchor_iter_var_names(),
+        )
+        self._replace_with_load_from_register(
+            mut_program,
+            load_ir_value_name="attn_out",
+            register_var_name="x",
+        )
+        self._replace_with_store_to_register(mut_program, "output0", "out")
+        print("mut_program:", mut_program)
+        op_compute_translator_maker = (
+            op_compute_translator_util.OpComputeTranslatorFactory()
+        )
+        program_translator = program_translator_util.ProgramTranslator(
+            program_property=mut_program.copy_to_const_program_data(),
+            kernel_arg_translator=kernel_arg_translator,
+            index_program_translator_map=index_program_translator_map,
+            op_translator_maker=op_compute_translator_maker,
+        )
+
+        return program_translator
+
+    def code_gen(self, ctx, o, t):
+        program_translator = self._get_program_translator(ctx, o, t)
+        mut_kernel_arg_id_registry = kernel_arg_id_util.KernelArgIdNameRegistry(
+            code_gen_ctx=ctx, tensor_match_ctx=t, name_prefix=""
+        )
+
+        template_module = attention_variadic_tpl.AttentionVariadicTemplate(
+            program_translator=program_translator,
+            mut_kernel_arg_id_registry=mut_kernel_arg_id_registry,
+        )
+
+        def get_symbolic_shape_args_list(sym_dim):
+            return ctx.dim_expr_kernel_arg_id(sym_dim)
+
+        input0_shape_kargs = ap.map(
+            get_symbolic_shape_args_list, t.input0.symbolic_shape_to_list()
+        )
+        input1_shape_kargs = ap.map(
+            get_symbolic_shape_args_list, t.input1.symbolic_shape_to_list()
+        )
+        input2_shape_kargs = ap.map(
+            get_symbolic_shape_args_list, t.input2.symbolic_shape_to_list()
+        )
+        return template_module.compile(
+            input0_karg=ctx.in_tensor_data_ptr_kernel_arg_id(t.input0),
+            input1_karg=ctx.in_tensor_data_ptr_kernel_arg_id(t.input1),
+            input2_karg=ctx.in_tensor_data_ptr_kernel_arg_id(t.input2),
+            output_karg=ctx.out_tensor_data_ptr_kernel_arg_id(t.output0),
+            input0_shape_kargs=input0_shape_kargs,
+            input1_shape_kargs=input1_shape_kargs,
+            input2_shape_kargs=input2_shape_kargs,
+            # mea `scale` defaults to -1, which the backend reads as the default
+            # 1/sqrt(head_dim).
+            scale=self._get_float_attr(o.attention_op.scale),
+            causal=self._get_bool_attr(o.attention_op.causal),
+        )
+
+
+def register_attention_epilogue_class(
+    base_class, max_num_inputs, max_num_outputs
+):
+    def register_attention_drr_class(num_inputs, num_outputs):
+        abstract_drr.register_drr_pass(
+            f"attention_epilogue_in{num_inputs}_out{num_outputs}_fusion",
+            nice=0,
+        )(
+            variadic_mixin.get_mixin_class(
+                base_class,
+                "AttentionEpilogueFusion",
+                num_inputs,
+                num_outputs,
+            )
+        )
+
+    def register_attention_num_inputs_drr_classes(num_inputs):
+        def register_attention_num_outputs_drr_classes(num_outputs):
+            # +3 for the query / key / value anchor inputs, +1 for the single
+            # attention output the epilogue is fused onto.
+            return register_attention_drr_class(num_inputs + 3, num_outputs + 1)
+
+        ap.map(
+            register_attention_num_outputs_drr_classes, range(max_num_outputs)
+        )
+
+    ap.map(register_attention_num_inputs_drr_classes, range(max_num_inputs))
+
+
+register_attention_epilogue_class(
+    base_class=AttentionEpilogueFusion, max_num_inputs=10, max_num_outputs=10
+)
