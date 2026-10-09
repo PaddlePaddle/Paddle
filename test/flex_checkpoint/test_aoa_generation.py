@@ -17,40 +17,28 @@
 # consumes them lives on ``Layer`` and is pinned by
 # ``test_gen_aoa_statements.py``, which only ever drives their happy paths.
 # This file covers the name-space algebra (root stripping, placeholder
-# templates, subtree re-rooting), the dtype-cast rule lookup and its two
-# formatters, and every documented failure mode: those raises are what stops a
-# mis-declared model config from silently producing wrong checkpoint keys
-# instead of failing at conversion time.
+# templates, subtree segment dropping) and every documented failure mode: those
+# raises are what stops a mis-declared model config from silently producing
+# wrong checkpoint keys instead of failing at conversion time.
 
 import unittest
 from dataclasses import FrozenInstanceError
 
 from paddle.distributed.flex_checkpoint.aoa.generation import (
     AOAContext,
-    AOANameScope,
-    format_dtype_cast_attr,
-    format_inv_dtype_cast_attr,
     join_name,
     resolve_checkpoint_name_from_anchor,
-    resolve_dtype_cast_rule,
     resolve_names,
     resolve_single_name,
-    should_skip,
     strip_name_suffix,
     validate_checkpoint_name_mapping,
 )
 
 _MODEL = "model"
 
-_RULE = {"checkpoint_dtype": "float32", "model_dtype": "bfloat16"}
-
-# The MTP layout: the checkpoint keeps the subtree under its own root, while
-# the leaf mapping rules are written against a normal layer ("layers.1").
-_MTP_SCOPE = AOANameScope(
-    checkpoint_prefix="mtp.0",
-    logical_model_prefix="model.layers.1",
-    actual_model_prefix="model.mtp.0",
-)
+# The MTP layout: the live tree holds the transformer layer one module deeper
+# than the checkpoint, which keeps its tensors directly under the layer.
+_MTP_DROP = "transformer_layer"
 
 
 def _resolve(
@@ -61,7 +49,7 @@ def _resolve(
     pp_mapping=None,
     name_mapping=None,
     model_name_prefix=_MODEL,
-    aoa_name_scope=None,
+    checkpoint_lookup_drop_segment=None,
 ):
     return resolve_names(
         local_name,
@@ -70,7 +58,7 @@ def _resolve(
         pp_mapping or {},
         name_mapping or {},
         model_name_prefix=model_name_prefix,
-        aoa_name_scope=aoa_name_scope,
+        checkpoint_lookup_drop_segment=checkpoint_lookup_drop_segment,
     )
 
 
@@ -79,7 +67,6 @@ def _ctx():
         config=None,
         checkpoint_name_prefix="hf",
         checkpoint_name_mapping={},
-        dtype_cast_rules={},
         pp_to_single_mapping={},
         model_name_prefix=_MODEL,
     )
@@ -185,10 +172,12 @@ class TestResolveNames(unittest.TestCase):
 
     def test_placeholders_are_captured_and_rendered(self):
         mapping = {
-            "layers.$LAYER_ID.experts.$EXPERT_ID.weight": (
-                "blocks.$LAYER_ID.e.$EXPERT_ID.w"
+            "model.layers.$LAYER_ID.experts.$EXPERT_ID.weight": (
+                "hf.blocks.$LAYER_ID.e.$EXPERT_ID.w"
             )
         }
+        # Both sides are absolute, so the rendered value is already the final
+        # checkpoint name: the checkpoint prefix is not prepended a second time.
         self.assertEqual(
             _resolve(
                 "weight", "model.layers.2.experts.5.", name_mapping=mapping
@@ -196,8 +185,19 @@ class TestResolveNames(unittest.TestCase):
             "hf.blocks.2.e.5.w",
         )
 
+    def test_value_outside_the_checkpoint_root_is_used_verbatim(self):
+        # A mapped value is the final checkpoint name, so the shared checkpoint
+        # prefix is not prepended to it. This is what lets the ``ForCausalLM``
+        # layout keep its output head a top-level sibling of the backbone
+        # instead of forcing it under the backbone root.
+        mapping = {"model.lm_head.weight": "lm_head.weight"}
+        self.assertEqual(
+            _resolve("weight", "model.lm_head.", name_mapping=mapping),
+            ("lm_head.weight", "model.lm_head.weight"),
+        )
+
     def test_placeholder_only_matches_a_decimal_segment(self):
-        mapping = {"layers.$LAYER_ID.weight": "blocks.$LAYER_ID.w"}
+        mapping = {"model.layers.$LAYER_ID.weight": "hf.blocks.$LAYER_ID.w"}
         # A non-numeric segment misses, so the name passes through unchanged
         # rather than rendering "blocks.shared.w" from an uncaptured template.
         self.assertEqual(
@@ -206,7 +206,9 @@ class TestResolveNames(unittest.TestCase):
         )
 
     def test_repeated_placeholder_must_capture_one_value(self):
-        mapping = {"layers.$LAYER_ID.mtp.$LAYER_ID.weight": "x.$LAYER_ID.w"}
+        mapping = {
+            "model.layers.$LAYER_ID.mtp.$LAYER_ID.weight": "hf.x.$LAYER_ID.w"
+        }
         self.assertEqual(
             _resolve("weight", "model.layers.0.mtp.0.", name_mapping=mapping)[
                 0
@@ -221,16 +223,26 @@ class TestResolveNames(unittest.TestCase):
         )
 
     def test_segment_count_mismatch_is_a_miss(self):
-        mapping = {"layers.$LAYER_ID.weight": "blocks.$LAYER_ID.w"}
+        mapping = {"model.layers.$LAYER_ID.weight": "hf.blocks.$LAYER_ID.w"}
         self.assertEqual(
             _resolve("weight", "model.layers.0.attn.", name_mapping=mapping)[0],
             "hf.layers.0.attn.weight",
         )
 
+    def test_key_missing_the_model_root_never_matches(self):
+        # A key written root-relative cannot match an absolute single name; the
+        # miss degrades to the identity fallback. Rejecting it up front is
+        # validate_checkpoint_name_mapping's job.
+        mapping = {"layers.$LAYER_ID.weight": "hf.blocks.$LAYER_ID.w"}
+        self.assertEqual(
+            _resolve("weight", "model.layers.0.", name_mapping=mapping)[0],
+            "hf.layers.0.weight",
+        )
+
     def test_ambiguous_mapping_raises_at_resolution_time(self):
         mapping = {
-            "layers.$LAYER_ID.weight": "a.$LAYER_ID.w",
-            "layers.0.weight": "b.w",
+            "model.layers.$LAYER_ID.weight": "hf.a.$LAYER_ID.w",
+            "model.layers.0.weight": "hf.b.w",
         }
         with self.assertRaisesRegex(
             ValueError, "ambiguous checkpoint name mapping"
@@ -238,76 +250,78 @@ class TestResolveNames(unittest.TestCase):
             _resolve("weight", "model.layers.0.", name_mapping=mapping)
 
 
-class TestResolveNamesScoped(unittest.TestCase):
-    def test_subtree_is_rerooted_under_the_checkpoint_prefix(self):
-        self.assertEqual(
-            _resolve("weight", "model.mtp.0.", aoa_name_scope=_MTP_SCOPE),
-            ("hf.mtp.0.weight", "model.mtp.0.weight"),
-        )
-
-    def test_leaf_mapping_applies_through_the_logical_root(self):
-        # The rule is written for a normal layer; scoped resolution routes the
-        # subtree name through the logical root so the same rule still hits.
-        mapping = {"layers.$LAYER_ID.weight": "layers.$LAYER_ID.linear.weight"}
+class TestResolveNamesDropSegment(unittest.TestCase):
+    def test_segment_is_dropped_from_the_checkpoint_side_only(self):
         self.assertEqual(
             _resolve(
                 "weight",
-                "model.mtp.0.",
-                name_mapping=mapping,
-                aoa_name_scope=_MTP_SCOPE,
-            )[0],
-            "hf.mtp.0.linear.weight",
+                "model.layers.1.transformer_layer.",
+                checkpoint_lookup_drop_segment=_MTP_DROP,
+            ),
+            ("hf.layers.1.weight", "model.layers.1.transformer_layer.weight"),
         )
 
-    def test_absolute_prefix_skips_the_shared_checkpoint_prefix(self):
-        # The ForCausalLM layout keeps the head at the checkpoint root, a
-        # sibling of the backbone rather than under it.
-        head = AOANameScope(
-            checkpoint_prefix="lm_head",
-            logical_model_prefix="model.output_layer",
-            actual_model_prefix="model.output_layer",
-            is_checkpoint_prefix_absolute=True,
-        )
-        self.assertEqual(
-            _resolve("weight", "model.output_layer.", aoa_name_scope=head)[0],
-            "lm_head.weight",
-        )
-
-    def test_relative_prefix_is_the_default(self):
-        head = AOANameScope(
-            checkpoint_prefix="lm_head",
-            logical_model_prefix="model.output_layer",
-            actual_model_prefix="model.output_layer",
-        )
-        self.assertFalse(head.is_checkpoint_prefix_absolute)
-        self.assertEqual(
-            _resolve("weight", "model.output_layer.", aoa_name_scope=head)[0],
-            "hf.lm_head.weight",
-        )
-
-    def test_name_outside_the_subtree_raises(self):
-        scope = AOANameScope(
-            checkpoint_prefix="mtp.0",
-            logical_model_prefix="model.layers.1",
-            actual_model_prefix="model.mtp.9",
-        )
-        with self.assertRaisesRegex(ValueError, "is not under prefix"):
-            _resolve("weight", "model.mtp.0.", aoa_name_scope=scope)
-
-    def test_mapping_that_rewrites_the_logical_root_raises(self):
-        # Scoped resolution strips the logical root back off the mapped name
-        # before re-anchoring it, so a value template that drops that root
-        # cannot be re-anchored and must not be guessed at.
-        mapping = {"layers.$LAYER_ID.weight": "embeddings.weight"}
-        with self.assertRaisesRegex(
-            ValueError, "rewrites the logical root prefix"
-        ):
-            _resolve(
-                "weight",
-                "model.mtp.0.",
-                name_mapping=mapping,
-                aoa_name_scope=_MTP_SCOPE,
+    def test_layer_mapping_hits_after_the_drop(self):
+        # The rule is written for an ordinary layer; dropping the extra live
+        # segment is what lets the same rule hit inside the subtree.
+        mapping = {
+            "model.layers.$LAYER_ID.weight": (
+                "hf.layers.$LAYER_ID.linear.weight"
             )
+        }
+        self.assertEqual(
+            _resolve(
+                "weight",
+                "model.layers.1.transformer_layer.",
+                name_mapping=mapping,
+                checkpoint_lookup_drop_segment=_MTP_DROP,
+            )[0],
+            "hf.layers.1.linear.weight",
+        )
+
+    def test_absent_segment_is_a_noop(self):
+        # A subtree owner passes one value to every child, including the ones
+        # that do not carry the segment.
+        self.assertEqual(
+            _resolve(
+                "weight",
+                "model.layers.1.",
+                checkpoint_lookup_drop_segment=_MTP_DROP,
+            ),
+            ("hf.layers.1.weight", "model.layers.1.weight"),
+        )
+
+    def test_none_leaves_the_name_untouched(self):
+        self.assertEqual(
+            _resolve(
+                "weight",
+                "model.layers.1.transformer_layer.",
+                checkpoint_lookup_drop_segment=None,
+            )[0],
+            "hf.layers.1.transformer_layer.weight",
+        )
+
+    def test_repeated_segment_raises(self):
+        # Which occurrence to drop is unknowable, and guessing would mis-key
+        # silently.
+        with self.assertRaisesRegex(ValueError, "appears 2 times"):
+            _resolve(
+                "weight",
+                "model.transformer_layer.1.transformer_layer.",
+                checkpoint_lookup_drop_segment=_MTP_DROP,
+            )
+
+    def test_segment_matches_a_whole_segment_only(self):
+        # A substring of a segment is not a segment: dropping on substring
+        # match would corrupt unrelated names.
+        self.assertEqual(
+            _resolve(
+                "weight",
+                "model.layers.1.transformer_layer_ext.",
+                checkpoint_lookup_drop_segment=_MTP_DROP,
+            )[0],
+            "hf.layers.1.transformer_layer_ext.weight",
+        )
 
 
 class TestResolveCheckpointNameFromAnchor(unittest.TestCase):
@@ -329,7 +343,9 @@ class TestResolveCheckpointNameFromAnchor(unittest.TestCase):
 
     def test_mapping_applies_to_the_synthetic_name(self):
         mapping = {
-            "layers.$LAYER_ID.qkv_proj.weight": "layers.$LAYER_ID.attn.qkv.w"
+            "model.layers.$LAYER_ID.qkv_proj.weight": (
+                "hf.layers.$LAYER_ID.attn.qkv.w"
+            )
         }
         self.assertEqual(
             self._anchor(name_mapping=mapping), "hf.layers.0.attn.qkv.w"
@@ -341,172 +357,97 @@ class TestResolveCheckpointNameFromAnchor(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "does not end with suffix"):
             self._anchor(anchor_local="k_proj.weight")
 
-    def test_scoped_anchor_is_rerooted_like_a_real_param(self):
+    def test_drop_segment_applies_to_the_synthetic_name(self):
         self.assertEqual(
             self._anchor(
-                anchor_single="model.mtp.0.q_proj.weight",
-                aoa_name_scope=_MTP_SCOPE,
+                anchor_single="model.layers.0.transformer_layer.q_proj.weight",
+                checkpoint_lookup_drop_segment=_MTP_DROP,
             ),
-            "hf.mtp.0.qkv_proj.weight",
+            "hf.layers.0.qkv_proj.weight",
         )
-
-
-class TestResolveDtypeCastRule(unittest.TestCase):
-    _TEMPLATE = {"layers.$LAYER_ID.weight": _RULE}
-
-    def test_empty_rules_short_circuit_before_root_stripping(self):
-        # The early return keeps the overwhelmingly common no-rule case free of
-        # any name work at all -- so a foreign root is not even looked at.
-        self.assertIsNone(resolve_dtype_cast_rule("elsewhere", {}, _MODEL))
-
-    def test_template_matches_through_the_model_root(self):
-        self.assertEqual(
-            resolve_dtype_cast_rule(
-                "model.layers.7.weight", self._TEMPLATE, _MODEL
-            ),
-            _RULE,
-        )
-
-    def test_miss_returns_none(self):
-        self.assertIsNone(
-            resolve_dtype_cast_rule(
-                "model.layers.7.bias", self._TEMPLATE, _MODEL
-            )
-        )
-
-    def test_name_outside_the_model_root_raises(self):
-        with self.assertRaisesRegex(ValueError, "is not under prefix"):
-            resolve_dtype_cast_rule("other.stem.weight", self._TEMPLATE, _MODEL)
-
-    def test_ambiguous_templates_raise(self):
-        rules = {
-            "layers.$LAYER_ID.weight": _RULE,
-            "layers.0.weight": {
-                "checkpoint_dtype": "float32",
-                "model_dtype": "float16",
-            },
-        }
-        with self.assertRaisesRegex(
-            ValueError, "ambiguous dtype cast rule for 'layers.0.weight'"
-        ):
-            resolve_dtype_cast_rule("model.layers.0.weight", rules, _MODEL)
-
-    def test_half_declared_rule_raises(self):
-        # Refusing at lookup names the offending template; letting it through
-        # would surface as a KeyError inside a formatter instead.
-        rules = {"stem.weight": {"checkpoint_dtype": "float32"}}
-        with self.assertRaisesRegex(
-            ValueError, r"is missing \['model_dtype'\]"
-        ):
-            resolve_dtype_cast_rule("model.stem.weight", rules, _MODEL)
-
-
-class TestFormatDtypeCastAttr(unittest.TestCase):
-    def test_no_rule_is_no_suffix(self):
-        self.assertEqual(format_dtype_cast_attr(None), "")
-        self.assertEqual(format_inv_dtype_cast_attr(None), "")
-
-    def test_equal_endpoints_are_a_noop(self):
-        rule = {"checkpoint_dtype": "bfloat16", "model_dtype": "bfloat16"}
-        self.assertEqual(format_dtype_cast_attr(rule), "")
-        self.assertEqual(format_inv_dtype_cast_attr(rule), "")
-
-    def test_endpoints_are_mirrored_between_directions(self):
-        # One rule drives both directions and the endpoint order is the only
-        # difference between the two functions, so pin both literals together:
-        # swapping them silently casts the wrong way.
-        self.assertEqual(
-            format_dtype_cast_attr(_RULE),
-            ", src_dtype='float32', dst_dtype='bfloat16'",
-        )
-        self.assertEqual(
-            format_inv_dtype_cast_attr(_RULE),
-            ", src_dtype='bfloat16', dst_dtype='float32'",
-        )
-
-
-class TestShouldSkip(unittest.TestCase):
-    def test_untransformed_identity_is_skipped(self):
-        # AOAEngine fills an unproduced destination from the same-named source,
-        # so emitting this line would be redundant.
-        self.assertTrue(should_skip("model.weight", "model.weight", ""))
-
-    def test_a_cast_keeps_an_identity_alive(self):
-        self.assertFalse(should_skip("model.weight", "model.weight", ", cast"))
-
-    def test_differing_names_are_never_skipped(self):
-        self.assertFalse(should_skip("hf.weight", "model.weight", ""))
 
 
 class TestValidateCheckpointNameMapping(unittest.TestCase):
+    def _validate(self, mapping):
+        validate_checkpoint_name_mapping(
+            mapping,
+            model_name_prefix=_MODEL,
+        )
+
     def test_empty_mapping_is_valid(self):
-        validate_checkpoint_name_mapping({})
+        self._validate({})
 
     def test_wellformed_mapping_is_valid(self):
-        validate_checkpoint_name_mapping(
+        self._validate(
             {
-                "layers.$LAYER_ID.weight": "layers.$LAYER_ID.linear.weight",
-                "layers.$LAYER_ID.experts.$EXPERT_ID.w": (
-                    "layers.$LAYER_ID.e.$EXPERT_ID.w"
+                "model.layers.$LAYER_ID.weight": (
+                    "hf.layers.$LAYER_ID.linear.weight"
+                ),
+                "model.layers.$LAYER_ID.experts.$EXPERT_ID.w": (
+                    "hf.layers.$LAYER_ID.e.$EXPERT_ID.w"
                 ),
             }
         )
 
     def test_empty_key_or_value_raises(self):
-        for mapping in ({"": "a.w"}, {"a.w": ""}):
+        for mapping in ({"": "hf.a.w"}, {"model.a.w": ""}):
             with self.assertRaisesRegex(ValueError, "empty-string"):
-                validate_checkpoint_name_mapping(mapping)
+                self._validate(mapping)
+
+    def test_key_outside_the_model_root_raises(self):
+        # A root-relative key can never match an absolute single name, and the
+        # miss would silently degrade to the identity fallback instead of
+        # failing, so it has to be rejected up front.
+        with self.assertRaisesRegex(
+            ValueError, "has key template .* outside its root prefix"
+        ):
+            self._validate({"layers.0.w": "hf.blocks.0.w"})
+
+    def test_key_root_must_match_on_a_segment_boundary(self):
+        with self.assertRaisesRegex(ValueError, "outside its root prefix"):
+            self._validate({"modelx.layers.0.w": "hf.blocks.0.w"})
+
+    def test_value_outside_any_shared_root_is_accepted(self):
+        # A value is the final checkpoint name, used exactly as written, so one
+        # that sits outside the shared checkpoint root is honoured rather than
+        # mis-keyed -- which is how the ``ForCausalLM`` layout keeps its output
+        # head a top-level sibling of the backbone.
+        self._validate({"model.lm_head.weight": "lm_head.weight"})
+
+    def test_two_keys_may_share_one_value(self):
+        # A shared value is a legal declaration, not a collision: the mapping
+        # covers every layout the model can build, while only one of two
+        # mutually exclusive output heads is ever instantiated. Rejecting it
+        # here would make that declaration unwritable.
+        self._validate(
+            {
+                "model.lm_head.weight": "lm_head.weight",
+                "model.shared_head.weight": "lm_head.weight",
+            }
+        )
 
     def test_placeholder_must_be_a_whole_known_segment(self):
         # Either form would survive rendering into a bogus checkpoint name.
         for mapping in (
-            {"layers.l$LAYER_ID.weight": "x.w"},
-            {"layers.$LAYERID.weight": "x.w"},
+            {"model.layers.l$LAYER_ID.weight": "hf.x.w"},
+            {"model.layers.$LAYERID.weight": "hf.x.w"},
         ):
             with self.assertRaisesRegex(ValueError, "has key segment"):
-                validate_checkpoint_name_mapping(mapping)
+                self._validate(mapping)
 
     def test_unknown_placeholder_in_a_value_raises(self):
         with self.assertRaisesRegex(ValueError, "has value segment"):
-            validate_checkpoint_name_mapping({"a.w": "x.$FOO.w"})
+            self._validate({"model.a.w": "hf.x.$FOO.w"})
 
     def test_value_placeholder_must_be_captured_by_the_key(self):
         with self.assertRaisesRegex(ValueError, "not captured by the key"):
-            validate_checkpoint_name_mapping(
-                {"layers.0.w": "blocks.$LAYER_ID.w"}
-            )
-
-    def test_duplicate_target_raises(self):
-        # Two model names landing on one checkpoint key is a tie, which only
-        # the whole-model alias handler may express.
-        with self.assertRaisesRegex(ValueError, "duplicate checkpoint target"):
-            validate_checkpoint_name_mapping({"a.w": "z.w", "b.w": "z.w"})
-
-    def test_concrete_key_shadowed_by_a_template_raises(self):
-        # Same config that TestResolveNames pins as a runtime ambiguity; the
-        # config-time check catches it first and names both keys.
-        with self.assertRaisesRegex(
-            ValueError, "overlapping checkpoint name mapping"
-        ):
-            validate_checkpoint_name_mapping(
-                {
-                    "layers.$LAYER_ID.weight": "a.$LAYER_ID.w",
-                    "layers.0.weight": "b.w",
-                }
-            )
+            self._validate({"model.layers.0.w": "hf.blocks.$LAYER_ID.w"})
 
 
-class TestContainerDefaults(unittest.TestCase):
-    def test_excluded_names_defaults_to_empty(self):
-        self.assertEqual(_ctx().excluded_names, frozenset())
-
+class TestAOAContext(unittest.TestCase):
     def test_context_is_frozen(self):
         with self.assertRaises(FrozenInstanceError):
             _ctx().checkpoint_name_prefix = "mut"
-
-    def test_name_scope_is_frozen(self):
-        with self.assertRaises(FrozenInstanceError):
-            _MTP_SCOPE.checkpoint_prefix = "mut"
 
 
 if __name__ == "__main__":
