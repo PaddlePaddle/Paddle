@@ -538,7 +538,7 @@ class TestTopKAPI(unittest.TestCase):
                 # returning all-NaN (aligns with the forward "index k out of
                 # range" semantics).
                 empty_axis = paddle.empty([1024, 0], dtype="float32")
-                with self.assertRaises(ValueError):
+                with self.assertRaisesRegex(ValueError, "axis of size 0"):
                     paddle.topk(empty_axis, k=10, axis=-1)
 
                 # A legit empty output (empty batch, non-empty reduction axis)
