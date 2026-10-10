@@ -7614,6 +7614,29 @@ def isin(
     if not isinstance(test_x, (paddle.Tensor, Variable, paddle.pir.Value)):
         raise TypeError(f"x must be tensor type, but got {type(test_x)}")
 
+    # ``check_variable_and_dtype`` below is skipped in dygraph (see NOTE
+    # [ Why skip dynamic graph check ] in data_feeder.py), so bool/other
+    # unsupported dtypes would silently slip through in eager mode while being
+    # rejected in static mode (issue #79160). This mode-agnostic guard enforces
+    # the documented dtype contract consistently in eager, static and to_static.
+    # It matches ``torch.isin``, which also rejects bool, and reflects the fact
+    # that ``argsort``/``sort``/``searchsorted`` have no bool kernel.
+    supported_dtypes = [
+        'uint16',
+        'float16',
+        'float32',
+        'float64',
+        'int32',
+        'int64',
+    ]
+    for var, var_name in ((x, 'x'), (test_x, 'test_x')):
+        if convert_dtype(var.dtype) not in supported_dtypes:
+            raise TypeError(
+                f"The data type of '{var_name}' in isin must be "
+                f'{supported_dtypes}, but received '
+                f'{convert_dtype(var.dtype)}.'
+            )
+
     check_variable_and_dtype(
         x,
         "x",
