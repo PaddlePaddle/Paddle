@@ -79,6 +79,44 @@ class TestHistcAPI(unittest.TestCase):
         paddle.disable_static()
 
 
+# Test histogram compatibility
+class TestHistogramAPI(unittest.TestCase):
+    def setUp(self):
+        self.input_np = np.array([[2, 4, 2], [2, 5, 4]]).astype(np.int64)
+        self.expected = np.array([0, 3, 0, 2, 1]).astype(np.int64)
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.input_np)
+
+        out = paddle.empty([5], dtype=paddle.int64)
+        result = paddle.histogram(x, bins=5, min=1, max=5, out=out)
+
+        self.assertIs(result, out)
+        np.testing.assert_array_equal(result.numpy(), self.expected)
+        paddle.enable_static()
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            x = paddle.static.data(
+                name="x", shape=self.input_np.shape, dtype="int64"
+            )
+            out = paddle.empty([5], dtype="int64")
+            result = paddle.histogram(x, bins=5, min=1, max=5, out=out)
+
+            exe = paddle.static.Executor()
+            fetches = exe.run(
+                main,
+                feed={"x": self.input_np},
+                fetch_list=[result],
+            )
+
+        np.testing.assert_array_equal(fetches[0], self.expected)
+
+
 class TestMvlgammaAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(2025)
