@@ -78,13 +78,6 @@ if(((WITH_GPU) AND (CUDA_VERSION VERSION_LESS 12.0))
     "legacy/gpu/fp8_gemm_blockwise_kernel.cu"
     "legacy/gpu/fp8_gemm_blockwise_kernel.cu"
     "legacy/gpu/fp8_quant_blockwise_kernel.cu"
-    "legacy/gpu/fast_layernorm_kernel.cu"
-    "legacy/gpu/fast_layernorm_grad_kernel.cu"
-    "legacy/gpu/fast_rmsnorm_kernel.cu"
-    "legacy/gpu/fast_rmsnorm_grad_kernel.cu"
-    "legacy/gpu/ln.cu"
-    "legacy/gpu/ln_bwd_semi_cuda_kernel.cu"
-    "legacy/gpu/ln_fwd_cuda_kernel.cu"
     "fusion/gpu/fused_act_dequant_kernel.cu"
     "fusion/gpu/fused_stack_transpose_quant_kernel.cu"
     "fusion/gpu/fused_transpose_split_quant_kernel.cu"
@@ -114,6 +107,15 @@ foreach(arch ${NVCC_ARCH_BIN})
   endif()
 endforeach()
 
+# Get flag for CUDA arch >= 70
+set(has_arch_le70 FALSE)
+foreach(arch ${NVCC_ARCH_BIN})
+  if(${arch} LESS_EQUAL 70)
+    set(has_arch_le70 TRUE)
+    break()
+  endif()
+endforeach()
+
 if(WITH_GPU
    AND (NOT has_arch_ge80 OR (CUDA_VERSION VERSION_LESS 12.0))
    OR WIN32
@@ -121,6 +123,23 @@ if(WITH_GPU
    OR WITH_ROCM) # need support BF16
   list(REMOVE_ITEM kernel_gpu "gpu/moe_permute_kernel.cu"
        "gpu/moe_unpermute_kernel.cu")
+endif()
+
+if(WITH_GPU
+   AND (has_arch_le70 OR (CUDA_VERSION VERSION_LESS 12.0))
+   OR WIN32
+   OR APPLE
+   OR WITH_ROCM) # need support BF16
+  list(
+    REMOVE_ITEM
+    kernel_gpu
+    "legacy/gpu/fast_layernorm_kernel.cu"
+    "legacy/gpu/fast_layernorm_grad_kernel.cu"
+    "legacy/gpu/fast_rmsnorm_kernel.cu"
+    "legacy/gpu/fast_rmsnorm_grad_kernel.cu"
+    "legacy/gpu/ln.cu"
+    "legacy/gpu/ln_bwd_semi_cuda_kernel.cu"
+    "legacy/gpu/ln_fwd_cuda_kernel.cu")
 endif()
 
 if(NOT WITH_DGC)
