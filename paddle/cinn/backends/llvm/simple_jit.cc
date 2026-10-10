@@ -23,7 +23,11 @@
 #include <llvm/IRReader/IRReader.h>
 #include <llvm/Passes/PassBuilder.h>
 #include <llvm/Support/SourceMgr.h>
+#if LLVM_VERSION_MAJOR >= 14
+#include <llvm/MC/TargetRegistry.h>
+#else
 #include <llvm/Support/TargetRegistry.h>
+#endif
 #include <llvm/Transforms/Scalar.h>
 #include <llvm/Transforms/Scalar/GVN.h>
 #include <llvm/Transforms/Scalar/Reassociate.h>
@@ -58,10 +62,12 @@ void SimpleJIT::AddModule(std::unique_ptr<llvm::Module> module, bool optimize) {
   bool debug = false;
   if (optimize) {
     llvm::PassBuilder pass_builder;
-    llvm::LoopAnalysisManager loop_analysis_manager(debug);
-    llvm::FunctionAnalysisManager function_analysis_manager(debug);
-    llvm::CGSCCAnalysisManager cgscc_analysis_manager(debug);
-    llvm::ModuleAnalysisManager module_analysis_manager(debug);
+    // LLVM >= 13 dropped the `bool DebugLogging` ctor arg on the analysis
+    // managers; default-construction is valid on both LLVM 12 and 15.
+    llvm::LoopAnalysisManager loop_analysis_manager;
+    llvm::FunctionAnalysisManager function_analysis_manager;
+    llvm::CGSCCAnalysisManager cgscc_analysis_manager;
+    llvm::ModuleAnalysisManager module_analysis_manager;
 
     pass_builder.registerModuleAnalyses(module_analysis_manager);
     pass_builder.registerCGSCCAnalyses(cgscc_analysis_manager);
@@ -74,7 +80,12 @@ void SimpleJIT::AddModule(std::unique_ptr<llvm::Module> module, bool optimize) {
 
     llvm::ModulePassManager module_pass_manager =
         pass_builder.buildPerModuleDefaultPipeline(
+#if LLVM_VERSION_MAJOR >= 14
+            // OptimizationLevel moved from PassBuilder:: to the llvm:: namespace.
+            llvm::OptimizationLevel::O3);
+#else
             llvm::PassBuilder::OptimizationLevel::O3);
+#endif
     module_pass_manager.run(*module, module_analysis_manager);
   }
 
@@ -115,10 +126,18 @@ SimpleJIT::SimpleJIT() : context_(std::make_unique<llvm::LLVMContext>()) {
 
   for (auto &item : GlobalSymbolRegistry::Global().All()) {
     VLOG(2) << "Insert [" << item.first << "] to SimpleJIT";
+#if LLVM_VERSION_MAJOR >= 15
+    // LLVM 15 removed LLJIT::define(); define on the main JITDylib instead.
+    llvm::cantFail(jit_->getMainJITDylib().define(llvm::orc::absoluteSymbols(
+        {{mangle(item.first),
+          {llvm::pointerToJITTargetAddress(item.second),
+           llvm::JITSymbolFlags::None}}})));
+#else
     llvm::cantFail(jit_->define(llvm::orc::absoluteSymbols(
         {{mangle(item.first),
           {llvm::pointerToJITTargetAddress(item.second),
            llvm::JITSymbolFlags::None}}})));
+#endif
   }
 }
 

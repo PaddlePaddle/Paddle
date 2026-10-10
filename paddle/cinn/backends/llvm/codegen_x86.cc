@@ -56,19 +56,20 @@ llvm::Value* CodeGenX86::PackVars(const std::vector<std::string>& vars,
     b_->CreateStore(
         GetVar(vars[i]),
         b_->CreateInBoundsGEP(
-            data, {llvm_int32_constant(0), llvm_int32_constant(i)}));
+            t_data, data, {llvm_int32_constant(0), llvm_int32_constant(i)}));
   }
-  *num_bytes = m_->getDataLayout().getTypeAllocSize(
-      llvm::cast<llvm::PointerType>(data->getType())->getElementType());
+  *num_bytes = m_->getDataLayout().getTypeAllocSize(t_data);
   return data;
 }
 
 void CodeGenX86::UnpackVars(const std::vector<std::string>& vars,
                             llvm::Value* data) {
+  llvm::Type* data_ty = data->getType()->getPointerElementType();
   for (size_t i = 0; i < vars.size(); ++i) {
+    auto* gep = b_->CreateInBoundsGEP(
+        data_ty, data, {llvm_int32_constant(0), llvm_int32_constant(i)});
     SetVar(vars[i],
-           b_->CreateLoad(b_->CreateInBoundsGEP(
-               data, {llvm_int32_constant(0), llvm_int32_constant(i)})));
+           b_->CreateLoad(gep->getType()->getPointerElementType(), gep));
   }
 }
 

@@ -106,7 +106,14 @@ llvm::Type *CinnTypeToLLVMType(cinn::common::Type type,
                       true,
                       ::common::errors::InvalidArgument(
                           "Customized type name should not be empty."));
+#if LLVM_VERSION_MAJOR >= 15
+    // Module::getTypeByName was removed in LLVM 15; the static
+    // StructType::getTypeByName(ctx, name) is the replacement (exists since 12).
+    ir_type = llvm::StructType::getTypeByName(
+        m->getContext(), "struct." + type.customized_type());
+#else
     ir_type = m->getTypeByName("struct." + type.customized_type());
+#endif
   }
   PADDLE_ENFORCE_NOT_NULL(
       ir_type, ::common::errors::InvalidArgument("LLVM can't convert type."));

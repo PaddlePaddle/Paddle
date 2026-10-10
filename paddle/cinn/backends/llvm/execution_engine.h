@@ -23,7 +23,9 @@
 #include <llvm/ExecutionEngine/Orc/ExecutionUtils.h>
 #include <llvm/ExecutionEngine/Orc/IRCompileLayer.h>
 #include <llvm/ExecutionEngine/Orc/LLJIT.h>
+#if LLVM_VERSION_MAJOR < 15
 #include <llvm/ExecutionEngine/Orc/LambdaResolver.h>
+#endif
 #include <llvm/ExecutionEngine/Orc/RTDyldObjectLinkingLayer.h>
 #include <llvm/ExecutionEngine/Orc/ThreadSafeModule.h>
 #include <llvm/ExecutionEngine/SectionMemoryManager.h>
@@ -45,21 +47,12 @@
 
 #include "paddle/cinn/backends/llvm/codegen_x86.h"
 #include "paddle/cinn/backends/llvm/llvm_util.h"
+#include "paddle/cinn/backends/llvm/object_cache.h"
 #include "paddle/cinn/backends/llvm/runtime_symbol_registry.h"
 #include "paddle/cinn/cinn.h"
 #include "paddle/cinn/ir/module.h"
 
 namespace cinn::backends {
-
-class NaiveObjectCache : public llvm::ObjectCache {
- public:
-  void notifyObjectCompiled(const llvm::Module *,
-                            llvm::MemoryBufferRef) override;
-  std::unique_ptr<llvm::MemoryBuffer> getObject(const llvm::Module *) override;
-
- private:
-  llvm::StringMap<std::unique_ptr<llvm::MemoryBuffer>> cached_objects_;
-};
 
 struct ExecutionOptions {
   int opt_level{3};

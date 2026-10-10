@@ -36,7 +36,11 @@
 #include <llvm/Support/Host.h>
 #include <llvm/Support/MemoryBuffer.h>
 #include <llvm/Support/SourceMgr.h>
+#if LLVM_VERSION_MAJOR >= 14
+#include <llvm/MC/TargetRegistry.h>
+#else
 #include <llvm/Support/TargetRegistry.h>
+#endif
 #include <llvm/Support/TargetSelect.h>
 #include <llvm/Support/raw_ostream.h>
 #include <llvm/Target/TargetMachine.h>
@@ -92,25 +96,6 @@ void InitializeLLVMPasses() {
   // llvm::initializeCodeGenPreparePass(registry);
 }
 }  // namespace
-void NaiveObjectCache::notifyObjectCompiled(const llvm::Module *m,
-                                            llvm::MemoryBufferRef obj_buffer) {
-  cached_objects_[m->getModuleIdentifier()] =
-      llvm::MemoryBuffer::getMemBufferCopy(obj_buffer.getBuffer(),
-                                           obj_buffer.getBufferIdentifier());
-}
-
-std::unique_ptr<llvm::MemoryBuffer> NaiveObjectCache::getObject(
-    const llvm::Module *m) {
-  auto it = cached_objects_.find(m->getModuleIdentifier());
-  if (it == cached_objects_.end()) {
-    VLOG(1) << "No object for " << m->getModuleIdentifier()
-            << " in cache. Compiling.";
-    return nullptr;
-  }
-
-  VLOG(3) << "Object for " << m->getModuleIdentifier() << " loaded from cache.";
-  return llvm::MemoryBuffer::getMemBuffer(it->second->getMemBufferRef());
-}
 
 /*static*/ std::unique_ptr<ExecutionEngine> ExecutionEngine::Create(
     const ExecutionOptions &config) {
@@ -129,12 +114,11 @@ std::unique_ptr<llvm::MemoryBuffer> NaiveObjectCache::getObject(
       [&engine](llvm::orc::JITTargetMachineBuilder jtmb)
       -> llvm::Expected<
           std::unique_ptr<llvm::orc::IRCompileLayer::IRCompiler>> {
-    auto machine = llvm::cantFail(jtmb.createTargetMachine());
-    VLOG(6) << "create llvm compile layer";
-    VLOG(6) << "Target Name: " << machine->getTarget().getName();
-    VLOG(6) << "Target CPU: " << machine->getTargetCPU().str() << std::endl;
-    return std::make_unique<llvm::orc::TMOwningSimpleCompiler>(
-        std::move(machine), engine->cache_.get());
+    // The TMOwningSimpleCompiler (llvm::orc::SimpleCompiler) construction is
+    // performed inside a -fno-rtti TU (object_cache_rtti_off.cc) so that no
+    // llvm::orc::SimpleCompiler typeinfo is required when linking against the
+    // RTTI-OFF libLLVM-15 used by WITH_XPU_CADA.
+    return CreateObjectCacheCompiler(std::move(jtmb), engine->cache_.get());
   };
 
   auto object_layer_creator = [&](llvm::orc::ExecutionSession &session,
@@ -379,10 +363,17 @@ void ExecutionEngine::RegisterModuleRuntimeSymbols(
   auto *session = &jit_->getExecutionSession();
   for (const auto &sym : module_symbols_.All()) {
     VLOG(3) << "Add symbol: {" << sym.first << ":" << sym.second << "}";
+#if LLVM_VERSION_MAJOR >= 15
+    llvm::cantFail(jit_->getMainJITDylib().define(llvm::orc::absoluteSymbols(
+        {{session->intern(sym.first),
+          {llvm::pointerToJITTargetAddress(sym.second),
+           llvm::JITSymbolFlags::Exported}}})));
+#else
     llvm::cantFail(jit_->define(llvm::orc::absoluteSymbols(
         {{session->intern(sym.first),
           {llvm::pointerToJITTargetAddress(sym.second),
            llvm::JITSymbolFlags::Exported}}})));
+#endif
   }
 }
 
@@ -403,7 +394,11 @@ void *ExecutionEngine::Lookup(std::string_view name) {
   utils::RecordEvent("ExecutionEngine Lookup", utils::EventType::kOrdinary);
   std::lock_guard<std::mutex> lock(mu_);
   if (auto symbol = jit_->lookup(AsStringRef(name))) {
+#if LLVM_VERSION_MAJOR >= 15
+    return reinterpret_cast<void *>(symbol->getValue());
+#else
     return reinterpret_cast<void *>(symbol->getAddress());
+#endif
   }
 
   LOG(ERROR) << "Unknown symbol name[" << name << "]";
@@ -416,10 +411,17 @@ void ExecutionEngine::RegisterGlobalRuntimeSymbols() {
   const auto &registry = GlobalSymbolRegistry::Global();
   auto *session = &jit_->getExecutionSession();
   for (const auto &sym : registry.All()) {
+#if LLVM_VERSION_MAJOR >= 15
+    llvm::cantFail(jit_->getMainJITDylib().define(llvm::orc::absoluteSymbols(
+        {{session->intern(sym.first),
+          {llvm::pointerToJITTargetAddress(sym.second),
+           llvm::JITSymbolFlags::None}}})));
+#else
     llvm::cantFail(jit_->define(llvm::orc::absoluteSymbols(
         {{session->intern(sym.first),
           {llvm::pointerToJITTargetAddress(sym.second),
            llvm::JITSymbolFlags::None}}})));
+#endif
   }
 }
 

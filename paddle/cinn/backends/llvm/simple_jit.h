@@ -21,7 +21,11 @@
 #include <llvm/ExecutionEngine/Orc/ExecutionUtils.h>
 #include <llvm/ExecutionEngine/Orc/IRCompileLayer.h>
 #include <llvm/ExecutionEngine/Orc/LLJIT.h>
+#if LLVM_VERSION_MAJOR < 15
+// LambdaResolver.h was removed from ORC in LLVM 15; it is unused here (SimpleJIT
+// uses LLJIT / ExecutionSession, not the legacy lambda resolver).
 #include <llvm/ExecutionEngine/Orc/LambdaResolver.h>
+#endif
 #include <llvm/ExecutionEngine/Orc/RTDyldObjectLinkingLayer.h>
 #include <llvm/ExecutionEngine/Orc/ThreadSafeModule.h>
 #include <llvm/ExecutionEngine/SectionMemoryManager.h>
@@ -68,7 +72,13 @@ class SimpleJIT {
   }
 
   llvm::JITTargetAddress Lookup(std::string_view name) {
+#if LLVM_VERSION_MAJOR >= 15
+    // LLVM 15: LLJIT::lookup returns Expected<ExecutorAddr>; ExecutorAddr has
+    // getValue() (uint64_t) instead of the old JITEvaluatedSymbol::getAddress().
+    return llvm::cantFail(jit_->lookup(AsStringRef(name))).getValue();
+#else
     return llvm::cantFail(jit_->lookup(AsStringRef(name))).getAddress();
+#endif
   }
 
  private:

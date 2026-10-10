@@ -39,6 +39,16 @@ extern void EnforceCUDNNLoaded(const char* fn_name);
       });                                                            \
       EnforceCUDNNLoaded(#__name);                                   \
       static void* p_##__name = dlsym(cudnn_dso_handle, #__name);    \
+      /* xtrans libcudnn exports xpudnn* instead of cudnn* (the      \
+         cudnn->xpudnn mapping is compile-time only via name_maps    \
+         headers). Fall back to the xpudnn* name at runtime so that  \
+         WITH_XPU_CADA builds resolve the symbol correctly.       */ \
+      if (!p_##__name) {                                             \
+        static const std::string xpu_name =                          \
+            std::string("xpudnn") +                                  \
+            (std::string(#__name).substr(sizeof("cudnn") - 1));      \
+        p_##__name = dlsym(cudnn_dso_handle, xpu_name.c_str());      \
+      }                                                              \
       return reinterpret_cast<cudnn_func>(p_##__name)(args...);      \
     }                                                                \
   };                                                                 \

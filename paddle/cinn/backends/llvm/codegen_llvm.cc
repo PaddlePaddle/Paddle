@@ -125,40 +125,31 @@ llvm::Value *CodeGenLLVM::EmitVectorSlice(llvm::Value *vec,
                                           int begin,
                                           int extent) {
   int numel =
-      llvm::dyn_cast<llvm::VectorType>(vec->getType())->getNumElements();
+      llvm::cast<llvm::FixedVectorType>(vec->getType())->getNumElements();
   if (extent == numel && begin == 0) return vec;
 
   CHECK(begin >= 0 && extent <= numel) << "Slicing out of bound!";
 
-  std::vector<llvm::Constant *> indices(extent);
+  llvm::SmallVector<int, 16> indices(extent);
   for (int i = 0; i < extent; i++) {
-    llvm::Constant **v = &indices[i];
     if (begin + i >= 0 && begin + i < numel) {
-      *v = llvm::ConstantInt::get(b_->getInt32Ty(), begin + i);
+      indices[i] = begin + i;
     } else {
-      *v = llvm::UndefValue::get(b_->getInt32Ty());
+      indices[i] = -1;  // poison/undef mask index
     }
   }
-  return ShuffleVector(vec, vec, llvm::ConstantVector::get(std::move(indices)));
+  return ShuffleVector(vec, vec, indices);
 }
 
 llvm::Value *CodeGenLLVM::EmitVectorPad(llvm::Value *vec, int lanes) {
-#if LLVM_VERSION_MAJOR <= 10
-  llvm::Value *mask =
-      llvm::UndefValue::get(llvm::VectorType::get(b_->getInt32Ty(), lanes));
-#else
-  llvm::Value *mask = llvm::UndefValue::get(llvm::VectorType::get(
-      b_->getInt32Ty(), llvm::ElementCount(lanes, false /*Scalable*/)));
-#endif
   int numel =
-      llvm::dyn_cast<llvm::VectorType>(vec->getType())->getNumElements();
+      llvm::cast<llvm::FixedVectorType>(vec->getType())->getNumElements();
 
   CHECK(numel <= lanes);
   if (numel == lanes) return vec;
+  llvm::SmallVector<int, 16> mask(lanes, -1);  // -1 == poison/undef
   for (int i = 0; i < numel; i++) {
-    mask = InsertElement(mask,
-                         llvm::ConstantInt::get(b_->getInt32Ty(), i),
-                         llvm::ConstantInt::get(b_->getInt32Ty(), i));
+    mask[i] = i;
   }
 
   return ShuffleVector(vec, vec, mask);
@@ -167,7 +158,7 @@ llvm::Value *CodeGenLLVM::EmitVectorPad(llvm::Value *vec, int lanes) {
 llvm::Value *CodeGenLLVM::EmitVectorConcat(std::vector<llvm::Value *> vecs) {
   int lanes = 0;
   for (auto *v : vecs) {
-    lanes += llvm::dyn_cast<llvm::VectorType>(v->getType())->getNumElements();
+    lanes += llvm::cast<llvm::FixedVectorType>(v->getType())->getNumElements();
   }
   while (vecs.size() > 1) {
     std::vector<llvm::Value *> new_vecs;
@@ -175,9 +166,9 @@ llvm::Value *CodeGenLLVM::EmitVectorConcat(std::vector<llvm::Value *> vecs) {
       auto *lhs = vecs[i];
       auto *rhs = vecs[i + 1];
       const auto lhs_lanes =
-          llvm::dyn_cast<llvm::VectorType>(lhs->getType())->getNumElements();
+          llvm::cast<llvm::FixedVectorType>(lhs->getType())->getNumElements();
       const auto rhs_lanes =
-          llvm::dyn_cast<llvm::VectorType>(rhs->getType())->getNumElements();
+          llvm::cast<llvm::FixedVectorType>(rhs->getType())->getNumElements();
       if (lhs_lanes < rhs_lanes) {
         lhs = EmitVectorPad(lhs, rhs_lanes);
       } else if (lhs_lanes > rhs_lanes) {
@@ -185,7 +176,7 @@ llvm::Value *CodeGenLLVM::EmitVectorConcat(std::vector<llvm::Value *> vecs) {
       }
 
       const auto shared_lanes = std::max(lhs_lanes, rhs_lanes);
-      std::vector<unsigned> mask(lhs_lanes + rhs_lanes);
+      std::vector<int> mask(lhs_lanes + rhs_lanes);
       std::iota(mask.begin(), std::next(mask.begin(), lhs_lanes), 0);
       std::iota(std::next(mask.begin(), lhs_lanes), mask.end(), shared_lanes);
       new_vecs.push_back(ShuffleVector(lhs, rhs, mask));
@@ -694,7 +685,8 @@ llvm::Value *CodeGenLLVM::CreateSerialFor(const ir::For *op, int stride) {
 
   // loop_header
   b_->SetInsertPoint(header_bb);
-  llvm::Value *indvar = Load(loop_var, "indvar");
+  llvm::Value *indvar = Load(
+      loop_var->getType()->getPointerElementType(), loop_var, "indvar");
   llvm::Value *exit_cond = ICmpSGE(indvar, end_index);
   CondBr(/*Cond=*/exit_cond,
          /*True=*/exit_bb,
@@ -921,7 +913,9 @@ llvm::Value *CodeGenLLVM::Visit(const ir::_Var_ *op) {
   // When visiting a Var that is allocated on the stack, we are actually
   // reading its value instead of its address.
   if (llvm::AllocaInst::classof(value)) {
-    return Load(value, op->name + "_load");
+    return Load(value->getType()->getPointerElementType(),
+                value,
+                op->name + "_load");
   }
   return value;
 }
@@ -962,8 +956,11 @@ llvm::Value *CodeGenLLVM::Visit(const ir::Load *op) {
     indices.push_back(Visit(&index));
 
     // auto load_inst = Load(InBoundsGEP(array, std::move(indices)));
+    auto *load_elem_ty = array->getType()->getPointerElementType();
     auto *load_inst =
-        AlignedLoad(InBoundsGEP(array, std::move(indices)), llvm::MaybeAlign());
+        AlignedLoad(load_elem_ty,
+                    InBoundsGEP(load_elem_ty, array, std::move(indices)),
+                    llvm::MaybeAlign());
     /*
     if (is_alias) {
       llvm::MDNode *meta = md_builder_->createTBAANode("cinn-alias",
@@ -1007,7 +1004,10 @@ llvm::Value *CodeGenLLVM::Visit(const ir::Load *op) {
     auto flambda = [&](int i, llvm::Value *index) {
       auto *ptr = CreateBufferPtr(type.ElementOf(), buffer, index);
       llvm::LoadInst *load_inst =
-          b_->CreateAlignedLoad(ptr, llvm::Align(alignment), "load_vec");
+          b_->CreateAlignedLoad(ptr->getType()->getPointerElementType(),
+                                ptr,
+                                llvm::Align(alignment),
+                                "load_vec");
       ret = b_->CreateInsertElement(ret, load_inst, ll_const_int32(i));
       if (auto *load_tensor = op->tensor.as_tensor()) {
         AddTbaaMetadata(load_inst, load_tensor->name, op->index());
@@ -1037,9 +1037,11 @@ llvm::Value *CodeGenLLVM::Visit(const ir::Store *op) {
 
     // auto *store_inst = Store(Visit(&op->value), InBoundsGEP(array,
     // std::move(indices)));
-    auto *store_inst = AlignedStore(Visit(&op->value),
-                                    InBoundsGEP(array, std::move(indices)),
-                                    llvm::MaybeAlign());
+    auto *store_inst = AlignedStore(
+        Visit(&op->value),
+        InBoundsGEP(
+            array->getType()->getPointerElementType(), array, std::move(indices)),
+        llvm::MaybeAlign());
     /*
     if (is_alias) {
       llvm::MDNode *meta = md_builder_->createTBAANode("cinn-alias",
@@ -1083,13 +1085,13 @@ llvm::Value *CodeGenLLVM::Visit(const ir::Store *op) {
             CreateBufferPtr(op->type().ElementOf(), buffer, Visit(&base));
         auto *vtype = llvm::VectorType::get(
                           CinnTypeToLLVMType(op->type().ElementOf(), m_, true),
-                          llvm::ElementCount(lanes, false /*Scalable*/))
+                          llvm::ElementCount::getFixed(lanes))
                           ->getPointerTo();
         int alignment = std::max(op->type().ElementOf().bits() / 8, 1);
         llvm::StoreInst *inst =
             b_->CreateAlignedStore(CreateVecSlice(value, offset, lanes),
                                    b_->CreatePointerCast(ptr, vtype),
-                                   alignment);
+                                   llvm::Align(alignment));
         AddTbaaMetadata(inst, op->tensor.as_tensor()->name, base);
         return inst;
       }
@@ -1195,7 +1197,11 @@ llvm::Value *CodeGenLLVM::Visit(const ir::_LoweredFunc_ *op) {
       /*Name=*/op->name,
       /*Module=*/m_);
   f_->setCallingConv(llvm::CallingConv::C);
+#if LLVM_VERSION_MAJOR >= 15
+  f_->setUWTableKind(llvm::UWTableKind::Default);  // GDB
+#else
   f_->setHasUWTable();  // GDB
+#endif
 
   std::vector<llvm::Value *> args;
   args.reserve(f_->arg_size());
@@ -1256,7 +1262,7 @@ llvm::Value *CodeGenLLVM::Visit(const ir::Ramp *op) {
 
 llvm::Value *CodeGenLLVM::Visit(const ir::Broadcast *op) {
 #if LLVM_VERSION_MAJOR >= 11
-  const llvm::ElementCount elem_count(op->lanes, /*scalable*/ false);
+  const llvm::ElementCount elem_count = llvm::ElementCount::getFixed(op->lanes);
 #else
   const int elem_count = op->lanes;
 #endif
@@ -1265,8 +1271,8 @@ llvm::Value *CodeGenLLVM::Visit(const ir::Broadcast *op) {
       llvm::VectorType::get(value->getType(), elem_count));
   llvm::Constant *zero = llvm::ConstantInt::get(ll_int32_ty(), 0);
   value = b_->CreateInsertElement(undef, value, zero, "broadcast");
-  llvm::Constant *zeros = llvm::ConstantVector::getSplat(elem_count, zero);
-  return b_->CreateShuffleVector(value, undef, zeros, "broadcast_shuffle");
+  llvm::SmallVector<int, 16> mask(op->lanes, 0);
+  return b_->CreateShuffleVector(value, undef, mask, "broadcast_shuffle");
 }
 
 llvm::Value *CodeGenLLVM::Visit(const ir::FracOp *op) {
@@ -1394,7 +1400,8 @@ llvm::Value *CodeGenLLVM::DenseVectorLoad(const ir::Load *op) {
     auto slice_base = optim::ArithSimplify(ramp->base + i);
 
 #if LLVM_VERSION_MAJOR >= 11
-    const llvm::ElementCount elem_count(slice_lanes, /*scalable*/ false);
+    const llvm::ElementCount elem_count =
+        llvm::ElementCount::getFixed(slice_lanes);
 #else
     const int elem_count = slice_lanes;
 #endif
@@ -1410,7 +1417,7 @@ llvm::Value *CodeGenLLVM::DenseVectorLoad(const ir::Load *op) {
     int alignment = std::max(op->type().ElementOf().bits() / 8, 1);
 
     llvm::Instruction *load_inst =
-        b_->CreateAlignedLoad(vec_ptr, llvm::Align(alignment), "load_vec");
+        b_->CreateAlignedLoad(slice_type, vec_ptr, llvm::Align(alignment), "load_vec");
     AddTbaaMetadata(load_inst, op->tensor.as_tensor()->name, op->index());
 
     slices.push_back(load_inst);
@@ -1441,7 +1448,8 @@ llvm::Value *CodeGenLLVM::CreateBufferVecPtr(Type t,
   if (btype != ptype) {
     buffer = b_->CreatePointerCast(buffer, ptype);
   }
-  return b_->CreateInBoundsGEP(buffer, index);
+  return b_->CreateInBoundsGEP(
+      buffer->getType()->getPointerElementType(), buffer, index);
 }
 
 llvm::Value *CodeGenLLVM::CreateBufferPtr(Type t,
@@ -1461,26 +1469,26 @@ llvm::Value *CodeGenLLVM::CreateBufferPtr(Type t,
   if (btype != ptype) {
     buffer = b_->CreatePointerCast(buffer, ptype, "pointer_cast");
   }
-  return b_->CreateInBoundsGEP(buffer, index, "buffer_ptr");
+  return b_->CreateInBoundsGEP(
+      buffer->getType()->getPointerElementType(), buffer, index, "buffer_ptr");
 }
 
 llvm::Value *CodeGenLLVM::CreateVecSlice(llvm::Value *vec,
                                          int begin,
                                          int lanes) {
   int total_lanes =
-      llvm::dyn_cast<llvm::VectorType>(vec->getType())->getNumElements();
+      llvm::cast<llvm::FixedVectorType>(vec->getType())->getNumElements();
   PADDLE_ENFORCE_LE(begin + lanes,
                     total_lanes,
                     ::common::errors::InvalidArgument(
                         "begin + lanes should be less than total_lanes"));
   if (lanes == total_lanes && begin == 0) return vec;  // full slice
-  std::vector<llvm::Constant *> indices;
+  llvm::SmallVector<int, 16> indices;
   for (int i = 0; i < lanes; ++i) {
-    indices.push_back(ll_const_int32(begin + i));
+    indices.push_back(begin + i);
   }
   llvm::Constant *undef = llvm::UndefValue::get(vec->getType());
-  return b_->CreateShuffleVector(
-      vec, undef, llvm::ConstantVector::get(indices));
+  return b_->CreateShuffleVector(vec, undef, indices);
 }
 
 int GetNaiveVecAlignmentImpl(common::UnknownArch, const Target &target) {
@@ -1786,7 +1794,7 @@ llvm::Value *CodeGenLLVM::Visit(const ir::intrinsics::BuiltinIntrin *op) {
   llvm::Type *return_type = CinnTypeToLLVMType(op->type(), m_, true);
   llvm::Function *fn = GetIntrinsicDecl(id, return_type, arg_type);
   CHECK(fn) << "Cannot find intrinsic declaration, possible type mismatch: "
-            << llvm::Intrinsic::getName(id, {});
+            << llvm::Intrinsic::getName(id).str();
   return b_->CreateCall(fn, arg_value);
 }
 

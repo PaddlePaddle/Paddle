@@ -77,6 +77,20 @@ option(WITH_SHARED_PHI "Compile PaddlePaddle with SHARED LIB of PHI" ON)
 option(CINN_WITH_CUDNN "Compile CINN with CUDNN support" ON)
 option(WITH_PIP_CUDA_LIBRARIES
        "Paddle uses the CUDA library provided by NVIDIA" ON)
+if(WITH_XPU_CADA AND WITH_PIP_CUDA_LIBRARIES)
+  # The KUNLUN M100 (xtrans) CUDA-compat backend runs on the simulator with no
+  # real NVIDIA GPU. The real NVIDIA cuda libs pulled in by pip (nvidia-cudnn-cu12
+  # / nvidia-cublas-cu12 / ...) would shadow xtrans's own cudnn/cublasLt through
+  # both the -DPADDLE_WITH_PIP_CUDA_LIBRARIES dso search order and the wheel
+  # RUNPATH ($ORIGIN/../../nvidia/*/lib), then fail at runtime
+  # (CUDNN_STATUS_NOT_INITIALIZED / "blasLt handle is nullptr"). Force it OFF so
+  # cudnn/cublas/... resolve to the xtrans libraries on CUDNN_ROOT/LD_LIBRARY_PATH.
+  message(STATUS "WITH_XPU_CADA=ON: forcing WITH_PIP_CUDA_LIBRARIES=OFF "
+                 "(resolve cuda libs from xtrans, not pip NVIDIA wheels)")
+  set(WITH_PIP_CUDA_LIBRARIES
+      OFF
+      CACHE BOOL "" FORCE)
+endif()
 option(WITH_PIP_TENSORRT "Paddle uses the tensorrt provided by NVIDIA" OFF)
 option(WITH_NIGHTLY_BUILD
        "Compile nightly paddle whl package of the develop branch" OFF)

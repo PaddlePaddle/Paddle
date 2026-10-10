@@ -221,6 +221,29 @@ set(hlir_src CACHE INTERNAL "" FORCE)
 # but better to move to paddle/CMakeLists.txt
 add_subdirectory(paddle/cinn)
 
+if(WITH_XPU_CADA)
+  # xtrans's libLLVM-15.so is built with RTTI OFF, so it exports no typeinfo for
+  # its polymorphic classes (llvm::ObjectCache, llvm::orc::SimpleCompiler,
+  # llvm::legacy::PassManager, ...). CINN subclasses/uses them. Compiling a TU
+  # with RTTI on that emits a vtable/typeinfo referencing those classes would
+  # need typeinfo that libLLVM-15 can't resolve -> link error in anything
+  # linking libcinnapi (e.g. eager_generator).
+  #
+  # execution_engine.cc must stay RTTI-ON because it transitively uses paddle's
+  # variant (paddle/utils/variant.h) which requires typeid/-frtti. The
+  # LLVM-polymorphic-touching bits it used to contain (NaiveObjectCache's
+  # out-of-line virtuals and the llvm::orc::SimpleCompiler construction) were
+  # moved into object_cache_rtti_off.cc, which is built with -fno-rtti here so
+  # those vtables/typeinfo are emitted without requiring LLVM typeinfo.
+  # llvm_optimizer.cc (legacy PassManager) compiles fine with -fno-rtti and
+  # stays in the list. (These files don't use dynamic_cast/typeid on CINN
+  # types, so dropping RTTI here is safe.)
+  set_source_files_properties(
+    ${CMAKE_SOURCE_DIR}/paddle/cinn/backends/llvm/object_cache_rtti_off.cc
+    ${CMAKE_SOURCE_DIR}/paddle/cinn/backends/llvm/llvm_optimizer.cc
+    PROPERTIES COMPILE_OPTIONS "-fno-rtti")
+endif()
+
 cinn_cc_library(
   cinnapi
   SHARED
@@ -403,7 +426,14 @@ set(ISL_INCLUDE_DIR "${CMAKE_BINARY_DIR}/third_party/install/isl/include")
 include_directories(${ISL_INCLUDE_DIR})
 
 # Add LLVM
-set(LLVM_INCLUDE_DIR "${CMAKE_BINARY_DIR}/dist/third_party/llvm/include")
+if(WITH_XPU_CADA)
+  # Use the xtdk LLVM 15.0.7 dev headers (matching the shared libLLVM-15.so that
+  # xtrans cudnn provides), NOT the residual LLVM-12 headers under
+  # dist/third_party/llvm/include which would clash with the 15.0.7 runtime lib.
+  set(LLVM_INCLUDE_DIR "${XPU_CADA_LLVM15_ROOT}/include")
+else()
+  set(LLVM_INCLUDE_DIR "${CMAKE_BINARY_DIR}/dist/third_party/llvm/include")
+endif()
 include_directories(${LLVM_INCLUDE_DIR})
 
 ######################################################

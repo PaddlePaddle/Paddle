@@ -28,6 +28,7 @@ set(srcs
     codegen_x86.cc
     simple_jit.cc
     execution_engine.cc
+    object_cache_rtti_off.cc
     llvm_optimizer.cc)
 
 foreach(cpp ${srcs})

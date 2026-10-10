@@ -27,7 +27,11 @@ llvm::Value* CodeGenInvokeModule::LowerInvokeFunc(
   f_ = llvm::Function::Create(
       function_type, llvm::Function::ExternalLinkage, func->name, m_);
   f_->setCallingConv(llvm::CallingConv::C);
+#if LLVM_VERSION_MAJOR >= 15
+  f_->setUWTableKind(llvm::UWTableKind::Default);
+#else
   f_->setHasUWTable();
+#endif
 
   std::vector<llvm::Value*> ll_function_args;
   std::transform(f_->arg_begin(),
