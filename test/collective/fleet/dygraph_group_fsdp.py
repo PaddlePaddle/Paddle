@@ -35,6 +35,7 @@ ACCUM_STEPS = 2
 MUON_MATS = 4
 MUON_LAYERS = 2
 MUON_STEPS = 1
+MUON_MATS_DOWN = 3
 
 
 class EPAllGather(PyLayer):
@@ -303,27 +304,29 @@ class MuonStackedLayer(TransformerLayer):
     ``is_fsdp_unit`` matches class names along the MRO.
     """
 
-    def __init__(self, hidden, inter, num_mats):
+    def __init__(self, hidden, inter, num_mats, num_mats_down=None):
         nn.Layer.__init__(self)
         self.attn = nn.Linear(hidden, hidden, bias_attr=False)
         self.w_up = self.create_parameter(shape=[num_mats, hidden, inter])
-        self.w_down = self.create_parameter(shape=[num_mats, inter, hidden])
+        self.w_down = self.create_parameter(
+            shape=[num_mats_down or num_mats, inter, hidden]
+        )
 
     def forward(self, x):
         x = x + self.attn(x)
         for i in range(self.w_up.shape[0]):
             h = F.silu(paddle.matmul(x, self.w_up[i]))
-            x = x + paddle.matmul(h, self.w_down[i])
+            x = x + paddle.matmul(h, self.w_down[i % self.w_down.shape[0]])
         return x
 
 
 class MuonModel(nn.Layer):
-    def __init__(self):
+    def __init__(self, num_mats_down=None):
         super().__init__()
         self.embed = nn.Linear(HIDDEN, HIDDEN, bias_attr=False)
         self.layers = nn.LayerList(
             [
-                MuonStackedLayer(HIDDEN, INTER, MUON_MATS)
+                MuonStackedLayer(HIDDEN, INTER, MUON_MATS, num_mats_down)
                 for _ in range(MUON_LAYERS)
             ]
         )
@@ -345,7 +348,12 @@ def tag_muon_params(model):
     return info_map
 
 
-def train_muon(model, info_map, ns_per_matrix, data):
+def train_muon(model, info_map, ns_per_matrix, data, probe=None):
+    """Train with Muon under FSDP.
+
+    ``probe(step, fsdp_context)`` runs after every step, for tests that need to
+    inspect per-step buffer state.
+    """
     model = fully_shard(model)
     fsdp_context = model._fsdp_context
     model = mix_precision_utils.MixPrecisionLayer(model, dtype="float16")
@@ -359,13 +367,15 @@ def train_muon(model, info_map, ns_per_matrix, data):
     )
     optimizer = mix_precision_utils.MixPrecisionOptimizer(optimizer)
     losses = []
-    for x in data:
+    for step, x in enumerate(data):
         model.train()
         with paddle.amp.auto_cast(level="O1", dtype="float16"):
             loss = model(x).mean()
         losses.append(float(loss.astype("float32")))
         loss.backward()
         optimizer.step()
+        if probe is not None:
+            probe(step, fsdp_context)
         optimizer.clear_grad()
     return losses, fsdp_context, optimizer._inner_opt
 
@@ -419,9 +429,6 @@ def run_muon_shard():
     paddle.seed(2026)
     data = [paddle.randn([TOKENS, HIDDEN]) for _ in range(MUON_STEPS)]
 
-    # Baseline: hide the matrix-aligned shard plan so the Muon groups fall back
-    # to the dense element-shard + owner-gather path. ns_per_matrix is passed by
-    # hand, since only the matrix-aligned path turns it on by itself.
     origin_shard_numel = fully_shard_fusion._muon_3d_shard_numel
     fully_shard_fusion._muon_3d_shard_numel = lambda *args, **kwargs: None
     try:
@@ -434,8 +441,6 @@ def run_muon_shard():
     dense_groups = muon_groups_of(dense_ctx)
     assert dense_groups
     for group in dense_groups:
-        # Element-sharded like AdamW: no matrix granularity, an owner does the
-        # per-step gather, and the buffer is still sharded across ranks.
         assert group.muon_shard_numel is None
         assert group.muon_owner_rank is not None
         assert group.params_buffer.is_sharded
@@ -448,14 +453,11 @@ def run_muon_shard():
     matrix_groups = muon_groups_of(matrix_ctx)
     assert len(matrix_groups) == len(dense_groups)
     for group in matrix_groups:
-        # Every weight here is [MUON_MATS, HIDDEN, INTER] or its transpose, so
-        # the shard unit is one matrix; a silent fallback leaves this None.
         assert group.muon_shard_numel == HIDDEN * INTER, (
             f"expected matrix-aligned sharding, got {group.muon_shard_numel}"
         )
         assert group.params_buffer.is_sharded
         assert group.muon_owner_rank is None
-    # The matrix-aligned path must switch Newton-Schulz to per-matrix by itself.
     assert matrix_opt._ns_per_matrix
     matrix_params = gather_muon_params(matrix_ctx)
 
@@ -474,6 +476,76 @@ def run_muon_shard():
         )
 
 
+def run_muon_replicated():
+    paddle.seed(2026)
+    replicated_model = MuonModel(MUON_MATS_DOWN)
+    paddle.seed(2026)
+    dense_model = MuonModel(MUON_MATS_DOWN)
+    dense_model.set_state_dict(replicated_model.state_dict())
+    replicated_info = tag_muon_params(replicated_model)
+    dense_info = tag_muon_params(dense_model)
+
+    paddle.seed(2026)
+    data = [paddle.randn([TOKENS, HIDDEN]) for _ in range(2)]
+
+    origin_shard_numel = fully_shard_fusion._muon_3d_shard_numel
+    fully_shard_fusion._muon_3d_shard_numel = lambda *args, **kwargs: None
+    try:
+        dense_losses, dense_ctx, _ = train_muon(
+            dense_model, dense_info, True, data[:MUON_STEPS]
+        )
+    finally:
+        fully_shard_fusion._muon_3d_shard_numel = origin_shard_numel
+    dense_params = gather_muon_params(dense_ctx)
+
+    snapshot = {}
+
+    def probe(step, fsdp_context):
+        if step + 1 == MUON_STEPS:
+            snapshot.update(gather_muon_params(fsdp_context))
+
+    replicated_losses, ctx, _ = train_muon(
+        replicated_model, replicated_info, True, data, probe=probe
+    )
+
+    groups = muon_groups_of(ctx)
+    assert len(groups) == MUON_LAYERS, groups
+    my_rank = paddle.distributed.get_rank()
+    for group in groups:
+        assert group.muon_shard_numel is None
+        assert not group.params_buffer.is_sharded
+        assert group.muon_owner_rank is not None
+        if group.fsdp_group.ranks[group.muon_owner_rank] != my_rank:
+            assert group.grads_buffer._data_released
+
+    assert replicated_losses[:MUON_STEPS] == dense_losses, (
+        f"the two paths did not start from the same weights: "
+        f"replicated={replicated_losses[:MUON_STEPS]}, dense={dense_losses}"
+    )
+    assert sorted(snapshot) == sorted(dense_params)
+    for gid, expected in dense_params.items():
+        np.testing.assert_array_equal(
+            snapshot[gid],
+            expected,
+            err_msg=(
+                f"replicated Muon diverged from the dense path, group {gid}"
+            ),
+        )
+
+    ctx.set_grad_accum_steps(ACCUM_STEPS)
+    for group in ctx.buffer_manager.buffer_groups:
+        grads_buffer = group.grads_buffer
+        assert grads_buffer.grad_accum_steps == ACCUM_STEPS
+        assert grads_buffer.grad_scale == 1.0 / (
+            grads_buffer.grad_div * ACCUM_STEPS
+        )
+    ctx.all_gather_params()
+    for group in ctx.buffer_manager.buffer_groups:
+        for param in group.params:
+            assert param._is_initialized(), f"{param.name} not materialized"
+
+
 if __name__ == '__main__':
     run_moe(2)
     run_muon_shard()
+    run_muon_replicated()
