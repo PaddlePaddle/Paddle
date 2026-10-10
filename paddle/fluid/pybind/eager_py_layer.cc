@@ -29,6 +29,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/eager.h"
 #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/fluid/pybind/exception.h"
+#include "paddle/fluid/pybind/mem_py_stack.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
@@ -202,6 +203,13 @@ PyObject* pylayer_method_apply(PyObject* cls,
                                PyObject* kwargs) {
   EAGER_TRY
   SetPythonStack();
+  // Capture the Python dispatch stack for the memory-history recorder while the
+  // GIL is held. The RAII guard keeps this PyLayer's call-site stack active for
+  // the whole forward (including allocations that don't flow through an eager
+  // _C_ops dispatch, e.g. custom ops / comm buffers); inner _C_ops push/pop
+  // their own finer stacks on top. Near-zero cost when recording is disabled.
+  paddle::memory::MemStackGuard __mem_stack_guard(
+      paddle::pybind::CaptureCurrentPyStack());
   std::string classname =
       std::string(reinterpret_cast<PyTypeObject*>(cls)->tp_name);
   std::string forward_stack;
