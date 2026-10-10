@@ -108,6 +108,8 @@ const Target& DefaultHygonDcuHipTarget();
 
 const Target& DefaultHygonDcuSyclTarget();
 
+const Target& DefaultXpuTarget();
+
 const Target& DefaultDeviceTarget();
 
 const Target& DefaultCustomDeviceTarget();
