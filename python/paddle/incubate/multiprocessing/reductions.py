@@ -30,8 +30,8 @@ import paddle
 
 
 def _supported_check():
-    if sys.platform != "linux":
-        # warnings.warn("`paddle.multiprocessing` only support linux for now, "
+    if sys.platform not in ("linux", "win32"):
+        # warnings.warn("`paddle.multiprocessing` only support linux/windows for now, "
         #               " import this will not take any effect !")
 
         return False
@@ -310,6 +310,15 @@ def _reduce_lodtensor(lodtensor):
         dataloader_use_file_descriptor = paddle.base.core.globals()[
             "FLAGS_dataloader_use_file_descriptor"
         ]
+        if dataloader_use_file_descriptor and sys.platform == "win32":
+            # The Windows implementation shares a named section object, whose
+            # HANDLE cannot be transferred with multiprocessing.reduction.DupFd
+            # (that relies on POSIX fd passing / DupHandle for sockets only).
+            raise RuntimeError(
+                "FLAGS_dataloader_use_file_descriptor is not supported on "
+                "Windows, please set it to False to use the file name based "
+                "sharing strategy."
+            )
         # Default use share filename strategy
         metadata = lodtensor._share_filename(
             dataloader_use_file_descriptor
@@ -325,6 +334,12 @@ def _reduce_lodtensor(lodtensor):
         lodtensor._shared_incref()
         # TODO, maintain reference for lodtensor
     elif lodtensor._place().is_gpu_place():
+        if sys.platform == "win32":
+            raise RuntimeError(
+                "Sharing GPU tensors between processes is not supported on "
+                "Windows, because CUDA IPC is unavailable there. Please move "
+                "the tensor to CPU before sending it to another process."
+            )
         prev_id = paddle.base.core.get_cuda_current_device_id()
         cur_id = lodtensor._place().gpu_device_id()
         if prev_id != cur_id:
