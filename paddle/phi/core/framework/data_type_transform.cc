@@ -21,6 +21,9 @@
 
 #if defined(PADDLE_WITH_XPU)
 #include "paddle/phi/core/platform/device/device_wrapper.h"
+#ifdef PADDLE_WITH_XPU_FFT
+#include "paddle/phi/kernels/complex_kernel.h"
+#endif
 #endif
 
 namespace proto = paddle::framework::proto;
@@ -67,6 +70,26 @@ static void XPUCastData(const DenseTensor& in,
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
   dev_ctx->Wait();
 }
+
+#ifdef PADDLE_WITH_XPU_FFT
+template <typename InType>
+static void XPUComplexTransDataType(
+    const DenseTensor& in,
+    DenseTensor* out,
+    const paddle::framework::proto::VarType::Type& dst_type,
+    const phi::DeviceContext* ctx) {
+  auto* context = static_cast<const phi::XPUContext*>(ctx);
+  if (dst_type == proto::VarType::FP32 || dst_type == proto::VarType::FP64) {
+    // Mirror complex-to-real casts using existing XPU real extraction.
+    DenseTensor real = phi::Real<InType>(*context, in);
+    TransDataType(real, dst_type, out);
+  } else {
+    PADDLE_THROW(common::errors::Unimplemented(
+        "Data type (%s) is not supported in XPU when casting data type.",
+        VarDataTypeToString(dst_type)));
+  }
+}
+#endif
 
 template <typename InType>
 static void XPUTransDataType(
@@ -199,6 +222,14 @@ void TransDataType(const DenseTensor& in,
       case proto::VarType::INT64:
         XPUTransDataType<int64_t>(in, out, dst_type, ctx);
         break;
+#ifdef PADDLE_WITH_XPU_FFT
+      case proto::VarType::COMPLEX64:
+        XPUComplexTransDataType<phi::complex64>(in, out, dst_type, ctx);
+        break;
+      case proto::VarType::COMPLEX128:
+        XPUComplexTransDataType<phi::complex128>(in, out, dst_type, ctx);
+        break;
+#endif
       default:
         PADDLE_THROW(common::errors::Unimplemented(
             "Data type (%s) is not supported in XPU when casting data type.",
