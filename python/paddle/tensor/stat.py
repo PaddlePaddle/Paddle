@@ -930,6 +930,13 @@ def _compute_quantile(
                 axis += dims
             out_shape[axis] = 1
 
+    if x.shape[axis] == 0:
+        raise ValueError("quantile() input tensor must be non-empty")
+    if x.shape[axis] > 2**53:
+        raise ValueError(
+            "quantile() input tensor is too large along the reduction axis"
+        )
+
     mask = x.isnan()
     valid_counts = mask.logical_not().sum(axis=axis, keepdim=True)
 
@@ -937,7 +944,7 @@ def _compute_quantile(
 
     for q_num in q:
         if in_dynamic_or_pir_mode():
-            q_num = paddle.to_tensor(q_num, dtype=x.dtype)
+            q_num = paddle.to_tensor(q_num, dtype=paddle.float64)
         if ignore_nan:
             indices.append(q_num * (valid_counts - 1))
         else:
@@ -951,10 +958,10 @@ def _compute_quantile(
 
     def _compute_index(index):
         if interpolation == "nearest":
-            idx = paddle.round(index).astype(paddle.int32)
+            idx = paddle.round(index).astype(paddle.int64)
             return paddle.take_along_axis(sorted_tensor, idx, axis=axis)
 
-        indices_below = paddle.floor(index).astype(paddle.int32)
+        indices_below = paddle.floor(index).astype(paddle.int64)
         if interpolation != "higher":
             # avoid unnecessary compute
             tensor_below = paddle.take_along_axis(
@@ -963,7 +970,7 @@ def _compute_quantile(
         if interpolation == "lower":
             return tensor_below
 
-        indices_upper = paddle.ceil(index).astype(paddle.int32)
+        indices_upper = paddle.ceil(index).astype(paddle.int64)
         tensor_upper = paddle.take_along_axis(
             sorted_tensor, indices_upper, axis=axis
         )
@@ -971,9 +978,11 @@ def _compute_quantile(
             return tensor_upper
 
         if interpolation == "midpoint":
-            return (
-                tensor_upper.astype(x.dtype) + tensor_below.astype(x.dtype)
-            ) / 2
+            return paddle.lerp(
+                tensor_below.astype(x.dtype),
+                tensor_upper.astype(x.dtype),
+                paddle.full_like(tensor_below, 0.5).astype(x.dtype),
+            )
 
         weights = (index - indices_below.astype(index.dtype)).astype(x.dtype)
         # "linear"
