@@ -663,7 +663,7 @@ class Muon(Optimizer):
         return orthogonal_update * scale * extra_scale_factor
 
     @staticmethod
-    def _hyperball_apply(w, update, lr, eps=1e-12):
+    def _hyperball_apply(w, update, lr, eps=1e-12, split_concat_func=None):
         r"""Hyperball step, shared by Muon+Hyperball and AdamW+Hyperball.
 
         Given the current weight ``w`` and a base-optimizer update direction
@@ -681,9 +681,25 @@ class Muon(Optimizer):
         growth). For 3D grouped-expert params ``[E, H, I]`` the Frobenius norm
         is taken per expert (last two dims), matching the per-matrix constraint.
 
+        With ``split_concat_func`` (fused QKV, gate_up, MLA heads, ...) the
+        step is applied to the same slices that were orthogonalised, each on
+        its own sphere ``R_s = ||W_s||_F``; projecting the fused matrix as a
+        whole would only hold the total norm and let slice norms drift.
+        ``split_concat_func`` takes one matrix, so it is run on ``w`` to
+        collect the weight slices, then on ``update`` with a callback that
+        pairs slices in call order (the slicing depends only on the shape).
+
         All math is done in float32; the fp32 result is returned (the caller
         casts to the parameter dtype).
         """
+        if split_concat_func is not None:
+            w_slices = []
+            split_concat_func(w, lambda s: w_slices.append(s) or s)
+            w_iter = iter(w_slices)
+            return split_concat_func(
+                update,
+                lambda u: Muon._hyperball_apply(next(w_iter), u, lr, eps),
+            )
 
         def _fro(x):
             # Frobenius norm over the last two dims, kept for broadcasting.
@@ -799,7 +815,14 @@ class Muon(Optimizer):
             update = moment1 / (paddle.sqrt(moment2) + epsilon)
 
             lr_ratio = 1.0 if self._lr_ratio is None else self._lr_ratio(param)
-            new_w = Muon._hyperball_apply(w, update, lr * lr_ratio)
+            # Slices of a split param are projected independently.
+            param_info = self._muon_param_info_map.get(param.name)
+            split_concat_func = (
+                param_info.split_concat_func if param_info else None
+            )
+            new_w = Muon._hyperball_apply(
+                w, update, lr * lr_ratio, split_concat_func=split_concat_func
+            )
             if find_master:
                 paddle.assign(new_w, w)
             paddle.assign(new_w.astype(param.dtype), param)
@@ -964,9 +987,13 @@ class Muon(Optimizer):
                 if use_hyperball:
                     # Muon+Hyperball: project onto the fixed-radius sphere.
                     # No weight decay (the constraint prevents norm growth).
+                    # Slices of a split param are projected independently.
                     w = master_weight if find_master else param
                     new_w = Muon._hyperball_apply(
-                        w, orthogonal_update, effective_lr
+                        w,
+                        orthogonal_update,
+                        effective_lr,
+                        split_concat_func=split_concat_func,
                     )
                     if find_master:
                         paddle.assign(new_w, master_weight)
