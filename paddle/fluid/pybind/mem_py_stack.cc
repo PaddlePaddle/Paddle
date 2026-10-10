@@ -83,10 +83,10 @@ void SetMemPyStackCaptureEnabled(bool enabled) {
   g_capture_enabled.store(enabled, std::memory_order_relaxed);
 }
 
-uint64_t CaptureCurrentPyStack() {
-  // Cheap early-out: single relaxed atomic read(s) when disabled.
-  if (!paddle::memory::MemHistoryEnabled()) return 0;
-  if (!g_capture_enabled.load(std::memory_order_relaxed)) return 0;
+MemStackCapture CaptureCurrentPyStack() {
+  const bool active = paddle::memory::MemHistoryEnabled();
+  if (!active) return {false, 0};
+  if (!g_capture_enabled.load(std::memory_order_relaxed)) return {true, 0};
 
   // Caller holds the GIL. Walk frames innermost -> outermost. PyFrame_GetCode
   // and PyFrame_GetBack return new references; we release the temporary frame /
@@ -137,7 +137,7 @@ uint64_t CaptureCurrentPyStack() {
   for (PyCodeObject* code : temp_code_refs) {
     Py_DECREF(code);
   }
-  return result;
+  return {true, result};
 }
 
 ::pybind11::list ResolveStack(uint64_t stack_id) {
