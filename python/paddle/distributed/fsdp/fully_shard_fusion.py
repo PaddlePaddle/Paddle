@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import math
 import re
 from collections import OrderedDict
 from dataclasses import dataclass, field
@@ -57,11 +58,28 @@ class BufferGroup:
     is_expert_param: bool = False
     is_tie: bool = False
     no_decay: bool = False
+    use_muon: bool = False
+    muon_owner_rank: int = None
+    muon_shard_numel: int = None
     fsdp_group: object = None
     params_buffer: 'TensorFusionBuffer' = None
     grads_buffer: 'TensorFusionBuffer' = None
     grads_use_sum: int = 0
     grads_use_cnt: int = 0
+
+
+def _muon_3d_shard_numel(params, fsdp_group):
+    if fsdp_group is None or fsdp_group.nranks <= 1:
+        return None
+    shapes = [
+        tuple(getattr(p, "original_shape", None) or p.shape) for p in params
+    ]
+    if any(len(s) != 3 for s in shapes):
+        return None
+    granularity = 1
+    for s in shapes:
+        granularity = math.lcm(granularity, s[-2] * s[-1])
+    return granularity
 
 
 class TensorFusionBuffer:
@@ -73,17 +91,24 @@ class TensorFusionBuffer:
         dtype,
         is_params=False,
         main_grad_dtype=None,
+        grad_div=None,
+        shard_buffer=True,
+        shard_align_numel=None,
     ):
         # Calculate total buffer size needed (with padding)
         self.unique_key = unique_key
         self.fsdp_group = fsdp_group
         self.fsdp_degree = fsdp_group.nranks
-        self.is_sharded = fsdp_group.nranks > 1
+        self.is_sharded = shard_buffer and fsdp_group.nranks > 1
         self.is_params = is_params
         self.dtype = dtype
         self.main_grad_dtype = (
             main_grad_dtype if main_grad_dtype is not None else dtype
         )
+        self.grad_div = grad_div if grad_div is not None else fsdp_group.nranks
+        self.grad_accum_steps = 1
+        self.grad_scale = 1.0 / self.grad_div
+        self.grad_scaled = False
         self.total_buffer_size = 0
         self.param_offsets = {}
         self.tmp_data_buffer = None
@@ -93,6 +118,17 @@ class TensorFusionBuffer:
         for param in params:
             self.param_offsets[param.name] = self.total_buffer_size
             self.total_buffer_size += self.get_padded_size(param)
+
+        self.shard_align_numel = shard_align_numel
+        if shard_align_numel and self.is_sharded:
+            aligned = self.total_buffer_size % (
+                self.fsdp_degree * shard_align_numel
+            ) == 0 and all(
+                self.get_padded_size(p) % shard_align_numel == 0 for p in params
+            )
+            if not aligned:
+                self.is_sharded = False
+                self.shard_align_numel = None
 
         self.shard_start = 0
         self.shard_end = self.total_buffer_size
@@ -146,7 +182,11 @@ class TensorFusionBuffer:
         else:
             # Create fused grads_buffer with shard
             self.data_buffer = paddle.zeros(
-                shape=[self.total_buffer_size // self.fsdp_degree],
+                shape=[
+                    self.total_buffer_size // self.fsdp_degree
+                    if self.is_sharded
+                    else self.total_buffer_size
+                ],
                 dtype=self.main_grad_dtype,
             )
 
@@ -240,7 +280,7 @@ class TensorFusionBuffer:
     def do_reduce_scatter(self):
         tmp_buffer = self.get_tmp_buffer()
         shard = tmp_buffer._slice(0, self.data_buffer.shape[0])
-        tmp_buffer.scale_(1.0 / self.fsdp_degree)
+        tmp_buffer.scale_(self.grad_scale)
         return paddle.distributed.reduce_scatter(
             shard,
             tmp_buffer,
@@ -258,6 +298,25 @@ class TensorFusionBuffer:
         if self.tmp_data_buffer is not None:
             self.tmp_data_buffer._clear_data()
             self.tmp_data_buffer = None
+
+    def release_data_buffer(self):
+        if self.is_params or self.data_buffer is None:
+            return
+        self.data_buffer._clear_data()
+        self._data_released = True
+
+    def ensure_data_buffer(self):
+        if not getattr(self, "_data_released", False):
+            return
+        self.data_buffer = paddle.zeros(
+            shape=[
+                self.total_buffer_size // self.fsdp_degree
+                if self.is_sharded
+                else self.total_buffer_size
+            ],
+            dtype=self.main_grad_dtype,
+        )
+        self._data_released = False
 
 
 class FSDPBufferManager:
@@ -301,7 +360,7 @@ class FSDPBufferManager:
 
         param_to_unit_id = {}
         for unit_id, m in enumerate(self.model.modules()):
-            if type(m).__name__ in self.fsdp_unit_layers:
+            if self.is_fsdp_unit(m):
                 for p in m.parameters():
                     param_to_unit_id[p.name] = unit_id
 
@@ -326,15 +385,26 @@ class FSDPBufferManager:
                 param.name == self.tie_param_name,
                 # A buffer must not mix params with and without weight decay.
                 bool(getattr(param, "no_weight_decay", False)),
+                bool(getattr(param, "use_muon", False)),
             )
             keyed_params.setdefault(key, []).append(param)
 
         def sort_key(item):
-            _, trainable, unit_id, is_expert_param, _, is_tie, _ = item[0]
+            (
+                _,
+                trainable,
+                unit_id,
+                is_expert_param,
+                _,
+                is_tie,
+                _,
+                use_muon,
+            ) = item[0]
             return (
                 0 if is_tie else (1 if not trainable else 2),
                 unit_id if unit_id is not None else float('inf'),
                 is_expert_param,
+                use_muon,
             )
 
         self.buffer_groups = [
@@ -347,6 +417,7 @@ class FSDPBufferManager:
                 fsdp_group=fsdp_group,
                 is_tie=is_tie,
                 no_decay=no_decay,
+                use_muon=use_muon,
             )
             for (
                 dtype,
@@ -356,16 +427,43 @@ class FSDPBufferManager:
                 fsdp_group,
                 is_tie,
                 no_decay,
+                use_muon,
             ), params in sorted(keyed_params.items(), key=sort_key)
         ]
 
         self.param_to_buffer_id = {}
         for gid, group in enumerate(self.buffer_groups):
             params = group.params
+            muon_align = (
+                _muon_3d_shard_numel(params, group.fsdp_group)
+                if group.use_muon
+                else None
+            )
+            dense_muon_shard = (
+                group.use_muon
+                and muon_align is None
+                and group.fsdp_group.nranks > 1
+            )
+            shard_buffer = (
+                (not group.use_muon)
+                or muon_align is not None
+                or dense_muon_shard
+            )
             group.params_buffer = TensorFusionBuffer(
-                gid, params, group.fsdp_group, group.dtype, is_params=True
+                gid,
+                params,
+                group.fsdp_group,
+                group.dtype,
+                is_params=True,
+                shard_buffer=shard_buffer,
+                shard_align_numel=muon_align,
             )
             if not params[0].stop_gradient:
+                grads_shard_buffer = (
+                    (not group.use_muon)
+                    or muon_align is not None
+                    or dense_muon_shard
+                )
                 group.grads_buffer = TensorFusionBuffer(
                     gid,
                     params,
@@ -374,10 +472,46 @@ class FSDPBufferManager:
                     main_grad_dtype=paddle.float32
                     if group.is_expert_param or group.dtype == paddle.float32
                     else self.main_grad_dtype,
+                    grad_div=self._fsdp_group.nranks,
+                    shard_buffer=grads_shard_buffer,
+                    shard_align_numel=muon_align,
                 )
+            group.muon_shard_numel = group.params_buffer.shard_align_numel
+            if group.muon_shard_numel is not None:
+                for param in params:
+                    full = tuple(
+                        getattr(param, "original_shape", None) or param.shape
+                    )
+                    param._muon_full_shape = list(full)
+                    param._muon_full_numel = int(np.prod(full))
+                    param._muon_matrix_shape = (full[-2], full[-1])
             group.grads_use_sum = len(params)
             for param in params:
                 self.param_to_buffer_id[param.name] = gid
+
+        self._assign_muon_owners()
+
+    def _assign_muon_owners(self):
+        loads = {}
+        for group in self.buffer_groups:
+            if not group.use_muon or group.grads_buffer is None:
+                continue
+            if group.muon_shard_numel is not None:
+                continue
+            nranks = group.fsdp_group.nranks
+            if nranks == 1:
+                continue
+            key = id(group.fsdp_group)
+            if key not in loads:
+                loads[key] = [0] * nranks
+            sizes = loads[key]
+            owner = sizes.index(min(sizes))
+            group.muon_owner_rank = owner
+            sizes[owner] += group.params_buffer.total_buffer_size
+
+    def is_fsdp_unit(self, layer):
+        unit_names = self.fsdp_unit_layers
+        return any(cls.__name__ in unit_names for cls in type(layer).__mro__)
 
 
 class FSDPCommManager:
@@ -473,6 +607,8 @@ class FSDPCommManager:
             if unit_id != self._last_backward_unit_id:
                 self._last_backward_unit_id = unit_id
                 self._flush_expert_grads_after_unit(unit_id)
+                self._release_params_after_unit(unit_id)
+            self._bind_sharded_expert_main_grads(params)
 
         if self.enable_overlap:
             keep = set(req_gids)
@@ -556,6 +692,12 @@ class FSDPCommManager:
         for group in self.buffer_manager.buffer_groups:
             params_buffer = group.params_buffer
             if params_buffer.status in (BufferState.READY, BufferState.USING):
+                for param in group.params:
+                    stop_gradient = param.stop_gradient
+                    _shape = param.shape
+                    param._clear_data()
+                    param.stop_gradient = stop_gradient
+                    param.get_tensor()._set_dims(_shape)
                 params_buffer.clear_tmp_buffer()
                 params_buffer.status = BufferState.FREED
                 if not params_buffer.is_sharded:
@@ -574,7 +716,20 @@ class FSDPCommManager:
         self.need_zero_grads = False
         for group in self.buffer_manager.buffer_groups:
             if group.grads_buffer is not None:
+                group.grads_buffer.ensure_data_buffer()
                 group.grads_buffer.data_buffer.zero_()
+                group.grads_buffer.grad_scaled = False
+
+    def _release_dense_grad_buffer(self, grads_buffer):
+        for param in self.buffer_manager.model.parameters():
+            if getattr(param, "_fusion_buffer", None) is not grads_buffer:
+                continue
+            mg = getattr(param, "main_grad", None)
+            if mg is not None:
+                mg._clear_data()
+                param.main_grad = None
+                param._main_grad_addr = None
+        grads_buffer.release_data_buffer()
 
     def _ensure_grads_writable(self, param):
         gid = self.buffer_manager.param_to_buffer_id.get(param.name)
@@ -588,6 +743,20 @@ class FSDPCommManager:
                 queue_limit=len(self.grad_reduce_queue) - 1
             )
 
+    def _bind_sharded_expert_main_grads(self, params):
+        self._maybe_zero_grads()
+        for param in params:
+            if not param.trainable:
+                continue
+            if not getattr(param, "is_moe_param", False):
+                continue
+            if not hasattr(param, "get_main_grad"):
+                continue
+            buf = getattr(param, "_fusion_buffer", None)
+            if buf is None or not buf.is_sharded:
+                continue
+            buf.rebind_main_grad(param)
+
     def reduce_scatter_grads(self, param):
         self._maybe_zero_grads()
         gid = self.buffer_manager.param_to_buffer_id.get(param.name)
@@ -599,9 +768,6 @@ class FSDPCommManager:
             group.is_expert_param or not group.grads_buffer.is_sharded
         ):
             return
-
-        if group.grads_use_cnt == group.grads_use_sum:
-            self._reduce_group_grads(group)
 
     def _reduce_group_grads(self, group):
         # Reduce-scatter one group's fused grad buffer over its own fsdp_group.
@@ -628,20 +794,58 @@ class FSDPCommManager:
         if unit_id is None:
             return
         for group in reversed(self.buffer_manager.buffer_groups):
-            if not group.is_expert_param or group.fsdp_unit_id is None:
+            if group.fsdp_unit_id is None:
                 continue
             if group.fsdp_unit_id > unit_id:
                 self._reduce_group_grads(group)
+
+    def _release_params_after_unit(self, unit_id):
+        if unit_id is None:
+            return
+        for group in self.buffer_manager.buffer_groups:
+            if group.fsdp_unit_id is None:
+                continue
+            if group.fsdp_unit_id <= unit_id:
+                continue
+            params_buffer = group.params_buffer
+            if not params_buffer.is_sharded:
+                continue
+            if params_buffer.status in (BufferState.READY, BufferState.USING):
+                params_buffer.status = BufferState.FREED
+                for param in group.params:
+                    stop_gradient = param.stop_gradient
+                    _shape = param.shape
+                    param._clear_data()
+                    param.stop_gradient = stop_gradient
+                    param.get_tensor()._set_dims(_shape)
+                params_buffer.clear_tmp_buffer()
+                if self.buffer_cnt_in_using > 0:
+                    self.buffer_cnt_in_using -= 1
+
+    def _release_reduced_grad_views(self, grads_buffer):
+        if not grads_buffer.is_sharded:
+            return
+        group = self.buffer_manager.buffer_groups[grads_buffer.unique_key]
+        for param in group.params:
+            if getattr(param, "_fusion_buffer", None) is not grads_buffer:
+                continue
+            mg = getattr(param, "main_grad", None)
+            if mg is not None:
+                mg._clear_data()
+                param.main_grad = None
+                param._main_grad_addr = None
 
     def _wait_for_grad_comm(self, queue_limit=2):
         while len(self.grad_reduce_queue) > queue_limit:
             grads_buffer = self.grad_reduce_queue.pop(0)
             if grads_buffer.comm_task is None:
                 grads_buffer.clear_tmp_buffer()
+                self._release_reduced_grad_views(grads_buffer)
                 continue
             grads_buffer.comm_task.wait()
             grads_buffer.comm_task = None
             grads_buffer.accumulate_reduced_grad()
+            self._release_reduced_grad_views(grads_buffer)
 
     def finish_grads_sync(self):
         # Wait for all async reduce_scatter tasks, call before optimizer.step()
@@ -652,11 +856,51 @@ class FSDPCommManager:
                 continue
             group.grads_use_cnt = 0
             if not grads_buffer.is_sharded:
+                if group.muon_shard_numel is not None:
+                    paddle.distributed.all_reduce(
+                        grads_buffer.data_buffer,
+                        op=paddle.distributed.ReduceOp.SUM,
+                        group=grads_buffer.fsdp_group,
+                        sync_op=True,
+                    )
+                elif group.muon_owner_rank is not None:
+                    paddle.distributed.reduce(
+                        grads_buffer.data_buffer,
+                        dst=grads_buffer.fsdp_group.ranks[
+                            group.muon_owner_rank
+                        ],
+                        op=paddle.distributed.ReduceOp.SUM,
+                        group=grads_buffer.fsdp_group,
+                        sync_op=True,
+                    )
+                    if (
+                        grads_buffer.fsdp_group.ranks[group.muon_owner_rank]
+                        != paddle.distributed.get_rank()
+                    ):
+                        self._release_dense_grad_buffer(grads_buffer)
+                        continue
+                if (
+                    grads_buffer.grad_scale != 1.0
+                    and not grads_buffer.grad_scaled
+                ):
+                    grads_buffer.data_buffer.scale_(grads_buffer.grad_scale)
+                    grads_buffer.grad_scaled = True
                 continue
             if grads_buffer.tmp_data_buffer is None:
                 continue
             grads_buffer.do_reduce_scatter().wait()
             grads_buffer.accumulate_reduced_grad()
+            self._release_reduced_grad_views(grads_buffer)
+
+        for param in self.buffer_manager.model.parameters():
+            buf = getattr(param, "_fusion_buffer", None)
+            if buf is None or not buf.is_sharded:
+                continue
+            mg = getattr(param, "main_grad", None)
+            if mg is not None:
+                mg._clear_data()
+                param.main_grad = None
+                param._main_grad_addr = None
 
 
 class FusionBackwardHook(PyLayer):
@@ -840,6 +1084,12 @@ class FullyShardFusion:
             self._shard_descs[params_buffer.data_buffer.name] = param_slice_info
         return result
 
+    def requires_muon_per_matrix_ns(self):
+        return any(
+            group.muon_shard_numel is not None
+            for group in self.buffer_manager.buffer_groups
+        )
+
     def bind_decay_param_fun(self, optimizer):
         """Answer ``apply_decay_param_fun`` for the fused buffers.
 
@@ -882,6 +1132,17 @@ class FullyShardFusion:
                 return True
         return False
 
+    def bind_optimizer(self, optimizer):
+        if getattr(optimizer, "_fsdp_state_dict_ctx", None) is self:
+            return
+        optimizer.sharded_state_dict = lambda model_sharded_state_dict=None: (
+            self.optimizer_sharded_state_dict(optimizer)
+        )
+        optimizer.init_state_for_load = lambda *args, **kwargs: (
+            self.init_optimizer_state(optimizer)
+        )
+        optimizer._fsdp_state_dict_ctx = self
+
     def init_optimizer_state(self, optimizer):
         """Create optimizer accumulators on the fused buffers before load."""
         parameter_list = [
@@ -893,6 +1154,10 @@ class FullyShardFusion:
             paddle.base.framework.default_main_program().global_block(),
             parameter_list,
         )
+
+    def all_gather_params(self):
+        for group in self.buffer_manager.buffer_groups:
+            self.comm_manager.all_gather_params(group.params)
 
     def optimizer_sharded_state_dict(self, optimizer):
         """Split the state keyed by ``fuse_params_<gid>`` into per-param flattened shards."""
@@ -995,6 +1260,15 @@ class FullyShardFusion:
 
         return sharded_state
 
+    def set_grad_accum_steps(self, steps):
+        steps = max(int(steps), 1)
+        for group in self.buffer_manager.buffer_groups:
+            grads_buffer = group.grads_buffer
+            if grads_buffer is None:
+                continue
+            grads_buffer.grad_accum_steps = steps
+            grads_buffer.grad_scale = 1.0 / (grads_buffer.grad_div * steps)
+
     def comm_sync_and_reset_status(self):
         self.comm_manager.finish_grads_sync()
         self.comm_manager.reset_params_buffer_status()
@@ -1005,6 +1279,209 @@ class FullyShardFusion:
                 param.main_grad = None
 
     @paddle.autograd.no_grad()
+    def _p2p_gather_full(self, shard, fsdp_group, owner_local):
+        ranks = fsdp_group.ranks
+        my = paddle.distributed.get_rank()
+        owner_global = ranks[owner_local]
+        if my != owner_global:
+            for w in paddle.distributed.batch_isend_irecv(
+                [
+                    paddle.distributed.P2POp(
+                        paddle.distributed.isend,
+                        shard,
+                        owner_global,
+                        fsdp_group,
+                    )
+                ]
+            ):
+                w.wait()
+            return None
+        s = shard.shape[0]
+        recv = {}
+        ops = []
+        for i, r in enumerate(ranks):
+            if r == my:
+                continue
+            buf = paddle.empty([s], dtype=shard.dtype)
+            recv[i] = buf
+            ops.append(
+                paddle.distributed.P2POp(
+                    paddle.distributed.irecv, buf, r, fsdp_group
+                )
+            )
+        if ops:
+            for w in paddle.distributed.batch_isend_irecv(ops):
+                w.wait()
+        pieces = [shard if r == my else recv[i] for i, r in enumerate(ranks)]
+        return paddle.concat(pieces)
+
+    @paddle.autograd.no_grad()
+    def _p2p_scatter_full(self, full, shard, fsdp_group, owner_local):
+        """Scatter the owner's updated full tensor back to each rank's shard."""
+        ranks = fsdp_group.ranks
+        my = paddle.distributed.get_rank()
+        owner_global = ranks[owner_local]
+        s = shard.shape[0]
+        if my != owner_global:
+            buf = paddle.empty([s], dtype=shard.dtype)
+            for w in paddle.distributed.batch_isend_irecv(
+                [
+                    paddle.distributed.P2POp(
+                        paddle.distributed.irecv, buf, owner_global, fsdp_group
+                    )
+                ]
+            ):
+                w.wait()
+            paddle.assign(buf, shard)
+            return
+        ops = []
+        for i, r in enumerate(ranks):
+            piece = full[i * s : (i + 1) * s]
+            if r == my:
+                paddle.assign(piece, shard)
+            else:
+                ops.append(
+                    paddle.distributed.P2POp(
+                        paddle.distributed.isend, piece.clone(), r, fsdp_group
+                    )
+                )
+        if ops:
+            for w in paddle.distributed.batch_isend_irecv(ops):
+                w.wait()
+
+    @paddle.autograd.no_grad()
+    def muon_params_grads(self):
+        my_rank = paddle.distributed.get_rank()
+        out = []
+        for group in self.buffer_manager.buffer_groups:
+            if not group.use_muon or group.grads_buffer is None:
+                continue
+            if group.muon_shard_numel is not None:
+                out.extend(self._muon_sharded_params_grads(group))
+                continue
+            owner = group.muon_owner_rank
+            params_buffer = group.params_buffer
+            grads_buffer = group.grads_buffer
+            if params_buffer.is_sharded and owner is not None:
+                param_full = self._p2p_gather_full(
+                    params_buffer.data_buffer, group.fsdp_group, owner
+                )
+                grad_full = self._p2p_gather_full(
+                    grads_buffer.data_buffer, group.fsdp_group, owner
+                )
+                if group.fsdp_group.ranks[owner] != my_rank:
+                    continue
+                group._muon_param_full = param_full
+                for param in group.params:
+                    if not param.trainable:
+                        continue
+                    offset = params_buffer.param_offsets[param.name]
+                    numel = param._numel()
+                    view = paddle._C_ops.view_slice(
+                        param_full, offset, offset + numel
+                    )
+                    view.get_tensor()._set_dims(param.shape)
+                    param.get_tensor()._share_data_with(view.get_tensor())
+                    grad = paddle._C_ops.view_slice(
+                        grad_full, offset, offset + numel
+                    )
+                    grad.get_tensor()._set_dims(param.shape)
+                    out.append((param, grad))
+                continue
+            if owner is not None:
+                if group.fsdp_group.ranks[owner] != my_rank:
+                    continue
+            for param in group.params:
+                if not param.trainable:
+                    continue
+                offset = params_buffer.param_offsets[param.name]
+                numel = param._numel()
+                view = paddle._C_ops.view_slice(
+                    params_buffer.data_buffer, offset, offset + numel
+                )
+                view.get_tensor()._set_dims(param.shape)
+                param.get_tensor()._share_data_with(view.get_tensor())
+                grad = paddle._C_ops.view_slice(
+                    grads_buffer.data_buffer, offset, offset + numel
+                )
+                grad.get_tensor()._set_dims(param.shape)
+                out.append((param, grad))
+        return out
+
+    def _muon_sharded_params_grads(self, group):
+        out = []
+        params_buffer = group.params_buffer
+        grads_buffer = group.grads_buffer
+        for param in group.params:
+            if not param.trainable:
+                continue
+            offset = params_buffer.param_offsets[param.name]
+            begin = max(offset, params_buffer.shard_start)
+            end = min(offset + param._muon_full_numel, params_buffer.shard_end)
+            if end <= begin:
+                continue
+            m, n = param._muon_matrix_shape
+            mnumel = m * n
+            n_local = (end - begin) // mnumel
+            span = n_local * mnumel
+            dims = [n_local, m, n]
+            lo = begin - params_buffer.shard_start
+            view = paddle._C_ops.view_slice(
+                params_buffer.data_buffer, lo, lo + span
+            )
+            view.get_tensor()._set_dims(dims)
+            param.get_tensor()._share_data_with(view.get_tensor())
+            param.original_shape = dims
+            gbegin = (
+                begin - grads_buffer.shard_start
+                if grads_buffer.is_sharded
+                else begin
+            )
+            grad = paddle._C_ops.view_slice(
+                grads_buffer.data_buffer, gbegin, gbegin + span
+            )
+            grad.get_tensor()._set_dims(dims)
+            out.append((param, grad))
+        return out
+
+    @paddle.autograd.no_grad()
+    def broadcast_muon_params(self):
+        for group in self.buffer_manager.buffer_groups:
+            if group.muon_shard_numel is not None:
+                for param in group.params:
+                    full = getattr(param, "_muon_full_shape", None)
+                    if full is None:
+                        continue
+                    param.get_tensor()._set_dims(full)
+                    param.original_shape = list(full)
+                continue
+            if not group.use_muon or group.muon_owner_rank is None:
+                continue
+            params_buffer = group.params_buffer
+            if params_buffer.is_sharded:
+                full = getattr(group, "_muon_param_full", None)
+                self._p2p_scatter_full(
+                    full,
+                    params_buffer.data_buffer,
+                    group.fsdp_group,
+                    group.muon_owner_rank,
+                )
+                group._muon_param_full = None
+                for param in group.params:
+                    stop_gradient = param.stop_gradient
+                    shape = param.shape
+                    param._clear_data()
+                    param.stop_gradient = stop_gradient
+                    param.get_tensor()._set_dims(shape)
+                continue
+            paddle.distributed.broadcast(
+                group.params_buffer.data_buffer,
+                src=group.fsdp_group.ranks[group.muon_owner_rank],
+                group=group.fsdp_group,
+                sync_op=True,
+            )
+
+    @paddle.autograd.no_grad()
     def _bind_expert_main_grads(self, params):
         self.comm_manager._maybe_zero_grads()
         for param in params:
@@ -1013,6 +1490,9 @@ class FullyShardFusion:
             if not getattr(param, "is_moe_param", False):
                 continue
             if not hasattr(param, "get_main_grad"):
+                continue
+            buf = getattr(param, "_fusion_buffer", None)
+            if buf is not None and buf.is_sharded:
                 continue
             param._fusion_buffer.rebind_main_grad(param)
 
@@ -1073,9 +1553,7 @@ class FullyShardFusion:
         model.register_forward_pre_hook(_bind_experts_pre_forward)
 
         def _register_recursive(layer):
-            is_unit = (
-                type(layer).__name__ in self.buffer_manager.fsdp_unit_layers
-            )
+            is_unit = self.buffer_manager.is_fsdp_unit(layer)
 
             if is_unit:
                 # For FSDP Unit, register recursive hooks and stop recursion
