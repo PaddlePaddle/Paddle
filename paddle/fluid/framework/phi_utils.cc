@@ -133,7 +133,7 @@ phi::KernelKey FallBackToCpu(const phi::KernelKey& kernel_key,
         phi::Backend::CPU, kernel_key.layout(), kernel_key.dtype());
   }
 #endif
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA)
   if (kernel_key.backend() == phi::Backend::GPU ||
       kernel_key.backend() == phi::Backend::GPUDNN) {
     PADDLE_THROW(
@@ -141,6 +141,15 @@ phi::KernelKey FallBackToCpu(const phi::KernelKey& kernel_key,
                                  "GPU kernel cannot fallback to CPU one.",
                                  op.Type(),
                                  kernel_key));
+  }
+#elif defined(PADDLE_WITH_HIP)
+  if (kernel_key.backend() == phi::Backend::GPU ||
+      kernel_key.backend() == phi::Backend::GPUDNN) {
+    VLOG(3) << "phi missing GPU kernel: " << op.Type()
+            << ", expected_kernel_key:" << kernel_key
+            << ", fallback to CPU one!";
+    return phi::KernelKey(
+        phi::Backend::CPU, kernel_key.layout(), kernel_key.dtype());
   }
 #endif
 
