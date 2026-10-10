@@ -22,6 +22,7 @@
 #include <c10/core/ScalarType.h>
 #include <c10/core/Stream.h>
 #include <c10/core/SymIntArrayRef.h>
+#include <c10/util/ArrayRef.h>
 #include <c10/util/OptionalArrayRef.h>
 #include "paddle/phi/api/include/api.h"
 #include "paddle/phi/api/include/tensor.h"
@@ -51,6 +52,7 @@ class Tensor;
 // Type aliases for ATen compatibility
 using Scalar = c10::Scalar;
 using TensorOptions = c10::TensorOptions;
+using TensorList = c10::ArrayRef<Tensor>;
 using MemoryFormat = c10::MemoryFormat;
 using IntArrayRef = c10::IntArrayRef;
 using OptionalIntArrayRef = c10::OptionalIntArrayRef;
