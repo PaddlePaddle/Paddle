@@ -18,14 +18,14 @@
 
 namespace paddle::framework {
 
-void ReaderBase::ReadNext(phi::TensorArray *out) {
+bool ReaderBase::ReadNext(phi::TensorArray *out) {
   std::lock_guard<std::mutex> lock(mu_);
   PADDLE_ENFORCE_EQ(status_,
                     ReaderStatus::kRunning,
                     common::errors::Unavailable(
                         "The current reader has stopped running and cannot "
                         "continue to read the next batch of data."));
-  ReadNextImpl(out);
+  return ReadNextImpl(out);
 }
 
 void ReaderBase::InsertDecoratedReader(
