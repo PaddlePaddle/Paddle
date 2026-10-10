@@ -55,6 +55,7 @@ type_promote_white_list = {
     "multiply": ["x", "y"],
     "copysign": ["x", "y"],
     "cross": ["x", "y"],
+    "addcmul": ["input", "tensor1", "tensor2"],
 }
 
 type_promote_inplace_white_list = {
@@ -75,6 +76,7 @@ type_promote_inplace_white_list = {
     "logical_xor_": ["x", "y"],
     "remainder_": ["x", "y"],
     "copysign_": ["x", "y"],
+    "addcmul_": ["input", "tensor1", "tensor2"],
 }
 
 # ops support casting int tensor into float32 to do forward calculation
@@ -237,6 +239,40 @@ TYPE_PROMOTION_LOGIC_TEMPLATE = """
     auto new_{y} = pir::PromoteCast("{y}", {y}, promotion_type);
 
     return paddle::dialect::{op_name}({args});
+  }}
+"""
+
+MULTI_INPUTS_TYPE_PROMOTION_LOGIC_TEMPLATE = """
+    std::vector<phi::DataType> input_dtypes = {{{input_dtypes}}};
+    if (phi::NeedTypePromotion("{op_name}", input_dtypes)) {{
+    VLOG(5) << "got different data type, run type promotion automatically.";
+    LOG_FIRST_N(WARNING, 1) << "got different data type, run type promotion automatically, this may cause data type been changed.";
+    auto promotion_type = phi::GetPromoteDtype("{op_name}", input_dtypes, {{{input_shapes}}});
+
+    {inputs_cast}
+
+    return paddle::dialect::{op_name}({args});
+  }}
+"""
+
+# For inplace ops, the result is computed in the promoted dtype and then written
+# back to the inplaced input without changing its dtype, the same as PyTorch.
+MULTI_INPUTS_INPLACE_TYPE_PROMOTION_LOGIC_TEMPLATE = """
+    std::vector<phi::DataType> input_dtypes = {{{input_dtypes}}};
+    if (phi::NeedTypePromotion("{op_name}", input_dtypes)) {{
+    VLOG(5) << "got different data type, run type promotion automatically.";
+    LOG_FIRST_N(WARNING, 1) << "got different data type, run type promotion automatically, this may cause data type been changed.";
+    auto promotion_type = phi::GetPromoteDtype("{op_name}", input_dtypes, {{{input_shapes}}});
+    PADDLE_ENFORCE_EQ(phi::CanCast(promotion_type, input_dtypes[0]), true, common::errors::InvalidArgument("The result type %s can't be cast to the desired output type %s.", promotion_type, input_dtypes[0]));
+
+    {inputs_cast}
+
+    if (promotion_type == input_dtypes[0]) {{
+      return paddle::dialect::{op_name}({args});
+    }}
+    auto new_{x} = pir::PromoteCast("{x}", {x}, promotion_type);
+    auto result = pir::PromoteCast("{x}", paddle::dialect::{out_of_place_op_name}({out_of_place_args}), input_dtypes[0]);
+    return paddle::dialect::assign_out_(result, {x});
   }}
 """
 
@@ -871,11 +907,57 @@ class CodeGen:
         args = type_promote_inputs_call_list + attr_list
         return ', '.join(args)
 
+    def _gen_type_promotion_template(
+        self, op_info, op_name, promote_inputs, x_cast, args
+    ):
+        x = promote_inputs[0]
+        if len(promote_inputs) == 2:
+            return TYPE_PROMOTION_LOGIC_TEMPLATE.format(
+                op_name=op_name,
+                x=x,
+                y=promote_inputs[1],
+                x_cast=x_cast,
+                args=args,
+            )
+        # ops with more than two inputs, e.g. addcmul
+        inputs_cast = [
+            f'auto new_{name} = pir::PromoteCast("{name}", {name}, promotion_type);'
+            for name in promote_inputs[1:]
+        ]
+        input_dtypes = ", ".join(
+            f"paddle::imperative::GetDataType({name})"
+            for name in promote_inputs
+        )
+        input_shapes = ", ".join(
+            f"pir::GetValueShape({name})" for name in promote_inputs
+        )
+        if op_name not in type_promote_inplace_white_list:
+            return MULTI_INPUTS_TYPE_PROMOTION_LOGIC_TEMPLATE.format(
+                op_name=op_name,
+                input_dtypes=input_dtypes,
+                input_shapes=input_shapes,
+                inputs_cast="\n    ".join([x_cast, *inputs_cast]),
+                args=args,
+            )
+        out_of_place_op_name = op_name[:-1]
+        return MULTI_INPUTS_INPLACE_TYPE_PROMOTION_LOGIC_TEMPLATE.format(
+            op_name=op_name,
+            input_dtypes=input_dtypes,
+            input_shapes=input_shapes,
+            x=x,
+            inputs_cast="\n    ".join(inputs_cast),
+            args=args,
+            out_of_place_op_name=out_of_place_op_name,
+            out_of_place_args=self._gen_type_promotion_args(
+                op_info, out_of_place_op_name
+            ),
+        )
+
     def _gen_type_promotion_logic(self, op_info, op_name):
         input_list = op_info.input_name_list
         if op_name in type_promote_white_list:
-            x = type_promote_white_list[op_name][0]
-            y = type_promote_white_list[op_name][1]
+            promote_inputs = type_promote_white_list[op_name]
+            x = promote_inputs[0]
 
             type_promote_inputs_call_args_str = self._gen_type_promotion_args(
                 op_info, op_name
@@ -886,16 +968,16 @@ class CodeGen:
             )
             if op_info.is_sparse_op:
                 op_name += "sp_" if op_name[-1] == "_" else "_sp"
-            type_promotion_logic_str = TYPE_PROMOTION_LOGIC_TEMPLATE.format(
-                op_name=op_name,
-                x=x,
-                y=y,
-                x_cast=x_cast,
-                args=type_promote_inputs_call_args_str,
+            type_promotion_logic_str = self._gen_type_promotion_template(
+                op_info,
+                op_name,
+                promote_inputs,
+                x_cast,
+                type_promote_inputs_call_args_str,
             )
         elif op_name in type_promote_inplace_white_list:
-            x = type_promote_inplace_white_list[op_name][0]
-            y = type_promote_inplace_white_list[op_name][1]
+            promote_inputs = type_promote_inplace_white_list[op_name]
+            x = promote_inputs[0]
 
             type_promote_inputs_call_args_str = self._gen_type_promotion_args(
                 op_info, op_name
@@ -903,12 +985,12 @@ class CodeGen:
 
             x_cast = f'pir::PromoteCastInplace("{x}", {x}, promotion_type);'
 
-            type_promotion_logic_str = TYPE_PROMOTION_LOGIC_TEMPLATE.format(
-                op_name=op_name,
-                x=x,
-                y=y,
-                x_cast=x_cast,
-                args=type_promote_inputs_call_args_str,
+            type_promotion_logic_str = self._gen_type_promotion_template(
+                op_info,
+                op_name,
+                promote_inputs,
+                x_cast,
+                type_promote_inputs_call_args_str,
             )
         else:
             type_promotion_logic_str = (
