@@ -397,8 +397,7 @@ void SetPythonStack() {
   if (FLAGS_check_nan_inf && FLAGS_check_nan_inf_level == 0) {
     VLOG(4) << "this is SetPythonStack";
     std::string str = GetPythonStack();
-    std::string last = str + egr::Controller::Instance().GetPythonStack();
-    egr::Controller::Instance().SetPythonStack(last);
+    egr::Controller::Instance().SetPythonStack(str);
   }
 
   if (FLAGS_call_stack_level == 3) {
