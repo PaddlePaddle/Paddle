@@ -189,6 +189,7 @@ _INFERMETA_NEED_META_CONFIG = {
     'CSoftmaxWithCrossEntropyGradInferMeta',
     'CSoftmaxWithMultiLabelCrossEntropyGradInferMeta',
     'LSTMGradInferMeta',
+    'MatmulGradInferMeta',
     'LodResetGradInferMeta',
     'FFTC2RGradInferMeta',
     'GruGradInferMeta',
