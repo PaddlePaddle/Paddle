@@ -20,6 +20,10 @@ def _stale_frame_marker():
 
 
 def main():
+    # This test only exercises the device-independent Python call-stack
+    # mechanism, so pin everything (including the paddle.rand below) to CPU and
+    # avoid depending on the CI runner's default device (e.g. XPU).
+    paddle.set_device('cpu')
     paddle.set_flags(
         {
             "FLAGS_check_nan_inf": 1,
