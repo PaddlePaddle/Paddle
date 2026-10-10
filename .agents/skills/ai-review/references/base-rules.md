@@ -2,6 +2,15 @@
 
 本文件是每次 Paddle 评审都必须加载的基础规则。根据变更范围应用相关条目，并在评论中给出路径、行号和可观察影响。
 
+## Release 分支评审
+
+- 当 PR 的目标分支 `base_ref` 为 `release` 或匹配 `release/*` 时，适用本节；源分支名称不触发此规则。
+- 不对该 release PR 的 diff 进行完整评审。必须在同一仓库定位唯一对应、目标分支为 `develop` 的 PR，并将该 develop PR 的 diff 与当前 release PR 的 diff 逐项比较。
+- 优先依据标题、描述、提交记录或讨论中明确给出的 PR URL/编号建立对应关系；没有明确关联时，必须有唯一的源分支或等价变更证据，不能只按相似标题猜测。
+- 仅评审 develop PR 相对于 release PR 新增、缺失或语义不一致的改动；release PR 中已存在且语义等价的改动不重复评审。
+- release PR 的 diff 用作差异对照和为评论定位；所有评论和 Review Board 更新仍发布在 release PR 上，不在 develop PR 上发布评审结果。
+- 找不到对应 develop PR 或对应关系存在歧义时，不回退为完整评审 release PR 的 diff，也不得批准；要求作者提供对应的 develop PR 后再继续。
+
 ## 功能正确性与兼容性
 
 - 核对 PR 描述与实现是否一致，包括输入输出、默认值、支持的 shape/dtype、设备范围和测试范围。
