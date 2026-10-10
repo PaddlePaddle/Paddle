@@ -263,8 +263,8 @@
   args : (Tensor x, Tensor y, Tensor out_grad, bool transpose_x=false, bool transpose_y=false, float alpha=1.0f)
   output : Tensor(x_grad), Tensor(y_grad)
   infer_meta :
-    func : GeneralBinaryGradInferMeta
-    param : [x, y]
+    func : MatmulGradInferMeta
+    param : [x, y, transpose_x, transpose_y]
   kernel :
     func : legacy_matmul_grad
     param: [x, y, out_grad, transpose_x, transpose_y, alpha]
@@ -352,8 +352,8 @@
   args : (Tensor x, Tensor y, Tensor out_grad, bool transpose_x=false, bool transpose_y=false)
   output : Tensor(x_grad), Tensor(y_grad)
   infer_meta :
-    func : GeneralBinaryGradInferMeta
-    param : [x, y]
+    func : MatmulGradInferMeta
+    param : [x, y, transpose_x, transpose_y]
     spmd_rule : MatmulGradInferSpmd
   kernel :
     func : matmul_grad
