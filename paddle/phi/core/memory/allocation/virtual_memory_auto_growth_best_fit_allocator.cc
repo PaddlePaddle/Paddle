@@ -429,6 +429,141 @@ size_t VirtualMemoryAutoGrowthBestFitAllocator::CompactImpl(
   return compact_free_size;
 }
 
+void VirtualMemoryAutoGrowthBestFitAllocator::RemoveFreeRange(uintptr_t begin,
+                                                              uintptr_t end) {
+  // Collect free blocks overlapping [begin, end). The caller guarantees the
+  // whole range is free, so every overlapping block is free.
+  std::vector<std::list<Block>::iterator> targets;
+  for (auto it = all_blocks_.begin(); it != all_blocks_.end(); ++it) {
+    uintptr_t bb = reinterpret_cast<uintptr_t>(it->ptr_);
+    uintptr_t be = bb + it->size_;
+    if (be <= begin || bb >= end) continue;  // no overlap
+    targets.push_back(it);
+  }
+  for (auto block_it : targets) {
+    uintptr_t bb = reinterpret_cast<uintptr_t>(block_it->ptr_);
+    uintptr_t be = bb + block_it->size_;
+    // Drop the old free_blocks_ entry; surviving remnants are re-inserted
+    // below.
+    free_blocks_.erase(std::make_pair(block_it->size_, block_it->ptr_));
+
+    const bool has_left = bb < begin;
+    const bool has_right = be > end;
+
+    if (!has_left && !has_right) {
+      // Block fully covered by the released range: drop it entirely.
+      all_blocks_.erase(block_it);
+      continue;
+    }
+    if (has_left) {
+      const size_t left_size = begin - bb;
+      std::vector<BlockPart> left_parts =
+          SliceBlockPartsForRange(block_it->parts_, 0, left_size);
+      if (has_right) {
+        // Split into left remnant (reuse block_it) + right remnant (new block).
+        const size_t right_size = be - end;
+        std::vector<BlockPart> right_parts =
+            SliceBlockPartsForRange(block_it->parts_, end - bb, right_size);
+
+        block_it->size_ = left_size;
+        block_it->is_free_ = true;
+        block_it->parts_ = std::move(left_parts);
+        free_blocks_.emplace(std::make_pair(block_it->size_, block_it->ptr_),
+                             block_it);
+
+        auto right_it = all_blocks_.insert(
+            std::next(block_it),
+            Block(reinterpret_cast<void *>(end), right_size, true));
+        right_it->parts_ = std::move(right_parts);
+        free_blocks_.emplace(std::make_pair(right_size, right_it->ptr_),
+                             right_it);
+      } else {
+        block_it->size_ = left_size;
+        block_it->is_free_ = true;
+        block_it->parts_ = std::move(left_parts);
+        free_blocks_.emplace(std::make_pair(block_it->size_, block_it->ptr_),
+                             block_it);
+      }
+    } else {
+      // has_right only: keep the right remnant, drop the released prefix.
+      const size_t right_size = be - end;
+      std::vector<BlockPart> right_parts =
+          SliceBlockPartsForRange(block_it->parts_, end - bb, right_size);
+      block_it->ptr_ = reinterpret_cast<void *>(end);
+      block_it->size_ = right_size;
+      block_it->is_free_ = true;
+      block_it->parts_ = std::move(right_parts);
+      free_blocks_.emplace(std::make_pair(block_it->size_, block_it->ptr_),
+                           block_it);
+    }
+  }
+}
+
+uint64_t VirtualMemoryAutoGrowthBestFitAllocator::ReleaseImpl(
+    const Place &place) {
+  std::lock_guard<SpinLock> guard(spinlock_);
+  if (allocations_.empty()) {
+    return 0;
+  }
+
+#ifdef PADDLE_WITH_CUDA
+  // Ensure no in-flight kernel still references memory we are about to unmap.
+  // empty_cache is a low-frequency operation so a full device sync is fine.
+  // This mirrors the prepare/sync/release protocol used by the v2 allocator.
+  {
+    paddle::platform::CUDADeviceGuard device_guard(place_.device);
+    cudaError_t sync_result = cudaDeviceSynchronize();
+    if (sync_result != cudaSuccess) {
+      // Swallow the error and keep the cache intact rather than releasing
+      // memory while the device is in an unexpected state.
+      cudaGetLastError();
+      return 0;
+    }
+  }
+#endif
+
+  uint64_t released = 0;
+  for (auto it = allocations_.begin(); it != allocations_.end();) {
+    uintptr_t cb = reinterpret_cast<uintptr_t>((*it)->ptr());
+    size_t chunk_size = (*it)->size();
+    uintptr_t ce = cb + chunk_size;
+
+    // A chunk can be released only if every block overlapping its VA range is
+    // free and none of it has been exported for IPC.
+    bool releasable = true;
+    for (const auto &block : all_blocks_) {
+      uintptr_t bb = reinterpret_cast<uintptr_t>(block.ptr_);
+      uintptr_t be = bb + block.size_;
+      if (be <= cb || bb >= ce) continue;  // no overlap
+      if (!block.is_free_) {
+        releasable = false;
+        break;
+      }
+    }
+#ifdef PADDLE_WITH_CUDA
+    if (releasable && CUDAVirtualMemAllocator::AnyIPCExportedInRange(
+                          (*it)->ptr(), chunk_size)) {
+      releasable = false;
+    }
+#endif
+    if (!releasable) {
+      ++it;
+      continue;
+    }
+
+    RemoveFreeRange(cb, ce);
+    released += chunk_size;
+    // Erasing the held AllocationPtr triggers the underlying allocator's
+    // FreeImpl, which performs cuMemUnmap + cuMemRelease and returns the
+    // physical pages to the driver.
+    it = allocations_.erase(it);
+  }
+
+  VLOG(1) << "VirtualMemoryAutoGrowthBestFitAllocator::ReleaseImpl released "
+          << released << " bytes on device " << place_.device;
+  return released;
+}
+
 bool VirtualMemoryAutoGrowthBestFitAllocator::TryAllocateBatch(
     const std::vector<size_t> &sizes) {
   auto SimulateAlloc =
@@ -577,6 +712,18 @@ size_t VirtualMemoryAutoGrowthBestFitMultiScalePoolAllocator::CompactImpl(
           << compact_free_size;
   compact_size_.emplace_back(compact_free_size);
   return compact_free_size;
+}
+
+uint64_t VirtualMemoryAutoGrowthBestFitMultiScalePoolAllocator::ReleaseImpl(
+    const Place &place) {
+  uint64_t released = 0;
+  if (auto &small_allocator = GetSmallAllocator()) {
+    released += small_allocator->Release(place);
+  }
+  if (auto &large_allocator = GetLargeAllocator()) {
+    released += large_allocator->Release(place);
+  }
+  return released;
 }
 
 }  // namespace allocation

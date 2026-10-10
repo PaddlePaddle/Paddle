@@ -161,31 +161,32 @@ __global__ void KeNearestNeighborInterpNCHWFw(const T* in,
       threadIdx.x + blockIdx.x * static_cast<size_t>(blockDim.x);
   size_t out_img_idy =
       threadIdx.y + blockIdx.y * static_cast<size_t>(blockDim.y);
-  size_t nc_id = threadIdx.z + blockIdx.z * static_cast<size_t>(blockDim.z);
+  size_t nc_begin = threadIdx.z + blockIdx.z * static_cast<size_t>(blockDim.z);
+  size_t x_stride = static_cast<size_t>(blockDim.x) * gridDim.x;
+  size_t y_stride = static_cast<size_t>(blockDim.y) * gridDim.y;
   size_t nc_stride = static_cast<size_t>(blockDim.z) * gridDim.z;
-
-  // nearest_sampling by multiple read in_addr and write to out_addr
-  size_t in_img_idx = (align_corners)
-                          ? static_cast<size_t>(ratio_w * out_img_idx + 0.5)
-                          : static_cast<size_t>(ratio_w * out_img_idx);
-  size_t in_img_idy = (align_corners)
-                          ? static_cast<size_t>(ratio_h * out_img_idy + 0.5)
-                          : static_cast<size_t>(ratio_h * out_img_idy);
-
-  size_t in_index = (nc_id * in_img_h + in_img_idy) * in_img_w + in_img_idx;
   size_t in_index_stride = nc_stride * in_img_h * in_img_w;
-
-  size_t out_index =
-      (nc_id * out_img_h + out_img_idy) * out_img_w + out_img_idx;
   size_t out_index_stride = nc_stride * out_img_h * out_img_w;
 
   // prevent from multiple threads writing
   if (out_img_idx < out_img_w && out_img_idy < out_img_h) {
-    while (nc_id < nc) {
-      out[out_index] = in[in_index];
-      in_index += in_index_stride;
-      out_index += out_index_stride;
-      nc_id += nc_stride;
+    for (size_t idy = out_img_idy; idy < out_img_h; idy += y_stride) {
+      size_t in_img_idy = (align_corners)
+                              ? static_cast<size_t>(ratio_h * idy + 0.5)
+                              : static_cast<size_t>(ratio_h * idy);
+      for (size_t idx = out_img_idx; idx < out_img_w; idx += x_stride) {
+        size_t in_img_idx = (align_corners)
+                                ? static_cast<size_t>(ratio_w * idx + 0.5)
+                                : static_cast<size_t>(ratio_w * idx);
+        size_t in_index =
+            (nc_begin * in_img_h + in_img_idy) * in_img_w + in_img_idx;
+        size_t out_index = (nc_begin * out_img_h + idy) * out_img_w + idx;
+        for (size_t nc_id = nc_begin; nc_id < nc; nc_id += nc_stride) {
+          out[out_index] = in[in_index];
+          in_index += in_index_stride;
+          out_index += out_index_stride;
+        }
+      }
     }
   }
 }
@@ -654,43 +655,43 @@ __global__ void KeBilinearInterpNCHWFw(const T* in,
       threadIdx.x + blockIdx.x * static_cast<size_t>(blockDim.x);
   size_t out_img_idy =
       threadIdx.y + blockIdx.y * static_cast<size_t>(blockDim.y);
-  size_t nc_id = threadIdx.z + blockIdx.z * static_cast<size_t>(blockDim.z);
+  size_t nc_begin = threadIdx.z + blockIdx.z * static_cast<size_t>(blockDim.z);
+  size_t x_stride = static_cast<size_t>(blockDim.x) * gridDim.x;
+  size_t y_stride = static_cast<size_t>(blockDim.y) * gridDim.y;
   size_t nc_stride = static_cast<size_t>(blockDim.z) * gridDim.z;
+  size_t in_index_stride = nc_stride * in_img_h * in_img_w;
+  size_t out_index_stride = nc_stride * out_img_h * out_img_w;
 
   size_t in_img_idx, in_img_idy, h_id, w_id;
   MT h1lambda, w1lambda, h2lambda, w2lambda;
 
-  MT src_w =
-      funcs::AreaPixelComputeSourceIndex<MT>(ratio_w, out_img_idx, !align_flag);
-  MT src_h =
-      funcs::AreaPixelComputeSourceIndex<MT>(ratio_h, out_img_idy, !align_flag);
-
-  PreCalculatorForLinearInterpInputIndex(
-      &in_img_idx, &w_id, &w1lambda, &w2lambda, src_w, in_img_w);
-  PreCalculatorForLinearInterpInputIndex(
-      &in_img_idy, &h_id, &h1lambda, &h2lambda, src_h, in_img_h);
-
-  size_t in_index = (nc_id * in_img_h + in_img_idy) * in_img_w + in_img_idx;
-  size_t in_index_stride = nc_stride * in_img_h * in_img_w;
-
-  size_t out_index =
-      (nc_id * out_img_h + out_img_idy) * out_img_w + out_img_idx;
-  size_t out_index_stride = nc_stride * out_img_h * out_img_w;
-
-  // prevent from multiple threads writing
   if (out_img_idx < out_img_w && out_img_idy < out_img_h) {
-    while (nc_id < nc) {
-      const T* in_pos = &in[in_index];
-      out[out_index] = static_cast<T>(
-          h2lambda * (w2lambda * static_cast<MT>(in_pos[0]) +
-                      w1lambda * static_cast<MT>(in_pos[w_id])) +
-          h1lambda *
-              (w2lambda * static_cast<MT>(in_pos[h_id * in_img_w]) +
-               w1lambda * static_cast<MT>(in_pos[h_id * in_img_w + w_id])));
+    for (size_t idy = out_img_idy; idy < out_img_h; idy += y_stride) {
+      MT src_h =
+          funcs::AreaPixelComputeSourceIndex<MT>(ratio_h, idy, !align_flag);
+      PreCalculatorForLinearInterpInputIndex(
+          &in_img_idy, &h_id, &h1lambda, &h2lambda, src_h, in_img_h);
+      for (size_t idx = out_img_idx; idx < out_img_w; idx += x_stride) {
+        MT src_w =
+            funcs::AreaPixelComputeSourceIndex<MT>(ratio_w, idx, !align_flag);
+        PreCalculatorForLinearInterpInputIndex(
+            &in_img_idx, &w_id, &w1lambda, &w2lambda, src_w, in_img_w);
+        size_t in_index =
+            (nc_begin * in_img_h + in_img_idy) * in_img_w + in_img_idx;
+        size_t out_index = (nc_begin * out_img_h + idy) * out_img_w + idx;
+        for (size_t nc_id = nc_begin; nc_id < nc; nc_id += nc_stride) {
+          const T* in_pos = &in[in_index];
+          out[out_index] = static_cast<T>(
+              h2lambda * (w2lambda * static_cast<MT>(in_pos[0]) +
+                          w1lambda * static_cast<MT>(in_pos[w_id])) +
+              h1lambda *
+                  (w2lambda * static_cast<MT>(in_pos[h_id * in_img_w]) +
+                   w1lambda * static_cast<MT>(in_pos[h_id * in_img_w + w_id])));
 
-      in_index += in_index_stride;
-      out_index += out_index_stride;
-      nc_id += nc_stride;
+          in_index += in_index_stride;
+          out_index += out_index_stride;
+        }
+      }
     }
   }
 }

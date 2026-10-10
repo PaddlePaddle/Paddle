@@ -368,18 +368,7 @@ class TestBilinearInterpOp(OpTest):
             out_h = self.out_h
             out_w = self.out_w
 
-        output_np = bilinear_interp_np(
-            input_np,
-            out_h,
-            out_w,
-            scale_h,
-            scale_w,
-            self.out_size,
-            self.actual_shape,
-            self.align_corners,
-            self.align_mode,
-            self.data_layout,
-        )
+        output_np = self.ref_output(input_np, out_h, out_w, scale_h, scale_w)
         self.inputs = {'X': input_np}
         if self.out_size is not None:
             self.inputs['OutSize'] = self.out_size
@@ -402,6 +391,20 @@ class TestBilinearInterpOp(OpTest):
                 self.scale = [self.scale[0], self.scale[0]]
             self.attrs['scale'] = self.scale
         self.outputs = {'Out': output_np}
+
+    def ref_output(self, input_np, out_h, out_w, scale_h, scale_w):
+        return bilinear_interp_np(
+            input_np,
+            out_h,
+            out_w,
+            scale_h,
+            scale_w,
+            self.out_size,
+            self.actual_shape,
+            self.align_corners,
+            self.align_mode,
+            self.data_layout,
+        )
 
     def test_check_output(self):
         self.check_output(
@@ -484,6 +487,86 @@ class TestBilinearInterpDataLayout(TestBilinearInterpOp):
         self.align_corners = True
         self.align_mode = 1
         self.data_layout = "NHWC"
+
+
+@unittest.skipIf(
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
+)
+class TestBilinearInterpGridYClamp(TestBilinearInterpOp):
+    """Regression test for grid_y clamp in KeBilinearInterpNCHWFw.
+
+    With out_w = 256 -> block_x = 256, block_y = 1; out_h = 65536 -> grid_y
+    = min(65535, 65536) = 65535 (clamped by cudaDevAttrMaxGridDimY).
+
+    Before the fix the kernel had no y-stride loop, so the last output row
+    was silently skipped. The forward check matches the GPU output against a
+    numpy reference; the backward check verifies gradient contributions
+    cover every output position.
+
+    The output has 16.7M elements, so both references are vectorized here:
+    the per-pixel loop in bilinear_interp_np and the numeric gradient would
+    take several minutes. They only cover this case's configuration
+    (NCHW, align_corners=True, no scale / OutSize).
+    """
+
+    def init_test_case(self):
+        self.interp_method = 'bilinear'
+        self.input_shape = [1, 1, 2, 256]
+        self.out_h = 65536
+        self.out_w = 256
+        self.scale = []
+        self.align_corners = True
+        self.align_mode = 1
+
+    @staticmethod
+    def coeffs(in_len, out_len):
+        """Per-axis source indices and weights with align_corners=True, same
+        as bilinear_interp_np: output i reads idx0[i] and idx1[i] with weights
+        lambda0[i] and lambda1[i]."""
+        ratio = (in_len - 1.0) / (out_len - 1.0) if out_len > 1 else 0.0
+        src = ratio * np.arange(out_len)
+        idx0 = np.clip(src, 0, in_len - 1).astype(np.int64)
+        idx1 = idx0 + (idx0 < in_len - 1)
+        lambda1 = np.clip(src - idx0, 0, 1)
+        return idx0, idx1, 1.0 - lambda1, lambda1
+
+    def ref_output(self, x, out_h, out_w, scale_h, scale_w):
+        in_h, in_w = x.shape[2:]
+        h0, h1, h0lambda, h1lambda = (
+            v[:, None] for v in self.coeffs(in_h, out_h)
+        )
+        w0, w1, w0lambda, w1lambda = (
+            v[None, :] for v in self.coeffs(in_w, out_w)
+        )
+        return h0lambda * (
+            w0lambda * x[:, :, h0, w0] + w1lambda * x[:, :, h0, w1]
+        ) + h1lambda * (w0lambda * x[:, :, h1, w0] + w1lambda * x[:, :, h1, w1])
+
+    def ref_x_grad(self):
+        """d(mean(Out))/dX. Out is linear in X, and output (i, j) sends
+        h_lambda[i] * w_lambda[j] / Out.size back to each input it reads, so
+        the sum over all outputs is the outer product of per-axis sums."""
+        n, c, in_h, in_w = self.input_shape
+        h0, h1, h0lambda, h1lambda = self.coeffs(in_h, self.out_h)
+        w0, w1, w0lambda, w1lambda = self.coeffs(in_w, self.out_w)
+        grad_h = np.bincount(h0, h0lambda, in_h) + np.bincount(
+            h1, h1lambda, in_h
+        )
+        grad_w = np.bincount(w0, w0lambda, in_w) + np.bincount(
+            w1, w1lambda, in_w
+        )
+        grad = np.outer(grad_h, grad_w) / (n * c * self.out_h * self.out_w)
+        return np.broadcast_to(grad, self.input_shape).copy()
+
+    def test_check_grad(self):
+        self.check_grad(
+            ['X'],
+            'Out',
+            in_place=True,
+            check_pir=True,
+            user_defined_grads=[self.ref_x_grad()],
+        )
 
 
 class TestBilinearInterpOpFP16(TestBilinearInterpOp):
