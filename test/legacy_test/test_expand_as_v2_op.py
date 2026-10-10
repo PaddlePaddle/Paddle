@@ -290,6 +290,31 @@ class TestExpandAsV2Error(unittest.TestCase):
             self.assertRaises(ValueError, paddle.tensor.expand_as, x3, x2)
 
 
+class TestExpandAsV2ZeroSize(unittest.TestCase):
+    def test_illegal_zero_size_static(self):
+        # expand_as([M, 0] -> [M, N]) with N > 0 is illegal: a 0-size
+        # dimension is neither a singleton (1) nor equal to the target size,
+        # so it must be rejected instead of silently fabricating output.
+        with base.program_guard(base.Program(), base.Program()):
+            x = paddle.static.data(name='x_zs', shape=[3, 0], dtype="float32")
+            y = paddle.static.data(name='y_zs', shape=[3, 4], dtype="float32")
+            self.assertRaises(ValueError, paddle.tensor.expand_as, x, y)
+
+    def test_illegal_zero_size_dygraph(self):
+        with base.dygraph.guard():
+            x = paddle.zeros([3, 0], dtype="float32")
+            y = paddle.zeros([3, 4], dtype="float32")
+            self.assertRaises(ValueError, paddle.tensor.expand_as, x, y)
+
+    def test_legal_zero_size_dygraph(self):
+        # Legal empty expand [M, 0] -> [M, 0] still passes and stays 0-size.
+        with base.dygraph.guard():
+            x = paddle.zeros([3, 0], dtype="float32")
+            y = paddle.zeros([3, 0], dtype="float32")
+            out = paddle.tensor.expand_as(x, y)
+            self.assertEqual(list(out.shape), [3, 0])
+
+
 # Test python API
 class TestExpandAsV2API(unittest.TestCase):
     def test_api(self):
