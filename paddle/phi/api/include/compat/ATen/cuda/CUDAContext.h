@@ -19,6 +19,7 @@
 #pragma once
 
 #include <ATen/cuda/CUDAContextLight.h>
+#include <c10/core/Event.h>
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include <ATen/cuda/Exceptions.h>

@@ -262,6 +262,17 @@ class TestOverrideTorchModule(unittest.TestCase):
         self.assertIs(softmax, paddle.compat.nn.functional.softmax)
         self.assertIs(linear, paddle.compat.nn.functional.linear)
 
+    @paddle.use_compat_guard()
+    def test_access_compat_distributed_functions(self):
+        import torch.distributed as dist
+
+        self.assertIs(
+            dist.all_to_all_single,
+            paddle.compat.distributed.all_to_all_single,
+        )
+        # Non-overridden attributes still come from paddle.distributed.
+        self.assertIs(dist.alltoall_single, paddle.distributed.alltoall_single)
+
 
 class TestFakeInterface(unittest.TestCase):
     def test_fake_interface(self):

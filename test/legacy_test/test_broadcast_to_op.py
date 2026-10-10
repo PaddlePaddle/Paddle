@@ -40,7 +40,9 @@ class TestBroadcastToError(unittest.TestCase):
             x2.stop_gradient = False
             self.assertRaises(ValueError, paddle.tensor.broadcast_to, x2, shape)
             x2.stop_gradient = True
-            self.assertRaises(TypeError, paddle.tensor.broadcast_to, x2, 1)
+            # A bare int is a valid variadic shape element (shape=[1]), so use a
+            # genuinely invalid shape type to exercise the TypeError path.
+            self.assertRaises(TypeError, paddle.tensor.broadcast_to, x2, 1.5)
 
 
 # Test python API
@@ -174,6 +176,34 @@ class TestBroadcastToAPI(unittest.TestCase):
             expected_output = np.tile(input_data, (1, 3))
             np.testing.assert_array_equal(res_1, expected_output)
             np.testing.assert_array_equal(res_2, expected_output)
+
+
+class TestBroadcastToVarArgs(unittest.TestCase):
+    def test_dygraph_varargs(self):
+        paddle.disable_static()
+        input_data = np.random.random([1, 1, 4]).astype("float32")
+        x = paddle.to_tensor(input_data)
+        expected = np.broadcast_to(input_data, (2, 3, 4))
+        # torch-style variadic shape
+        np.testing.assert_array_equal(x.broadcast_to(2, 3, 4).numpy(), expected)
+        np.testing.assert_array_equal(
+            paddle.broadcast_to(x, 2, 3, 4).numpy(), expected
+        )
+        # list / tuple / keyword forms still work
+        np.testing.assert_array_equal(
+            x.broadcast_to([2, 3, 4]).numpy(), expected
+        )
+        np.testing.assert_array_equal(
+            x.broadcast_to((2, 3, 4)).numpy(), expected
+        )
+        np.testing.assert_array_equal(
+            paddle.broadcast_to(input=x, size=[2, 3, 4]).numpy(), expected
+        )
+        np.testing.assert_array_equal(
+            x.broadcast_to(2, -1, 4).numpy(),
+            np.broadcast_to(input_data, (2, 1, 4)),
+        )
+        paddle.enable_static()
 
 
 if __name__ == "__main__":

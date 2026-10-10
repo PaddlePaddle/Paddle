@@ -28,5 +28,7 @@ PD_REGISTER_KERNEL(pad,
                    int64_t,
                    phi::float16,
                    phi::bfloat16,
+                   phi::float8_e4m3fn,
+                   phi::float8_e5m2,
                    phi::complex64,
                    phi::complex128) {}
