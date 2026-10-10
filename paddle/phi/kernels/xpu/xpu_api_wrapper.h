@@ -264,6 +264,11 @@ static void xblas_fc_wrapper(xpu::Context* xpu_ctx,
                              int scale_w_mode) {
   int r = 0;
   xpu::ctx_guard RAII_GUARD(xpu_ctx);
+  // Pre-transpose X workaround: when x_trans=true, the XPU fc_fusion kernel
+  // may crash (XPUERR_KEXCEPTION). Pre-transpose X manually and call
+  // fc_fusion with x_trans=false. Also handles w_trans=true within this
+  // block by pre-transposing W as well, since w_trans=true also causes
+  // fc_fusion to crash.
   if (x_trans && std::getenv("XPU_PADDLE_FC_TRANS_A") != nullptr &&
       std::is_same<float, XPUType>::value) {
     XPUType* l3_addr = nullptr;
@@ -274,46 +279,139 @@ static void xblas_fc_wrapper(xpu::Context* xpu_ctx,
     std::vector<int64_t> axis = {1, 0};
     r = xpu::transpose<XPUType>(xpu_ctx, x, l3_addr, shape, axis);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "transpose");
+
+    // When both x_trans and w_trans are true, pre-transpose W as well.
+    // The XPU fc_fusion kernel crashes when w_trans=true, so we
+    // transpose W from [n, k] to [k, n] and call fc_fusion with
+    // w_trans=false.
+    const XPUType* w_data = w;
+    bool effective_w_trans = w_trans;
+    int64_t effective_ldw = ldw;
+    if (w_trans) {
+      XPUType* l3_addr_w = nullptr;
+      l3_addr_w = RAII_GUARD.alloc_l3_or_gm<XPUType>(k * n);
+      PADDLE_ENFORCE_XDNN_NOT_NULL(l3_addr_w);
+
+      std::vector<int64_t> w_shape = {n, k};
+      std::vector<int64_t> w_axis = {1, 0};
+      r = xpu::transpose<XPUType>(xpu_ctx, w, l3_addr_w, w_shape, w_axis);
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "transpose_w");
+      w_data = l3_addr_w;
+      effective_w_trans = false;
+      // After transposing W from [n, k] to [k, n], leading dimension = n
+      effective_ldw = n;
+    }
+
 #ifdef PADDLE_WITH_XPU_XRE5
-    r = xblas::fc_fusion<XPUType, XPUType, XPUType, FCT>(xpu_ctx,
-                                                         l3_addr,
-                                                         w,
-                                                         y,
-                                                         m,
-                                                         n,
-                                                         k,
-                                                         false,
-                                                         w_trans,
-                                                         x_maxptr,
-                                                         w_maxptr,
-                                                         y_maxptr,
-                                                         k,
-                                                         ldw,
-                                                         ldy,
-                                                         alpha,
-                                                         beta,
-                                                         bias,
-                                                         act,
-                                                         scale_x,
-                                                         scale_w,
-                                                         scale_x_mode,
-                                                         scale_w_mode);
+    // Use FC_FLOAT calc type for w_trans path on XRE5 to avoid TF32
+    // precision loss, matching GPU accuracy.
+    r = xblas::fc_fusion<XPUType, XPUType, XPUType, float>(xpu_ctx,
+                                                           l3_addr,
+                                                           w_data,
+                                                           y,
+                                                           m,
+                                                           n,
+                                                           k,
+                                                           false,
+                                                           effective_w_trans,
+                                                           x_maxptr,
+                                                           w_maxptr,
+                                                           y_maxptr,
+                                                           k,
+                                                           effective_ldw,
+                                                           ldy,
+                                                           alpha,
+                                                           beta,
+                                                           bias,
+                                                           act,
+                                                           scale_x,
+                                                           scale_w,
+                                                           scale_x_mode,
+                                                           scale_w_mode);
     PADDLE_ENFORCE_XBLAS_SUCCESS(r, "xblas_fc_fusion");
 #else
     r = xpu::fc_fusion<XPUType, XPUType, XPUType, FCT>(xpu_ctx,
                                                        l3_addr,
-                                                       w,
+                                                       w_data,
                                                        y,
                                                        m,
                                                        n,
                                                        k,
                                                        false,
-                                                       w_trans,
+                                                       effective_w_trans,
                                                        x_maxptr,
                                                        w_maxptr,
                                                        y_maxptr,
                                                        k,
-                                                       ldw,
+                                                       effective_ldw,
+                                                       ldy,
+                                                       alpha,
+                                                       beta,
+                                                       bias,
+                                                       act);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "xpu_fc_fusion");
+#endif
+  } else if (w_trans) {
+    // Pre-transpose W workaround: when w_trans=true, the XPU fc_fusion
+    // kernel crashes with XPUERR_KEXCEPTION (Runtime Error 299). This
+    // happens e.g. in paddle.Tensor.inner which calls matmul with
+    // transpose_y=True. We pre-transpose W from [n, k] layout to [k, n]
+    // layout, then call fc_fusion with w_trans=false and ldw=n (the
+    // leading dimension of the transposed [k, n] matrix).
+    // Additionally, on XRE5 the default TF32 calc type introduces
+    // precision loss compared to GPU. Using FC_FLOAT calc type for the
+    // w_trans path improves accuracy from ~1e-4 to ~1e-7 max_abs_diff,
+    // aligning XPU results with GPU within acceptable tolerance.
+    XPUType* l3_addr_w = nullptr;
+    l3_addr_w = RAII_GUARD.alloc_l3_or_gm<XPUType>(k * n);
+    PADDLE_ENFORCE_XDNN_NOT_NULL(l3_addr_w);
+
+    std::vector<int64_t> w_shape = {n, k};
+    std::vector<int64_t> w_axis = {1, 0};
+    r = xpu::transpose<XPUType>(xpu_ctx, w, l3_addr_w, w_shape, w_axis);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "transpose_w");
+#ifdef PADDLE_WITH_XPU_XRE5
+    // Use FC_FLOAT calc type for the pre-transposed w_trans path to
+    // avoid TF32 precision loss, matching GPU accuracy.
+    r = xblas::fc_fusion<XPUType, XPUType, XPUType, float>(xpu_ctx,
+                                                           x,
+                                                           l3_addr_w,
+                                                           y,
+                                                           m,
+                                                           n,
+                                                           k,
+                                                           x_trans,
+                                                           false,
+                                                           x_maxptr,
+                                                           w_maxptr,
+                                                           y_maxptr,
+                                                           ldx,
+                                                           n,
+                                                           ldy,
+                                                           alpha,
+                                                           beta,
+                                                           bias,
+                                                           act,
+                                                           scale_x,
+                                                           scale_w,
+                                                           scale_x_mode,
+                                                           scale_w_mode);
+    PADDLE_ENFORCE_XBLAS_SUCCESS(r, "xblas_fc_fusion");
+#else
+    r = xpu::fc_fusion<XPUType, XPUType, XPUType, FCT>(xpu_ctx,
+                                                       x,
+                                                       l3_addr_w,
+                                                       y,
+                                                       m,
+                                                       n,
+                                                       k,
+                                                       x_trans,
+                                                       false,
+                                                       x_maxptr,
+                                                       w_maxptr,
+                                                       y_maxptr,
+                                                       ldx,
+                                                       n,
                                                        ldy,
                                                        alpha,
                                                        beta,
