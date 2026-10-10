@@ -427,6 +427,16 @@ class Tensor : public TensorBase {
 
   at::Tensor reshape(at::IntArrayRef shape) const;
 
+  // repeat_interleave - repeats elements along a dimension
+  at::Tensor repeat_interleave(
+      const at::Tensor& repeats,
+      ::std::optional<int64_t> dim = ::std::nullopt,
+      ::std::optional<int64_t> output_size = ::std::nullopt) const;
+  at::Tensor repeat_interleave(
+      int64_t repeats,
+      ::std::optional<int64_t> dim = ::std::nullopt,
+      ::std::optional<int64_t> output_size = ::std::nullopt) const;
+
   at::Tensor transpose(int64_t dim0, int64_t dim1) const;
   at::Tensor& transpose_(int64_t dim0, int64_t dim1) const;
 
