@@ -361,6 +361,13 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   set_tests_properties(test_communication_stream_sendrecv_api
                        PROPERTIES TIMEOUT "300" LABELS "RUN_TYPE=DIST")
 endif()
+if((WITH_GPU) AND (LINUX))
+  py_test_modules(
+    test_communication_zero_sm_api MODULES test_communication_zero_sm_api ENVS
+    "PYTHONPATH=..:${PADDLE_BINARY_DIR}/python;http_proxy=;https_proxy=")
+  set_tests_properties(test_communication_zero_sm_api
+                       PROPERTIES TIMEOUT "120" LABELS "RUN_TYPE=DIST")
+endif()
 if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   py_test_modules(
     test_eager_dist_api MODULES test_eager_dist_api ENVS
