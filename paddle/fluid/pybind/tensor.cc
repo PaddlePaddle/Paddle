@@ -298,6 +298,13 @@ bool TryShareTensorViaVMM(const DenseTensor &self, py::tuple *out) {
           &fd, p.chunk->handle, CU_MEM_HANDLE_TYPE_POSIX_FILE_DESCRIPTOR, 0));
     }
 
+    // Pin the exported chunk's virtual address range so that empty_cache /
+    // ReleaseImpl on the v1 VMM allocator will not unmap and release the
+    // physical backing while another process may still be importing it.
+    paddle::memory::allocation::CUDAVirtualMemAllocator::MarkIPCExported(
+        reinterpret_cast<void *>(static_cast<uintptr_t>(chunk->base)),
+        chunk->size);
+
     const size_t old_size = blob.size();
     blob.resize(old_size + sizeof(VMMIPCEntry) + sizeof(int));
     std::memcpy(blob.data() + old_size, &entry, sizeof(VMMIPCEntry));
