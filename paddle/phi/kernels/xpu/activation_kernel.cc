@@ -605,6 +605,19 @@ struct XPUAcosFunctor : public funcs::BaseActivationFunctor<T> {
   }
 };
 
+template <typename T>
+struct XPUAsinhFunctor : public funcs::BaseActivationFunctor<T> {
+  using XPUType = typename XPUTypeTrait<T>::Type;
+  template <typename Context>
+  void operator()(const Context& dev_ctx,
+                  const DenseTensor& x,
+                  DenseTensor* out) const {
+    int ret = xpu_activation_func<Context, T, XPUType>(
+        dev_ctx, x, out, xpu::asinh<XPUType>);
+    PADDLE_ENFORCE_XDNN_SUCCESS(ret, "asinh");
+  }
+};
+
 DEFINE_XPU_ACTIVATION_KERNEL(Exp, XPUExpFunctor)
 DEFINE_XPU_ACTIVATION_KERNEL(Floor, XPUFloorFunctor)
 DEFINE_XPU_ACTIVATION_KERNEL(Ceil, XPUCeilFunctor)
@@ -621,6 +634,7 @@ DEFINE_XPU_ACTIVATION_KERNEL(Cos, XPUCosFunctor)
 DEFINE_XPU_ACTIVATION_KERNEL(Rsqrt, XPURsqrtFunctor)
 DEFINE_XPU_ACTIVATION_KERNEL(Tan, XPUTanFunctor)
 DEFINE_XPU_ACTIVATION_KERNEL(Acos, XPUAcosFunctor)
+DEFINE_XPU_ACTIVATION_KERNEL(Asinh, XPUAsinhFunctor)
 
 DEFINE_XPU_ACTIVATION_KERNEL_WITH_ONE_ATTRS(Mish, XPUMishFunctor, threshold)
 DEFINE_XPU_ACTIVATION_KERNEL_WITH_ONE_DOUBLE_ATTRS(LeakyRelu,
@@ -776,6 +790,9 @@ PD_REGISTER_KERNEL(acos,
                    float,
                    phi::float16,
                    phi::bfloat16) {}
+
+PD_REGISTER_KERNEL(
+    asinh, XPU, ALL_LAYOUT, phi::AsinhKernel, float, phi::float16) {}
 
 #define PD_REGISTER_ACTIVATION_KERNEL(name, func) \
   PD_REGISTER_KERNEL(name, XPU, ALL_LAYOUT, phi::func, float) {}
