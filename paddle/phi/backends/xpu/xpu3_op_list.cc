@@ -665,7 +665,7 @@ XPUOpMap& get_kl3_ops() {
       {"reduce_sum",
        XPUKernelSet({FLOAT16, INT64, INT32, INT8, FLOAT32, BFLOAT16, BOOL})},
       {"relu6", XPUKernelSet({FLOAT32, FLOAT16})},
-      {"relu6_grad", XPUKernelSet({FLOAT32})},
+      {"relu6_grad", XPUKernelSet({FLOAT32, FLOAT16})},
       {"relu_grad", XPUKernelSet({FLOAT32, FLOAT16, BFLOAT16})},
       {"relu", XPUKernelSet({FLOAT32, FLOAT16, BFLOAT16})},
       {"reshape2_grad",
