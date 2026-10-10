@@ -34,6 +34,7 @@ from .saved_tensors_hooks import saved_tensors_hooks
 Function = PyLayer
 
 __all__ = [
+    'enable_grad',
     'jacobian',
     'hessian',
     'backward',
