@@ -18,6 +18,7 @@
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/distribution_helper.h"
 
 namespace phi {
 
@@ -39,9 +40,9 @@ void RandintKernel(const Context& dev_ctx,
   } else {
     engine = dev_ctx.GetGenerator()->GetCPUEngine();
   }
-  std::uniform_int_distribution<T> dist(low, high - 1);
+  funcs::uniform_int_transform<T, uint32_t> dist(low, high);
   for (int64_t i = 0; i < numel; ++i) {
-    data[i] = dist(*engine);
+    data[i] = dist((*engine)());
   }
 }
 
