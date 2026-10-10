@@ -65,13 +65,29 @@ bool CudaEvent::Query() {
 float CudaEvent::ElapsedTime(CudaEvent *end_event) {
   float milliseconds = 0;
 #ifdef PADDLE_WITH_HIP
-  hipEventSynchronize(end_event->GetRawCudaEvent());
-  PADDLE_ENFORCE_GPU_SUCCESS(
-      hipEventElapsedTime(&milliseconds, event_, end_event->GetRawCudaEvent()));
+  gpuError_t sync_err = hipEventSynchronize(end_event->GetRawCudaEvent());
+  if (sync_err != hipSuccess) {
+    hipGetLastError();  // Clear the CUDA last error
+    PADDLE_ENFORCE_GPU_SUCCESS(sync_err);
+  }
+  gpuError_t elapsed_err =
+      hipEventElapsedTime(&milliseconds, event_, end_event->GetRawCudaEvent());
+  if (elapsed_err != hipSuccess) {
+    hipGetLastError();  // Clear the CUDA last error
+    PADDLE_ENFORCE_GPU_SUCCESS(elapsed_err);
+  }
 #else
-  cudaEventSynchronize(end_event->GetRawCudaEvent());
-  PADDLE_ENFORCE_GPU_SUCCESS(cudaEventElapsedTime(
-      &milliseconds, event_, end_event->GetRawCudaEvent()));
+  gpuError_t sync_err = cudaEventSynchronize(end_event->GetRawCudaEvent());
+  if (sync_err != cudaSuccess) {
+    cudaGetLastError();  // Clear the CUDA last error
+    PADDLE_ENFORCE_GPU_SUCCESS(sync_err);
+  }
+  gpuError_t elapsed_err =
+      cudaEventElapsedTime(&milliseconds, event_, end_event->GetRawCudaEvent());
+  if (elapsed_err != cudaSuccess) {
+    cudaGetLastError();  // Clear the CUDA last error
+    PADDLE_ENFORCE_GPU_SUCCESS(elapsed_err);
+  }
 #endif
   return milliseconds;
 }
