@@ -48,6 +48,7 @@ if(WIN32)
   list(REMOVE_ITEM TEST_OPS test_sdpa_kernel)
   list(REMOVE_ITEM TEST_OPS test_vmmallocator)
   list(REMOVE_ITEM TEST OPS test_allocator_visitor)
+  list(REMOVE_ITEM TEST_OPS test_cuda_empty_cache)
 endif()
 
 list(REMOVE_ITEM TEST_OPS test_fractional_max_pool3d_op)
@@ -1264,6 +1265,7 @@ endif()
 
 if(((NOT WITH_ROCM) AND (NOT WITH_GPU)) OR WIN32)
   list(REMOVE_ITEM STATIC_BUILD_TESTS test_c_embedding_op)
+  list(REMOVE_ITEM STATIC_BUILD_TESTS test_cuda_empty_cache)
 endif()
 
 foreach(STATIC_BUILD_TEST ${STATIC_BUILD_TESTS})
