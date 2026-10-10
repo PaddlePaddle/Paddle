@@ -64,8 +64,62 @@ void Pad3dGradKernel(const Context& dev_ctx,
   pads_xpu[4] = pads[0];  // pl
   pads_xpu[5] = pads[1];  // pr
 
-  if (mode == "reflect") {
-    int r = xpu::reflection_pad3d_grad(dev_ctx.x_context(),
+  if constexpr (std::is_same_v<T, int> || std::is_same_v<T, int64_t>) {
+    PADDLE_ENFORCE_EQ(mode,
+                      "constant",
+                      errors::Unimplemented(
+                          "XPU pad3d_grad only supports int and int64 input "
+                          "for constant mode."));
+    std::vector<int64_t> pad_left;
+    std::vector<int64_t> pad_right;
+    if (is_ncdhw) {
+      pad_left = {0, 0, -pads[4], -pads[2], -pads[0]};
+      pad_right = {0, 0, -pads[5], -pads[3], -pads[1]};
+    } else {
+      pad_left = {0, -pads[4], -pads[2], -pads[0], 0};
+      pad_right = {0, -pads[5], -pads[3], -pads[1], 0};
+    }
+    // Integer zeropad2d may request pad3d_grad during kernel probing, while
+    // XDNN has no constant_pad3d_grad<int/int64_t> symbols. Constant padding's
+    // backward is just slicing the output gradient, which xpu::pad supports via
+    // negative paddings without depending on pad3d_grad symbols.
+    using XPUType = typename XPUTypeTrait<T>::Type;
+    int r = xpu::pad<XPUType>(dev_ctx.x_context(),
+                              reinterpret_cast<const XPUType*>(d_out_data),
+                              reinterpret_cast<XPUType*>(d_in_data),
+                              vectorize<int64_t>(d_out->dims()),
+                              pad_left,
+                              pad_right,
+                              static_cast<XPUType>(value));
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "pad");
+    return;
+  } else {
+    if (mode == "reflect") {
+      int r = xpu::reflection_pad3d_grad(dev_ctx.x_context(),
+                                         d_out_data,
+                                         d_in_data,
+                                         num,
+                                         channels,
+                                         in_depth,
+                                         in_height,
+                                         in_width,
+                                         pads_xpu,
+                                         is_ncdhw);
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "reflection_pad3d_grad");
+    } else if (mode == "replicate") {
+      int r = xpu::replication_pad3d_grad(dev_ctx.x_context(),
+                                          d_out_data,
+                                          d_in_data,
+                                          num,
+                                          channels,
+                                          in_depth,
+                                          in_height,
+                                          in_width,
+                                          pads_xpu,
+                                          is_ncdhw);
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "replication_pad3d_grad");
+    } else if (mode == "constant") {
+      int r = xpu::constant_pad3d_grad(dev_ctx.x_context(),
                                        d_out_data,
                                        d_in_data,
                                        num,
@@ -74,36 +128,14 @@ void Pad3dGradKernel(const Context& dev_ctx,
                                        in_height,
                                        in_width,
                                        pads_xpu,
+                                       value,
                                        is_ncdhw);
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "reflection_pad3d_grad");
-  } else if (mode == "replicate") {
-    int r = xpu::replication_pad3d_grad(dev_ctx.x_context(),
-                                        d_out_data,
-                                        d_in_data,
-                                        num,
-                                        channels,
-                                        in_depth,
-                                        in_height,
-                                        in_width,
-                                        pads_xpu,
-                                        is_ncdhw);
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "replication_pad3d_grad");
-  } else if (mode == "constant") {
-    int r = xpu::constant_pad3d_grad(dev_ctx.x_context(),
-                                     d_out_data,
-                                     d_in_data,
-                                     num,
-                                     channels,
-                                     in_depth,
-                                     in_height,
-                                     in_width,
-                                     pads_xpu,
-                                     value,
-                                     is_ncdhw);
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant_pad3d_grad");
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant_pad3d_grad");
+    }
   }
 }
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(pad3d_grad, XPU, ALL_LAYOUT, phi::Pad3dGradKernel, float) {}
+PD_REGISTER_KERNEL(
+    pad3d_grad, XPU, ALL_LAYOUT, phi::Pad3dGradKernel, float, int, int64_t) {}
