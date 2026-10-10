@@ -147,6 +147,7 @@ def get_header_install_dir(header):
             env_dict.get("THIRD_PARTY_PATH"), 'third_party', header, count=1
         )
         patterns = [
+            'install/onednn/include/',
             'install/mkldnn/include/',
             'pybind/src/extern_pybind/include/',
             'third_party/xpu/src/extern_xpu/xpu/include/',
