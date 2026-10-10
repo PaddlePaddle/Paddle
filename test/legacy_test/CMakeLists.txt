@@ -57,7 +57,7 @@ list(REMOVE_ITEM TEST_OPS test_transformer_api)
 list(REMOVE_ITEM TEST_OPS test_conv2d_transpose_op)
 list(REMOVE_ITEM TEST_OPS test_fractional_max_pool2d_op)
 list(REMOVE_ITEM TEST_OPS test_conv2d_op)
-list(REMOVE_ITEM TEST_OPS test_pool_max_op)
+# list(REMOVE_ITEM TEST_OPS test_pool_max_op)
 list(REMOVE_ITEM TEST_OPS test_matmul_v2_op)
 
 list(REMOVE_ITEM TEST_OPS test_allgather)
