@@ -107,7 +107,7 @@ XPUOpMap& get_kl1_ops() {
       {"matmul_v2_grad", XPUKernelSet({FLOAT32})},
       {"matmul_v2", XPUKernelSet({FLOAT32})},
       {"matmul", XPUKernelSet({FLOAT32})},
-      {"mean_grad", XPUKernelSet({FLOAT32})},
+      {"mean_grad", XPUKernelSet({FLOAT32, INT32, INT64})},
       {"mean", XPUKernelSet({FLOAT32})},
       {"momentum", XPUKernelSet({FLOAT32})},
       {"mul_grad", XPUKernelSet({FLOAT32})},
