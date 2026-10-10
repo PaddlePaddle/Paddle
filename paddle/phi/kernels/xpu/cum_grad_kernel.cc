@@ -45,5 +45,12 @@ void CumsumGradKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    cumsum_grad, XPU, ALL_LAYOUT, phi::CumsumGradKernel, float, int, int64_t) {}
+PD_REGISTER_KERNEL(cumsum_grad,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::CumsumGradKernel,
+                   float,
+                   int,
+                   int64_t,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
