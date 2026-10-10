@@ -1050,6 +1050,29 @@ class AOAEngine:
                 )
             ]
 
+        # Merge all local_slices from results along each dimension, and
+        # assert that the merged region exactly matches the target slices.
+        if len(results) > 0:
+            merged_local_slices = []
+            ndim = len(slices)
+            for dim in range(ndim):
+                dim_slices = [
+                    local_slices[dim] for _, _, local_slices, _ in results
+                ]
+                start = min(slc.start for slc in dim_slices)
+                stop = max(slc.stop for slc in dim_slices)
+                merged_local_slices.append(slice(start, stop, 1))
+            merged_local_slices = tuple(merged_local_slices)
+
+            assert all(
+                ms.start == ts.start and ms.stop == ts.stop
+                for ms, ts in zip(merged_local_slices, slices)
+            ), (
+                "The param shape of the preloaded weights does not match the param shape in current model state dict."
+                f"current model state dict param slice range: {slices}, preloaded weights param slice range: {merged_local_slices}, "
+                f"Please check if the AOA configuration is correct."
+            )
+
         for src_key, src_slices, local_slices, pp_list in results:
             src_var = self.input_vars[src_key]
             target_model_state_key, target_opt_state_name = (
