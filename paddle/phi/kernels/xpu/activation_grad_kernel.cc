@@ -624,12 +624,48 @@ struct XPUCosGradFunctor : public funcs::BaseActivationFunctor<T> {
     auto dout_data = dout->data<T>();
     auto x_data = x->data<T>();
 
-    int r = xpu::cos_grad<T>(dev_ctx.x_context(),
-                             reinterpret_cast<const XPUType*>(x_data),
-                             reinterpret_cast<const XPUType*>(dout_data),
-                             reinterpret_cast<XPUType*>(dx_data),
-                             len);
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "cos_grad");
+    // cos_grad is not available for float16/bfloat16 in the XDNN library.
+    // Use the formula cos_grad(x, dy) = -sin(x) * dy instead.
+    if constexpr (std::is_same_v<T, phi::dtype::float16> ||
+                  std::is_same_v<T, phi::dtype::bfloat16>) {
+      // cos_grad not in XDNN for half types. Use cos_grad = -sin(x) * dy.
+      xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
+      XPUType* sin_tmp = RAII_GUARD.alloc_l3_or_gm<XPUType>(len);
+      XPUType* mul_tmp = RAII_GUARD.alloc_l3_or_gm<XPUType>(len);
+      XPUType* zero_buf = RAII_GUARD.alloc_l3_or_gm<XPUType>(len);
+
+      // Step 1: sin_tmp = sin(x)
+      int r = xpu::sin<XPUType>(dev_ctx.x_context(),
+                                reinterpret_cast<const XPUType*>(x_data),
+                                sin_tmp,
+                                len);
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "sin");
+      // Step 2: mul_tmp = sin_tmp * dout
+      r = xpu::mul<XPUType>(dev_ctx.x_context(),
+                            sin_tmp,
+                            reinterpret_cast<const XPUType*>(dout_data),
+                            mul_tmp,
+                            len);
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "mul");
+      // Step 3: dx = 0 - mul_tmp = -sin(x) * dy
+      r = xpu::constant<XPUType>(
+          dev_ctx.x_context(), zero_buf, len, static_cast<XPUType>(0.0f));
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
+      r = xpu::sub<XPUType>(dev_ctx.x_context(),
+                            zero_buf,
+                            mul_tmp,
+                            reinterpret_cast<XPUType*>(dx_data),
+                            len);
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "sub");
+    } else {
+      int r =
+          xpu::cos_grad<XPUType>(dev_ctx.x_context(),
+                                 reinterpret_cast<const XPUType*>(x_data),
+                                 reinterpret_cast<const XPUType*>(dout_data),
+                                 reinterpret_cast<XPUType*>(dx_data),
+                                 len);
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "cos_grad");
+    }
   }
 };
 
@@ -853,4 +889,12 @@ PD_REGISTER_ACTIVATION_GRAD_KERNEL(relu6_grad, Relu6GradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(mish_grad, MishGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(softplus_grad, SoftplusGradKernel)
 PD_REGISTER_ACTIVATION_GRAD_KERNEL(sin_grad, SinGradKernel)
-PD_REGISTER_ACTIVATION_GRAD_KERNEL(cos_grad, CosGradKernel)
+// cos_grad: use explicit PD_REGISTER_KERNEL to support float16 and bfloat16
+// dtypes, matching the forward cos kernel (CosKernel) dtype support.
+PD_REGISTER_KERNEL(cos_grad,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::CosGradKernel,
+                   float,
+                   phi::float16,
+                   phi::bfloat16) {}
