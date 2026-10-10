@@ -177,7 +177,30 @@ PD_REGISTER_KERNEL(less_than_raw,
 PD_REGISTER_COMPLEX_COMPARE_RAW_KERNEL(less_equal, LessEqual)
 PD_REGISTER_COMPLEX_COMPARE_RAW_KERNEL(greater_than, GreaterThan)
 PD_REGISTER_COMPLEX_COMPARE_RAW_KERNEL(greater_equal, GreaterEqual)
-PD_REGISTER_COMPLEX_COMPARE_RAW_KERNEL(equal, Equal)
-PD_REGISTER_COMPLEX_COMPARE_RAW_KERNEL(not_equal, NotEqual)
+
+#define PD_REGISTER_EQUALITY_COMPARE_RAW_KERNEL(name, func) \
+  PD_REGISTER_KERNEL(name##_raw,                            \
+                     KPS,                                   \
+                     ALL_LAYOUT,                            \
+                     phi::func##RawKernel,                  \
+                     bool,                                  \
+                     uint8_t,                               \
+                     int16_t,                               \
+                     int,                                   \
+                     int8_t,                                \
+                     int64_t,                               \
+                     phi::complex64,                        \
+                     phi::complex128,                       \
+                     float,                                 \
+                     double,                                \
+                     phi::float16,                          \
+                     phi::bfloat16,                         \
+                     phi::float8_e4m3fn,                    \
+                     phi::float8_e5m2) {                    \
+    kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);   \
+  }
+
+PD_REGISTER_EQUALITY_COMPARE_RAW_KERNEL(equal, Equal)
+PD_REGISTER_EQUALITY_COMPARE_RAW_KERNEL(not_equal, NotEqual)
 
 #endif
