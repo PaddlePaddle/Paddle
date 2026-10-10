@@ -137,36 +137,40 @@ __global__ void KeNearestNeighborInterpNCHWBw(T* in,
   IndexType out_img_idy =
       static_cast<IndexType>(threadIdx.y) +
       static_cast<IndexType>(blockIdx.y) * static_cast<IndexType>(blockDim.y);
-  IndexType nc_id =
+  IndexType nc_begin =
       static_cast<IndexType>(threadIdx.z) +
       static_cast<IndexType>(blockIdx.z) * static_cast<IndexType>(blockDim.z);
+  IndexType x_stride =
+      static_cast<IndexType>(blockDim.x) * static_cast<IndexType>(gridDim.x);
+  IndexType y_stride =
+      static_cast<IndexType>(blockDim.y) * static_cast<IndexType>(gridDim.y);
   IndexType nc_stride =
       static_cast<IndexType>(blockDim.z) * static_cast<IndexType>(gridDim.z);
-
-  // nearest_sampling by multiple read in_addr and write to out_addr
-  IndexType in_img_idx =
-      (align_corners) ? static_cast<IndexType>(ratio_w * out_img_idx + 0.5)
-                      : static_cast<IndexType>(ratio_w * out_img_idx);
-  IndexType in_img_idy =
-      (align_corners) ? static_cast<IndexType>(ratio_h * out_img_idy + 0.5)
-                      : static_cast<IndexType>(ratio_h * out_img_idy);
-
-  IndexType in_index = (nc_id * in_img_h + in_img_idy) * in_img_w + in_img_idx;
   IndexType in_index_stride = nc_stride * in_img_h * in_img_w;
-
-  IndexType out_index =
-      (nc_id * out_img_h + out_img_idy) * out_img_w + out_img_idx;
   IndexType out_index_stride = nc_stride * out_img_h * out_img_w;
 
-  // prevent from multiple threads writing
-  if (out_img_idx < out_img_w && out_img_idy < out_img_h) {
-    while (nc_id < nc) {
-      T* in_pos = &in[in_index];
-      const T out_pos = out[out_index];
-      CudaAtomicAdd(in_pos, out_pos);
-      in_index += in_index_stride;
-      out_index += out_index_stride;
-      nc_id += nc_stride;
+  // nearest_sampling by multiple read in_addr and write to out_addr
+  for (IndexType idy = out_img_idy; idy < static_cast<IndexType>(out_img_h);
+       idy += y_stride) {
+    IndexType in_img_idy = (align_corners)
+                               ? static_cast<IndexType>(ratio_h * idy + 0.5)
+                               : static_cast<IndexType>(ratio_h * idy);
+    for (IndexType idx = out_img_idx; idx < static_cast<IndexType>(out_img_w);
+         idx += x_stride) {
+      IndexType in_img_idx = (align_corners)
+                                 ? static_cast<IndexType>(ratio_w * idx + 0.5)
+                                 : static_cast<IndexType>(ratio_w * idx);
+      IndexType in_index =
+          (nc_begin * in_img_h + in_img_idy) * in_img_w + in_img_idx;
+      IndexType out_index = (nc_begin * out_img_h + idy) * out_img_w + idx;
+      for (IndexType nc_id = nc_begin; nc_id < static_cast<IndexType>(nc);
+           nc_id += nc_stride) {
+        T* in_pos = &in[in_index];
+        const T out_pos = out[out_index];
+        CudaAtomicAdd(in_pos, out_pos);
+        in_index += in_index_stride;
+        out_index += out_index_stride;
+      }
     }
   }
 }

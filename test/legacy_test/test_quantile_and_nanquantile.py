@@ -364,6 +364,26 @@ class TestError(unittest.TestCase):
 
         self.assertRaises(TypeError, test_interpolation)
 
+        # Test error when the reduction dim is empty
+        def test_empty_reduction_quantile():
+            paddle.quantile(paddle.to_tensor([], dtype='float32'), q=0.5)
+
+        self.assertRaises(ValueError, test_empty_reduction_quantile)
+
+        def test_empty_reduction_nanquantile():
+            paddle.nanquantile(paddle.to_tensor([], dtype='float32'), q=0.5)
+
+        self.assertRaises(ValueError, test_empty_reduction_nanquantile)
+
+    def test_large_float32_reduction_not_rejected(self):
+        # After promoting rank computation to float64, float32 inputs with
+        # reduction dim > 2**24 must NOT be rejected (regression guard).
+        n = 2**24 + 1
+        x = paddle.arange(n, dtype='float32')
+        out = paddle.quantile(x, q=0.5, axis=0)
+        # The expected median is exact in float64 arithmetic.
+        np.testing.assert_allclose(out.item(), 0.5 * (n - 1), rtol=0, atol=1)
+
 
 class TestQuantileRuntime(unittest.TestCase):
     """
