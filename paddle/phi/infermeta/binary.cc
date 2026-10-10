@@ -5150,6 +5150,25 @@ void BatchedGemmInferMeta(const MetaTensor& lhs,
       common::errors::InvalidArgument(
           "The rhs's dimension must be 3, but got[%d]", rhs_shape.size()));
 
+  int64_t total_batch = 0;
+  for (const int64_t bs : batch_sizes) {
+    PADDLE_ENFORCE_GE(
+        bs,
+        0,
+        common::errors::InvalidArgument(
+            "Each element of batch_sizes must be non-negative, but got [%d].",
+            bs));
+    total_batch += bs;
+  }
+  PADDLE_ENFORCE_EQ(
+      total_batch,
+      total_tokens,
+      common::errors::InvalidArgument(
+          "The sum of batch_sizes must be equal to the total number of tokens "
+          "(lhs's first dim), but got [%d] and [%d].",
+          total_batch,
+          total_tokens));
+
   // We expect layout below:
   // 1. trans_lhs = false && trans_rhs = false (group forward) :
   //    [M_total, input_hidden_size] x [num_experts, input_hidden_size,
@@ -5171,6 +5190,24 @@ void BatchedGemmInferMeta(const MetaTensor& lhs,
     // hidden_out For each expert i, This case views lhs as [Mi x K] and rhs as
     // [E x K x N] or [E x N x K], so the output is [Mtotal x N], N could be
     // input_hidden_size or output_hidden_size.
+
+    PADDLE_ENFORCE_EQ(
+        rhs_shape[0],
+        num_experts,
+        common::errors::InvalidArgument(
+            "The rhs's first dim (number of experts) must be equal to the "
+            "number of groups in batch_sizes, but got [%d] and [%d].",
+            rhs_shape[0],
+            num_experts));
+    const int64_t rhs_contract_dim = trans_rhs ? rhs_shape[2] : rhs_shape[1];
+    PADDLE_ENFORCE_EQ(
+        lhs_shape[1],
+        rhs_contract_dim,
+        common::errors::InvalidArgument(
+            "The contraction dim of lhs and rhs must match, but got lhs's "
+            "last dim [%d] and rhs's contraction dim [%d].",
+            lhs_shape[1],
+            rhs_contract_dim));
 
     const int64_t hidden_out = trans_rhs ? rhs_shape[1] : rhs_shape[2];
     output->set_dims(make_ddim({total_tokens, hidden_out}));

@@ -32,6 +32,7 @@
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/legacy/gpu/batched_gemm.h"
 
 namespace phi {
@@ -262,6 +263,14 @@ void BatchedGEMM(const Context &dev_ctx,
   const auto rhs_shape = rhs.dims();
   const int64_t total_tokens = lhs_shape[0];
   const int64_t num_experts = batch_sizes.size();
+  // Empty contraction dim: each grouped GEMM contracts over 0 elements, so the
+  // mathematically correct result is all zeros. cuBLAS rejects a 0 contraction
+  // dim, so fill the output explicitly and skip the GEMM.
+  const int64_t contraction = trans_lhs ? total_tokens : lhs_shape[1];
+  if (contraction == 0) {
+    funcs::SetConstant<Context, T>()(dev_ctx, output, static_cast<T>(0));
+    return;
+  }
   // We expect layout below:
   // 1. trans_lhs = false && trans_rhs = false (group forward) :
   //    [M_total, input_hidden_size] x [num_experts, input_hidden_size,
