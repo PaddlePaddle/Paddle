@@ -765,6 +765,269 @@ class Buffer:
                 EventOverlap(event),
             )
 
+    def internode_notify_dispatch(
+        self,
+        x: paddle.Tensor | tuple[paddle.Tensor, paddle.Tensor],
+        topk_idx: paddle.Tensor | None = None,
+        topk_weights: paddle.Tensor | None = None,
+        handle: tuple | None = None,
+        num_tokens_per_rank: paddle.Tensor | None = None,
+        num_tokens_per_rdma_rank: paddle.Tensor | None = None,
+        num_tokens_per_expert: paddle.Tensor | None = None,
+        is_token_in_rank: paddle.Tensor | None = None,
+        expert_alignment: int = 1,
+        config: Config | None = None,
+        previous_event: EventOverlap | None = None,
+        async_finish: bool = False,
+        allocate_on_comm_stream: bool = False,
+    ) -> tuple[
+        list[int],
+        int,
+        int,
+        paddle.Tensor,
+        paddle.Tensor,
+        paddle.Tensor,
+        paddle.Tensor,
+        tuple,
+    ]:
+        # Default config
+        config = (
+            self.get_dispatch_config(self.group_size)
+            if config is None
+            else config
+        )
+        # Launch the kernel with cached or non-cached mode
+        x, x_scales = x if isinstance(x, tuple) else (x, None)
+        if handle is not None:
+            assert topk_idx is None and topk_weights is None
+            (
+                is_token_in_rank,
+                rdma_channel_prefix_matrix,
+                gbl_channel_prefix_matrix,
+                recv_rdma_channel_prefix_matrix,
+                recv_rdma_rank_prefix_sum,
+                recv_gbl_channel_prefix_matrix,
+                recv_gbl_rank_prefix_sum,
+                recv_src_meta,
+                send_rdma_head,
+                send_nvl_head,
+            ) = handle
+            num_recv_tokens = recv_src_meta.shape[0]
+            num_rdma_recv_tokens = send_nvl_head.shape[0]
+            return self.runtime.internode_notify_dispatch(
+                x,
+                x_scales,
+                topk_idx,
+                None,
+                None,
+                None,
+                is_token_in_rank,
+                rdma_channel_prefix_matrix,
+                recv_rdma_rank_prefix_sum,
+                gbl_channel_prefix_matrix,
+                recv_gbl_rank_prefix_sum,
+                num_recv_tokens,
+                num_rdma_recv_tokens,
+                expert_alignment,
+                config,
+                getattr(previous_event, 'event', None),
+                async_finish,
+                allocate_on_comm_stream,
+            )
+        else:
+            assert (
+                num_tokens_per_rank is not None
+                and is_token_in_rank is not None
+                and num_tokens_per_expert is not None
+            )
+
+            (
+                num_recv_tokens_per_expert_list,
+                num_recv_tokens,
+                num_rdma_recv_tokens,
+                rdma_channel_prefix_matrix,
+                gbl_channel_prefix_matrix,
+                recv_rdma_rank_prefix_sum,
+                recv_gbl_rank_prefix_sum,
+            ) = self.runtime.internode_notify_dispatch(
+                x,
+                x_scales,
+                topk_idx,
+                num_tokens_per_rank,
+                num_tokens_per_rdma_rank,
+                num_tokens_per_expert,
+                is_token_in_rank,
+                None,
+                None,
+                None,
+                None,
+                0,
+                0,
+                expert_alignment,
+                config,
+                getattr(previous_event, 'event', None),
+                async_finish,
+                allocate_on_comm_stream,
+            )
+            handle = (
+                is_token_in_rank,
+                rdma_channel_prefix_matrix,
+                gbl_channel_prefix_matrix,
+                recv_rdma_rank_prefix_sum,
+                recv_gbl_rank_prefix_sum,
+                num_recv_tokens,
+                num_rdma_recv_tokens,
+            )
+            return (
+                num_recv_tokens_per_expert_list,
+                num_recv_tokens,
+                num_rdma_recv_tokens,
+                rdma_channel_prefix_matrix,
+                gbl_channel_prefix_matrix,
+                recv_rdma_rank_prefix_sum,
+                recv_gbl_rank_prefix_sum,
+                handle,
+            )
+
+    def internode_dispatch_after_notify(
+        self,
+        x: paddle.Tensor | tuple[paddle.Tensor, paddle.Tensor],
+        rdma_channel_prefix_matrix: paddle.Tensor,
+        gbl_channel_prefix_matrix: paddle.Tensor,
+        recv_rdma_rank_prefix_sum: paddle.Tensor,
+        recv_gbl_rank_prefix_sum: paddle.Tensor,
+        topk_idx: paddle.Tensor | None = None,
+        topk_weights: paddle.Tensor | None = None,
+        handle: tuple | None = None,
+        num_tokens_per_rank: paddle.Tensor | None = None,
+        num_tokens_per_rdma_rank: paddle.Tensor | None = None,
+        num_tokens_per_expert: paddle.Tensor | None = None,
+        is_token_in_rank: paddle.Tensor | None = None,
+        num_recv_tokens: int = 0,
+        num_rdma_recv_tokens: int = 0,
+        expert_alignment: int = 1,
+        config: Config | None = None,
+        previous_event: EventOverlap | None = None,
+        async_finish: bool = False,
+        allocate_on_comm_stream: bool = False,
+    ) -> tuple[
+        tuple[paddle.Tensor, paddle.Tensor] | paddle.Tensor,
+        paddle.Tensor | None,
+        paddle.Tensor | None,
+        tuple,
+        EventOverlap,
+    ]:
+        # Default config
+        config = (
+            self.get_dispatch_config(self.group_size)
+            if config is None
+            else config
+        )
+
+        # Launch the kernel with cached or non-cached mode
+        x, x_scales = x if isinstance(x, tuple) else (x, None)
+        if handle is not None:
+            assert topk_idx is None and topk_weights is None
+            (
+                is_token_in_rank,
+                rdma_channel_prefix_matrix,
+                gbl_channel_prefix_matrix,
+                recv_rdma_rank_prefix_sum,
+                recv_gbl_rank_prefix_sum,
+                num_recv_tokens,
+                num_rdma_recv_tokens,
+            ) = handle
+            recv_x, recv_x_scales, _, _, _, _, _, _, _, event = (
+                self.runtime.internode_dispatch_after_notify(
+                    x,
+                    x_scales,
+                    topk_idx,
+                    topk_weights,
+                    None,
+                    None,
+                    None,
+                    is_token_in_rank,
+                    rdma_channel_prefix_matrix,
+                    recv_rdma_rank_prefix_sum,
+                    gbl_channel_prefix_matrix,
+                    recv_gbl_rank_prefix_sum,
+                    True,
+                    num_recv_tokens,
+                    num_rdma_recv_tokens,
+                    expert_alignment,
+                    config,
+                    getattr(previous_event, 'event', None),
+                    async_finish,
+                    allocate_on_comm_stream,
+                )
+            )
+            return (
+                (recv_x, recv_x_scales) if x_scales is not None else recv_x,
+                None,
+                None,
+                None,
+                None,
+                EventOverlap(event),
+            )
+        else:
+            assert (
+                num_tokens_per_rank is not None
+                and is_token_in_rank is not None
+                and num_tokens_per_expert is not None
+            )
+            (
+                recv_x,
+                recv_x_scales,
+                recv_topk_idx,
+                recv_topk_weights,
+                recv_rdma_channel_prefix_matrix,
+                recv_gbl_channel_prefix_matrix,
+                recv_src_meta,
+                send_rdma_head,
+                send_nvl_head,
+                event,
+            ) = self.runtime.internode_dispatch_after_notify(
+                x,
+                x_scales,
+                topk_idx,
+                topk_weights,
+                num_tokens_per_rank,
+                num_tokens_per_rdma_rank,
+                num_tokens_per_expert,
+                is_token_in_rank,
+                rdma_channel_prefix_matrix,
+                recv_rdma_rank_prefix_sum,
+                gbl_channel_prefix_matrix,
+                recv_gbl_rank_prefix_sum,
+                False,
+                num_recv_tokens,
+                num_rdma_recv_tokens,
+                expert_alignment,
+                config,
+                getattr(previous_event, 'event', None),
+                async_finish,
+                allocate_on_comm_stream,
+            )
+            handle = (
+                is_token_in_rank,
+                rdma_channel_prefix_matrix,
+                gbl_channel_prefix_matrix,
+                recv_rdma_channel_prefix_matrix,
+                recv_rdma_rank_prefix_sum,
+                recv_gbl_channel_prefix_matrix,
+                recv_gbl_rank_prefix_sum,
+                recv_src_meta,
+                send_rdma_head,
+                send_nvl_head,
+            )
+            return (
+                (recv_x, recv_x_scales) if x_scales is not None else recv_x,
+                recv_topk_idx,
+                recv_topk_weights,
+                handle,
+                EventOverlap(event),
+            )
+
     # noinspection PyTypeChecker
     def internode_combine(
         self,
