@@ -1,0 +1,31 @@
+diff --git a/cub/cub/util_device.cuh b/cub/cub/util_device.cuh
+index e316be0eda..17fdc75ba6 100644
+--- a/cub/cub/util_device.cuh
++++ b/cub/cub/util_device.cuh
+@@ -296,7 +296,7 @@ public:
+ /**
+  * \brief Retrieves the PTX version that will be used on the current device (major * 100 + minor * 10).
+  */
+-CUB_RUNTIME_FUNCTION inline cudaError_t PtxVersionUncached(int& ptx_version)
++CUB_RUNTIME_FUNCTION __forceinline__ cudaError_t PtxVersionUncached(int& ptx_version)
+ {
+   // Instantiate `EmptyKernel<void>` in both host and device code to ensure
+   // it can be called.
+@@ -389,7 +389,7 @@ _CCCL_HOST inline cudaError_t PtxVersion(int& ptx_version, int device)
+  * \note This function may cache the result internally.
+  * \note This function is thread safe.
+  */
+-CUB_RUNTIME_FUNCTION inline cudaError_t PtxVersion(int& ptx_version)
++CUB_RUNTIME_FUNCTION __forceinline__ cudaError_t PtxVersion(int& ptx_version)
+ {
+   // Note: the ChainedPolicy pruning (i.e., invoke_static) requites that there's an exact match between one of the
+   // architectures in __CUDA_ARCH__ and the runtime queried ptx version.
+@@ -543,7 +543,7 @@ CUB_RUNTIME_FUNCTION inline cudaError_t HasUVA(bool& has_uva)
+  *   Dynamically allocated shared memory in bytes. Default is 0.
+  */
+ template <typename KernelPtr>
+-_CCCL_VISIBILITY_HIDDEN CUB_RUNTIME_FUNCTION inline cudaError_t
++_CCCL_VISIBILITY_HIDDEN CUB_RUNTIME_FUNCTION __forceinline__ cudaError_t
+ MaxSmOccupancy(int& max_sm_occupancy, KernelPtr kernel_ptr, int block_threads, int dynamic_smem_bytes = 0)
+ {
+   return CubDebug(

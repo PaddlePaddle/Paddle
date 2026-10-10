@@ -16,6 +16,15 @@ find_path(
         $ENV{NVTX_ROOT}/include ${CUDA_TOOLKIT_INCLUDE}
   NO_DEFAULT_PATH)
 
+# The legacy <nvToolsExt.h> was dropped from the CUDA Toolkit in 13.0 and is
+# superseded by <nvtx3/nvToolsExt.h>. Accept either header so CINN keeps NVTX
+# enabled on both new and old toolkits. nvtx3 lives under the CUDA include
+# directory, which is already on the compile include path.
+find_path(
+  NVTX_NVTX3_INCLUDE_DIR nvtx3/nvToolsExt.h
+  PATHS ${CUDA_TOOLKIT_INCLUDE} ${NVTX_ROOT}/include $ENV{NVTX_ROOT}/include
+  NO_DEFAULT_PATH)
+
 get_filename_component(__libpath_hint ${CUDA_CUDART_LIBRARY} PATH)
 
 paddle_normalize_target_arch(TARGET_ARCH)
@@ -43,13 +52,15 @@ find_library(
   NO_DEFAULT_PATH
   DOC "Path to the NVTX library.")
 
-if(NVTX_INCLUDE_DIR AND CUDA_NVTX_LIB)
+if((NVTX_INCLUDE_DIR OR NVTX_NVTX3_INCLUDE_DIR) AND CUDA_NVTX_LIB)
   set(NVTX_FOUND ON)
 else()
   set(NVTX_FOUND OFF)
 endif()
 
 if(NVTX_FOUND)
-  include_directories(${NVTX_INCLUDE_DIR})
+  if(NVTX_INCLUDE_DIR)
+    include_directories(${NVTX_INCLUDE_DIR})
+  endif()
   add_definitions(-DCINN_WITH_NVTX)
 endif()
