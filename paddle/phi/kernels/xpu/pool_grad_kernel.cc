@@ -45,12 +45,9 @@ void Pool2dGradKernel(const Context& dev_ctx,
                                    kernel_size_t.GetData().end());
   std::vector<int64_t> strides(strides_t.begin(), strides_t.end());
 
-  PADDLE_ENFORCE_EQ(
-      data_format,
-      "NCHW",
-      common::errors::InvalidArgument("The Pool2d_grad XPU OP only support "
-                                      "data_format is 'NCHW', but received %s",
-                                      data_format));
+  // old model's data_format maybe AnyLayout, which is handled as NCHW.
+  const bool channel_last = data_format == "NHWC";
+  const bool xpu_layout_nchw = !channel_last;
 
   PADDLE_ENFORCE_EQ(
       kernel_size.size(),
@@ -59,26 +56,34 @@ void Pool2dGradKernel(const Context& dev_ctx,
                                       "dimension pooling!, but received "
                                       "%d-dimension pool kernel size",
                                       kernel_size.size()));
-  if (global_pooling) {
-    for (size_t i = 0; i < kernel_size.size(); ++i) {
-      paddings[i] = 0;
-      kernel_size[i] = x.dims()[i + 2];
-    }
-  }
   if (!dx) {
     return;
   }
-  const int64_t n = x.dims()[0];
-  const int64_t c = x.dims()[1];
-  const int64_t in_h = x.dims()[2];
-  const int64_t in_w = x.dims()[3];
+  auto x_dims = x.dims();
+  auto out_dims = out.dims();
+  int64_t n = x_dims[0];
+  int64_t c = x_dims[1];
+  int64_t in_h = x_dims[2];
+  int64_t in_w = x_dims[3];
 
-  const int64_t out_h = out.dims()[2];
-  const int64_t out_w = out.dims()[3];
+  int64_t out_h = out_dims[2];
+  int64_t out_w = out_dims[3];
+
+  if (channel_last) {
+    c = x_dims[3];
+    in_h = x_dims[1];
+    in_w = x_dims[2];
+
+    out_h = out_dims[1];
+    out_w = out_dims[2];
+  }
 
   DDim data_dims;
-
-  data_dims = slice_ddim(x.dims(), 2, x.dims().size());
+  if (channel_last) {
+    data_dims = slice_ddim(x_dims, 1, x_dims.size() - 1);
+  } else {
+    data_dims = slice_ddim(x_dims, 2, x_dims.size());
+  }
   funcs::UpdatePadding(&paddings,
                        global_pooling,
                        adaptive,
@@ -86,6 +91,10 @@ void Pool2dGradKernel(const Context& dev_ctx,
                        data_dims,
                        strides,
                        kernel_size);
+
+  if (global_pooling) {
+    funcs::UpdateKernelSize(&kernel_size, data_dims);
+  }
   if (ceil_mode) {
     int64_t in_h_ceil =
         (out_h - 1) * strides[0] + kernel_size[0] - 2 * paddings[0];
@@ -114,7 +123,7 @@ void Pool2dGradKernel(const Context& dev_ctx,
           in_w,
           out_h,
           out_w,
-          true);
+          xpu_layout_nchw);
 
     } else if (pooling_type == "avg") {
       r = xpu::adaptive_avg_pool2d_grad<XPUType>(
@@ -127,7 +136,7 @@ void Pool2dGradKernel(const Context& dev_ctx,
           in_w,
           out_h,
           out_w,
-          true);
+          xpu_layout_nchw);
     } else {
       PADDLE_THROW(common::errors::InvalidArgument(
           "Unsupported pooling type for kunlun %s", pooling_type));
@@ -157,7 +166,7 @@ void Pool2dGradKernel(const Context& dev_ctx,
           kernel_size,
           strides,
           paddings,
-          true);
+          xpu_layout_nchw);
     } else if (pooling_type == "avg") {
       r = xpu::avg_pool2d_grad<XPUType>(
           dev_ctx.x_context(),
@@ -173,7 +182,7 @@ void Pool2dGradKernel(const Context& dev_ctx,
           strides,
           paddings,
           !exclusive,
-          true);
+          xpu_layout_nchw);
     } else {
       PADDLE_THROW(common::errors::InvalidArgument(
           "Unsupported pooling type for kunlun %s", pooling_type));
