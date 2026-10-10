@@ -273,6 +273,8 @@ PD_REGISTER_KERNEL(masked_fill,
                    uint8_t,
                    phi::float16,
                    phi::bfloat16,
+                   phi::float8_e4m3fn,
+                   phi::float8_e5m2,
                    phi::complex64,
                    phi::complex128) {
   kernel->InputAt(1).SetDataType(phi::DataType::BOOL);

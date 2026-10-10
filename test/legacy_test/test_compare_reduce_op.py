@@ -133,6 +133,22 @@ class TestEqualReduceAPI(unittest.TestCase):
         assert out.item() is True
         paddle.enable_static()
 
+    def test_dynamic_api_more_dtypes(self):
+        paddle.disable_static()
+        places = ['cpu']
+        if paddle.is_compiled_with_cuda():
+            places.append('gpu')
+        for place in places:
+            paddle.device.set_device(place)
+            for dtype in ['int8', 'uint8', 'int16', 'float16', 'bfloat16']:
+                x = paddle.arange(12).reshape([3, 4]).astype(dtype)
+                y = x.clone()
+                self.assertTrue(paddle.equal_all(x, y).item())
+                y[1, 2] = 0
+                self.assertFalse(paddle.equal_all(x, y).item())
+                self.assertFalse(paddle.equal_all(x, x[:2]).item())
+        paddle.enable_static()
+
 
 if __name__ == '__main__':
     unittest.main()

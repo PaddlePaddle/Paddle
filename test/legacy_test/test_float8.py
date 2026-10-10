@@ -338,5 +338,103 @@ class TestFP8MatmulOp(unittest.TestCase):
                     )
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "float8 kernels below are GPU only"
+)
+class TestFP8IndexAndCompareOp(unittest.TestCase):
+    """Data-movement / comparison ops on float8 tensors (GPU)."""
+
+    def setUp(self):
+        paddle.disable_static()
+        paddle.device.set_device(get_device())
+        self.dtypes = ["float8_e4m3fn", "float8_e5m2"]
+        # Values exactly representable in both float8 formats.
+        self.x_fp32 = paddle.to_tensor(
+            [
+                [0.0, 1.0, -2.0, 4.0],
+                [0.5, -0.25, 8.0, 16.0],
+                [3.0, -1.5, 2.0, 1.0],
+            ]
+        )
+
+    def to_fp32(self, t):
+        return t.astype("float32").numpy()
+
+    def test_equal_not_equal(self):
+        for dtype in self.dtypes:
+            x = self.x_fp32.astype(dtype)
+            y = x.clone()
+            y[0, 1] = 0.0
+            np.testing.assert_array_equal(
+                paddle.equal(x, y).numpy(),
+                self.to_fp32(x) == self.to_fp32(y),
+            )
+            np.testing.assert_array_equal(
+                (x != y).numpy(), self.to_fp32(x) != self.to_fp32(y)
+            )
+            # broadcast
+            row = x[1:2]
+            np.testing.assert_array_equal(
+                (x == row).numpy(), self.to_fp32(x) == self.to_fp32(row)
+            )
+
+    def test_equal_all(self):
+        for dtype in self.dtypes:
+            x = self.x_fp32.astype(dtype)
+            self.assertTrue(paddle.equal_all(x, x.clone()).item())
+            y = x.clone()
+            y[2, 3] = 0.0
+            self.assertFalse(paddle.equal_all(x, y).item())
+            self.assertFalse(paddle.equal_all(x, x[:2]).item())
+
+    def test_index_get(self):
+        idx = paddle.to_tensor([2, 0, 2])
+        for dtype in self.dtypes:
+            x = self.x_fp32.astype(dtype)
+            out = x[idx]
+            self.assertEqual(out.dtype, x.dtype)
+            np.testing.assert_array_equal(
+                self.to_fp32(out), self.to_fp32(x)[idx.numpy()]
+            )
+            mask = paddle.to_tensor([True, False, True])
+            np.testing.assert_array_equal(
+                self.to_fp32(x[mask]), self.to_fp32(x)[mask.numpy()]
+            )
+
+    def test_index_put(self):
+        # NOTE: only the tensor-value form of advanced-index assignment is
+        # covered. Scalar assignment (``x[idx] = 2.0`` / ``x[i, j] = 2.0``)
+        # routes through ``set_value`` / scalar ``index_elementwise_put``,
+        # which are not yet registered for float8 and are out of scope here.
+        idx = paddle.to_tensor([0, 2])
+        for dtype in self.dtypes:
+            x = self.x_fp32.astype(dtype)
+            expect = self.to_fp32(x)
+            value = self.x_fp32[1:2].astype(dtype).expand([2, 4])
+            x[idx] = value
+            expect[idx.numpy()] = self.to_fp32(value)
+            np.testing.assert_array_equal(self.to_fp32(x), expect)
+
+    def test_masked_fill(self):
+        mask = paddle.to_tensor([[True, False, False, True]]).expand([3, 4])
+        for dtype in self.dtypes:
+            x = self.x_fp32.astype(dtype)
+            out = x.masked_fill(mask, 0.0)
+            self.assertEqual(out.dtype, x.dtype)
+            expect = self.to_fp32(x)
+            expect[mask.numpy()] = 0.0
+            np.testing.assert_array_equal(self.to_fp32(out), expect)
+
+    def test_pad(self):
+        for dtype in self.dtypes:
+            x = self.x_fp32.astype(dtype)
+            out = paddle.nn.functional.pad(
+                x, [0, 2], mode='constant', value=0.0
+            )
+            self.assertEqual(out.dtype, x.dtype)
+            expect = np.pad(self.to_fp32(x), ((0, 0), (0, 2)), mode='constant')
+            np.testing.assert_array_equal(self.to_fp32(out), expect)
+
+
 if __name__ == "__main__":
     unittest.main()
