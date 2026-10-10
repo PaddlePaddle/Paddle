@@ -54,6 +54,7 @@ cc_test(ATen_transpose_test SRCS ATen_transpose_test.cc)
 cc_test(ATen_Utils_test SRCS ATen_Utils_test.cc)
 cc_test(ATen_values_test SRCS ATen_values_test.cc)
 cc_test(ATen_viewAs_test SRCS ATen_viewAs_test.cc)
+cc_test(ATen_vstack_test SRCS ATen_vstack_test.cc)
 
 # torch library tests (CPU compatible)
 cc_test(torch_library_test SRCS torch_library_test.cc)
