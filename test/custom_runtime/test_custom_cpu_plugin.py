@@ -58,6 +58,7 @@ class TestCustomCPUPlugin(unittest.TestCase):
         self._test_fallback_kernel()
         self._test_scalar()
         self._test_custom_device_py_api()
+        self._test_custom_device_seed_under_pir()
         self._test_custom_device_mix_precision()
 
     def _test_custom_device_dataloader(self):
@@ -205,6 +206,27 @@ class TestCustomCPUPlugin(unittest.TestCase):
         )
         k_t = paddle.to_tensor([3], dtype="int32")
         value_1, indices_1 = paddle.topk(data_1, k=k_t)
+
+    def _test_custom_device_seed_under_pir(self):
+        import paddle
+
+        paddle.set_device('custom_cpu')
+
+        with paddle.pir_utils.IrGuard():
+            paddle.seed(2021)
+            paddle.device.manual_seed(2022)
+
+        paddle.seed(2021)
+        first = paddle.rand([4], dtype='float32').numpy()
+        paddle.seed(2021)
+        second = paddle.rand([4], dtype='float32').numpy()
+        np.testing.assert_array_equal(first, second)
+
+        paddle.device.manual_seed(2022)
+        first = paddle.rand([4], dtype='float32').numpy()
+        paddle.device.manual_seed(2022)
+        second = paddle.rand([4], dtype='float32').numpy()
+        np.testing.assert_array_equal(first, second)
 
     def _test_custom_device_gradient_accumulation(self):
         import paddle
