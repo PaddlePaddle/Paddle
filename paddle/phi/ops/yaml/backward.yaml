@@ -1907,9 +1907,8 @@
   kernel :
     func : index_select_grad
     data_type : out_grad
+    backend : x
   no_need_buffer : x
-  data_transform :
-    skip_transform : index
   backward: index_select_double_grad
 
 - backward_op : index_select_strided_grad
