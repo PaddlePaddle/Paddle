@@ -271,9 +271,7 @@ void WriteUVContent::writeDone(uv_write_t* req, int status) {
   delete data_ptr;
   uv_req_set_data(reinterpret_cast<uv_req_t*>(req), nullptr);
   if (self && status) {
-    VLOG(2) << "Write to client failed. code:" << status
-            << " desc:" << uv_strerror(status)
-            << " name:" << uv_err_name(status);
+    // NOTE: no glog here, see the comment in LibUVClient::readCallback.
     self->handle->close();
   }
 }
@@ -296,8 +294,7 @@ void WriteUVContent::send() {
                      1,
                      writeDone);
   if (res) {
-    VLOG(2) << "Write failed. code:" << res << " desc:" << uv_strerror(res)
-            << " name:" << uv_err_name(res);
+    // NOTE: no glog here, see the comment in LibUVClient::readCallback.
     handle->close();
   } else {
     auto data_ptr = static_cast<RequestData*>(
@@ -342,23 +339,30 @@ void LibUVClient::allocBuffer(uv_handle_t* handle,
 void LibUVClient::readCallback(uv_stream_t* client,
                                ssize_t nread,
                                const uv_buf_t* buf) {
+  // NOTE: Deliberately no glog in this function and in the other libuv
+  // callbacks reached when a peer disconnects.
+  //
+  // The master daemon runs its uv loop on a background thread whose lifetime
+  // is bounded by ~TCPStore. If anything still holds a reference to the global
+  // TCPStore when exit() starts running handlers, the loop keeps polling while
+  // static destructors tear down glog, which destroys its internal mutexes.
+  // A peer closing its socket then lands here and glog's one-time per-call-site
+  // VLOG initialization locks an already destroyed mutex, so glog's internal
+  // SAFE_PTHREAD aborts the process without emitting anything. These branches
+  // only ever execute during teardown, which is exactly when that happens.
   auto uv_socket = LibUVTCPSocket::getTCPSocket(client);
   if (nread > 0) {
     try {
       uv_socket->doProcess(buf, nread);
       return;
-    } catch (std::exception& ex) {
-      VLOG(2) << "Failed to process incoming client message: " << ex.what();
+    } catch (const std::exception&) {
       uv_socket->close();
     }
   } else if (nread == UV_EOF) {
     // EOF
-    VLOG(5) << "Remote peer closed the connection.";
     uv_socket->close();
   } else if (nread < 0) {
     // error and EOF
-    VLOG(5) << "Read callback handler exception. code:" << nread
-            << " desc:" << uv_strerror(nread) << " name:" << uv_err_name(nread);
     uv_socket->close();
   }
   free(buf->base);
