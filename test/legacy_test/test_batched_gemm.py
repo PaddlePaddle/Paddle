@@ -244,11 +244,15 @@ class TestGroupedGemmEdgeCases(unittest.TestCase):
     def test_single_column_grouped_gemv(self):
         # When output_hidden == 1 each group is a matrix-vector product. The
         # kernel routes it through the PyTorch-aligned GEMV orientation, so
-        # for bfloat16 the result must match the per-group reference bitwise
-        # (a regression to the misaligned offset-slice writes shows up as a
-        # 1-ulp divergence); for float32 the reference matmul itself may
-        # legally differ by 1 ulp, so a tight tolerance is used.
-        problems = ((3, [2, 3, 3], 16), (4, [1, 5, 6], 64), (3, [2, 8, 6], 5))
+        # the result must match the per-group reference bitwise for both
+        # bfloat16 and float32 (verified against torch.matmul and
+        # paddle.matmul): a regression to the misaligned offset-slice writes
+        # or the swapped orientation shows up as a 1-ulp divergence.
+        problems = (
+            (3, [2, 3, 3], 16),
+            (4, [1, 5, 6, 2], 64),
+            (3, [2, 8, 6], 5),
+        )
         for dtype in [paddle.bfloat16, paddle.float32]:
             for num_experts, batch_sizes, hidden in problems:
                 for trans_lhs, trans_rhs in m_group_layout_cases:
@@ -284,18 +288,10 @@ class TestGroupedGemmEdgeCases(unittest.TestCase):
                         expected = pyref_gmm(
                             a, b, batch_sizes, trans_rhs
                         ).reshape(out.shape)
-                        if dtype == paddle.bfloat16:
-                            np.testing.assert_array_equal(
-                                out.astype(paddle.float32).numpy(),
-                                expected.astype(paddle.float32).numpy(),
-                            )
-                        else:
-                            np.testing.assert_allclose(
-                                out.numpy(),
-                                expected.numpy(),
-                                rtol=1e-6,
-                                atol=1e-6,
-                            )
+                        np.testing.assert_array_equal(
+                            out.astype(paddle.float32).numpy(),
+                            expected.astype(paddle.float32).numpy(),
+                        )
 
 
 if __name__ == '__main__':
