@@ -531,6 +531,9 @@ class Muon(Optimizer):
         if isinstance(parameters, dict):
             parameters = self._update_param_group(parameters)
         for p in parameters:
+            if p.name.startswith(self._FSDP_FUSED_PREFIX):
+                self._ensure_accumulators(p, False, self._default_dict)
+                continue
             param_info = self._muon_param_info_map.get(p.name)
             if param_info is not None:
                 use_muon = param_info.use_muon

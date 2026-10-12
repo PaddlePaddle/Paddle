@@ -13,6 +13,10 @@
 # limitations under the License.
 
 
+import os
+import shutil
+import tempfile
+
 import numpy as np
 
 import paddle
@@ -304,29 +308,40 @@ class MuonStackedLayer(TransformerLayer):
     ``is_fsdp_unit`` matches class names along the MRO.
     """
 
-    def __init__(self, hidden, inter, num_mats, num_mats_down=None):
+    def __init__(self, hidden, inter, num_mats, num_mats_down=None, low=None):
         nn.Layer.__init__(self)
         self.attn = nn.Linear(hidden, hidden, bias_attr=False)
         self.w_up = self.create_parameter(shape=[num_mats, hidden, inter])
         self.w_down = self.create_parameter(
             shape=[num_mats_down or num_mats, inter, hidden]
         )
+        if low is not None:
+            self.w_low = self.create_parameter(
+                shape=[num_mats_down or num_mats, hidden, hidden], dtype=low
+            )
 
     def forward(self, x):
         x = x + self.attn(x)
         for i in range(self.w_up.shape[0]):
             h = F.silu(paddle.matmul(x, self.w_up[i]))
             x = x + paddle.matmul(h, self.w_down[i % self.w_down.shape[0]])
+        w_low = getattr(self, "w_low", None)
+        if w_low is not None:
+            for i in range(w_low.shape[0]):
+                h = paddle.matmul(x.astype(w_low.dtype), w_low[i])
+                x = x + F.silu(h.astype(x.dtype))
         return x
 
 
 class MuonModel(nn.Layer):
-    def __init__(self, num_mats_down=None):
+    def __init__(self, num_mats_down=None, low=None):
         super().__init__()
         self.embed = nn.Linear(HIDDEN, HIDDEN, bias_attr=False)
         self.layers = nn.LayerList(
             [
-                MuonStackedLayer(HIDDEN, INTER, MUON_MATS, num_mats_down)
+                MuonStackedLayer(
+                    HIDDEN, INTER, MUON_MATS, num_mats_down, low=low
+                )
                 for _ in range(MUON_LAYERS)
             ]
         )
@@ -342,7 +357,11 @@ class MuonModel(nn.Layer):
 def tag_muon_params(model):
     info_map = {}
     for layer in model.layers:
-        for param in (layer.w_up, layer.w_down):
+        stacks = [layer.w_up, layer.w_down]
+        w_low = getattr(layer, "w_low", None)
+        if w_low is not None:
+            stacks.append(w_low)
+        for param in stacks:
             param.use_muon = True
             info_map[param.name] = MuonParamInfo(use_muon=True)
     return info_map
@@ -545,7 +564,142 @@ def run_muon_replicated():
             assert param._is_initialized(), f"{param.name} not materialized"
 
 
+def build_muon_checkpoint_run(num_mats_down):
+    paddle.seed(2026)
+    model = MuonModel(num_mats_down, low="bfloat16")
+    info_map = tag_muon_params(model)
+    model = fully_shard(model)
+    fsdp_context = model._fsdp_context
+    model = mix_precision_utils.MixPrecisionLayer(model, dtype="float16")
+    inner = paddle.optimizer.Muon(
+        learning_rate=0.001,
+        parameters=[p for p in model.parameters() if p.trainable],
+        weight_decay=0.0,
+        muon_param_info_map=info_map,
+        multi_precision=True,
+    )
+    optimizer = mix_precision_utils.MixPrecisionOptimizer(inner)
+
+    def train_step(x):
+        model.train()
+        with paddle.amp.auto_cast(level="O1", dtype="float16"):
+            loss = model(x).mean()
+        loss.backward()
+        optimizer.step()
+        optimizer.clear_grad()
+
+    def state_dict():
+        state = dict(model.sharded_state_dict())
+        state.update(optimizer.sharded_state_dict())
+        return state
+
+    return fsdp_context, optimizer, inner, train_step, state_dict
+
+
+def check_muon_checkpoint(num_mats_down, ckpt_path, dense):
+    """Muon state saved through FSDP must restore a run that steps the same."""
+    paddle.seed(2026)
+    data = [paddle.randn([TOKENS, HIDDEN]) for _ in range(3)]
+
+    ctx, _, inner, train_step, state_dict = build_muon_checkpoint_run(
+        num_mats_down
+    )
+    train_step(data[0])
+    train_step(data[1])
+    assert inner._fsdp_state_dict_ctx is ctx, "Muon never bound FSDP"
+    groups = muon_groups_of(ctx)
+    matrix_sharded = all(g.muon_shard_numel is not None for g in groups)
+    assert matrix_sharded == (not dense and num_mats_down is None)
+
+    state = state_dict()
+    muon_names = {p.name for g in groups for p in g.params}
+    held = [
+        name
+        for name in inner._accumulators[inner._moment_acc_str]
+        if name in muon_names
+    ]
+    for name in held:
+        key = f"{ctx._muon_state_descs[name][0]}.moment1_0"
+        assert key in state, f"Muon state {key} missing from the checkpoint"
+        assert np.abs(state[key].local_tensor.numpy()).max() > 0, key
+    num_held = paddle.to_tensor([len(held)])
+    paddle.distributed.all_reduce(num_held)
+    if matrix_sharded:
+        assert int(num_held) >= len(muon_names), int(num_held)
+    else:
+        assert int(num_held) == len(muon_names), int(num_held)
+    masters = [name for name in inner._master_weights if name in muon_names]
+    for name in masters:
+        key = f"{ctx._muon_state_descs[name][0]}.w_0"
+        assert key in state, f"Muon master weight {key} missing"
+    num_masters = paddle.to_tensor([len(masters)])
+    paddle.distributed.all_reduce(num_masters)
+    assert int(num_masters), "the bf16 stack contributed no master weight"
+    saved = {
+        key: sharded.local_tensor.astype("float32").numpy()
+        for key, sharded in state.items()
+    }
+    paddle.distributed.save_state_dict(state, ckpt_path)
+    paddle.distributed.barrier()
+
+    train_step(data[2])
+    expected = gather_muon_params(ctx)
+
+    ctx, optimizer, inner, train_step, state_dict = build_muon_checkpoint_run(
+        num_mats_down
+    )
+    # Bind the wrapper, not the inner Muon: FSDP has to unwrap it.
+    ctx.bind_optimizer(optimizer)
+    optimizer.init_state_for_load()
+    state = state_dict()
+    assert sorted(state) == sorted(saved), sorted(set(state) ^ set(saved))
+    paddle.distributed.load_state_dict(state, ckpt_path)
+    for key, sharded in state.items():
+        np.testing.assert_array_equal(
+            sharded.local_tensor.astype("float32").numpy(),
+            saved[key],
+            err_msg=key,
+        )
+    train_step(data[2])
+    resumed = gather_muon_params(ctx)
+    assert sorted(resumed) == sorted(expected)
+    for gid, value in expected.items():
+        buffer = ctx.buffer_manager.buffer_groups[gid].params_buffer
+        low = buffer.data_buffer.dtype != paddle.float32
+        np.testing.assert_allclose(
+            resumed[gid],
+            value,
+            rtol=2e-2 if low else 1e-3,
+            atol=2e-3 if low else 1e-4,
+            err_msg=f"resumed Muon diverged, group {gid}",
+        )
+
+
+def run_muon_checkpoint():
+    ckpt_root = [None]
+    if paddle.distributed.get_rank() == 0:
+        ckpt_root = [tempfile.mkdtemp()]
+    paddle.distributed.broadcast_object_list(ckpt_root, src=0)
+    ckpt_root = ckpt_root[0]
+    try:
+        check_muon_checkpoint(None, os.path.join(ckpt_root, "matrix"), False)
+        origin_shard_numel = fully_shard_fusion._muon_3d_shard_numel
+        fully_shard_fusion._muon_3d_shard_numel = lambda *args, **kwargs: None
+        try:
+            check_muon_checkpoint(None, os.path.join(ckpt_root, "dense"), True)
+        finally:
+            fully_shard_fusion._muon_3d_shard_numel = origin_shard_numel
+        check_muon_checkpoint(
+            MUON_MATS_DOWN, os.path.join(ckpt_root, "replicated"), False
+        )
+    finally:
+        paddle.distributed.barrier()
+        if paddle.distributed.get_rank() == 0:
+            shutil.rmtree(ckpt_root, ignore_errors=True)
+
+
 if __name__ == '__main__':
     run_moe(2)
     run_muon_shard()
     run_muon_replicated()
+    run_muon_checkpoint()
