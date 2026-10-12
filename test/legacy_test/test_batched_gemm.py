@@ -150,5 +150,153 @@ class TestGroupedGemm(unittest.TestCase):
                     allclose(out, expected_out.reshape(out.shape), dtype)
 
 
+class TestGroupedGemmEdgeCases(unittest.TestCase):
+    """Regression tests for boundary / degenerate shapes of batched_gemm.
+
+    Covers the InferMeta shape validations (expert count, contraction dim,
+    batch_sizes sum / negativity), the legal empty-contraction (K=0) and
+    zero-token fill-zero paths, and the single-column (N == 1) grouped GEMV
+    path that is aligned with torch.matmul.
+    """
+
+    def setUp(self):
+        paddle.seed(42)
+
+    def _gemm(self, a, b, batch_sizes, trans_lhs, trans_rhs):
+        with paddle.amp.auto_cast(False):
+            return grouped_gemm(a, b, batch_sizes, trans_lhs, trans_rhs)
+
+    # ---- invalid inputs are rejected with InvalidArgument --------------
+
+    def test_invalid_expert_count(self):
+        # rhs[0] = 3 but batch_sizes has 4 groups; all other dims consistent.
+        a = randn(1, 8, 4).reshape([-1, 4]).astype(paddle.float32)
+        b = randn(3, 4, 5).astype(paddle.float32)
+        with self.assertRaisesRegex(Exception, "number of groups"):
+            self._gemm(a, b, [2, 2, 2, 2], False, False)
+
+    def test_invalid_contraction_dim(self):
+        # Case 1 (F, F): lhs[1] = 4 != rhs[1] = 6.
+        a = randn(1, 8, 4).reshape([-1, 4]).astype(paddle.float32)
+        b = randn(4, 6, 5).astype(paddle.float32)
+        with self.assertRaisesRegex(Exception, "contraction dim"):
+            self._gemm(a, b, [2, 2, 2, 2], False, False)
+
+    def test_invalid_contraction_dim_trans_rhs(self):
+        # Case 2 (F, T): lhs[1] = 5 != rhs[2] = 7.
+        a = randn(1, 8, 5).reshape([-1, 5]).astype(paddle.float32)
+        b = randn(4, 6, 7).astype(paddle.float32)
+        with self.assertRaisesRegex(Exception, "contraction dim"):
+            self._gemm(a, b, [2, 2, 2, 2], False, True)
+
+    def test_invalid_batch_sizes_sum(self):
+        # sum(batch_sizes) = 6 != total_tokens = 7.
+        a = randn(1, 7, 4).reshape([-1, 4]).astype(paddle.float32)
+        b = randn(3, 4, 5).astype(paddle.float32)
+        with self.assertRaisesRegex(Exception, "total number of tokens"):
+            self._gemm(a, b, [2, 2, 2], False, False)
+
+    def test_negative_batch_sizes(self):
+        a = randn(1, 6, 4).reshape([-1, 4]).astype(paddle.float32)
+        b = randn(3, 4, 5).astype(paddle.float32)
+        with self.assertRaisesRegex(Exception, "non-negative"):
+            self._gemm(a, b, [-1, 3, 4], False, False)
+
+    # ---- legal empty contraction / zero tokens return all zeros --------
+
+    def test_empty_contraction_returns_zeros(self):
+        for dtype in [paddle.bfloat16, paddle.float32]:
+            for trans_lhs, trans_rhs in m_group_layout_cases:
+                with self.subTest(
+                    dtype=dtype, trans_lhs=trans_lhs, trans_rhs=trans_rhs
+                ):
+                    batch_sizes = [2, 3, 3]
+                    if not trans_rhs:
+                        # K = 0 on both sides: lhs=[8, 0], rhs=[3, 0, 5].
+                        a = randn(1, 8, 0).reshape([-1, 0]).astype(dtype)
+                        b = randn(3, 0, 5).astype(dtype)
+                    else:
+                        # Case 2: lhs[1] = rhs[2] = 0, rhs=[3, 5, 0].
+                        a = randn(1, 8, 0).reshape([-1, 0]).astype(dtype)
+                        b = randn(3, 5, 0).astype(dtype)
+                    out = self._gemm(a, b, batch_sizes, trans_lhs, trans_rhs)
+                    np.testing.assert_array_equal(
+                        out.astype(paddle.float32).numpy(),
+                        np.zeros(out.shape, dtype=np.float32),
+                    )
+
+    def test_zero_tokens_returns_zeros(self):
+        # Case 3 (T, F) with M_total = sum(batch_sizes) = 0: the contraction
+        # dim is total_tokens, so the output [E, K, N] must be all zeros.
+        for dtype in [paddle.bfloat16, paddle.float32]:
+            with self.subTest(dtype=dtype):
+                a = randn(1, 0, 4).reshape([-1, 4]).astype(dtype)
+                b = randn(1, 0, 5).reshape([-1, 5]).astype(dtype)
+                out = self._gemm(a, b, [0, 0, 0], True, False)
+                self.assertEqual(out.shape, [3, 4, 5])
+                np.testing.assert_array_equal(
+                    out.astype(paddle.float32).numpy(),
+                    np.zeros([3, 4, 5], dtype=np.float32),
+                )
+
+    # ---- single-column (N == 1) grouped GEMV ----------------------------
+
+    def test_single_column_grouped_gemv(self):
+        # When output_hidden == 1 each group is a matrix-vector product. The
+        # kernel routes it through the PyTorch-aligned GEMV orientation, so
+        # for bfloat16 the result must match the per-group reference bitwise
+        # (a regression to the misaligned offset-slice writes shows up as a
+        # 1-ulp divergence); for float32 the reference matmul itself may
+        # legally differ by 1 ulp, so a tight tolerance is used.
+        problems = ((3, [2, 3, 3], 16), (4, [1, 5, 6], 64), (3, [2, 8, 6], 5))
+        for dtype in [paddle.bfloat16, paddle.float32]:
+            for num_experts, batch_sizes, hidden in problems:
+                for trans_lhs, trans_rhs in m_group_layout_cases:
+                    with self.subTest(
+                        dtype=dtype,
+                        num_experts=num_experts,
+                        batch_sizes=batch_sizes,
+                        hidden=hidden,
+                        trans_lhs=trans_lhs,
+                        trans_rhs=trans_rhs,
+                    ):
+                        total = sum(batch_sizes)
+                        if not trans_rhs:
+                            # Case 1: rhs = [E, K, 1], out = [total, 1].
+                            a = (
+                                randn(1, total, hidden)
+                                .reshape([-1, hidden])
+                                .astype(dtype)
+                            )
+                            b = randn(num_experts, hidden, 1).astype(dtype)
+                        else:
+                            # Case 2: rhs = [E, 1, N], out = [total, 1].
+                            a = (
+                                randn(1, total, hidden)
+                                .reshape([-1, hidden])
+                                .astype(dtype)
+                            )
+                            b = randn(num_experts, 1, hidden).astype(dtype)
+                        out = self._gemm(
+                            a, b, batch_sizes, trans_lhs, trans_rhs
+                        )
+                        self.assertEqual(list(out.shape), [total, 1])
+                        expected = pyref_gmm(
+                            a, b, batch_sizes, trans_rhs
+                        ).reshape(out.shape)
+                        if dtype == paddle.bfloat16:
+                            np.testing.assert_array_equal(
+                                out.astype(paddle.float32).numpy(),
+                                expected.astype(paddle.float32).numpy(),
+                            )
+                        else:
+                            np.testing.assert_allclose(
+                                out.numpy(),
+                                expected.numpy(),
+                                rtol=1e-6,
+                                atol=1e-6,
+                            )
+
+
 if __name__ == '__main__':
     unittest.main()

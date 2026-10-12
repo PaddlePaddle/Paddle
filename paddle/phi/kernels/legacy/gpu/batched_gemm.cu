@@ -255,11 +255,11 @@ void m_grouped_gemm_cuda_forward(const Context &dev_ctx,
         if (expert_bs > 0) {
           CublasGemvColumn<T>(
               handle, a_data, b_data, scr, expert_bs, input_hidden_size);
-          cudaMemcpyAsync(output_data,
-                          scr,
-                          expert_bs * sizeof(T),
-                          cudaMemcpyDeviceToDevice,
-                          dev_ctx.stream());
+          PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyAsync(output_data,
+                                                     scr,
+                                                     expert_bs * sizeof(T),
+                                                     cudaMemcpyDeviceToDevice,
+                                                     dev_ctx.stream()));
         }
         a_data += expert_bs * input_hidden_size;
         b_data += b_shape[1] * b_shape[2];
