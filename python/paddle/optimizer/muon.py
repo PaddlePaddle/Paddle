@@ -1052,6 +1052,8 @@ class Muon(Optimizer):
             )
             if hasattr(fsdp_context, "bind_decay_param_fun"):
                 fsdp_context.bind_decay_param_fun(self)
+            if hasattr(fsdp_context, "bind_optimizer"):
+                fsdp_context.bind_optimizer(self)
             self._maybe_force_per_matrix_ns(fsdp_context)
             if self._grad_clip is not None:
                 self._grad_clip.should_comm_on_shard_dim = True
