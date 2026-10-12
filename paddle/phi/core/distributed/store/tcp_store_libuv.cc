@@ -13,6 +13,7 @@
 // limitations under the License.
 #include "paddle/phi/core/distributed/store/tcp_store_libuv.h"
 
+#include <cinttypes>
 #include <cstdarg>
 #include <cstdio>
 
@@ -404,12 +405,13 @@ void LibUVClient::readCallback(uv_stream_t* client,
     uv_socket->close();
   } else if (nread < 0) {
     // error and EOF
-    TeardownLog(5,
-                "tcp_store_libuv: read callback handler exception. code:%ld "
-                "desc:%s name:%s\n",
-                static_cast<int64_t>(nread),
-                uv_strerror(nread),
-                uv_err_name(nread));
+    TeardownLog(
+        5,
+        "tcp_store_libuv: read callback handler exception. code:%" PRId64
+        " desc:%s name:%s\n",
+        static_cast<int64_t>(nread),
+        uv_strerror(nread),
+        uv_err_name(nread));
     uv_socket->close();
   }
   free(buf->base);
