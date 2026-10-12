@@ -296,11 +296,9 @@ jobs:
 
   test:
     name: Coverage test
-    needs: [build, build-docker, check-bypass, coverage_approval]
+    needs: [build, build-docker, coverage_approval]
     if: >-
-      always() &&
-      needs.check-bypass.outputs.can-skip != 'true' &&
-      needs.build.result == 'success' &&
+      needs.build.outputs.can-skip != 'true' &&
       needs.coverage_approval.outputs.can-skip != 'true'
     runs-on:
       group: BD_BJ-V100
