@@ -190,7 +190,7 @@ void BinaryStrideBroadcastKernel(const Context &dev_ctx,
 
   if (is_big_tensor) {
     funcs::OffsetCalculator offset_calc =
-        funcs::make_offset_calculator<3, false, uint64_t>(iter);
+        funcs::MakeOffsetCalculator<3, false, uint64_t>(iter);
     BinaryElementwiseKernel<Functor,
                             OutT,
                             uint64_t,
@@ -206,7 +206,7 @@ void BinaryStrideBroadcastKernel(const Context &dev_ctx,
                                          offset_calc);
   } else {
     funcs::OffsetCalculator offset_calc =
-        funcs::make_offset_calculator<3, false, uint32_t>(iter);
+        funcs::MakeOffsetCalculator<3, false, uint32_t>(iter);
     BinaryElementwiseKernel<Functor,
                             OutT,
                             uint32_t,
@@ -291,7 +291,7 @@ void BinaryStrideElementwiseKernel(const Context &dev_ctx,
 
   if (is_big_tensor) {
     funcs::OffsetCalculator offset_calc =
-        funcs::make_offset_calculator<3, false, uint64_t>(iter);
+        funcs::MakeOffsetCalculator<3, false, uint64_t>(iter);
     BinaryElementwiseKernel<Functor,
                             OutT,
                             uint64_t,
@@ -307,7 +307,7 @@ void BinaryStrideElementwiseKernel(const Context &dev_ctx,
                                          offset_calc);
   } else {
     funcs::OffsetCalculator offset_calc =
-        funcs::make_offset_calculator<3, false, uint32_t>(iter);
+        funcs::MakeOffsetCalculator<3, false, uint32_t>(iter);
     BinaryElementwiseKernel<Functor,
                             OutT,
                             uint32_t,
@@ -371,7 +371,7 @@ void UnaryStrideElementwiseKernel(const Context &dev_ctx,
   // upgraded.
   const int64_t &numel = iter.numel();
 
-  funcs::OffsetCalculator offset_calc = funcs::make_offset_calculator<2>(iter);
+  funcs::OffsetCalculator offset_calc = funcs::MakeOffsetCalculator<2>(iter);
   constexpr int unroll_factor = sizeof(OutT) >= 4 ? 2 : 4;
   auto stream = dev_ctx.stream();
   auto threads = 128;
@@ -392,7 +392,7 @@ void UnaryStrideElementwiseKernel(const Context &dev_ctx,
 
   if (is_big_tensor) {
     funcs::OffsetCalculator offset_calc =
-        funcs::make_offset_calculator<2, false, uint64_t>(iter);
+        funcs::MakeOffsetCalculator<2, false, uint64_t>(iter);
     UnaryElementwiseKernel<Functor,
                            OutT,
                            uint64_t,
@@ -408,7 +408,7 @@ void UnaryStrideElementwiseKernel(const Context &dev_ctx,
                                          offset_calc);
   } else {
     funcs::OffsetCalculator offset_calc =
-        funcs::make_offset_calculator<2, false, uint32_t>(iter);
+        funcs::MakeOffsetCalculator<2, false, uint32_t>(iter);
     UnaryElementwiseKernel<Functor,
                            OutT,
                            uint32_t,

@@ -28,6 +28,7 @@ import unittest
 import numpy as np
 
 from paddle.framework.restricted_unpickler import (
+    RestrictedUnpickler,
     _is_safe_class,
     safe_load_pickle,
     safe_loads_pickle,
@@ -43,6 +44,27 @@ class SafeConfigClass:
     def __init__(self, batch_size=32, learning_rate=0.001):
         self.batch_size = batch_size
         self.learning_rate = learning_rate
+
+
+class SafeNestedClass:
+    """A safe user-defined class with a dotted qualified name."""
+
+    class Nested:
+        pass
+
+
+def _stack_global_pickle(module, name):
+    """Build a protocol 4 pickle containing a single STACK_GLOBAL."""
+    module_bytes = module.encode('utf-8')
+    name_bytes = name.encode('utf-8')
+    return (
+        b'\x80\x04'
+        + bytes((0x8C, len(module_bytes)))
+        + module_bytes
+        + bytes((0x8C, len(name_bytes)))
+        + name_bytes
+        + b'\x93.'
+    )
 
 
 @dataclasses.dataclass
@@ -99,6 +121,34 @@ class TestRestrictedUnpicklerAllowedTypes(unittest.TestCase):
         buf.seek(0)
         result = safe_load_pickle(buf)
         np.testing.assert_array_equal(result, data)
+
+    def test_numpy_ndarray_protocol_5(self):
+        """Protocol 5 ndarray pickles should use the allowed _frombuffer."""
+        if pickle.HIGHEST_PROTOCOL < 5:
+            self.skipTest("Protocol 5 is unavailable")
+        data = np.array([1.0, 2.0, 3.0], dtype=np.float32)
+        result = safe_loads_pickle(pickle.dumps(data, protocol=5))
+        np.testing.assert_array_equal(result, data)
+
+    def test_numpy_core_numeric_frombuffer_whitelist(self):
+        """The legacy NumPy module path should allow _frombuffer."""
+        unpickler = RestrictedUnpickler(io.BytesIO())
+        self.assertIs(
+            unpickler.find_class('numpy.core.numeric', '_frombuffer'),
+            np.core.numeric._frombuffer,
+        )
+
+    def test_numpy_private_core_numeric_frombuffer_whitelist(self):
+        """The private NumPy module path should allow _frombuffer."""
+        try:
+            import numpy._core.numeric as numpy_core_numeric
+        except ModuleNotFoundError:
+            self.skipTest("NumPy does not provide numpy._core.numeric")
+        unpickler = RestrictedUnpickler(io.BytesIO())
+        self.assertIs(
+            unpickler.find_class('numpy._core.numeric', '_frombuffer'),
+            numpy_core_numeric._frombuffer,
+        )
 
     def test_ordered_dict(self):
         """OrderedDict should be allowed (state_dict structure)."""
@@ -244,6 +294,22 @@ class TestRestrictedUnpicklerBlocked(unittest.TestCase):
         buf.seek(0)
         with self.assertRaises(pickle.UnpicklingError):
             safe_load_pickle(buf)
+
+    def test_block_dotted_names_in_numpy_whitelist_modules(self):
+        """Whitelisted modules must not traverse dotted names."""
+        for module, name in (
+            ('numpy._core.numeric', 'builtins.eval'),
+            ('numpy.core.numeric', 'builtins.eval'),
+            ('numpy.core.numeric', 'foo.bar'),
+        ):
+            with (
+                self.subTest(module=module, name=name),
+                self.assertRaisesRegex(
+                    pickle.UnpicklingError,
+                    rf'^Forbidden dotted name: {module}\.{name}$',
+                ),
+            ):
+                safe_loads_pickle(_stack_global_pickle(module, name))
 
 
 class TestReconstructDenseTensorData(unittest.TestCase):
@@ -485,6 +551,16 @@ class TestSafeUserDefinedClassLoading(unittest.TestCase):
         result = safe_load_pickle(buf)
         self.assertEqual(result.batch_size, 64)
         self.assertEqual(result.learning_rate, 0.01)
+
+    def test_allow_dotted_safe_user_defined_class_name(self):
+        """Safe user-defined classes may still use dotted qualified names."""
+        result = safe_loads_pickle(
+            _stack_global_pickle(
+                SafeNestedClass.__module__,
+                SafeNestedClass.__qualname__ + '.Nested',
+            )
+        )
+        self.assertIs(result, SafeNestedClass.Nested)
 
     def test_load_safe_dataclass(self):
         """Safe dataclass should be loadable."""

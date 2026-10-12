@@ -15,7 +15,7 @@
 # [AUTO-GENERATED] Unit test for paddle.nn.functional.vision
 # 自动生成的单测，覆盖 paddle.nn.functional.vision 模块中未覆盖的代码
 # Target: cover uncovered lines in python/paddle/nn/functional/vision.py
-# NOTE: test_ai_vision_ops.py already covers yolo_loss and yolo_box from paddle.vision.ops.
+# NOTE: test_coverage_vision_ops.py already covers yolo_loss and yolo_box from paddle.vision.ops.
 #       This test covers affine_grid, pixel_unshuffle, and channel_shuffle.
 
 """

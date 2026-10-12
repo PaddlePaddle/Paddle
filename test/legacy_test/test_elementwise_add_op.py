@@ -1303,6 +1303,120 @@ class TestElementwiseAddOp_Stride_ZeroSize1(TestElementwiseAddOp_Stride):
         self.y_trans = np.transpose(self.y, self.perm)
 
 
+class TestElementwiseAddBroadcastGradientsExact(unittest.TestCase):
+    def _run_case(self, x_np, y_np, dout_np, dx_axes, dy_axes, dy_only=False):
+        def expected(axes, shape):
+            if axes is None:
+                return dout_np
+            return paddle.sum(dout, axes).reshape(shape).numpy()
+
+        x = paddle.to_tensor(x_np)
+        y = paddle.to_tensor(y_np)
+        dout = paddle.to_tensor(dout_np)
+        x.stop_gradient = False
+        y.stop_gradient = False
+        out = x + y
+        if dy_only:
+            dy = paddle.grad(out, [y], dout)[0]
+            np.testing.assert_array_equal(
+                dy.numpy(), expected(dy_axes, y_np.shape)
+            )
+            return
+        dx, dy = paddle.grad(out, [x, y], dout)
+        np.testing.assert_array_equal(dx.numpy(), expected(dx_axes, x_np.shape))
+        np.testing.assert_array_equal(dy.numpy(), expected(dy_axes, y_np.shape))
+
+    def test_cpu_broadcast_gradients_exact(self):
+        with base.dygraph.guard(base.CPUPlace()):
+            for dtype in ['float32', 'float64']:
+                # Broadcast1: x is [37, 5] and y is [5]; dy is reduced over 37
+                # rows, long enough that a serial row-major accumulation
+                # differs bitwise from the cascade order.
+                x_np = (np.arange(37 * 5) / 7.0 - 3.0).astype(dtype)
+                x_np = x_np.reshape(37, 5)
+                y_np = (np.arange(5) / 11.0 - 1.0).astype(dtype)
+                dout_np = (np.arange(37 * 5) / 13.0 - 2.0).astype(dtype)
+                dout_np = dout_np.reshape(37, 5)
+                self._run_case(x_np, y_np, dout_np, None, 0)
+                self._run_case(x_np, y_np, dout_np, None, 0, dy_only=True)
+
+                # Broadcast1 with x reduced: x is [5] and y is [37, 5]; dx is
+                # reduced over 37 rows. The eager backward may hand dx in as a
+                # view of dout (inplace reuse of the gradient), so a reduced
+                # output sharing the dout buffer must be detached before the
+                # cascade reduction memsets it.
+                x_np = (np.arange(5) / 11.0 - 1.0).astype(dtype)
+                y_np = (np.arange(37 * 5) / 7.0 - 3.0).astype(dtype)
+                y_np = y_np.reshape(37, 5)
+                dout_np = (np.arange(37 * 5) / 13.0 - 2.0).astype(dtype)
+                dout_np = dout_np.reshape(37, 5)
+                self._run_case(x_np, y_np, dout_np, 0, None)
+
+                # Broadcast2 with x reduced: x is [3, 4, 1] and y is
+                # [2, 3, 4, 5]; dx is reduced over the pre and post groups
+                # (axes 0 and 3).
+                x_np = (np.arange(3 * 4) / 11.0 - 1.0).astype(dtype)
+                x_np = x_np.reshape(3, 4, 1)
+                y_np = (np.arange(2 * 3 * 4 * 5) / 9.0 - 2.0).astype(dtype)
+                y_np = y_np.reshape(2, 3, 4, 5)
+                dout_np = (np.arange(2 * 3 * 4 * 5) / 13.0 - 2.0).astype(dtype)
+                dout_np = dout_np.reshape(2, 3, 4, 5)
+                self._run_case(x_np, y_np, dout_np, [0, 3], None)
+
+                # Broadcast2 with a multi-dimension middle group: x is
+                # [2, 3, 4, 5] and y is [3, 4, 1] (the trailing 1 is trimmed
+                # so the middle group matches); dy is reduced over the pre
+                # and post groups (axes 0 and 3).
+                x_np = (np.arange(2 * 3 * 4 * 5) / 9.0 - 2.0).astype(dtype)
+                x_np = x_np.reshape(2, 3, 4, 5)
+                y_np = (np.arange(3 * 4) / 11.0 - 1.0).astype(dtype)
+                y_np = y_np.reshape(3, 4, 1)
+                dout_np = (np.arange(2 * 3 * 4 * 5) / 13.0 - 2.0).astype(dtype)
+                dout_np = dout_np.reshape(2, 3, 4, 5)
+                self._run_case(x_np, y_np, dout_np, None, [0, 3])
+
+                # Common broadcast path where both operands are expanded
+                # along different dimensions: x is [37, 1, 5] and y is
+                # [1, 9, 5]; dx is reduced over axis 1 and dy over axis 0.
+                x_np = (np.arange(37 * 5) / 7.0 - 3.0).astype(dtype)
+                x_np = x_np.reshape(37, 1, 5)
+                y_np = (np.arange(9 * 5) / 11.0 - 1.0).astype(dtype)
+                y_np = y_np.reshape(1, 9, 5)
+                dout_np = (np.arange(37 * 9 * 5) / 13.0 - 2.0).astype(dtype)
+                dout_np = dout_np.reshape(37, 9, 5)
+                self._run_case(x_np, y_np, dout_np, 1, 0)
+
+    def test_zero_size_broadcast_gradients_are_zero(self):
+        with base.dygraph.guard(base.CPUPlace()):
+            for dtype in ['float32', 'float64']:
+                # Fast path with a zero post dimension.
+                x = paddle.zeros([2, 0], dtype=dtype)
+                y = paddle.ones([2, 1], dtype=dtype)
+                x.stop_gradient = False
+                y.stop_gradient = False
+                (x + y).sum().backward()
+                np.testing.assert_array_equal(x.grad.numpy(), np.zeros([2, 0]))
+                np.testing.assert_array_equal(y.grad.numpy(), np.zeros([2, 1]))
+
+                # Fast path with a zero pre dimension.
+                x = paddle.zeros([0, 5], dtype=dtype)
+                y = paddle.ones([5], dtype=dtype)
+                x.stop_gradient = False
+                y.stop_gradient = False
+                (x + y).sum().backward()
+                np.testing.assert_array_equal(x.grad.numpy(), np.zeros([0, 5]))
+                np.testing.assert_array_equal(y.grad.numpy(), np.zeros([5]))
+
+                # Common broadcast path with a zero output.
+                x = paddle.zeros([0, 3], dtype=dtype)
+                y = paddle.ones([1, 3], dtype=dtype)
+                x.stop_gradient = False
+                y.stop_gradient = False
+                (x + y).sum().backward()
+                np.testing.assert_array_equal(x.grad.numpy(), np.zeros([0, 3]))
+                np.testing.assert_array_equal(y.grad.numpy(), np.zeros([1, 3]))
+
+
 if __name__ == '__main__':
     paddle.enable_static()
     unittest.main()

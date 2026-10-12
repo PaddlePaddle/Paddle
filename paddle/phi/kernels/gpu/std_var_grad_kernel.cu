@@ -44,7 +44,11 @@ void VarGradKernel(const Context& dev_ctx,
     return;
   }
   int rank = x.dims().size();
-  if (rank == 0 || axis.size() == 0) {
+  // Match torch var_backward:
+  //   dim=None / 0-D  -> n = numel
+  //   dim=[]          -> n = 1  (falls through; empty axes product is 1)
+  // Python maps axis=None to all dims, so empty axis here is a true dim=[].
+  if (rank == 0) {
     const auto dof = static_cast<double>(x.numel()) - correction;
     DenseTensor x_mean = Mean<T, Context>(dev_ctx, x, {}, true);
     if (dof <= 0) {
@@ -83,7 +87,10 @@ void VarGradKernel(const Context& dev_ctx,
   }
   double denom = static_cast<double>(rnumel) - correction;
   DenseTensor grad_expanded = out_grad;
-  if (!keepdim && rank > 1) {
+  // `axes64` is empty only for dim=[], where out_grad already has the right
+  // rank. GetUnsqueezeShape() copies in_dims verbatim for an empty axis list,
+  // so this guard skips a no-op kernel call rather than changing the result.
+  if (!keepdim && rank > 1 && !axes64.empty()) {
     IntArray unsq_axes(axes64);
     DenseTensor tmp;
     Unsqueeze<T, Context>(dev_ctx, out_grad, unsq_axes, &tmp, nullptr);
@@ -98,6 +105,26 @@ void VarGradKernel(const Context& dev_ctx,
   DenseTensor x_mean = Mean<T, Context>(dev_ctx, x, axes64, /*keepdim=*/true);
   DenseTensor diff = Subtract<T, Context>(dev_ctx, x, x_mean);
   dev_ctx.template Alloc<T>(x_grad);
+  if (denom <= 0 && axes64.size() == static_cast<size_t>(rank)) {
+    // Match torch's singular-degree-of-freedom rule.  The sign of x - mean is
+    // intentionally discarded: non-constant inputs receive +Inf, while
+    // constant inputs receive NaN.
+    DenseTensor cond;
+    cond.Resize(x.dims());
+    // Compare x with the mean directly.  diff == 0 is not equivalent for
+    // Inf inputs because Inf - Inf is NaN.
+    EqualKernel<T, Context>(dev_ctx, x, x_mean, &cond);
+    DenseTensor nan_tensor = FullLike<T, Context>(
+        dev_ctx, x, static_cast<T>(std::numeric_limits<double>::quiet_NaN()));
+    DenseTensor inf_tensor = FullLike<T, Context>(
+        dev_ctx, x, static_cast<T>(std::numeric_limits<double>::infinity()));
+    DenseTensor singular_grad;
+    singular_grad.Resize(x.dims());
+    WhereKernel<T, Context>(
+        dev_ctx, cond, nan_tensor, inf_tensor, &singular_grad);
+    MultiplyKernel<T, Context>(dev_ctx, singular_grad, grad_expanded, x_grad);
+    return;
+  }
   if (!std::is_same<T, AccT>::value) {
     auto acc_dtype = phi::CppTypeToDataType<AccT>::Type();
     DenseTensor grad_acc =

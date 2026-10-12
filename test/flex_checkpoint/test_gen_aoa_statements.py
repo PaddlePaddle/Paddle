@@ -15,20 +15,16 @@
 # Scope: ``Layer.gen_aoa_statements`` / ``Layer.gen_inv_aoa_statements`` -- the
 # recursion that walks the live module tree and emits AOA statements. What is
 # pinned here is what those two methods decide: which params and buffers take
-# part, in what order, how ``ctx`` / the structured-name prefix / an
-# ``AOANameScope`` thread down through nesting, when a sublayer's own override
-# takes over, and which dtype-cast endpoint order each direction uses. The
-# stateless name and dtype helpers they call live in
+# part, in what order, how ``ctx`` / the structured-name prefix / the checkpoint
+# lookup drop segment thread down through nesting, and when a sublayer's own
+# override takes over. The stateless name helpers they call live in
 # ``flex_checkpoint/aoa/generation.py`` and are pinned directly by
 # ``test_aoa_generation.py``.
 
 import unittest
 
 import paddle
-from paddle.distributed.flex_checkpoint.aoa.generation import (
-    AOAContext,
-    AOANameScope,
-)
+from paddle.distributed.flex_checkpoint.aoa.generation import AOAContext
 
 
 class _Leaf(paddle.nn.Layer):
@@ -55,12 +51,20 @@ class _OverridingLeaf(paddle.nn.Layer):
         self.weight = self.create_parameter(shape=[1])
 
     def gen_aoa_statements(
-        self, ctx, *, structured_name_prefix="", aoa_name_scope=None
+        self,
+        ctx,
+        *,
+        structured_name_prefix="",
+        checkpoint_lookup_drop_segment=None,
     ):
         return [f"__custom_fwd__::{structured_name_prefix}"]
 
     def gen_inv_aoa_statements(
-        self, ctx, *, structured_name_prefix="", aoa_name_scope=None
+        self,
+        ctx,
+        *,
+        structured_name_prefix="",
+        checkpoint_lookup_drop_segment=None,
     ):
         return [f"__custom_inv__::{structured_name_prefix}"]
 
@@ -89,7 +93,6 @@ def _context(
     checkpoint_name_prefix="checkpoint",
     pp_mapping=None,
     name_mapping=None,
-    dtype_rules=None,
     model_name_prefix="model",
 ):
     return AOAContext(
@@ -97,7 +100,6 @@ def _context(
         checkpoint_name_prefix=checkpoint_name_prefix,
         pp_to_single_mapping=pp_mapping or {},
         checkpoint_name_mapping=name_mapping or {},
-        dtype_cast_rules=dtype_rules or {},
         model_name_prefix=model_name_prefix,
     )
 
@@ -145,131 +147,6 @@ class TestGenAOAStatements(unittest.TestCase):
             inverse,
             [" -> ".join(reversed(item.split(" -> "))) for item in forward],
         )
-
-    def test_dtype_cast_endpoints_swap_between_directions(self):
-        # Both directions look the rule up by the *model*-side name, so one key
-        # template drives both and only the endpoint order differs. Getting the
-        # order wrong silently casts the wrong way, so pin the literal suffix.
-        model = _NestedModel()
-        ctx = _context(
-            checkpoint_name_prefix="hf",
-            dtype_rules={
-                "stem.weight": {
-                    "checkpoint_dtype": "float32",
-                    "model_dtype": "bfloat16",
-                }
-            },
-        )
-
-        self.assertEqual(
-            model.gen_aoa_statements(ctx),
-            [
-                "hf.stem.weight -> model.stem.weight"
-                ", src_dtype='float32', dst_dtype='bfloat16'",
-                # Unmatched param: the rule must not leak onto it.
-                "hf.block.proj.weight -> model.block.proj.weight",
-            ],
-        )
-        self.assertEqual(
-            model.gen_inv_aoa_statements(ctx),
-            [
-                "model.stem.weight -> hf.stem.weight"
-                ", src_dtype='bfloat16', dst_dtype='float32'",
-                "model.block.proj.weight -> hf.block.proj.weight",
-            ],
-        )
-
-    def test_dtype_cast_defeats_the_same_name_skip(self):
-        # A cast is a real transform, so it must keep an otherwise identity
-        # statement alive -- the ``cast`` half of ``should_skip``, reached
-        # through the recursion rather than called directly. ``block.proj``
-        # carries no rule and is still omitted.
-        model = _NestedModel()
-        ctx = _context(
-            checkpoint_name_prefix="model",
-            dtype_rules={
-                "stem.weight": {
-                    "checkpoint_dtype": "float32",
-                    "model_dtype": "bfloat16",
-                }
-            },
-        )
-
-        self.assertEqual(
-            model.gen_aoa_statements(ctx),
-            [
-                "model.stem.weight -> model.stem.weight"
-                ", src_dtype='float32', dst_dtype='bfloat16'"
-            ],
-        )
-        self.assertEqual(
-            model.gen_inv_aoa_statements(ctx),
-            [
-                "model.stem.weight -> model.stem.weight"
-                ", src_dtype='bfloat16', dst_dtype='float32'"
-            ],
-        )
-
-    def test_equal_dtype_endpoints_emit_no_cast(self):
-        # A rule whose endpoints agree is a no-op, not a transform: the suffix
-        # is empty in both directions, so the identity skip applies again.
-        model = _NestedModel()
-        ctx = _context(
-            checkpoint_name_prefix="model",
-            dtype_rules={
-                "stem.weight": {
-                    "checkpoint_dtype": "bfloat16",
-                    "model_dtype": "bfloat16",
-                }
-            },
-        )
-
-        self.assertEqual(model.gen_aoa_statements(ctx), [])
-        self.assertEqual(model.gen_inv_aoa_statements(ctx), [])
-
-    def test_ambiguous_dtype_cast_rule_raises(self):
-        # A literal template and a placeholder template can both match the same
-        # name. Picking either silently would make the emitted cast depend on
-        # dict order, so the lookup refuses instead.
-        model = paddle.nn.Layer()
-        model.layers = paddle.nn.LayerList([_Leaf()])
-        ctx = _context(
-            checkpoint_name_prefix="hf",
-            dtype_rules={
-                "layers.$LAYER_ID.weight": {
-                    "checkpoint_dtype": "float32",
-                    "model_dtype": "bfloat16",
-                },
-                "layers.0.weight": {
-                    "checkpoint_dtype": "float32",
-                    "model_dtype": "float16",
-                },
-            },
-        )
-
-        for gen in (model.gen_aoa_statements, model.gen_inv_aoa_statements):
-            with self.assertRaisesRegex(
-                ValueError, "ambiguous dtype cast rule for 'layers.0.weight'"
-            ):
-                gen(ctx, structured_name_prefix="model.")
-
-    def test_dtype_cast_rule_missing_an_endpoint_raises(self):
-        # A half-declared rule cannot be formatted in either direction; failing
-        # at lookup names the offending template instead of raising a KeyError
-        # deep inside the formatter.
-        model = _NestedModel()
-        ctx = _context(
-            checkpoint_name_prefix="hf",
-            dtype_rules={"stem.weight": {"checkpoint_dtype": "float32"}},
-        )
-
-        for gen in (model.gen_aoa_statements, model.gen_inv_aoa_statements):
-            with self.assertRaisesRegex(
-                ValueError,
-                r"rule 'stem.weight' \(matched by 'stem.weight'\) is missing "
-                r"\['model_dtype'\]",
-            ):
-                gen(ctx)
 
     def test_pp_mapping_uses_pre_mapping_structured_name(self):
         model = paddle.nn.Layer()
@@ -353,90 +230,71 @@ class TestGenAOAStatements(unittest.TestCase):
             ],
         )
 
-    def test_aoa_name_scope_reroots_mtp_subtree_during_recursion(self):
-        # An MTP subtree whose logical root differs from its actual module
-        # root. The scope re-roots the checkpoint-relative path so the emitted
-        # checkpoint name follows the logical (mtp) layout, independent of the
-        # live module path used on the model side.
+    def test_drop_segment_lets_an_mtp_subtree_reuse_layer_mapping(self):
+        # An MTP block holds its transformer layer one module deeper than the
+        # checkpoint does. Dropping that segment before the lookup is what lets
+        # the rule written for an ordinary layer hit inside the subtree; the
+        # model side keeps the live module path.
         name_mapping = {
-            "weight": "weight",
+            "model.layers.$LAYER_ID.mlp.down_proj.weight": (
+                "hf.layers.$LAYER_ID.ffn.w2.weight"
+            ),
         }
         model = paddle.nn.Layer()
-        model.mtp = paddle.nn.Layer()
-        model.mtp.block = _Leaf()
-        scope = AOANameScope(
-            checkpoint_prefix="mtp.0",
-            logical_model_prefix="model.layers.1",
-            actual_model_prefix="model.mtp.block",
-        )
+        model.transformer_layer = paddle.nn.Layer()
+        model.transformer_layer.mlp = paddle.nn.Layer()
+        model.transformer_layer.mlp.down_proj = _Leaf()
         ctx = _context(checkpoint_name_prefix="hf", name_mapping=name_mapping)
 
-        forward = model.mtp.block.gen_aoa_statements(
+        forward = model.gen_aoa_statements(
             ctx,
-            structured_name_prefix="model.mtp.block.",
-            aoa_name_scope=scope,
+            structured_name_prefix="model.layers.13.",
+            checkpoint_lookup_drop_segment="transformer_layer",
+        )
+        inverse = model.gen_inv_aoa_statements(
+            ctx,
+            structured_name_prefix="model.layers.13.",
+            checkpoint_lookup_drop_segment="transformer_layer",
         )
 
-        self.assertEqual(len(forward), 1)
-        source, target = forward[0].split(" -> ")
-        # Checkpoint side is re-rooted under the logical mtp path; model side
-        # keeps the live module path.
-        self.assertTrue(source.startswith("hf.mtp.0"))
-        self.assertTrue(target.startswith("model.mtp.block"))
+        self.assertEqual(
+            forward,
+            [
+                "hf.layers.13.ffn.w2.weight"
+                " -> model.layers.13.transformer_layer.mlp.down_proj.weight"
+            ],
+        )
+        self.assertEqual(
+            inverse,
+            [
+                "model.layers.13.transformer_layer.mlp.down_proj.weight"
+                " -> hf.layers.13.ffn.w2.weight"
+            ],
+        )
 
-    def test_aoa_name_scope_with_non_identity_mapping_threaded_from_root(self):
-        # Stronger scope test: start from a root model, use a non-identity
-        # checkpoint_name_mapping (leaf rename), and verify aoa_name_scope is
-        # correctly threaded through multi-level recursion.
-        name_mapping = {
-            "layers.$LAYER_ID.mlp.down_proj.weight": (
-                "layers.$LAYER_ID.ffn.w2.weight"
-            ),
-        }
+    def test_drop_segment_is_a_noop_for_children_without_it(self):
+        # The subtree owner passes one value down to every child, including the
+        # ones that sit directly under the block rather than under the nested
+        # transformer layer.
         model = paddle.nn.Layer()
-        model.mtp = paddle.nn.Layer()
-        model.mtp.mlp = paddle.nn.Layer()
-        model.mtp.mlp.down_proj = _Leaf()
-        scope = AOANameScope(
-            checkpoint_prefix="mtp.0",
-            logical_model_prefix="model.layers.1",
-            actual_model_prefix="model.mtp",
-        )
-        pp_mapping = {
-            "model.mtp.mlp.down_proj.weight": (
-                "model.mtp.mlp.down_proj.weight"
-            ),
-        }
-        ctx = _context(
-            checkpoint_name_prefix="hf",
-            pp_mapping=pp_mapping,
-            name_mapping=name_mapping,
-        )
+        model.enorm = _Leaf()
+        model.transformer_layer = paddle.nn.Layer()
+        model.transformer_layer.norm = _Leaf()
+        ctx = _context(checkpoint_name_prefix="hf")
 
-        # Start from root's child (mtp), threading aoa_name_scope down.
-        forward = model.mtp.gen_aoa_statements(
+        forward = model.gen_aoa_statements(
             ctx,
-            structured_name_prefix="model.mtp.",
-            aoa_name_scope=scope,
+            structured_name_prefix="model.layers.13.",
+            checkpoint_lookup_drop_segment="transformer_layer",
         )
 
-        self.assertEqual(len(forward), 1)
-        # Should map through layers.1.mlp.down_proj.weight -> layers.1.ffn.w2.weight,
-        # then strip layers.1 and re-anchor under mtp.0.
         self.assertEqual(
-            forward[0],
-            "hf.mtp.0.ffn.w2.weight -> model.mtp.mlp.down_proj.weight",
-        )
-
-        # Inverse should produce the reversed pair.
-        inverse = model.mtp.gen_inv_aoa_statements(
-            ctx,
-            structured_name_prefix="model.mtp.",
-            aoa_name_scope=scope,
-        )
-        self.assertEqual(
-            inverse[0],
-            "model.mtp.mlp.down_proj.weight -> hf.mtp.0.ffn.w2.weight",
+            forward,
+            [
+                "hf.layers.13.enorm.weight -> model.layers.13.enorm.weight",
+                "hf.layers.13.norm.weight"
+                " -> model.layers.13.transformer_layer.norm.weight",
+            ],
         )
 
     def test_custom_model_name_prefix_resolves_correctly(self):
@@ -451,9 +309,13 @@ class TestGenAOAStatements(unittest.TestCase):
                 "model.language_model.layers.proj.weight"
             ),
         }
-        # A leaf mapping that renames "proj.weight" -> "linear.weight"
+        # A leaf mapping that renames "proj.weight" -> "linear.weight"; both
+        # sides are absolute, so the key carries the tower root and the value
+        # carries the checkpoint root.
         name_mapping = {
-            "layers.proj.weight": "layers.linear.weight",
+            "model.language_model.layers.proj.weight": (
+                "hf.layers.linear.weight"
+            ),
         }
         ctx = _context(
             checkpoint_name_prefix="hf",
@@ -465,9 +327,8 @@ class TestGenAOAStatements(unittest.TestCase):
         forward = model.gen_aoa_statements(ctx, structured_name_prefix="model.")
         self.assertEqual(len(forward), 1)
         # single_name = "model.language_model.layers.proj.weight"
-        # strip "model.language_model" -> "layers.proj.weight"
-        # match mapping -> "layers.linear.weight"
-        # checkpoint = "hf.layers.linear.weight"
+        # matches the key as written -> "hf.layers.linear.weight", which is
+        # already the full checkpoint name.
         self.assertEqual(
             forward[0],
             "hf.layers.linear.weight"

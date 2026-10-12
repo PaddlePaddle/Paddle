@@ -450,11 +450,11 @@ void SeedInferMeta(int seed, MetaTensor* out) {
 }
 
 void TruncatedGaussianRandomInferMeta(const std::vector<int>& shape,
-                                      float mean,
-                                      float std,
+                                      double mean,
+                                      double std,
                                       int seed,
-                                      float a,
-                                      float b,
+                                      double a,
+                                      double b,
                                       DataType dtype,
                                       MetaTensor* out) {
   auto out_dims = make_ddim(shape);

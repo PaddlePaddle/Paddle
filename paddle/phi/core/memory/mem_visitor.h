@@ -137,6 +137,16 @@ class FreeMemoryMetricsVisitor : public AllocatorComputeStreamVisitor {
    */
   void Visit(VirtualMemoryAutoGrowthBestFitAllocator* allocator) override;
 
+#ifdef PADDLE_WITH_CUDA
+  /**
+   * @brief Implements the visit operation for VMMAutoGrowthBestFitAllocatorV2.
+   * Records the largest and total mapped-free block sizes of the v2 allocator
+   * so that vmm_max_free_size works for the v2 VMM allocator as well.
+   * @param allocator The VMMAutoGrowthBestFitAllocatorV2 instance to visit.
+   */
+  void Visit(VMMAutoGrowthBestFitAllocatorV2* allocator) override;
+#endif
+
   /**
    * @brief Retrieves the size of the largest free block found during the
    * visitation process.
