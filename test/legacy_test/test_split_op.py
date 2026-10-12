@@ -211,8 +211,8 @@ class TestSplitOpZeroSize3(TestSplitOpZeroSize):
     def init_data(self):
         self.x = np.random.random((5, 0, 12)).astype(self.dtype)
         self.axis = 1
-        self.sections = [6, 0, 6]
-        self.indices_or_sections = [6, 6]
+        self.sections = [0, 0, 0]
+        self.indices_or_sections = [0, 0]
 
 
 # attr(sections) is list containing Tensor

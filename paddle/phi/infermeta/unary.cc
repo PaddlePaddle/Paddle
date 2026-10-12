@@ -4950,7 +4950,11 @@ void FillSplitOutDims(const MetaTensor& x,
                       const std::vector<int64_t>& sections_vec,
                       std::vector<MetaTensor*>* out) {
   std::vector<DDim> out_dims(sections_vec.size(), x.dims());
-  if (x.dims().at(axis_value) > 0) {
+  // A statically-known split axis (size >= 0, including an empty 0-size axis)
+  // must take its real per-section size here. Only a *dynamic* unknown axis
+  // (size < 0) is left as -1; such inputs never reach this helper because both
+  // callers route them to the degenerate branch beforehand.
+  if (x.dims().at(axis_value) >= 0) {
     for (size_t i = 0; i < sections_vec.size(); ++i) {
       out_dims[i][axis_value] = sections_vec[i];
     }
