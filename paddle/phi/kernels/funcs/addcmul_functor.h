@@ -28,11 +28,15 @@
 namespace phi {
 namespace funcs {
 
+// The two host-only helpers below are static, so the CPU kernels run their own
+// copy rather than the one in the .cu objects, which the coverage build does
+// not instrument.
+
 // Whether value overflows type To, the same as PyTorch: inf and nan can be
 // cast to floating-point types, and negative values can wrap around for
 // unsigned integer types.
 template <typename To, typename From>
-bool AddcmulValueOverflows(From value) {
+static bool AddcmulValueOverflows(From value) {
   using Limits = std::numeric_limits<To>;
   if constexpr (std::is_floating_point<From>::value) {
     if (Limits::has_infinity && std::isinf(value)) {
@@ -55,7 +59,8 @@ bool AddcmulValueOverflows(From value) {
 // Converts value to the computation type of T, raising an error if it
 // overflows, the same as PyTorch.
 template <typename T>
-typename phi::dtype::MPTypeTrait<T>::Type GetAddcmulValue(const Scalar& value) {
+static typename phi::dtype::MPTypeTrait<T>::Type GetAddcmulValue(
+    const Scalar& value) {
   using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
   using RealType = phi::dtype::Real<MPType>;
   bool overflow = false;

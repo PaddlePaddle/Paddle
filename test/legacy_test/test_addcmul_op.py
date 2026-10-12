@@ -24,6 +24,10 @@ from paddle.base.framework import _dygraph_guard
 HAS_CUDA = (
     paddle.is_compiled_with_cuda() and paddle.device.cuda.device_count() > 0
 )
+# Without stride kernels, as on the Linux-XPU CI, transpose returns a copy.
+USE_STRIDE_KERNEL = paddle.get_flags('FLAGS_use_stride_kernel')[
+    'FLAGS_use_stride_kernel'
+]
 NAMES = ('input', 'tensor1', 'tensor2', 'upstream')
 
 
@@ -191,6 +195,7 @@ class TestAddcmulAPI(AddcmulTestBase):
                 expected = arrays[0] - 0.5 * arrays[1] * arrays[2]
                 self.check(arrays, expected, value=-0.5)
 
+    @unittest.skipUnless(USE_STRIDE_KERNEL, 'FLAGS_use_stride_kernel is off')
     def test_noncontiguous_inputs(self):
         arrays = [
             np.arange(6, dtype='float64').reshape(2, 3) + i for i in range(3)
@@ -568,6 +573,7 @@ class TestAddcmulGrad(AddcmulTestBase):
                         grad.astype('float32').numpy(), reference
                     )
 
+    @unittest.skipUnless(USE_STRIDE_KERNEL, 'FLAGS_use_stride_kernel is off')
     def test_first_gradient_noncontiguous(self):
         for dtype, value in (('float64', -0.75), ('complex128', 1 + 2j)):
             with self.subTest(dtype=dtype):
