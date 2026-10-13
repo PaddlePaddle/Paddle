@@ -744,13 +744,16 @@ void MatmulGradInferMeta(const MetaTensor& x,
   // forward/backward contract and torch).
   //
   // Unlike the forward, only enforce when both contraction dims are concrete
-  // (!= -1). The forward runs this check at graph-build time with
-  // is_runtime=false so an unknown (-1) dim short-circuits it, whereas the
-  // backward InferMeta is invoked with the default MetaConfig (is_runtime=true)
-  // even at graph-build time. Keying on `config.is_runtime` here would wrongly
-  // reject legal dynamic-shape graphs (e.g. InputSpec([-1, -1])). A real
-  // runtime tensor never carries a -1 dim, so requiring both dims to be
-  // concrete still catches every genuine K mismatch (including K=0 vs N).
+  // (!= -1), independent of `config.is_runtime`. `is_runtime` is not a reliable
+  // signal here because it differs across call paths: the PIR op-build invokes
+  // this function with MetaConfig(false, false) (it is registered in
+  // _INFERMETA_NEED_META_CONFIG in op_build_gen.py), while dygraph and other
+  // paths use the default MetaConfig (is_runtime=true) even at graph-build
+  // time. Keying on `config.is_runtime` would therefore wrongly reject legal
+  // dynamic-shape graphs (e.g. InputSpec([-1, -1])) on the is_runtime=true
+  // paths. A real runtime tensor never carries a -1 dim, so requiring both dims
+  // to be concrete catches every genuine K mismatch (including K=0 vs N) on
+  // every path.
   std::vector<int64_t> dims_x = common::vectorize(x.dims());
   std::vector<int64_t> dims_y = common::vectorize(y.dims());
   const auto ndims_x = dims_x.size();
