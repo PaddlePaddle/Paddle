@@ -80,7 +80,7 @@ void StridedElementwiseCopyKernel(const Context& dev_ctx,
                        strides_vec);
 
   auto offset_calc =
-      funcs::make_offset_calculator_put<2, true>(desired_shape, strides_array);
+      funcs::MakeOffsetCalculatorPut<2, true>(desired_shape, strides_array);
 
   constexpr int block_size = 128;
   constexpr int loop_size = 4;

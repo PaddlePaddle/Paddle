@@ -1928,6 +1928,33 @@ void ExpandAsInferMeta(const MetaTensor& x,
                         "to %d. But received: rank %u.",
                         MAX_RANK_SUPPORTED,
                         target_shape.size()));
+  // Validate the expand contract per dimension here instead of only inside the
+  // kernels: a dimension of x can be expanded only when it is 1 (singleton) or
+  // already equals the target size, matching torch. Doing it in InferMeta makes
+  // the check device-independent (cpu/gpu/xpu share it) and, crucially, runs
+  // even for 0-size inputs, which every kernel otherwise skips through its
+  // `x.numel() == 0` early return.
+  auto vec_x_dims = vectorize(x_dims);
+  auto diff = target_shape.size() - vec_x_dims.size();
+  vec_x_dims.insert(vec_x_dims.begin(), diff, 1);
+  for (size_t i = 0; i < vec_x_dims.size(); ++i) {
+    // Skip dynamic (unknown) sizes on either side.
+    if (target_shape[i] < 0 || vec_x_dims[i] < 0) {
+      continue;
+    }
+    PADDLE_ENFORCE_EQ(
+        vec_x_dims[i] == 1 || vec_x_dims[i] == target_shape[i],
+        true,
+        common::errors::InvalidArgument(
+            "The expanded size of the tensor (%d) must match the existing "
+            "size (%d) at non-singleton dimension %d. Target sizes: [%s]. "
+            "Tensor sizes: [%s].",
+            target_shape[i],
+            vec_x_dims[i],
+            static_cast<int>(i),
+            make_ddim(target_shape),
+            x_dims));
+  }
   out->set_dims(make_ddim(target_shape));
   out->set_dtype(x.dtype());
 #undef MAX_RANK_SUPPORTED

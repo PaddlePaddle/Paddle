@@ -38,6 +38,40 @@ std::mutex CUDAVirtualMemAllocator::base_ptr_handle_mu_;
 std::unordered_map<void*, CUmemGenericAllocationHandle>
     CUDAVirtualMemAllocator::base_ptr_handle_map_;
 
+std::mutex CUDAVirtualMemAllocator::ipc_exported_mu_;
+std::map<uintptr_t, uintptr_t> CUDAVirtualMemAllocator::ipc_exported_ranges_;
+
+void CUDAVirtualMemAllocator::MarkIPCExported(void* base_ptr, size_t size) {
+  if (base_ptr == nullptr || size == 0) return;
+  auto begin = reinterpret_cast<uintptr_t>(base_ptr);
+  auto end = begin + size;
+  std::lock_guard<std::mutex> guard(ipc_exported_mu_);
+  auto it = ipc_exported_ranges_.find(begin);
+  if (it == ipc_exported_ranges_.end() || it->second < end) {
+    ipc_exported_ranges_[begin] = end;
+  }
+}
+
+bool CUDAVirtualMemAllocator::AnyIPCExportedInRange(void* begin, size_t size) {
+  if (begin == nullptr || size == 0) return false;
+  auto query_begin = reinterpret_cast<uintptr_t>(begin);
+  auto query_end = query_begin + size;
+  std::lock_guard<std::mutex> guard(ipc_exported_mu_);
+  if (ipc_exported_ranges_.empty()) return false;
+  // Check the range whose begin is the greatest value <= query_begin (it may
+  // overlap from the left), plus any range starting inside the query range.
+  auto it = ipc_exported_ranges_.upper_bound(query_begin);
+  if (it != ipc_exported_ranges_.begin()) {
+    auto prev = it;
+    --prev;
+    if (prev->second > query_begin) return true;  // overlaps from the left
+  }
+  if (it != ipc_exported_ranges_.end() && it->first < query_end) {
+    return true;  // an exported range starts inside the query range
+  }
+  return false;
+}
+
 CUDAVirtualMemAllocator::CUDAVirtualMemAllocator(const GPUPlace& place)
     : place_(place), virtual_mem_base_(0), prop_{} {
   CUmemAllocationProp prop = {};

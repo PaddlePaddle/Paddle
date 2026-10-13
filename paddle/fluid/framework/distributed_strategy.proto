@@ -117,6 +117,7 @@ message DygraphShardingConfig {
   optional NCCLConfig check_nccl_config = 12;
   optional int32 offload_opt_buffer_size = 13 [ default = -1 ];
   optional bool comm_group_call_opt = 14 [ default = false ];
+  optional bool machine_balanced_2d_partition = 15 [ default = false ];
 }
 
 message HybridConfig {

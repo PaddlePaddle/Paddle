@@ -13,13 +13,21 @@
 # limitations under the License.
 
 
+import os
+import shutil
+import tempfile
+
+import numpy as np
+
 import paddle
 import paddle.nn.functional as F
 from paddle import nn
 from paddle.autograd import PyLayer
 from paddle.distributed import fleet
 from paddle.distributed.fleet.utils import mix_precision_utils
+from paddle.distributed.fsdp import fully_shard_fusion
 from paddle.distributed.fsdp.fully_shard import fully_shard
+from paddle.optimizer.muon import MuonParamInfo
 
 HIDDEN = 16
 INTER = 32
@@ -28,6 +36,10 @@ NUM_LAYERS = 6
 STEPS = 5
 TOKENS = 64
 ACCUM_STEPS = 2
+MUON_MATS = 4
+MUON_LAYERS = 2
+MUON_STEPS = 1
+MUON_MATS_DOWN = 3
 
 
 class EPAllGather(PyLayer):
@@ -231,7 +243,7 @@ def train_moe(model, optimizer, data, accum_steps=1):
     for i in range(0, len(data), accum_steps):
         for x in data[i : i + accum_steps]:
             model.train()
-            with paddle.amp.auto_cast(level="O1", dtype="bfloat16"):
+            with paddle.amp.auto_cast(level="O1", dtype="float16"):
                 loss = model(x).mean()
             loss_md5s.append(loss._md5sum())
             loss.backward()
@@ -254,7 +266,7 @@ def run_moe(ep_degree):
     data = [paddle.randn([TOKENS, HIDDEN]) for _ in range(STEPS)]
 
     stage1_model = mix_precision_utils.MixPrecisionLayer(
-        stage1_model, dtype="bfloat16"
+        stage1_model, dtype="float16"
     )
     stage1_optimizer = build_moe_optimizer(stage1_model)
     stage1_loss_md5s = train_moe(
@@ -271,7 +283,7 @@ def run_moe(ep_degree):
             fsdp_model, enable_tensor_fusion_and_overlap=enable_overlap
         )
         fsdp_model = mix_precision_utils.MixPrecisionLayer(
-            fsdp_model, dtype="bfloat16"
+            fsdp_model, dtype="float16"
         )
         fsdp_loss_md5s = train_moe(
             fsdp_model,
@@ -289,5 +301,405 @@ def run_moe(ep_degree):
         )
 
 
+class MuonStackedLayer(TransformerLayer):
+    """Layer whose weights are 3D stacks, like Muon expert params.
+
+    Subclasses TransformerLayer only so FSDP treats it as a unit:
+    ``is_fsdp_unit`` matches class names along the MRO.
+    """
+
+    def __init__(self, hidden, inter, num_mats, num_mats_down=None, low=None):
+        nn.Layer.__init__(self)
+        self.attn = nn.Linear(hidden, hidden, bias_attr=False)
+        self.w_up = self.create_parameter(shape=[num_mats, hidden, inter])
+        self.w_down = self.create_parameter(
+            shape=[num_mats_down or num_mats, inter, hidden]
+        )
+        if low is not None:
+            self.w_low = self.create_parameter(
+                shape=[num_mats_down or num_mats, hidden, hidden], dtype=low
+            )
+
+    def forward(self, x):
+        x = x + self.attn(x)
+        for i in range(self.w_up.shape[0]):
+            h = F.silu(paddle.matmul(x, self.w_up[i]))
+            x = x + paddle.matmul(h, self.w_down[i % self.w_down.shape[0]])
+        w_low = getattr(self, "w_low", None)
+        if w_low is not None:
+            for i in range(w_low.shape[0]):
+                h = paddle.matmul(x.astype(w_low.dtype), w_low[i])
+                x = x + F.silu(h.astype(x.dtype))
+        return x
+
+
+class MuonModel(nn.Layer):
+    def __init__(self, num_mats_down=None, low=None):
+        super().__init__()
+        self.embed = nn.Linear(HIDDEN, HIDDEN, bias_attr=False)
+        self.layers = nn.LayerList(
+            [
+                MuonStackedLayer(
+                    HIDDEN, INTER, MUON_MATS, num_mats_down, low=low
+                )
+                for _ in range(MUON_LAYERS)
+            ]
+        )
+        self.head = nn.Linear(HIDDEN, 2, bias_attr=False)
+
+    def forward(self, x):
+        x = self.embed(x)
+        for layer in self.layers:
+            x = layer(x)
+        return self.head(x)
+
+
+def tag_muon_params(model):
+    info_map = {}
+    for layer in model.layers:
+        stacks = [layer.w_up, layer.w_down]
+        w_low = getattr(layer, "w_low", None)
+        if w_low is not None:
+            stacks.append(w_low)
+        for param in stacks:
+            param.use_muon = True
+            info_map[param.name] = MuonParamInfo(use_muon=True)
+    return info_map
+
+
+def train_muon(model, info_map, ns_per_matrix, data, probe=None):
+    """Train with Muon under FSDP.
+
+    ``probe(step, fsdp_context)`` runs after every step, for tests that need to
+    inspect per-step buffer state.
+    """
+    model = fully_shard(model)
+    fsdp_context = model._fsdp_context
+    model = mix_precision_utils.MixPrecisionLayer(model, dtype="float16")
+    optimizer = paddle.optimizer.Muon(
+        learning_rate=0.001,
+        parameters=[p for p in model.parameters() if p.trainable],
+        weight_decay=0.0,
+        muon_param_info_map=info_map,
+        ns_per_matrix=ns_per_matrix,
+        multi_precision=True,
+    )
+    optimizer = mix_precision_utils.MixPrecisionOptimizer(optimizer)
+    losses = []
+    for step, x in enumerate(data):
+        model.train()
+        with paddle.amp.auto_cast(level="O1", dtype="float16"):
+            loss = model(x).mean()
+        losses.append(float(loss.astype("float32")))
+        loss.backward()
+        optimizer.step()
+        if probe is not None:
+            probe(step, fsdp_context)
+        optimizer.clear_grad()
+    return losses, fsdp_context, optimizer._inner_opt
+
+
+def muon_groups_of(fsdp_context):
+    return [
+        group
+        for group in fsdp_context.buffer_manager.buffer_groups
+        if group.use_muon and group.grads_buffer is not None
+    ]
+
+
+def gather_muon_params(fsdp_context):
+    """Every Muon group's full params buffer, gathered on all ranks."""
+    buffers = {}
+    for gid, group in enumerate(fsdp_context.buffer_manager.buffer_groups):
+        if not group.use_muon or group.grads_buffer is None:
+            continue
+        params_buffer = group.params_buffer
+        buffer = params_buffer.data_buffer
+        if params_buffer.is_sharded:
+            parts = []
+            paddle.distributed.all_gather(parts, buffer, group=group.fsdp_group)
+            buffer = paddle.concat(parts)
+        buffers[gid] = buffer.astype("float32").numpy()
+    return buffers
+
+
+def run_muon_shard():
+    """Matrix-aligned Muon sharding must match the dense element-shard path.
+
+    Reuses the topology ``run_moe`` already initialized. These params are not
+    tagged as experts, so their FSDP group is the sharding group and spans
+    every rank, which is what makes a matrix-aligned shard possible on 2 cards.
+
+    Both must reach the same weights. One step, compared bitwise: they start
+    from the same weights, so an exact match pins down the shard mapping, the
+    grad reduction and the owner gather/scatter. Running longer would not be
+    bitwise comparable -- the sharded buffer is all-gathered before each
+    forward, and the resulting GEMM layout moves the loss by ~1e-5 per step
+    even when the weights are identical.
+    """
+    paddle.seed(2026)
+    matrix_model = MuonModel()
+    paddle.seed(2026)
+    dense_model = MuonModel()
+    dense_model.set_state_dict(matrix_model.state_dict())
+    matrix_info = tag_muon_params(matrix_model)
+    dense_info = tag_muon_params(dense_model)
+
+    paddle.seed(2026)
+    data = [paddle.randn([TOKENS, HIDDEN]) for _ in range(MUON_STEPS)]
+
+    origin_shard_numel = fully_shard_fusion._muon_3d_shard_numel
+    fully_shard_fusion._muon_3d_shard_numel = lambda *args, **kwargs: None
+    try:
+        dense_losses, dense_ctx, _ = train_muon(
+            dense_model, dense_info, True, data
+        )
+    finally:
+        fully_shard_fusion._muon_3d_shard_numel = origin_shard_numel
+
+    dense_groups = muon_groups_of(dense_ctx)
+    assert dense_groups
+    for group in dense_groups:
+        assert group.muon_shard_numel is None
+        assert group.muon_owner_rank is not None
+        assert group.params_buffer.is_sharded
+    dense_params = gather_muon_params(dense_ctx)
+
+    matrix_losses, matrix_ctx, matrix_opt = train_muon(
+        matrix_model, matrix_info, False, data
+    )
+
+    matrix_groups = muon_groups_of(matrix_ctx)
+    assert len(matrix_groups) == len(dense_groups)
+    for group in matrix_groups:
+        assert group.muon_shard_numel == HIDDEN * INTER, (
+            f"expected matrix-aligned sharding, got {group.muon_shard_numel}"
+        )
+        assert group.params_buffer.is_sharded
+        assert group.muon_owner_rank is None
+    assert matrix_opt._ns_per_matrix
+    matrix_params = gather_muon_params(matrix_ctx)
+
+    assert matrix_losses == dense_losses, (
+        f"the two paths did not start from the same weights: "
+        f"matrix={matrix_losses}, dense={dense_losses}"
+    )
+    assert sorted(matrix_params) == sorted(dense_params)
+    for gid, expected in dense_params.items():
+        np.testing.assert_array_equal(
+            matrix_params[gid],
+            expected,
+            err_msg=(
+                f"matrix-sharded Muon diverged from the dense path, group {gid}"
+            ),
+        )
+
+
+def run_muon_replicated():
+    paddle.seed(2026)
+    replicated_model = MuonModel(MUON_MATS_DOWN)
+    paddle.seed(2026)
+    dense_model = MuonModel(MUON_MATS_DOWN)
+    dense_model.set_state_dict(replicated_model.state_dict())
+    replicated_info = tag_muon_params(replicated_model)
+    dense_info = tag_muon_params(dense_model)
+
+    paddle.seed(2026)
+    data = [paddle.randn([TOKENS, HIDDEN]) for _ in range(2)]
+
+    origin_shard_numel = fully_shard_fusion._muon_3d_shard_numel
+    fully_shard_fusion._muon_3d_shard_numel = lambda *args, **kwargs: None
+    try:
+        dense_losses, dense_ctx, _ = train_muon(
+            dense_model, dense_info, True, data[:MUON_STEPS]
+        )
+    finally:
+        fully_shard_fusion._muon_3d_shard_numel = origin_shard_numel
+    dense_params = gather_muon_params(dense_ctx)
+
+    snapshot = {}
+
+    def probe(step, fsdp_context):
+        if step + 1 == MUON_STEPS:
+            snapshot.update(gather_muon_params(fsdp_context))
+
+    replicated_losses, ctx, _ = train_muon(
+        replicated_model, replicated_info, True, data, probe=probe
+    )
+
+    groups = muon_groups_of(ctx)
+    assert len(groups) == MUON_LAYERS, groups
+    my_rank = paddle.distributed.get_rank()
+    for group in groups:
+        assert group.muon_shard_numel is None
+        assert not group.params_buffer.is_sharded
+        assert group.muon_owner_rank is not None
+        if group.fsdp_group.ranks[group.muon_owner_rank] != my_rank:
+            assert group.grads_buffer._data_released
+
+    assert replicated_losses[:MUON_STEPS] == dense_losses, (
+        f"the two paths did not start from the same weights: "
+        f"replicated={replicated_losses[:MUON_STEPS]}, dense={dense_losses}"
+    )
+    assert sorted(snapshot) == sorted(dense_params)
+    for gid, expected in dense_params.items():
+        np.testing.assert_array_equal(
+            snapshot[gid],
+            expected,
+            err_msg=(
+                f"replicated Muon diverged from the dense path, group {gid}"
+            ),
+        )
+
+    ctx.set_grad_accum_steps(ACCUM_STEPS)
+    for group in ctx.buffer_manager.buffer_groups:
+        grads_buffer = group.grads_buffer
+        assert grads_buffer.grad_accum_steps == ACCUM_STEPS
+        assert grads_buffer.grad_scale == 1.0 / (
+            grads_buffer.grad_div * ACCUM_STEPS
+        )
+    ctx.all_gather_params()
+    for group in ctx.buffer_manager.buffer_groups:
+        for param in group.params:
+            assert param._is_initialized(), f"{param.name} not materialized"
+
+
+def build_muon_checkpoint_run(num_mats_down):
+    paddle.seed(2026)
+    model = MuonModel(num_mats_down, low="bfloat16")
+    info_map = tag_muon_params(model)
+    model = fully_shard(model)
+    fsdp_context = model._fsdp_context
+    model = mix_precision_utils.MixPrecisionLayer(model, dtype="float16")
+    inner = paddle.optimizer.Muon(
+        learning_rate=0.001,
+        parameters=[p for p in model.parameters() if p.trainable],
+        weight_decay=0.0,
+        muon_param_info_map=info_map,
+        multi_precision=True,
+    )
+    optimizer = mix_precision_utils.MixPrecisionOptimizer(inner)
+
+    def train_step(x):
+        model.train()
+        with paddle.amp.auto_cast(level="O1", dtype="float16"):
+            loss = model(x).mean()
+        loss.backward()
+        optimizer.step()
+        optimizer.clear_grad()
+
+    def state_dict():
+        state = dict(model.sharded_state_dict())
+        state.update(optimizer.sharded_state_dict())
+        return state
+
+    return fsdp_context, optimizer, inner, train_step, state_dict
+
+
+def check_muon_checkpoint(num_mats_down, ckpt_path, dense):
+    """Muon state saved through FSDP must restore a run that steps the same."""
+    paddle.seed(2026)
+    data = [paddle.randn([TOKENS, HIDDEN]) for _ in range(3)]
+
+    ctx, _, inner, train_step, state_dict = build_muon_checkpoint_run(
+        num_mats_down
+    )
+    train_step(data[0])
+    train_step(data[1])
+    assert inner._fsdp_state_dict_ctx is ctx, "Muon never bound FSDP"
+    groups = muon_groups_of(ctx)
+    matrix_sharded = all(g.muon_shard_numel is not None for g in groups)
+    assert matrix_sharded == (not dense and num_mats_down is None)
+
+    state = state_dict()
+    muon_names = {p.name for g in groups for p in g.params}
+    held = [
+        name
+        for name in inner._accumulators[inner._moment_acc_str]
+        if name in muon_names
+    ]
+    for name in held:
+        key = f"{ctx._muon_state_descs[name][0]}.moment1_0"
+        assert key in state, f"Muon state {key} missing from the checkpoint"
+        assert np.abs(state[key].local_tensor.numpy()).max() > 0, key
+    num_held = paddle.to_tensor([len(held)])
+    paddle.distributed.all_reduce(num_held)
+    if matrix_sharded:
+        assert int(num_held) >= len(muon_names), int(num_held)
+    else:
+        assert int(num_held) == len(muon_names), int(num_held)
+    masters = [name for name in inner._master_weights if name in muon_names]
+    for name in masters:
+        key = f"{ctx._muon_state_descs[name][0]}.w_0"
+        assert key in state, f"Muon master weight {key} missing"
+    num_masters = paddle.to_tensor([len(masters)])
+    paddle.distributed.all_reduce(num_masters)
+    assert int(num_masters), "the bf16 stack contributed no master weight"
+    saved = {
+        key: sharded.local_tensor.astype("float32").numpy()
+        for key, sharded in state.items()
+    }
+    paddle.distributed.save_state_dict(state, ckpt_path)
+    paddle.distributed.barrier()
+
+    train_step(data[2])
+    expected = gather_muon_params(ctx)
+
+    ctx, optimizer, inner, train_step, state_dict = build_muon_checkpoint_run(
+        num_mats_down
+    )
+    # Bind the wrapper, not the inner Muon: FSDP has to unwrap it.
+    ctx.bind_optimizer(optimizer)
+    optimizer.init_state_for_load()
+    state = state_dict()
+    assert sorted(state) == sorted(saved), sorted(set(state) ^ set(saved))
+    paddle.distributed.load_state_dict(state, ckpt_path)
+    for key, sharded in state.items():
+        np.testing.assert_array_equal(
+            sharded.local_tensor.astype("float32").numpy(),
+            saved[key],
+            err_msg=key,
+        )
+    train_step(data[2])
+    resumed = gather_muon_params(ctx)
+    assert sorted(resumed) == sorted(expected)
+    for gid, value in expected.items():
+        buffer = ctx.buffer_manager.buffer_groups[gid].params_buffer
+        low = buffer.data_buffer.dtype != paddle.float32
+        np.testing.assert_allclose(
+            resumed[gid],
+            value,
+            rtol=2e-2 if low else 1e-3,
+            atol=2e-3 if low else 1e-4,
+            err_msg=f"resumed Muon diverged, group {gid}",
+        )
+
+
+def run_muon_checkpoint():
+    ckpt_root = [None]
+    if paddle.distributed.get_rank() == 0:
+        ckpt_root = [tempfile.mkdtemp()]
+    paddle.distributed.broadcast_object_list(ckpt_root, src=0)
+    ckpt_root = ckpt_root[0]
+    try:
+        check_muon_checkpoint(None, os.path.join(ckpt_root, "matrix"), False)
+        origin_shard_numel = fully_shard_fusion._muon_3d_shard_numel
+        fully_shard_fusion._muon_3d_shard_numel = lambda *args, **kwargs: None
+        try:
+            check_muon_checkpoint(None, os.path.join(ckpt_root, "dense"), True)
+        finally:
+            fully_shard_fusion._muon_3d_shard_numel = origin_shard_numel
+        check_muon_checkpoint(
+            MUON_MATS_DOWN, os.path.join(ckpt_root, "replicated"), False
+        )
+    finally:
+        paddle.distributed.barrier()
+        if paddle.distributed.get_rank() == 0:
+            shutil.rmtree(ckpt_root, ignore_errors=True)
+
+
 if __name__ == '__main__':
     run_moe(2)
+    run_muon_shard()
+    run_muon_replicated()
+    run_muon_checkpoint()

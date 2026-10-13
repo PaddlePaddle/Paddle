@@ -44,6 +44,13 @@ class CUDAVirtualMemAllocator : public Allocator {
 
   static CUmemGenericAllocationHandle GetHandleFromBasePtr(void* base_ptr);
 
+  // IPC-export bookkeeping migrated from the v2 allocator. When a VMM chunk is
+  // exported for inter-process sharing (cuMemExportToShareableHandle) its
+  // virtual address range is pinned here so that ReleaseImpl / empty_cache will
+  // not unmap and release the physical backing out from under an importer.
+  static void MarkIPCExported(void* base_ptr, size_t size);
+  static bool AnyIPCExportedInRange(void* begin, size_t size);
+
  protected:
   void FreeImpl(phi::Allocation* allocation) override;
   phi::Allocation* AllocateImpl(size_t size) override;
@@ -65,6 +72,9 @@ class CUDAVirtualMemAllocator : public Allocator {
   static std::mutex base_ptr_handle_mu_;
   static std::unordered_map<void*, CUmemGenericAllocationHandle>
       base_ptr_handle_map_;
+  // IPC-exported virtual address ranges keyed by range begin -> range end.
+  static std::mutex ipc_exported_mu_;
+  static std::map<uintptr_t, uintptr_t> ipc_exported_ranges_;
 
   void InitOnce();
   static void RegisterHandle(void* base_ptr, CUmemGenericAllocationHandle h);
