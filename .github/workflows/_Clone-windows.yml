@@ -37,7 +37,7 @@ jobs:
       - name: Disable release branch CI
         if: ${{ github.base_ref == 'release/3.4' }}
         run: |
-          echo 请前往PaddleFleet仓库开发release/0.4分支
+          echo 请去 develop 分支开发
           exit /b 1
       - name: Git config
         run: |
