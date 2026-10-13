@@ -964,8 +964,28 @@ void MoePermuteKernel(const Context &dev_ctx,
         dev_ctx.stream()));
   }
 
-  // Handle empty input: initialize all outputs properly
-  if (X.numel() == 0) return;
+  // Rows that no token lands on are padding rows, and carry the same values
+  // filling_padding_rows_kernel writes: 0 for the data buffers, -1 (0xFF byte
+  // pattern on int32) for the index maps.
+  auto fill_padding_value = [&](DenseTensor *out, int byte_value) {
+    if (out->numel() == 0) return;
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        cudaMemsetAsync(out->data(),
+                        byte_value,
+                        out->numel() * SizeOf(out->dtype()),
+                        dev_ctx.stream()));
+  };
+
+  // Handle empty input: the output buffers are sized from tokens_per_expert
+  // rather than from X, so here every one of their rows is a padding row.
+  if (X.numel() == 0) {
+    fill_padding_value(X_unzipped, 0);
+    fill_padding_value(token_prob_unzipped, 0);
+    fill_padding_value(XScale_unzipped, 0);
+    fill_padding_value(zipped_expertwise_rowmap, 0xFF);
+    fill_padding_value(expert_indices, 0xFF);
+    return;
+  }
 
   // Preprocess
   constexpr int kEffectiveBlockSize = kPermuteBlockSize;
@@ -1005,6 +1025,13 @@ void MoePermuteKernel(const Context &dev_ctx,
                       dev_ctx.stream()));
 
   if (is_buffer_overridden) {
+    // The padding rows are only known to routemap_digest_kernel on the device,
+    // so the host cannot enumerate them the way the branch below does: clear
+    // the data buffers up front and let permute_kernel overwrite the rows that
+    // do own a token.  expert_indices was already filled above.
+    fill_padding_value(X_unzipped, 0);
+    fill_padding_value(XScale_unzipped, 0);
+    fill_padding_value(token_prob_unzipped, 0);
     dispatch_preprocess_w_override(dev_ctx,
                                    expert_routemap_topk,
                                    num_experts,
