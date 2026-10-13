@@ -407,6 +407,10 @@ def assign_sharded_weight(src, dst):
         buffer = paddle.zeros_like(dest_tensor)
         buffer._share_buffer_to(dest_tensor)
 
+    if ndim == 0:
+        paddle.assign(src.local_tensor, dest_tensor)
+        return
+
     for i in range(ndim):
         src_begin = src.global_offset[i]
         src_end = src_begin + src.local_shape[i]

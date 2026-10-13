@@ -531,6 +531,9 @@ class Muon(Optimizer):
         if isinstance(parameters, dict):
             parameters = self._update_param_group(parameters)
         for p in parameters:
+            if p.name.startswith(self._FSDP_FUSED_PREFIX):
+                self._ensure_accumulators(p, False, self._default_dict)
+                continue
             param_info = self._muon_param_info_map.get(p.name)
             if param_info is not None:
                 use_muon = param_info.use_muon
@@ -1079,6 +1082,8 @@ class Muon(Optimizer):
             )
             if hasattr(fsdp_context, "bind_decay_param_fun"):
                 fsdp_context.bind_decay_param_fun(self)
+            if hasattr(fsdp_context, "bind_optimizer"):
+                fsdp_context.bind_optimizer(self)
             self._maybe_force_per_matrix_ns(fsdp_context)
             if self._grad_clip is not None:
                 self._grad_clip.should_comm_on_shard_dim = True
