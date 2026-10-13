@@ -67,13 +67,19 @@ TEST(TCPStore, init) {
 }
 */
 
-#ifndef _WIN32
+#if !defined(_WIN32) && !defined(__APPLE__)
 // The libuv master daemon polls its uv loop on a background thread that can
 // outlive the destruction of glog's static state, so the callbacks reached
 // while a connection is torn down must not use glog. They report through a
 // stderr helper gated on FLAGS_v instead. These tests pin down both halves of
 // that contract: the diagnostics still appear when the verbosity is raised,
 // and nothing is printed at the default verbosity.
+//
+// The tests raise the verbosity by assigning FLAGS_v directly. That only
+// reaches the copy read by phi when both resolve to the same symbol, which is
+// the case with ELF symbol interposition. On macOS the test executable and the
+// phi dylib each link their own static glog and two-level namespaces keep the
+// two FLAGS_v apart, so the tests are limited to Linux-like platforms.
 namespace {
 
 // Captures whatever is written to fd 2 for the lifetime of the object.
@@ -133,12 +139,15 @@ class ScopedVerbosity {
   int saved_;
 };
 
+// The daemon listens on 0.0.0.0, so probe the same address: a port that is
+// only free on loopback may still be taken on another interface, and a failed
+// bind inside create_libuv_tcpstore takes the whole test binary down.
 std::uint16_t PickFreePort() {
   int fd = socket(AF_INET, SOCK_STREAM, 0);
   EXPECT_GE(fd, 0);
   struct sockaddr_in addr = {};
   addr.sin_family = AF_INET;
-  addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+  addr.sin_addr.s_addr = htonl(INADDR_ANY);
   addr.sin_port = 0;
   EXPECT_EQ(bind(fd, reinterpret_cast<struct sockaddr*>(&addr), sizeof(addr)),
             0);
@@ -264,6 +273,45 @@ TEST(LibUVMasterDaemon, ReportsMalformedMessageWhenVerbose) {
       WaitFor(&capture, "failed to process incoming client message", 60));
 
   close(fd);
+  daemon.reset();
+}
+
+// A reply to a peer that has already reset the connection fails inside
+// libuv's write and is reported through WriteUVContent::writeDone. The request
+// and the RST are both queued in the kernel before the daemon starts, so the
+// server reads the GET first, fails to write the reply, and only then sees the
+// reset on the read side.
+TEST(LibUVMasterDaemon, ReportsWriteFailureWhenVerbose) {
+  ScopedVerbosity verbosity(2);
+  std::uint16_t port = PickFreePort();
+  auto daemon = detail::create_libuv_tcpstore(port);
+
+  StderrCapture capture;
+  int fd = ConnectTo(port);
+  ASSERT_GE(fd, 0);
+  // GET followed by a 3-byte key; any GET is answered, even for a missing key.
+  const std::string key = "key";
+  std::vector<char> payload(sizeof(std::uint32_t) + sizeof(std::uint64_t) +
+                            key.size());
+  auto command = static_cast<std::uint32_t>(Command::GET);
+  std::uint64_t key_len = key.size();
+  memcpy(payload.data(), &command, sizeof(command));
+  memcpy(payload.data() + sizeof(command), &key_len, sizeof(key_len));
+  memcpy(payload.data() + sizeof(command) + sizeof(key_len),
+         key.data(),
+         key.size());
+  ASSERT_EQ(write(fd, payload.data(), payload.size()),
+            static_cast<ssize_t>(payload.size()));
+  struct linger abort_on_close = {1, 0};
+  setsockopt(
+      fd, SOL_SOCKET, SO_LINGER, &abort_on_close, sizeof(abort_on_close));
+  close(fd);
+  // Let the RST land before the server starts reading.
+  std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+  daemon->start();
+  EXPECT_TRUE(WaitFor(&capture, "write to client failed", 60));
+
   daemon.reset();
 }
 #endif
