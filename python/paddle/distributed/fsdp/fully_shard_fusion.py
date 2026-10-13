@@ -390,7 +390,6 @@ class FSDPBufferManager:
                 param.name == self.tie_param_name,
                 # A buffer must not mix params with and without weight decay.
                 bool(getattr(param, "no_weight_decay", False)),
-                # Nor Muon with AdamW: Muon needs the whole matrix, so its buffer isn't split element-wise.
                 bool(getattr(param, "use_muon", False)),
             )
             keyed_params.setdefault(key, []).append(param)
@@ -461,7 +460,6 @@ class FSDPBufferManager:
                 group.fsdp_group,
                 group.dtype,
                 is_params=True,
-                shard_buffer=not group.use_muon,
                 shard_buffer=shard_buffer,
                 shard_align_numel=muon_align,
             )
@@ -480,7 +478,6 @@ class FSDPBufferManager:
                     if group.is_expert_param or group.dtype == paddle.float32
                     else self.main_grad_dtype,
                     grad_div=self._fsdp_group.nranks,
-                    shard_buffer=not group.use_muon,
                     shard_buffer=grads_shard_buffer,
                     shard_align_numel=muon_align,
                 )
@@ -1304,10 +1301,6 @@ class FullyShardFusion:
                 flattened_range=flattened_range,
             )
         raise ValueError(f"FSDP cannot map Muon state '{key}'.")
-
-    def all_gather_params(self):
-        for group in self.buffer_manager.buffer_groups:
-            self.comm_manager.all_gather_params(group.params)
 
     def all_gather_params(self):
         for group in self.buffer_manager.buffer_groups:

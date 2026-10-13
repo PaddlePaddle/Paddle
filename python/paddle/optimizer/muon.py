@@ -1259,37 +1259,6 @@ class Muon(Optimizer):
             )
         return muon_entries + fused_entries
 
-        if fsdp_context is not None and hasattr(
-            fsdp_context, "broadcast_muon_params"
-        ):
-            fsdp_context.broadcast_muon_params()
-
-    _FSDP_FUSED_PREFIX = "fuse_params_"
-
-    def _fsdp_collect_params_grads(self, fsdp_context, params_grads):
-        muon_entries = (
-            fsdp_context.muon_params_grads()
-            if hasattr(fsdp_context, "muon_params_grads")
-            else [
-                (param, grad)
-                for param, grad in params_grads
-                if grad is not None and getattr(param, "use_muon", False)
-            ]
-        )
-        fused_entries = []
-        for group in fsdp_context.buffer_manager.buffer_groups:
-            if group.use_muon or group.grads_buffer is None:
-                continue
-            if group.params_buffer.data_buffer.stop_gradient:
-                continue
-            fused_entries.append(
-                (
-                    group.params_buffer.data_buffer,
-                    group.grads_buffer.data_buffer,
-                )
-            )
-        return muon_entries + fused_entries
-
     @framework.dygraph_only
     def step(self) -> None:
         params_grads = [
