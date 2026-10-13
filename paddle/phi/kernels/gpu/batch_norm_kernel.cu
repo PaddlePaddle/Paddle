@@ -38,6 +38,9 @@ COMMON_DECLARE_bool(cudnn_batchnorm_spatial_persistent);
 #ifdef PADDLE_WITH_HIP
 COMMON_DECLARE_bool(batch_norm_use_miopen);
 #endif
+#ifdef PADDLE_WITH_XPU_CADA
+COMMON_DECLARE_bool(xpu_cada_batch_norm_use_cudnn);
+#endif
 
 namespace phi {
 
@@ -726,8 +729,24 @@ void BatchNormKernel(const Context &dev_ctx,
       dims.data(),
       strides.data()));
   // Note: PERSISTENT not implemented for inference
+#ifdef PADDLE_WITH_XPU_CADA
+  // xtrans xpudnn 8.x does not support cudnnDeriveBNTensorDescriptor
+  // (returns XPUDNN_STATUS_NOT_SUPPORTED / UNIMPLEMENTED). Skip it unless
+  // the user explicitly forces the cudnn path (expected to fail at
+  // runtime; only for reproducing/diagnosing the xtrans gap) — we force
+  // the native CUDA kernel path below for inference by default.
+  if (FLAGS_xpu_cada_batch_norm_use_cudnn) {
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnDeriveBNTensorDescriptor(
+        bn_param_desc_,
+        data_desc_,
+        test_mode ? CUDNN_BATCHNORM_SPATIAL : mode_));
+  } else {
+    (void)bn_param_desc_;
+  }
+#else
   PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnDeriveBNTensorDescriptor(
       bn_param_desc_, data_desc_, test_mode ? CUDNN_BATCHNORM_SPATIAL : mode_));
+#endif
 #endif
 
   auto handle = dev_ctx.cudnn_handle();
@@ -841,6 +860,14 @@ void BatchNormKernel(const Context &dev_ctx,
 
 #else
     const bool use_native_kernel =
+#ifdef PADDLE_WITH_XPU_CADA
+        // xtrans xpudnn 8.x does not support
+        // cudnnBatchNormalizationForwardInference; use the native CUDA
+        // kernel for eval-mode BN by default. FLAGS_xpu_cada_batch_norm_use_cudnn
+        // can force the cudnn path for reproducing/diagnosing the xtrans
+        // gap, but it is expected to fail at runtime.
+        (!FLAGS_xpu_cada_batch_norm_use_cudnn) ||
+#endif
         (x_dims.size() == 2 ||
          (x_dims.size() == 3 && N >= CUDNN_SPATIAL_THRESHOLD_EVAL));
     if (use_native_kernel) {
