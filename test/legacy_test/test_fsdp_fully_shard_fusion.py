@@ -14,10 +14,8 @@
 
 """Single-process unit tests for ``paddle.distributed.fsdp.fully_shard_fusion``.
 
-The module is loaded directly from the source tree (not from an installed
-wheel, which may lag behind) so the tests always exercise the checked-out
-code. The three behaviours covered here are pure/host-side logic that needs
-no distributed launch:
+The three behaviours covered here are pure/host-side logic that needs no
+distributed launch:
 
 * ``_find_exposed_param_names`` -- which of a layer's own parameters leak into
   its outputs, including the bounded-depth walk.
@@ -26,41 +24,13 @@ no distributed launch:
   back untouched while routing the rest through the backward all_gather hook.
 """
 
-import importlib.util
-import os
-import sys
 import types
 import unittest
 
 import numpy as np
 
 import paddle
-
-
-def _load_module_under_test():
-    here = os.path.dirname(os.path.abspath(__file__))
-    src = os.path.normpath(
-        os.path.join(
-            here,
-            "..",
-            "..",
-            "python",
-            "paddle",
-            "distributed",
-            "fsdp",
-            "fully_shard_fusion.py",
-        )
-    )
-    spec = importlib.util.spec_from_file_location("fsf_under_test", src)
-    module = importlib.util.module_from_spec(spec)
-    # dataclass() looks the module up in sys.modules by __module__, so register
-    # it before executing the body.
-    sys.modules[spec.name] = module
-    spec.loader.exec_module(module)
-    return module
-
-
-fsf = _load_module_under_test()
+from paddle.distributed.fsdp import fully_shard_fusion as fsf
 
 
 class _NoopCommManager:
@@ -124,9 +94,6 @@ class _FakeLayer:
         self.pre_hook = hook
 
 
-# PLACEHOLDER_TESTS
-
-
 class TestFindExposedParamNames(unittest.TestCase):
     def _tensor(self):
         return paddle.to_tensor([1.0, 2.0])
@@ -171,9 +138,6 @@ class TestFindExposedParamNames(unittest.TestCase):
         )
 
 
-# PLACEHOLDER_TESTS2
-
-
 class TestFusedKernelGradHook(unittest.TestCase):
     """Covers the fp32 hand-off in the grad hook from ``_register_grad_hook_once``."""
 
@@ -211,9 +175,6 @@ class TestFusedKernelGradHook(unittest.TestCase):
         param.registered_hook(incoming)
         np.testing.assert_array_equal(param.main_grad.numpy(), [2.0, 4.0])
         self.assertFalse(incoming._is_initialized())
-
-
-# PLACEHOLDER_TESTS3
 
 
 class TestForwardPostHookTupleBranch(unittest.TestCase):
