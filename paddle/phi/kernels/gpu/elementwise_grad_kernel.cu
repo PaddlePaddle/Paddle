@@ -24,6 +24,7 @@
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
 #include "paddle/phi/kernels/gpu/elementwise_grad.h"
 #include "paddle/phi/kernels/impl/elementwise_grad_kernel_impl.h"
+#include "paddle/phi/kernels/impl/logaddexp_grad_kernel_impl.h"
 
 namespace phi {
 
@@ -419,6 +420,15 @@ PD_REGISTER_KERNEL(fmin_grad,
                    phi::float16,
                    phi::bfloat16,
                    int64_t) {}
+
+PD_REGISTER_KERNEL(logaddexp_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::LogAddExpGradKernel,
+                   float,
+                   double,
+                   phi::float16,
+                   phi::bfloat16) {}
 
 PD_REGISTER_KERNEL(maximum_grad,
                    GPU,

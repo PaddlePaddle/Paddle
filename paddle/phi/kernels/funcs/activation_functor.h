@@ -5487,14 +5487,14 @@ struct CudaLogGradFunctor<ComplexType<T>>
 
 template <typename T>
 struct CudaLog1pFunctor : public BaseActivationFunctor<T> {
-  using MT = typename MPTypeTrait<T>::Type;
-  MT one = static_cast<MT>(1.0f);
+  // Compute in double for double, float otherwise (incl. integral inputs).
+  using MT = std::conditional_t<std::is_same<T, double>::value, double, float>;
   using U = typename std::conditional_t<std::is_integral<T>::value, float, T>;
 
-  // log1p(x) = log(1 + x)
+  // log1p(x), not log(1 + x): forming 1 + x first loses the low bits of
+  // small x.
   __device__ __forceinline__ U operator()(const T arg_x) const {
-    MT x = static_cast<MT>(arg_x);
-    return static_cast<U>(log_local(one + x));
+    return static_cast<U>(::log1p(static_cast<MT>(arg_x)));
   }
 };
 

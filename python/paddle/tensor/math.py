@@ -907,6 +907,15 @@ def logaddexp(
             Tensor(shape=[3], dtype=float64, place=Place(cpu), stop_gradient=True,
             [-0.30685282, -0.68673831, -0.87307199])
     """
+    if in_dynamic_or_pir_mode():
+        # The native kernel is float-only; keep promoting integer inputs to
+        # float32 as the composite implementation below does.
+        if x.dtype in (paddle.int32, paddle.int64):
+            x = x.astype('float32')
+        if y.dtype in (paddle.int32, paddle.int64):
+            y = y.astype('float32')
+        return _C_ops.logaddexp(x, y, out=out)
+
     log_1p = paddle.log1p(paddle.exp(-paddle.abs(x - y)))
     _maximum = paddle.maximum(x, y)
     if _maximum.dtype == paddle.int32 or _maximum.dtype == paddle.int64:

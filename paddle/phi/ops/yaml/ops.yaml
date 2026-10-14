@@ -3355,6 +3355,17 @@
   backward : log_softmax_grad
   interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
 
+- op : logaddexp
+  args : (Tensor x, Tensor y)
+  output : Tensor(out)
+  infer_meta :
+    func : ElementwiseInferMeta
+  kernel :
+    func : logaddexp
+  backward : logaddexp_grad
+  interfaces : paddle::dialect::InferSymbolicShapeInterface
+  traits : pir::BinaryElementWiseTrait
+
 - op : logcumsumexp
   args : (Tensor x, int axis=-1, bool flatten=false, bool exclusive=false, bool reverse=false)
   output : Tensor(out)
