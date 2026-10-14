@@ -295,7 +295,6 @@ call :test_whl_package || goto test_whl_package_error
 call :test_unit || goto test_unit_error
 ::call :test_inference || goto test_inference_error
 ::call :test_inference_ut || goto test_inference_ut_error
-::call :check_change_of_unittest || goto check_change_of_unittest_error
 goto:success
 
 rem ------Build windows avx whl package------
@@ -866,18 +865,6 @@ echo    ==========================================
 exit /b 1
 
 rem ---------------------------------------------------------------------------------------------
-:check_change_of_unittest
-@ECHO OFF
-echo    ========================================
-echo    Step 6. Check whether deleting a unit test ...
-echo    ========================================
-
-%cache_dir%\tools\busybox64.exe bash %work_dir%\tools\windows\check_change_of_unittest.sh
-
-goto:eof
-
-:check_change_of_unittest_error
-exit /b 1
 
 rem ---------------------------------------------------------------------------------------------
 :test_inference_ut
