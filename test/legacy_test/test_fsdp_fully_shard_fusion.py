@@ -41,7 +41,13 @@ def _load_module_under_test():
     here = os.path.dirname(os.path.abspath(__file__))
     src = os.path.normpath(
         os.path.join(
-            here, "..", "..", "python", "paddle", "distributed", "fsdp",
+            here,
+            "..",
+            "..",
+            "python",
+            "paddle",
+            "distributed",
+            "fsdp",
             "fully_shard_fusion.py",
         )
     )
@@ -132,7 +138,9 @@ class TestFindExposedParamNames(unittest.TestCase):
     def test_bare_tensor_hit_and_miss(self):
         t = self._tensor()
         self.assertEqual(fsf._find_exposed_param_names(t, {t.name}), {t.name})
-        self.assertEqual(fsf._find_exposed_param_names(t, {"not-a-name"}), set())
+        self.assertEqual(
+            fsf._find_exposed_param_names(t, {"not-a-name"}), set()
+        )
 
     def test_tuple_returns_only_exposed_members(self):
         hidden, weight, bias = self._tensor(), self._tensor(), self._tensor()
