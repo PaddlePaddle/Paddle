@@ -952,9 +952,6 @@ class FusionBackwardHook(PyLayer):
         ctx.layer = layer
         ctx.comm_manager = comm_manager
         ctx.recursive = recursive
-        # [PATCH ernielite-fsdp] 记录 forward 的输入位置数（slot 数），
-        # backward 必须返回同样数量的"位置"，而不是同样数量的张量。
-        ctx._n_forward_slots = len(inputs)
         return inputs if len(inputs) > 1 else inputs[0]
 
     @staticmethod
@@ -967,15 +964,6 @@ class FusionBackwardHook(PyLayer):
 
         ctx.comm_manager.all_gather_params(trainable_params, is_backward=True)
 
-        # [PATCH ernielite-fsdp] duplicable slot 的返回结构修正。
-        # ERNIE5 GPTLMHead.forward 在 num_nextn_predict_layers>0 时返回 list
-        # [主分支 logits, MTP logits]，被当作一个 duplicable 输入位置（n_slots==1）。
-        # backward 拿到 2 个梯度，必须作为一个 list 返回该位置，否则 Paddle 报
-        # "number of outputs should be 1, but received 2"。两个梯度属于不同张量，
-        # 不能求和（求和可跑通但梯度错误，是静默数值错误）。
-        n_slots = getattr(ctx, "_n_forward_slots", len(args))
-        if n_slots == 1 and len(args) > 1:
-            return list(args)
         return args
 
 
