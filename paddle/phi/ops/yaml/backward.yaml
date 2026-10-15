@@ -2216,8 +2216,10 @@
   infer_meta :
     func : GeneralBinaryGradInferMeta
     param : [x, y]
+    spmd_rule : ElementwiseBinaryGradInferSpmd
   kernel :
     func : logaddexp_grad
+    data_type : out_grad
 
 - backward_op : logcumsumexp_grad
   forward : logcumsumexp(Tensor x, int axis=-1, bool flatten=false, bool exclusive=false, bool reverse=false) -> Tensor(out)

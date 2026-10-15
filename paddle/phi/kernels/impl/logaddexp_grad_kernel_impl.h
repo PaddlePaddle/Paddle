@@ -49,17 +49,9 @@ void LogAddExpGradOneSide(const Context& dev_ctx,
     return;
   }
 
-  const auto& out_dims = out_grad.dims();
-  DenseTensor diff, exp_diff, denom;
-  diff.Resize(out_dims);
-  exp_diff.Resize(out_dims);
-  denom.Resize(out_dims);
-  SubtractKernel<T, Context>(dev_ctx, other, self, &diff);
-  ExpKernel<T, Context>(dev_ctx, diff, &exp_diff);
-  ScaleKernel<T, Context>(dev_ctx, exp_diff, 1.0f, 1.0f, true, &denom);
-
   // Same reduce dims as torch's sum_to_size: all leading dims, plus the dims
   // where self has size 1 but out_grad does not.
+  const auto& out_dims = out_grad.dims();
   const DDim self_dims = self_grad->dims();
   const int lead = out_dims.size() - self_dims.size();
   std::vector<int64_t> reduce_axes;
@@ -73,16 +65,22 @@ void LogAddExpGradOneSide(const Context& dev_ctx,
     keep_shape[i] = reduced ? 1 : out_dims[i];
   }
 
+  // All four steps are elementwise over out_dims, so each one overwrites its
+  // input in place: computed directly in self_grad when nothing is reduced,
+  // otherwise in a single out-size buffer that is then summed into self_grad.
+  DenseTensor buf;
+  DenseTensor* work = reduce_axes.empty() ? self_grad : &buf;
+  work->Resize(out_dims);
+  SubtractKernel<T, Context>(dev_ctx, other, self, work);
+  ExpKernel<T, Context>(dev_ctx, *work, work);
+  ScaleKernel<T, Context>(dev_ctx, *work, 1.0f, 1.0f, true, work);
+  DivideKernel<T, Context>(dev_ctx, out_grad, *work, work);
   if (reduce_axes.empty()) {
-    DivideKernel<T, Context>(dev_ctx, out_grad, denom, self_grad);
     return;
   }
-  DenseTensor full_grad;
-  full_grad.Resize(out_dims);
-  DivideKernel<T, Context>(dev_ctx, out_grad, denom, &full_grad);
   self_grad->Resize(common::make_ddim(keep_shape));
   SumKernel<T, Context>(dev_ctx,
-                        full_grad,
+                        buf,
                         IntArray(reduce_axes),
                         DataType::UNDEFINED,
                         true,

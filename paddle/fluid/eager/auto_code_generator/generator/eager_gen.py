@@ -238,6 +238,7 @@ strided_compute_op_list = {
     "heaviside",
     "fmax",
     "fmin",
+    "logaddexp",
     # reduce
     "amax",
     "amin",

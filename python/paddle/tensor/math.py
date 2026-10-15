@@ -907,21 +907,41 @@ def logaddexp(
             Tensor(shape=[3], dtype=float64, place=Place(cpu), stop_gradient=True,
             [-0.30685282, -0.68673831, -0.87307199])
     """
-    if in_dynamic_or_pir_mode():
-        # The native kernel is float-only; keep promoting integer inputs to
-        # float32 as the composite implementation below does.
-        if x.dtype in (paddle.int32, paddle.int64):
+    # The native kernel is float-only; follow torch's type promotion:
+    # - an integral/bool operand paired with a float one is cast to that
+    #   float dtype;
+    # - between two floats, a 0-D tensor does not raise the dtype of an
+    #   N-D one (e.g. float16 N-D with float32 0-D gives float16).
+    # Two int32/int64 operands (rejected by torch) keep the legacy float32
+    # promotion; other integral pairs are left to fail in the kernel.
+    integral = (
+        paddle.bool,
+        paddle.uint8,
+        paddle.int8,
+        paddle.int16,
+        paddle.int32,
+        paddle.int64,
+    )
+    legacy_int = (paddle.int32, paddle.int64)
+    x_is_int = x.dtype in integral
+    y_is_int = y.dtype in integral
+    if x_is_int and y_is_int:
+        if x.dtype in legacy_int and y.dtype in legacy_int:
             x = x.astype('float32')
-        if y.dtype in (paddle.int32, paddle.int64):
             y = y.astype('float32')
+    elif x_is_int:
+        x = x.astype(y.dtype)
+    elif y_is_int:
+        y = y.astype(x.dtype)
+    elif x.dtype != y.dtype and x.ndim == 0 and y.ndim != 0:
+        x = x.astype(y.dtype)
+    elif x.dtype != y.dtype and y.ndim == 0 and x.ndim != 0:
+        y = y.astype(x.dtype)
+    if in_dynamic_mode():
         return _C_ops.logaddexp(x, y, out=out)
 
-    log_1p = paddle.log1p(paddle.exp(-paddle.abs(x - y)))
-    _maximum = paddle.maximum(x, y)
-    if _maximum.dtype == paddle.int32 or _maximum.dtype == paddle.int64:
-        _maximum = _maximum.astype(log_1p.dtype)
-    result = log_1p + _maximum
-
+    # PIR's _C_ops ignores `out=`, so write it back explicitly.
+    result = _C_ops.logaddexp(x, y)
     if out is not None:
         paddle.assign(result, out)
         return out
