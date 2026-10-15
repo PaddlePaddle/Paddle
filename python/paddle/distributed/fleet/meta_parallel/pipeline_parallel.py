@@ -570,6 +570,22 @@ class NoPipelineParallel(MetaParallelBase):
             data_iter = next(micro_dataset)
             input_tensor = data_iter[0]
             label = data_iter[1]
+            # [DCP PATCH] dynamic context parallel: switch the CP group per
+            # microbatch. The scheduler tags every microbatch with its own group
+            # size (erniebot dcp_schedule_runtime.py) because setting it while the
+            # data iterator yields does not work: this loop only runs after all
+            # accumulate_steps microbatches have been pulled into the buffer
+            # (PaddleFormers trainer.py:4262-4269), so the value set at yield time
+            # is already reset by then and every forward silently fell back to the
+            # static group. Popped before the shape check so the model never sees
+            # this key.
+            if isinstance(input_tensor, dict) and "dcp_cp_size" in input_tensor:
+                _dcp_cp_size = input_tensor.pop("dcp_cp_size")
+                from paddlefleet import parallel_state as _dcp_parallel_state
+
+                _dcp_parallel_state.set_current_context_parallel_size(
+                    int(_dcp_cp_size)
+                )
             self._check_micro_batch_data_valid(input_tensor)
             self._check_micro_batch_data_valid(label)
 
@@ -619,6 +635,15 @@ class NoPipelineParallel(MetaParallelBase):
                     losses.append(tmp / self.accumulate_steps)
                 else:
                     losses.append(self.total_loss[idx].detach())
+        # [DCP PATCH] back to the static CP group once the step is over: whatever
+        # runs between steps (evaluation, checkpointing, logging that reduces over
+        # CP) must not inherit the last microbatch's group.
+        try:
+            from paddlefleet import parallel_state as _dcp_parallel_state
+
+            _dcp_parallel_state.reset_current_context_parallel_size()
+        except ImportError:
+            pass
         return losses[0] if len(losses) == 1 else losses
 
     def train_batch(
