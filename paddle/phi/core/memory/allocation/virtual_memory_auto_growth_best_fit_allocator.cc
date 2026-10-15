@@ -579,18 +579,6 @@ size_t VirtualMemoryAutoGrowthBestFitMultiScalePoolAllocator::CompactImpl(
   return compact_free_size;
 }
 
-uint64_t VirtualMemoryAutoGrowthBestFitMultiScalePoolAllocator::ReleaseImpl(
-    const Place &place) {
-  uint64_t released = 0;
-  if (auto &small_allocator = GetSmallAllocator()) {
-    released += small_allocator->Release(place);
-  }
-  if (auto &large_allocator = GetLargeAllocator()) {
-    released += large_allocator->Release(place);
-  }
-  return released;
-}
-
 }  // namespace allocation
 }  // namespace memory
 }  // namespace paddle
