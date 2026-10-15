@@ -38,6 +38,7 @@ from paddle.distributed.flex_checkpoint.dcp.sharded_weight import (
 )
 
 from ..nn.clip import GradientClipBase
+from .inner_optimizer import ParamInfo
 from .optimizer import Optimizer
 
 # Debug logging for Muon optimizer
@@ -56,11 +57,15 @@ __all__ = []
 
 
 @dataclass
-class MuonParamInfo:
+class MuonParamInfo(ParamInfo):
     """Muon update metadata for a single parameter.
 
     This replaces the previous approach of setting dynamic attributes
     directly on param objects.
+
+    Extends the generic :class:`~paddle.optimizer.inner_optimizer.ParamInfo`
+    (the neutral per-parameter carrier) with the Muon-family update semantics
+    below.
 
     Attributes:
         use_muon: If True, use Muon (orthogonal) updates; otherwise AdamW.

@@ -1016,6 +1016,23 @@ if(WITH_NCCL)
     set_tests_properties(test_parallel_dygraph_muon PROPERTIES TIMEOUT "400")
   endif()
 endif()
+if(WITH_NCCL)
+  if((WITH_GPU) AND LOCAL_ALL_PLAT)
+    bash_test_modules(
+      test_parallel_dygraph_mixed_sharding
+      START_BASH
+      ../../legacy_test/dist_test.sh
+      TIMEOUT
+      "400"
+      LABELS
+      "RUN_TYPE=DIST"
+      ENVS
+      "PADDLE_DIST_UT_PORT=22354;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
+    )
+    set_tests_properties(test_parallel_dygraph_mixed_sharding PROPERTIES TIMEOUT
+                                                                         "400")
+  endif()
+endif()
 if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
   py_test_modules(
     test_pipeline_parallel_micro_step_hooks MODULES
