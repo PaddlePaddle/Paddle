@@ -114,6 +114,11 @@ phi::Allocation *VirtualMemoryAutoGrowthBestFitAllocator::AllocateImpl(
     result = AllocFromFreeBlocks(size);
   }
 
+  PADDLE_ENFORCE_NOT_NULL(
+      result,
+      common::errors::ResourceExhausted(
+          "VMM allocator: no free block of %s after pool extension.",
+          string::HumanReadableSize(size)));
   return result;
 }
 
@@ -254,6 +259,12 @@ VirtualMemoryAutoGrowthBestFitAllocator::AllocateOrCompact(size_t size) {
                 << "} is smaller than allocate size {" << size
                 << "} after compact, re-alloc {" << remain_size << "}";
         allocateptr = std::move(underlying_allocator_->Allocate(remain_size));
+        auto tail_end =
+            reinterpret_cast<uint8_t *>(free_block->ptr_) + free_block->size_;
+        if (allocateptr->ptr() != tail_end) {
+          allocateptr.reset();
+          allocateptr = std::move(underlying_allocator_->Allocate(size));
+        }
       } else {
         VLOG(4) << "Tail block is not free, just allocate {" << size << "}";
         allocateptr = std::move(underlying_allocator_->Allocate(size));
