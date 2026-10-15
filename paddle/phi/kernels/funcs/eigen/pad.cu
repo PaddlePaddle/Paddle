@@ -64,6 +64,7 @@ INSTANTIATION(EigenPad, int64_t);
 INSTANTIATION(EigenPad, float);
 INSTANTIATION(EigenPad, double);
 INSTANTIATION(EigenPad, dtype::float8_e4m3fn);
+INSTANTIATION(EigenPad, dtype::float8_e5m2);
 INSTANTIATION(EigenPad, dtype::float16);
 INSTANTIATION(EigenPad, dtype::bfloat16);
 INSTANTIATION(EigenPad, dtype::complex<float>);

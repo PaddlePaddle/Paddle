@@ -99,9 +99,14 @@ PD_REGISTER_KERNEL(equal_all,
                    phi::EqualAllKernel,
                    bool,
                    int,
+                   uint8_t,
+                   int8_t,
+                   int16_t,
                    int64_t,
                    float,
-                   double) {
+                   double,
+                   phi::float16,
+                   phi::bfloat16) {
   kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);
 }
 
