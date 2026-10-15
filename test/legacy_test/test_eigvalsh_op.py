@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+import subprocess
+import sys
+import textwrap
 import unittest
 
 import numpy as np
@@ -47,6 +51,25 @@ def valid_eigenvalues(actual, expected):
     max_ref = np.max(np.abs(expected))
     relative_error = max_diff / max_ref
     np.testing.assert_array_less(relative_error, rtol)
+
+
+def run_check_in_subprocess(body):
+    # The batched cuSOLVER backend can only be observed on the first eigvalsh
+    # call of a process, so these checks need a fresh interpreter rather than
+    # sharing one with the rest of the file.
+    env = os.environ.copy()
+    env["PYTHONPATH"] = os.pathsep.join(p for p in sys.path if p)
+    proc = subprocess.run(
+        [sys.executable, "-c", textwrap.dedent(body)],
+        capture_output=True,
+        text=True,
+        env=env,
+        timeout=900,
+    )
+    if proc.returncode != 0:
+        raise AssertionError(
+            f"subprocess check failed:\n{proc.stdout}\n{proc.stderr}"
+        )
 
 
 def compare_shape_result(actual, expected):
@@ -108,7 +131,7 @@ class TestEigvalshUPLOCase(TestEigvalshOp):
 
 class TestEigvalshGPUCase(unittest.TestCase):
     def setUp(self):
-        self.x_shape = [32, 32]
+        self.init_input_shape()
         self.dtype = "float32"
         np.random.seed(123)
         self.x_np = np.random.random(self.x_shape).astype(self.dtype)
@@ -120,6 +143,61 @@ class TestEigvalshGPUCase(unittest.TestCase):
             expected_w = np.linalg.eigvalsh(self.x_np)
             actual_w = paddle.linalg.eigvalsh(input_real_data)
             compare_result(actual_w.numpy(), expected_w)
+
+    def init_input_shape(self):
+        self.x_shape = [32, 32]
+
+
+class TestEigvalshGPUMidSizeCase(TestEigvalshGPUCase):
+    # 32 < n <= 512 used to be routed to the non-batched Jacobi solver, which
+    # misses the tolerance above by two orders of magnitude.
+    def init_input_shape(self):
+        self.x_shape = [4, 512, 512]
+
+
+class TestEigvalshGPUBatchedLargeCase(unittest.TestCase):
+    def test_check_output_gpu(self):
+        run_check_in_subprocess(
+            """
+            import numpy as np
+            import paddle
+            from op_test import get_device_place, is_custom_device
+            from test_eigvalsh_op import compare_result
+
+            if not (paddle.is_compiled_with_cuda() or is_custom_device()):
+                raise SystemExit(0)
+            paddle.disable_static(place=get_device_place())
+            np.random.seed(123)
+            x_np = np.random.random([4, 1024, 1024]).astype("float32")
+            actual_w = paddle.linalg.eigvalsh(paddle.to_tensor(x_np))
+            compare_result(actual_w.numpy(), np.linalg.eigvalsh(x_np))
+            """
+        )
+
+
+class TestEigvalshGPUBackendStateCase(unittest.TestCase):
+    def test_result_does_not_depend_on_call_history(self):
+        # The batched backend used to be latched in a mutable static, so a
+        # single-matrix call switched the backend for every later call.
+        run_check_in_subprocess(
+            """
+            import numpy as np
+            import paddle
+            from op_test import get_device_place, is_custom_device
+
+            if not (paddle.is_compiled_with_cuda() or is_custom_device()):
+                raise SystemExit(0)
+            paddle.disable_static(place=get_device_place())
+            np.random.seed(123)
+            x_np = np.random.random([4, 64, 64]).astype("float32")
+            x = paddle.to_tensor(x_np)
+            first = paddle.linalg.eigvalsh(x).numpy()
+            paddle.linalg.eigvalsh(paddle.to_tensor(x_np[0]))
+            np.testing.assert_array_equal(
+                first, paddle.linalg.eigvalsh(x).numpy()
+            )
+            """
+        )
 
 
 class TestEigvalshAPI(unittest.TestCase):
