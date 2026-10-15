@@ -26,6 +26,7 @@ from paddle.autograd import PyLayer
 from paddle.distributed import fleet
 from paddle.distributed.fleet.utils import mix_precision_utils
 from paddle.distributed.fsdp import fully_shard_fusion
+from paddle.distributed.fsdp._fsdp_context import register_fsdp_context
 from paddle.distributed.fsdp.fully_shard import fully_shard
 from paddle.optimizer.muon import MuonParamInfo
 
@@ -40,6 +41,8 @@ MUON_MATS = 4
 MUON_LAYERS = 2
 MUON_STEPS = 1
 MUON_MATS_DOWN = 3
+VOCAB = 24
+CE_CHUNK = 16
 
 
 class EPAllGather(PyLayer):
@@ -698,8 +701,171 @@ def run_muon_checkpoint():
             shutil.rmtree(ckpt_root, ignore_errors=True)
 
 
+class FusedLinearCE(PyLayer):
+    """Chunked linear + cross-entropy, mirroring the fused LM-head loss.
+
+    Like the real kernel, every grad is computed in forward, chunk by chunk,
+    and the weight grad is kept in fp32. Without FSDP it is added straight to
+    ``main_grad``. Under FSDP it is handed to the grad hook through
+    ``_fused_kernel_fp32_grad``, and the grad returned through autograd is
+    deliberately zero: the run can only match the baseline if the hook takes
+    the stashed tensor.
+    """
+
+    @staticmethod
+    def forward(ctx, x, weight, labels, fsdp):
+        # The LM head returned the weight; FSDP must not have re-sharded it.
+        assert weight._is_initialized(), "exposed param was re-sharded early"
+        num_tokens = x.shape[0]
+        grad_x = []
+        grad_w = paddle.zeros(weight.shape, dtype="float32")
+        loss = paddle.zeros([], dtype="float32")
+        for start in range(0, num_tokens, CE_CHUNK):
+            x_c = x[start : start + CE_CHUNK]
+            label_c = labels[start : start + CE_CHUNK]
+            logits = paddle.matmul(x_c, weight, transpose_y=True)
+            loss += F.cross_entropy(logits, label_c, reduction="sum")
+            dlogits = F.softmax(logits, axis=-1) - F.one_hot(label_c, VOCAB)
+            grad_x.append(paddle.matmul(dlogits, weight) / num_tokens)
+            grad_w += paddle.matmul(dlogits, x_c, transpose_x=True) / num_tokens
+        ctx.save_for_backward(paddle.concat(grad_x), grad_w)
+        ctx.weight = weight
+        ctx.fsdp = fsdp
+        return loss / num_tokens
+
+    @staticmethod
+    def backward(ctx, dy):
+        grad_x, grad_w = ctx.saved_tensor()
+        grad_x = grad_x * dy
+        grad_w = grad_w * dy
+        weight = ctx.weight
+        if ctx.fsdp:
+            stashed = getattr(weight, "_fused_kernel_fp32_grad", None)
+            weight._fused_kernel_fp32_grad = (stashed or []) + [grad_w]
+            return grad_x, paddle.zeros_like(weight), None
+        if weight.main_grad is None:
+            weight.main_grad = paddle.zeros(weight.shape, dtype="float32")
+        weight.main_grad.add_(grad_w)
+        return grad_x, None, None
+
+
+class DenseUnit(TransformerLayer):
+    # Subclasses TransformerLayer only so FSDP treats it as a unit.
+    def __init__(self, hidden):
+        nn.Layer.__init__(self)
+        self.attn = nn.Linear(hidden, hidden, bias_attr=False)
+
+    def forward(self, x):
+        return x + F.silu(self.attn(x))
+
+
+class FusedLMHead(nn.Layer):
+    """Returns ``(hidden, weight)`` and leaves the projection to the loss."""
+
+    def __init__(self, hidden, vocab):
+        super().__init__()
+        self.weight = self.create_parameter(shape=[vocab, hidden])
+
+    def forward(self, x):
+        return x, self.weight
+
+
+class FusedLinearModel(nn.Layer):
+    # No embedding: a non-unit layer ahead of the units would share the
+    # non-unit buffer with the head, which already diverges under overlap on
+    # develop regardless of the fused path.
+    def __init__(self):
+        super().__init__()
+        self.layers = nn.LayerList([DenseUnit(HIDDEN) for _ in range(2)])
+        self.mtp_proj = nn.Linear(HIDDEN, HIDDEN, bias_attr=False)
+        self.lm_head = FusedLMHead(HIDDEN, VOCAB)
+
+    def forward(self, x):
+        for layer in self.layers:
+            x = layer(x)
+        hidden, weight = self.lm_head(x)
+        return hidden, self.mtp_proj(hidden), weight
+
+
+def train_fused_linear(model, data, fsdp):
+    optimizer = build_moe_optimizer(model)
+    lm_weight = model._layers.lm_head.weight
+    losses = []
+    for i in range(0, len(data), ACCUM_STEPS):
+        for x, labels in data[i : i + ACCUM_STEPS]:
+            model.train()
+            hidden, mtp_hidden, weight = model(x)
+            # Main + MTP head: two fused calls feed the same weight.
+            loss = FusedLinearCE.apply(
+                hidden, weight, labels, fsdp
+            ) + FusedLinearCE.apply(mtp_hidden, weight, labels, fsdp)
+            losses.append(float(loss))
+            loss.backward()
+            if fsdp:
+                assert lm_weight._fused_kernel_fp32_grad is None
+        optimizer.step()
+        optimizer.clear_grad()
+    return losses
+
+
+def run_fused_linear():
+    """Exposed LM-head param + fp32 fused grad must match a non-FSDP run.
+
+    Reuses the topology ``run_moe`` already initialized. Every rank feeds the
+    same data, so FSDP's averaged grad equals the local grad of a plain
+    single-card baseline.
+    """
+    paddle.seed(2026)
+    base_model = FusedLinearModel()
+    paddle.seed(2026)
+    data = [
+        (
+            paddle.randn([TOKENS, HIDDEN]),
+            paddle.randint(0, VOCAB, [TOKENS]),
+        )
+        for _ in range(STEPS - 1)
+    ]
+    init_state = {k: v.clone() for k, v in base_model.state_dict().items()}
+    # The optimizer steps on whichever FSDP context was registered last; drop
+    # the one left by the earlier runs so the baseline steps on its own params.
+    register_fsdp_context(None)
+    base_model = mix_precision_utils.MixPrecisionLayer(
+        base_model, dtype="float16"
+    )
+    base_losses = train_fused_linear(base_model, data, fsdp=False)
+    base_params = [p.numpy() for p in base_model.parameters()]
+
+    for enable_overlap in (True, False):
+        fsdp_model = FusedLinearModel()
+        fsdp_model.set_state_dict(init_state)
+        fsdp_model = fully_shard(
+            fsdp_model, enable_tensor_fusion_and_overlap=enable_overlap
+        )
+        fsdp_context = fsdp_model._fsdp_context
+        fsdp_model = mix_precision_utils.MixPrecisionLayer(
+            fsdp_model, dtype="float16"
+        )
+        fsdp_losses = train_fused_linear(fsdp_model, data, fsdp=True)
+        np.testing.assert_allclose(
+            fsdp_losses,
+            base_losses,
+            rtol=1e-6,
+            err_msg=f"fused linear losses diverged (overlap={enable_overlap})",
+        )
+        fsdp_context.all_gather_params()
+        for param, expected in zip(fsdp_model.parameters(), base_params):
+            np.testing.assert_allclose(
+                param.numpy(),
+                expected,
+                rtol=1e-6,
+                atol=1e-7,
+                err_msg=f"{param.name} diverged (overlap={enable_overlap})",
+            )
+
+
 if __name__ == '__main__':
     run_moe(2)
+    run_fused_linear()
     run_muon_shard()
     run_muon_replicated()
     run_muon_checkpoint()
