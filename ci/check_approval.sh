@@ -110,7 +110,7 @@ fi
 FILTER=`git diff --name-only upstream/$BRANCH | grep -v "tools/" | grep -v "ci/"`
 
 
-HAS_PADDLE_GET=`git diff -U0 upstream/$BRANCH $FILTER |grep "^+" |grep -o -m 1 "paddle::get" || true`
+HAS_PADDLE_GET=`git diff -U0 upstream/$BRANCH -- $FILTER |grep "^+" |grep -o -m 1 "paddle::get" || true`
 if [ ${HAS_PADDLE_GET} ] && [ "${PR_ID}" != "" ]; then
     echo_line="paddle::get is not recommended for direct use, because it may throw an bad_variant_access exception without any stack information, so please use PADDLE_GET(_**)(dtype, value) series macros here. If these macros cannot meet your needs, please use try-catch to handle paddle::get and request zhangbo9674 review and approve.\n"
     check_approval 1 zhangbo9674
@@ -130,7 +130,7 @@ if [[ ${IF_USE_EVAL} ]]; then
 fi
 
 NO_NPU_FILE=`git diff --name-only upstream/$BRANCH | grep -v "_npu.py"`
-HAS_UNITTEST_SKIP=`git diff -U0 upstream/$BRANCH ${NO_NPU_FILE} | grep "^+[[:space:]]\{0,\}@unittest.skip" || true`
+HAS_UNITTEST_SKIP=`git diff -U0 upstream/$BRANCH -- ${NO_NPU_FILE} | grep "^+[[:space:]]\{0,\}@unittest.skip" || true`
 if [ "${HAS_UNITTEST_SKIP}" != "" ] && [ "${PR_ID}" != "" ]; then
     echo_line="Unittest is not allowed to be disabled.\nYou must have one RD (wanghuancoder) approval for the usage of @unittest.skip or @unittest.skipIf.\n${HAS_UNITTEST_SKIP}\n"
     check_approval 1 wanghuancoder
@@ -138,25 +138,25 @@ fi
 
 CI_FILTER=`git diff --name-only upstream/$BRANCH | grep -v "ci/"`
 
-HAS_MODIFIED_DECLARATIONS=`git diff -U0 upstream/$BRANCH $CI_FILTER |grep "^+" |grep "paddle/phi/kernels/declarations.h" || true`
+HAS_MODIFIED_DECLARATIONS=`git diff -U0 upstream/$BRANCH -- $CI_FILTER |grep "^+" |grep "paddle/phi/kernels/declarations.h" || true`
 if [ "${HAS_MODIFIED_DECLARATIONS}" != "" ] && [ "${PR_ID}" != "" ]; then
     echo_line="You must be approved by wanghuancoder or zhangbo9674 for paddle/phi/kernels/declarations.h using. Thanks!\n"
     check_approval 1 wanghuancoder zhangbo9674
 fi
 
-HAS_USED_CCTESTOLD=`git diff -U0 upstream/$BRANCH $CI_FILTER |grep "cc_test_old" || true`
+HAS_USED_CCTESTOLD=`git diff -U0 upstream/$BRANCH -- $CI_FILTER |grep "cc_test_old" || true`
 if [ "${HAS_USED_CCTESTOLD}" != "" ] && [ "${PR_ID}" != "" ]; then
     echo_line="You must be approved by zhangbo9674 for using cc_test_old. Thanks!\n"
     check_approval 1 zhangbo9674
 fi
 
-HAS_USED_CCTEST=`git diff -U0 upstream/$BRANCH $CI_FILTER |grep -w "cc_test" || true`
+HAS_USED_CCTEST=`git diff -U0 upstream/$BRANCH -- $CI_FILTER |grep -w "cc_test" || true`
 if [ "${HAS_USED_CCTEST}" != "" ] && [ "${PR_ID}" != "" ]; then
     echo_line="Paddle utest will gradually discard cc_test\n  instead, the paddle_test is recommended,\n if you must use cc_test, you must be approved by zhangbo9674 for using cc_test. Thanks!\n"
     check_approval 1 zhangbo9674
 fi
 
-HAS_CREATE_NEW_PASS=`git diff -U0 upstream/$BRANCH $CI_FILTER |grep "paddle/pir/include/pass/pass.h" || true`
+HAS_CREATE_NEW_PASS=`git diff -U0 upstream/$BRANCH -- $CI_FILTER |grep "paddle/pir/include/pass/pass.h" || true`
 if [ "${HAS_CREATE_NEW_PASS}" != "" ] && [ "${PR_ID}" != "" ]; then
     echo_line="If you implement a new Pass, you must be approved by zhangbo9674. Thanks!\n"
     check_approval 1 zhangbo9674
@@ -299,7 +299,7 @@ if [ "${PY_FILE_USE_TYPE_IGNORE}" != "" ] && [ "${PR_ID}" != "" ]; then
     check_approval 1 zrr1999
 fi
 
-HAS_USED_AUTO_PARALLEL_ALIGN_MODE=`git diff -U0 upstream/$BRANCH $CI_FILTER |grep -o -m 1 "auto_parallel_align_mode" || true`
+HAS_USED_AUTO_PARALLEL_ALIGN_MODE=`git diff -U0 upstream/$BRANCH -- $CI_FILTER |grep -o -m 1 "auto_parallel_align_mode" || true`
 if [ ${HAS_USED_AUTO_PARALLEL_ALIGN_MODE} ] && [ "${PR_ID}" != "" ]; then
     echo_line="You must have one RD (sneaxiy, ForFishes, or From00) approval for the usage of auto-parallel align mode.\n"
     check_approval 1 sneaxiy ForFishes From00
@@ -360,7 +360,7 @@ fi
 ALL_CHANGE_FILES=`git diff --numstat upstream/$BRANCH | awk '{print $3}' | grep ".py"`
 ALL_OPTEST_BAN_DYGRAPH_MESSAGE=""
 for CHANGE_FILE in ${ALL_CHANGE_FILES}; do
-    ALL_OPTEST_BAN_DYGRAPH=`git diff -U0 upstream/$BRANCH ${PADDLE_ROOT}/${CHANGE_FILE} | grep "+" | grep "check_dygraph=" || true`
+    ALL_OPTEST_BAN_DYGRAPH=`git diff -U0 upstream/$BRANCH -- ${PADDLE_ROOT}/${CHANGE_FILE} | grep "+" | grep "check_dygraph=" || true`
     if [ "${ALL_OPTEST_BAN_DYGRAPH}" != "" ]; then
         ALL_OPTEST_BAN_DYGRAPH_MESSAGE="${ALL_OPTEST_BAN_DYGRAPH_MESSAGE} ${CHANGE_FILE} : \n${ALL_OPTEST_BAN_DYGRAPH} \n"
     fi
@@ -373,7 +373,7 @@ fi
 ALL_CHANGE_YAML_FILES=`git diff --numstat upstream/$BRANCH | awk '{print $3}' | grep ".yaml"`
 BAN_COMP_MESSAGE=""
 for CHANGE_FILE in ${ALL_CHANGE_YAML_FILES}; do
-    ALL_ITEM_BAN_COMP=`git diff -U0 upstream/$BRANCH ${PADDLE_ROOT}/${CHANGE_FILE} | grep "composite" || true`
+    ALL_ITEM_BAN_COMP=`git diff -U0 upstream/$BRANCH -- ${PADDLE_ROOT}/${CHANGE_FILE} | grep "composite" || true`
     if [ "${ALL_ITEM_BAN_COMP}" != "" ]; then
         BAN_COMP_MESSAGE="${BAN_COMP_MESSAGE} ${CHANGE_FILE} : \n${ALL_ITEM_BAN_COMP} \n"
     fi
