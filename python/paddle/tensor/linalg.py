@@ -4136,6 +4136,7 @@ def eigvalsh(
         return out_value
 
 
+@ParamAliasDecorator({"x": ["input", "A"], "y": ["b", "B"]})
 def lstsq(
     x: Tensor,
     y: Tensor,
@@ -4149,9 +4150,9 @@ def lstsq(
 
     Args:
         x (Tensor): A tensor with shape ``(*, M, N)`` , the data type of the input Tensor ``x``
-            should be one of float32, float64.
+            should be one of float32, float64. Alias: ``input``, ``A``.
         y (Tensor): A tensor with shape ``(*, M, K)`` , the data type of the input Tensor ``y``
-            should be one of float32, float64.
+            should be one of float32, float64. Alias: ``b``, ``B``.
         rcond(float, optional): The default value is None. A float pointing number used to determine
             the effective rank of ``x``. If ``rcond`` is None, it will be set to max(M, N) times the
             machine precision of x_dtype.
