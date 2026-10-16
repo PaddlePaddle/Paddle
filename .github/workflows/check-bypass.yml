@@ -28,6 +28,11 @@ jobs:
       - name: Cleanup
         run: |
           rm -rf * .[^.]*
+      - name: Disable release branch CI
+        if: ${{ github.base_ref == 'release/3.4' }}
+        run: |
+          echo "请去 develop 分支开发"
+          exit 1
       - id: check-bypass
         name: Check Bypass
         uses: PFCCLab/ci-bypass@v2

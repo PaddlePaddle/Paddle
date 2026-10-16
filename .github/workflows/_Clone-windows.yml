@@ -34,6 +34,11 @@ jobs:
       group: win-clone
     timeout-minutes: 30
     steps:
+      - name: Disable release branch CI
+        if: ${{ github.base_ref == 'release/3.4' }}
+        run: |
+          echo 请去 develop 分支开发
+          exit /b 1
       - name: Git config
         run: |
           git config --global user.name "PaddleCI"
