@@ -96,7 +96,8 @@ if (WITH_DGC)
     set(COMMON_OP_DEPS ${COMMON_OP_DEPS} dgc)
 endif()
 
-cc_library(ops_extra_info SRCS ops_extra_info.cc DEPS attribute phi common)
+# ops_extra_info has been moved to paddle/fluid/framework/
+# The cc_library target is now defined in paddle/fluid/framework/CMakeLists.txt
 
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} phi common)
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} selected_rows_utils

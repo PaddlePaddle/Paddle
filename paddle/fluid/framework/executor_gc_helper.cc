@@ -23,9 +23,9 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/var_desc.h"
-#include "paddle/fluid/operators/controlflow/conditional_block_op_helper.h"
-#include "paddle/fluid/operators/controlflow/pylayer_op_helper.h"
-#include "paddle/fluid/operators/controlflow/while_op_helper.h"
+#include "paddle/fluid/framework/controlflow/conditional_block_op_helper.h"
+#include "paddle/fluid/framework/controlflow/pylayer_op_helper.h"
+#include "paddle/fluid/framework/controlflow/while_op_helper.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle::framework {
