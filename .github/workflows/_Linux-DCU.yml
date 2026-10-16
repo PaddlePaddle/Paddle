@@ -44,7 +44,7 @@ jobs:
     env:
       TASK: paddle-CI-${{ github.event.pull_request.number }}-dcu_build
     runs-on:
-      group: HK-CPU
+      group: dcu-test
     timeout-minutes: 180
     steps:
       - name: Check docker image and run container
