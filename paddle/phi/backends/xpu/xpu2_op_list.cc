@@ -587,6 +587,8 @@ XPUOpMap& get_kl2_ops() {
       {"fused_attention", XPUKernelSet({FLOAT32, FLOAT16})},
       {"fused_attention_grad", XPUKernelSet({FLOAT32, FLOAT16})},
       {"fused_bias_act", XPUKernelSet({FLOAT32, FLOAT16})},
+      {"fused_dropout_add", XPUKernelSet({FLOAT32, FLOAT16})},
+      {"fused_dropout_add_grad", XPUKernelSet({FLOAT32, FLOAT16})},
       {"fused_feedforward", XPUKernelSet({FLOAT32, FLOAT16})},
       {"fused_feedforward_grad", XPUKernelSet({FLOAT32, FLOAT16})},
       {"qkv_attention_xpu", XPUKernelSet({FLOAT32, FLOAT16, INT8})},
