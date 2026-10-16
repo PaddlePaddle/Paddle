@@ -160,7 +160,7 @@ XPUOpMap& get_kl3_ops() {
       {"create_array_like",
        XPUKernelSet({FLOAT32, FLOAT64, INT32, FLOAT16, BFLOAT16, INT64, BOOL})},
       {"cumsum", XPUKernelSet({FLOAT32, FLOAT16, INT32, INT64, BFLOAT16})},
-      {"cumsum_grad", XPUKernelSet({FLOAT32, INT32, INT64})},
+      {"cumsum_grad", XPUKernelSet({FLOAT32, INT32, INT64, FLOAT16, BFLOAT16})},
       {"cumprod", XPUKernelSet({FLOAT32, INT32, INT64})},
       {"deformable_conv_grad", XPUKernelSet({FLOAT32})},
       {"deformable_conv_v1_grad", XPUKernelSet({FLOAT32})},
