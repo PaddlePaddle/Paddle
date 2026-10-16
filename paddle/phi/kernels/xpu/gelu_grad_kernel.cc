@@ -31,13 +31,24 @@ void GeluGradKernel(const Context& dev_ctx,
   if (x_grad && x_grad->numel() == 0) {
     return;
   }
-  int r = xpu::gelu_grad<XPUType>(
-      dev_ctx.x_context(),
-      reinterpret_cast<const XPUType*>(x.data<T>()),
-      reinterpret_cast<const XPUType*>(out_grad.data<T>()),
-      reinterpret_cast<XPUType*>(x_grad->data<T>()),
-      x_grad->numel(),
-      approximate);
+  int r = 0;
+  if constexpr (std::is_same_v<T, phi::dtype::bfloat16>) {
+    r = xpu::gelu_grad_nvidia_highprecision<XPUType>(
+        dev_ctx.x_context(),
+        reinterpret_cast<const XPUType*>(x.data<T>()),
+        reinterpret_cast<const XPUType*>(out_grad.data<T>()),
+        reinterpret_cast<XPUType*>(x_grad->data<T>()),
+        x_grad->numel(),
+        approximate);
+  } else {
+    r = xpu::gelu_grad<XPUType>(
+        dev_ctx.x_context(),
+        reinterpret_cast<const XPUType*>(x.data<T>()),
+        reinterpret_cast<const XPUType*>(out_grad.data<T>()),
+        reinterpret_cast<XPUType*>(x_grad->data<T>()),
+        x_grad->numel(),
+        approximate);
+  }
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "gelu_grad");
 }
 }  // namespace phi
