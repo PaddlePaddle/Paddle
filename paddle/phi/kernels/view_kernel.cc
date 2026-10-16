@@ -14,6 +14,7 @@
 #include "paddle/phi/kernels/view_kernel.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/infermeta/unary.h"
+#include "paddle/phi/kernels/funcs/common_shape.h"
 
 namespace phi {
 
@@ -24,10 +25,19 @@ void ViewShapeKernel(const Context& dev_ctx,
                      DenseTensor* out) {
   MetaTensor meta_out(out);
   InferMetaFromVecValue(input, dims, &meta_out);
-  auto meta = input.meta();
-  meta.offset = input.offset();
-  out->set_meta(meta);
-  out->ResetHolder(input.Holder());
+
+  if (input.has_allocation() && input.Holder() == out->Holder()) {
+    dev_ctx.Alloc(out, input.dtype());
+    return;
+  }
+
+  dev_ctx.Alloc(out, input.dtype());
+  if (out->numel() == 0) return;
+
+  auto tmp_dims = out->dims();
+  phi::Copy(dev_ctx, input, dev_ctx.GetPlace(), false, out);
+  out->Resize(tmp_dims);
+  out->ResetLoD(input.lod());
 }
 
 }  // namespace phi
