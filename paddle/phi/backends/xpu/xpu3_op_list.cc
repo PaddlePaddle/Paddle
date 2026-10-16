@@ -25,7 +25,15 @@ XPUOpMap& get_kl3_ops() {
       {"acos", XPUKernelSet({FLOAT32, FLOAT16, BFLOAT16})},
       {"add_act_xpu", XPUKernelSet({FLOAT32, FLOAT16})},
       {"add_layernorm_xpu", XPUKernelSet({FLOAT32, FLOAT16})},
-      {"abs", XPUKernelSet({FLOAT32, FLOAT16, BFLOAT16})},
+      {"abs",
+       XPUKernelSet({FLOAT32,
+                     FLOAT16,
+                     BFLOAT16
+#ifdef PADDLE_WITH_XPU_FFT
+                     ,
+                     COMPLEX64
+#endif
+       })},
       {"abs_grad", XPUKernelSet({FLOAT32, FLOAT16})},
       {"accuracy", XPUKernelSet({FLOAT32, FLOAT16})},
       {"adadelta", XPUKernelSet({FLOAT32})},
@@ -383,6 +391,10 @@ XPUOpMap& get_kl3_ops() {
       {"unfold", XPUKernelSet({FLOAT32, FLOAT16})},
       {"unfold_grad", XPUKernelSet({FLOAT32, FLOAT16})},
       {"floor", XPUKernelSet({FLOAT32})},
+      {"frame",
+       XPUKernelSet({INT32, INT64, FLOAT32, FLOAT64, FLOAT16, BFLOAT16})},
+      {"frame_grad",
+       XPUKernelSet({INT32, INT64, FLOAT32, FLOAT64, FLOAT16, BFLOAT16})},
       {"ceil", XPUKernelSet({FLOAT32, FLOAT16, BFLOAT16})},
       {"gather_grad",
        XPUKernelSet(
