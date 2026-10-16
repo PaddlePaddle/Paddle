@@ -1,0 +1,19 @@
+name: Approval Review Signal
+
+on:
+  pull_request_review:
+    types: [submitted]
+
+permissions: {}
+
+jobs:
+  signal:
+    if: ${{ github.event.review.state == 'approved' }}
+    runs-on:
+      group: APPROVAL
+    steps:
+      - name: Record review update
+        run: |
+          echo "Review state: ${{ github.event.review.state }}"
+          echo "Pull request: ${{ github.event.pull_request.number }}"
+          echo "Head SHA: ${{ github.event.pull_request.head.sha }}"
