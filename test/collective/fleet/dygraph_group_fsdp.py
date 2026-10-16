@@ -303,6 +303,51 @@ def run_moe(ep_degree):
             f"stage1={stage1_loss_md5s}, fsdp={fsdp_loss_md5s}"
         )
 
+    check_clip_attrs(hcg)
+
+
+def check_clip_attrs(hcg):
+    """Fused buffers carry the clip routing attrs of the params they hold."""
+    _, model = build_moe_models(hcg)
+    for layer in model.layers:
+        for param in layer.moe.experts.parameters():
+            param.no_sync = True
+    optimizer = build_moe_optimizer(model)
+    model = fully_shard(
+        model, optimizer=optimizer, grad_accum_steps=ACCUM_STEPS
+    )
+    assert optimizer._fsdp_state_dict_ctx is model._fsdp_context
+    for gid, group in enumerate(
+        model._fsdp_context.buffer_manager.buffer_groups
+    ):
+        data_buffer = group.params_buffer.data_buffer
+        for attr, default in (
+            ("need_clip", True),
+            ("no_sync", False),
+            ("is_distributed", False),
+            ("is_firstly_shared", True),
+        ):
+            values = {getattr(p, attr, default) for p in group.params}
+            assert len(values) == 1, f"bucket {gid} mixes {attr}={values}"
+            expected = values.pop()
+            if (
+                attr == "is_firstly_shared"
+                and group.grads_buffer is not None
+                and not group.grads_buffer.is_sharded
+            ):
+                # Replicated grads are counted on rank 0 of fsdp_group only.
+                rank = paddle.distributed.get_rank(group.fsdp_group)
+                expected = expected and (
+                    group.fsdp_group.nranks == 1
+                    or group.muon_owner_rank is not None
+                    or rank == 0
+                )
+            assert getattr(data_buffer, attr) == expected, (
+                f"bucket {gid}: {attr}={getattr(data_buffer, attr)}, "
+                f"expected {expected}"
+            )
+        assert data_buffer.no_sync == group.is_expert_param, gid
+
 
 class MuonStackedLayer(TransformerLayer):
     """Layer whose weights are 3D stacks, like Muon expert params.
@@ -496,6 +541,20 @@ def run_muon_shard():
                 f"matrix-sharded Muon diverged from the dense path, group {gid}"
             ),
         )
+
+    # fully_shard(optimizer=Muon) rejects trainable params missing from
+    # muon_param_info_map; here embed/head are untagged.
+    model = MuonModel()
+    optimizer = paddle.optimizer.Muon(
+        parameters=model.parameters(),
+        muon_param_info_map=tag_muon_params(model),
+    )
+    try:
+        fully_shard(model, optimizer=optimizer)
+    except ValueError as e:
+        assert "misses trainable params" in str(e), e
+    else:
+        raise AssertionError("untagged trainable params were not rejected")
 
 
 def run_muon_replicated():
