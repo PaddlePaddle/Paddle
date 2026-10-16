@@ -16,13 +16,44 @@
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/int_array.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/kernels/expand_kernel.h"
 #ifdef PADDLE_WITH_XPU
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #endif
 
 namespace phi {
 namespace funcs {
+
+// Broadcast a length-1 `repeats` tensor to `axis_len` so a single repeat value
+// applies to every element along the axis, matching torch.repeat_interleave.
+// Returns `repeats` unchanged when no broadcast is needed; otherwise fills
+// `holder` and returns it.
+template <typename Context>
+const DenseTensor &BroadcastRepeatsIfNeeded(const Context &ctx,
+                                            const DenseTensor &repeats,
+                                            int64_t axis_len,
+                                            DenseTensor *holder) {
+  if (repeats.dims()[0] != 1 || axis_len == 1) {
+    return repeats;
+  }
+  if (axis_len == 0) {
+    holder->Resize({0});
+    if (repeats.dtype() == DataType::INT32) {
+      ctx.template Alloc<int>(holder);
+    } else {
+      ctx.template Alloc<int64_t>(holder);
+    }
+    return *holder;
+  }
+  if (repeats.dtype() == DataType::INT32) {
+    ExpandKernel<int, Context>(ctx, repeats, IntArray({axis_len}), holder);
+  } else {
+    ExpandKernel<int64_t, Context>(ctx, repeats, IntArray({axis_len}), holder);
+  }
+  return *holder;
+}
 
 template <typename Context, typename RepeatsT>
 class RepeatsTensor2IndexTensorFunctor {
