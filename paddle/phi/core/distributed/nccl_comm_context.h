@@ -22,6 +22,8 @@
 #include <hip/hip_runtime.h>
 #endif
 
+#include <unordered_map>
+
 #include "paddle/common/macros.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_decls.h"
@@ -114,6 +116,29 @@ class NCCLCommContext final : public CommContext {
 
   void GroupEnd();
 
+  // Registers a device buffer as a NCCL symmetric memory window, which is what
+  // makes the zero-SM paths (NCCL_CTA_POLICY_ZERO) usable, and returns the
+  // window handle as an opaque pointer. Registration is collective: every rank
+  // must register buffers of the same size in the same order, and a single
+  // collective call must have either all of its buffers registered or none.
+  // `ptr` and `size` must be aligned to kNCCLWindowAlignment. Repeated calls
+  // for the same `ptr` return the cached handle; returns nullptr when the
+  // loaded NCCL provides no window API.
+  void* RegisterWindow(void* ptr, size_t size, int win_flags);
+
+  // Deregisters a previously registered buffer. No-op for unknown pointers.
+  void DeregisterWindow(void* ptr);
+
+  // Deregisters every window owned by this communicator, before it is
+  // destroyed.
+  void DeregisterAllWindows();
+
+  // True when [ptr, ptr + size) lies inside a window registered here, i.e. when
+  // a collective over that buffer may take a symmetric-memory path.
+  bool IsRegistered(const void* ptr, size_t size) const;
+
+  static constexpr size_t kNCCLWindowAlignment = 4096;
+
 #if NCCL_VERSION_CODE >= 21100
   // Creates a new reduction operator which pre-multiplies input values by a
   // given scalar locally before reducing them with peer values via summation.
@@ -145,6 +170,17 @@ class NCCLCommContext final : public CommContext {
   int nranks;
   int myrank;
   int param;
+
+  // A registered window: its NCCL handle and the byte range it covers, the
+  // range being what lets IsRegistered() accept a slice of a registered buffer.
+  struct RegisteredWindow {
+    void* handle{nullptr};
+    size_t size{0};
+  };
+
+  // Keyed by buffer pointer, so that registration is idempotent and every
+  // window can be released before the communicator is destroyed.
+  std::unordered_map<void*, RegisteredWindow> windows_;
 };
 
 }  // namespace distributed

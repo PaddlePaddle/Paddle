@@ -155,6 +155,7 @@ void BindNCCLConfig(py::module *m) {
                   py::arg("nchannels") = -1,
                   py::arg("algoStr") = "",
                   py::arg("protoStr") = "",
+                  py::arg("cta_policy") = -1,
                   py::call_guard<py::gil_scoped_release>());
 }
 #endif

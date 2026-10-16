@@ -15,6 +15,8 @@ from __future__ import annotations
 
 import datetime
 import hashlib
+import math
+import weakref
 from typing import (
     TYPE_CHECKING,
     Literal,
@@ -48,6 +50,7 @@ from .fleet.layers.mpu.mp_ops import (  # noqa: F401
 if TYPE_CHECKING:
     _BackendList: TypeAlias = Literal["gloo", "nccl", "xccl", "bkcl", "flagcx"]
 
+    from paddle._typing import DTypeLike, ShapeLike
     from paddle.base.libpaddle import NCCLConfig
 
 __all__ = []
@@ -432,6 +435,7 @@ def shutdown_process_group(group: Group | None = None) -> None:
                 and pg_name != _default_group_name
             ):
                 pg.process_group.shutdown()
+                _ZeroSMPool.discard(pg)
                 _update_shutdown_group_map_by_name(pg_name, pg)
     else:
         if (
@@ -439,6 +443,7 @@ def shutdown_process_group(group: Group | None = None) -> None:
             and group.name not in shutdown_groups
         ):
             group.process_group.shutdown()
+            _ZeroSMPool.discard(group)
             _update_shutdown_group_map_by_name(group.name, group)
 
 
@@ -448,8 +453,213 @@ def restart_process_group(group: Group | None = None) -> None:
     if group is None:
         for pg in shutdown_groups.values():
             pg.process_group.restart()
+            _ZeroSMPool.discard(pg)
         _clear_shutdown_group_map_by_name()
     else:
         if group.process_group is not None and group.name in shutdown_groups:
             group.process_group.restart()
+            _ZeroSMPool.discard(group)
             _delete_shutdown_group_map_by_name(group.name)
+
+
+# Buffer address/size alignment required by ncclCommWindowRegister.
+_NCCL_WINDOW_ALIGNMENT = 4096
+# NCCL_WIN_COLL_SYMMETRIC, the window flag used by the zero-SM collectives.
+_NCCL_WIN_COLL_SYMMETRIC = 0x01
+
+
+def _nccl_symmetric_empty(shape: ShapeLike, dtype: DTypeLike) -> paddle.Tensor:
+    """Allocate an uninitialized tensor that can be registered with NCCL.
+
+    The buffer comes from ``ncclMemAlloc``: its address is aligned to
+    ``_NCCL_WINDOW_ALIGNMENT`` and its allocated size padded up to it, as
+    ``_register_comm_buffer`` requires, so any shape stays registrable. Tensors
+    from ``paddle.empty`` come from Paddle's allocator and generally cannot be
+    registered. Registration is collective, so all ranks sharing the buffer must
+    allocate the same shape in the same order.
+    """
+    return core.nccl_mem_alloc(shape, dtype)
+
+
+def _register_comm_buffer(
+    tensor: paddle.Tensor,
+    group: Group | None = None,
+    win_flags: int = _NCCL_WIN_COLL_SYMMETRIC,
+) -> int:
+    """Register ``tensor`` as a NCCL symmetric memory window of ``group``.
+
+    Registration is what makes the zero-SM paths usable: on a communicator
+    created with ``cta_policy=2`` (``NCCL_CTA_POLICY_ZERO``) the collective runs
+    on the Copy Engines and the RMA CPU proxy, consuming no SM. It is a
+    collective requirement, not a local one: every rank of ``group`` must
+    register buffers of the same size in the same order; a single collective call
+    must have either all or none of its buffers registered; the address and byte
+    size must be aligned to ``_NCCL_WINDOW_ALIGNMENT``, so allocate with
+    ``_nccl_symmetric_empty``; and ``tensor`` must own its whole allocation,
+    views are rejected.
+
+    Repeated calls are cheap, the handle is cached per communicator. Returns 0
+    when the loaded NCCL has no window API, in which case collectives silently
+    keep using the SM-based path, and for a single-rank group, which has no
+    communicator to register against.
+    """
+    if group is None:
+        group = _get_global_group()
+    if group.process_group is None:
+        return 0
+    return group.process_group.register_comm_buffer(tensor, win_flags)
+
+
+def _deregister_comm_buffer(
+    tensor: paddle.Tensor, group: Group | None = None
+) -> None:
+    """Release the window registered for ``tensor``. No-op if not registered.
+
+    Windows are released when the communicator is destroyed, so this is only
+    needed to free a buffer earlier than that.
+    """
+    if group is None:
+        group = _get_global_group()
+    if group.process_group is None:
+        return
+    group.process_group.deregister_comm_buffer(tensor)
+
+
+class _ZeroSMPool:
+    """A caching allocator whose blocks are registered NCCL symmetric windows.
+
+    Window registration is a setup-time, collective, rank-symmetric operation, so
+    it cannot be applied per call to activations from Paddle's own allocator:
+    their addresses change every step. The pool instead owns a small set of
+    long-lived registered blocks and hands out slices of them, returning a block
+    to the free list once the tensor slicing it is collected. Blocks are bucketed
+    to powers of two so that a varying shape (MoE token counts, for instance)
+    reuses one block instead of registering a new window every step.
+    """
+
+    _instances: dict[str, _ZeroSMPool] = {}
+
+    def __init__(self, group: Group) -> None:
+        self._group = group
+        self._free: dict[tuple, list] = {}
+        self._spans: list[tuple[int, int]] = []
+
+    @classmethod
+    def instance(cls, group: Group) -> _ZeroSMPool:
+        pool = cls._instances.get(group.name)
+        if pool is None:
+            pool = cls._instances[group.name] = cls(group)
+        return pool
+
+    @classmethod
+    def discard(cls, group: Group) -> None:
+        """Forget the pool of ``group``, whose windows are no longer registered.
+
+        Destroying a communicator invalidates every window registered against
+        it, and a restart builds a new one. The blocks this pool caches would
+        otherwise still look registered to :meth:`owns`, so drop the pool: the
+        next allocation registers fresh blocks against the new communicator, and
+        a tensor handed out before the restart is refused rather than silently
+        taking the SM-based path.
+        """
+        cls._instances.pop(group.name, None)
+
+    def _agree(self, values: list[int]) -> list[int]:
+        """Return the group-wide maximum of ``values``.
+
+        Registration is collective: every rank has to create a window of the
+        same byte size, the same number of times, in the same order. None of
+        that can be decided locally. A dynamic shape (MoE token counts) puts
+        the ranks in different buckets, and even a fixed shape lets their free
+        lists drift apart, because a block only returns to the list once the
+        tensor slicing it is collected, which is a local garbage-collection
+        event. So the ranks vote instead of guessing, and a disagreement costs
+        an extra window rather than a hang. The vote itself runs on a plain
+        unregistered buffer, so it keeps using the SM-based path.
+        """
+        vote = paddle.to_tensor(values, dtype="int64")
+        paddle.distributed.all_reduce(
+            vote,
+            op=paddle.distributed.ReduceOp.MAX,
+            group=self._group,
+            sync_op=True,
+        )
+        return vote.tolist()
+
+    def _plan(
+        self, dtype: DTypeLike, numel: int, needs_block: bool
+    ) -> tuple[bool, int]:
+        """Agree with the group on whether to take a block, and how big.
+
+        The capacity is negotiated in bytes because that is what a window is
+        made of: ranks that disagree on the dtype would otherwise register
+        different sizes for the same element count.
+        """
+        element_size = core.size_of_dtype(dtype)
+        nbytes = 1 << max(0, (numel * element_size - 1).bit_length())
+        if self._group.nranks > 1:
+            needs, nbytes = self._agree([int(needs_block), nbytes])
+            needs_block = bool(needs)
+        return needs_block, max(nbytes // element_size, 1)
+
+    def _block(
+        self, dtype: DTypeLike, capacity: int
+    ) -> tuple[paddle.Tensor, tuple]:
+        key = (dtype, capacity)
+        cached = self._free.setdefault(key, [])
+        reuse = bool(cached)
+        if self._group.nranks > 1:
+            # A rank that can reuse a block still has to register one when any
+            # other rank has to, otherwise the two disagree on the call count.
+            # The vote is taken before the decision, never as the right operand
+            # of an ``and``: skipping it on one rank is the very asymmetry this
+            # is here to remove.
+            any_miss = self._agree([0 if reuse else 1])[0]
+            reuse = reuse and not any_miss
+        if reuse:
+            return cached.pop(), key
+        block = _nccl_symmetric_empty([capacity], dtype)
+        if _register_comm_buffer(block, group=self._group) == 0:
+            raise RuntimeError(
+                "NCCL window registration is unavailable, so zero-SM "
+                "collectives cannot be used. They need the loaded NCCL to be "
+                "2.30.7 or newer."
+            )
+        start = block.data_ptr()
+        self._spans.append((start, start + capacity * block.element_size()))
+        return block, key
+
+    def _take(
+        self, shape: ShapeLike, dtype: DTypeLike, capacity: int
+    ) -> paddle.Tensor:
+        block, key = self._block(dtype, capacity)
+        out = block[: math.prod(shape)].reshape(shape)
+        # Keep the block alive through the view and recycle it afterwards.
+        weakref.finalize(out, self._free[key].append, block)
+        return out
+
+    def empty(self, shape: ShapeLike, dtype: DTypeLike) -> paddle.Tensor:
+        """Return an uninitialized registered tensor of ``shape``."""
+        _, capacity = self._plan(dtype, math.prod(shape), True)
+        return self._take(shape, dtype, capacity)
+
+    def owns(self, tensor: paddle.Tensor) -> bool:
+        ptr = tensor.data_ptr()
+        return any(lo <= ptr < hi for lo, hi in self._spans)
+
+    def stage(self, tensor: paddle.Tensor) -> paddle.Tensor:
+        """Return a registered tensor holding ``tensor``'s data.
+
+        A tensor already backed by the pool is returned as is, so a caller that
+        allocates its input from this pool pays no copy. Whether the copy is
+        needed is a group-wide decision: one rank staging while another does not
+        would make the registration counts diverge.
+        """
+        needs, capacity = self._plan(
+            tensor.dtype, math.prod(tensor.shape), not self.owns(tensor)
+        )
+        if not needs:
+            return tensor
+        staged = self._take(tensor.shape, tensor.dtype, capacity)
+        staged.copy_(tensor, False)
+        return staged
