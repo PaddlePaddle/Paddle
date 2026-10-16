@@ -1,0 +1,40 @@
+name: Coverage Approval
+
+on:
+  pull_request_review:
+    types: [submitted]
+
+permissions: {}
+
+jobs:
+  signal:
+    if: >-
+      github.event.review.state == 'approved' &&
+      github.event.review.commit_id == github.event.pull_request.head.sha &&
+      github.event.review.user.login == 'swgu98'
+    runs-on:
+      group: APPROVAL
+    env:
+      REVIEW_BODY: ${{ github.event.review.body }}
+    steps:
+      - name: Check coverage approval
+        run: |
+          set -euo pipefail
+
+          body=$(printf '%s' "${REVIEW_BODY}" | tr '[:upper:]' '[:lower:]')
+          if [[ "${body}" != *lgtm* || "${body}" != *coverage* ]]; then
+            echo "Review does not contain both lgtm and coverage."
+            exit 1
+          fi
+
+      - name: Record coverage approval
+        env:
+          REVIEW_STATE: ${{ github.event.review.state }}
+          REVIEWER: ${{ github.event.review.user.login }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          printf 'Review state: %s\n' "${REVIEW_STATE}"
+          printf 'Reviewer: %s\n' "${REVIEWER}"
+          printf 'Pull request: %s\n' "${PR_NUMBER}"
+          printf 'Head SHA: %s\n' "${HEAD_SHA}"
