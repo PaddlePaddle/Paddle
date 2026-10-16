@@ -727,10 +727,29 @@ void ConvInferMeta(const MetaTensor& input,
       output_shape.push_back(-1);
     } else {
       const int64_t dkernel = dilations_[i] * (filter_data_dims[i] - 1) + 1;
-      int64_t output_size = (in_data_dims[i] + paddings_[2 * i] +
-                             paddings_[2 * i + 1] - dkernel) /
-                                strides[i] +
-                            1;
+      const int64_t padded_input =
+          in_data_dims[i] + paddings_[2 * i] + paddings_[2 * i + 1];
+      // Align with PyTorch: the padded input size per channel must not be
+      // smaller than the effective (dilated) kernel size, i.e. the kernel
+      // size can't be greater than the actual input size.
+      PADDLE_ENFORCE_GE(
+          padded_input,
+          dkernel,
+          common::errors::InvalidArgument(
+              "The padded input size per channel (%d) of Op(Conv) in spatial "
+              "dimension %d should not be smaller than the effective kernel "
+              "size (%d, i.e. dilation * (kernel - 1) + 1); the kernel size "
+              "can't be greater than the actual input size. Received input "
+              "size %d, paddings (%d, %d), dilation %d, kernel size %d.",
+              padded_input,
+              i,
+              dkernel,
+              in_data_dims[i],
+              paddings_[2 * i],
+              paddings_[2 * i + 1],
+              dilations_[i],
+              filter_data_dims[i]));
+      int64_t output_size = (padded_input - dkernel) / strides[i] + 1;
       output_shape.push_back(output_size);
     }
   }
