@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/ap/include/fs/builtin_functions.h"
+#include <cstdlib>
 #include <functional>
 #include <sstream>
 #include <stdexcept>
@@ -54,6 +55,21 @@ adt::Result<axpr::Value> BaseName(const axpr::Value&,
   std::size_t pos = filepath.find_last_of("/\\");
   if (pos == std::string::npos) return filepath;
   return filepath.substr(pos + 1);
+}
+
+adt::Result<axpr::Value> GetEnv(const axpr::Value&,
+                                const std::vector<axpr::Value>& args) {
+  ADT_CHECK(args.size() == 1)
+      << adt::errors::TypeError{"getenv() takes 1 argument, but " +
+                                std::to_string(args.size()) + "were given."};
+  ADT_LET_CONST_REF(name, args.at(0).template CastTo<std::string>());
+  const char* value = std::getenv(name.c_str());
+  if (value == nullptr) {
+    // `Nothing` is falsy, so apy code can write
+    // `getenv("AP_X") or "default"`.
+    return adt::Nothing{};
+  }
+  return std::string{value};
 }
 
 }  // namespace ap::fs
