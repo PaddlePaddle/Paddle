@@ -52,7 +52,7 @@ def build_program(main, startup, batch_size, class_num):
 
 @unittest.skipIf(
     not (paddle.is_compiled_with_cuda() or is_custom_device())
-    or float(paddle.version.cuda()) < 11.0,
+    or (paddle.is_compiled_with_cuda() and float(paddle.version.cuda()) < 11.0),
     "only support cuda >= 11.0",
 )
 class TestCUDAGraphInStaticMode(unittest.TestCase):
