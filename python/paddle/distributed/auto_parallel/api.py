@@ -762,7 +762,8 @@ def dtensor_from_local(local_tensor, mesh, placements):
     if paddle.in_dynamic_mode():
         if local_tensor.is_dist() is True and local_tensor._is_initialized():
             raise ValueError("The input should be a local tensor.")
-
+        if not local_tensor.is_contiguous():
+            local_tensor = local_tensor.contiguous()
         return paddle.base.core.dtensor_from_local(
             local_tensor, mesh, placements
         )
