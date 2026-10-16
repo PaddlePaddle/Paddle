@@ -161,27 +161,6 @@ def check_memory_usage(msg=""):
             mem_msg += f"\n{key}: {mem_dict[key]}GB"
         logger.info(mem_msg)
 
-    if hasattr(paddle.device, 'cpu') and hasattr(
-        paddle.device.cpu, 'max_memory_allocated'
-    ):
-        mem_dict = {}
-        mem_dict['max_memory_allocated_size'] = (
-            paddle.device.cpu.max_memory_allocated() / GB
-        )
-        mem_dict['max_memory_reserved_size'] = (
-            paddle.device.cpu.max_memory_reserved() / GB
-        )
-        mem_dict['memory_allocated_size'] = (
-            paddle.device.cpu.memory_allocated() / GB
-        )
-        mem_dict['memory_reserved_size'] = (
-            paddle.device.cpu.memory_reserved() / GB
-        )
-        mem_msg = f"checking cpu memory usage {msg}:"
-        for key in mem_dict:
-            mem_msg += f"\n{key}: {mem_dict[key]}GB"
-        logger.info(mem_msg)
-
     # Execute the command and get the output
     result = subprocess.run(["free", "-h"], capture_output=True, text=True)
     lines = result.stdout.strip().split('\n')
