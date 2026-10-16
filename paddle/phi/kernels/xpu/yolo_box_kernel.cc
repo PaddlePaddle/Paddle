@@ -60,29 +60,59 @@ void YoloBoxKernel(const Context& dev_ctx,
 
   scores->Resize({n, box_num, class_num});
   dev_ctx.template Alloc<T>(scores);
+  // Pre-clear entries that XDNN skips below conf_thresh.
+  Full<T, Context>(dev_ctx, boxes->dims(), 0, boxes);
+  Full<T, Context>(dev_ctx, scores->dims(), 0, scores);
 
   auto x_data = reinterpret_cast<const XPUType*>(x.data<T>());
   auto img_size_data = reinterpret_cast<const int*>(img_size.data<int>());
   auto boxes_data = reinterpret_cast<XPUType*>(boxes->data<T>());
   auto scores_data = reinterpret_cast<XPUType*>(scores->data<T>());
 
-  r = xpu::yolo_box<float>(dev_ctx.x_context(),
-                           x_data,
-                           img_size_data,
-                           boxes_data,
-                           scores_data,
-                           n,
-                           h,
-                           w,
-                           anchors,
-                           an_num,
-                           class_num,
-                           conf_thresh,
-                           downsample_ratio,
-                           scale,
-                           bias,
-                           false);
-  PADDLE_ENFORCE_XDNN_SUCCESS(r, "yolo_box");
+  if (iou_aware) {
+    // Use batch-local offsets to match GPU iou-aware indexing.
+    const int64_t x_batch_stride = x.numel() / n;
+    const int64_t img_size_batch_stride = img_size.numel() / n;
+    for (int64_t i = 0; i < n; ++i) {
+      r = xpu::yolo_box<float>(dev_ctx.x_context(),
+                               x_data + i * x_batch_stride,
+                               img_size_data + i * img_size_batch_stride,
+                               boxes_data + i * box_num * 4,
+                               scores_data + i * box_num * class_num,
+                               1,
+                               h,
+                               w,
+                               anchors,
+                               an_num,
+                               class_num,
+                               conf_thresh,
+                               downsample_ratio,
+                               scale,
+                               bias,
+                               false,
+                               iou_aware,
+                               iou_aware_factor);
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "yolo_box");
+    }
+  } else {
+    r = xpu::yolo_box<float>(dev_ctx.x_context(),
+                             x_data,
+                             img_size_data,
+                             boxes_data,
+                             scores_data,
+                             n,
+                             h,
+                             w,
+                             anchors,
+                             an_num,
+                             class_num,
+                             conf_thresh,
+                             downsample_ratio,
+                             scale,
+                             bias,
+                             false);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "yolo_box");
+  }
 }
 
 }  // namespace phi
