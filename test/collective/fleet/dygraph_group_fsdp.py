@@ -539,6 +539,20 @@ def run_muon_shard():
             ),
         )
 
+    # fully_shard(optimizer=Muon) rejects trainable params missing from
+    # muon_param_info_map; here embed/head are untagged.
+    model = MuonModel()
+    optimizer = paddle.optimizer.Muon(
+        parameters=model.parameters(),
+        muon_param_info_map=tag_muon_params(model),
+    )
+    try:
+        fully_shard(model, optimizer=optimizer)
+    except ValueError as e:
+        assert "misses trainable params" in str(e), e
+    else:
+        raise AssertionError("untagged trainable params were not rejected")
+
 
 def run_muon_replicated():
     paddle.seed(2026)
