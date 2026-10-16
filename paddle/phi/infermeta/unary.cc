@@ -3178,6 +3178,7 @@ void MinMaxWithIndexInferMeta(const MetaTensor& x,
 void MultinomialInferMeta(const MetaTensor& x,
                           const Scalar& num_samples,
                           bool replacement,
+                          bool check_input_zeros,
                           MetaTensor* out,
                           MetaConfig config) {
   auto int_num_samples = num_samples.to<int>();
