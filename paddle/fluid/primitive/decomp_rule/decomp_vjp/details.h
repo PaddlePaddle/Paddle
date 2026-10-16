@@ -91,39 +91,53 @@ void cumprod_grad(const Tensor& x,
                   Tensor* x_grad) {
   if (x_grad) {
     // dx = cumsum(out * out_grad, dim, false, exclusive, !reverse) / x
+    // For integer inputs, cast to float32 to avoid integer overflow
+    // and truncation in intermediate computations.
+    auto org_dtype = x.dtype();
+    bool is_int =
+        (org_dtype == DataType::INT32 || org_dtype == DataType::INT64);
+    auto compute_dtype = is_int ? DataType::FLOAT32 : out_grad.dtype();
+    auto x_compute = is_int ? cast<T>(x, compute_dtype) : x;
+    auto out_compute = is_int ? cast<T>(out, compute_dtype) : out;
+    auto out_grad_compute =
+        is_int ? cast<T>(out_grad, compute_dtype) : out_grad;
     Tensor zero_tensor, ones_tensor;
     if (has_dynamic_shape(x.shape())) {
       zero_tensor = backend::full_with_tensor<T>(
-          shape64<T>(x), 0.0, x.dtype(), x.place());
+          shape64<T>(x), 0.0, compute_dtype, x.place());
       ones_tensor = backend::full_with_tensor<T>(
-          shape64<T>(x), 1.0, x.dtype(), x.place());
+          shape64<T>(x), 1.0, compute_dtype, x.place());
     } else {
-      zero_tensor = full<T>(x.shape(), 0.0, x.dtype(), x.place());
-      ones_tensor = full<T>(x.shape(), 1.0, x.dtype(), x.place());
+      zero_tensor = full<T>(x.shape(), 0.0, compute_dtype, x.place());
+      ones_tensor = full<T>(x.shape(), 1.0, compute_dtype, x.place());
     }
-    auto zero_mask = cast<T>(equal<T>(x, zero_tensor), x.dtype());
+    auto zero_mask = cast<T>(equal<T>(x_compute, zero_tensor), compute_dtype);
     // determine the index of first zero
     auto zero_mask_cumsum_exclusive =
         cumsum<T>(zero_mask, dim, false, true, reverse);
     auto zero_mask_cumsum = scale<T>(zero_mask_cumsum_exclusive, 2) + zero_mask;
 
     auto first_zero_mask =
-        cast<T>(equal<T>(zero_mask_cumsum, ones_tensor), x.dtype());
+        cast<T>(equal<T>(zero_mask_cumsum, ones_tensor), compute_dtype);
     // compute the grad for position with value not equal to 0
-    auto common_dx = cumsum<T>(out * out_grad, dim, false, exclusive, !reverse);
+    auto common_dx = cumsum<T>(
+        out_compute * out_grad_compute, dim, false, exclusive, !reverse);
     // fill the positions of 0 with 1.
-    auto replace_one = (ones_tensor - zero_mask) * x + zero_mask;
+    auto replace_one = (ones_tensor - zero_mask) * x_compute + zero_mask;
     // fill the first positions of 0 with 1.
     auto replace_first_one =
-        (ones_tensor - first_zero_mask) * x + first_zero_mask;
+        (ones_tensor - first_zero_mask) * x_compute + first_zero_mask;
     // recompute the grad of the first position with 0
     auto cumprod_recompute =
         cumprod<T>(replace_first_one, dim, exclusive, reverse);
     auto zeros_dx = cumsum<T>(
-        cumprod_recompute * out_grad, dim, false, exclusive, !reverse);
+        cumprod_recompute * out_grad_compute, dim, false, exclusive, !reverse);
     auto x_grad_res = ((ones_tensor - first_zero_mask) * common_dx +
                        first_zero_mask * zeros_dx) /
                       replace_one;
+    if (is_int) {
+      x_grad_res = cast<T>(x_grad_res, org_dtype);
+    }
     set_output<T>(x_grad_res, x_grad);
   }
 }
