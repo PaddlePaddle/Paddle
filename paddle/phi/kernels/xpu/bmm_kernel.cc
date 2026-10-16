@@ -64,6 +64,14 @@ void BmmKernel(const Context& dev_ctx,
 
   xpu::Context* xpu_ctx = dev_ctx.x_context();
   int fc_calc_type = FCCalcType<XPUType>();
+  // For float32 bmm, use FC_FLOAT (full fp32 accumulation) to match GPU
+  // precision. GPU uses CUBLAS_COMPUTE_32F for float32 bmm; XPU defaults to
+  // FC_TF32 (tfloat32) which has only 10 mantissa bits vs 23 for fp32, causing
+  // precision discrepancies.
+  if (fc_calc_type == XPUFCCalcType::FC_TF32 &&
+      std::is_same<XPUType, float>::value) {
+    fc_calc_type = XPUFCCalcType::FC_FLOAT;
+  }
   if (fc_calc_type == XPUFCCalcType::FC_INT32) {
     MatMulXPUFunction<T, int32_t>(x, y, out, trans_x, trans_y, xpu_ctx);
   } else if (fc_calc_type == XPUFCCalcType::FC_FLOAT) {
