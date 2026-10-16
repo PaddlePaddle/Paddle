@@ -2370,18 +2370,23 @@ PHI_DEFINE_EXPORTED_bool(print_offload_info,
 /**
  * FlashAttention related FLAG
  * Name: FLAGS_flash_attn_version
- * Value Range: int32, default=2
+ * Value Range: int32, default=0
  * Example:
- * Note: Specify the version of FlashAttention to use, options are 2 or 3.
+ * Note: Specify the version of FlashAttention to use, options are 2, 3 or 4.
+ *        0 means auto-detect (default), letting get_fa_version choose the
+ *        optimal version based on hardware and input.
  *        Version 2 requires Ampere architecture or higher,
- *        while version 3 requires Hopper architecture.
+ *        version 3 requires Hopper architecture,
+ *        version 4 requires Blackwell architecture and flash_mask package.
  */
 PHI_DEFINE_EXPORTED_int32(
     flash_attn_version,
-    2,
-    "Specify the version of FlashAttention to use, options are 2 or 3. "
+    0,
+    "Specify the version of FlashAttention to use, 0 means auto-detect, "
+    "options are 2, 3 or 4. "
     "Version 2 requires Ampere architecture or higher, "
-    "while version 3 requires Hopper architecture.");
+    "version 3 requires Hopper architecture, "
+    "version 4 requires Blackwell architecture and flash_mask package.");
 #endif
 
 /**
