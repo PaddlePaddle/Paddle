@@ -50,7 +50,7 @@ class OffloadPolicy:
 
 
 def _mark_params_for_optimizer(module, optimizer):
-    decay_fun = optimizer._apply_decay_param_fun
+    decay_fun = getattr(optimizer, "_apply_decay_param_fun", None)
     muon_info_map = getattr(optimizer, "_muon_param_info_map", None)
     missing = []
     for name, param in module.named_parameters():
