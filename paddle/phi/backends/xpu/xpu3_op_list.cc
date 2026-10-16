@@ -1040,6 +1040,7 @@ XPUOpMap& get_kl3_ops() {
       {"moe_gate_dispatch_partial_nosoftmaxtopk_grad",
        XPUKernelSet({FLOAT32, FLOAT16, BFLOAT16})},
       {"blha_get_max_len", XPUKernelSet({INT32, INT64})},
+      {"block_multihead_attention_xpu", XPUKernelSet({FLOAT16})},
       {"full_with_tensor",
        XPUKernelSet({FLOAT32,
                      FLOAT16,
