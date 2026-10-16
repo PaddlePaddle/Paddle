@@ -40,6 +40,13 @@ if(NOT DEFINED ENV{runtime_include_dir})
     set(ENV{runtime_include_dir} "${CMAKE_SOURCE_DIR}/paddle/cinn/runtime/hip")
     add_definitions(
       -DRUNTIME_INCLUDE_DIR="${CMAKE_SOURCE_DIR}/paddle/cinn/runtime/hip")
+  elseif(WITH_XPU)
+    message(
+      STATUS
+        "set runtime_include_dir: ${CMAKE_SOURCE_DIR}/paddle/cinn/runtime/xpu")
+    set(ENV{runtime_include_dir} "${CMAKE_SOURCE_DIR}/paddle/cinn/runtime/xpu")
+    add_definitions(
+      -DRUNTIME_INCLUDE_DIR="${CMAKE_SOURCE_DIR}/paddle/cinn/runtime/xpu")
   endif()
 endif()
 
@@ -154,6 +161,38 @@ if(WITH_ROCM)
   file(COPY paddle/cinn/common/float16.h DESTINATION $ENV{runtime_include_dir})
 endif()
 
+if(WITH_XPU)
+  message(STATUS "CINN Compile with XPU support")
+  add_definitions(-DCINN_WITH_XPU)
+
+  # XTDK_PATH / XRE_PATH and their libraries are resolved by cmake/xtdk.cmake
+  # which is included from the top-level CMakeLists.txt before cinn.cmake is
+  # processed (mirrors the hip.cmake -> cinn.cmake pattern for HygonDCU).
+  # At this point XTDK_PATH, XRE_PATH, and XPU_XTDK_LIBS are already set.
+
+  # Expose XTDK_PATH and XRE_PATH as preprocessor strings so that C++ code
+  # (compiler_xpu.cc, xpu_util.cc) can use them as fallback paths at runtime
+  # when the corresponding environment variables are not set.
+  add_definitions(-DXTDK_PATH="${XTDK_PATH}")
+  add_definitions(-DXRE_PATH="${XRE_PATH}")
+
+  # Link all XPU libraries (libxpujitc.so, libxpucuda.so, libcudart.so).
+  # This mirrors: link_libraries(${ROCM_HIPRTC_LIB}) in the WITH_ROCM block.
+  link_libraries(${XPU_XTDK_LIBS})
+
+  message(
+    STATUS "copy paddle/cinn/common/float16.h to $ENV{runtime_include_dir}")
+  file(COPY paddle/cinn/common/float16.h DESTINATION $ENV{runtime_include_dir})
+  message(
+    STATUS "copy paddle/cinn/common/bfloat16.h to $ENV{runtime_include_dir}")
+  file(COPY paddle/cinn/common/bfloat16.h DESTINATION $ENV{runtime_include_dir})
+  # Copy the device-side preamble header used by xpurtc JIT compilation
+  message(
+    STATUS "copy cinn_xpu_runtime_source.cuh to $ENV{runtime_include_dir}")
+  file(COPY paddle/cinn/runtime/xpu/cinn_xpu_runtime_source.cuh
+       DESTINATION $ENV{runtime_include_dir})
+endif()
+
 if(WITH_CUSTOM_DEVICE)
   message(STATUS "CINN Compile with custom device support")
 
@@ -200,6 +239,28 @@ set(hlir_src CACHE INTERNAL "" FORCE)
 # TODO(chenweihang): The logic later depends adding cinn subdirectory here,
 # but better to move to paddle/CMakeLists.txt
 add_subdirectory(paddle/cinn)
+
+# On XPU, isolate the XTDK xpurtc::CompileContext destructor reference inside a
+# CINN target's compiled objects so it binds to the SONAME-isolated
+# libxpujitc_xtdk.so instead of the XHPC libxpujitc.so. Runs as PRE_LINK so the
+# rename is applied after (re)compilation but before link/archive; it is a no-op
+# when the symbol is already renamed, so incremental builds stay correct.
+# See cmake/xpu/isolate_xpujitc.py and cmake/xpu/redefine_cinn_jitc_syms.cmake.
+function(cinn_isolate_xpu_jitc TARGET_NAME)
+  if(WITH_XPU)
+    add_custom_command(
+      TARGET ${TARGET_NAME}
+      PRE_LINK
+      COMMAND
+        ${CMAKE_COMMAND}
+        -DOBJDIR=${CMAKE_BINARY_DIR}/CMakeFiles/${TARGET_NAME}.dir
+        -DOBJCOPY=${CMAKE_OBJCOPY} -P
+        ${CMAKE_SOURCE_DIR}/cmake/xpu/redefine_cinn_jitc_syms.cmake
+      COMMENT
+        "Isolating XTDK xpurtc::CompileContext dtor in ${TARGET_NAME} objects"
+      VERBATIM)
+  endif()
+endfunction()
 
 cinn_cc_library(
   cinnapi
@@ -251,6 +312,8 @@ if(WITH_CUTLASS)
   target_link_libraries(cinnapi cutlass)
   add_dependencies(cinnapi cutlass)
 endif()
+
+cinn_isolate_xpu_jitc(cinnapi)
 
 set(core_src "${cinnapi_src}")
 
@@ -309,6 +372,8 @@ function(gen_cinncore LINKTYPE)
     target_link_libraries(${CINNCORE_TARGET} cutlass)
     add_dependencies(${CINNCORE_TARGET} cutlass)
   endif()
+
+  cinn_isolate_xpu_jitc(${CINNCORE_TARGET})
 endfunction()
 
 gen_cinncore(STATIC)

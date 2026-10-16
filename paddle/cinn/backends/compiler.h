@@ -35,6 +35,9 @@
 #ifdef CINN_WITH_HIP
 #include "paddle/cinn/runtime/hip/hip_module.h"
 #endif
+#ifdef CINN_WITH_XPU
+#include "paddle/cinn/runtime/xpu/xpu_module.h"
+#endif
 #ifdef CINN_WITH_SYCL
 #include "paddle/cinn/runtime/sycl/sycl_module.h"
 #endif
@@ -181,6 +184,8 @@ class Compiler final {
 
   void RegisterHipModuleSymbol();
 
+  void RegisterXpuModuleSymbol();
+
   void RegisterSyclModuleSymbol();
 
   void CompileCudaModule(const ir::Module& module,
@@ -190,6 +195,8 @@ class Compiler final {
                                  const std::string& code = "");
 
   void CompileHipModule(const ir::Module& module, const std::string& code = "");
+
+  void CompileXpuModule(const ir::Module& module, const std::string& code = "");
 
   void CompileSyclModule(const ir::Module& module,
                          const std::string& code = "");
@@ -226,6 +233,11 @@ class Compiler final {
 
 #ifdef CINN_WITH_HIP
   std::unique_ptr<runtime::hip::HIPModule> hip_module_;
+#endif
+#ifdef CINN_WITH_XPU
+  // One XpuModule per kernel (unlike HIP which has one module for all kernels).
+  // Owned by fn_ptr_ via reinterpret_cast; destroyed when fn_ptr_ is cleared.
+  std::vector<runtime::xpu::XpuModule*> xpu_kernels_;
 #endif
 #ifdef CINN_WITH_SYCL
   std::unique_ptr<runtime::sycl::SYCLModule> sycl_module_;

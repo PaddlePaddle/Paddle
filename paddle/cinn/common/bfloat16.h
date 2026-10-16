@@ -24,7 +24,7 @@
 #include <cmath>
 #include <cstring>
 
-#ifdef CINN_WITH_CUDA
+#if defined(CINN_WITH_CUDA) || defined(CINN_WITH_XPU)
 #include <cuda.h>
 
 #if (defined(__CUDACC__) || defined(__CUDACC_RTC__)) && CUDA_VERSION >= 11000
@@ -32,7 +32,7 @@
 #include <cuda_bf16.h>
 
 #endif  // __CUDACC__
-#endif  // CINN_WITH_CUDA
+#endif  // CINN_WITH_CUDA || CINN_WITH_XPU
 
 #ifdef __cplusplus
 
