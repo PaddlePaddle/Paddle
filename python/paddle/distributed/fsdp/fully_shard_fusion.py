@@ -1294,7 +1294,7 @@ class FullyShardFusion:
     def all_gather_params(self):
         for group in self.buffer_manager.buffer_groups:
             self.comm_manager.all_gather_params(group.params)
-    
+
     @contextlib.contextmanager
     def unshard_params(self, params):
         """Bind the full (unsharded) storage of ``params`` outside forward/backward.
