@@ -167,10 +167,9 @@ KernelKeyMap KernelFactory::SelectKernelMap(
 bool KernelFactory::HasKernel(const std::string& kernel_name,
                               const KernelKey& kernel_key) const {
   auto iter = kernels_.find(kernel_name);
-  PADDLE_ENFORCE_NE(iter,
-                    kernels_.end(),
-                    common::errors::NotFound(
-                        "The kernel `%s` is not registered.", kernel_name));
+  if (iter == kernels_.end()) {
+    return false;
+  }
 
   auto kernel_iter = iter->second.find(kernel_key);
   if (kernel_iter == iter->second.end() &&
