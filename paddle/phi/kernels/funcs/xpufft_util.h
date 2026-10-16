@@ -78,21 +78,23 @@ class FFTConfig {
     std::vector<plan_size_type> signal_sizes(sizes.cbegin() + 1, sizes.cend());
     const int signal_ndim = sizes.size() - 1;
 
-    // Check if the number of elements participating in FFT transformation is
-    // greater than 8 (XPU hardware requirement)
-    for (int i = 0; i < signal_ndim; ++i) {
-      if (signal_sizes[i] <= 8) {
-        PADDLE_THROW(common::errors::InvalidArgument(
-            "XPU FFT requires all axes to have greater than 8 elements, "
-            "but axis %d has size %d.Set XFFT_DEBUG=1 environment variable "
-            "to inspect dimensions.",
-            i,
-            signal_sizes[i]));
-      }
-    }
-
     cufftType exec_type;
     exec_type = type_input(fft_type);
+
+    // R2C and C2R transforms on XPU require signal sizes > 8
+    if (fft_type == FFTTransformType::R2C ||
+        fft_type == FFTTransformType::C2R) {
+      for (int i = 0; i < signal_ndim; ++i) {
+        if (signal_sizes[i] <= 8) {
+          PADDLE_THROW(common::errors::InvalidArgument(
+              "XPU R2C/C2R FFT requires all axes to have greater than 8 "
+              "elements, but axis %d has size %d.Set XFFT_DEBUG=1 environment "
+              "variable to inspect dimensions.",
+              i,
+              signal_sizes[i]));
+        }
+      }
+    }
 
     // disable auto allocation of workspace to use allocator from the framework
     PADDLE_ENFORCE_FFT_SUCCESS(
