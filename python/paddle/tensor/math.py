@@ -881,10 +881,19 @@ def logaddexp(
             shape(X) = (2, 3, 4, 5), shape(Y) = (2), with axis=0
             shape(X) = (2, 3, 4, 5), shape(Y) = (2, 1), with axis=0
 
+    Note:
+        The computation is done in floating point. Inputs are promoted as follows:
+
+        - An integer or bool tensor paired with a floating-point tensor is cast to that floating-point dtype.
+        - Two int32/int64 tensors are both cast to float32.
+        - A 0-D tensor does not raise the dtype of an N-D tensor of the same kind, e.g. a float16 N-D tensor with a float32 0-D tensor gives float16.
+
     Args:
-        x (Tensor): Tensor of any dimensions. Its dtype should be int32, int64, bfloat16, float16, float32, float64.
+        x (Tensor): Tensor of any dimensions. Its dtype should be bool, int32, int64, bfloat16, float16, float32, float64.
+            bfloat16 and float16 are supported on GPU only.
             Alias: ``input``.
-        y (Tensor): Tensor of any dimensions. Its dtype should be int32, int64, bfloat16, float16, float32, float64.
+        y (Tensor): Tensor of any dimensions. Its dtype should be bool, int32, int64, bfloat16, float16, float32, float64.
+            bfloat16 and float16 are supported on GPU only.
             Alias: ``other``.
         name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
@@ -907,13 +916,15 @@ def logaddexp(
             Tensor(shape=[3], dtype=float64, place=Place(cpu), stop_gradient=True,
             [-0.30685282, -0.68673831, -0.87307199])
     """
-    # The native kernel is float-only; follow torch's type promotion:
+    # The native kernel is float-only. The framework's type promotion (see
+    # support_promotion_ops in phi/common/type_promotion.h) already keeps a
+    # 0-D tensor from raising the dtype of an N-D one, but it only promotes
+    # between floats/complex and throws for an N-D integral operand mixed
+    # with a float one, so integral operands are handled here like torch:
     # - an integral/bool operand paired with a float one is cast to that
     #   float dtype;
-    # - between two floats, a 0-D tensor does not raise the dtype of an
-    #   N-D one (e.g. float16 N-D with float32 0-D gives float16).
-    # Two int32/int64 operands (rejected by torch) keep the legacy float32
-    # promotion; other integral pairs are left to fail in the kernel.
+    # - two int32/int64 operands (rejected by torch) keep the legacy float32
+    #   promotion; other integral pairs are left to fail in the kernel.
     integral = (
         paddle.bool,
         paddle.uint8,
@@ -932,10 +943,6 @@ def logaddexp(
     elif x_is_int:
         x = x.astype(y.dtype)
     elif y_is_int:
-        y = y.astype(x.dtype)
-    elif x.dtype != y.dtype and x.ndim == 0 and y.ndim != 0:
-        x = x.astype(y.dtype)
-    elif x.dtype != y.dtype and y.ndim == 0 and x.ndim != 0:
         y = y.astype(x.dtype)
     if in_dynamic_mode():
         return _C_ops.logaddexp(x, y, out=out)
