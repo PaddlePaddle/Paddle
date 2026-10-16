@@ -56,6 +56,52 @@ COMMON_DECLARE_bool(enable_pir_in_executor);
 
 namespace paddle::framework {
 
+// Global cache for parsed operator metadata
+std::unordered_map<std::string, ParsedOpMeta> g_parsed_op_meta_cache;
+
+CustomAttrType ParseAttrTypeToEnum(const std::string& t) {
+  if (t == "bool") return CustomAttrType::BOOL;
+  if (t == "int") return CustomAttrType::INT;
+  if (t == "float") return CustomAttrType::FLOAT;
+  if (t == "double") return CustomAttrType::DOUBLE;
+  if (t == "int64_t") return CustomAttrType::INT64;
+  if (t == "std::string") return CustomAttrType::STRING;
+  if (t == "std::vector<int>") return CustomAttrType::VEC_INT;
+  if (t == "std::vector<float>") return CustomAttrType::VEC_FLOAT;
+  if (t == "std::vector<int64_t>") return CustomAttrType::VEC_INT64;
+  if (t == "std::vector<std::string>") return CustomAttrType::VEC_STRING;
+  // LCOV_EXCL_START
+  PADDLE_THROW(common::errors::Unimplemented(
+      "Unknown attr type for ParsedOpMeta: %s", t));
+  // LCOV_EXCL_END
+}
+
+static ParsedOpMeta BuildParsedOpMeta(
+    const std::string& /* op_name */,
+    const std::vector<paddle::OpMetaInfo>& vec_map) {
+  ParsedOpMeta meta;
+  meta.vec_map = vec_map;
+  meta.inputs = paddle::OpMetaInfoHelper::GetInputs(vec_map[0]);
+  meta.outputs = paddle::OpMetaInfoHelper::GetOutputs(vec_map[0]);
+  meta.inplace_map = paddle::OpMetaInfoHelper::GetInplaceMap(vec_map[0]);
+  meta.has_grad_op = (vec_map.size() > 1);
+  for (const auto& attr_str : paddle::OpMetaInfoHelper::GetAttrs(vec_map[0])) {
+    auto parts = paddle::ParseAttrStr(attr_str);
+    meta.attr_names.push_back(parts[0]);
+    meta.attr_types.push_back(ParseAttrTypeToEnum(parts[1]));
+  }
+  return meta;
+}
+
+void RegisterParsedOpMetaCache(
+    const std::unordered_map<std::string, std::vector<paddle::OpMetaInfo>>&
+        diff_map) {
+  for (const auto& [op_name, vec_map] : diff_map) {
+    g_parsed_op_meta_cache[op_name] = BuildParsedOpMeta(op_name, vec_map);
+    VLOG(3) << "RegisterParsedOpMetaCache: cached " << op_name;
+  }
+}
+
 // custom op kernel call function define
 static void RunKernelFunc(
     const framework::ExecutionContext& ctx,
@@ -1325,6 +1371,10 @@ LoadOpMetaInfoAndRegisterOp(const std::string& dso_name) {
   auto diff_map = RegisterOperatorWithMetaInfoMap(op_meta_info_map, handle);
   for (auto& pair : diff_map) {
     VLOG(3) << "diff op name: " << pair.first;
+  }
+  // Populate global ParsedOpMeta cache (no Python dependency)
+  if (!diff_map.empty()) {
+    RegisterParsedOpMetaCache(diff_map);
   }
   // return op_meta_info_map.GetMap();
   return diff_map;
