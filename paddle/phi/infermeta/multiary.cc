@@ -3289,7 +3289,10 @@ static void Interpolate1DInferShapeCheck(
                         "Input(X) dimension is 3, but got method = %s .",
                         interp_method));
   const DataLayout data_layout = StringToDataLayout(data_layout_str);
-  for (int i = 2; i < dim_x.size(); ++i) {
+  // Only the batch dimension (index 0) is allowed to be empty; a 0-size
+  // channel or spatial dimension is rejected, aligning with PyTorch which
+  // requires a non-empty data tensor.
+  for (int i = 1; i < dim_x.size(); ++i) {
     PADDLE_ENFORCE_NE(dim_x[i],
                       0,
                       common::errors::InvalidArgument(
@@ -3421,7 +3424,10 @@ static void Interpolate2DInferShapeCheck(
           interp_method));
   const DataLayout data_layout = StringToDataLayout(data_layout_str);
 
-  for (int i = 2; i < dim_x.size(); ++i) {
+  // Only the batch dimension (index 0) is allowed to be empty; a 0-size
+  // channel or spatial dimension is rejected, aligning with PyTorch which
+  // requires a non-empty data tensor.
+  for (int i = 1; i < dim_x.size(); ++i) {
     PADDLE_ENFORCE_NE(dim_x[i],
                       0,
                       common::errors::InvalidArgument(
@@ -3574,7 +3580,10 @@ static void Interpolate3DInferShapeCheck(
           interp_method));
   const DataLayout data_layout = StringToDataLayout(data_layout_str);
 
-  for (int i = 2; i < dim_x.size(); ++i) {
+  // Only the batch dimension (index 0) is allowed to be empty; a 0-size
+  // channel or spatial dimension is rejected, aligning with PyTorch which
+  // requires a non-empty data tensor.
+  for (int i = 1; i < dim_x.size(); ++i) {
     PADDLE_ENFORCE_NE(dim_x[i],
                       0,
                       common::errors::InvalidArgument(
