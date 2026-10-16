@@ -14,6 +14,7 @@ set(ALLOCATOR_SRCS
     memory_block.cc
     memory_block_desc.cc
     meta_cache.cc
+    memory_history_recorder.cc
     buddy_allocator.cc
     system_allocator.cc)
 

@@ -456,6 +456,7 @@ paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize> {}:
    // * 'Global_XXXGradNode' will not only cover execution time of this function, but also include gradient
    //    accumulation when the output(s) of corresponding forward OP are shared by other OP(s), which may have extra accumulation overhead than 'Local_XXXGradNode'.
   phi::RecordEvent grad_node_record_event_inner(\"Local_{}\", phi::TracerEventType::OperatorInner, 1);
+  paddle::memory::MemLabelGuard __mem_op_label(this->name_.c_str());
 
   // Fill Zero For GradIn Tensors
 {}
@@ -775,6 +776,7 @@ NODE_CC_FILE_TEMPLATE = """
 #include "paddle/fluid/prim/utils/utils.h"
 #include "paddle/common/flags.h"
 #include "paddle/phi/core/memory/stats.h"
+#include "paddle/phi/core/memory/allocation/memory_history_recorder.h"
 #include "paddle/phi/api/lib/data_transform.h"
 COMMON_DECLARE_bool(check_nan_inf);
 COMMON_DECLARE_bool(check_cuda_error);
@@ -811,6 +813,7 @@ FORWARD_CC_FILE_TEMPLATE = """
 
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/phi/core/platform/profiler/event_tracing.h"
+#include "paddle/phi/core/memory/allocation/memory_history_recorder.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/fluid/eager/nan_inf_utils.h"
 #include "paddle/fluid/eager/utils.h"
@@ -2363,7 +2366,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                 inputs_call_args_str_tmp = ", ".join(self.inputs_call_list_tmp)
                 forward_call_str = f"{indent}{api_out_type} api_result = paddle::experimental::{namespace}{function_name}({inputs_call_args_str_tmp});"
 
-        dygraph_event_str = f'{indent}phi::RecordEvent dygraph_entrance_record_event("{forward_api_name} dygraph", phi::TracerEventType::Operator, 1);\n'
+        dygraph_event_str = f'{indent}phi::RecordEvent dygraph_entrance_record_event("{forward_api_name} dygraph", phi::TracerEventType::Operator, 1);\n{indent}paddle::memory::MemLabelGuard __mem_op_label("{forward_api_name}");\n'
         log_memory_info_str = f'{indent}paddle::memory::LogDeviceMemoryStats(egr::Controller::Instance().GetExpectedPlace(), "{forward_api_name}");'
         forward_ad_function_name = GetDygraphForwardFunctionName(
             forward_api_name
