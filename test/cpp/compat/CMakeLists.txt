@@ -82,6 +82,8 @@ else()
   cc_test(c10_Stream_test SRCS c10_Stream_test.cc)
 endif()
 
+cc_test(ATen_take_test SRCS ATen_take_test.cc)
+
 if(WITH_GPU)
   nv_test(ATen_CUDABlas_test SRCS ATen_CUDABlas_test.cc)
   nv_test(ATen_cuda_test SRCS ATen_cuda_test.cc)
