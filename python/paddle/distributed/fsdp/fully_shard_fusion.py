@@ -516,6 +516,7 @@ class FSDPBufferManager:
                 group.grads_buffer is not None
                 and not group.grads_buffer.is_sharded
                 and group.muon_owner_rank is None
+                and group.fsdp_group.nranks > 1
                 and paddle.distributed.get_rank(group.fsdp_group) != 0
             ):
                 data_buffer.is_firstly_shared = False
