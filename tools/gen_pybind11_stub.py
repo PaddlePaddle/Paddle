@@ -114,6 +114,7 @@ INPUT_TYPES_MAP = {
 ATTR_TYPES_MAP = {
     'IntArray': 'list[int]',
     'Scalar': 'float',
+    'ScalarType': 'float',
     'Scalar(int)': 'int',
     'Scalar(int64_t)': 'int',
     'Scalar(float)': 'float',
