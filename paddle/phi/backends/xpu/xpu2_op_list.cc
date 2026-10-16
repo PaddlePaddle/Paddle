@@ -345,7 +345,7 @@ XPUOpMap& get_kl2_ops() {
        XPUKernelSet({FLOAT32, FLOAT16, BFLOAT16, INT32, INT64, FLOAT16})},
       {"reduce_mean_grad", XPUKernelSet({FLOAT32, FLOAT16, BFLOAT16})},
       {"reduce_mean", XPUKernelSet({FLOAT32, FLOAT16, BFLOAT16})},
-      {"reduce_min_grad", XPUKernelSet({FLOAT32})},
+      {"reduce_min_grad", XPUKernelSet({FLOAT32, FLOAT16, BFLOAT16})},
       {"reduce_min", XPUKernelSet({FLOAT32, FLOAT16, BFLOAT16})},
       {"reduce_prod", XPUKernelSet({FLOAT32, INT32, INT64})},
       {"reduce_sum_grad", XPUKernelSet({FLOAT32, FLOAT16, BFLOAT16})},
