@@ -334,6 +334,34 @@ class RecordedGpuMallocHelper {
     // driver has already shutdown. This happens only if the
     // process is terminating, in which case we don't care if
     // cudaFree succeeds.
+    //
+    // Also skip cudaFree when CUDA context is not available in the
+    // current process. This can happen when a forked child process
+    // (e.g., DataLoader worker) inherits GPU tensors from the parent
+    // but cannot use CUDA after fork. In this case, the GPU memory
+    // will be reclaimed by the OS when the process exits.
+#ifdef PADDLE_WITH_HIP
+    {
+      int device_id;
+      auto device_err = hipGetDevice(&device_id);
+      if (device_err == hipErrorNoDevice ||
+          device_err == hipErrorInsufficientDriver) {
+        hipGetLastError();
+        return;
+      }
+    }
+#else
+    {
+      int device_id;
+      auto device_err = cudaGetDevice(&device_id);
+      if (device_err == cudaErrorInitializationError ||
+          device_err == cudaErrorNoDevice ||
+          device_err == cudaErrorInsufficientDriver) {
+        cudaGetLastError();
+        return;
+      }
+    }
+#endif
     CUDADeviceGuard guard(dev_id_);
 #ifdef PADDLE_WITH_HIP
     auto err = hipFree(ptr);
@@ -367,6 +395,30 @@ class RecordedGpuMallocHelper {
     // driver has already shutdown. This happens only if the
     // process is terminating, in which case we don't care if
     // cudaFree succeeds.
+    //
+    // Also skip when CUDA context is not available after fork.
+#ifdef PADDLE_WITH_HIP
+    {
+      int device_id;
+      auto device_err = hipGetDevice(&device_id);
+      if (device_err == hipErrorNoDevice ||
+          device_err == hipErrorInsufficientDriver) {
+        hipGetLastError();
+        return;
+      }
+    }
+#else
+    {
+      int device_id;
+      auto device_err = cudaGetDevice(&device_id);
+      if (device_err == cudaErrorInitializationError ||
+          device_err == cudaErrorNoDevice ||
+          device_err == cudaErrorInsufficientDriver) {
+        cudaGetLastError();
+        return;
+      }
+    }
+#endif
     CUDADeviceGuard guard(dev_id_);
 #ifdef PADDLE_WITH_CUDA
     auto err = cudaFreeAsync(ptr, stream);
