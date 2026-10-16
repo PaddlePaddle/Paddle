@@ -32,6 +32,7 @@
 #include "paddle/cinn/optim/lower_function_call_bind_vars.h"
 #include "paddle/cinn/optim/lower_intrin.h"
 #include "paddle/cinn/optim/map_extern_call.h"
+#include "paddle/cinn/optim/pass_registry.h"
 #include "paddle/cinn/optim/realize_composite_reduce_pass.h"
 #include "paddle/cinn/optim/rearrange_load_instruction_pass.h"
 #include "paddle/cinn/optim/reindex_transpose_buffer_pass.h"
@@ -44,6 +45,11 @@
 #include "paddle/cinn/optim/unroll_loops.h"
 #include "paddle/cinn/optim/vectorize_for_trans.h"
 #include "paddle/cinn/pass/pass_manager.h"
+
+#ifdef CINN_WITH_CUSTOM_DEVICE
+#include "paddle/cinn/runtime/custom_device/custom_device_backend_api.h"
+#include "paddle/phi/common/place.h"
+#endif
 
 PD_DECLARE_bool(cinn_enable_vectorize);
 
@@ -63,7 +69,42 @@ ir::LoweredFunc Optimize(ir::LoweredFunc fn,
   auto copied = ir::ir_utils::IRCopy(fn);
   if (!copied->body.As<ir::Block>()) return copied;
 
-  // Simplify already contains CastSimplify
+  // CustomDevice: use the configurable pipeline-driven optimization path.
+  // The vendor can customize the pass pipeline via QueryPassPipeline() and
+  // inject custom DRR passes via ApplyCustomPass().
+  bool is_custom_device = false;
+  target.arch.Match([&](common::CustomDeviceArch) { is_custom_device = true; },
+                    [&](auto) {});
+
+  if (is_custom_device) {
+#ifdef CINN_WITH_CUSTOM_DEVICE
+    auto arch = std::get<common::CustomDeviceArch>(target.arch.variant());
+    auto place = phi::CustomPlace(arch.device_type, arch.device_id);
+    auto& plugin =
+        runtime::custom_device::CinnCustomDevicePlugin::GetInstance(place);
+    auto* strategy = plugin.GetCompileStrategy();
+
+    auto pipeline =
+        strategy ? strategy->QueryPassPipeline() : std::vector<std::string>{};
+    if (pipeline.empty()) {
+      pipeline = GetDefaultGpuPassPipeline();
+    }
+
+    for (const auto& pass_name : pipeline) {
+      const auto* action = LookupBuiltinPass(pass_name);
+      if (action) {
+        (*action)(copied, target);
+      } else if (strategy) {
+        strategy->ApplyCustomPass(pass_name, static_cast<void*>(&copied));
+      }
+      VLOG(4) << "After pass [" << pass_name << "]:" << copied;
+    }
+
+    return copied;
+#endif
+  }
+
+  // Original hardcoded pipeline for NVGPU / HygonDCU / X86 / ARM
   Simplify(&copied->body);
   EliminateInvariantLoop(&copied->body);
   VLOG(4) << "After Optimize EliminateInvariantLoop:" << copied;
@@ -106,26 +147,7 @@ ir::LoweredFunc Optimize(ir::LoweredFunc fn,
 #endif
       },
       [&](common::CustomDeviceArch) {
-#ifdef CINN_WITH_CUSTOM_DEVICE
-        ir::SetCudaAxisInfo(copied);
-        if (remove_gpu_for_loops) {
-          VLOG(4) << "Before removing GPU for loops:\n" << copied;
-          FuncPassManager func_pass_manager;
-          func_pass_manager.AddPass(CreateRemoveGpuForLoopsPass());
-          func_pass_manager.Run(copied);
-          VLOG(4) << "After removing GPU for loops:\n" << copied;
-        }
-        VLOG(10) << "Before Optimize CudaSyncThreadsDropIfThenElse:" << copied;
-        BlockPassManager blk_pass_manager;
-        blk_pass_manager.AddPass(CreateCudaSyncThreadsDropIfThenElsePass());
-        blk_pass_manager.Run(copied->body_block);
-        VLOG(10) << "After Optimize CudaSyncThreadsDropIfThenElse:" << copied;
-        FuncPassManager func_pass_manager;
-        VLOG(10) << "Before Optimize TransBufferWithDynamicShape:" << copied;
-        func_pass_manager.AddPass(CreateTransBufferWithDynamicShapePass());
-        func_pass_manager.Run(copied);
-        VLOG(10) << "After Optimize TransBufferWithDynamicShape:" << copied;
-#endif
+        // CustomDevice uses the pipeline-driven path above (early return).
       },
       [&](std::variant<common::HygonDCUArchHIP, common::HygonDCUArchSYCL>) {
 #if defined(PADDLE_WITH_SYCL) || defined(PADDLE_WITH_HIP)
@@ -184,10 +206,7 @@ ir::LoweredFunc Optimize(ir::LoweredFunc fn,
         VLOG(4) << "After Optimize RearrangeLoadInstruction:" << copied;
       },
       [&](common::CustomDeviceArch) {
-        FuncPassManager func_pass_manager;
-        func_pass_manager.AddPass(CreateRearrangeLoadInstructionPass());
-        func_pass_manager.Run(copied);
-        VLOG(4) << "After Optimize RearrangeLoadInstruction:" << copied;
+        // CustomDevice uses the pipeline-driven path above (early return).
       },
       [&](std::variant<common::HygonDCUArchHIP, common::HygonDCUArchSYCL>) {
         FuncPassManager func_pass_manager;
