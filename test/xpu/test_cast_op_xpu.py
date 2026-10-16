@@ -283,6 +283,70 @@ if 'complex64' in support_types:
             self.check_output()
 
 
+@unittest.skipIf(
+    not paddle.is_compiled_with_xpu(), "core is not compiled with XPU"
+)
+class TestCastOpComplex128Kernel(unittest.TestCase):
+    def _check_cast(self, x_np, out_dtype, expected_np, expected_dtype):
+        place = base.XPUPlace(0)
+        with base.dygraph.guard(place):
+            x = paddle.to_tensor(x_np)
+            out = paddle.cast(x, out_dtype)
+            self.assertEqual(out.dtype, expected_dtype)
+            np.testing.assert_allclose(out.numpy(), expected_np)
+
+    def test_float32_to_complex128(self):
+        x_np = np.random.random((4, 3)).astype(np.float32)
+        self._check_cast(
+            x_np,
+            'complex128',
+            x_np.astype(np.complex128),
+            paddle.complex128,
+        )
+
+    def test_float64_to_complex128(self):
+        x_np = np.random.random((4, 3)).astype(np.float64)
+        self._check_cast(
+            x_np,
+            'complex128',
+            x_np.astype(np.complex128),
+            paddle.complex128,
+        )
+
+    def test_complex64_to_complex128(self):
+        x_np = (
+            np.random.random((4, 3)) + 1j * np.random.random((4, 3))
+        ).astype(np.complex64)
+        self._check_cast(
+            x_np,
+            'complex128',
+            x_np.astype(np.complex128),
+            paddle.complex128,
+        )
+
+    def test_complex128_to_complex64(self):
+        x_np = (
+            np.random.random((4, 3)) + 1j * np.random.random((4, 3))
+        ).astype(np.complex128)
+        self._check_cast(
+            x_np,
+            'complex64',
+            x_np.astype(np.complex64),
+            paddle.complex64,
+        )
+
+    def test_complex128_to_float32(self):
+        x_np = (
+            np.random.random((4, 3)) + 1j * np.random.random((4, 3))
+        ).astype(np.complex128)
+        self._check_cast(
+            x_np,
+            'float32',
+            x_np.real.astype(np.float32),
+            paddle.float32,
+        )
+
+
 class TestCastOpError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
