@@ -59,6 +59,7 @@ class BufferGroup:
     is_tie: bool = False
     no_decay: bool = False
     use_muon: bool = False
+    clip_attrs: tuple = ()
     muon_owner_rank: int = None
     muon_shard_numel: int = None
     fsdp_group: object = None
@@ -391,6 +392,16 @@ class FSDPBufferManager:
                 # A buffer must not mix params with and without weight decay.
                 bool(getattr(param, "no_weight_decay", False)),
                 bool(getattr(param, "use_muon", False)),
+                # A buffer must not mix params that grad clip treats differently.
+                tuple(
+                    (attr, getattr(param, attr, default))
+                    for attr, default in (
+                        ("need_clip", True),
+                        ("no_sync", False),
+                        ("is_distributed", False),
+                        ("is_firstly_shared", True),
+                    )
+                ),
             )
             keyed_params.setdefault(key, []).append(param)
 
@@ -404,6 +415,7 @@ class FSDPBufferManager:
                 is_tie,
                 _,
                 use_muon,
+                _,
             ) = item[0]
             return (
                 0 if is_tie else (1 if not trainable else 2),
@@ -423,6 +435,7 @@ class FSDPBufferManager:
                 is_tie=is_tie,
                 no_decay=no_decay,
                 use_muon=use_muon,
+                clip_attrs=clip_attrs,
             )
             for (
                 dtype,
@@ -433,6 +446,7 @@ class FSDPBufferManager:
                 is_tie,
                 no_decay,
                 use_muon,
+                clip_attrs,
             ), params in sorted(keyed_params.items(), key=sort_key)
         ]
 
@@ -495,6 +509,22 @@ class FSDPBufferManager:
                 self.param_to_buffer_id[param.name] = gid
 
         self._assign_muon_owners()
+        self._set_clip_attrs()
+
+    def _set_clip_attrs(self):
+        for group in self.buffer_groups:
+            data_buffer = group.params_buffer.data_buffer
+            for attr, value in group.clip_attrs:
+                setattr(data_buffer, attr, value)
+            # A replicated grad buffer is counted in the global norm by rank 0.
+            if (
+                group.grads_buffer is not None
+                and not group.grads_buffer.is_sharded
+                and group.muon_owner_rank is None
+                and group.fsdp_group.nranks > 1
+                and paddle.distributed.get_rank(group.fsdp_group) != 0
+            ):
+                data_buffer.is_firstly_shared = False
 
     def _assign_muon_owners(self):
         loads = {}
