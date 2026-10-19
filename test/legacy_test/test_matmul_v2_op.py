@@ -1058,6 +1058,23 @@ class TestMatMulOp_BatchBroadcastError(unittest.TestCase):
         out = paddle.matmul(paddle.zeros([10, 4, 5]), paddle.zeros([1, 5, 6]))
         self.assertEqual(out.shape, [10, 4, 6])
 
+    # --- unequal-rank batch dims (right-aligned) ---
+
+    def test_zero_vs_nonzero_unequal_rank(self):
+        # x batch [0] right-aligns against y batch [3, 10]: 0 vs 10 -> error
+        self._assert_raises([0, 4, 5], [3, 10, 5, 6])
+
+    def test_nonzero_mismatch_unequal_rank(self):
+        self._assert_raises([2, 4, 5], [3, 10, 5, 6])
+
+    def test_zero_vs_one_unequal_rank_allowed(self):
+        out = paddle.matmul(paddle.zeros([0, 4, 5]), paddle.zeros([3, 1, 5, 6]))
+        self.assertEqual(out.shape, [3, 0, 4, 6])
+
+    def test_lower_rank_broadcast_allowed(self):
+        out = paddle.matmul(paddle.zeros([4, 5]), paddle.zeros([3, 10, 5, 6]))
+        self.assertEqual(out.shape, [3, 10, 4, 6])
+
 
 class TestMatMulOp_BatchBroadcastSymbolic(unittest.TestCase):
     """The equal-rank batch loop must keep the result static when only one side

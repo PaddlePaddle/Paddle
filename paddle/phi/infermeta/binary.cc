@@ -2147,14 +2147,18 @@ void FusedMatmulInferMeta(const MetaTensor& x,
   }
 
   std::vector<int64_t> new_dims;
-  if (ndims_x > ndims_y) {
-    new_dims.assign(dims_x.begin(), dims_x.end() - 2);
-  } else if (ndims_x < ndims_y) {
-    new_dims.assign(dims_y.begin(), dims_y.end() - 2);
-  } else {
-    new_dims.reserve(ndims_x);
-    for (size_t i = 0; i < ndims_x - 2; ++i) {
-      int64_t dx = dims_x[i], dy = dims_y[i];
+  {
+    // Broadcast the batch dims, right-aligned. Align with PyTorch/NumPy:
+    // compatible iff equal or one of them is 1; a 0-size dim is not
+    // broadcastable against a non-zero, non-one dim. Leading dims missing on
+    // the lower-rank side count as 1.
+    const size_t bx = ndims_x - 2;
+    const size_t by = ndims_y - 2;
+    const size_t nb = std::max(bx, by);
+    new_dims.reserve(nb);
+    for (size_t i = 0; i < nb; ++i) {
+      const int64_t dx = (i + bx >= nb) ? dims_x[i + bx - nb] : 1;
+      const int64_t dy = (i + by >= nb) ? dims_y[i + by - nb] : 1;
       if (dx == -1 || dy == -1) {
         // An unknown dim is compatible only with 1, the other dim, or 0 under
         // standard broadcasting, so the result is often still static:
@@ -2171,9 +2175,6 @@ void FusedMatmulInferMeta(const MetaTensor& x,
         }
         continue;
       }
-      // Align with PyTorch/NumPy broadcasting: two batch dims are compatible
-      // only when they are equal or one of them is 1. A 0-size dim is not
-      // broadcastable against a non-zero, non-one dim.
       PADDLE_ENFORCE_EQ(
           dx == dy || dx == 1 || dy == 1,
           true,
@@ -3259,14 +3260,18 @@ void MatmulInferMeta(const MetaTensor& x,
   }
 
   std::vector<int64_t> new_dims;
-  if (ndims_x > ndims_y) {
-    new_dims.assign(dims_x.begin(), dims_x.end() - 2);
-  } else if (ndims_x < ndims_y) {
-    new_dims.assign(dims_y.begin(), dims_y.end() - 2);
-  } else {
-    new_dims.reserve(ndims_x);
-    for (size_t i = 0; i < ndims_x - 2; ++i) {
-      int64_t dx = dims_x[i], dy = dims_y[i];
+  {
+    // Broadcast the batch dims, right-aligned. Align with PyTorch/NumPy:
+    // compatible iff equal or one of them is 1; a 0-size dim is not
+    // broadcastable against a non-zero, non-one dim. Leading dims missing on
+    // the lower-rank side count as 1.
+    const size_t bx = ndims_x - 2;
+    const size_t by = ndims_y - 2;
+    const size_t nb = std::max(bx, by);
+    new_dims.reserve(nb);
+    for (size_t i = 0; i < nb; ++i) {
+      const int64_t dx = (i + bx >= nb) ? dims_x[i + bx - nb] : 1;
+      const int64_t dy = (i + by >= nb) ? dims_y[i + by - nb] : 1;
       if (dx == -1 || dy == -1) {
         // An unknown dim is compatible only with 1, the other dim, or 0 under
         // standard broadcasting, so the result is often still static:
@@ -3283,9 +3288,6 @@ void MatmulInferMeta(const MetaTensor& x,
         }
         continue;
       }
-      // Align with PyTorch/NumPy broadcasting: two batch dims are compatible
-      // only when they are equal or one of them is 1. A 0-size dim is not
-      // broadcastable against a non-zero, non-one dim.
       PADDLE_ENFORCE_EQ(
           dx == dy || dx == 1 || dy == 1,
           true,
