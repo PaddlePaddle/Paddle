@@ -12,10 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# The `fused_matmul` op is only reachable through the legacy (non-PIR) static
-# IR. `FLAGS_enable_pir_api` only takes effect before paddle is imported, so it
-# is unreliable under the CI harness (paddle may be imported first, latching PIR
-# on). Use OldIrGuard around graph construction to switch to legacy IR robustly.
+# `fused_matmul` is a oneDNN-only op (its kernel is registered only when built
+# with oneDNN) and is reachable only through the legacy (non-PIR) static IR.
+# This file lives under test/onednn/ so CMake registers it only on WITH_ONEDNN
+# builds; non-oneDNN platforms (e.g. Mac-CPU, XPU, DCU) would otherwise hit
+# "kernel `fused_matmul` is not registered". OldIrGuard switches to legacy IR
+# robustly regardless of the FLAGS_enable_pir_api import order.
 import unittest
 
 import paddle
