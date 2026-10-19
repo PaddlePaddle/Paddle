@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import contextlib
 import math
 import re
 from collections import OrderedDict
@@ -1323,6 +1324,45 @@ class FullyShardFusion:
     def all_gather_params(self):
         for group in self.buffer_manager.buffer_groups:
             self.comm_manager.all_gather_params(group.params)
+
+    @contextlib.contextmanager
+    def unshard_params(self, params):
+        """Bind the full (unsharded) storage of ``params`` outside forward/backward.
+        For per-step work that needs real weight values between optimizer
+        steps, e.g. offline fp8 quantization of MoE expert weights, where
+        params are otherwise storage-less shells. Gathers synchronously
+        without prefetching other units, and on exit reshards the params and
+        frees the gathered buffers it allocated, so the double-buffer state
+        seen by the next forward is unchanged. Attributes stashed on the param
+        objects inside the block (e.g. fp8 caches) survive the reshard.
+        Params not managed by FSDP are ignored.
+        """
+        cm = self.comm_manager
+        bm = self.buffer_manager
+        params = [p for p in params if p.name in bm.param_to_buffer_id]
+        gids = {bm.param_to_buffer_id[p.name] for p in params}
+        was_freed = {
+            gid
+            for gid in gids
+            if bm.buffer_groups[gid].params_buffer.status == BufferState.FREED
+        }
+        enable_overlap = cm.enable_overlap
+        cm.enable_overlap = False
+        try:
+            with paddle.no_grad():
+                cm.all_gather_params(params)
+        finally:
+            cm.enable_overlap = enable_overlap
+        try:
+            yield
+        finally:
+            cm.shard_params(params)
+            for gid in was_freed:
+                params_buffer = bm.buffer_groups[gid].params_buffer
+                params_buffer.clear_tmp_buffer()
+                params_buffer.status = BufferState.FREED
+                if params_buffer.is_sharded and cm.buffer_cnt_in_using > 0:
+                    cm.buffer_cnt_in_using -= 1
 
     def optimizer_sharded_state_dict(self, optimizer):
         """Split the state keyed by ``fuse_params_<gid>`` into per-param flattened shards."""

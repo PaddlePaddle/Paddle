@@ -22,6 +22,8 @@ distributed launch:
 * the fused-kernel fp32 gradient hand-off inside the grad hook.
 * the tuple branch of the forward post hook that splices exposed parameters
   back untouched while routing the rest through the backward all_gather hook.
+* ``unshard_params`` -- the synchronous gather / reshard context manager and
+  the double-buffer bookkeeping it restores on exit.
 """
 
 import types
@@ -216,6 +218,185 @@ class TestForwardPostHookTupleBranch(unittest.TestCase):
         self.assertEqual(len(result), 2)
         np.testing.assert_array_equal(result[0].numpy(), a.numpy())
         np.testing.assert_array_equal(result[1].numpy(), b.numpy())
+
+
+class _FakeParamsBuffer:
+    def __init__(self, status, is_sharded=True):
+        self.status = status
+        self.is_sharded = is_sharded
+        self.clear_calls = 0
+
+    def clear_tmp_buffer(self):
+        self.clear_calls += 1
+
+
+class _RecordingCommManager:
+    """comm_manager stand-in that mimics the double-buffer accounting of a
+    real gather (FREED -> USING, count += 1) and records how it was called."""
+
+    def __init__(
+        self, buffer_manager, buffer_cnt_in_using=0, fail_gather=False
+    ):
+        self.buffer_manager = buffer_manager
+        self.enable_overlap = True
+        self.buffer_cnt_in_using = buffer_cnt_in_using
+        self.fail_gather = fail_gather
+        self.gathered = None
+        self.sharded = None
+        self.overlap_during_gather = None
+        self.grad_enabled_during_gather = None
+
+    def all_gather_params(self, params):
+        self.overlap_during_gather = self.enable_overlap
+        self.grad_enabled_during_gather = paddle.is_grad_enabled()
+        if self.fail_gather:
+            raise RuntimeError("gather failed")
+        self.gathered = list(params)
+        bm = self.buffer_manager
+        for gid in {bm.param_to_buffer_id[p.name] for p in params}:
+            buf = bm.buffer_groups[gid].params_buffer
+            if buf.status == fsf.BufferState.FREED:
+                buf.status = fsf.BufferState.USING
+                self.buffer_cnt_in_using += 1
+
+    def shard_params(self, params, is_backward=False):
+        # The real shard_params only drops the param views; buffer state is
+        # left for unshard_params to restore.
+        self.sharded = list(params)
+
+
+class TestUnshardParams(unittest.TestCase):
+    """Covers ``FullyShardFusion.unshard_params``."""
+
+    def _make_fsdp(self, statuses, param_to_gid, **cm_kwargs):
+        groups = [
+            types.SimpleNamespace(params_buffer=_FakeParamsBuffer(*s))
+            for s in statuses
+        ]
+        bm = types.SimpleNamespace(
+            param_to_buffer_id=dict(param_to_gid), buffer_groups=groups
+        )
+        fsdp = object.__new__(fsf.FullyShardFusion)
+        fsdp.buffer_manager = bm
+        fsdp.comm_manager = _RecordingCommManager(bm, **cm_kwargs)
+        return fsdp, groups
+
+    def test_freed_buffer_gathered_then_restored(self):
+        fsdp, groups = self._make_fsdp(
+            [(fsf.BufferState.FREED,)], {"w0": 0, "w1": 0}
+        )
+        cm = fsdp.comm_manager
+        params = [_NamedParam("w0"), _NamedParam("w1")]
+        with fsdp.unshard_params(params):
+            self.assertEqual(cm.gathered, params)
+            self.assertIsNone(cm.sharded)
+            self.assertEqual(
+                groups[0].params_buffer.status, fsf.BufferState.USING
+            )
+            self.assertEqual(cm.buffer_cnt_in_using, 1)
+            # Overlap is restored and grad re-enabled once the gather returns.
+            self.assertTrue(cm.enable_overlap)
+            self.assertTrue(paddle.is_grad_enabled())
+        # Gather is synchronous and runs without autograd.
+        self.assertFalse(cm.overlap_during_gather)
+        self.assertFalse(cm.grad_enabled_during_gather)
+        self.assertEqual(cm.sharded, params)
+        buf = groups[0].params_buffer
+        self.assertEqual(buf.status, fsf.BufferState.FREED)
+        self.assertEqual(buf.clear_calls, 1)
+        self.assertEqual(cm.buffer_cnt_in_using, 0)
+
+    def test_already_gathered_buffer_left_untouched(self):
+        # A buffer that was live before entry belongs to the caller's
+        # schedule: no clear, no state change, no count change.
+        fsdp, groups = self._make_fsdp(
+            [(fsf.BufferState.READY,)], {"w": 0}, buffer_cnt_in_using=1
+        )
+        cm = fsdp.comm_manager
+        params = [_NamedParam("w")]
+        with fsdp.unshard_params(params):
+            pass
+        buf = groups[0].params_buffer
+        self.assertEqual(cm.sharded, params)
+        self.assertEqual(buf.status, fsf.BufferState.READY)
+        self.assertEqual(buf.clear_calls, 0)
+        self.assertEqual(cm.buffer_cnt_in_using, 1)
+
+    def test_unmanaged_params_are_ignored(self):
+        fsdp, groups = self._make_fsdp([(fsf.BufferState.FREED,)], {"w": 0})
+        cm = fsdp.comm_manager
+        managed = _NamedParam("w")
+        with fsdp.unshard_params([managed, _NamedParam("not-fsdp")]):
+            pass
+        self.assertEqual(cm.gathered, [managed])
+        self.assertEqual(cm.sharded, [managed])
+
+    def test_mixed_groups_only_freed_ones_restored(self):
+        fsdp, groups = self._make_fsdp(
+            [(fsf.BufferState.FREED,), (fsf.BufferState.USING,)],
+            {"a": 0, "b": 1},
+            buffer_cnt_in_using=1,
+        )
+        cm = fsdp.comm_manager
+        with fsdp.unshard_params([_NamedParam("a"), _NamedParam("b")]):
+            self.assertEqual(cm.buffer_cnt_in_using, 2)
+        self.assertEqual(groups[0].params_buffer.status, fsf.BufferState.FREED)
+        self.assertEqual(groups[0].params_buffer.clear_calls, 1)
+        self.assertEqual(groups[1].params_buffer.status, fsf.BufferState.USING)
+        self.assertEqual(groups[1].params_buffer.clear_calls, 0)
+        self.assertEqual(cm.buffer_cnt_in_using, 1)
+
+    def test_unsharded_buffer_does_not_decrement_count(self):
+        fsdp, groups = self._make_fsdp(
+            [(fsf.BufferState.FREED, False)], {"w": 0}
+        )
+        cm = fsdp.comm_manager
+        cm.buffer_cnt_in_using = 3
+        with fsdp.unshard_params([_NamedParam("w")]):
+            cm.buffer_cnt_in_using = 3
+        self.assertEqual(groups[0].params_buffer.status, fsf.BufferState.FREED)
+        self.assertEqual(groups[0].params_buffer.clear_calls, 1)
+        self.assertEqual(cm.buffer_cnt_in_using, 3)
+
+    def test_count_never_goes_negative(self):
+        fsdp, groups = self._make_fsdp([(fsf.BufferState.FREED,)], {"w": 0})
+        cm = fsdp.comm_manager
+        with fsdp.unshard_params([_NamedParam("w")]):
+            cm.buffer_cnt_in_using = 0
+        self.assertEqual(cm.buffer_cnt_in_using, 0)
+        self.assertEqual(groups[0].params_buffer.status, fsf.BufferState.FREED)
+
+    def test_body_exception_still_reshards(self):
+        fsdp, groups = self._make_fsdp([(fsf.BufferState.FREED,)], {"w": 0})
+        cm = fsdp.comm_manager
+        params = [_NamedParam("w")]
+        with self.assertRaises(ValueError), fsdp.unshard_params(params):
+            raise ValueError("boom")
+        self.assertEqual(cm.sharded, params)
+        self.assertEqual(groups[0].params_buffer.status, fsf.BufferState.FREED)
+        self.assertEqual(groups[0].params_buffer.clear_calls, 1)
+        self.assertEqual(cm.buffer_cnt_in_using, 0)
+
+    def test_gather_exception_restores_overlap(self):
+        fsdp, groups = self._make_fsdp(
+            [(fsf.BufferState.FREED,)], {"w": 0}, fail_gather=True
+        )
+        cm = fsdp.comm_manager
+        params = [_NamedParam("w")]
+        with self.assertRaises(RuntimeError), fsdp.unshard_params(params):
+            self.fail("body must not run when the gather fails")
+        self.assertTrue(cm.enable_overlap)
+        self.assertTrue(paddle.is_grad_enabled())
+        self.assertIsNone(cm.sharded)
+
+    def test_empty_params_is_noop_pair(self):
+        fsdp, groups = self._make_fsdp([(fsf.BufferState.FREED,)], {"w": 0})
+        cm = fsdp.comm_manager
+        with fsdp.unshard_params([]):
+            pass
+        self.assertEqual(cm.gathered, [])
+        self.assertEqual(cm.sharded, [])
+        self.assertEqual(groups[0].params_buffer.clear_calls, 0)
 
 
 if __name__ == "__main__":
