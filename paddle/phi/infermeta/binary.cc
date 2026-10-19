@@ -2156,9 +2156,19 @@ void FusedMatmulInferMeta(const MetaTensor& x,
     for (size_t i = 0; i < ndims_x - 2; ++i) {
       int64_t dx = dims_x[i], dy = dims_y[i];
       if (dx == -1 || dy == -1) {
-        // At least one batch dim is unknown at compile time; defer the
-        // broadcast compatibility check to runtime and keep it dynamic.
-        new_dims.push_back(-1);
+        // An unknown dim is compatible only with 1, the other dim, or 0 under
+        // standard broadcasting, so the result is often still static:
+        //   unknown vs unknown/1 -> unknown (-1)
+        //   unknown vs 0         -> 0
+        //   unknown vs n (n > 1) -> n
+        const int64_t known = (dx == -1) ? dy : dx;
+        if (known == -1 || known == 1) {
+          new_dims.push_back(-1);
+        } else if (known == 0) {
+          new_dims.push_back(0);
+        } else {
+          new_dims.push_back(known);
+        }
         continue;
       }
       // Align with PyTorch/NumPy broadcasting: two batch dims are compatible
@@ -3258,9 +3268,19 @@ void MatmulInferMeta(const MetaTensor& x,
     for (size_t i = 0; i < ndims_x - 2; ++i) {
       int64_t dx = dims_x[i], dy = dims_y[i];
       if (dx == -1 || dy == -1) {
-        // At least one batch dim is unknown at compile time; defer the
-        // broadcast compatibility check to runtime and keep it dynamic.
-        new_dims.push_back(-1);
+        // An unknown dim is compatible only with 1, the other dim, or 0 under
+        // standard broadcasting, so the result is often still static:
+        //   unknown vs unknown/1 -> unknown (-1)
+        //   unknown vs 0         -> 0
+        //   unknown vs n (n > 1) -> n
+        const int64_t known = (dx == -1) ? dy : dx;
+        if (known == -1 || known == 1) {
+          new_dims.push_back(-1);
+        } else if (known == 0) {
+          new_dims.push_back(0);
+        } else {
+          new_dims.push_back(known);
+        }
         continue;
       }
       // Align with PyTorch/NumPy broadcasting: two batch dims are compatible

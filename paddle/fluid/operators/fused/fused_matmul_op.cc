@@ -105,7 +105,33 @@ class FusedMatmulOp : public framework::OperatorWithKernel {
     } else {
       new_dims.reserve(ndims_x);
       for (size_t i = 0; i < ndims_x - 2; ++i) {
-        new_dims.push_back(std::max(dims_x[i], dims_y[i]));
+        const int64_t dx = dims_x[i], dy = dims_y[i];
+        if (dx == -1 || dy == -1) {
+          const int64_t known = (dx == -1) ? dy : dx;
+          if (known == -1 || known == 1) {
+            new_dims.push_back(-1);
+          } else if (known == 0) {
+            new_dims.push_back(0);
+          } else {
+            new_dims.push_back(known);
+          }
+          continue;
+        }
+        // Align with PyTorch/NumPy broadcasting: two batch dims are compatible
+        // only when they are equal or one of them is 1.
+        PADDLE_ENFORCE_EQ(
+            dx == dy || dx == 1 || dy == 1,
+            true,
+            common::errors::InvalidArgument(
+                "In fused_matmul, the batch dimension [%d] of Input(X) and "
+                "Input(Y) must be broadcastable (equal, or one of them is 1), "
+                "but received X's shape[%d] = %d and Y's shape[%d] = %d.",
+                i,
+                i,
+                dx,
+                i,
+                dy));
+        new_dims.push_back((dx == 0 || dy == 0) ? 0 : std::max(dx, dy));
       }
     }
     if (!x_broadcasted) {

@@ -47,10 +47,19 @@ const DenseTensor &BroadcastRepeatsIfNeeded(const Context &ctx,
     }
     return *holder;
   }
-  if (repeats.dtype() == DataType::INT32) {
-    ExpandKernel<int, Context>(ctx, repeats, IntArray({axis_len}), holder);
+  // `repeats` may be 1-D [1] or 2-D [1, 1] (both accepted by the InferMeta).
+  // ExpandKernel requires the target rank to be >= the input rank, so keep the
+  // trailing singleton dimension for the 2-D form.
+  std::vector<int64_t> target;
+  if (repeats.dims().size() == 2) {
+    target = {axis_len, 1};
   } else {
-    ExpandKernel<int64_t, Context>(ctx, repeats, IntArray({axis_len}), holder);
+    target = {axis_len};
+  }
+  if (repeats.dtype() == DataType::INT32) {
+    ExpandKernel<int, Context>(ctx, repeats, IntArray(target), holder);
+  } else {
+    ExpandKernel<int64_t, Context>(ctx, repeats, IntArray(target), holder);
   }
   return *holder;
 }
