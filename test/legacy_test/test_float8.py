@@ -180,6 +180,22 @@ class TestFP8MatmulOp(unittest.TestCase):
             "float8_e5m2": core.VarDesc.VarType.FP8_E5M2,
         }
 
+    def test_batch_broadcast_error(self):
+        # batch dims 0 vs 10 are not broadcastable under standard rules.
+        for self.device in [get_device()]:
+            paddle.device.set_device(self.device)
+            for self.dtype in ["float8_e4m3fn"]:
+                input1 = paddle.ones([0, 16, 32], dtype=self.dtype)
+                input2 = paddle.ones([10, 64, 32], dtype=self.dtype)
+                with self.assertRaises(ValueError):
+                    paddle.linalg.fp8_fp8_half_gemm_fused(
+                        input1,
+                        input2,
+                        transpose_x=False,
+                        transpose_y=True,
+                        output_dtype="float16",
+                    )
+
     def test_matmul(self):
         for self.device in [get_device()]:
             paddle.device.set_device(self.device)

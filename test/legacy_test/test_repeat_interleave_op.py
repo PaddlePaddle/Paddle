@@ -746,5 +746,80 @@ class TestRepeatInterleave_ZeroSizeRepeatsTensor(unittest.TestCase):
         self._check(repeats_dtype="int64")
 
 
+class TestRepeatInterleave_RepeatsBroadcast(unittest.TestCase):
+    """A length-1 `repeats` tensor broadcasts a single repeat count to every
+    element along the axis (align with torch.repeat_interleave). Covers the
+    forward/backward broadcast path and the `[1, 1]` (2-D) repeats form."""
+
+    def _check(self, x_np, repeats_np, axis, expected_shape, expected_np=None):
+        paddle.disable_static()
+        x = paddle.to_tensor(x_np)
+        x.stop_gradient = False
+        repeats = paddle.to_tensor(repeats_np)
+        out = paddle.repeat_interleave(x, repeats, axis=axis)
+        np.testing.assert_equal(tuple(out.shape), expected_shape)
+        if expected_np is not None:
+            np.testing.assert_equal(out.numpy(), expected_np)
+        loss = paddle.sum(out)
+        loss.backward()
+        np.testing.assert_equal(tuple(x.grad.shape), tuple(x_np.shape))
+
+    def test_broadcast_1d_int32(self):
+        self._check(
+            np.array([0.0, 1.0, 2.0], dtype='float32'),
+            np.array([2], dtype='int32'),
+            0,
+            (6,),
+            np.array([0.0, 0.0, 1.0, 1.0, 2.0, 2.0], dtype='float32'),
+        )
+
+    def test_broadcast_1d_int64(self):
+        self._check(
+            np.array([0.0, 1.0, 2.0], dtype='float32'),
+            np.array([2], dtype='int64'),
+            0,
+            (6,),
+            np.array([0.0, 0.0, 1.0, 1.0, 2.0, 2.0], dtype='float32'),
+        )
+
+    def test_broadcast_axis1(self):
+        x = np.arange(6, dtype='float32').reshape(2, 3)
+        self._check(x, np.array([2], dtype='int32'), 1, (2, 6))
+
+    def test_broadcast_rank2_repeats(self):
+        # repeats may be given as a 2-D [1, 1] tensor.
+        self._check(
+            np.array([0.0, 1.0, 2.0], dtype='float32'),
+            np.array([[2]], dtype='int32'),
+            0,
+            (6,),
+            np.array([0.0, 0.0, 1.0, 1.0, 2.0, 2.0], dtype='float32'),
+        )
+
+    def test_broadcast_empty_axis(self):
+        self._check(
+            np.zeros([0], dtype='float32'),
+            np.array([1], dtype='int32'),
+            0,
+            (0,),
+        )
+
+    def test_axis_len_one(self):
+        # axis_len == 1 needs no expansion.
+        self._check(
+            np.array([5.0], dtype='float32'),
+            np.array([2], dtype='int32'),
+            0,
+            (2,),
+        )
+
+    def test_mismatched_length_raises(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(np.arange(3, dtype='float32'))
+        repeats = paddle.to_tensor(np.array([1, 2], dtype='int32'))
+        with self.assertRaises(ValueError):
+            paddle.repeat_interleave(x, repeats, axis=0)
+
+
 if __name__ == '__main__':
     unittest.main()
