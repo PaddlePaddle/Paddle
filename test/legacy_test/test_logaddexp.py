@@ -258,6 +258,14 @@ def get_places():
     return places
 
 
+def check_place(test, tensor, place):
+    # Inputs are created with an explicit place: paddle.disable_static(place)
+    # is a no-op once dygraph is on, so it would silently run on the device.
+    test.assertEqual(
+        tensor.place.is_cpu_place(), isinstance(place, core.CPUPlace)
+    )
+
+
 class TestLogaddexpSpecialValues(unittest.TestCase):
     # Each column is one (x, y) pair: equal infinities (fwd special-cased,
     # bwd NaN like torch), opposite infinities, x - y overflowing to inf,
@@ -274,11 +282,13 @@ class TestLogaddexpSpecialValues(unittest.TestCase):
         g_np = np.ones_like(x_np)
         with np.errstate(over='ignore', invalid='ignore'):
             out_ref = np.logaddexp(x_np, y_np)
-        paddle.disable_static(place)
-        x = paddle.to_tensor(x_np, stop_gradient=False)
-        y = paddle.to_tensor(y_np, stop_gradient=False)
+        paddle.disable_static()
+        x = paddle.to_tensor(x_np, place=place, stop_gradient=False)
+        y = paddle.to_tensor(y_np, place=place, stop_gradient=False)
         out = paddle.logaddexp(x, y)
+        check_place(self, out, place)
         dx, dy = paddle.grad([out], [x, y])
+        check_place(self, dx, place)
         # assert_allclose requires infinities and NaNs to match exactly.
         np.testing.assert_allclose(out.numpy(), out_ref, rtol=1e-6)
         np.testing.assert_allclose(
@@ -301,15 +311,22 @@ class TestLogaddexpSingleSideGrad(unittest.TestCase):
         x_np = np.random.uniform(-1, 1, [2, 3, 8]).astype(np.float32)
         y_np = np.random.uniform(-1, 1, [1, 3, 1]).astype(np.float32)
         g_np = np.random.uniform(-1, 1, [2, 3, 8]).astype(np.float32)
+        paddle.disable_static()
         for place in get_places():
-            paddle.disable_static(place)
             for need_x in (True, False):
                 with self.subTest(place=str(place), need_x=need_x):
-                    x = paddle.to_tensor(x_np, stop_gradient=not need_x)
-                    y = paddle.to_tensor(y_np, stop_gradient=need_x)
+                    x = paddle.to_tensor(
+                        x_np, place=place, stop_gradient=not need_x
+                    )
+                    y = paddle.to_tensor(
+                        y_np, place=place, stop_gradient=need_x
+                    )
                     out = paddle.logaddexp(x, y)
+                    check_place(self, out, place)
                     (grad,) = paddle.grad(
-                        [out], [x if need_x else y], [paddle.to_tensor(g_np)]
+                        [out],
+                        [x if need_x else y],
+                        [paddle.to_tensor(g_np, place=place)],
                     )
                     ref = (
                         ref_logaddexp_grad(x_np, y_np, g_np)
@@ -323,13 +340,17 @@ class TestLogaddexpSingleSideGrad(unittest.TestCase):
 
 class TestLogaddexpZeroSizeGrad(unittest.TestCase):
     def check(self, place, x_shape, y_shape):
-        paddle.disable_static(place)
-        x = paddle.zeros(x_shape, 'float32')
-        y = paddle.zeros(y_shape, 'float32')
-        x.stop_gradient = False
-        y.stop_gradient = False
+        paddle.disable_static()
+        x = paddle.to_tensor(
+            np.zeros(x_shape, 'float32'), place=place, stop_gradient=False
+        )
+        y = paddle.to_tensor(
+            np.zeros(y_shape, 'float32'), place=place, stop_gradient=False
+        )
         out = paddle.logaddexp(x, y)
+        check_place(self, out, place)
         dx, dy = paddle.grad([out], [x, y])
+        check_place(self, dx, place)
         self.assertEqual(dx.shape, x_shape)
         self.assertEqual(dy.shape, y_shape)
         np.testing.assert_array_equal(dx.numpy(), np.zeros(x_shape))
