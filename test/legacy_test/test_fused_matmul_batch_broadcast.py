@@ -13,20 +13,19 @@
 # limitations under the License.
 
 # The `fused_matmul` op is only reachable through the legacy (non-PIR) static
-# IR, so disable PIR before importing paddle.
-import os
-
-os.environ['FLAGS_enable_pir_api'] = '0'
-
+# IR. `FLAGS_enable_pir_api` only takes effect before paddle is imported, so it
+# is unreliable under the CI harness (paddle may be imported first, latching PIR
+# on). Use OldIrGuard around graph construction to switch to legacy IR robustly.
 import unittest
 
 import paddle
+from paddle.pir_utils import OldIrGuard
 
 
 class TestFusedMatMulOp_BatchBroadcastError(unittest.TestCase):
-    """FusedMatmulInferMeta (the `fused_matmul` op) shares the same equal-rank
-    batch loop as MatmulInferMeta, so it must reject non-broadcastable batch
-    dims (e.g. 0 vs 10) as well."""
+    """FusedMatmulInferMeta (the `fused_matmul` op) shares the same right-aligned
+    batch broadcast loop as MatmulInferMeta, so it must reject non-broadcastable
+    batch dims (e.g. 0 vs 10) as well."""
 
     def setUp(self):
         paddle.enable_static()
@@ -35,16 +34,19 @@ class TestFusedMatMulOp_BatchBroadcastError(unittest.TestCase):
         paddle.disable_static()
 
     def _append(self, x_shape, y_shape):
-        main = paddle.static.Program()
-        block = main.global_block()
-        x = block.create_var(name='fm_x', dtype='float32', shape=x_shape)
-        y = block.create_var(name='fm_y', dtype='float32', shape=y_shape)
-        out = block.create_var(name='fm_out', dtype='float32', shape=[0, 4, 6])
-        block.append_op(
-            type='fused_matmul',
-            inputs={'X': x, 'Y': y},
-            outputs={'Out': out},
-        )
+        with OldIrGuard():
+            main = paddle.static.Program()
+            block = main.global_block()
+            x = block.create_var(name='fm_x', dtype='float32', shape=x_shape)
+            y = block.create_var(name='fm_y', dtype='float32', shape=y_shape)
+            out = block.create_var(
+                name='fm_out', dtype='float32', shape=[0, 4, 6]
+            )
+            block.append_op(
+                type='fused_matmul',
+                inputs={'X': x, 'Y': y},
+                outputs={'Out': out},
+            )
 
     def test_batch_broadcast_error(self):
         with self.assertRaises(ValueError):
