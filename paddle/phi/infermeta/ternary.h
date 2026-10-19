@@ -41,6 +41,11 @@ PADDLE_API void AccuracyInferMeta(const MetaTensor& out,
                                   MetaTensor* total,
                                   MetaConfig config = MetaConfig());
 
+PADDLE_API void AddcmulInferMeta(const MetaTensor& input,
+                                 const MetaTensor& tensor1,
+                                 const MetaTensor& tensor2,
+                                 MetaTensor* out);
+
 PADDLE_API void AddmmInferMeta(const MetaTensor& input,
                                const MetaTensor& x,
                                const MetaTensor& y,

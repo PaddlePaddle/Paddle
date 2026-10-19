@@ -86,6 +86,7 @@ prim_white_list = [
     "log_double_grad",
     "where_double_grad",
     "bmm_double_grad",
+    "addcmul_double_grad",
     "index_put_double_grad",
     "linear_v2_double_grad",
     "gather_nd_double_grad",
@@ -130,6 +131,7 @@ type_promote_white_list = {
     "copysign": ["x", "y"],
     "cross": ["x", "y"],
     "multiply": ["x", "y"],
+    "addcmul": ["input", "tensor1", "tensor2"],
 }
 
 type_promote_inplace_white_list = {
@@ -150,6 +152,7 @@ type_promote_inplace_white_list = {
     "logical_xor_": ["x", "y"],
     "remainder_": ["x", "y"],
     "copysign_": ["x", "y"],
+    "addcmul_": ["input", "tensor1", "tensor2"],
 }
 
 # ops support casting int tensor into float32 to do forward calculation
@@ -524,7 +527,7 @@ TEST_API {} {}({}) {{
   if (FLAGS_check_cuda_error) [[unlikely]] {{
     egr::CUDAErrorCheck(\"{} begin\");
   }}
-{}
+{}{}
   // Convert All Inputs to DistTensor and recall op_ad_func if Necessary
 {}
   // Dygraph Record Event
@@ -910,6 +913,48 @@ TYPE_PROMOTION_LOGIC_TEMPLATE = """
   }}
 """
 
+MULTI_INPUTS_TYPE_PROMOTION_LOGIC_TEMPLATE = """
+    if (phi::NeedTypePromotion({op_func_name}, {{{input_dtypes}}}){out_dtype_differs}) {{
+    LOG_FIRST_N(WARNING, 1) << "Got different data type, run type promotion automatically, this may cause data type been changed.";
+    {op_name}
+    auto promotion_type = phi::GetPromoteDtype(op_name, {{{input_dtypes}}}, {{{input_shapes}}});
+    VLOG(5) << "Got different data type, run type promotion automatically. The type after type promotion is " << promotion_type;
+    {inputs_cast}
+{out_cast}
+    {return_value}
+  }}
+"""
+
+# The predefined out keeps its dtype and the result is cast to it, the same as
+# PyTorch.
+MULTI_INPUTS_OUT_CAST_TEMPLATE = """
+    if (predefined_out && (*predefined_out)->initialized() && (*predefined_out)->dtype() != promotion_type) {{
+      paddle::Tensor& out_tensor = **predefined_out;
+      PADDLE_ENFORCE_EQ(phi::CanCast(promotion_type, out_tensor.dtype()), true, common::errors::InvalidArgument("The result type %s can't be cast to the desired output type %s.", promotion_type, out_tensor.dtype()));
+      auto result = egr::PromoteCast("out", {call}, out_tensor.dtype());
+      return assign_out__ad_func(result, out_tensor);
+    }}
+"""
+
+# For inplace ops, the result is computed in the promoted dtype and then written
+# back to the inplaced input without changing its dtype, the same as PyTorch.
+MULTI_INPUTS_INPLACE_TYPE_PROMOTION_LOGIC_TEMPLATE = """
+    if (phi::NeedTypePromotion({op_func_name}, {{{input_dtypes}}})) {{
+    LOG_FIRST_N(WARNING, 1) << "Got different data type, run type promotion automatically, this may cause data type been changed.";
+    {op_name}
+    auto promotion_type = phi::GetPromoteDtype(op_name, {{{input_dtypes}}}, {{{input_shapes}}});
+    VLOG(5) << "Got different data type, run type promotion automatically. The type after type promotion is " << promotion_type;
+    PADDLE_ENFORCE_EQ(phi::CanCast(promotion_type, {x}.dtype()), true, common::errors::InvalidArgument("The result type %s can't be cast to the desired output type %s.", promotion_type, {x}.dtype()));
+    {inputs_cast}
+    if (promotion_type == {x}.dtype()) {{
+      {return_value}
+    }}
+    auto new_{x} = egr::PromoteCast("{x}", {x}, promotion_type);
+    auto result = egr::PromoteCast("{x}", {out_of_place_call}, {x}.dtype());
+    return assign_out__ad_func(result, {x});
+  }}
+"""
+
 TYPE_AUTOCAST_LOGIC_TEMPLATE = """
     if (phi::NeedTypeAutoCast({op_func_name}, {x}.dtype())) {{
     VLOG(5) << "math operation got integer input data type, run type autocast.";
@@ -1084,6 +1129,62 @@ def GenerateCoreOpInfoDefinition():
     )
 
     return core_ops_info_definition_str
+
+
+def GenerateTypePromotionLogic(
+    op_func_name,
+    promote_inputs,
+    x_cast,
+    op_name,
+    return_value,
+    out_of_place_call=None,
+    predefined_out_call=None,
+):
+    x = promote_inputs[0]
+    if len(promote_inputs) == 2:
+        return TYPE_PROMOTION_LOGIC_TEMPLATE.format(
+            op_func_name=op_func_name,
+            x=x,
+            y=promote_inputs[1],
+            x_cast=x_cast,
+            op_name=op_name,
+            return_value=return_value,
+        )
+    # ops with more than two inputs, e.g. addcmul
+    inputs_cast = [
+        f'auto new_{name} = egr::PromoteCast("{name}", {name}, promotion_type);'
+        for name in promote_inputs[1:]
+    ]
+    input_dtypes = ", ".join(f"{name}.dtype()" for name in promote_inputs)
+    input_shapes = ", ".join(f"{name}.shape()" for name in promote_inputs)
+    if out_of_place_call is None:
+        out_dtype_differs = ""
+        out_cast = ""
+        if predefined_out_call is not None:
+            out_dtype_differs = f" || (predefined_out && (*predefined_out)->initialized() && (*predefined_out)->dtype() != {x}.dtype())"
+            out_cast = MULTI_INPUTS_OUT_CAST_TEMPLATE.format(
+                call=predefined_out_call
+            )
+        return MULTI_INPUTS_TYPE_PROMOTION_LOGIC_TEMPLATE.format(
+            op_func_name=op_func_name,
+            input_dtypes=input_dtypes,
+            out_dtype_differs=out_dtype_differs,
+            input_shapes=input_shapes,
+            inputs_cast="\n    ".join([x_cast, *inputs_cast]),
+            out_cast=out_cast,
+            op_name=op_name,
+            return_value=return_value,
+        )
+    return MULTI_INPUTS_INPLACE_TYPE_PROMOTION_LOGIC_TEMPLATE.format(
+        op_func_name=op_func_name,
+        input_dtypes=input_dtypes,
+        input_shapes=input_shapes,
+        x=x,
+        inputs_cast="\n    ".join(inputs_cast),
+        op_name=op_name,
+        return_value=return_value,
+        out_of_place_call=out_of_place_call,
+    )
 
 
 ###################
@@ -2424,13 +2525,13 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
             )
         # Forward type promotion logic
         if forward_api_name in type_promote_white_list:
-            # only support two inputs
             op_func_name = f'"{forward_api_name}"'
-            x = type_promote_white_list[forward_api_name][0]
-            y = type_promote_white_list[forward_api_name][1]
+            promote_inputs = type_promote_white_list[forward_api_name]
+            x = promote_inputs[0]
             type_promote_inputs_call_args_str = ", ".join(
                 type_promote_inputs_call_list
             )
+            predefined_out_call = None
             if (
                 append_predefined_out
                 and not grad_flag
@@ -2441,6 +2542,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                     self.forward_outputs_position_map.values()
                 )
                 if IsUsePredefinedOut(forward_outputs_position_list):
+                    predefined_out_call = f"{forward_ad_function_name}({type_promote_inputs_call_args_str})"
                     type_promote_inputs_call_args_str = (
                         type_promote_inputs_call_args_str + ", predefined_out"
                     )
@@ -2451,19 +2553,18 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                 f'auto new_{x} = egr::PromoteCast("{x}", {x}, promotion_type);'
             )
 
-            type_promotion_logic_str = TYPE_PROMOTION_LOGIC_TEMPLATE.format(
-                op_func_name=op_func_name,
-                x=x,
-                y=y,
-                x_cast=x_cast,
-                op_name=kernel_trans2_op_name_str,
-                return_value=type_promote_call_list,
+            type_promotion_logic_str = GenerateTypePromotionLogic(
+                op_func_name,
+                promote_inputs,
+                x_cast,
+                kernel_trans2_op_name_str,
+                type_promote_call_list,
+                predefined_out_call=predefined_out_call,
             )
         elif forward_api_name in type_promote_inplace_white_list:
-            # only support two inputs
             op_func_name = f'"{forward_api_name}"'
-            x = type_promote_inplace_white_list[forward_api_name][0]
-            y = type_promote_inplace_white_list[forward_api_name][1]
+            promote_inputs = type_promote_inplace_white_list[forward_api_name]
+            x = promote_inputs[0]
             type_promote_inputs_call_args_str = ", ".join(
                 type_promote_inputs_call_list
             )
@@ -2486,14 +2587,19 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
             x_cast = (
                 f'{x} = egr::PromoteCastInplace("{x}", {x}, promotion_type);'
             )
+            out_of_place_args = ", ".join(
+                f"new_{x}" if arg == x else arg
+                for arg in type_promote_inputs_call_list
+            )
+            out_of_place_call = f"{GetDygraphForwardFunctionName(forward_api_name[:-1])}({out_of_place_args})"
 
-            type_promotion_logic_str = TYPE_PROMOTION_LOGIC_TEMPLATE.format(
-                op_func_name=op_func_name,
-                x=x,
-                y=y,
-                x_cast=x_cast,
-                op_name=kernel_trans2_op_name_str,
-                return_value=type_promote_call_list,
+            type_promotion_logic_str = GenerateTypePromotionLogic(
+                op_func_name,
+                promote_inputs,
+                x_cast,
+                kernel_trans2_op_name_str,
+                type_promote_call_list,
+                out_of_place_call,
             )
         elif not grad_flag:
             type_promotion_logic_str = f'\n VLOG(5) << " No Type Promotion for {forward_ad_function_name} api. "; '
@@ -2616,6 +2722,19 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                 )
             )
         else:
+            early_check_inplace_str = ""
+            if forward_api_name == "addcmul_":
+                # Check the original input before promotion can return through
+                # assign_out_, and before the kernel can modify a leaf tensor.
+                early_check_inplace_str = f"""
+  {{
+{inputs_autograd_meta_str}
+    bool trace_backward = egr::Controller::Instance().HasGrad();
+    bool require_any_grad = egr::EagerUtils::ComputeRequireGrad({compute_require_grad_args_str});
+{check_inplace_str}
+  }}
+"""
+                check_inplace_str = ""
             self.forward_definition_str += FORWARD_FUNCTION_TEMPLATE.format(
                 returns_type_str,
                 forward_ad_function_name,
@@ -2623,6 +2742,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                 forward_api_name,
                 forward_ad_function_name,
                 strided_flags_check,
+                early_check_inplace_str,
                 convert_input_to_dist_tensor_str,
                 dygraph_event_str,
                 amp_logic_str,

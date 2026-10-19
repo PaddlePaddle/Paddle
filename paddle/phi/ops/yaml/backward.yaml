@@ -88,6 +88,19 @@
     func: add_position_encoding_grad
     data_type: out_grad
 
+- backward_op : addcmul_grad
+  forward : addcmul (Tensor input, Tensor tensor1, Tensor tensor2, ScalarType value=1.0) -> Tensor(out)
+  args : (Tensor input, Tensor tensor1, Tensor tensor2, Tensor out_grad, ScalarType value)
+  output : Tensor(input_grad), Tensor(tensor1_grad), Tensor(tensor2_grad)
+  infer_meta :
+    func : GeneralTernaryGradInferMeta
+    param : [input, tensor1, tensor2]
+  kernel :
+    func : addcmul_grad
+    data_type : out_grad
+  no_need_buffer : input
+  backward : addcmul_double_grad
+
 - backward_op : addmm_grad
   forward : addmm (Tensor input, Tensor x, Tensor y, double beta=1.0, double alpha=1.0) -> Tensor(out)
   args : (Tensor input, Tensor x, Tensor y, Tensor out_grad, double alpha, double beta)
@@ -4246,6 +4259,19 @@
   kernel :
     func : yolo_loss_grad
   optional : gt_score
+
+- backward_op: addcmul_double_grad
+  forward: addcmul_grad (Tensor input, Tensor tensor1, Tensor tensor2, Tensor grad_out, ScalarType value) -> Tensor(grad_input), Tensor(grad_tensor1), Tensor(grad_tensor2)
+  args: (Tensor tensor1, Tensor tensor2, Tensor grad_out, Tensor grad_input_grad, Tensor grad_tensor1_grad, Tensor grad_tensor2_grad, ScalarType value)
+  output: Tensor(tensor1_grad), Tensor(tensor2_grad), Tensor(grad_out_grad)
+  infer_meta :
+    func : GeneralTernaryGradInferMeta
+    param : [tensor1, tensor2, grad_out]
+  kernel :
+    func : addcmul_double_grad
+    data_type : grad_out
+  composite: addcmul_double_grad(tensor1, tensor2, grad_out, grad_input_grad, grad_tensor1_grad, grad_tensor2_grad, value, tensor1_grad, tensor2_grad, grad_out_grad)
+  optional: grad_input_grad, grad_tensor1_grad, grad_tensor2_grad
 
 - backward_op: bmm_double_grad
   forward: bmm_grad (Tensor x, Tensor y, Tensor grad_out) -> Tensor(grad_x), Tensor(grad_y)
