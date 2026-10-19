@@ -23,6 +23,8 @@
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/infermeta/binary.h"
 
+#include "paddle/common/ddim.h"
+
 namespace paddle {
 namespace operators {
 
@@ -120,17 +122,28 @@ class FusedMatmulOp : public framework::OperatorWithKernel {
           }
           continue;
         }
+        // i indexes the right-aligned broadcast result, not either input. A
+        // lower-rank side has no dim at this position and counts as 1, so
+        // report each side's own index instead of i, which points at the wrong
+        // dim.
+        const std::string x_pos = (i + bx >= nb) ? std::to_string(i + bx - nb)
+                                                 : "absent (counts as 1)";
+        const std::string y_pos = (i + by >= nb) ? std::to_string(i + by - nb)
+                                                 : "absent (counts as 1)";
         PADDLE_ENFORCE_EQ(
             dx == dy || dx == 1 || dy == 1,
             true,
             common::errors::InvalidArgument(
-                "In fused_matmul, the batch dimension [%d] of Input(X) and "
+                "In fused_matmul, the batch dimensions of Input(X) and "
                 "Input(Y) must be broadcastable (equal, or one of them is 1), "
-                "but received X's shape[%d] = %d and Y's shape[%d] = %d.",
-                i,
-                i,
+                "but received X's shape = [%s] and Y's shape = [%s]: X's "
+                "batch dimension [%s] = %d is not broadcastable with Y's "
+                "batch dimension [%s] = %d.",
+                common::make_ddim(dims_x),
+                common::make_ddim(dims_y),
+                x_pos,
                 dx,
-                i,
+                y_pos,
                 dy));
         new_dims.push_back((dx == 0 || dy == 0) ? 0 : std::max(dx, dy));
       }

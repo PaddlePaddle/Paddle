@@ -13,8 +13,12 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/infermeta/fusion.h"
+
+#include <string>
 #include <unordered_set>
 #include <vector>
+
+#include "paddle/common/ddim.h"
 #include "paddle/common/layout.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/infermeta_utils.h"
@@ -5706,18 +5710,27 @@ void FP8OutHalfGemmFusedInferMeta(
         }
         continue;
       }
+      // i indexes the right-aligned broadcast result, not either input. A
+      // lower-rank side has no dim at this position and counts as 1, so report
+      // each side's own index instead of i, which points at the wrong dim.
+      const std::string x_pos =
+          (i + bx >= nb) ? std::to_string(i + bx - nb) : "absent (counts as 1)";
+      const std::string y_pos =
+          (i + by >= nb) ? std::to_string(i + by - nb) : "absent (counts as 1)";
       PADDLE_ENFORCE_EQ(
           dx == dy || dx == 1 || dy == 1,
           true,
           common::errors::InvalidArgument(
-              "In fp8_fp8_half_gemm_fused, the batch dimension [%d] of "
-              "Input(X) and Input(Y) must be broadcastable (equal, or one of "
-              "them is 1), but received X's shape[%d] = %d and Y's shape[%d] "
-              "= %d.",
-              i,
-              i,
+              "In fp8_fp8_half_gemm_fused, the batch dimensions of Input(X) "
+              "and Input(Y) must be broadcastable (equal, or one of them is "
+              "1), but received X's shape = [%s] and Y's shape = [%s]: X's "
+              "batch dimension [%s] = %d is not broadcastable with Y's batch "
+              "dimension [%s] = %d.",
+              common::make_ddim(dims_x),
+              common::make_ddim(dims_y),
+              x_pos,
               dx,
-              i,
+              y_pos,
               dy));
       new_dims.push_back((dx == 0 || dy == 0) ? 0 : std::max(dx, dy));
     }
