@@ -62,9 +62,19 @@ def _mark_params_for_optimizer(module, optimizer):
         info = muon_info_map.get(param.name)
         if info is None and not param.stop_gradient:
             missing.append(name)
+        hyperball = info is not None and getattr(info, "use_hyperball", False)
+        # AdamW+Hyperball runs on shards with all-reduced norms.
+        shape = getattr(param, "original_shape", None) or param.shape
+        param.use_hyperball_sharded = bool(
+            hyperball
+            and not info.use_muon
+            and getattr(info, "split_concat_func", None) is None
+            and len(shape) == 2
+        )
         param.use_muon = bool(
             info is not None
-            and (info.use_muon or getattr(info, "use_hyperball", False))
+            and (info.use_muon or hyperball)
+            and not param.use_hyperball_sharded
         )
     if missing:
         raise ValueError(

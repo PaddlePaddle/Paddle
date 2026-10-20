@@ -28,7 +28,7 @@ from paddle.distributed.fleet.utils import mix_precision_utils
 from paddle.distributed.fsdp import fully_shard_fusion
 from paddle.distributed.fsdp._fsdp_context import register_fsdp_context
 from paddle.distributed.fsdp.fully_shard import fully_shard
-from paddle.optimizer.muon import MuonParamInfo
+from paddle.optimizer.muon import Muon, MuonParamInfo
 
 HIDDEN = 16
 INTER = 32
@@ -415,8 +415,8 @@ def tag_muon_params(model):
     return info_map
 
 
-def train_muon(model, info_map, ns_per_matrix, data, probe=None):
-    """Train with Muon under FSDP.
+def train_muon(model, info_map, data, probe=None):
+    """Train with Muon under FSDP, with per-matrix Newton-Schulz.
 
     ``probe(step, fsdp_context)`` runs after every step, for tests that need to
     inspect per-step buffer state.
@@ -429,7 +429,7 @@ def train_muon(model, info_map, ns_per_matrix, data, probe=None):
         parameters=[p for p in model.parameters() if p.trainable],
         weight_decay=0.0,
         muon_param_info_map=info_map,
-        ns_per_matrix=ns_per_matrix,
+        ns_per_matrix=True,
         multi_precision=True,
     )
     optimizer = mix_precision_utils.MixPrecisionOptimizer(optimizer)
@@ -444,7 +444,7 @@ def train_muon(model, info_map, ns_per_matrix, data, probe=None):
         if probe is not None:
             probe(step, fsdp_context)
         optimizer.clear_grad()
-    return losses, fsdp_context, optimizer._inner_opt
+    return losses, fsdp_context
 
 
 def muon_groups_of(fsdp_context):
@@ -499,9 +499,7 @@ def run_muon_shard():
     origin_shard_numel = fully_shard_fusion._muon_3d_shard_numel
     fully_shard_fusion._muon_3d_shard_numel = lambda *args, **kwargs: None
     try:
-        dense_losses, dense_ctx, _ = train_muon(
-            dense_model, dense_info, True, data
-        )
+        dense_losses, dense_ctx = train_muon(dense_model, dense_info, data)
     finally:
         fully_shard_fusion._muon_3d_shard_numel = origin_shard_numel
 
@@ -513,9 +511,7 @@ def run_muon_shard():
         assert group.params_buffer.is_sharded
     dense_params = gather_muon_params(dense_ctx)
 
-    matrix_losses, matrix_ctx, matrix_opt = train_muon(
-        matrix_model, matrix_info, False, data
-    )
+    matrix_losses, matrix_ctx = train_muon(matrix_model, matrix_info, data)
 
     matrix_groups = muon_groups_of(matrix_ctx)
     assert len(matrix_groups) == len(dense_groups)
@@ -525,7 +521,6 @@ def run_muon_shard():
         )
         assert group.params_buffer.is_sharded
         assert group.muon_owner_rank is None
-    assert matrix_opt._ns_per_matrix
     matrix_params = gather_muon_params(matrix_ctx)
 
     assert matrix_losses == dense_losses, (
@@ -572,8 +567,8 @@ def run_muon_replicated():
     origin_shard_numel = fully_shard_fusion._muon_3d_shard_numel
     fully_shard_fusion._muon_3d_shard_numel = lambda *args, **kwargs: None
     try:
-        dense_losses, dense_ctx, _ = train_muon(
-            dense_model, dense_info, True, data[:MUON_STEPS]
+        dense_losses, dense_ctx = train_muon(
+            dense_model, dense_info, data[:MUON_STEPS]
         )
     finally:
         fully_shard_fusion._muon_3d_shard_numel = origin_shard_numel
@@ -585,8 +580,8 @@ def run_muon_replicated():
         if step + 1 == MUON_STEPS:
             snapshot.update(gather_muon_params(fsdp_context))
 
-    replicated_losses, ctx, _ = train_muon(
-        replicated_model, replicated_info, True, data, probe=probe
+    replicated_losses, ctx = train_muon(
+        replicated_model, replicated_info, data, probe=probe
     )
 
     groups = muon_groups_of(ctx)
@@ -624,6 +619,129 @@ def run_muon_replicated():
     for group in ctx.buffer_manager.buffer_groups:
         for param in group.params:
             assert param._is_initialized(), f"{param.name} not materialized"
+
+
+def tag_adamh_params(model):
+    return {
+        param.name: MuonParamInfo(use_muon=False, use_hyperball=True)
+        for param in model.parameters()
+        if param.trainable
+    }
+
+
+def build_adamh_optimizer(model, info_map):
+    return paddle.optimizer.Muon(
+        learning_rate=0.01,
+        parameters=[p for p in model.parameters() if p.trainable],
+        weight_decay=0.0,
+        muon_param_info_map=info_map,
+        multi_precision=True,
+    )
+
+
+def train_adamh(model, optimizer, data, grad_scale=1.0):
+    losses = []
+    for i in range(0, len(data), ACCUM_STEPS):
+        for x in data[i : i + ACCUM_STEPS]:
+            model.train()
+            with paddle.amp.auto_cast(level="O1", dtype="float16"):
+                loss = model(x).mean()
+            losses.append(float(loss.astype("float32")))
+            loss.backward()
+        if grad_scale != 1.0:
+            for param in model.parameters():
+                if getattr(param, "main_grad", None) is not None:
+                    param.main_grad.scale_(grad_scale)
+        optimizer.step()
+        optimizer.clear_grad()
+    return losses
+
+
+def run_adamh_shard():
+    w = paddle.randn([HIDDEN, INTER])
+    u = paddle.randn([HIDDEN, INTER])
+    np.testing.assert_allclose(
+        Muon._hyperball_apply(w.flatten(), u.flatten(), 0.1).numpy(),
+        Muon._hyperball_apply(w, u, 0.1).flatten().numpy(),
+        rtol=1e-6,
+        atol=1e-7,
+    )
+
+    paddle.seed(2026)
+    base_model = MuonModel()
+    init_state = {k: v.clone() for k, v in base_model.state_dict().items()}
+    paddle.seed(2026)
+    data = [paddle.randn([TOKENS, HIDDEN]) for _ in range(STEPS - 1)]
+
+    register_fsdp_context(None)
+    base_optimizer = build_adamh_optimizer(
+        base_model, tag_adamh_params(base_model)
+    )
+    base_model = mix_precision_utils.MixPrecisionLayer(
+        base_model, dtype="float16"
+    )
+    base_losses = train_adamh(
+        base_model,
+        mix_precision_utils.MixPrecisionOptimizer(base_optimizer),
+        data,
+        grad_scale=1.0 / ACCUM_STEPS,
+    )
+    base_params = [p.numpy() for p in base_model.parameters()]
+
+    for enable_overlap in (True, False):
+        fsdp_model = MuonModel()
+        fsdp_model.set_state_dict(init_state)
+        optimizer = build_adamh_optimizer(
+            fsdp_model, tag_adamh_params(fsdp_model)
+        )
+        fsdp_model = fully_shard(
+            fsdp_model,
+            enable_tensor_fusion_and_overlap=enable_overlap,
+            optimizer=optimizer,
+            grad_accum_steps=ACCUM_STEPS,
+        )
+        fsdp_context = fsdp_model._fsdp_context
+
+        sharded = [
+            group
+            for group in fsdp_context.buffer_manager.buffer_groups
+            if group.hyperball_sharded
+        ]
+        assert sharded, "no 2D param took the sharded Hyperball path"
+        for group in sharded:
+            assert len(group.params) == 1
+            assert len(group.params[0].shape) == 2
+            assert not group.use_muon
+            data_buffer = group.params_buffer.data_buffer
+            assert data_buffer._hyperball_group is group.fsdp_group
+        for layer in fsdp_model.layers:
+            for param in (layer.w_up, layer.w_down):
+                assert not param.use_hyperball_sharded, param.name
+                assert param.use_muon, param.name
+
+        fsdp_model = mix_precision_utils.MixPrecisionLayer(
+            fsdp_model, dtype="float16"
+        )
+        fsdp_losses = train_adamh(
+            fsdp_model,
+            mix_precision_utils.MixPrecisionOptimizer(optimizer),
+            data,
+        )
+        np.testing.assert_allclose(
+            fsdp_losses,
+            base_losses,
+            rtol=1e-6,
+            err_msg=f"AdamW+Hyperball losses diverged (overlap={enable_overlap})",
+        )
+        fsdp_context.all_gather_params()
+        for param, expected in zip(fsdp_model.parameters(), base_params):
+            np.testing.assert_allclose(
+                param.numpy(),
+                expected,
+                rtol=1e-6,
+                atol=1e-7,
+                err_msg=f"{param.name} diverged (overlap={enable_overlap})",
+            )
 
 
 def build_muon_checkpoint_run(num_mats_down):
@@ -927,4 +1045,5 @@ if __name__ == '__main__':
     run_fused_linear()
     run_muon_shard()
     run_muon_replicated()
+    run_adamh_shard()
     run_muon_checkpoint()

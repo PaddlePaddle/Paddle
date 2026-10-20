@@ -321,8 +321,7 @@ class Muon(Optimizer):
             splitting the batch in half moves the result by 1.2e-2 relative).
             That makes a batched update depend on how many matrices a rank holds,
             which breaks sharding a group across ranks. Costs one kernel launch
-            per matrix. FSDP turns it on by itself for groups it shards on matrix
-            boundaries. Default: ``False``.
+            per matrix. Default: ``False``.
         multi_precision (bool): Maintain FP32 master weights when training in
             BF16/FP16. Default: ``False``.
         name (str | None): Optional name for the optimizer instance.
@@ -705,7 +704,9 @@ class Muon(Optimizer):
         return orthogonal_update * scale * extra_scale_factor
 
     @staticmethod
-    def _hyperball_apply(w, update, lr, eps=1e-12, split_concat_func=None):
+    def _hyperball_apply(
+        w, update, lr, eps=1e-12, split_concat_func=None, reduce_group=None
+    ):
         r"""Hyperball step, shared by Muon+Hyperball and AdamW+Hyperball.
 
         Given the current weight ``w`` and a base-optimizer update direction
@@ -743,13 +744,23 @@ class Muon(Optimizer):
                 lambda u: Muon._hyperball_apply(next(w_iter), u, lr, eps),
             )
 
-        def _fro(x):
-            # Frobenius norm over the last two dims, kept for broadcasting.
-            # 2D [H, I] -> [1, 1] (whole matrix); 3D [E, H, I] -> [E, 1, 1].
-            # paddle.norm(p='fro') is numerically identical to
-            # sqrt(sum(x*x)) here but fused (no full-size x*x temp), so it is
-            # faster on large 2D / 3D-expert weights.
-            return paddle.norm(x, p='fro', axis=[-2, -1], keepdim=True)
+        if reduce_group is not None or w.ndim == 1:
+            # Flat shards of one matrix: all-reduce the squared sums.
+            def _fro(x):
+                sq = paddle.sum(x * x).reshape([1])
+                if reduce_group is not None:
+                    paddle.distributed.all_reduce(sq, group=reduce_group)
+                return paddle.sqrt(sq)
+
+        else:
+
+            def _fro(x):
+                # Frobenius norm over the last two dims, kept for broadcasting.
+                # 2D [H, I] -> [1, 1] (whole matrix); 3D [E, H, I] -> [E, 1, 1].
+                # paddle.norm(p='fro') is numerically identical to
+                # sqrt(sum(x*x)) here but fused (no full-size x*x temp), so it
+                # is faster on large 2D / 3D-expert weights.
+                return paddle.norm(x, p='fro', axis=[-2, -1], keepdim=True)
 
         w32 = w.astype(paddle.float32)
         u32 = update.astype(paddle.float32)
@@ -863,7 +874,11 @@ class Muon(Optimizer):
                 param_info.split_concat_func if param_info else None
             )
             new_w = Muon._hyperball_apply(
-                w, update, lr * lr_ratio, split_concat_func=split_concat_func
+                w,
+                update,
+                lr * lr_ratio,
+                split_concat_func=split_concat_func,
+                reduce_group=getattr(param, "_hyperball_group", None),
             )
             if find_master:
                 paddle.assign(new_w, w)
@@ -1089,7 +1104,6 @@ class Muon(Optimizer):
                 fsdp_context.bind_decay_param_fun(self)
             if hasattr(fsdp_context, "bind_optimizer"):
                 fsdp_context.bind_optimizer(self)
-            self._maybe_force_per_matrix_ns(fsdp_context)
             if self._grad_clip is not None:
                 self._grad_clip.should_comm_on_shard_dim = True
                 self._grad_clip.fsdp_group = (
@@ -1226,19 +1240,6 @@ class Muon(Optimizer):
             fsdp_context.broadcast_muon_params()
 
     _FSDP_FUSED_PREFIX = "fuse_params_"
-
-    def _maybe_force_per_matrix_ns(self, fsdp_context):
-        if self._ns_per_matrix:
-            return
-        fun = getattr(fsdp_context, "requires_muon_per_matrix_ns", None)
-        if fun is None or not fun():
-            return
-        self._ns_per_matrix = True
-        _logger.warning(
-            "FSDP shards Muon params on matrix boundaries; forcing "
-            "ns_per_matrix=True so the update does not depend on how many "
-            "matrices a rank holds."
-        )
 
     def _fsdp_collect_params_grads(self, fsdp_context, params_grads):
         muon_entries = (
