@@ -741,6 +741,168 @@ class TestFusedMoePermuteUnpermute(unittest.TestCase):
             err_msg="zipped_probs should be all zeros when no token is routed",
         )
 
+    def poison_allocator_pool(self, output_rows, token_dim):
+        """Leave NaN / non -1 garbage in the memory pool for the next Alloc.
+
+        Without this, a kernel that returns its raw allocation still looks
+        correct: freshly mapped device pages read back as zeros.
+        """
+        poison = [
+            paddle.full(
+                [output_rows, token_dim], float("nan"), dtype="bfloat16"
+            )
+            for _ in range(4)
+        ]
+        poison += [
+            paddle.full([output_rows], float("nan"), dtype="float32")
+            for _ in range(4)
+        ]
+        poison += [
+            paddle.full([output_rows], -12345, dtype="int32") for _ in range(4)
+        ]
+        del poison
+        paddle.device.synchronize()
+
+    def test_permute_zero_seqlen_fills_outputs(self):
+        """Test moe_permute when seq_len == 0 but tokens_per_expert > 0.
+
+        The outputs are sized from tokens_per_expert rather than from the
+        input, so they stay non-empty and the kernel owns their
+        initialization: 0 for the data buffers, -1 for the index maps.
+        """
+        token_dim = 2048
+        topk = 10
+        num_experts = 8
+        alignment = 128
+        tokens_per_expert = [1024, 512, 256, 128, 64, 32, 16, 8]
+        output_rows = sum(
+            -(-tokens // alignment) * alignment for tokens in tokens_per_expert
+        )
+
+        self.poison_allocator_pool(output_rows, token_dim)
+
+        (
+            hidden_unzipped,
+            rowmap,
+            prob_unzipped,
+            _,
+            expert_indices,
+        ) = moe_permute(
+            paddle.empty([0, token_dim], dtype="bfloat16"),
+            None,
+            paddle.empty([0, topk], dtype="int32"),
+            paddle.empty([0, topk], dtype="float32"),
+            num_experts,
+            tokens_per_expert,
+            padding_alignment=alignment,
+            do_gather=True,
+            return_expert_indices=True,
+        )
+
+        self.assertEqual(rowmap.shape, [0, num_experts])
+        np.testing.assert_array_equal(
+            hidden_unzipped.astype("float32").numpy(),
+            np.zeros([output_rows, token_dim], dtype="float32"),
+            err_msg="hidden_states_unzipped should be all zeros when no token is routed",
+        )
+        np.testing.assert_array_equal(
+            prob_unzipped.numpy(),
+            np.zeros([output_rows], dtype="float32"),
+            err_msg="token_prob_unzipped should be all zeros when no token is routed",
+        )
+        np.testing.assert_array_equal(
+            expert_indices.numpy(),
+            np.full([output_rows], -1, dtype="int32"),
+            err_msg="expert_indices should be all -1 when no token is routed",
+        )
+
+    def test_permute_zero_seqlen_fills_scale(self):
+        """Test the scale_unzipped output of moe_permute when seq_len == 0."""
+        token_dim = 2048
+        topk = 10
+        num_experts = 8
+        alignment = 128
+        tokens_per_expert = [1024, 512, 256, 128, 64, 32, 16, 8]
+        output_rows = sum(
+            -(-tokens // alignment) * alignment for tokens in tokens_per_expert
+        )
+        scale_cols = (token_dim + 127) // 128
+
+        self.poison_allocator_pool(output_rows, scale_cols)
+
+        _, _, _, scale_unzipped = moe_permute(
+            paddle.empty([0, token_dim], dtype="bfloat16").astype(
+                "float8_e4m3fn"
+            ),
+            paddle.empty([0, scale_cols], dtype="float32"),
+            paddle.empty([0, topk], dtype="int32"),
+            paddle.empty([0, topk], dtype="float32"),
+            num_experts,
+            tokens_per_expert,
+            padding_alignment=alignment,
+            do_gather=True,
+        )
+
+        np.testing.assert_array_equal(
+            scale_unzipped.numpy(),
+            np.zeros([output_rows, scale_cols], dtype="float32"),
+            err_msg="scale_unzipped should be all zeros when no token is routed",
+        )
+
+    def test_permute_override_buffer_size_fills_padding_rows(self):
+        """Test the padding rows of moe_permute under override_buffer_size.
+
+        The override path derives the expert offsets on the device, so the
+        host cannot enumerate the padding rows; they must still come back as
+        0 / -1 rather than as whatever the allocator handed over.
+        """
+        token_dim = 256
+        topk = 4
+        num_experts = 4
+        alignment = 128
+        tokens_per_expert = [16] * num_experts
+        output_rows = sum(
+            -(-tokens // alignment) * alignment for tokens in tokens_per_expert
+        )
+        seq_len = 64
+
+        routemap = np.full([seq_len, topk], -1, dtype="int32")
+        routemap[:, 0] = np.arange(seq_len, dtype="int32") // 16
+
+        self.poison_allocator_pool(output_rows, token_dim)
+
+        (
+            hidden_unzipped,
+            _,
+            prob_unzipped,
+            _,
+            expert_indices,
+        ) = moe_permute(
+            paddle.ones([seq_len, token_dim], dtype="bfloat16"),
+            None,
+            paddle.to_tensor(routemap),
+            paddle.ones([seq_len, topk], dtype="float32"),
+            num_experts,
+            tokens_per_expert,
+            padding_alignment=alignment,
+            do_gather=True,
+            return_expert_indices=True,
+            override_buffer_size=output_rows,
+        )
+
+        padding_rows = expert_indices.numpy() == -1
+        self.assertEqual(int(padding_rows.sum()), output_rows - seq_len)
+        np.testing.assert_array_equal(
+            hidden_unzipped.astype("float32").numpy()[padding_rows],
+            np.zeros([output_rows - seq_len, token_dim], dtype="float32"),
+            err_msg="padding rows of hidden_states_unzipped should be all zeros",
+        )
+        np.testing.assert_array_equal(
+            prob_unzipped.numpy()[padding_rows],
+            np.zeros([output_rows - seq_len], dtype="float32"),
+            err_msg="padding rows of token_prob_unzipped should be all zeros",
+        )
+
     def test_permute_reject_zero_token_dim(self):
         """Test that moe_permute rejects token_dim == 0 input."""
         seq_len = 4

@@ -498,7 +498,7 @@ class TestTruncatedNormal(unittest.TestCase):
                     name="param",
                     initializer=initializer.TruncatedNormal(2.3, 1.9),
                 )
-            num_ops = 2 if dtype in ["float16", "uint16"] else 1
+            num_ops = 1
             self.assertEqual(len(block.ops), num_ops)
             init_op = block.ops[0]
             self.assertEqual(init_op.type, 'truncated_gaussian_random')
@@ -513,15 +513,16 @@ class TestTruncatedNormal(unittest.TestCase):
         """Test truncated normal initializer with float16"""
         paddle.enable_static()
 
+        # Sampling happens directly in float16, so no cast op is appended.
         block = self.test_truncated_normal_initializer("float16")
-        self.assertTrue(check_cast_op(block.ops[1]))
+        self.assertEqual(len(block.ops), 1)
 
     def test_truncated_normal_initializer_bf16(self):
         """Test truncated normal initializer with bfloat16"""
         paddle.enable_static()
 
         block = self.test_truncated_normal_initializer("uint16")  # bfloat16
-        self.assertTrue(check_cast_op(block.ops[1]))
+        self.assertEqual(len(block.ops), 1)
 
     def test_truncated_normal_initializer_fp64(self):
         """Test truncated normal initializer with float64"""

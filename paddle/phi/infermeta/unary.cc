@@ -4950,7 +4950,11 @@ void FillSplitOutDims(const MetaTensor& x,
                       const std::vector<int64_t>& sections_vec,
                       std::vector<MetaTensor*>* out) {
   std::vector<DDim> out_dims(sections_vec.size(), x.dims());
-  if (x.dims().at(axis_value) > 0) {
+  // A statically-known split axis (size >= 0, including an empty 0-size axis)
+  // must take its real per-section size here. Only a *dynamic* unknown axis
+  // (size < 0) is left as -1; such inputs never reach this helper because both
+  // callers route them to the degenerate branch beforehand.
+  if (x.dims().at(axis_value) >= 0) {
     for (size_t i = 0; i < sections_vec.size(); ++i) {
       out_dims[i][axis_value] = sections_vec[i];
     }
@@ -4998,8 +5002,13 @@ void SplitInferMeta(const MetaTensor& x,
 
   auto sections_data = sections.GetData();
   // fill out dims with -1
+  // Only route to the degenerate (no-validation) branch for a *dynamic* unknown
+  // split-axis size (-1). A statically-known 0 must still fall through to the
+  // `sum_of_section == input_axis_dim` check below, so illegal sections (that
+  // do not sum to the empty axis size) are rejected the same way torch does,
+  // instead of being silently accepted.
   if ((sections.FromTensor() && !config.is_runtime) || axis_value == -1 ||
-      (axis_value >= 0 && x.dims().at(axis_value) <= 0)) {
+      (axis_value >= 0 && x.dims().at(axis_value) < 0)) {
     std::vector<DDim> out_dims;
     if ((sections.FromTensor() && !config.is_runtime) ||
         axis_value == -1) {  // NOLINT
@@ -5987,7 +5996,7 @@ void UnbindInferMeta(const MetaTensor& x,
                      int axis,
                      std::vector<MetaTensor*> outs) {
   auto in_dims = x.dims();
-  std::vector<int> out_dim;
+  std::vector<int64_t> out_dim;
 
   PADDLE_ENFORCE_GE(
       axis,

@@ -42,7 +42,6 @@ inline constexpr int ceil_pow2(int v) {
 }
 
 inline constexpr int kCumsumBlockSize = 40;
-inline constexpr int kCumsumInvalidTag = -1;
 inline constexpr int kMaxNumExperts = 384;
 inline constexpr int kMaxNumExpertsForOptKernel = 32;
 
@@ -344,6 +343,16 @@ __device__ __forceinline__ void vectorized_memset(T* ptr,
     }
   }
 }
+template <typename T>
+__device__ __forceinline__ void try_vectorized_memset(T* ptr,
+                                                      const T value,
+                                                      const int num_elements) {
+  if (((uintptr_t)ptr & 0xF) == 0) {
+    vectorized_memset(ptr, value, num_elements);
+  } else {
+    unrolled_memset(ptr, value, num_elements);
+  }
+}
 // ============================================================================
 //                               Helper Kernels
 // ============================================================================
@@ -364,7 +373,7 @@ __global__ __launch_bounds__(512) void filling_padding_rows_kernel(
     const int* __restrict__ padding_rows) {
   int64_t rows = static_cast<int64_t>(padding_rows[blockIdx.x]);
   if constexpr (FILLING_X_UNZIPPED) {
-    vectorized_memset(
+    try_vectorized_memset(
         &X_unzipped_ptr[rows * cols], static_cast<TokenT>(0), cols);
   }
   if constexpr (FILLING_X_SCALE_UNZIPPED) {

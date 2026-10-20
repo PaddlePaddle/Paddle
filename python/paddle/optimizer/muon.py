@@ -13,6 +13,7 @@
 # limitations under the License.
 from __future__ import annotations
 
+import functools
 import logging
 import math
 import os
@@ -37,6 +38,7 @@ from paddle.distributed.flex_checkpoint.dcp.sharded_weight import (
 )
 
 from ..nn.clip import GradientClipBase
+from .inner_optimizer import ParamInfo
 from .optimizer import Optimizer
 
 # Debug logging for Muon optimizer
@@ -55,20 +57,35 @@ __all__ = []
 
 
 @dataclass
-class MuonParamInfo:
+class MuonParamInfo(ParamInfo):
     """Muon update metadata for a single parameter.
 
     This replaces the previous approach of setting dynamic attributes
     directly on param objects.
 
+    Extends the generic :class:`~paddle.optimizer.inner_optimizer.ParamInfo`
+    (the neutral per-parameter carrier) with the Muon-family update semantics
+    below.
+
     Attributes:
         use_muon: If True, use Muon (orthogonal) updates; otherwise AdamW.
+        use_hyperball: If True, apply the Hyperball constraint after computing
+            the base update direction: project the weight back onto the
+            Frobenius sphere of fixed radius R = ||W_t||_F (which the projection
+            holds constant, so R == ||W_0||_F by construction and is NOT stored
+            in the checkpoint). Composes with either update rule, giving the
+            three supported modes: Muon+Hyperball (use_muon=True,
+            use_hyperball=True), AdamW+Hyperball (use_muon=False,
+            use_hyperball=True), AdamW (use_muon=False, use_hyperball=False).
+            Under Hyperball, weight decay is dropped (the constraint already
+            prevents norm growth).
         split_concat_func: Optional callable that implements the slice strategy.
             Signature: split_concat_func(matrix, ortho_fn, **kwargs) -> sliced_matrix
             If None, whole-matrix orthogonalisation is used.
     """
 
     use_muon: bool = True
+    use_hyperball: bool = False
     split_concat_func: Callable | None = None
 
 
@@ -115,6 +132,77 @@ _NS_COEFFICIENT_SETS = {
     # From DeepSeekV4: https://huggingface.co/deepseek-ai/DeepSeek-V4-Pro/resolve/main/DeepSeek_V4.pdf
     [(3.4445, -4.7750, 2.0315)] * 8 + [(2.0, -1.5, 0.5)] * 2,
 }
+
+# ------------------------------------------------------------------
+# Symmetric-GEMM (SYRK) fast path for Newton-Schulz
+# ------------------------------------------------------------------
+
+# The first two matmuls of a Newton-Schulz step have symmetric outputs
+# (``X @ X.T`` and ``A @ A`` with A symmetric), so a SYRK-style kernel only
+# has to compute the lower triangle and mirror-write the upper one. That cuts
+# 1/4 (thin fragments) to 1/3 (square fragments) of the step's FLOPs.
+#
+# quack needs 16-byte alignment on every stride-1 dimension, i.e. 8 elements
+# for fp16/bf16. That covers *both* edges of the fragment: an unaligned short
+# edge trips the (m, m) output ("Invalid mD.strides[0]") and an unaligned long
+# edge trips the (m, n) input ("Invalid mA.strides[0]"), since the long edge is
+# the contiguous K dimension of ``X @ X.T``. Both are hard raises, so the gate
+# has to reject them rather than let the first step die.
+_SYRK_EDGE_ALIGNMENT = 8
+# Major compute capabilities with a CuTe symmetric-GEMM kernel.
+_SYRK_SUPPORTED_MAJOR_CAPABILITIES = (9, 10, 11)
+# fp16/bf16 go through the kernel bit-identically to cuBLAS. fp32 also runs,
+# but its MMA is tf32-grade: measured 6.4e-5 relative error against an fp64
+# reference where paddle.matmul gives 1.8e-6. ns_matmul_dtype=float32 is only
+# ever chosen to *get* that precision (it is the pre-Ampere fallback), so
+# quietly trading it away would defeat the point -- keep fp32 on cuBLAS.
+_SYRK_SUPPORTED_DTYPES = (paddle.bfloat16, paddle.float16)
+
+
+@functools.cache
+def _load_symmetric_gemm():
+    """Return quack's ``gemm_symmetric``, caching the lookup.
+
+    quack is a CuTe-DSL package written against ``torch``, so it is imported
+    inside ``paddle.use_compat_guard`` to proxy ``import torch`` to Paddle. The
+    guard is only needed for the import: the kernel wrappers bind the proxy
+    module at import time, so calls afterwards need no active compat scope.
+    """
+    try:
+        with paddle.use_compat_guard(
+            enable=True, scope={"quack", "cutlass", "triton"}, silent=True
+        ):
+            from quack.gemm_interface import gemm_symmetric
+    except Exception as e:
+        raise RuntimeError(
+            "Muon(use_symmetric_gemm=True) needs quack's symmetric GEMM, but "
+            "'from quack.gemm_interface import gemm_symmetric' failed with "
+            f"{type(e).__name__}: {e}. Install quack-kernels>=0.3.7, or "
+            "import paddlefleet_ops first, which vendors it."
+        ) from e
+    return gemm_symmetric
+
+
+def _symmetric_gemm_is_profitable(shape, dtype, min_short_edge, min_step_flops):
+    """Whether the symmetric-GEMM path beats cuBLAS for this NS fragment.
+
+    *shape* is the post-transpose Newton-Schulz input, i.e. ``(m, n)`` or
+    ``(batch, m, n)``; *dtype* is the matmul dtype. *min_short_edge* and
+    *min_step_flops* are the caller's thresholds, i.e. the ``Muon``
+    constructor arguments of the same name.
+    """
+    if dtype not in _SYRK_SUPPORTED_DTYPES:
+        return False
+    m, n = shape[-2], shape[-1]
+    if m > n:
+        m, n = n, m
+    if m < min_short_edge:
+        return False
+    if m % _SYRK_EDGE_ALIGNMENT or n % _SYRK_EDGE_ALIGNMENT:
+        return False
+    batch = shape[0] if len(shape) == 3 else 1
+    return batch * (4 * m * m * n + 2 * m**3) >= min_step_flops
+
 
 # ------------------------------------------------------------------
 # Default parameter classification
@@ -213,6 +301,28 @@ class Muon(Optimizer):
             iterations. ``None`` = auto-detect: bfloat16 on Ampere+ (capability
             >= 8.0), float32 on V100 and older. Pass ``paddle.float32``
             explicitly to force float32. Default: ``None``.
+        use_symmetric_gemm (bool): Compute the two symmetric matmuls of each
+            Newton-Schulz step with quack's SYRK-style ``gemm_symmetric``
+            kernel. Default: ``False``.
+        symmetric_gemm_min_short_edge (int): Minimum short edge of a
+            Newton-Schulz fragment for the symmetric-GEMM path. Below this the
+            kernel cannot fill the GPU and loses to cuBLAS. Only consulted when
+            ``use_symmetric_gemm=True``. The default was measured on sm_10x;
+            raise or lower it if the crossover point moves. Default: ``1024``.
+        symmetric_gemm_min_step_flops (float): Minimum FLOPs of one full
+            Newton-Schulz step, ``batch * (4 * m^2 * n + 2 * m^3)``, for the
+            symmetric-GEMM path. Screens out fragments too small to amortise
+            the launch overhead. Only consulted when
+            ``use_symmetric_gemm=True``. Default: ``2e11``.
+        ns_per_matrix (bool): Run Newton-Schulz on one 2D matrix at a time
+            instead of batching. The two are mathematically equivalent, but they
+            reach different GEMM kernels depending on the batch size, so in low
+            precision the results differ (``[8, 2048, 1024]`` bfloat16, 10 steps:
+            splitting the batch in half moves the result by 1.2e-2 relative).
+            That makes a batched update depend on how many matrices a rank holds,
+            which breaks sharding a group across ranks. Costs one kernel launch
+            per matrix. FSDP turns it on by itself for groups it shards on matrix
+            boundaries. Default: ``False``.
         multi_precision (bool): Maintain FP32 master weights when training in
             BF16/FP16. Default: ``False``.
         name (str | None): Optional name for the optimizer instance.
@@ -236,6 +346,7 @@ class Muon(Optimizer):
         ns_coeffs=None,
         nesterov=True,
         adam_epsilon=1e-9,
+        muon_epsilon=None,
         grad_clip=None,
         lr_ratio: Callable[[Tensor], float] | None = None,
         apply_decay_param_fun: Callable[[str], bool] | None = None,
@@ -247,6 +358,10 @@ class Muon(Optimizer):
         multi_precision=False,
         name=None,
         muon_max_group_bytes=2 * 1024 * 1024 * 1024,  # Max 2GB per group
+        use_symmetric_gemm=False,
+        symmetric_gemm_min_short_edge=1024,
+        symmetric_gemm_min_step_flops=2e11,
+        ns_per_matrix=False,
         **kwargs,
     ):
         if parameters is None:
@@ -275,6 +390,11 @@ class Muon(Optimizer):
             "ns_steps": ns_steps,
             "nesterov": nesterov,
             "epsilon": adam_epsilon,
+            # Muon (Newton-Schulz) direction epsilon; None -> reuse adam_epsilon so
+            # behaviour is identical to before this option existed.
+            "muon_epsilon": adam_epsilon
+            if muon_epsilon is None
+            else muon_epsilon,
             "muon_version": muon_version,
             "ns_coeff_type": ns_coeff_type,
         }
@@ -324,6 +444,42 @@ class Muon(Optimizer):
             )
         else:
             self._ns_matmul_dtype = ns_matmul_dtype
+        # Symmetric-GEMM fast path. Validate eagerly so a misconfiguration is
+        # a constructor error instead of a silent fallback at the first step.
+        self._use_symmetric_gemm = use_symmetric_gemm
+        self._symmetric_gemm_min_short_edge = symmetric_gemm_min_short_edge
+        self._symmetric_gemm_min_step_flops = symmetric_gemm_min_step_flops
+        self._ns_per_matrix = ns_per_matrix
+        if use_symmetric_gemm:
+            if (
+                symmetric_gemm_min_short_edge <= 0
+                or symmetric_gemm_min_step_flops <= 0
+            ):
+                raise ValueError(
+                    "symmetric_gemm_min_short_edge and "
+                    "symmetric_gemm_min_step_flops must be positive, got "
+                    f"{symmetric_gemm_min_short_edge} and "
+                    f"{symmetric_gemm_min_step_flops}."
+                )
+            if self._ns_matmul_dtype not in _SYRK_SUPPORTED_DTYPES:
+                raise ValueError(
+                    "use_symmetric_gemm=True requires bfloat16 or float16 "
+                    "Newton-Schulz matmuls, got "
+                    f"ns_matmul_dtype={self._ns_matmul_dtype}. The symmetric "
+                    "kernel does run on float32, but only at tf32-grade "
+                    "precision, which defeats the reason to pick float32."
+                )
+            cap = (
+                paddle.device.cuda.get_device_capability()
+                if paddle.is_compiled_with_cuda()
+                else (0, 0)
+            )
+            if cap[0] not in _SYRK_SUPPORTED_MAJOR_CAPABILITIES:
+                raise ValueError(
+                    "use_symmetric_gemm=True requires a GPU with compute "
+                    f"capability 9.x/10.x/11.x, got {cap[0]}.{cap[1]}."
+                )
+            _load_symmetric_gemm()
         self._default_dict.update(defaults)
 
     # ------------------------------------------------------------------
@@ -380,6 +536,9 @@ class Muon(Optimizer):
         if isinstance(parameters, dict):
             parameters = self._update_param_group(parameters)
         for p in parameters:
+            if p.name.startswith(self._FSDP_FUSED_PREFIX):
+                self._ensure_accumulators(p, False, self._default_dict)
+                continue
             param_info = self._muon_param_info_map.get(p.name)
             if param_info is not None:
                 use_muon = param_info.use_muon
@@ -402,6 +561,10 @@ class Muon(Optimizer):
         eps=1e-9,
         ns_coeffs=None,
         ns_matmul_dtype=paddle.bfloat16,
+        use_symmetric_gemm=False,
+        symmetric_gemm_min_short_edge=None,
+        symmetric_gemm_min_step_flops=None,
+        per_matrix=False,
     ):
         """Approximate the matrix sign function via Newton-Schulz iteration.
 
@@ -414,10 +577,38 @@ class Muon(Optimizer):
                 If None, uses the "simple" preset.
             ns_matmul_dtype: Dtype for matmul iterations. Defaults to
                 bfloat16. Pass paddle.float32 for V100 compatibility.
+            use_symmetric_gemm: Allow the symmetric-GEMM fast path. It is
+                taken only if this shape clears the profitability thresholds.
+            symmetric_gemm_min_short_edge: Short-edge threshold of that gate.
+                Required when use_symmetric_gemm=True.
+            symmetric_gemm_min_step_flops: Per-step FLOPs threshold of that
+                gate. Required when use_symmetric_gemm=True.
+            per_matrix: Iterate each 2D matrix of a 3D input separately instead
+                of as one batch. Equivalent in exact arithmetic, but the batched
+                form reaches a batch-size-dependent kernel, so its result
+                changes when the batch is split across ranks.
         """
         if X.ndim < 2 or X.ndim > 3:
             raise ValueError(
                 f"Input tensor X must be 2D or 3D (batched), got {X.ndim}D"
+            )
+
+        if per_matrix and X.ndim == 3:
+            return paddle.stack(
+                [
+                    Muon._zeropower_via_newtonschulz5(
+                        X[i],
+                        steps=steps,
+                        eps=eps,
+                        ns_coeffs=ns_coeffs,
+                        ns_matmul_dtype=ns_matmul_dtype,
+                        use_symmetric_gemm=use_symmetric_gemm,
+                        symmetric_gemm_min_short_edge=symmetric_gemm_min_short_edge,
+                        symmetric_gemm_min_step_flops=symmetric_gemm_min_step_flops,
+                    )
+                    for i in range(X.shape[0])
+                ],
+                axis=0,
             )
 
         coeff_sets = (
@@ -442,10 +633,24 @@ class Muon(Optimizer):
         )
         X = X_flat.reshape(orig_shape).astype(ns_matmul_dtype)
 
+        symmetric = use_symmetric_gemm and _symmetric_gemm_is_profitable(
+            X.shape,
+            X.dtype,
+            symmetric_gemm_min_short_edge,
+            symmetric_gemm_min_step_flops,
+        )
         if X.ndim == 3:
-            ns_step_fn = Muon._batched_newton_schulz_step
+            ns_step_fn = (
+                Muon._batched_newton_schulz_step_symmetric
+                if symmetric
+                else Muon._batched_newton_schulz_step
+            )
         else:
-            ns_step_fn = Muon._newton_schulz_step
+            ns_step_fn = (
+                Muon._newton_schulz_step_symmetric
+                if symmetric
+                else Muon._newton_schulz_step
+            )
 
         for i in range(steps):
             a, b, c = coeff_sets[i % len(coeff_sets)]
@@ -472,6 +677,22 @@ class Muon(Optimizer):
         return X
 
     @staticmethod
+    def _newton_schulz_step_symmetric(X, a, b, c):
+        """2D Newton-Schulz step, symmetric products on the SYRK kernel."""
+        gemm_symmetric = _load_symmetric_gemm()
+        A = gemm_symmetric(X, paddle.transpose(X, perm=[1, 0]))
+        B = gemm_symmetric(A, A, C=A, beta=b, alpha=c)
+        return paddle.addmm(input=X, x=B, y=X, beta=a, alpha=1.0)
+
+    @staticmethod
+    def _batched_newton_schulz_step_symmetric(X, a, b, c):
+        """3D Newton-Schulz step, symmetric products on the SYRK kernel."""
+        gemm_symmetric = _load_symmetric_gemm()
+        A = gemm_symmetric(X, paddle.transpose(X, perm=[0, 2, 1]))
+        B = gemm_symmetric(A, A, C=A, beta=b, alpha=c)
+        return paddle.baddbmm(X, B, X, beta=a, alpha=1.0)
+
+    @staticmethod
     def _scaling_fn(orthogonal_update, version, extra_scale_factor=1.0):
         """Apply dimension-dependent scaling to the orthogonal update."""
         din, dout = orthogonal_update.shape[-2], orthogonal_update.shape[-1]
@@ -482,6 +703,61 @@ class Muon(Optimizer):
         else:  # version == 3 (default)
             scale = max(dout, din) ** 0.5
         return orthogonal_update * scale * extra_scale_factor
+
+    @staticmethod
+    def _hyperball_apply(w, update, lr, eps=1e-12, split_concat_func=None):
+        r"""Hyperball step, shared by Muon+Hyperball and AdamW+Hyperball.
+
+        Given the current weight ``w`` and a base-optimizer update direction
+        ``update`` (Newton-Schulz-orthogonalised for Muon, Adam-preconditioned
+        for AdamW), take a unit-direction step of length ``lr * R`` and project
+        back onto the Frobenius sphere of radius ``R``::
+
+            R      = ||w||_F                      (recomputed every step)
+            W_{t+1} = R * Normalize(w - lr * R * Normalize(update))
+
+        The projection holds ``||w||_F`` constant, so ``R == ||W_0||_F`` by
+        construction and is intentionally NOT stored in the checkpoint (aligns
+        with the NeMo / mangocrazz reference implementations). Weight decay is
+        intentionally not applied here (the constraint already prevents norm
+        growth). For 3D grouped-expert params ``[E, H, I]`` the Frobenius norm
+        is taken per expert (last two dims), matching the per-matrix constraint.
+
+        With ``split_concat_func`` (fused QKV, gate_up, MLA heads, ...) the
+        step is applied to the same slices that were orthogonalised, each on
+        its own sphere ``R_s = ||W_s||_F``; projecting the fused matrix as a
+        whole would only hold the total norm and let slice norms drift.
+        ``split_concat_func`` takes one matrix, so it is run on ``w`` to
+        collect the weight slices, then on ``update`` with a callback that
+        pairs slices in call order (the slicing depends only on the shape).
+
+        All math is done in float32; the fp32 result is returned (the caller
+        casts to the parameter dtype).
+        """
+        if split_concat_func is not None:
+            w_slices = []
+            split_concat_func(w, lambda s: w_slices.append(s) or s)
+            w_iter = iter(w_slices)
+            return split_concat_func(
+                update,
+                lambda u: Muon._hyperball_apply(next(w_iter), u, lr, eps),
+            )
+
+        def _fro(x):
+            # Frobenius norm over the last two dims, kept for broadcasting.
+            # 2D [H, I] -> [1, 1] (whole matrix); 3D [E, H, I] -> [E, 1, 1].
+            # paddle.norm(p='fro') is numerically identical to
+            # sqrt(sum(x*x)) here but fused (no full-size x*x temp), so it is
+            # faster on large 2D / 3D-expert weights.
+            return paddle.norm(x, p='fro', axis=[-2, -1], keepdim=True)
+
+        w32 = w.astype(paddle.float32)
+        u32 = update.astype(paddle.float32)
+        radius = _fro(w32)
+        normed_update = u32 / (_fro(u32) + eps)
+        trial_w = w32 - lr * radius * normed_update
+        new_w = radius * (trial_w / (_fro(trial_w) + eps))
+        return new_w
 
     # ------------------------------------------------------------------
     # Per-parameter update rules
@@ -538,6 +814,60 @@ class Muon(Optimizer):
             False,
             False,  # amsgrad
         )
+
+    def _adamw_hyperball_update(
+        self,
+        param,
+        grad,
+        lr,
+        moment1,
+        moment2,
+        beta1_pow,
+        beta2_pow,
+        beta1,
+        beta2,
+        epsilon,
+    ):
+        """AdamW direction + Hyperball projection (the "AdamH" mode).
+
+        Computes the Adam preconditioned direction ``u = m / (sqrt(v) + eps)``
+        (the same per-element structure the fused ``adamw_`` op uses), then
+        applies the shared Hyperball projection. The bias-correction factor
+        ``sqrt(1 - beta2^t) / (1 - beta1^t)`` is a global scalar and is washed
+        out by the Frobenius normalisation inside ``_hyperball_apply``, so it is
+        not applied to the direction; ``beta1_pow`` / ``beta2_pow`` are still
+        advanced in place to keep the step-count state consistent. No weight
+        decay is applied (the Hyperball constraint replaces it). Runs in fp32.
+        """
+        with paddle.no_grad():
+            find_master = param.name in self._master_weights
+            w = self._master_weights[param.name] if find_master else param
+
+            g = grad.astype(paddle.float32)
+            # Advance the first/second moments in place (fp32 accumulators).
+            paddle.assign(beta1 * moment1 + (1.0 - beta1) * g, moment1)
+            paddle.assign(beta2 * moment2 + (1.0 - beta2) * g * g, moment2)
+            # Advance bias-correction powers (kept for state consistency only).
+            paddle.assign(beta1_pow * beta1, beta1_pow)
+            paddle.assign(beta2_pow * beta2, beta2_pow)
+
+            # Adam preconditioned direction. The global bias-correction scalar
+            # is intentionally omitted: _hyperball_apply normalises the update
+            # to unit Frobenius norm, so any global multiplier cancels.
+            update = moment1 / (paddle.sqrt(moment2) + epsilon)
+
+            lr_ratio = 1.0 if self._lr_ratio is None else self._lr_ratio(param)
+            # Slices of a split param are projected independently.
+            param_info = self._muon_param_info_map.get(param.name)
+            split_concat_func = (
+                param_info.split_concat_func if param_info else None
+            )
+            new_w = Muon._hyperball_apply(
+                w, update, lr * lr_ratio, split_concat_func=split_concat_func
+            )
+            if find_master:
+                paddle.assign(new_w, w)
+            paddle.assign(new_w.astype(param.dtype), param)
 
     def _split_group_by_bytes(self, group_params_grads):
         """Split a batched Muon group so each sub-group stays under the byte cap.
@@ -633,6 +963,10 @@ class Muon(Optimizer):
                     eps=epsilon,
                     ns_coeffs=self._ns_coeffs,
                     ns_matmul_dtype=self._ns_matmul_dtype,
+                    use_symmetric_gemm=self._use_symmetric_gemm,
+                    symmetric_gemm_min_short_edge=self._symmetric_gemm_min_short_edge,
+                    symmetric_gemm_min_step_flops=self._symmetric_gemm_min_step_flops,
+                    per_matrix=self._ns_per_matrix,
                 )
                 scaled = Muon._scaling_fn(
                     ns_out, version, self._muon_extra_scale_factor
@@ -688,6 +1022,27 @@ class Muon(Optimizer):
                 )
                 effective_lr = lr * lr_ratio
 
+                param_info = self._muon_param_info_map.get(param.name)
+                use_hyperball = bool(
+                    param_info is not None and param_info.use_hyperball
+                )
+
+                if use_hyperball:
+                    # Muon+Hyperball: project onto the fixed-radius sphere.
+                    # No weight decay (the constraint prevents norm growth).
+                    # Slices of a split param are projected independently.
+                    w = master_weight if find_master else param
+                    new_w = Muon._hyperball_apply(
+                        w,
+                        orthogonal_update,
+                        effective_lr,
+                        split_concat_func=split_concat_func,
+                    )
+                    if find_master:
+                        paddle.assign(new_w, master_weight)
+                    paddle.assign(new_w.astype(param.dtype), param)
+                    continue
+
                 with_decay = True
                 if (
                     self._apply_decay_param_fun is not None
@@ -722,6 +1077,25 @@ class Muon(Optimizer):
         if g_shard_bypass_dygraph_optimizer:
             return
 
+        from paddle.distributed.fsdp._fsdp_context import get_fsdp_context
+
+        fsdp_context = get_fsdp_context()
+        if fsdp_context is not None:
+            fsdp_context.comm_sync_and_reset_status()
+            params_grads = self._fsdp_collect_params_grads(
+                fsdp_context, params_grads
+            )
+            if hasattr(fsdp_context, "bind_decay_param_fun"):
+                fsdp_context.bind_decay_param_fun(self)
+            if hasattr(fsdp_context, "bind_optimizer"):
+                fsdp_context.bind_optimizer(self)
+            self._maybe_force_per_matrix_ns(fsdp_context)
+            if self._grad_clip is not None:
+                self._grad_clip.should_comm_on_shard_dim = True
+                self._grad_clip.fsdp_group = (
+                    fsdp_context.buffer_manager._fsdp_group
+                )
+
         if self._grad_clip is not None:
             params_grads = self._grad_clip(params_grads)
 
@@ -738,6 +1112,11 @@ class Muon(Optimizer):
         adamw_params = []
         for param, grad in params_grads:
             if grad is None:
+                continue
+
+            if param.name.startswith(self._FSDP_FUSED_PREFIX):
+                self._ensure_accumulators(param, False, self._default_dict)
+                adamw_params.append((param, grad))
                 continue
 
             param_info = self._muon_param_info_map.get(param.name)
@@ -802,26 +1181,88 @@ class Muon(Optimizer):
                     group.get("momentum", 0.95),
                     group.get("ns_steps", 5),
                     group.get("nesterov", True),
-                    group.get("epsilon", 1e-9),
+                    group.get("muon_epsilon", group.get("epsilon", 1e-9)),
                     wd,
                     version=group.get("muon_version", 3),
                 )
 
-        # --- Pass 3: AdamW updates ---
+        # --- Pass 3: AdamW updates (plain AdamW or AdamW+Hyperball) ---
         for param, grad in adamw_params:
-            self._adamw_update(
-                param,
-                grad,
-                lr_tensor_f64,
-                self._get_accumulator(self._moment_acc_str, param),
-                self._get_accumulator(self._moment2_acc_str, param),
-                self._get_accumulator(self._beta1_pow_acc_str, param),
-                self._get_accumulator(self._beta2_pow_acc_str, param),
-                group.get("adam_beta1", 0.9),
-                group.get("adam_beta2", 0.95),
-                group.get("epsilon", 1e-9),
-                wd,
+            param_info = self._muon_param_info_map.get(param.name)
+            use_hyperball = bool(
+                param_info is not None and param_info.use_hyperball
             )
+            if use_hyperball:
+                self._adamw_hyperball_update(
+                    param,
+                    grad,
+                    lr_tensor,
+                    self._get_accumulator(self._moment_acc_str, param),
+                    self._get_accumulator(self._moment2_acc_str, param),
+                    self._get_accumulator(self._beta1_pow_acc_str, param),
+                    self._get_accumulator(self._beta2_pow_acc_str, param),
+                    group.get("adam_beta1", 0.9),
+                    group.get("adam_beta2", 0.95),
+                    group.get("epsilon", 1e-9),
+                )
+            else:
+                self._adamw_update(
+                    param,
+                    grad,
+                    lr_tensor_f64,
+                    self._get_accumulator(self._moment_acc_str, param),
+                    self._get_accumulator(self._moment2_acc_str, param),
+                    self._get_accumulator(self._beta1_pow_acc_str, param),
+                    self._get_accumulator(self._beta2_pow_acc_str, param),
+                    group.get("adam_beta1", 0.9),
+                    group.get("adam_beta2", 0.95),
+                    group.get("epsilon", 1e-9),
+                    wd,
+                )
+
+        if fsdp_context is not None and hasattr(
+            fsdp_context, "broadcast_muon_params"
+        ):
+            fsdp_context.broadcast_muon_params()
+
+    _FSDP_FUSED_PREFIX = "fuse_params_"
+
+    def _maybe_force_per_matrix_ns(self, fsdp_context):
+        if self._ns_per_matrix:
+            return
+        fun = getattr(fsdp_context, "requires_muon_per_matrix_ns", None)
+        if fun is None or not fun():
+            return
+        self._ns_per_matrix = True
+        _logger.warning(
+            "FSDP shards Muon params on matrix boundaries; forcing "
+            "ns_per_matrix=True so the update does not depend on how many "
+            "matrices a rank holds."
+        )
+
+    def _fsdp_collect_params_grads(self, fsdp_context, params_grads):
+        muon_entries = (
+            fsdp_context.muon_params_grads()
+            if hasattr(fsdp_context, "muon_params_grads")
+            else [
+                (param, grad)
+                for param, grad in params_grads
+                if grad is not None and getattr(param, "use_muon", False)
+            ]
+        )
+        fused_entries = []
+        for group in fsdp_context.buffer_manager.buffer_groups:
+            if group.use_muon or group.grads_buffer is None:
+                continue
+            if group.params_buffer.data_buffer.stop_gradient:
+                continue
+            fused_entries.append(
+                (
+                    group.params_buffer.data_buffer,
+                    group.grads_buffer.data_buffer,
+                )
+            )
+        return muon_entries + fused_entries
 
     @framework.dygraph_only
     def step(self) -> None:

@@ -386,14 +386,17 @@ class AdamW(Optimizer):
         self._param_groups.append(param_group)
 
     def _add_moments_pows(self, p):
+        fp32_dtype = (
+            DataType.FLOAT32 if in_pir_mode() else core.VarDesc.VarType.FP32
+        )
         acc_dtype = p.dtype
-        if (
-            self._is_dtype_fp16_or_bf16(acc_dtype)
-            and not self._use_lowprecision_moment
-        ):
-            acc_dtype = (
-                DataType.FLOAT32 if in_pir_mode() else core.VarDesc.VarType.FP32
+        if self._is_dtype_fp16_or_bf16(acc_dtype):
+            moment_dtype = (
+                acc_dtype if self._use_lowprecision_moment else fp32_dtype
             )
+            acc_dtype = fp32_dtype
+        else:
+            moment_dtype = acc_dtype
         if core.is_compiled_with_xpu():
             import os
 
@@ -414,18 +417,22 @@ class AdamW(Optimizer):
                         dtype=core.VarDesc.VarType.FP16,
                     )
             else:
-                self._add_accumulator(self._moment1_acc_str, p, dtype=acc_dtype)
-                self._add_accumulator(self._moment2_acc_str, p, dtype=acc_dtype)
+                self._add_accumulator(
+                    self._moment1_acc_str, p, dtype=moment_dtype
+                )
+                self._add_accumulator(
+                    self._moment2_acc_str, p, dtype=moment_dtype
+                )
                 if self._amsgrad:
                     self._add_accumulator(
-                        self._moment2_acc_max_str, p, dtype=acc_dtype
+                        self._moment2_acc_max_str, p, dtype=moment_dtype
                     )
         else:
-            self._add_accumulator(self._moment1_acc_str, p, dtype=acc_dtype)
-            self._add_accumulator(self._moment2_acc_str, p, dtype=acc_dtype)
+            self._add_accumulator(self._moment1_acc_str, p, dtype=moment_dtype)
+            self._add_accumulator(self._moment2_acc_str, p, dtype=moment_dtype)
             if self._amsgrad:
                 self._add_accumulator(
-                    self._moment2_acc_max_str, p, dtype=acc_dtype
+                    self._moment2_acc_max_str, p, dtype=moment_dtype
                 )
         self._add_accumulator(
             name=self._beta1_pow_acc_str,

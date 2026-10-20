@@ -161,7 +161,7 @@ set_field_default_config(SHARDING, "release_gradients", False)
 set_field_default_config(SHARDING, "comm_buffer_size_MB", 256)
 set_field_default_config(SHARDING, "enable_tensor_fusion", False)
 set_field_default_config(SHARDING, "save_unbalanced_param", True)
-
+set_field_default_config(SHARDING, "machine_balanced_2d_partition", False)
 
 if TYPE_CHECKING:
 

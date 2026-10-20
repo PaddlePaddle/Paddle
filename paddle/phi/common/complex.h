@@ -232,18 +232,36 @@ HOSTDEVICE inline complex<T> operator*(const complex<T>& a,
 #if defined(PADDLE_WITH_CUDA_OR_HIP_COMPLEX) && \
     (defined(__CUDA_ARCH__) || defined(__HIP_DEVICE_COMPILE__))
   if constexpr (std::is_same<T, double>::value) {
-    // Match PyTorch's GPU rounding (verified bit-exact):
-    //   real: fuse a.real*b.real, round a.imag*b.imag
-    //   imag: fuse a.imag*b.real, round a.real*b.imag
+    // Match PyTorch's GPU rounding (verified bit-exact by disassembling the
+    // cubins shipped in libtorch_cuda.so; see the NOTE below for why this is
+    // pinned with explicit intrinsics instead of a plain expression):
+    //   real: fuse a.real*b.real, round a.imag*b.imag   (same on all archs)
+    //   imag:
+    //     sm_75..sm_90: fuse a.real*b.imag, round a.imag*b.real
+    //     sm_100+     : fuse a.imag*b.real, round a.real*b.imag
+#if defined(__CUDA_ARCH__) && (__CUDA_ARCH__ < 1000)
+    // Pre-Blackwell CUDA (sm_75..sm_90)
+    return complex<T>(__fma_rn(a.real, b.real, -__dmul_rn(a.imag, b.imag)),
+                      __fma_rn(a.real, b.imag, __dmul_rn(a.imag, b.real)));
+#else
+    // Blackwell CUDA (CC>=10) and HIP/other (keep the legacy behaviour)
     return complex<T>(__fma_rn(a.real, b.real, -__dmul_rn(a.imag, b.imag)),
                       __fma_rn(a.imag, b.real, __dmul_rn(a.real, b.imag)));
+#endif
   } else {
+#if defined(__CUDA_ARCH__) && (__CUDA_ARCH__ < 1000)
+    // Pre-Blackwell CUDA (sm_75..sm_90)
+    return complex<T>(__fmaf_rn(a.real, b.real, -__fmul_rn(a.imag, b.imag)),
+                      __fmaf_rn(a.real, b.imag, __fmul_rn(a.imag, b.real)));
+#else
+    // Blackwell CUDA (CC>=10) and HIP/other (keep the legacy behaviour)
     return complex<T>(__fmaf_rn(a.real, b.real, -__fmul_rn(a.imag, b.imag)),
                       __fmaf_rn(a.imag, b.real, __fmul_rn(a.real, b.imag)));
+#endif
   }
 #else
   return complex<T>(a.real * b.real - a.imag * b.imag,
-                    a.imag * b.real + b.imag * a.real);
+                    a.real * b.imag + a.imag * b.real);
 #endif
 }
 

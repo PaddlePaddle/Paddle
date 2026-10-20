@@ -26,6 +26,7 @@ meta_optimizer_names.remove("HybridParallelOptimizer")
 meta_optimizer_names.remove("HeterParallelOptimizer")
 meta_optimizer_names.remove("DGCMomentumOptimizer")
 meta_optimizer_names.remove("MuonShardingOptimizer")
+meta_optimizer_names.remove("MixedShardingOptimizer")
 
 
 class MetaOptimizerFactory:

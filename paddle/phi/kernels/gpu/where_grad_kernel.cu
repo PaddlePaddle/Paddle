@@ -57,6 +57,7 @@ void WhereGradKernel(const Context& dev_ctx,
 
   auto stream = dev_ctx.stream();
   auto config = backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel);
+  // `stride` is int64_t and guard is enough
   if (numel <= std::numeric_limits<int>::max()) {
     WhereGradCUDAKernel<T, int>
         <<<config.block_per_grid.x, config.thread_per_block.x, 0, stream>>>(

@@ -543,12 +543,13 @@ def _record_memory_history(
     compatibility.
 
     .. note::
-        Only the VMM V1 allocator stack is supported
-        (``FLAGS_use_virtual_memory_auto_growth=1``); enabling recording
-        without it raises :class:`RuntimeError`. The ``kFreeRequested`` hook
-        additionally checks the real allocator type, since the facade silently
-        falls back to the default allocator when the device reports no
-        virtual-address-management support.
+        Only the VMM allocator stacks are supported: either V1
+        (``FLAGS_use_virtual_memory_auto_growth=1``) or V2
+        (``FLAGS_use_vmm_auto_growth_best_fit_allocator_v2=1``); enabling
+        recording without one of them raises :class:`RuntimeError`. The
+        ``kFreeRequested`` hook additionally checks the real allocator type,
+        since the facade silently falls back to the default allocator when the
+        device reports no virtual-address-management support.
 
     Args:
         enabled: Truthy to start recording, falsy (``None``/``False``) to stop.
@@ -569,11 +570,14 @@ def _record_memory_history(
     '''
     if not core.is_compiled_with_cuda():
         return
-    flag = 'FLAGS_use_virtual_memory_auto_growth'
-    if enabled and not paddle.get_flags(flag)[flag]:
+    v1_flag = 'FLAGS_use_virtual_memory_auto_growth'
+    v2_flag = 'FLAGS_use_vmm_auto_growth_best_fit_allocator_v2'
+    flags = paddle.get_flags([v1_flag, v2_flag])
+    if enabled and not (flags[v1_flag] or flags[v2_flag]):
         raise RuntimeError(
-            'GPU memory history recording is only implemented for the VMM V1 '
-            f'allocator stack. Set {flag}=1 before the first allocation.'
+            'GPU memory history recording requires the VMM allocator stack. '
+            f'Set {v1_flag}=1 (V1) or {v2_flag}=1 (V2) before the first '
+            'allocation.'
         )
     capture_stacks = bool(enabled) and str(stacks) in ("python", "all")
     core.gpu_record_memory_history(
