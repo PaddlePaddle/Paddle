@@ -49,6 +49,7 @@ class TestFusedMatMulOp_BatchBroadcastError(unittest.TestCase):
                 inputs={'X': x, 'Y': y},
                 outputs={'Out': out},
             )
+            return list(out.shape)
 
     def test_batch_broadcast_error(self):
         with self.assertRaises(ValueError):
@@ -57,6 +58,18 @@ class TestFusedMatMulOp_BatchBroadcastError(unittest.TestCase):
     def test_broadcastable_allowed(self):
         # 0 vs 1 is broadcastable -> no error.
         self._append([0, 4, 5], [1, 5, 6])
+
+    def test_unknown_vs_zero(self):
+        # -1 (unknown) vs 0 -> 0 (the -1 branch of FusedMatmulInferMeta).
+        self.assertEqual(self._append([-1, 4, 5], [0, 5, 6]), [0, 4, 6])
+
+    def test_unknown_vs_large(self):
+        # -1 vs n (n > 1) -> n.
+        self.assertEqual(self._append([-1, 4, 5], [32, 5, 6]), [32, 4, 6])
+
+    def test_unknown_vs_one(self):
+        # -1 vs 1 -> -1 (stays unknown).
+        self.assertEqual(self._append([-1, 4, 5], [1, 5, 6]), [-1, 4, 6])
 
 
 if __name__ == '__main__':

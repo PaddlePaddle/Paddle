@@ -753,16 +753,23 @@ class TestRepeatInterleave_RepeatsBroadcast(unittest.TestCase):
 
     def _check(self, x_np, repeats_np, axis, expected_shape, expected_np=None):
         paddle.disable_static()
-        x = paddle.to_tensor(x_np)
-        x.stop_gradient = False
-        repeats = paddle.to_tensor(repeats_np)
-        out = paddle.repeat_interleave(x, repeats, axis=axis)
-        np.testing.assert_equal(tuple(out.shape), expected_shape)
-        if expected_np is not None:
-            np.testing.assert_equal(out.numpy(), expected_np)
-        loss = paddle.sum(out)
-        loss.backward()
-        np.testing.assert_equal(tuple(x.grad.shape), tuple(x_np.shape))
+        # Run on CPU and (if available) GPU so the per-backend kernels and the
+        # shared BroadcastRepeatsIfNeeded helper are both exercised.
+        places = ['cpu']
+        if paddle.device.is_compiled_with_cuda():
+            places.append('gpu')
+        for place in places:
+            paddle.set_device(place)
+            x = paddle.to_tensor(x_np)
+            x.stop_gradient = False
+            repeats = paddle.to_tensor(repeats_np)
+            out = paddle.repeat_interleave(x, repeats, axis=axis)
+            np.testing.assert_equal(tuple(out.shape), expected_shape)
+            if expected_np is not None:
+                np.testing.assert_equal(out.numpy(), expected_np)
+            loss = paddle.sum(out)
+            loss.backward()
+            np.testing.assert_equal(tuple(x.grad.shape), tuple(x_np.shape))
 
     def test_broadcast_1d_int32(self):
         self._check(
