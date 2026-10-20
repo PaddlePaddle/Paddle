@@ -1018,21 +1018,24 @@ void DeviceManager::Release() {
 
 std::vector<std::string> ListAllLibraries(const std::string& library_dir) {
   std::vector<std::string> libraries;
+#if !defined(_WIN32)
 #if defined(__APPLE__)
   const std::string suffix = ".dylib";
 #else
   const std::string suffix = ".so";
 #endif
 
-  // Constructing std::regex initializes locale facets and can abort when an
-  // incompatible libstdc++ has already been loaded by another plugin.
+  // Match the library suffix with a plain comparison instead of std::regex.
+  // This is equivalent to the previous std::regex_match against ".*\\.so"
+  // (or ".*\\.dylib"), which matched the whole filename, but avoids
+  // constructing std::regex: that initializes locale facets and can abort when
+  // an incompatible libstdc++ has already been loaded by another plugin.
   auto has_suffix = [&suffix](const std::string& filename) {
     return filename.size() >= suffix.size() &&
            filename.compare(
                filename.size() - suffix.size(), suffix.size(), suffix) == 0;
   };
 
-#if !defined(_WIN32)
   DIR* dir = nullptr;
   dirent* ptr = nullptr;
 
