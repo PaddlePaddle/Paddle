@@ -17,6 +17,7 @@
 #if defined(PADDLE_WITH_CUDA)
 
 #include "paddle/phi/core/enforce.h"
+#include "paddle/phi/core/memory/allocation/memory_history_recorder.h"
 #include "paddle/phi/core/platform/cuda_device_guard.h"
 
 namespace paddle {
@@ -86,10 +87,27 @@ phi::Allocation* VMMAutoGrowthBestFitMultiPoolAllocatorV2::AllocateImpl(
       common::errors::NotFound("No VMM pool allocator found for pool %d.",
                                static_cast<int>(route.pool_type)));
   auto allocation = route.allocator->Allocate(size);
-  return new VMMAutoGrowthBestFitMultiPoolAllocationV2(  // NOLINT
-      std::move(allocation),
-      route.allocator,
-      route.pool_type);
+  auto* wrapped_allocation =
+      new VMMAutoGrowthBestFitMultiPoolAllocationV2(  // NOLINT
+          std::move(allocation),
+          route.allocator,
+          route.pool_type);
+  if (MemHistoryEnabled()) {
+    // Migrated from the VMM V1 MultiScalePoolAllocator hook: this is the
+    // top-level pool decorator, so it is the single choke point where every
+    // user allocation is observed once (the underlying per-pool allocators are
+    // not instrumented). Record the actual block size (rounded up to the pool
+    // alignment, 256B on GPU), not the request: kFreeRequested /
+    // kFreeCompleted report the same, so using `size` here would make a pair
+    // disagree (alloc=1 vs free=256).
+    RecordMemHistory(MemHistoryAction::kAlloc,
+                     place_.GetDeviceId(),
+                     reinterpret_cast<uintptr_t>(wrapped_allocation->ptr()),
+                     wrapped_allocation->size(),
+                     wrapped_allocation->id(),
+                     0);
+  }
+  return wrapped_allocation;
 }
 
 size_t VMMAutoGrowthBestFitMultiPoolAllocatorV2::CompactImpl(
@@ -129,6 +147,17 @@ void VMMAutoGrowthBestFitMultiPoolAllocatorV2::FreeImpl(
       common::errors::NotFound(
           "No VMM pool allocator found for pool %d.",
           static_cast<int>(wrapped_allocation->pool_type())));
+  if (MemHistoryEnabled()) {
+    // Paired with the kAlloc hook above: recorded here (the actual free
+    // completion) rather than at StreamSafeCUDAAllocator, which only emits the
+    // earlier kFreeRequested event.
+    RecordMemHistory(MemHistoryAction::kFreeCompleted,
+                     place_.GetDeviceId(),
+                     reinterpret_cast<uintptr_t>(wrapped_allocation->ptr()),
+                     wrapped_allocation->size(),
+                     wrapped_allocation->id(),
+                     0);
+  }
   auto underlying_allocation = wrapped_allocation->TakeUnderlyingAllocation();
   allocator->Free(underlying_allocation.release());
   delete wrapped_allocation;

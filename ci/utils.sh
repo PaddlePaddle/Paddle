@@ -561,48 +561,16 @@ function check_approvals_of_unittest() {
         unittest_spec_diff=`python ${PADDLE_ROOT}/tools/diff_unittest.py ${PADDLE_ROOT}/paddle/fluid/UNITTEST_DEV.spec ${PADDLE_ROOT}/paddle/fluid/UNITTEST_PR.spec`
         if [ "$unittest_spec_diff" != "" ]; then
             approval_line=`curl -H "Authorization: token ${GITHUB_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000`
-            APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 22165420 52485244 32428676 45041955`
+            APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 XieYunshen swgu98`
             echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
             if [ "${APPROVALS}" == "FALSE" ]; then
                 echo "************************************"
                 echo -e "It is forbidden to disable or delete the unit-test.\n"
                 echo -e "If you must delete it temporarily, please add it to[https://github.com/PaddlePaddle/Paddle/wiki/Temporarily-disabled-Unit-Test]."
-                echo -e "Then you must have one RD (kolinwei(recommended), XieYunshen, chalsliu) approval for the deletion of unit-test. \n"
+                echo -e "Then you must have one RD (XieYunshen(recommended), swgu98) approval for the deletion of unit-test. \n"
                 echo -e "If you have any problems about deleting unit-test, please read the specification [https://github.com/PaddlePaddle/Paddle/wiki/Deleting-unit-test-is-forbidden]. \n"
                 echo -e "Following unit-tests are deleted in this PR: \n ${unittest_spec_diff} \n"
                 echo "************************************"
-                exit 6
-            fi
-        fi
-    elif [ $check_times == 3 ]; then
-        if [ ${BRANCH} != 'develop' ];then
-            return
-        fi
-
-        rm -f fluidInference_so_size
-        curl -O https://paddle-docker-tar.bj.bcebos.com/paddle_ci_index/fluidInference_so_size
-        oriBuildSize=`cat fluidInference_so_size`
-        curBuildSize=$(du -m --max-depth=0 ${PADDLE_ROOT}/build/paddle_inference_install_dir/paddle/lib/libpaddle_inference.so |awk '{print $1}')
-        diffSize=$(awk "BEGIN{print $curBuildSize-$oriBuildSize}")
-        AllDiffSize=$(awk "BEGIN{print $diffSize * 4}")
-        cat <<EOF
-        ========================================
-        Original libpaddle_inference.so Size is ${oriBuildSize}M.
-        Current libpaddle_inference.so Size is ${curBuildSize}M.
-        In single gpu architecture, Growing size of libpaddle_inference.so is ${diffSize}M.
-        In release version, The gpu architecture parameter is "All", The library size is four times to single gpu architecture.
-        It means the release version library size growth is about ${AllDiffSize}M.
-        ========================================
-EOF
-        if [ $(awk "BEGIN{print 20<$AllDiffSize}") -eq 1 ] ; then
-            approval_line=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000`
-            APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 vivienfanghuagood Aurelius84 qingqing01 yuanlehome`
-            echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
-            if [ "${APPROVALS}" == "FALSE" ]; then
-                echo "=========================================================================================="
-                echo "This PR make the release inference library size growth exceeds 20 M."
-                echo "Then you must have one RD (vivienfanghuagood (Recommend), Aurelius84 (ForPir) qingqing01 or yuanlehome) approval for this PR.\n"
-                echo "=========================================================================================="
                 exit 6
             fi
         fi
@@ -1124,48 +1092,16 @@ function check_approvals_of_unittest() {
         unittest_spec_diff=`python ${PADDLE_ROOT}/tools/diff_unittest.py ${PADDLE_ROOT}/paddle/fluid/UNITTEST_DEV.spec ${PADDLE_ROOT}/paddle/fluid/UNITTEST_PR.spec`
         if [ "$unittest_spec_diff" != "" ]; then
             approval_line=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000`
-            APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 22165420 52485244 32428676 45041955`
+            APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 XieYunshen swgu98`
             echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
             if [ "${APPROVALS}" == "FALSE" ]; then
                 echo "************************************"
                 echo -e "It is forbidden to disable or delete the unit-test.\n"
                 echo -e "If you must delete it temporarily, please add it to[https://github.com/PaddlePaddle/Paddle/wiki/Temporarily-disabled-Unit-Test]."
-                echo -e "Then you must have one RD (kolinwei(recommended), XieYunshen, chalsliu) approval for the deletion of unit-test. \n"
+                echo -e "Then you must have one RD (XieYunshen(recommended), swgu98) approval for the deletion of unit-test. \n"
                 echo -e "If you have any problems about deleting unit-test, please read the specification [https://github.com/PaddlePaddle/Paddle/wiki/Deleting-unit-test-is-forbidden]. \n"
                 echo -e "Following unit-tests are deleted in this PR: \n ${unittest_spec_diff} \n"
                 echo "************************************"
-                exit 6
-            fi
-        fi
-    elif [ $check_times == 3 ]; then
-        if [ ${BRANCH} != 'develop' ];then
-            return
-        fi
-
-        rm -f fluidInference_so_size
-        curl -O https://paddle-docker-tar.bj.bcebos.com/paddle_ci_index/fluidInference_so_size
-        oriBuildSize=`cat fluidInference_so_size`
-        curBuildSize=$(du -m --max-depth=0 ${PADDLE_ROOT}/build/paddle_inference_install_dir/paddle/lib/libpaddle_inference.so |awk '{print $1}')
-        diffSize=$(awk "BEGIN{print $curBuildSize-$oriBuildSize}")
-        AllDiffSize=$(awk "BEGIN{print $diffSize * 4}")
-        cat <<EOF
-        ========================================
-        Original libpaddle_inference.so Size is ${oriBuildSize}M.
-        Current libpaddle_inference.so Size is ${curBuildSize}M.
-        In single gpu architecture, Growing size of libpaddle_inference.so is ${diffSize}M.
-        In release version, The gpu architecture parameter is "All", The library size is four times to single gpu architecture.
-        It means the release version library size growth is about ${AllDiffSize}M.
-        ========================================
-EOF
-        if [ $(awk "BEGIN{print 20<$AllDiffSize}") -eq 1 ] ; then
-            approval_line=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000`
-            APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 vivienfanghuagood Aurelius84 qingqing01 yuanlehome`
-            echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
-            if [ "${APPROVALS}" == "FALSE" ]; then
-                echo "=========================================================================================="
-                echo "This PR make the release inference library size growth exceeds 20 M."
-                echo "Then you must have one RD (vivienfanghuagood (Recommend), Aurelius84 (ForPir) qingqing01 or yuanlehome) approval for this PR.\n"
-                echo "=========================================================================================="
                 exit 6
             fi
         fi

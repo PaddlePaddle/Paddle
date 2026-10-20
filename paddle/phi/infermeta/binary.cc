@@ -1928,6 +1928,33 @@ void ExpandAsInferMeta(const MetaTensor& x,
                         "to %d. But received: rank %u.",
                         MAX_RANK_SUPPORTED,
                         target_shape.size()));
+  // Validate the expand contract per dimension here instead of only inside the
+  // kernels: a dimension of x can be expanded only when it is 1 (singleton) or
+  // already equals the target size, matching torch. Doing it in InferMeta makes
+  // the check device-independent (cpu/gpu/xpu share it) and, crucially, runs
+  // even for 0-size inputs, which every kernel otherwise skips through its
+  // `x.numel() == 0` early return.
+  auto vec_x_dims = vectorize(x_dims);
+  auto diff = target_shape.size() - vec_x_dims.size();
+  vec_x_dims.insert(vec_x_dims.begin(), diff, 1);
+  for (size_t i = 0; i < vec_x_dims.size(); ++i) {
+    // Skip dynamic (unknown) sizes on either side.
+    if (target_shape[i] < 0 || vec_x_dims[i] < 0) {
+      continue;
+    }
+    PADDLE_ENFORCE_EQ(
+        vec_x_dims[i] == 1 || vec_x_dims[i] == target_shape[i],
+        true,
+        common::errors::InvalidArgument(
+            "The expanded size of the tensor (%d) must match the existing "
+            "size (%d) at non-singleton dimension %d. Target sizes: [%s]. "
+            "Tensor sizes: [%s].",
+            target_shape[i],
+            vec_x_dims[i],
+            static_cast<int>(i),
+            make_ddim(target_shape),
+            x_dims));
+  }
   out->set_dims(make_ddim(target_shape));
   out->set_dtype(x.dtype());
 #undef MAX_RANK_SUPPORTED
@@ -5150,6 +5177,25 @@ void BatchedGemmInferMeta(const MetaTensor& lhs,
       common::errors::InvalidArgument(
           "The rhs's dimension must be 3, but got[%d]", rhs_shape.size()));
 
+  int64_t total_batch = 0;
+  for (const int64_t bs : batch_sizes) {
+    PADDLE_ENFORCE_GE(
+        bs,
+        0,
+        common::errors::InvalidArgument(
+            "Each element of batch_sizes must be non-negative, but got [%d].",
+            bs));
+    total_batch += bs;
+  }
+  PADDLE_ENFORCE_EQ(
+      total_batch,
+      total_tokens,
+      common::errors::InvalidArgument(
+          "The sum of batch_sizes must be equal to the total number of tokens "
+          "(lhs's first dim), but got [%d] and [%d].",
+          total_batch,
+          total_tokens));
+
   // We expect layout below:
   // 1. trans_lhs = false && trans_rhs = false (group forward) :
   //    [M_total, input_hidden_size] x [num_experts, input_hidden_size,
@@ -5171,6 +5217,24 @@ void BatchedGemmInferMeta(const MetaTensor& lhs,
     // hidden_out For each expert i, This case views lhs as [Mi x K] and rhs as
     // [E x K x N] or [E x N x K], so the output is [Mtotal x N], N could be
     // input_hidden_size or output_hidden_size.
+
+    PADDLE_ENFORCE_EQ(
+        rhs_shape[0],
+        num_experts,
+        common::errors::InvalidArgument(
+            "The rhs's first dim (number of experts) must be equal to the "
+            "number of groups in batch_sizes, but got [%d] and [%d].",
+            rhs_shape[0],
+            num_experts));
+    const int64_t rhs_contract_dim = trans_rhs ? rhs_shape[2] : rhs_shape[1];
+    PADDLE_ENFORCE_EQ(
+        lhs_shape[1],
+        rhs_contract_dim,
+        common::errors::InvalidArgument(
+            "The contraction dim of lhs and rhs must match, but got lhs's "
+            "last dim [%d] and rhs's contraction dim [%d].",
+            lhs_shape[1],
+            rhs_contract_dim));
 
     const int64_t hidden_out = trans_rhs ? rhs_shape[1] : rhs_shape[2];
     output->set_dims(make_ddim({total_tokens, hidden_out}));

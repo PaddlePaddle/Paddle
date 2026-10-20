@@ -17,6 +17,7 @@
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/complex_kernel.h"
+#include "paddle/phi/kernels/funcs/index_elementwise_utils.h"
 namespace phi {
 
 template <typename T, typename Context>
@@ -70,6 +71,14 @@ void StridedCopyKernel(const Context& dev_ctx,
     r = xpu::copy<XPUType>(dev_ctx.x_context(), input_data, output_data, 1);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "copy");
   } else {
+    // The XDNN copy primitive can only walk an operand forwards, so a
+    // reversed axis cannot be served by this kernel. Fail loudly instead
+    // of silently producing wrong data.
+    if (funcs::HasReversedAxis(dims, vectorize<int64_t>(input.strides())) ||
+        funcs::HasReversedAxis(dims, out_stride)) {
+      PADDLE_THROW(common::errors::Unimplemented(
+          "Negative strides in strided copy are not supported on XPU."));
+    }
     int64_t data_size_in = input.Holder()->size() - input.meta().offset;
     int64_t data_size_out = out->Holder()->size() - out->meta().offset;
     int64_t data_size = std::max(data_size_in, data_size_out);

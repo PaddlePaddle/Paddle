@@ -26,6 +26,10 @@ from paddle.distributed.fleet.meta_optimizers.dygraph_optimizer.dygraph_sharding
     DygraphShardingOptimizer,
     DygraphShardingOptimizerV2,
 )
+from paddle.distributed.fleet.meta_optimizers.mixed_sharding_optimizer import (
+    MixedShardingOptimizer,
+    unwrap_mixed_inner,
+)
 from paddle.distributed.fleet.meta_optimizers.muon_sharding_optimizer import (
     MuonShardingOptimizer,
 )
@@ -854,7 +858,12 @@ class HybridParallelOptimizer:
                 'sharding_configs'
             ].split_param
             use_muon_sharding = getattr(strategy, "use_muon_sharding", False)
-            if use_muon_sharding:
+            if unwrap_mixed_inner(optimizer) is not None:
+                # A MixedInnerOptimizer needs the shell that asks it which
+                # parameters stay whole; the choice follows from the inner
+                # optimizer, so it needs no strategy flag.
+                ShardingOptimizer = MixedShardingOptimizer
+            elif use_muon_sharding:
                 ShardingOptimizer = MuonShardingOptimizer
             elif split_param:
                 ShardingOptimizer = DygraphShardingOptimizerV2
@@ -907,6 +916,7 @@ class HybridParallelOptimizer:
                     DygraphShardingOptimizer,
                     DygraphShardingOptimizerV2,
                     MuonShardingOptimizer,
+                    MixedShardingOptimizer,
                 ),
             )
 
@@ -1204,6 +1214,7 @@ class HybridParallelOptimizer:
                     DygraphShardingOptimizer,
                     DygraphShardingOptimizerV2,
                     MuonShardingOptimizer,
+                    MixedShardingOptimizer,
                 ),
             )
             self._inner_opt.reduce_gradients(parameter_list, self._hcg)

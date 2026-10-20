@@ -19,6 +19,7 @@ from op_test import get_device, get_places
 
 import paddle
 from paddle import base
+from paddle.framework import core
 
 
 class TestAsStrided(unittest.TestCase):
@@ -132,6 +133,549 @@ class TestAsStridedAlias(unittest.TestCase):
                     input=x, size=shape, stride=stride, storage_offset=offset
                 )
                 np.testing.assert_array_equal(out_ref.numpy(), out_both.numpy())
+
+
+class TestAsStridedOverlapBackward(unittest.TestCase):
+    """When a view maps several logical positions onto the same element, the
+    backward has to sum all the incoming contributions instead of letting the
+    writes overwrite each other."""
+
+    def setUp(self):
+        self.places = get_places()
+
+    def _check(self, numel, shape, stride, offset_elems=0, dtype='float64'):
+        itemsize = np.dtype(dtype).itemsize
+        expected = np.zeros([numel], dtype=dtype)
+        for idx in np.ndindex(*shape):
+            expected[offset_elems + int(np.dot(idx, stride))] += 1
+        for place in self.places:
+            with base.dygraph.guard(place):
+                x = paddle.to_tensor(np.random.random([numel]).astype(dtype))
+                x.stop_gradient = False
+                y = paddle.as_strided(
+                    x,
+                    shape=shape,
+                    stride=stride,
+                    offset=offset_elems * itemsize,
+                )
+                y.backward(paddle.ones_like(y))
+                np.testing.assert_allclose(x.grad.numpy(), expected)
+
+    def test_repeated_stride(self):
+        self._check(5, (3, 3), (1, 1))
+        self._check(64, (32, 32), (1, 1))
+
+    def test_repeated_stride_non_contiguous_out_grad(self):
+        for place in self.places:
+            with base.dygraph.guard(place):
+                x = paddle.to_tensor(np.random.random([4]).astype('float32'))
+                x.stop_gradient = False
+                y = paddle.as_strided(x, shape=(2, 3), stride=(1, 1))
+                grad_storage = paddle.to_tensor(
+                    np.arange(12, dtype='float32').reshape([3, 4])
+                )
+                out_grad = paddle.as_strided(
+                    grad_storage, shape=(2, 3), stride=(4, 1)
+                )
+                self.assertFalse(out_grad.is_contiguous())
+                y.backward(out_grad)
+                np.testing.assert_allclose(
+                    x.grad.numpy(), np.array([0, 5, 7, 6], dtype='float32')
+                )
+
+    def test_zero_stride(self):
+        self._check(1, (4, 4), (0, 0))
+        self._check(3, (3, 4), (1, 0))
+
+    def test_zero_stride_non_contiguous_out_grad(self):
+        for place in self.places:
+            with base.dygraph.guard(place):
+                x = paddle.to_tensor(np.random.random([3]).astype('float32'))
+                x.stop_gradient = False
+                y = paddle.as_strided(x, shape=(3, 4), stride=(1, 0))
+                grad_storage = paddle.to_tensor(
+                    np.arange(12, dtype='float32').reshape([4, 3])
+                )
+                out_grad = paddle.as_strided(
+                    grad_storage, shape=(3, 4), stride=(1, 3)
+                )
+                self.assertFalse(out_grad.is_contiguous())
+                y.backward(out_grad)
+                np.testing.assert_allclose(
+                    x.grad.numpy(), np.array([18, 22, 26], dtype='float32')
+                )
+
+    def test_offset(self):
+        self._check(8, (3, 3), (1, 1), offset_elems=2)
+
+    def test_float32(self):
+        self._check(5, (3, 3), (1, 1), dtype='float32')
+
+    def test_non_overlapping(self):
+        self._check(6, (2, 3), (3, 1))
+        self._check(6, (3, 2), (1, 3))
+        self._check(6, (2, 3), (3, 1), dtype='float32')
+
+
+@unittest.skipIf(
+    not base.core.is_compiled_with_xpu(), "core is not compiled with XPU"
+)
+class TestAsStridedOverlapBackwardXPU(unittest.TestCase):
+    """get_places() reports CPU, CUDA and CustomPlace but never XPU, so without
+    this class the serial host fallback of the overlapping backward -- the only
+    path an XPU takes, since the device scatter-add needs GPU atomics -- would
+    never run. It stages both operands on the host through phi::Copy, so it
+    also covers the XPU <-> CPU copies that path depends on."""
+
+    def test_repeated_stride(self):
+        with base.dygraph.guard(base.XPUPlace(0)):
+            x = paddle.to_tensor(np.random.random([5]).astype('float32'))
+            x.stop_gradient = False
+            y = paddle.as_strided(x, shape=(3, 3), stride=(1, 1))
+            y.backward(paddle.ones_like(y))
+            np.testing.assert_allclose(
+                x.grad.numpy(), np.array([1, 2, 3, 2, 1], dtype='float32')
+            )
+
+    def test_zero_stride(self):
+        with base.dygraph.guard(base.XPUPlace(0)):
+            x = paddle.to_tensor(np.random.random([1]).astype('float32'))
+            x.stop_gradient = False
+            y = paddle.as_strided(x, shape=(4, 4), stride=(0, 0))
+            y.backward(paddle.ones_like(y))
+            np.testing.assert_allclose(
+                x.grad.numpy(), np.array([16], dtype='float32')
+            )
+
+    def test_non_contiguous_out_grad(self):
+        with base.dygraph.guard(base.XPUPlace(0)):
+            x = paddle.to_tensor(np.random.random([4]).astype('float32'))
+            x.stop_gradient = False
+            y = paddle.as_strided(x, shape=(2, 3), stride=(1, 1))
+            grad_storage = paddle.to_tensor(
+                np.arange(12, dtype='float32').reshape([3, 4])
+            )
+            out_grad = paddle.as_strided(
+                grad_storage, shape=(2, 3), stride=(4, 1)
+            )
+            self.assertFalse(out_grad.is_contiguous())
+            y.backward(out_grad)
+            np.testing.assert_allclose(
+                x.grad.numpy(), np.array([0, 5, 7, 6], dtype='float32')
+            )
+
+
+class TestAsStridedZeroStrideBroadcastBackward(unittest.TestCase):
+    """A broadcast (zero stride) dimension maps every one of its indices onto
+    the same element, so its backward folds the whole axis onto a single slot.
+    Accumulating that with an atomic add both serializes on the GPU and, in
+    low precision, saturates: once the running bf16/fp16 sum outgrows the
+    mantissa, adding one more contribution rounds back to the same value and the
+    result stalls far below the true count. The backward must sum the broadcast
+    axis first so the total is exact regardless of how many elements fold in."""
+
+    def setUp(self):
+        self.places = get_places()
+
+    def test_full_broadcast_low_precision(self):
+        # 4096 is a power of two, so the true sum is exact in bf16 and fp16 and
+        # the assertion is unaffected by the output rounding. Without the fix
+        # the running sum saturates near 2**8 (bf16) / 2**11 (fp16), far below.
+        for dtype in ('bfloat16', 'float16'):
+            for shape, stride in (((4096,), (0,)), ((64, 64), (0, 0))):
+                for place in self.places:
+                    with base.dygraph.guard(place):
+                        x = paddle.ones([1], dtype=dtype)
+                        x.stop_gradient = False
+                        y = paddle.as_strided(x, shape=shape, stride=stride)
+                        y.backward(paddle.ones_like(y))
+                        np.testing.assert_allclose(
+                            x.grad.astype('float32').numpy(),
+                            np.array([4096.0], dtype='float32'),
+                        )
+
+    def test_full_broadcast_float32(self):
+        for place in self.places:
+            with base.dygraph.guard(place):
+                x = paddle.to_tensor(np.random.random([1]).astype('float32'))
+                x.stop_gradient = False
+                y = paddle.as_strided(x, shape=(1000, 1000), stride=(0, 0))
+                y.backward(paddle.ones_like(y))
+                np.testing.assert_allclose(
+                    x.grad.numpy(), np.array([1e6], dtype='float32')
+                )
+
+    def test_partial_broadcast_keeps_real_axis(self):
+        # Only the second axis broadcasts. Reducing it must leave the first axis
+        # untouched: grad[i] is the number of columns for every row.
+        for place in self.places:
+            with base.dygraph.guard(place):
+                x = paddle.to_tensor(np.arange(4, dtype='float32') + 1.0)
+                x.stop_gradient = False
+                y = paddle.as_strided(x, shape=(4, 2048), stride=(1, 0))
+                y.backward(paddle.ones_like(y))
+                np.testing.assert_allclose(
+                    x.grad.numpy(),
+                    np.full([4], 2048.0, dtype='float32'),
+                )
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda() or core.is_compiled_with_rocm(),
+    "deterministic path only runs on CUDA (compiled out on ROCm/DCU, where "
+    "RadixSortPairs is unavailable and the backward keeps the atomic scatter)",
+)
+class TestAsStridedNonZeroOverlapDeterministic(unittest.TestCase):
+    """A non-zero-stride overlapping view (e.g. shape (M, N) stride (1, 1))
+    maps several logical elements onto the same storage slot without any axis
+    collapsing to a single point, so the backward must accumulate. The GPU
+    accumulate path scatters with an atomic add, whose summation order is not
+    fixed across runs, so with non-uniform incoming gradients the result drifts
+    in the low bits from one run to the next. Under FLAGS_cudnn_deterministic
+    the scatter must instead group colliding indices and add them in a fixed
+    order, giving bitwise-identical gradients on repeated runs while staying
+    numerically equal to the true reduction."""
+
+    def setUp(self):
+        self.places = [
+            p for p in get_places() if isinstance(p, paddle.CUDAPlace)
+        ]
+
+    def _reference_grad(self, out_grad, shape, stride, storage_numel):
+        # grad_input[s] = sum of out_grad[idx] over every idx whose flat storage
+        # slot (sum_k idx_k * stride_k) equals s. Accumulated in float64 so the
+        # reference does not itself depend on summation order.
+        grad = np.zeros([storage_numel], dtype='float64')
+        og = out_grad.astype('float64').reshape(shape)
+        it = np.nditer(og, flags=['multi_index'])
+        for val in it:
+            slot = sum(i * s for i, s in zip(it.multi_index, stride))
+            grad[slot] += val
+        return grad
+
+    def _run_backward(self, place, base_np, shape, stride, out_grad_np):
+        with base.dygraph.guard(place):
+            x = paddle.to_tensor(base_np)
+            x.stop_gradient = False
+            y = paddle.as_strided(x, shape=shape, stride=stride)
+            y.backward(paddle.to_tensor(out_grad_np))
+            return x.grad.numpy().copy()
+
+    def test_high_collision_run_to_run_bitwise(self):
+        if not paddle.is_compiled_with_cuda() or not self.places:
+            return
+        shape, stride = (1000, 1000), (1, 1)
+        # storage slots span 0 .. (M-1)*1 + (N-1)*1
+        storage_numel = (
+            (shape[0] - 1) * stride[0] + (shape[1] - 1) * stride[1] + 1
+        )
+        rng = np.random.RandomState(2024)
+        base_np = rng.random([storage_numel]).astype('float32')
+        # Non-uniform gradients: with all-ones the atomic order would not matter.
+        out_grad_np = rng.random(shape).astype('float32')
+
+        old = paddle.get_flags('FLAGS_cudnn_deterministic')[
+            'FLAGS_cudnn_deterministic'
+        ]
+        try:
+            paddle.set_flags({'FLAGS_cudnn_deterministic': True})
+            for place in self.places:
+                first = self._run_backward(
+                    place, base_np, shape, stride, out_grad_np
+                )
+                second = self._run_backward(
+                    place, base_np, shape, stride, out_grad_np
+                )
+                # Deterministic: repeated runs must match to the last bit.
+                np.testing.assert_array_equal(
+                    first,
+                    second,
+                    err_msg="grad not bitwise reproducible under "
+                    "FLAGS_cudnn_deterministic",
+                )
+                # And still equal to the true reduction.
+                ref = self._reference_grad(
+                    out_grad_np, shape, stride, storage_numel
+                )
+                np.testing.assert_allclose(
+                    first.astype('float64'), ref, rtol=1e-5, atol=1e-4
+                )
+        finally:
+            paddle.set_flags({'FLAGS_cudnn_deterministic': old})
+
+    def test_low_collision_still_reproducible(self):
+        if not paddle.is_compiled_with_cuda() or not self.places:
+            return
+        shape, stride = (10, 2), (1, 1)
+        storage_numel = (
+            (shape[0] - 1) * stride[0] + (shape[1] - 1) * stride[1] + 1
+        )
+        rng = np.random.RandomState(7)
+        base_np = rng.random([storage_numel]).astype('float32')
+        out_grad_np = rng.random(shape).astype('float32')
+
+        old = paddle.get_flags('FLAGS_cudnn_deterministic')[
+            'FLAGS_cudnn_deterministic'
+        ]
+        try:
+            paddle.set_flags({'FLAGS_cudnn_deterministic': True})
+            for place in self.places:
+                first = self._run_backward(
+                    place, base_np, shape, stride, out_grad_np
+                )
+                second = self._run_backward(
+                    place, base_np, shape, stride, out_grad_np
+                )
+                np.testing.assert_array_equal(first, second)
+                ref = self._reference_grad(
+                    out_grad_np, shape, stride, storage_numel
+                )
+                np.testing.assert_allclose(
+                    first.astype('float64'), ref, rtol=1e-5, atol=1e-5
+                )
+        finally:
+            paddle.set_flags({'FLAGS_cudnn_deterministic': old})
+
+
+class TestAsStridedStorageRange(unittest.TestCase):
+    """A view must stay inside the allocation of its input, otherwise reads and
+    writes through it corrupt unrelated memory."""
+
+    def setUp(self):
+        self.places = get_places()
+
+    def test_shape_out_of_range(self):
+        for place in self.places:
+            with base.dygraph.guard(place):
+                x = paddle.zeros([16], dtype='float32')
+                self.assertRaises(
+                    ValueError,
+                    paddle.as_strided,
+                    x=x,
+                    shape=(64, 64),
+                    stride=(64, 1),
+                )
+
+    def test_offset_out_of_range(self):
+        for place in self.places:
+            with base.dygraph.guard(place):
+                x = paddle.zeros([16], dtype='float32')
+                self.assertRaises(
+                    ValueError,
+                    paddle.as_strided,
+                    x=x,
+                    shape=(16,),
+                    stride=(1,),
+                    offset=4096 * 4,
+                )
+
+    def test_misaligned_offset(self):
+        for place in self.places:
+            with base.dygraph.guard(place):
+                x = paddle.zeros([16], dtype='float32')
+                self.assertRaises(
+                    ValueError,
+                    paddle.as_strided,
+                    x=x,
+                    shape=(2,),
+                    stride=(1,),
+                    offset=1,
+                )
+
+    def test_overflowing_span_is_rejected(self):
+        # 4 * 2**62 wraps around to 0 in int64, so unchecked arithmetic would
+        # accept this view and let it read and write far outside the allocation.
+        for place in self.places:
+            with base.dygraph.guard(place):
+                x = paddle.zeros([16], dtype='float32')
+                self.assertRaises(
+                    ValueError,
+                    paddle.as_strided,
+                    x=x,
+                    shape=(5,),
+                    stride=(1 << 62,),
+                )
+
+    def test_in_range_view_is_allowed(self):
+        for place in self.places:
+            with base.dygraph.guard(place):
+                x_np = np.random.random([16]).astype('float32')
+                x = paddle.to_tensor(x_np)
+                y = paddle.as_strided(x, shape=(4, 4), stride=(4, 1), offset=0)
+                np.testing.assert_allclose(y.numpy(), x_np.reshape(4, 4))
+
+    def test_stride_shorter_than_shape_is_rejected(self):
+        # A strided view needs one stride for every shape dimension. Accepting
+        # a shorter stride vector lets later kernels read past the attribute.
+        for place in self.places:
+            with base.dygraph.guard(place):
+                x = paddle.zeros([15, 3], dtype='float32')
+                with self.assertRaises(ValueError):
+                    paddle.as_strided(x, shape=[15, 3], stride=[2])
+
+
+class TestAsStridedNestedViewBackward(unittest.TestCase):
+    """`offset` is an absolute byte offset into the shared allocation, while the
+    gradient buffer of a view starts at its own element 0. Taking a view of a
+    view therefore has to relocate the offset before writing the gradient."""
+
+    def setUp(self):
+        self.places = get_places()
+
+    def _check(self, shape, stride, dtype='float32'):
+        itemsize = np.dtype(dtype).itemsize
+        base_numel = 8
+        outer_numel = 6
+        outer_offset = 2
+        expected = np.zeros([base_numel], dtype=dtype)
+        for idx in np.ndindex(*shape):
+            expected[outer_offset + int(np.dot(idx, stride))] += 1
+        for place in self.places:
+            with base.dygraph.guard(place):
+                x = paddle.to_tensor(
+                    np.random.random([base_numel]).astype(dtype)
+                )
+                x.stop_gradient = False
+                outer = paddle.as_strided(
+                    x,
+                    shape=(outer_numel,),
+                    stride=(1,),
+                    offset=outer_offset * itemsize,
+                )
+                inner = paddle.as_strided(
+                    outer,
+                    shape=shape,
+                    stride=stride,
+                    offset=outer_offset * itemsize,
+                )
+                inner.backward(paddle.ones_like(inner))
+                np.testing.assert_allclose(x.grad.numpy(), expected)
+
+    def test_nested_non_overlapping(self):
+        self._check((2,), (2,))
+        self._check((3,), (2,))
+
+    def test_nested_overlapping(self):
+        self._check((3, 3), (1, 1))
+
+    def test_nested_negative_stride(self):
+        dtype = 'float32'
+        itemsize = np.dtype(dtype).itemsize
+        expected = np.ones([4], dtype=dtype)
+        for place in self.places:
+            with base.dygraph.guard(place):
+                x = paddle.to_tensor(np.random.random([4]).astype(dtype))
+                x.stop_gradient = False
+                inp = paddle.as_strided(
+                    x, shape=(4,), stride=(-1,), offset=3 * itemsize
+                )
+                y = paddle.as_strided(
+                    inp, shape=(4,), stride=(-1,), offset=3 * itemsize
+                )
+                y.backward(paddle.ones_like(y))
+                np.testing.assert_allclose(x.grad.numpy(), expected)
+
+
+class TestAsStridedStorageCoordinateBackward(unittest.TestCase):
+    """`dims` / `stride` / `offset` address the shared allocation, while the
+    gradient buffer is dense and row-major over the input's own logical
+    indices. The two orders coincide only when the input is contiguous and the
+    whole window of the view lands inside it, so in every other case the
+    gradient has to be routed back through the input's own strides."""
+
+    def setUp(self):
+        self.places = get_places()
+
+    def _check(
+        self,
+        base_numel,
+        input_shape,
+        input_stride,
+        input_offset,
+        shape,
+        stride,
+        offset_elems=0,
+        dtype='float64',
+    ):
+        itemsize = np.dtype(dtype).itemsize
+        # Gradient per slot of the shared allocation.
+        storage_grad = np.zeros([base_numel], dtype=dtype)
+        for idx in np.ndindex(*shape):
+            storage_grad[offset_elems + int(np.dot(idx, stride))] += 1
+        # Read back through the input geometry: this is what distinguishes a
+        # storage index from a row-major one.
+        expected_input = np.zeros(input_shape, dtype=dtype)
+        expected_base = np.zeros([base_numel], dtype=dtype)
+        for idx in np.ndindex(*input_shape):
+            slot = input_offset + int(np.dot(idx, input_stride))
+            expected_input[idx] = storage_grad[slot]
+            expected_base[slot] += storage_grad[slot]
+        for place in self.places:
+            with base.dygraph.guard(place):
+                x = paddle.to_tensor(
+                    np.random.random([base_numel]).astype(dtype)
+                )
+                x.stop_gradient = False
+                inp = paddle.as_strided(
+                    x,
+                    shape=input_shape,
+                    stride=input_stride,
+                    offset=input_offset * itemsize,
+                )
+                inp.retain_grads()
+                y = paddle.as_strided(
+                    inp,
+                    shape=shape,
+                    stride=stride,
+                    offset=offset_elems * itemsize,
+                )
+                y.backward(paddle.ones_like(y))
+                np.testing.assert_allclose(inp.grad.numpy(), expected_input)
+                np.testing.assert_allclose(x.grad.numpy(), expected_base)
+
+    def test_transposed_input_overlapping_view(self):
+        # 2x2 transpose viewed with a repeated stride: storage slot 1 collects
+        # two contributions and belongs to input[1, 0], not to input[0, 1].
+        self._check(4, (2, 2), (1, 2), 0, (2, 2), (1, 1))
+
+    def test_transposed_input_non_overlapping_view(self):
+        self._check(6, (2, 3), (1, 2), 0, (3,), (2,))
+        self._check(6, (2, 3), (1, 2), 0, (2, 2), (1, 2))
+
+    def test_transposed_input_float32(self):
+        self._check(4, (2, 2), (1, 2), 0, (2, 2), (1, 1), dtype='float32')
+
+    def test_view_starting_before_input(self):
+        # The leading contributions land outside the input and are dropped;
+        # they belong to no element of its gradient.
+        self._check(8, (4,), (1,), 2, (4,), (1,), offset_elems=0)
+        self._check(8, (2, 2), (1, 2), 2, (3,), (1,), offset_elems=1)
+
+    def test_view_ending_after_input(self):
+        # A view may legally reach past the end of its input, because the
+        # forward validates it against the shared allocation and not against
+        # the extent of the input. Only storage slot 5 belongs to the input
+        # here, so its gradient is [0, 0, 0, 1].
+        self._check(8, (4,), (1,), 2, (3,), (1,), offset_elems=5)
+
+    def test_view_disjoint_from_input(self):
+        # No slot is shared, so nothing reaches the input's gradient at all.
+        self._check(8, (4,), (1,), 2, (2,), (1,), offset_elems=6)
+
+    def test_view_ending_after_input_overlapping(self):
+        self._check(8, (4,), (1,), 2, (2, 2), (1, 1), offset_elems=4)
+
+    def test_overlapping_input_is_rejected(self):
+        # The gradient of a view that aliases itself needs a convention for
+        # splitting a shared slot, so it is refused rather than guessed.
+        for place in self.places:
+            with base.dygraph.guard(place):
+                x = paddle.to_tensor(np.random.random([4]).astype('float32'))
+                x.stop_gradient = False
+                inp = paddle.as_strided(x, shape=(2, 2), stride=(1, 1))
+                y = paddle.as_strided(inp, shape=(2,), stride=(1,))
+                with self.assertRaises(NotImplementedError):
+                    y.backward(paddle.ones_like(y))
 
 
 if __name__ == '__main__':

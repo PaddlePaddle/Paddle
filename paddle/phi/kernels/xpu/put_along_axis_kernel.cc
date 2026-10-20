@@ -18,6 +18,7 @@
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
+#include "paddle/phi/kernels/funcs/gather_scatter_functor.h"
 
 namespace phi {
 
@@ -47,16 +48,26 @@ int64_t get_reduction_mode(const std::string& reduce) {
 
 template <typename T, typename Context>
 void PutAlongAxisKernel(const Context& dev_ctx,
-                        const DenseTensor& x,
-                        const DenseTensor& index,
-                        const DenseTensor& value,
+                        const DenseTensor& arr,
+                        const DenseTensor& indices,
+                        const DenseTensor& values,
                         int axis,
                         const std::string& reduce,
                         bool include_self,
                         DenseTensor* out) {
+  // Shallow views of the operands, brought into the same representation the
+  // InferMeta reasons about: a 0-D operand becomes rank 1 and ``axis`` is
+  // normalized. XDNN is given the promoted shapes, so a 0-D operand does not
+  // reach it as an empty shape vector.
+  DenseTensor x = arr;
+  DenseTensor index = indices;
+  DenseTensor value = values;
+
   out->Resize(x.dims());
+  funcs::PreparePutAlongAxisOperands(&x, &index, &value, &axis);
+
   if (x.numel() == 0 || index.numel() == 0) {
-    Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+    Copy(dev_ctx, arr, dev_ctx.GetPlace(), false, out);
     return;
   }
   dev_ctx.template Alloc<T>(out);

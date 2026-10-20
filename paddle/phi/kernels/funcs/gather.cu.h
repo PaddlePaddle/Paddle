@@ -311,8 +311,8 @@ void GatherV2GradCUDAFunction(const DenseTensor* input,
 
   if (input->numel() == 0) return;
   int axis_index = axis;
-  int64_t input_index_dim_size =
-      index->dims().size() == 0 ? 1 : input_dim[axis_index];
+  const bool scalar_index = index->dims().size() == 0;
+  int64_t input_index_dim_size = scalar_index ? 1 : input_dim[axis_index];
 
   int64_t inner_dim_size = 1;
   int64_t outer_dim_size = 1;
@@ -320,7 +320,11 @@ void GatherV2GradCUDAFunction(const DenseTensor* input,
   for (int i = 0; i < axis_index; i++) {
     inner_dim_size *= input_dim[i];
   }
-  for (int i = axis_index + 1; i < input_dim.size(); i++) {
+  // A 0-D index makes out_grad(=input) drop the `axis` dim (so `out` has one
+  // more dim than `input`); the dims after the `axis` dims shift forward,
+  // so `outer` must be counted starting from `axis`.
+  for (int i = scalar_index ? axis_index : axis_index + 1; i < input_dim.size();
+       i++) {
     outer_dim_size *= input_dim[i];
   }
 

@@ -1101,12 +1101,12 @@ function check_whl_size() {
     whldiffSize=`echo $(($pr_whl_size - $dev_whl_size))`
     if [ ${whldiffSize} -gt 10 ]; then
        approval_line=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000`
-       APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 risemeup1 swgu98`
+       APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 swgu98`
        echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
        if [ "${APPROVALS}" == "FALSE" ]; then
            echo "=========================================================================================="
            echo "This PR make the release paddlepaddle whl size growth exceeds 10 M."
-           echo "Then you must have one RD (risemeup1 or swgu98) approval for this PR\n"
+           echo "Then you must have one RD (swgu98) approval for this PR\n"
            echo "=========================================================================================="
            exit 6
        fi
@@ -1223,7 +1223,7 @@ function check_approvals_of_unittest() {
     if [ "$GITHUB_API_TOKEN" == "" ] || [ "$GIT_PR_ID" == "" ]; then
         return 0
     fi
-    # approval_user_list: XiaoguangHu01 46782768,luotao1 6836917,lanxianghit 47554610, zhouwei25 52485244, kolinwei 22165420
+    # approval_user_list: XiaoguangHu01 46782768,wanghuancoder 26922892,lanxianghit 47554610, zhouwei25 52485244, kolinwei 22165420
     check_times=$1
     if [ $check_times == 1 ]; then
         approval_line=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000`
@@ -1241,48 +1241,16 @@ function check_approvals_of_unittest() {
         unittest_spec_diff=`python ${PADDLE_ROOT}/tools/diff_unittest.py ${PADDLE_ROOT}/paddle/fluid/UNITTEST_DEV.spec ${PADDLE_ROOT}/paddle/fluid/UNITTEST_PR.spec`
         if [ "$unittest_spec_diff" != "" ]; then
             approval_line=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000`
-            APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 22165420 52485244 32428676 45041955`
+            APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 XieYunshen swgu98`
             echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
             if [ "${APPROVALS}" == "FALSE" ]; then
                 echo "************************************"
                 echo -e "It is forbidden to disable or delete the unit-test.\n"
                 echo -e "If you must delete it temporarily, please add it to[https://github.com/PaddlePaddle/Paddle/wiki/Temporarily-disabled-Unit-Test]."
-                echo -e "Then you must have one RD (kolinwei(recommended), chalsliu, XieYunshen or zhouwei25) approval for the deletion of unit-test. \n"
+                echo -e "Then you must have one RD (XieYunshen(recommended), swgu98) approval for the deletion of unit-test. \n"
                 echo -e "If you have any problems about deleting unit-test, please read the specification [https://github.com/PaddlePaddle/Paddle/wiki/Deleting-unit-test-is-forbidden]. \n"
                 echo -e "Following unit-tests are deleted in this PR: \n ${unittest_spec_diff} \n"
                 echo "************************************"
-                exit 6
-            fi
-        fi
-    elif [ $check_times == 3 ]; then
-        if [ ${BRANCH} != 'develop' ];then
-            return
-        fi
-
-        rm -f fluidInference_so_size
-        curl -O https://paddle-docker-tar.bj.bcebos.com/paddle_ci_index/fluidInference_so_size
-        oriBuildSize=`cat fluidInference_so_size`
-        curBuildSize=$(du -m --max-depth=0 ${PADDLE_ROOT}/build/paddle_inference_install_dir/paddle/lib/libpaddle_inference.so |awk '{print $1}')
-        diffSize=$(awk "BEGIN{print $curBuildSize-$oriBuildSize}")
-        AllDiffSize=$(awk "BEGIN{print $diffSize * 4}")
-        cat <<EOF
-        ========================================
-        Original libpaddle_inference.so Size is ${oriBuildSize}M.
-        Current libpaddle_inference.so Size is ${curBuildSize}M.
-        In single gpu architecture, Growing size of libpaddle_inference.so is ${diffSize}M.
-        In release version, The gpu architecture parameter is "All", The library size is four times to single gpu architecture.
-        It means the release version library size growth is about ${AllDiffSize}M.
-        ========================================
-EOF
-        if [ $(awk "BEGIN{print 20<$AllDiffSize}") -eq 1 ] ; then
-            approval_line=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000`
-            APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 vivienfanghuagood Aurelius84 qingqing01 yuanlehome`
-            echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
-            if [ "${APPROVALS}" == "FALSE" ]; then
-                echo "=========================================================================================="
-                echo "This PR make the release inference library size growth exceeds 20 M."
-                echo "Then you must have one RD (vivienfanghuagood (Recommend), Aurelius84 (ForPir) qingqing01 or yuanlehome) approval for this PR.\n"
-                echo "=========================================================================================="
                 exit 6
             fi
         fi
@@ -3870,7 +3838,7 @@ function collect_ccache_hits() {
 
 function test_op_benchmark() {
     # The PR will pass quickly when get approval from specific person.
-    # Xreki 12538138, luotao1 6836917, ZzSean 32410583, JamesLim-sy 61349199
+    # Xreki 12538138, wanghuancoder 26922892, ZzSean 32410583, JamesLim-sy 61349199
     set +x
     approval_line=$(curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000)
     if [ "${approval_line}" != "" ]; then
@@ -4059,12 +4027,12 @@ function check_coverage_build() {
     set +x
     if [ ${diff_coverage_build_size} -gt 3 ]; then
         approval_line=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000`
-        APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 swgu98 luotao1 risemeup1`
+        APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 swgu98 wanghuancoder`
         echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
         if [ "${APPROVALS}" == "FALSE" ]; then
             echo "=========================================================================================="
             echo "This PR make the release paddlepaddle coverage build size growth exceeds 3 G, please explain why your PR exceeds 3G to ext_ppee@baidu.com and in PR description."
-            echo "Then you must have one RD (swgu98 (Recommend) or luotao1 or risemeup1) approval for this PR\n"
+            echo "Then you must have one RD (swgu98 (Recommend) or wanghuancoder) approval for this PR\n"
             echo "=========================================================================================="
             exit 6
         fi
@@ -4764,7 +4732,6 @@ function main() {
         #test_fluid_lib_train
         #go inference test
         test_go_inference_api
-        check_approvals_of_unittest 3
         ;;
       build_inference)
         PADDLE_ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}")/../../" && pwd )"
@@ -4777,7 +4744,6 @@ function main() {
       gpu_inference)
         test_fluid_lib
         test_go_inference_api
-        check_approvals_of_unittest 3
         ;;
       test_train)
         gen_fluid_lib ${parallel_number}

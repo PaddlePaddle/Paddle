@@ -51,14 +51,14 @@ _ALLOWED_CLASSES: dict[str, set[str]] = {
         'scalar',
     },
     'numpy.core.numeric': {
-        '*',
+        '_frombuffer',
     },
     'numpy._core.multiarray': {
         '_reconstruct',
         'scalar',
     },
     'numpy._core.numeric': {
-        '*',
+        '_frombuffer',
     },
     # Collections (required for state_dict structures)
     'collections': {
@@ -187,7 +187,11 @@ class RestrictedUnpickler(pickle.Unpickler):
         """
         allowed_names = _ALLOWED_CLASSES.get(module)
         if allowed_names is not None:
-            if '*' in allowed_names or name in allowed_names:
+            if '.' in name:
+                raise pickle.UnpicklingError(
+                    f"Forbidden dotted name: {module}.{name}"
+                )
+            if name in allowed_names:
                 return super().find_class(module, name)
 
         # Allow safe user-defined classes (without __reduce__)

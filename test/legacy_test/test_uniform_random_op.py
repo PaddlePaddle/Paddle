@@ -695,13 +695,15 @@ class TestRandomValue(unittest.TestCase):
             0.93191594,
         ]
         out = paddle.rand([32, 3, 1024, 1024], dtype='float32').numpy()
-        self.assertEqual(np.mean(out), expect_mean)
-        self.assertEqual(np.std(out), expect_std)
+        self.assertEqual(
+            np.float32(np.mean(out, dtype=np.float64)), expect_mean
+        )
+        self.assertEqual(np.float32(np.std(out, dtype=np.float64)), expect_std)
         np.testing.assert_allclose(
             out[2, 1, 512, 1000:1010], expect, rtol=1e-05
         )
 
-        expect_mean = 24.861217498779296875
+        expect_mean = 24.8612155914306640625
         expect_std = 43.2602386474609375
         expect = [
             -26.741318,
@@ -720,8 +722,10 @@ class TestRandomValue(unittest.TestCase):
             .uniform_(-50, 100)
             .numpy()
         )
-        self.assertEqual(np.mean(out), expect_mean)
-        self.assertEqual(np.std(out), expect_std)
+        self.assertEqual(
+            np.float32(np.mean(out, dtype=np.float64)), expect_mean
+        )
+        self.assertEqual(np.float32(np.std(out, dtype=np.float64)), expect_std)
         np.testing.assert_allclose(out[10, 10, 10, 0:10], expect, rtol=1e-05)
 
         paddle.enable_static()

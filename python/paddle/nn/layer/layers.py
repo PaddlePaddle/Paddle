@@ -53,6 +53,7 @@ from paddle.base.framework import (
     name_struct,
 )
 from paddle.base.layer_helper_base import LayerHelperBase
+from paddle.distributed.flex_checkpoint.aoa.generation import resolve_names
 from paddle.distributed.flex_checkpoint.dcp.sharded_weight import (
     ShardedStateDict,
     build_sharded_state_dict,
@@ -68,6 +69,7 @@ if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator, Mapping, Sequence
 
     from paddle._typing import DTypeLike, ParamAttrLike, PlaceLike, ShapeLike
+    from paddle.distributed.flex_checkpoint.aoa.generation import AOAContext
     from paddle.nn.initializer import Initializer
 
 
@@ -2960,6 +2962,114 @@ class Layer:
                 sharded_state_dict.update(sub_sharded)
 
         return sharded_state_dict
+
+    def gen_aoa_statements(
+        self,
+        ctx: AOAContext,
+        *,
+        structured_name_prefix: str = "",
+        checkpoint_lookup_drop_segment: str | None = None,
+    ) -> list[str]:
+        """Recursively generates checkpoint -> model AOA statements.
+
+        Emits a ``source -> target`` statement per own Parameter / persistable
+        buffer (same source as ``sharded_state_dict``), then recurses into
+        sub-layers, omitting statements whose source and target names are
+        identical. Components with a special checkpoint layout override this
+        method; the rest fall back here.
+
+        Args:
+            ctx: Read-only ``AOAContext`` holding the constant name maps for
+                the whole generation pass.
+            structured_name_prefix: Live module path prefix, ending in ``.``
+                when non-empty, as in ``sharded_state_dict``.
+            checkpoint_lookup_drop_segment: Optional path segment the checkpoint
+                does not have, dropped before the checkpoint-name lookup only.
+                Set by the subtree owner and passed down unchanged.
+
+        Returns:
+            Statements for this layer and all its sub-layers.
+        """
+        statements: list[str] = []
+        # Same source as ``sharded_state_dict`` so the generated model-side
+        # names stay in sync with the checkpoint keys it produces.
+        own_state_dict = self.state_dict(
+            structured_name_prefix="", include_sublayers=False
+        )
+        for name in own_state_dict:
+            checkpoint_name, model_name = resolve_names(
+                name,
+                ctx.checkpoint_name_prefix,
+                structured_name_prefix,
+                ctx.pp_to_single_mapping,
+                ctx.checkpoint_name_mapping,
+                model_name_prefix=ctx.model_name_prefix,
+                checkpoint_lookup_drop_segment=checkpoint_lookup_drop_segment,
+            )
+            if checkpoint_name == model_name:
+                continue
+            statements.append(f"{checkpoint_name} -> {model_name}")
+        for layer_name, sublayer in self._sub_layers.items():
+            if sublayer is not None:
+                statements += sublayer.gen_aoa_statements(
+                    ctx,
+                    structured_name_prefix=f"{structured_name_prefix}{layer_name}.",
+                    checkpoint_lookup_drop_segment=checkpoint_lookup_drop_segment,
+                )
+        return statements
+
+    def gen_inv_aoa_statements(
+        self,
+        ctx: AOAContext,
+        *,
+        structured_name_prefix: str = "",
+        checkpoint_lookup_drop_segment: str | None = None,
+    ) -> list[str]:
+        """Recursively generates model -> checkpoint AOA statements.
+
+        Independently resolves the same checkpoint/model name pair as
+        ``gen_aoa_statements`` and emits it in the opposite order, with the
+        same identical-name omission.
+
+        Args:
+            ctx: Read-only ``AOAContext`` holding the constant name maps for
+                the whole generation pass.
+            structured_name_prefix: Live module path prefix, ending in ``.``
+                when non-empty, as in ``sharded_state_dict``.
+            checkpoint_lookup_drop_segment: Optional path segment the checkpoint
+                does not have, dropped before the checkpoint-name lookup only.
+                Set by the subtree owner and passed down unchanged.
+
+        Returns:
+            Statements for this layer and all its sub-layers.
+        """
+        statements: list[str] = []
+        # Same source as ``sharded_state_dict`` so the generated model-side
+        # names stay in sync with the checkpoint keys it produces.
+        own_state_dict = self.state_dict(
+            structured_name_prefix="", include_sublayers=False
+        )
+        for name in own_state_dict:
+            checkpoint_name, model_name = resolve_names(
+                name,
+                ctx.checkpoint_name_prefix,
+                structured_name_prefix,
+                ctx.pp_to_single_mapping,
+                ctx.checkpoint_name_mapping,
+                model_name_prefix=ctx.model_name_prefix,
+                checkpoint_lookup_drop_segment=checkpoint_lookup_drop_segment,
+            )
+            if checkpoint_name == model_name:
+                continue
+            statements.append(f"{model_name} -> {checkpoint_name}")
+        for layer_name, sublayer in self._sub_layers.items():
+            if sublayer is not None:
+                statements += sublayer.gen_inv_aoa_statements(
+                    ctx,
+                    structured_name_prefix=f"{structured_name_prefix}{layer_name}.",
+                    checkpoint_lookup_drop_segment=checkpoint_lookup_drop_segment,
+                )
+        return statements
 
     def full(
         self,
