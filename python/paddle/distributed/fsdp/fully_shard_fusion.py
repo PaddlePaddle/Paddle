@@ -15,7 +15,7 @@
 import contextlib
 import math
 import re
-from collections import OrderedDict
+from collections import Counter, OrderedDict
 from dataclasses import dataclass, field
 from enum import Enum
 
@@ -60,6 +60,7 @@ class BufferGroup:
     is_tie: bool = False
     no_decay: bool = False
     use_muon: bool = False
+    hyperball_sharded: bool = False
     clip_attrs: tuple = ()
     muon_owner_rank: int = None
     muon_shard_numel: int = None
@@ -270,10 +271,16 @@ class TensorFusionBuffer:
             return self.data_buffer
         # Reuse tmp_buffer if exists, else create
         if self.tmp_data_buffer is None:
-            self.tmp_data_buffer = paddle.zeros(
-                shape=[self.total_buffer_size],
-                dtype=self.dtype if self.is_params else self.main_grad_dtype,
-            )
+            if self.is_params:
+                # Fully overwritten by all_gather.
+                self.tmp_data_buffer = paddle.empty(
+                    shape=[self.total_buffer_size], dtype=self.dtype
+                )
+            else:
+                # Grads accumulate into it.
+                self.tmp_data_buffer = paddle.zeros(
+                    shape=[self.total_buffer_size], dtype=self.main_grad_dtype
+                )
         return self.tmp_data_buffer
 
     def do_all_gather(self):
@@ -287,11 +294,17 @@ class TensorFusionBuffer:
     def do_reduce_scatter(self):
         tmp_buffer = self.get_tmp_buffer()
         shard = tmp_buffer._slice(0, self.data_buffer.shape[0])
-        tmp_buffer.scale_(self.grad_scale)
+        # AVG folds the scale into NCCL when it is exactly 1/nranks of this
+        # group; otherwise (grad accumulation, EP groups) pre-scale and SUM.
+        if self.grad_div * self.grad_accum_steps == self.fsdp_degree:
+            op = paddle.distributed.ReduceOp.AVG
+        else:
+            tmp_buffer.scale_(self.grad_scale)
+            op = paddle.distributed.ReduceOp.SUM
         return paddle.distributed.reduce_scatter(
             shard,
             tmp_buffer,
-            op=paddle.distributed.ReduceOp.SUM,
+            op=op,
             group=self.fsdp_group,
             sync_op=False,
         )
@@ -393,6 +406,12 @@ class FSDPBufferManager:
                 # A buffer must not mix params with and without weight decay.
                 bool(getattr(param, "no_weight_decay", False)),
                 bool(getattr(param, "use_muon", False)),
+                # Sharded-Hyperball params get their own buffer.
+                (
+                    param.name
+                    if getattr(param, "use_hyperball_sharded", False)
+                    else None
+                ),
                 # A buffer must not mix params that grad clip treats differently.
                 tuple(
                     (attr, getattr(param, attr, default))
@@ -417,6 +436,7 @@ class FSDPBufferManager:
                 _,
                 use_muon,
                 _,
+                _,
             ) = item[0]
             return (
                 0 if is_tie else (1 if not trainable else 2),
@@ -436,6 +456,7 @@ class FSDPBufferManager:
                 is_tie=is_tie,
                 no_decay=no_decay,
                 use_muon=use_muon,
+                hyperball_sharded=hyperball_name is not None,
                 clip_attrs=clip_attrs,
             )
             for (
@@ -447,6 +468,7 @@ class FSDPBufferManager:
                 is_tie,
                 no_decay,
                 use_muon,
+                hyperball_name,
                 clip_attrs,
             ), params in sorted(keyed_params.items(), key=sort_key)
         ]
@@ -497,6 +519,11 @@ class FSDPBufferManager:
                     shard_align_numel=muon_align,
                 )
             group.muon_shard_numel = group.params_buffer.shard_align_numel
+            if group.hyperball_sharded:
+                data_buffer = group.params_buffer.data_buffer
+                data_buffer._hyperball_group = (
+                    group.fsdp_group if group.params_buffer.is_sharded else None
+                )
             if group.muon_shard_numel is not None:
                 for param in params:
                     full = tuple(
@@ -529,7 +556,11 @@ class FSDPBufferManager:
 
     def _assign_muon_owners(self):
         loads = {}
-        for group in self.buffer_groups:
+        # Largest first to balance owner loads.
+        for group in sorted(
+            self.buffer_groups,
+            key=lambda g: -g.params_buffer.total_buffer_size,
+        ):
             if not group.use_muon or group.grads_buffer is None:
                 continue
             if group.muon_shard_numel is not None:
@@ -555,30 +586,34 @@ class FSDPCommManager:
         self,
         buffer_manager,
         enable_overlap=True,
-        double_buffer_limit=None,
+        prefetch_units=1,
     ):
         self.buffer_manager = buffer_manager
         self.enable_overlap = enable_overlap
         self.grad_reduce_queue = []
 
-        # for double buffer mechanism config
-        groups_per_unit = 2
-        self.double_buffer_limit = double_buffer_limit or (groups_per_unit * 2)
-        self.prefetch_units = max(
-            self.double_buffer_limit // groups_per_unit - 1, 0
+        # Size limits in whole units: a unit may own several sharded groups.
+        unit_sizes = Counter(
+            g.fsdp_unit_id
+            for g in buffer_manager.buffer_groups
+            if g.params_buffer.is_sharded and g.fsdp_unit_id is not None
         )
+        groups_per_unit = max(2, max(unit_sizes.values(), default=0))
+        self.prefetch_units = max(int(prefetch_units), 0)
+        self.gather_buffer_limit = groups_per_unit * (self.prefetch_units + 1)
+        self.grad_queue_limit = groups_per_unit * max(self.prefetch_units, 1)
         self.buffer_cnt_in_using = 0
         self.need_zero_grads = True
         self._last_backward_unit_id = None
 
     # ------------------------------------------------------------------
     # Params all_gather double buffer. Owns buffer_cnt_in_using /
-    # double_buffer_limit / prefetch_units and the BufferState machine.
+    # gather_buffer_limit / prefetch_units and the BufferState machine.
     # ------------------------------------------------------------------
 
     def _release_one_buffer_if_needed(self, keep=()):
         # Release a buffer with the READY status if needed
-        while self.buffer_cnt_in_using >= self.double_buffer_limit:
+        while self.buffer_cnt_in_using >= self.gather_buffer_limit:
             found = False
             for gid_idx, group in enumerate(self.buffer_manager.buffer_groups):
                 if gid_idx in keep:
@@ -645,6 +680,11 @@ class FSDPCommManager:
                 self._flush_expert_grads_after_unit(unit_id)
                 self._release_params_after_unit(unit_id)
             self._bind_sharded_expert_main_grads(params)
+        elif self.grad_reduce_queue:
+            # Retire leftover grad reduce-scatters, one per forward layer.
+            self._wait_for_grad_comm(
+                queue_limit=len(self.grad_reduce_queue) - 1
+            )
 
         if self.enable_overlap:
             keep = set(req_gids)
@@ -655,19 +695,6 @@ class FSDPCommManager:
                 if group.params_buffer.status == BufferState.FREED:
                     self._release_one_buffer_if_needed(keep)
                     self._issue_async_gather(gid)
-
-            for next_gid in self._next_buffer_id(req_gids, is_backward):
-                next_params_buffer = self.buffer_manager.buffer_groups[
-                    next_gid
-                ].params_buffer
-                if not next_params_buffer.is_sharded:
-                    continue
-                if next_params_buffer.status != BufferState.FREED:
-                    continue
-                self._release_one_buffer_if_needed(keep)
-                if self.buffer_cnt_in_using >= self.double_buffer_limit:
-                    break
-                self._issue_async_gather(next_gid)
 
         for param in params:
             gid = self.buffer_manager.param_to_buffer_id[param.name]
@@ -705,6 +732,22 @@ class FSDPCommManager:
             tmp_param.get_tensor()._set_dims(param.shape)
             param.get_tensor()._share_data_with(tmp_param.get_tensor())
 
+        # Prefetch after waiting on this unit's gathers, or compute stalls on it.
+        if self.enable_overlap:
+            keep = set(req_gids)
+            for next_gid in self._next_buffer_id(req_gids, is_backward):
+                next_params_buffer = self.buffer_manager.buffer_groups[
+                    next_gid
+                ].params_buffer
+                if not next_params_buffer.is_sharded:
+                    continue
+                if next_params_buffer.status != BufferState.FREED:
+                    continue
+                self._release_one_buffer_if_needed(keep)
+                if self.buffer_cnt_in_using >= self.gather_buffer_limit:
+                    break
+                self._issue_async_gather(next_gid)
+
     def shard_params(self, params, is_backward=False):
         affected_gids = set()
         for param in params:
@@ -727,6 +770,12 @@ class FSDPCommManager:
         self._last_backward_unit_id = None
         for group in self.buffer_manager.buffer_groups:
             params_buffer = group.params_buffer
+            # A prefetch issued at the end of backward gathers the pre-step
+            # shard; drop it so the next forward gathers the updated one.
+            if params_buffer.status == BufferState.SYNCING:
+                params_buffer.comm_task.wait()
+                params_buffer.comm_task = None
+                params_buffer.status = BufferState.READY
             if params_buffer.status in (BufferState.READY, BufferState.USING):
                 for param in group.params:
                     stop_gradient = param.stop_gradient
@@ -871,7 +920,9 @@ class FSDPCommManager:
                 param.main_grad = None
                 param._main_grad_addr = None
 
-    def _wait_for_grad_comm(self, queue_limit=2):
+    def _wait_for_grad_comm(self, queue_limit=None):
+        if queue_limit is None:
+            queue_limit = self.grad_queue_limit
         while len(self.grad_reduce_queue) > queue_limit:
             grads_buffer = self.grad_reduce_queue.pop(0)
             if grads_buffer.comm_task is None:
@@ -1021,8 +1072,8 @@ class FullyShardFusion:
         model,
         fsdp_unit_layers=None,
         enable_tensor_fusion_and_overlap=True,
-        double_buffer_limit=None,
         mp_policy=None,
+        prefetch_units=1,
     ):
         self.model = model
         self.mp_policy = mp_policy
@@ -1034,7 +1085,7 @@ class FullyShardFusion:
         self.comm_manager = FSDPCommManager(
             self.buffer_manager,
             enable_overlap=enable_tensor_fusion_and_overlap,
-            double_buffer_limit=double_buffer_limit,
+            prefetch_units=prefetch_units,
         )
         self.register_tensor_fusion_hooks(self.model)
         register_fsdp_context(self)
@@ -1170,12 +1221,6 @@ class FullyShardFusion:
             self._shard_descs[params_buffer.data_buffer.name] = param_slice_info
         return result
 
-    def requires_muon_per_matrix_ns(self):
-        return any(
-            group.muon_shard_numel is not None
-            for group in self.buffer_manager.buffer_groups
-        )
-
     def bind_decay_param_fun(self, optimizer):
         """Answer ``apply_decay_param_fun`` for the fused buffers.
 
@@ -1221,6 +1266,15 @@ class FullyShardFusion:
     def bind_optimizer(self, optimizer):
         if getattr(optimizer, "_fsdp_state_dict_ctx", None) is self:
             return
+        info_map = getattr(optimizer, "_muon_param_info_map", None)
+        if info_map is not None:
+            from paddle.optimizer.muon import MuonParamInfo
+
+            for group in self.buffer_manager.buffer_groups:
+                if group.hyperball_sharded:
+                    info_map[group.params_buffer.data_buffer.name] = (
+                        MuonParamInfo(use_muon=False, use_hyperball=True)
+                    )
         optimizer.sharded_state_dict = lambda model_sharded_state_dict=None: (
             self.optimizer_sharded_state_dict(optimizer)
         )
@@ -1496,6 +1550,8 @@ class FullyShardFusion:
         for param in self.model.parameters():
             if param.trainable:
                 param.main_grad = None
+        # Sync so comm-stream buffers freed in backward return to the pool before
+        paddle.device.synchronize()
 
     @paddle.autograd.no_grad()
     def _p2p_gather_full(self, shard, fsdp_group, owner_local):
