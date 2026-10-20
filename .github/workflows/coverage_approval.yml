@@ -11,22 +11,12 @@ jobs:
     if: >-
       github.event.review.state == 'approved' &&
       github.event.review.commit_id == github.event.pull_request.head.sha &&
-      github.event.review.user.login == 'swgu98'
+      github.event.review.user.login == 'swgu98' &&
+      contains(github.event.review.body, 'lgtm') &&
+      contains(github.event.review.body, 'coverage')
     runs-on:
       group: APPROVAL
-    env:
-      REVIEW_BODY: ${{ github.event.review.body }}
     steps:
-      - name: Check coverage approval
-        run: |
-          set -euo pipefail
-
-          body=$(printf '%s' "${REVIEW_BODY}" | tr '[:upper:]' '[:lower:]')
-          if [[ "${body}" != *lgtm* || "${body}" != *coverage* ]]; then
-            echo "Review does not contain both lgtm and coverage."
-            exit 1
-          fi
-
       - name: Record coverage approval
         env:
           REVIEW_STATE: ${{ github.event.review.state }}
