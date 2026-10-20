@@ -1262,7 +1262,7 @@ void InstanceNormInferMeta(const MetaTensor& x,
           x_dims.size()));
   auto N = x_dims[0];
   auto C = x_dims[1];
-  auto NxC = N * C;
+  const int64_t NxC = (N < 0 || C < 0) ? -1 : N * C;
   auto need_check_dim = [&config](const DDim& dims) {
     return config.is_runtime || !contain_unknown_dim(dims);
   };
