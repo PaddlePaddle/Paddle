@@ -1638,7 +1638,6 @@ def get_package_data_and_package_dir():
     shutil.copy(env_dict.get("COMMON_LIB"), libs_path)
     shutil.copy(env_dict.get("WARPCTC_LIBRARIES"), libs_path)
     shutil.copy(env_dict.get("WARPRNNT_LIBRARIES"), libs_path)
-<<<<<<< HEAD
     if not (os.name == "nt" and platform.machine().lower() in ("arm", "arm64")):
         package_data['paddle.libs'] += [
             os.path.basename(env_dict.get("LAPACK_LIB")),
