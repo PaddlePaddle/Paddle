@@ -226,6 +226,82 @@ def _conv_nd(
     ).get(
         "FLAGS_use_accuracy_compatible_kernel", False
     )  # Due to the poor performance of NHWC, we transpose the input to NCHW.
+    # Pre-validate shapes in eager/pir mode to catch invalid convolution
+    # configurations (e.g. dilated kernel larger than input) before calling
+    # into the C++ kernel, which could otherwise crash (e.g. Eigen shuffling
+    # with zero-sized output when using NHWC).
+    if in_dynamic_or_pir_mode() and op_type == "conv2d":
+        channel_last = data_format == "NHWC"
+        stride_list = convert_to_list(stride, 2, 'stride')
+        dilation_list = convert_to_list(dilation, 2, 'dilation')
+        padding, padding_algorithm = _update_padding_nd(
+            padding, channel_last, 2
+        )
+
+        # Normalize padding to [pad_top, pad_bottom, pad_left, pad_right].
+        def _normalize_padding_for_check(pad):
+            try:
+                if _is_list_or_tuple(pad):
+                    pad_list = list(pad)
+                else:
+                    pad_list = [pad]
+
+                if len(pad_list) == 1:
+                    p = pad_list[0]
+                    return [p, p, p, p]
+                if len(pad_list) == 2:
+                    return [pad_list[0], pad_list[0], pad_list[1], pad_list[1]]
+                if len(pad_list) >= 4:
+                    return [pad_list[0], pad_list[1], pad_list[2], pad_list[3]]
+
+                # Rare/ambiguous forms: best effort convert and pad/truncate.
+                pad_list = convert_to_list(pad_list, len(pad_list), 'padding')
+                if len(pad_list) >= 4:
+                    return pad_list[:4]
+                # pad with the last value to reach 4
+                if len(pad_list) > 0:
+                    last = pad_list[-1]
+                    return pad_list + [last] * (4 - len(pad_list))
+            except Exception:
+                return None
+            return None
+
+        paddings_wo_bc = _normalize_padding_for_check(padding)
+        if paddings_wo_bc is None:
+            # Unknown padding form; skip pre-validation and let backend handle it.
+            paddings_wo_bc = []
+
+        # Only run the check when all required dimensions are known.
+        in_shape = x.shape
+        w_shape = weight.shape
+        h_idx, w_idx = (1, 2) if channel_last else (2, 3)
+        if (
+            in_shape[h_idx] != -1
+            and in_shape[w_idx] != -1
+            and w_shape[2] != -1
+            and w_shape[3] != -1
+        ):
+            in_h, in_w = int(in_shape[h_idx]), int(in_shape[w_idx])
+            k_h, k_w = int(w_shape[2]), int(w_shape[3])
+
+            # Allow zero-sized inputs/filters to proceed; the kernel will
+            # short-circuit to produce empty outputs.
+            if paddings_wo_bc and in_h > 0 and in_w > 0 and k_h > 0 and k_w > 0:
+                eff_k_h = dilation_list[0] * (k_h - 1) + 1
+                eff_k_w = dilation_list[1] * (k_w - 1) + 1
+                out_h = in_h + paddings_wo_bc[0] + paddings_wo_bc[1] - eff_k_h
+                out_h = out_h // stride_list[0] + 1
+                out_w = in_w + paddings_wo_bc[2] + paddings_wo_bc[3] - eff_k_w
+                out_w = out_w // stride_list[1] + 1
+                if out_h <= 0 or out_w <= 0:
+                    raise ValueError(
+                        "Invalid convolution parameters lead to non-positive "
+                        f"output size: got H={out_h}, W={out_w}. Input "
+                        f"(H, W)=({in_h}, {in_w}), effective kernel="
+                        f"({eff_k_h}, {eff_k_w}), stride={stride_list}, "
+                        f"padding={paddings_wo_bc}, dilation={dilation_list}, "
+                        f"data_format={data_format}."
+                    )
     if in_dynamic_or_pir_mode() and op_type == "conv2d":
         # TODO: alignment with PyTorch 2.9.1 use_cudnn logic, will remove in future
         if (
@@ -886,6 +962,39 @@ def conv2d(
     padding, padding_algorithm = _update_padding_nd(padding, channel_last, 2)
     stride = convert_to_list(stride, 2, 'stride')
     dilation = convert_to_list(dilation, 2, 'dilation')
+
+    # Validate output size only when all spatial dims and kernel dims are known
+    # and positive. Zero-sized inputs/filters are allowed to pass through and
+    # will yield empty outputs in the kernel.
+    spatial_known = (
+        x.shape[1] != -1
+        and x.shape[2] != -1
+        and weight.shape[2] != -1
+        and weight.shape[3] != -1
+    )
+    if spatial_known:
+        in_h, in_w = int(x.shape[1]), int(x.shape[2])
+        k_h, k_w = int(weight.shape[2]), int(weight.shape[3])
+        if in_h > 0 and in_w > 0 and k_h > 0 and k_w > 0:
+            # Calculate the effective kernel size after dilation
+            effective_kernel_h = dilation[0] * (k_h - 1) + 1
+            effective_kernel_w = dilation[1] * (k_w - 1) + 1
+
+            # Calculate the output height and width
+            output_h = (in_h + 2 * padding[0] - effective_kernel_h) // stride[
+                0
+            ] + 1
+            output_w = (in_w + 2 * padding[1] - effective_kernel_w) // stride[
+                1
+            ] + 1
+
+            # Check if the output dimensions are valid
+            if output_h <= 0 or output_w <= 0:
+                raise ValueError(
+                    "Invalid convolution parameters: the effective kernel size "
+                    f"({effective_kernel_h}, {effective_kernel_w}) exceeds the input "
+                    f"size ({in_h}, {in_w}). Please adjust the stride, dilation, or padding."
+                )
 
     l_type = "conv2d"
     if (
