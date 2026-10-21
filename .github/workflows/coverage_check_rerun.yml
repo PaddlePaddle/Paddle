@@ -186,7 +186,7 @@ jobs:
           SCHEDULE_OUTCOME: ${{ steps.schedule.outcome }}
           SCHEDULE_RESULT: ${{ steps.schedule.outputs.result }}
           SCHEDULE_SUMMARY: ${{ steps.schedule.outputs.summary }}
-          WAS_CANCELLED: ${{ cancelled() }}
+          WAS_CANCELLED: ${{ job.status == 'cancelled' }}
         run: |
           set -euo pipefail
 
