@@ -1659,7 +1659,9 @@ def get_package_data_and_package_dir():
         ]
         shutil.copy(env_dict.get("MAGMA_LIB"), libs_path)
 
-    if not sys.platform.startswith("linux") and not (os.name == "nt" and platform.machine().lower() in ("arm", "arm64")):
+    if not sys.platform.startswith("linux") and not (
+        os.name == "nt" and platform.machine().lower() in ("arm", "arm64")
+    ):
         package_data['paddle.libs'] += [
             os.path.basename(env_dict.get("GNU_RT_LIB_2"))
         ]
