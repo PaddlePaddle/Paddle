@@ -159,12 +159,17 @@ struct CINN_ALIGN(2) bfloat16 {
   }
 
   // Conversion operators
-  // Note: explicit, so that overloads templated on both float and double
-  // (e.g. xtrans/clang's cmath max/min promotion machinery) don't see an
-  // ambiguous implicit path from bfloat16 to two different floating types.
-  // Real CUDA/nvcc's __nv_bfloat16 only implicitly converts to float, so
-  // nvcc never hits this; xtrans/clang's stricter overload resolution does.
+  // On WITH_XPU_CADA the float/double conversions are explicit, so that
+  // overloads templated on both float and double (e.g. xtrans/clang's cmath
+  // max/min promotion machinery) don't see an ambiguous implicit path from
+  // bfloat16 to two different floating types. Real CUDA/nvcc's
+  // __nv_bfloat16 only implicitly converts to float, so nvcc never hits this;
+  // xtrans/clang's stricter overload resolution does.
+#ifdef PADDLE_WITH_XPU_CADA
   __host__ __device__ inline explicit operator float() const {
+#else
+  __host__ __device__ inline operator float() const {
+#endif
 #ifdef CINN_CUDA_BF16
     return __bfloat162float(*reinterpret_cast<const __nv_bfloat16*>(&x));
 #else
@@ -218,7 +223,11 @@ struct CINN_ALIGN(2) bfloat16 {
     return static_cast<uint64_t>(static_cast<float>(*this));
   }
 
+#ifdef PADDLE_WITH_XPU_CADA
   __host__ __device__ inline explicit operator double() const {
+#else
+  __host__ __device__ inline operator double() const {
+#endif
     return static_cast<double>(static_cast<float>(*this));
   }
 #endif  // __cplusplus
@@ -442,6 +451,7 @@ __host__ __device__ inline cinn::common::bfloat16 min(
   return a < b ? a : b;
 }
 
+#ifdef PADDLE_WITH_XPU_CADA
 // See float16_xpu_cada.h for the matching fix and rationale: xtrans/clang's
 // __clang_houyi_cmath.h __promote2<A1,A2> hard-errors on decltype(void() +
 // void()) when both operands are a non-numeric class type. This explicit
@@ -481,6 +491,7 @@ __device__ inline cinn::common::bfloat16 __shfl_xor(
   return cinn::common::bfloat16(
       __shfl_xor(static_cast<float>(var), laneMask, width));
 }
+#endif  // PADDLE_WITH_XPU_CADA
 #endif  // __cplusplus && CINN_CUDA_FP16
 
 #endif  // CINN_COMMON_BFLOAT16_H
