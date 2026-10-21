@@ -21,6 +21,15 @@ import paddle
 from paddle.base.dygraph.base import switch_to_static_graph
 from paddle.device.cuda.graphs import CUDAGraph
 
+try:
+    from paddle.base.core import (
+        CUDAGraph as CoreCUDAGraph,
+        is_cuda_graph_capturing,
+    )
+except ImportError:
+    CoreCUDAGraph = None
+    is_cuda_graph_capturing = None
+
 
 @unittest.skipIf(
     not (paddle.is_compiled_with_cuda() or is_custom_device())
@@ -81,6 +90,17 @@ class TestCUDAGraphInFirstBatch(unittest.TestCase):
 
                     if cuda_graph:
                         cuda_graph.reset()
+
+                # After the exception is caught by assertRaises, the CUDA
+                # stream is still in capturing state because capture_end()
+                # was never called.  We must abort the capture to avoid
+                # CUDA error(900) when cudaFree is called during cleanup.
+                if (
+                    is_cuda_graph_capturing is not None
+                    and is_cuda_graph_capturing()
+                ):
+                    cuda_graph._graph = CoreCUDAGraph.end_capture()
+                    cuda_graph._graph.reset()
 
 
 if __name__ == "__main__":
