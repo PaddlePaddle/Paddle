@@ -13,8 +13,12 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/infermeta/fusion.h"
+
+#include <string>
 #include <unordered_set>
 #include <vector>
+
+#include "paddle/common/ddim.h"
 #include "paddle/common/layout.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/infermeta_utils.h"
@@ -5684,14 +5688,51 @@ void FP8OutHalfGemmFusedInferMeta(
   }
 
   std::vector<int64_t> new_dims;
-  if (ndims_x > ndims_y) {
-    new_dims.assign(dims_x.begin(), dims_x.end() - 2);
-  } else if (ndims_x < ndims_y) {
-    new_dims.assign(dims_y.begin(), dims_y.end() - 2);
-  } else {
-    new_dims.reserve(ndims_x);
-    for (size_t i = 0; i < ndims_x - 2; ++i) {
-      new_dims.push_back(std::max(dims_x[i], dims_y[i]));
+  {
+    // Broadcast the batch dims, right-aligned. Align with PyTorch/NumPy:
+    // compatible iff equal or one of them is 1. Leading dims missing on the
+    // lower-rank side count as 1.
+    const size_t bx = ndims_x - 2;
+    const size_t by = ndims_y - 2;
+    const size_t nb = std::max(bx, by);
+    new_dims.reserve(nb);
+    for (size_t i = 0; i < nb; ++i) {
+      const int64_t dx = (i + bx >= nb) ? dims_x[i + bx - nb] : 1;
+      const int64_t dy = (i + by >= nb) ? dims_y[i + by - nb] : 1;
+      if (dx == -1 || dy == -1) {
+        const int64_t known = (dx == -1) ? dy : dx;
+        if (known == -1 || known == 1) {
+          new_dims.push_back(-1);
+        } else if (known == 0) {
+          new_dims.push_back(0);
+        } else {
+          new_dims.push_back(known);
+        }
+        continue;
+      }
+      // i indexes the right-aligned broadcast result, not either input. A
+      // lower-rank side has no dim at this position and counts as 1, so report
+      // each side's own index instead of i, which points at the wrong dim.
+      const std::string x_pos =
+          (i + bx >= nb) ? std::to_string(i + bx - nb) : "absent (counts as 1)";
+      const std::string y_pos =
+          (i + by >= nb) ? std::to_string(i + by - nb) : "absent (counts as 1)";
+      PADDLE_ENFORCE_EQ(
+          dx == dy || dx == 1 || dy == 1,
+          true,
+          common::errors::InvalidArgument(
+              "In fp8_fp8_half_gemm_fused, the batch dimensions of Input(X) "
+              "and Input(Y) must be broadcastable (equal, or one of them is "
+              "1), but received X's shape = [%s] and Y's shape = [%s]: X's "
+              "batch dimension [%s] = %d is not broadcastable with Y's batch "
+              "dimension [%s] = %d.",
+              common::make_ddim(dims_x),
+              common::make_ddim(dims_y),
+              x_pos,
+              dx,
+              y_pos,
+              dy));
+      new_dims.push_back((dx == 0 || dy == 0) ? 0 : std::max(dx, dy));
     }
   }
   if (!x_broadcasted) {

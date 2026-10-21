@@ -102,14 +102,16 @@ void RepeatInterleaveWithTensorIndexGradKernel(
   }
 
   DenseTensor index;
-  PADDLE_ENFORCE_EQ(repeats_tensor.dims()[0] == x_grad->dims()[dim],
-                    true,
-                    common::errors::InvalidArgument(
-                        "The length of Input(RepeatsTensor) must be the "
-                        "same as length of Input(X) in axis. "
-                        "But received: [%s], required: [%d].",
-                        repeats_tensor.dims()[0],
-                        x_grad->dims()[dim]));
+  PADDLE_ENFORCE_EQ(
+      repeats_tensor.dims()[0] == x_grad->dims()[dim] ||
+          repeats_tensor.dims()[0] == 1,
+      true,
+      common::errors::InvalidArgument(
+          "The length of Input(RepeatsTensor) must be 1 (broadcast) or the "
+          "same as length of Input(X) in axis. "
+          "But received: [%s], required: [%d].",
+          repeats_tensor.dims()[0],
+          x_grad->dims()[dim]));
 
   const auto& index_type = repeats_tensor.dtype();
 
@@ -123,6 +125,10 @@ void RepeatInterleaveWithTensorIndexGradKernel(
                         DataTypeToString(index_type),
                         DataTypeToString(DataType::INT32),
                         DataTypeToString(DataType::INT64)));
+
+  DenseTensor repeats_holder;
+  const DenseTensor& repeats_use = funcs::BroadcastRepeatsIfNeeded(
+      dev_ctx, repeats_tensor, x_grad->dims()[dim], &repeats_holder);
 
   auto output_dim = out_grad.dims();
   auto stride_dim = common::stride(input_dim);
@@ -164,7 +170,7 @@ void RepeatInterleaveWithTensorIndexGradKernel(
 
   if (index_type == DataType::INT64) {
     funcs::RepeatsTensor2IndexTensorFunctor<Context, int64_t>()(
-        dev_ctx, repeats_tensor, &index);
+        dev_ctx, repeats_use, &index);
     int64_t index_nums = index.numel();
 
     const int64_t* index_data = index.data<int64_t>();
@@ -181,7 +187,7 @@ void RepeatInterleaveWithTensorIndexGradKernel(
                      delta);
   } else {
     funcs::RepeatsTensor2IndexTensorFunctor<Context, int>()(
-        dev_ctx, repeats_tensor, &index);
+        dev_ctx, repeats_use, &index);
     int64_t index_nums = index.numel();
 
     const int* index_data = index.data<int>();
