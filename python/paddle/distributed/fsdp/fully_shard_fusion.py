@@ -582,14 +582,27 @@ class FSDPBufferManager:
 
 
 class FSDPCommManager:
+    KEEP_EXPERT_MODES = ("none", "backward", "step")
+
     def __init__(
         self,
         buffer_manager,
         enable_overlap=True,
         prefetch_units=1,
+        keep_expert_params="none",
+        dense_reduce_scatter_streams=1,
     ):
+        if keep_expert_params not in self.KEEP_EXPERT_MODES:
+            raise ValueError(
+                f"keep_expert_params must be one of {self.KEEP_EXPERT_MODES}, "
+                f"got {keep_expert_params!r}"
+            )
         self.buffer_manager = buffer_manager
         self.enable_overlap = enable_overlap
+        # Gathered expert params kept out of the gather-buffer budget:
+        # "backward" keeps them from forward until their unit's backward is
+        # done, "step" until reset_params_buffer_status (before optimizer).
+        self.keep_expert_params = keep_expert_params
         self.grad_reduce_queue = []
 
         # Size limits in whole units: a unit may own several sharded groups.
@@ -605,6 +618,61 @@ class FSDPCommManager:
         self.buffer_cnt_in_using = 0
         self.need_zero_grads = True
         self._last_backward_unit_id = None
+        self._dense_rs_groups = {}
+        if dense_reduce_scatter_streams > 1:
+            self._spread_dense_reduce_scatter(int(dense_reduce_scatter_streams))
+
+    def _spread_dense_reduce_scatter(self, n_streams):
+        # The k-th sharded dense group of every unit reduce-scatters over the
+        # (k % n_streams)-th clone of its fsdp_group. Clones keep the same rank
+        # list, so shard layout and results are unchanged; each has its own
+        # NCCL communicator and stream. With CUDA_DEVICE_MAX_CONNECTIONS=1 all
+        # streams share one hardware queue, and several RS queued back to back
+        # on one stream block unrelated compute kernels behind them.
+        # new_group is collective: every rank builds the clones in this order.
+        per_unit = {}
+        for group in self.buffer_manager.buffer_groups:
+            grads_buffer = group.grads_buffer
+            if (
+                group.fsdp_unit_id is None
+                or group.is_expert_param
+                or grads_buffer is None
+                or not grads_buffer.is_sharded
+            ):
+                continue
+            per_unit.setdefault(group.fsdp_unit_id, []).append(group)
+        for unit_id in sorted(per_unit):
+            for k, group in enumerate(per_unit[unit_id]):
+                orig = group.grads_buffer.fsdp_group
+                clones = self._dense_rs_groups.get(id(orig))
+                if clones is None:
+                    clones = [orig] + [
+                        paddle.distributed.new_group(ranks=list(orig.ranks))
+                        for _ in range(n_streams - 1)
+                    ]
+                    self._dense_rs_groups[id(orig)] = clones
+                group.grads_buffer.fsdp_group = clones[k % n_streams]
+
+    def _is_kept_expert(self, group):
+        return self.keep_expert_params != "none" and group.is_expert_param
+
+    @property
+    def buffer_cnt_in_using(self):
+        if self.keep_expert_params == "none":
+            return self._buffer_cnt_in_using
+        # Kept expert buffers stay gathered outside the budget, so count the
+        # other sharded buffers that are not FREED.
+        return sum(
+            1
+            for group in self.buffer_manager.buffer_groups
+            if group.params_buffer.is_sharded
+            and not group.is_expert_param
+            and group.params_buffer.status != BufferState.FREED
+        )
+
+    @buffer_cnt_in_using.setter
+    def buffer_cnt_in_using(self, value):
+        self._buffer_cnt_in_using = value
 
     # ------------------------------------------------------------------
     # Params all_gather double buffer. Owns buffer_cnt_in_using /
@@ -616,7 +684,7 @@ class FSDPCommManager:
         while self.buffer_cnt_in_using >= self.gather_buffer_limit:
             found = False
             for gid_idx, group in enumerate(self.buffer_manager.buffer_groups):
-                if gid_idx in keep:
+                if gid_idx in keep or self._is_kept_expert(group):
                     continue
                 if not group.params_buffer.is_sharded:
                     continue
@@ -892,6 +960,9 @@ class FSDPCommManager:
                 continue
             if group.fsdp_unit_id <= unit_id:
                 continue
+            if self.keep_expert_params == "step" and group.is_expert_param:
+                # Freed by reset_params_buffer_status at the end of the step.
+                continue
             params_buffer = group.params_buffer
             if not params_buffer.is_sharded:
                 continue
@@ -1074,6 +1145,8 @@ class FullyShardFusion:
         enable_tensor_fusion_and_overlap=True,
         mp_policy=None,
         prefetch_units=1,
+        keep_expert_params="none",
+        dense_reduce_scatter_streams=1,
     ):
         self.model = model
         self.mp_policy = mp_policy
@@ -1086,6 +1159,8 @@ class FullyShardFusion:
             self.buffer_manager,
             enable_overlap=enable_tensor_fusion_and_overlap,
             prefetch_units=prefetch_units,
+            keep_expert_params=keep_expert_params,
+            dense_reduce_scatter_streams=dense_reduce_scatter_streams,
         )
         self.register_tensor_fusion_hooks(self.model)
         register_fsdp_context(self)

@@ -93,6 +93,8 @@ def _fully_shard_manual_parallel(
     enable_tensor_fusion_and_overlap,
     optimizer=None,
     grad_accum_steps=1,
+    keep_expert_params="none",
+    dense_reduce_scatter_streams=1,
 ):
     layers = module._layers if isinstance(module, MetaParallelBase) else module
     if optimizer is not None:
@@ -101,6 +103,8 @@ def _fully_shard_manual_parallel(
         layers,
         enable_tensor_fusion_and_overlap=enable_tensor_fusion_and_overlap,
         mp_policy=mp_policy,
+        keep_expert_params=keep_expert_params,
+        dense_reduce_scatter_streams=dense_reduce_scatter_streams,
     )
     layers._fsdp_context.set_grad_accum_steps(grad_accum_steps)
     if optimizer is not None:
@@ -142,6 +146,8 @@ def fully_shard(
     enable_tensor_fusion_and_overlap: bool = True,
     optimizer: paddle.optimizer.Optimizer | None = None,
     grad_accum_steps: int = 1,
+    keep_expert_params: str = "none",
+    dense_reduce_scatter_streams: int = 1,
 ) -> paddle.nn.Layer:
     """
     Apply fully sharded data parallel (FSDP) to the given module.
@@ -178,6 +184,17 @@ def fully_shard(
             if needed.
         grad_accum_steps (int, optional): Manual parallel mode only. Gradient
             accumulation steps. Defaults to 1.
+        keep_expert_params (str, optional): Manual parallel mode only. Keep
+            gathered expert params (``is_moe_param``) outside the gather-buffer
+            budget so they are not all-gathered again. ``"none"``: no change;
+            ``"backward"``: kept from forward until their unit's backward is
+            done; ``"step"``: kept for the whole step and freed before the
+            optimizer. Costs one full copy of the local expert params per
+            kept layer. Defaults to ``"none"``.
+        dense_reduce_scatter_streams (int, optional): Manual parallel mode
+            only. Spread the reduce-scatters of a unit's dense grad groups
+            over this many clones of their process group (one NCCL stream
+            each). Defaults to 1.
 
     Returns:
         module: A wrapper module that applies FSDP to the input module.
@@ -227,4 +244,8 @@ def fully_shard(
     if in_auto_parallel_mode():
         return _fully_shard_auto_parallel(*args)
     else:
-        return _fully_shard_manual_parallel(*args)
+        return _fully_shard_manual_parallel(
+            *args,
+            keep_expert_params=keep_expert_params,
+            dense_reduce_scatter_streams=dense_reduce_scatter_streams,
+        )
