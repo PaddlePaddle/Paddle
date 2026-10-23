@@ -26,6 +26,27 @@
 
 generate_dummy_static_lib(LIB_NAME "cblas" GENERATOR "cblas.cmake")
 
+# Allow users to provide a prebuilt OpenBLAS package.  This is used by
+# Windows ARM64 where building OpenBLAS from source is not supported by MSVC.
+if(WIN32 AND WITH_ARM)
+  if(NOT CBLAS_INC_DIR
+     OR NOT EXISTS "${CBLAS_INC_DIR}/cblas.h"
+     OR NOT CBLAS_LIBRARIES
+     OR NOT EXISTS "${CBLAS_LIBRARIES}"
+     OR NOT OPENBLAS_SHARED_LIB
+     OR NOT EXISTS "${OPENBLAS_SHARED_LIB}")
+    message(
+      FATAL_ERROR
+        "Windows ARM64 requires -DCBLAS_INC_DIR=<OpenBLAS include dir>, "
+        "-DCBLAS_LIBRARIES=<path to openblas.lib>, and "
+        "-DOPENBLAS_SHARED_LIB=<path to openblas.dll>")
+  endif()
+  set(CBLAS_PROVIDER OPENBLAS CACHE STRING "cblas provider" FORCE)
+  add_definitions(-DPADDLE_USE_OPENBLAS)
+  add_definitions(-DLAPACK_FOUND)
+  message(STATUS "WIN32 ARM64: using prebuilt OpenBLAS")
+endif()
+
 if(WITH_LIBXSMM)
   target_link_libraries(cblas ${LIBXSMM_LIBS})
   add_dependencies(cblas extern_libxsmm)
@@ -89,8 +110,9 @@ if(NOT DEFINED CBLAS_PROVIDER)
       $ENV{OPENBLAS_ROOT}
       CACHE PATH "Folder contains Openblas")
   set(OPENBLAS_INCLUDE_SEARCH_PATHS
-      ${OPENBLAS_ROOT}/include /usr/include /usr/include/lapacke
-      /usr/include/openblas /usr/local/opt/openblas/include)
+      ${OPENBLAS_ROOT}/include ${OPENBLAS_ROOT}/include/openblas /usr/include
+      /usr/include/lapacke /usr/include/openblas
+      /usr/local/opt/openblas/include)
   set(OPENBLAS_LIB_SEARCH_PATHS
       ${OPENBLAS_ROOT}/lib /usr/lib /usr/lib/blas/openblas /usr/lib/openblas
       /usr/local/opt/openblas/lib)
