@@ -250,6 +250,72 @@ struct Buffer {
                     std::optional<EventHandle>& previous_event,  // NOLINT
                     bool async,
                     bool allocate_on_comm_stream);
+
+  std::tuple<std::vector<int>,         // num_recv_tokens_per_expert_list
+             int,                      // num_recv_tokens
+             int,                      // num_rdma_recv_tokens
+             deep_ep::detail::Tensor,  // rdma_channel_prefix_matrix
+             deep_ep::detail::Tensor,  // gbl_channel_prefix_matrix
+             deep_ep::detail::Tensor,  // recv_rdma_rank_prefix_sum
+             deep_ep::detail::Tensor>  // recv_gbl_rank_prefix_sum
+  internode_notify_dispatch(
+      const deep_ep::detail::Tensor& x,
+      const std::optional<deep_ep::detail::Tensor>& x_scales,
+      const std::optional<deep_ep::detail::Tensor>& topk_idx,
+      const std::optional<deep_ep::detail::Tensor>& num_tokens_per_rank,
+      const std::optional<deep_ep::detail::Tensor>& num_tokens_per_rdma_rank,
+      const std::optional<deep_ep::detail::Tensor>& num_tokens_per_expert,
+      const deep_ep::detail::Tensor& is_token_in_rank,
+      const std::optional<deep_ep::detail::Tensor>&
+          cached_rdma_channel_prefix_matrix,
+      const std::optional<deep_ep::detail::Tensor>&
+          cached_recv_rdma_rank_prefix_sum,
+      const std::optional<deep_ep::detail::Tensor>&
+          cached_gbl_channel_prefix_matrix,
+      const std::optional<deep_ep::detail::Tensor>&
+          cached_recv_gbl_rank_prefix_sum,
+      int cached_num_recv_tokens,
+      int cached_num_rdma_recv_tokens,
+      int expert_alignment,
+      const Config& config,
+      std::optional<EventHandle>& previous_event,  // NOLINT
+      bool async,
+      bool allocate_on_comm_stream);
+
+  std::tuple<
+      deep_ep::detail::Tensor,                 // recv_x
+      std::optional<deep_ep::detail::Tensor>,  // recv_x_scales
+      std::optional<deep_ep::detail::Tensor>,  // recv_topk_idx
+      std::optional<deep_ep::detail::Tensor>,  // recv_topk_weights
+      std::optional<
+          deep_ep::detail::Tensor>,  // recv_rdma_channel_prefix_matrix
+      std::optional<deep_ep::detail::Tensor>,  // recv_gbl_channel_prefix_matrix
+      std::optional<deep_ep::detail::Tensor>,  // recv_src_meta
+      std::optional<deep_ep::detail::Tensor>,  // send_rdma_head
+      std::optional<deep_ep::detail::Tensor>,  // send_nvl_head
+      std::optional<EventHandle>>
+  internode_dispatch_after_notify(
+      const deep_ep::detail::Tensor& x,
+      const std::optional<deep_ep::detail::Tensor>& x_scales,
+      const std::optional<deep_ep::detail::Tensor>& topk_idx,
+      const std::optional<deep_ep::detail::Tensor>& topk_weights,
+      const std::optional<deep_ep::detail::Tensor>& num_tokens_per_rank,
+      const std::optional<deep_ep::detail::Tensor>& num_tokens_per_rdma_rank,
+      const std::optional<deep_ep::detail::Tensor>& num_tokens_per_expert,
+      const deep_ep::detail::Tensor& is_token_in_rank,
+      const deep_ep::detail::Tensor& rdma_channel_prefix_matrix,
+      const deep_ep::detail::Tensor& recv_rdma_rank_prefix_sum,
+      const deep_ep::detail::Tensor& gbl_channel_prefix_matrix,
+      const deep_ep::detail::Tensor& recv_gbl_rank_prefix_sum,
+      bool cached_mode,
+      int num_recv_tokens,
+      int num_rdma_recv_tokens,
+      int expert_alignment,
+      const Config& config,
+      std::optional<EventHandle>& previous_event,  // NOLINT
+      bool async,
+      bool allocate_on_comm_stream);
+
 #endif  // PADDLE_WITH_NVSHMEM
 
   void clean_low_latency_buffer(int num_max_dispatch_tokens_per_rank,
@@ -439,6 +505,65 @@ struct Buffer {
                         std::optional<EventHandle>& previous_event,  // NOLINT
                         bool async,
                         bool allocate_on_comm_stream);
+
+  std::tuple<std::vector<int>,  // num_recv_tokens_per_expert_list
+             int,               // num_recv_tokens
+             int,               // num_rdma_recv_tokens
+             paddle::Tensor,    // rdma_channel_prefix_matrix
+             paddle::Tensor,    // gbl_channel_prefix_matrix
+             paddle::Tensor,    // recv_rdma_rank_prefix_sum
+             paddle::Tensor>    // recv_gbl_rank_prefix_sum
+  internode_notify_dispatch_api(
+      const paddle::Tensor& x,
+      const std::optional<paddle::Tensor>& x_scales,
+      const std::optional<paddle::Tensor>& topk_idx,
+      const std::optional<paddle::Tensor>& num_tokens_per_rank,
+      const std::optional<paddle::Tensor>& num_tokens_per_rdma_rank,
+      const std::optional<paddle::Tensor>& num_tokens_per_expert,
+      const paddle::Tensor& is_token_in_rank,
+      const std::optional<paddle::Tensor>& cached_rdma_channel_prefix_matrix,
+      const std::optional<paddle::Tensor>& cached_recv_rdma_rank_prefix_sum,
+      const std::optional<paddle::Tensor>& cached_gbl_channel_prefix_matrix,
+      const std::optional<paddle::Tensor>& cached_recv_gbl_rank_prefix_sum,
+      int cached_num_recv_tokens,
+      int cached_num_rdma_recv_tokens,
+      int expert_alignment,
+      const Config& config,
+      std::optional<EventHandle>& previous_event,  // NOLINT
+      bool async,
+      bool allocate_on_comm_stream);
+
+  std::tuple<paddle::Tensor,
+             std::optional<paddle::Tensor>,
+             std::optional<paddle::Tensor>,
+             std::optional<paddle::Tensor>,
+             std::optional<paddle::Tensor>,
+             std::optional<paddle::Tensor>,
+             std::optional<paddle::Tensor>,
+             std::optional<paddle::Tensor>,
+             std::optional<paddle::Tensor>,
+             std::optional<EventHandle>>
+  internode_dispatch_after_notify_api(
+      const paddle::Tensor& x,
+      const std::optional<paddle::Tensor>& x_scales,
+      const std::optional<paddle::Tensor>& topk_idx,
+      const std::optional<paddle::Tensor>& topk_weights,
+      const std::optional<paddle::Tensor>& num_tokens_per_rank,
+      const std::optional<paddle::Tensor>& num_tokens_per_rdma_rank,
+      const std::optional<paddle::Tensor>& num_tokens_per_expert,
+      const paddle::Tensor& is_token_in_rank,
+      const paddle::Tensor& rdma_channel_prefix_matrix,
+      const paddle::Tensor& recv_rdma_rank_prefix_sum,
+      const paddle::Tensor& gbl_channel_prefix_matrix,
+      const paddle::Tensor& recv_gbl_rank_prefix_sum,
+      bool cached_mode,
+      int num_recv_tokens,
+      int num_rdma_recv_tokens,
+      int expert_alignment,
+      const Config& config,
+      std::optional<EventHandle>& previous_event,  // NOLINT
+      bool async,
+      bool allocate_on_comm_stream);
 
   std::tuple<paddle::Tensor,
              std::optional<paddle::Tensor>,
