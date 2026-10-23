@@ -1,4 +1,5 @@
 name: Coverage Approval
+run-name: Coverage Approval PR-${{ github.event.pull_request.number }}
 
 on:
   pull_request_review:

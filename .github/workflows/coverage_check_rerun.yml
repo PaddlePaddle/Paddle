@@ -29,6 +29,7 @@ jobs:
       UPSTREAM_RUN_ID: ${{ github.event.workflow_run.id }}
       UPSTREAM_RUN_ATTEMPT: ${{ github.event.workflow_run.run_attempt }}
       HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+      UPSTREAM_TITLE: ${{ github.event.workflow_run.display_title }}
       CONTROLLER_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
       API_VERSION: 2022-11-28
     steps:
@@ -92,6 +93,9 @@ jobs:
           fi
 
           pr_numbers=$(jq -r '[.workflow_run.pull_requests[]?.number] | unique | .[]' "${GITHUB_EVENT_PATH}")
+          if [[ -z "${pr_numbers}" && "${UPSTREAM_TITLE}" =~ PR-([0-9]+)$ ]]; then
+            pr_numbers="${BASH_REMATCH[1]}"
+          fi
           if [[ -z "${pr_numbers}" ]]; then
             associated_prs=$(api_pages "/repos/${REPO}/commits/${HEAD_SHA}/pulls?per_page=100")
             pr_numbers=$(jq -s -r '[.[][] | .number] | unique | .[]' <<<"${associated_prs}")
