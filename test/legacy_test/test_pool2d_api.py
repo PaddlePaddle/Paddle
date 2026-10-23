@@ -1106,6 +1106,67 @@ class TestPool2DError_API(unittest.TestCase):
         self.assertRaises(ValueError, run_zero_norm_type)
 
 
+class TestPool2DNegativePadding_API(unittest.TestCase):
+    """Negative padding must be rejected, as it already is for conv.
+
+    ``_update_padding_nd`` exists twice: the conv twin has always rejected a
+    negative pad, while the pooling twin accepted it and silently produced a
+    smaller - or entirely empty - output tensor instead of raising.
+    """
+
+    def test_max_pool2d_negative_padding_raises(self):
+        def run():
+            with base.dygraph.guard():
+                input_pd = paddle.to_tensor(
+                    np.random.uniform(-1, 1, [2, 3, 32, 32]).astype(np.float32)
+                )
+                max_pool2d(input_pd, kernel_size=2, stride=2, padding=-2)
+
+        self.assertRaises(ValueError, run)
+
+    def test_avg_pool2d_negative_padding_raises(self):
+        def run():
+            with base.dygraph.guard():
+                input_pd = paddle.to_tensor(
+                    np.random.uniform(-1, 1, [2, 3, 32, 32]).astype(np.float32)
+                )
+                avg_pool2d(input_pd, kernel_size=2, stride=2, padding=-1)
+
+        self.assertRaises(ValueError, run)
+
+    def test_lp_pool2d_negative_padding_raises(self):
+        def run():
+            with base.dygraph.guard():
+                input_pd = paddle.to_tensor(
+                    np.random.uniform(-1, 1, [2, 3, 32, 32]).astype(np.float32)
+                )
+                lp_pool2d(input_pd, kernel_size=2, stride=2, padding=[-1, -1])
+
+        self.assertRaises(ValueError, run)
+
+    def test_non_negative_padding_still_accepted(self):
+        """The guard must not narrow anything that used to work."""
+        with base.dygraph.guard():
+            input_pd = paddle.to_tensor(
+                np.random.uniform(-1, 1, [2, 3, 32, 32]).astype(np.float32)
+            )
+            for padding in (
+                0,
+                1,
+                2,
+                [1, 1],
+                [1, 2],
+                [[0, 0], [0, 0], [1, 1], [1, 2]],
+                'SAME',
+                'VALID',
+            ):
+                with self.subTest(padding=padding):
+                    out = max_pool2d(
+                        input_pd, kernel_size=2, stride=2, padding=padding
+                    )
+                    self.assertIsNotNone(out)
+
+
 class TestPool2D_API_ZeroSize(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)
