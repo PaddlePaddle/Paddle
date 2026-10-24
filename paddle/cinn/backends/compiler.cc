@@ -53,6 +53,11 @@
 #include "paddle/cinn/backends/sycl/compiler_sycl.h"
 #include "paddle/cinn/runtime/sycl/sycl_module.h"
 #endif
+#ifdef CINN_WITH_XPU
+#include "paddle/cinn/backends/xpu/codegen_xpu_dev.h"
+#include "paddle/cinn/backends/xpu/compiler_xpu.h"
+#include "paddle/cinn/runtime/xpu/xpu_module.h"
+#endif
 #include "paddle/cinn/adt/adt.h"
 
 PD_DECLARE_string(cinn_source_code_save_path);
@@ -260,6 +265,7 @@ void Compiler::Build(const Module& module, const std::string& code) {
       [&](common::NVGPUArch) { CompileCudaModule(module, code); },
       [&](common::HygonDCUArchHIP) { CompileHipModule(module, code); },
       [&](common::HygonDCUArchSYCL) { CompileSyclModule(module, code); },
+      [&](common::XpuArch) { CompileXpuModule(module, code); },
       [&](common::CustomDeviceArch) {
         CompileCustomDeviceModule(module, code);
       });
@@ -404,6 +410,19 @@ std::string Compiler::GetSourceCode(const ir::Module& module) {
 #else
         CINN_NOT_IMPLEMENTED
 #endif
+      },
+      [&](common::XpuArch) -> std::string {
+#ifdef CINN_WITH_XPU
+        auto _host_module_device_module_ =
+            SplitDeviceAndHostModule(module);  // NOLINT
+        auto& host_module = std::get<0>(_host_module_device_module_);
+        auto& device_module = std::get<1>(_host_module_device_module_);
+        xpu::CodeGenXpuDevice codegen(target_);
+        auto source_code = codegen.Compile(device_module);
+        return source_code;
+#else
+        CINN_NOT_IMPLEMENTED
+#endif
       });
 }
 
@@ -415,7 +434,8 @@ void Compiler::BuildDefault(const Module& module) {
       [&](common::CustomDeviceArch) { CompileCustomDeviceModule(module); },
       [&](common::NVGPUArch) { CompileCudaModule(module); },
       [&](common::HygonDCUArchHIP) { CompileHipModule(module); },
-      [&](common::HygonDCUArchSYCL) { CompileSyclModule(module); });
+      [&](common::HygonDCUArchSYCL) { CompileSyclModule(module); },
+      [&](common::XpuArch) { CompileXpuModule(module); });
 }
 
 namespace {
@@ -444,7 +464,8 @@ void Compiler::RegisterDeviceModuleSymbol() {
       [&](common::CustomDeviceArch) { RegisterCustomDeviceModuleSymbol(); },
       [&](common::NVGPUArch) { RegisterCudaModuleSymbol(); },
       [&](common::HygonDCUArchHIP) { RegisterHipModuleSymbol(); },
-      [&](common::HygonDCUArchSYCL) { RegisterSyclModuleSymbol(); });
+      [&](common::HygonDCUArchSYCL) { RegisterSyclModuleSymbol(); },
+      [&](common::XpuArch) { RegisterXpuModuleSymbol(); });
 }
 
 std::string Compiler::GetDeviceId() const {
@@ -670,6 +691,28 @@ void Compiler::RegisterSyclModuleSymbol() {
 #endif
 }
 
+void Compiler::RegisterXpuModuleSymbol() {
+#ifdef CINN_WITH_XPU
+  PADDLE_ENFORCE_EQ(xpu_kernels_.size(),
+                    device_fn_name_.size(),
+                    ::common::errors::Fatal(
+                        "XPU: kernel count mismatch: %zu kernels vs %zu names.",
+                        xpu_kernels_.size(),
+                        device_fn_name_.size()));
+
+  RuntimeSymbols symbols;
+  for (size_t i = 0; i < device_fn_name_.size(); ++i) {
+    auto* xpu_mod = xpu_kernels_[i];
+    fn_ptr_.push_back(reinterpret_cast<void*>(xpu_mod));
+    symbols.RegisterVar(device_fn_name_[i] + "_ptr_",
+                        reinterpret_cast<void*>(xpu_mod));
+  }
+  engine_->RegisterModuleRuntimeSymbols(std::move(symbols));
+#else
+  CINN_NOT_IMPLEMENTED
+#endif
+}
+
 void Compiler::CompileCudaModule(const Module& module,
                                  const std::string& code) {
 #ifdef CINN_WITH_CUDA
@@ -816,6 +859,68 @@ void Compiler::CompileSyclModule(const Module& module,
   for (auto& fn : device_module.functions()) {
     std::string kernel_fn_name = fn->name;
     device_fn_name_.emplace_back(kernel_fn_name);
+  }
+  engine_->Link<CodeGenGpuHost>(host_module);
+#else
+  CINN_NOT_IMPLEMENTED
+#endif
+}
+
+void Compiler::CompileXpuModule(const Module& module, const std::string& code) {
+#ifdef CINN_WITH_XPU
+  auto _host_module_device_module_ =
+      SplitDeviceAndHostModule(module);  // NOLINT
+  auto& host_module = std::get<0>(_host_module_device_module_);
+  auto& device_module = std::get<1>(_host_module_device_module_);
+  VLOG(3) << "[XPU] host module:\n" << host_module;
+  VLOG(3) << "[XPU] device module:\n" << device_module;
+  std::string source_code;
+  if (!FLAGS_cinn_debug_custom_code_path.empty()) {
+    std::string file_path = FLAGS_cinn_debug_custom_code_path;
+    source_code = GetFileContent(file_path);
+  } else if (code.empty()) {
+    xpu::CodeGenXpuDevice codegen(target_);
+    source_code = codegen.Compile(device_module);
+  } else {
+    source_code = code;
+  }
+  PADDLE_ENFORCE_EQ(
+      !source_code.empty(),
+      true,
+      ::common::errors::Fatal("Compile XPU code failed from device module:\n%s",
+                              device_module));
+  VLOG(3) << "[XPU]:\n" << source_code;
+  SourceCodePrint::GetInstance()->write(source_code);
+
+  // Compile once: xpurtc::CompileContext compiles the whole source and exposes
+  // per-kernel Kernel objects carrying binary blob, hash, and mangled name.
+  // This mirrors how RegisterHipModuleSymbol calls hiprtc::Compiler once.
+  std::string full_source =
+      xpu::CodeGenXpuDevice::GetSourceHeader() + source_code;
+  ::xpurtc::CompileContext ctx(4 /*M100*/);
+  ctx.add_source(full_source, ::xpurtc::SourceKind::XPU, "cinn_xpu");
+
+  for (auto& fn : device_module.functions()) {
+    std::string kernel_fn_name = fn->name;
+    device_fn_name_.emplace_back(kernel_fn_name);
+
+    ::xpurtc::Kernel kernel = ctx.get_by_short_name(kernel_fn_name);
+    if (!kernel.is_valid()) {
+      kernel = ctx.get_by_full_name(kernel_fn_name);
+    }
+    PADDLE_ENFORCE_EQ(kernel.is_valid(),
+                      true,
+                      ::common::errors::Fatal(
+                          "XPU: could not find kernel '%s' in compiled module.",
+                          kernel_fn_name.c_str()));
+
+    auto* xpu_mod = new runtime::xpu::XpuModule(
+        std::string(reinterpret_cast<const char*>(kernel.code()),
+                    kernel.size()),
+        kernel.hash(),
+        kernel.mangled_name(),
+        kernel.is_cdnn_kernel());
+    xpu_kernels_.push_back(xpu_mod);
   }
   engine_->Link<CodeGenGpuHost>(host_module);
 #else

@@ -11,7 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-#ifdef CINN_WITH_CUDA
+#if defined(CINN_WITH_CUDA) || defined(CINN_WITH_XPU)
 #include <cuda.h>
 #include <cuda_runtime_api.h>
 #include <driver_types.h>
@@ -66,6 +66,12 @@ Target::Target(OS o,
                    "Please recompile with flag CINN_WITH_SYCL and WITH_CINN."));
 #endif
              },
+             [&](XpuArch) {
+#ifndef CINN_WITH_XPU
+               PADDLE_THROW(::common::errors::Unimplemented(
+                   "Please recompile with flag CINN_WITH_XPU and WITH_CINN."));
+#endif
+             },
              [&](CustomDeviceArch) {
 #ifndef CINN_WITH_CUSTOM_DEVICE
                PADDLE_THROW(::common::errors::Unimplemented(
@@ -96,6 +102,8 @@ int GetRuntimeArchImpl(HygonDCUArchHIP) { CINN_NOT_IMPLEMENTED }
 
 int GetRuntimeArchImpl(HygonDCUArchSYCL) { CINN_NOT_IMPLEMENTED }
 
+int GetRuntimeArchImpl(XpuArch) { CINN_NOT_IMPLEMENTED }
+
 int GetRuntimeArchImpl(CustomDeviceArch arch) { return cinn_custom_device; }
 
 int GetRuntimeArch(Arch arch) {
@@ -122,6 +130,8 @@ int GetMaxNumThreadsImpl(NVGPUArch arch) { return 1024; }
 int GetMaxNumThreadsImpl(HygonDCUArchHIP arch) { return 1024; }
 
 int GetMaxNumThreadsImpl(HygonDCUArchSYCL arch) { return 1024; }
+
+int GetMaxNumThreadsImpl(XpuArch arch) { return 1024; }
 
 int GetMaxNumThreadsImpl(CustomDeviceArch arch) {
 #ifdef CINN_WITH_CUSTOM_DEVICE
@@ -170,6 +180,11 @@ int GetMultiProcessCountImpl(HygonDCUArchHIP arch) {
 }
 
 int GetMultiProcessCountImpl(HygonDCUArchSYCL arch) {
+  return BackendAPI::get_backend(arch)->get_device_property(
+      BackendAPI::DeviceProperty::MultiProcessorCount);
+}
+
+int GetMultiProcessCountImpl(XpuArch arch) {
   return BackendAPI::get_backend(arch)->get_device_property(
       BackendAPI::DeviceProperty::MultiProcessorCount);
 }
@@ -231,6 +246,11 @@ int GetMaxThreadsPerSmImpl(HygonDCUArchSYCL arch) {
       BackendAPI::DeviceProperty::MaxThreadsPerSM);
 }
 
+int GetMaxThreadsPerSmImpl(XpuArch arch) {
+  return BackendAPI::get_backend(arch)->get_device_property(
+      BackendAPI::DeviceProperty::MaxThreadsPerSM);
+}
+
 int GetMaxThreadsPerSmImpl(CustomDeviceArch arch) {
 #ifdef CINN_WITH_CUSTOM_DEVICE
   if (arch.device_type.empty()) return 2048;
@@ -282,6 +302,11 @@ int GetMaxBlocksPerSmImpl(HygonDCUArchHIP arch) {
 }
 
 int GetMaxBlocksPerSmImpl(HygonDCUArchSYCL arch) {
+  return BackendAPI::get_backend(arch)->get_device_property(
+      BackendAPI::DeviceProperty::MaxBlocksPerSM);
+}
+
+int GetMaxBlocksPerSmImpl(XpuArch arch) {
   return BackendAPI::get_backend(arch)->get_device_property(
       BackendAPI::DeviceProperty::MaxBlocksPerSM);
 }
@@ -427,6 +452,11 @@ const Target &DefaultHygonDcuSyclTarget() {
   return target;
 }
 
+const Target &DefaultXpuTarget() {
+  static Target target(Target::OS::Linux, XpuArch{}, Target::Bit::k64, {}, {});
+  return target;
+}
+
 const Target &DefaultCustomDeviceTarget() {
 #ifdef CINN_WITH_CUSTOM_DEVICE
   auto dev_types = phi::DeviceManager::GetAllCustomDeviceTypes();
@@ -457,6 +487,8 @@ const Target &DefaultCustomDeviceTarget() {
 const Target &DefaultDeviceTarget() {
 #ifdef CINN_WITH_CUDA
   return DefaultNVGPUTarget();
+#elif defined(CINN_WITH_XPU)
+  return DefaultXpuTarget();
 #elif defined(CINN_WITH_SYCL)
   return DefaultHygonDcuSyclTarget();
 #elif defined(CINN_WITH_HIP)
@@ -566,6 +598,14 @@ bool GetSupportsCooperativeLaunchImpl(CustomDeviceArch) { return true; }
 bool GetSupportsCooperativeLaunchImpl(HygonDCUArchHIP) { return false; }
 
 bool GetSupportsCooperativeLaunchImpl(HygonDCUArchSYCL) { return false; }
+
+bool GetSupportsCooperativeLaunchImpl(XpuArch) {
+  int supportsCoopLaunch = 0;
+#ifdef CINN_WITH_XPU
+  cudaDeviceGetAttribute(&supportsCoopLaunch, cudaDevAttrCooperativeLaunch, 0);
+#endif
+  return supportsCoopLaunch != 0;
+}
 
 bool GetSupportsCooperativeLaunch(Arch arch) {
   return std::visit(

@@ -897,6 +897,14 @@ std::vector<Tensor> MulBaseCallImpl(common::HygonDCUArchSYCL,
   MulBaseCallImplNvHygonCustom(A, B, name, target);
 }
 
+std::vector<Tensor> MulBaseCallImpl(common::XpuArch,
+                                    const Tensor& A,
+                                    const Tensor& B,
+                                    const std::string& name,
+                                    const cinn::common::Target& target) {
+  MulBaseCallImplNvHygonCustom(A, B, name, target);
+}
+
 std::vector<Tensor> MulBaseCall(const Tensor& A,
                                 const Tensor& B,
                                 const std::string& name,
@@ -1680,7 +1688,8 @@ ir::Tensor ScatterAssign(const ir::Tensor& input,
       },
       [&](common::HygonDCUArchSYCL) {
         extern_fun_name.assign("cinn_sycl_find_int");
-      });
+      },
+      [&](common::XpuArch) { extern_fun_name.assign("cinn_xpu_find_int"); });
 
   auto pos_axis = axis;
   if (pos_axis < 0) pos_axis += input->shape.size();
@@ -1789,6 +1798,7 @@ ir::Tensor ScatterAdd(const ir::Tensor& input,
       },
       [&](common::NVGPUArch) { return ScatterAddNvHygonCustom(); },
       [&](common::CustomDeviceArch) { return ScatterAddNvHygonCustom(); },
+      [&](common::XpuArch) { return ScatterAddNvHygonCustom(); },
       [&](std::variant<common::HygonDCUArchHIP, common::HygonDCUArchSYCL>) {
         return ScatterAddNvHygonCustom();
       });
