@@ -267,7 +267,7 @@ XPUOpMap& get_kl2_ops() {
       {"lars_momentum", XPUKernelSet({FLOAT32, FLOAT16})},
       {"layer_norm_grad", XPUKernelSet({FLOAT32, FLOAT16})},
       {"layer_norm", XPUKernelSet({FLOAT32, FLOAT16})},
-      {"leaky_relu_grad", XPUKernelSet({FLOAT32})},
+      {"leaky_relu_grad", XPUKernelSet({FLOAT32, FLOAT16})},
       {"leaky_relu", XPUKernelSet({FLOAT32, FLOAT16})},
       {"less_equal", XPUKernelSet({INT64, INT32, FLOAT16, FLOAT32})},
       {"less_than", XPUKernelSet({INT64, INT32, FLOAT16, FLOAT32})},
