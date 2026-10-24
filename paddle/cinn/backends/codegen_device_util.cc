@@ -185,7 +185,11 @@ static std::string CurTailFnName(const std::string &origin_fn_name) {
   return new_fn_name;
 }
 
-bool RequiresCooperativeLaunch(const ir::LoweredFunc &func) {
+bool RequiresCooperativeLaunch(const ir::LoweredFunc &func,
+                               const common::Target &target) {
+  if (!target.get_supports_cooperative_launch()) {
+    return false;
+  }
   for (auto &space : func->temp_spaces) {
     if (space.size() != ir::Expr(0)) {
       return true;
@@ -274,12 +278,13 @@ void detail::CollectBucketStrategyHostFunctionVisitor::ProcessLoweredFunc(
           << func_node->cuda_axis_info.block_dim(2) << "), "
           << "shared_mem: " << shared_mem_bytes.value();
   std::optional<const char *> call_kernel;
-  cinn::common::DefaultDeviceTarget().arch.Match(
+  auto target = cinn::common::DefaultDeviceTarget();
+  target.arch.Match(
       [&](std::variant<common::UnknownArch, common::X86Arch, common::ARMArch>) {
         CINN_NOT_IMPLEMENTED;
       },
       [&](common::NVGPUArch) {
-        call_kernel = RequiresCooperativeLaunch(func)
+        call_kernel = RequiresCooperativeLaunch(func, target)
                           ? runtime::intrinsic::call_cuda_cooperative_kernel
                           : runtime::intrinsic::call_cuda_kernel;
       },
@@ -290,7 +295,10 @@ void detail::CollectBucketStrategyHostFunctionVisitor::ProcessLoweredFunc(
         call_kernel = runtime::intrinsic::call_sycl_kernel;
       },
       [&](common::CustomDeviceArch) {
-        call_kernel = runtime::intrinsic::call_custom_device_kernel;
+        call_kernel =
+            RequiresCooperativeLaunch(func, target)
+                ? runtime::intrinsic::call_custom_device_cooperative_kernel
+                : runtime::intrinsic::call_custom_device_kernel;
       });
   // TODO(Dmovic): use new ir when backend update done.
   // Author(liujinnan): Copy args instead of use func args directly in host
