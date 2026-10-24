@@ -15,7 +15,8 @@
 #pragma once
 
 #if !defined(PADDLE_WITH_ARM) && !defined(PADDLE_WITH_SW) && \
-    !defined(PADDLE_WITH_MIPS) && !defined(PADDLE_WITH_LOONGARCH)
+    !defined(PADDLE_WITH_MIPS) && !defined(PADDLE_WITH_LOONGARCH) && \
+    !defined(__powerpc__) && !defined(__ppc__) && !defined(__PPC__)
 #include <immintrin.h>
 #endif
 #include <cfloat>
@@ -101,7 +102,8 @@ void call_gemm_batched(const Context& dev_ctx,
 }
 
 #if !defined(PADDLE_WITH_ARM) && !defined(PADDLE_WITH_SW) && \
-    !defined(PADDLE_WITH_MIPS) && !defined(PADDLE_WITH_LOONGARCH)
+    !defined(PADDLE_WITH_MIPS) && !defined(PADDLE_WITH_LOONGARCH) && \
+    !defined(__powerpc__) && !defined(__ppc__) && !defined(__PPC__)
 
 #define __m256x __m256
 
@@ -144,6 +146,8 @@ inline void axpy(const T* x, T* y, size_t len, const T alpha) {
 #elif defined(PADDLE_WITH_ARM) || defined(PADDLE_WITH_SW) || \
     defined(PADDLE_WITH_MIPS) || defined(PADDLE_WITH_LOONGARCH)
   PADDLE_THROW(common::errors::Unimplemented("axpy is not supported"));
+#elif defined(__powerpc__) || defined(__ppc__) || defined(__PPC__)
+  // fall through to the scalar tail below
 #else
   lll = len & ~SSE_CUT_LEN_MASK;
   __m128x mm_alpha = _mm_load1_px(&alpha);
@@ -174,6 +178,8 @@ inline void axpy_noadd(const T* x, T* y, size_t len, const T alpha) {
 #elif defined(PADDLE_WITH_ARM) || defined(PADDLE_WITH_SW) || \
     defined(PADDLE_WITH_MIPS) || defined(PADDLE_WITH_LOONGARCH)
   PADDLE_THROW(common::errors::Unimplemented("axpy_noadd is not supported"));
+#elif defined(__powerpc__) || defined(__ppc__) || defined(__PPC__)
+  // fall through to the scalar tail below
 #else
   lll = len & ~SSE_CUT_LEN_MASK;
   __m128x mm_alpha = _mm_load1_px(&alpha);
