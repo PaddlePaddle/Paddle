@@ -57,31 +57,73 @@ void GatherKernel(const Context& dev_ctx,
 
   using XPUType = typename XPUTypeTrait<T>::Type;
 
+  int64_t index_len = index.dims().size() == 0 ? 1 : index.dims()[0];
+  // XPU SDK paddle_gather may exceed grid limits for large index tensors.
+  constexpr int64_t kMaxChunkSize = 32768;
+
   int r = 0;
-  if (index_type == DataType::INT32) {
-    r = xpu::paddle_gather<XPUType, int>(
-        dev_ctx.x_context(),
-        reinterpret_cast<const XPUType*>(x.data<T>()),
-        index.data<int>(),
-        reinterpret_cast<XPUType*>(out->data<T>()),
-        xshape,
-        index.dims().size() == 0 ? 1 : index.dims()[0],
-        axis_v);
-  } else if (index_type == DataType::INT64) {
-    r = xpu::paddle_gather<XPUType, int64_t>(
-        dev_ctx.x_context(),
-        reinterpret_cast<const XPUType*>(x.data<T>()),
-        index.data<int64_t>(),
-        reinterpret_cast<XPUType*>(out->data<T>()),
-        xshape,
-        index.dims().size() == 0 ? 1 : index.dims()[0],
-        axis_v);
+  if (index_len <= kMaxChunkSize || axis_v != 0) {
+    // Small tensor or non-axis=0: single call is fine
+    if (index_type == DataType::INT32) {
+      r = xpu::paddle_gather<XPUType, int>(
+          dev_ctx.x_context(),
+          reinterpret_cast<const XPUType*>(x.data<T>()),
+          index.data<int>(),
+          reinterpret_cast<XPUType*>(out->data<T>()),
+          xshape,
+          index_len,
+          axis_v);
+    } else if (index_type == DataType::INT64) {
+      r = xpu::paddle_gather<XPUType, int64_t>(
+          dev_ctx.x_context(),
+          reinterpret_cast<const XPUType*>(x.data<T>()),
+          index.data<int64_t>(),
+          reinterpret_cast<XPUType*>(out->data<T>()),
+          xshape,
+          index_len,
+          axis_v);
+    } else {
+      PADDLE_THROW(common::errors::InvalidArgument(
+          "Unsupported index type, expected int32 or int64, but got type %s",
+          DataTypeToString(index_type)));
+    }
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "paddle_gather");
   } else {
-    PADDLE_THROW(common::errors::InvalidArgument(
-        "Unsupported index type, expected int32 or int64, but got type %s",
-        DataTypeToString(index_type)));
+    // Large index with axis=0: chunk to avoid XPU grid limit crash.
+    // Output for axis=0 has shape [index_len, D1, D2, ...], so each chunk
+    // produces a contiguous slice of the output.
+    int64_t inner_size = 1;
+    auto out_dims = out->dims();
+    for (int64_t i = 1; i < out_dims.size(); ++i) {
+      inner_size *= out_dims[i];
+    }
+
+    for (int64_t start = 0; start < index_len; start += kMaxChunkSize) {
+      int64_t chunk_len = std::min(kMaxChunkSize, index_len - start);
+      if (index_type == DataType::INT32) {
+        r = xpu::paddle_gather<XPUType, int>(
+            dev_ctx.x_context(),
+            reinterpret_cast<const XPUType*>(x.data<T>()),
+            index.data<int>() + start,
+            reinterpret_cast<XPUType*>(out->data<T>()) +
+                start * inner_size,
+            xshape,
+            chunk_len,
+            axis_v);
+      } else if (index_type == DataType::INT64) {
+        r = xpu::paddle_gather<XPUType, int64_t>(
+            dev_ctx.x_context(),
+            reinterpret_cast<const XPUType*>(x.data<T>()),
+            index.data<int64_t>() + start,
+            reinterpret_cast<XPUType*>(out->data<T>()) +
+                start * inner_size,
+            xshape,
+            chunk_len,
+            axis_v);
+      }
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "paddle_gather chunk");
+    }
   }
-  PADDLE_ENFORCE_XDNN_SUCCESS(r, "paddle_gather");
 }
 
 }  // namespace phi
@@ -96,5 +138,4 @@ PD_REGISTER_KERNEL(gather,
                    int8_t,
                    int16_t,
                    int32_t,
-                   int64_t,
-                   bool) {}
+                   int64_t) {}
