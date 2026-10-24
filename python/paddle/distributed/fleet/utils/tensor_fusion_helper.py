@@ -841,13 +841,54 @@ class FusedCommBuffer:
                 if self._free_grads_in_comm
                 else self.grad_storage._slice(begin, end)
             )
-            task = paddle.distributed.reduce_scatter(
-                reduce_scattered,
-                self.grad_storage,
-                op=reduce_op,
-                group=self._comm_group,
-                sync_op=False,
+            # Deterministic reduce-scatter (opt-in via env ``HB_DET_RS``): accumulate
+            # each rank's contribution to the fused gradient in a fixed rank order
+            # (0..nranks-1) instead of relying on NCCL reduce_scatter's unspecified
+            # cross-rank reduction order. This makes the fused gradient bit-reproducible
+            # across runs whose fusion-buffer layout differs (e.g. a model that carries
+            # extra parameter groups vs one that does not), at a small perf/memory cost.
+            # Only engaged for a real multi-rank group.
+            deterministic_rs = bool(
+                os.getenv("HB_DET_RS")
+                and self._comm_group is not None
+                and self._comm_group.nranks > 1
+                and self._comm_group.is_member()
             )
+            if deterministic_rs:
+                # ``alltoall_single`` brings back only this rank's shard slice from every
+                # rank (output sized as the full buffer, viewed as nranks shards), then we
+                # sum them in fixed rank order. Peak memory ~1x buffer, versus nranks x
+                # buffer for an all_gather of the whole buffer.
+                nranks = self._comm_group.nranks
+                exchanged = paddle.empty_like(self.grad_storage)
+                paddle.distributed.alltoall_single(
+                    exchanged,
+                    self.grad_storage,
+                    group=self._comm_group,
+                    sync_op=True,
+                )
+                parts = exchanged.reshape([nranks, shard_size])
+                acc = parts[0].clone()
+                for i in range(1, nranks):
+                    acc = acc + parts[i]
+                if reduce_op == paddle.distributed.ReduceOp.AVG:
+                    acc = acc / nranks
+                reduce_scattered.copy_(acc, False)
+                # Lightweight async placeholder so the downstream ``self._task.wait()``
+                # contract still holds.
+                task = paddle.distributed.all_reduce(
+                    paddle.zeros([1], dtype=self.grad_storage.dtype),
+                    group=self._comm_group,
+                    sync_op=False,
+                )
+            else:
+                task = paddle.distributed.reduce_scatter(
+                    reduce_scattered,
+                    self.grad_storage,
+                    op=reduce_op,
+                    group=self._comm_group,
+                    sync_op=False,
+                )
 
             if self._free_grads_in_comm:
                 self._reset_grad_storage(reduce_scattered)
