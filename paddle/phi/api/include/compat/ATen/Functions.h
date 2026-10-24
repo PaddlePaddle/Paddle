@@ -42,6 +42,7 @@
 #include <ATen/ops/hsplit.h>
 #include <ATen/ops/index.h>
 #include <ATen/ops/index_put.h>
+#include <ATen/ops/index_reduce.h>
 #include <ATen/ops/is_coalesced.h>
 #include <ATen/ops/item.h>
 #include <ATen/ops/masked_select.h>
