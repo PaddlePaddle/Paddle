@@ -414,7 +414,7 @@ XPUOpMap& get_kl3_ops() {
       {"hard_sigmoid_grad", XPUKernelSet({FLOAT32})},
       {"hard_sigmoid", XPUKernelSet({FLOAT32, FLOAT16})},
       {"hard_swish_grad", XPUKernelSet({FLOAT32, FLOAT16})},
-      {"hard_swish", XPUKernelSet({FLOAT32})},
+      {"hard_swish", XPUKernelSet({FLOAT32, FLOAT16})},
       {"huber_loss_grad", XPUKernelSet({FLOAT32})},
       {"huber_loss", XPUKernelSet({FLOAT32})},
       {"kldiv_loss", XPUKernelSet({FLOAT32})},
