@@ -14,8 +14,13 @@
 
 #pragma once
 
+#include <algorithm>
+
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/amp_type_traits.h"
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/kernels/funcs/cub.h"
+#include "paddle/phi/kernels/funcs/radix_sort.h"
 
 namespace phi {
 namespace funcs {
@@ -27,7 +32,8 @@ __global__ void EmbeddingGradDeterministicKernel(T* table,
                                                  const int64_t K,
                                                  const int64_t D,
                                                  const int64_t start_idx,
-                                                 const int64_t end_idx) {
+                                                 const int64_t end_idx,
+                                                 const bool round_acc_first) {
   using MT = typename MPTypeTrait<T>::Type;
   constexpr int64_t kInvalidId = -1;
   extern __shared__ char buf[];
@@ -121,8 +127,14 @@ __global__ void EmbeddingGradDeterministicKernel(T* table,
           }
           if (feature < stride && (!UseLimit || dst_row != kInvalidId)) {
             auto table_idx = dst_row * D + feature;
-            table[table_idx] = static_cast<T>(
-                static_cast<MT>(table[table_idx]) + my_s[threadIdx.x]);
+            // round_acc_first matches torch's embedding_backward_feature_kernel
+            // (`grad_weight += scalar_t(acc)`), which rounds acc to T before
+            // adding, i.e. one extra rounding for low precision types.
+            MT acc = round_acc_first
+                         ? static_cast<MT>(static_cast<T>(my_s[threadIdx.x]))
+                         : my_s[threadIdx.x];
+            table[table_idx] =
+                static_cast<T>(static_cast<MT>(table[table_idx]) + acc);
           }
         }
       }
@@ -138,7 +150,8 @@ void LaunchEmbeddingGradDeterministicKernel(const GPUContext& dev_ctx,
                                             int64_t N,
                                             int64_t D,
                                             int64_t K,
-                                            int64_t start_idx = -1) {
+                                            int64_t start_idx = -1,
+                                            bool round_acc_first = false) {
 #ifdef PADDLE_WITH_HIP
   constexpr int kWarpSize = 64;
   constexpr int kBlockDimY = 16;
@@ -154,14 +167,247 @@ void LaunchEmbeddingGradDeterministicKernel(const GPUContext& dev_ctx,
   if (start_idx < 0) {
     EmbeddingGradDeterministicKernel<T, IdT, kWarpSize, kBlockDimY, false>
         <<<grids, threads, kSharedMemSize, dev_ctx.stream()>>>(
-            d_table, d_out, ids, K, D, -1, -1);
+            d_table, d_out, ids, K, D, -1, -1, round_acc_first);
   } else {
     int64_t end_idx = start_idx + N;
     EmbeddingGradDeterministicKernel<T, IdT, kWarpSize, kBlockDimY, true>
         <<<grids, threads, kSharedMemSize, dev_ctx.stream()>>>(
-            d_table, d_out, ids, K, D, start_idx, end_idx);
+            d_table, d_out, ids, K, D, start_idx, end_idx, round_acc_first);
   }
 }
+
+// The sort based backward below follows torch's embedding_dense_backward_cuda
+// (num_indices > 3072): stable sort ids, split rows sharing one id (a segment)
+// into partials of kEmbeddingGradRowsPerPartial rows, sum each partial in MT,
+// then sum the partials of a segment in MT and round to T only once.
+// Accumulation order and grouping are kept identical to torch so the result
+// matches bitwise. RadixSortPairs is not available on HIP/ROCm.
+#if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
+constexpr int64_t kEmbeddingGradRowsPerPartial = 10;
+
+template <typename IdT>
+__global__ void EmbeddingGradSortInitKernel(const IdT* ids,
+                                            const int64_t K,
+                                            int64_t* keys,
+                                            int64_t* positions) {
+  int64_t i = static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+  if (i < K) {
+    keys[i] = static_cast<int64_t>(ids[i]);
+    positions[i] = i;
+  }
+}
+
+static __global__ void EmbeddingGradPartialsPerSegmentKernel(
+    const int64_t* segment_offsets,
+    const int64_t* num_segments_ptr,
+    const int64_t max_segments,
+    const int64_t K,
+    int64_t* partials_per_segment) {
+  int64_t s = static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+  if (s < max_segments) {
+    const int64_t num_segments = *num_segments_ptr;
+    int64_t size = 0;
+    if (s < num_segments) {
+      int64_t end = s == num_segments - 1 ? K : segment_offsets[s + 1];
+      size = end - segment_offsets[s];
+    }
+    // Zero the tail so that the exclusive sum of partials_per_segment also
+    // gives the total number of partials at its last element.
+    partials_per_segment[s] = (size + kEmbeddingGradRowsPerPartial - 1) /
+                              kEmbeddingGradRowsPerPartial;
+  }
+}
+
+static __global__ void EmbeddingGradPartialOffsetKernel(
+    const int64_t* segment_offsets,
+    const int64_t* partials_per_segment,
+    const int64_t* partials_per_segment_offset,
+    const int64_t* num_segments_ptr,
+    int64_t* partial_offsets) {
+  int64_t s = static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+  if (s < *num_segments_ptr) {
+    int64_t p = partials_per_segment_offset[s];
+    for (int64_t i = 0; i < partials_per_segment[s]; ++i) {
+      partial_offsets[p + i] =
+          segment_offsets[s] + i * kEmbeddingGradRowsPerPartial;
+    }
+  }
+}
+template <typename T, typename MT>
+__global__ void EmbeddingGradPartialSumKernel(
+    const T* output,
+    const int64_t* sorted_positions,
+    const int64_t K,
+    const int64_t D,
+    const int64_t* partial_offsets,
+    const int64_t* partials_per_segment,
+    const int64_t* partials_per_segment_offset,
+    const int64_t max_segments,
+    MT* partial_sums) {
+  const int64_t num_partials = partials_per_segment_offset[max_segments - 1] +
+                               partials_per_segment[max_segments - 1];
+  int64_t gid = static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+  int64_t p = gid / D;
+  int64_t feature = gid % D;
+  if (p >= num_partials) return;
+  int64_t begin = partial_offsets[p];
+  int64_t end = p == num_partials - 1 ? K : partial_offsets[p + 1];
+  MT sum = static_cast<MT>(0);
+  for (int64_t i = begin; i < end; ++i) {
+    sum += static_cast<MT>(output[sorted_positions[i] * D + feature]);
+  }
+  partial_sums[p * D + feature] = sum;
+}
+
+template <typename T, typename MT>
+__global__ void EmbeddingGradSumAndScatterKernel(
+    const MT* partial_sums,
+    const int64_t* unique_ids,
+    const int64_t* partials_per_segment,
+    const int64_t* partials_per_segment_offset,
+    const int64_t* num_segments_ptr,
+    const int64_t D,
+    T* table) {
+  int64_t gid = static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+  int64_t s = gid / D;
+  int64_t feature = gid % D;
+  if (s >= *num_segments_ptr) return;
+  int64_t begin = partials_per_segment_offset[s];
+  int64_t end = begin + partials_per_segment[s];
+  MT sum = static_cast<MT>(0);
+  for (int64_t p = begin; p < end; ++p) {
+    sum += partial_sums[p * D + feature];
+  }
+  table[unique_ids[s] * D + feature] = static_cast<T>(sum);
+}
+// d_table must be zero filled. Extra device memory is about
+// (K / kEmbeddingGradRowsPerPartial + min(K, N)) * D * sizeof(MT).
+template <typename T, typename IdT>
+void LaunchEmbeddingGradSortKernel(const GPUContext& dev_ctx,
+                                   const IdT* ids,
+                                   const T* d_out,
+                                   T* d_table,
+                                   int64_t N,
+                                   int64_t D,
+                                   int64_t K) {
+  using MT = typename MPTypeTrait<T>::Type;
+  if (K == 0 || D == 0) return;
+  auto stream = dev_ctx.stream();
+  constexpr int kThreads = 256;
+  auto ceil_div = [](int64_t a, int64_t b) {
+    return static_cast<int>((a + b - 1) / b);
+  };
+  auto alloc_int64 = [&](DenseTensor* t, int64_t n) {
+    t->Resize({n});
+    return dev_ctx.template Alloc<int64_t>(t);
+  };
+  auto alloc_temp = [&](DenseTensor* t, size_t bytes) {
+    t->Resize({static_cast<int64_t>(bytes)});
+    return dev_ctx.template Alloc<uint8_t>(t);
+  };
+
+  // 1. Stable radix sort of (id, position) pairs, the same as torch.
+  DenseTensor keys_in_t, keys_t, positions_in_t, positions_t;
+  int64_t* keys_in = alloc_int64(&keys_in_t, K);
+  int64_t* keys = alloc_int64(&keys_t, K);
+  int64_t* positions_in = alloc_int64(&positions_in_t, K);
+  int64_t* positions = alloc_int64(&positions_t, K);
+  EmbeddingGradSortInitKernel<IdT>
+      <<<ceil_div(K, kThreads), kThreads, 0, stream>>>(
+          ids, K, keys_in, positions_in);
+  RadixSortPairs<int64_t, int64_t>(
+      dev_ctx, keys_in, keys, positions_in, positions, K);
+  // 2. Segments: unique ids and their start offsets in sorted order, the same
+  // as torch's unique_by_key(sorted_indices, counting_iterator(0)).
+  const int64_t max_segments = std::min(K, N);
+  DenseTensor unique_ids_t, segment_offsets_t, num_segments_t, unique_temp_t;
+  int64_t* unique_ids = alloc_int64(&unique_ids_t, max_segments);
+  int64_t* segment_offsets = alloc_int64(&segment_offsets_t, max_segments);
+  int64_t* num_segments = alloc_int64(&num_segments_t, 1);
+  cub::CountingInputIterator<int64_t> counting_iter(0);
+  size_t temp_bytes = 0;
+  cub::DeviceSelect::UniqueByKey(nullptr,
+                                 temp_bytes,
+                                 keys,
+                                 counting_iter,
+                                 unique_ids,
+                                 segment_offsets,
+                                 num_segments,
+                                 K,
+                                 stream);
+  cub::DeviceSelect::UniqueByKey(alloc_temp(&unique_temp_t, temp_bytes),
+                                 temp_bytes,
+                                 keys,
+                                 counting_iter,
+                                 unique_ids,
+                                 segment_offsets,
+                                 num_segments,
+                                 K,
+                                 stream);
+
+  // 3. Partials of at most kEmbeddingGradRowsPerPartial rows per segment.
+  DenseTensor partials_per_segment_t, partials_per_segment_offset_t,
+      scan_temp_t;
+  int64_t* partials_per_segment =
+      alloc_int64(&partials_per_segment_t, max_segments);
+  int64_t* partials_per_segment_offset =
+      alloc_int64(&partials_per_segment_offset_t, max_segments);
+  EmbeddingGradPartialsPerSegmentKernel<<<ceil_div(max_segments, kThreads),
+                                          kThreads,
+                                          0,
+                                          stream>>>(
+      segment_offsets, num_segments, max_segments, K, partials_per_segment);
+  temp_bytes = 0;
+  cub::DeviceScan::ExclusiveSum(nullptr,
+                                temp_bytes,
+                                partials_per_segment,
+                                partials_per_segment_offset,
+                                max_segments,
+                                stream);
+  cub::DeviceScan::ExclusiveSum(alloc_temp(&scan_temp_t, temp_bytes),
+                                temp_bytes,
+                                partials_per_segment,
+                                partials_per_segment_offset,
+                                max_segments,
+                                stream);
+  const int64_t max_partials = K / kEmbeddingGradRowsPerPartial + max_segments;
+  DenseTensor partial_offsets_t;
+  int64_t* partial_offsets = alloc_int64(&partial_offsets_t, max_partials);
+  EmbeddingGradPartialOffsetKernel<<<ceil_div(max_segments, kThreads),
+                                     kThreads,
+                                     0,
+                                     stream>>>(segment_offsets,
+                                               partials_per_segment,
+                                               partials_per_segment_offset,
+                                               num_segments,
+                                               partial_offsets);
+
+  // 4. Sum every partial, then the partials of every segment, both in MT.
+  DenseTensor partial_sums_t;
+  partial_sums_t.Resize({max_partials, D});
+  MT* partial_sums = dev_ctx.template Alloc<MT>(&partial_sums_t);
+  EmbeddingGradPartialSumKernel<T, MT>
+      <<<ceil_div(max_partials * D, kThreads), kThreads, 0, stream>>>(
+          d_out,
+          positions,
+          K,
+          D,
+          partial_offsets,
+          partials_per_segment,
+          partials_per_segment_offset,
+          max_segments,
+          partial_sums);
+  EmbeddingGradSumAndScatterKernel<T, MT>
+      <<<ceil_div(max_segments * D, kThreads), kThreads, 0, stream>>>(
+          partial_sums,
+          unique_ids,
+          partials_per_segment,
+          partials_per_segment_offset,
+          num_segments,
+          D,
+          d_table);
+}
+#endif
 
 }  // namespace funcs
 }  // namespace phi
