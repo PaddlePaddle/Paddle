@@ -668,7 +668,8 @@ const std::vector<std::string> kPirXpuPasses{
     "conv2d_xpu_fuse_pass",
     "conv2d_add_xpu_fuse_pass",
     "group_norm_silu_fuse_pass",
-    "fc_xpu_fuse_pass"};
+    "fc_xpu_fuse_pass",
+    "qkv_attention_xpu_fuse_pass"};
 
 const std::vector<std::string> kPirOnednnPasses {
   "add_shadow_output_after_dead_parameter_pass",
