@@ -148,57 +148,86 @@ void Pad3dKernel(const Context& dev_ctx,
   pads_xpu[5] = pads[1];  // pr
 
   using XPUType = typename XPUTypeTrait<T>::Type;
-  using XPUTypeFP16 = typename XPUTypeTrait<phi::float16>::Type;
-  using XPUTypeBF16 = typename XPUTypeTrait<phi::bfloat16>::Type;
-  // Because the xpu api do not support pad3d with bf16 type, we use fp16
-  // temporarily. This would not cause problem because it is a memcpy-only
-  // operator.
-  using XPURealType = std::
-      conditional_t<std::is_same_v<XPUType, XPUTypeBF16>, XPUTypeFP16, XPUType>;
 
-  if (mode == "reflect") {
-    int r = xpu::reflection_pad3d<XPURealType>(
-        dev_ctx.x_context(),
-        reinterpret_cast<const XPURealType*>(in_data),
-        reinterpret_cast<XPURealType*>(out_data),
-        num,
-        channels,
-        in_depth,
-        in_height,
-        in_width,
-        pads_xpu,
-        is_ncdhw);
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "reflection_pad3d");
-  } else if (mode == "replicate") {
-    int r = xpu::replication_pad3d<XPURealType>(
-        dev_ctx.x_context(),
-        reinterpret_cast<const XPURealType*>(in_data),
-        reinterpret_cast<XPURealType*>(out_data),
-        num,
-        channels,
-        in_depth,
-        in_height,
-        in_width,
-        pads_xpu,
-        is_ncdhw);
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "replication_pad3d");
-  } else if (mode == "constant") {
+  if constexpr (std::is_same_v<T, int> || std::is_same_v<T, int64_t>) {
+    PADDLE_ENFORCE_EQ(
+        mode,
+        "constant",
+        errors::Unimplemented("XPU pad3d only supports int and int64 input for "
+                              "constant mode."));
+    std::vector<int64_t> pad_left;
+    std::vector<int64_t> pad_right;
+    if (is_ncdhw) {
+      pad_left = {0, 0, pads[4], pads[2], pads[0]};
+      pad_right = {0, 0, pads[5], pads[3], pads[1]};
+    } else {
+      pad_left = {0, pads[4], pads[2], pads[0], 0};
+      pad_right = {0, pads[5], pads[3], pads[1], 0};
+    }
     XPUType value = static_cast<XPUType>(pad_value);
-    XPURealType real_value;
-    std::memcpy(&real_value, &value, sizeof(XPURealType));
-    int r = xpu::constant_pad3d<XPURealType>(
-        dev_ctx.x_context(),
-        reinterpret_cast<const XPURealType*>(in_data),
-        reinterpret_cast<XPURealType*>(out_data),
-        num,
-        channels,
-        in_depth,
-        in_height,
-        in_width,
-        pads_xpu,
-        real_value,
-        is_ncdhw);
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant_pad3d");
+    int r = xpu::pad<XPUType>(dev_ctx.x_context(),
+                              reinterpret_cast<const XPUType*>(in_data),
+                              reinterpret_cast<XPUType*>(out_data),
+                              vectorize<int64_t>(in_dims),
+                              pad_left,
+                              pad_right,
+                              value);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "pad");
+    return;
+  } else {
+    using XPUTypeFP16 = typename XPUTypeTrait<phi::float16>::Type;
+    using XPUTypeBF16 = typename XPUTypeTrait<phi::bfloat16>::Type;
+    // Because the xpu api do not support pad3d with bf16 type, we use fp16
+    // temporarily. This would not cause problem because it is a memcpy-only
+    // operator.
+    using XPURealType = std::conditional_t<std::is_same_v<XPUType, XPUTypeBF16>,
+                                           XPUTypeFP16,
+                                           XPUType>;
+
+    if (mode == "reflect") {
+      int r = xpu::reflection_pad3d<XPURealType>(
+          dev_ctx.x_context(),
+          reinterpret_cast<const XPURealType*>(in_data),
+          reinterpret_cast<XPURealType*>(out_data),
+          num,
+          channels,
+          in_depth,
+          in_height,
+          in_width,
+          pads_xpu,
+          is_ncdhw);
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "reflection_pad3d");
+    } else if (mode == "replicate") {
+      int r = xpu::replication_pad3d<XPURealType>(
+          dev_ctx.x_context(),
+          reinterpret_cast<const XPURealType*>(in_data),
+          reinterpret_cast<XPURealType*>(out_data),
+          num,
+          channels,
+          in_depth,
+          in_height,
+          in_width,
+          pads_xpu,
+          is_ncdhw);
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "replication_pad3d");
+    } else if (mode == "constant") {
+      XPUType value = static_cast<XPUType>(pad_value);
+      XPURealType real_value;
+      std::memcpy(&real_value, &value, sizeof(XPURealType));
+      int r = xpu::constant_pad3d<XPURealType>(
+          dev_ctx.x_context(),
+          reinterpret_cast<const XPURealType*>(in_data),
+          reinterpret_cast<XPURealType*>(out_data),
+          num,
+          channels,
+          in_depth,
+          in_height,
+          in_width,
+          pads_xpu,
+          real_value,
+          is_ncdhw);
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant_pad3d");
+    }
   }
 }
 
@@ -210,4 +239,6 @@ PD_REGISTER_KERNEL(pad3d,
                    phi::Pad3dKernel,
                    float,
                    phi::float16,
-                   phi::bfloat16) {}
+                   phi::bfloat16,
+                   int,
+                   int64_t) {}
