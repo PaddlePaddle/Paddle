@@ -23,6 +23,11 @@ limitations under the License. */
 REGISTER_LOG_SIMPLY_STR(std::string);
 COMMON_DECLARE_int32(call_stack_level);
 namespace {
+// C++20 compile probe: consteval is C++20-only, and this file is built into
+// common and common_static.
+consteval bool PaddleCxx20CompileProbe() { return true; }
+static_assert(PaddleCxx20CompileProbe());
+
 class StrSizeCmp {
  public:
   bool operator()(const std::string& lhs, const std::string& rhs) const {
