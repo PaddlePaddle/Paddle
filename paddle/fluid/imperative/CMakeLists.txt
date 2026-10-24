@@ -159,11 +159,11 @@ if(NOT WIN32)
       SRCS heter_ccl_context.cc
       DEPS phi tensor var_type_traits)
   endif()
-  cc_library(
-    data_loader
-    SRCS data_loader.cc
-    DEPS phi common)
 endif()
+cc_library(
+  data_loader
+  SRCS data_loader.cc
+  DEPS phi common)
 if(WITH_GLOO)
   cc_library(
     imperative_gloo_context

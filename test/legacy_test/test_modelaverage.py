@@ -29,6 +29,21 @@ def get_value_by_name(name, ops):
                 return value
 
 
+class RandomDataset(paddle.io.Dataset):
+    def __init__(self, num_samples, image_size=784, class_num=10):
+        self.num_samples = num_samples
+        self.image_size = image_size
+        self.class_num = class_num
+
+    def __getitem__(self, idx):
+        image = np.random.random([self.image_size]).astype('float32')
+        label = np.random.randint(0, self.class_num - 1, (1,)).astype('int64')
+        return image, label
+
+    def __len__(self):
+        return self.num_samples
+
+
 class TestModelAverage(unittest.TestCase):
     def test_model_average_static(self):
         paddle.enable_static()
@@ -145,21 +160,6 @@ class TestModelAverage(unittest.TestCase):
 
         IMAGE_SIZE = 784
         CLASS_NUM = 10
-
-        # define a random dataset
-        class RandomDataset(paddle.io.Dataset):
-            def __init__(self, num_samples):
-                self.num_samples = num_samples
-
-            def __getitem__(self, idx):
-                image = np.random.random([IMAGE_SIZE]).astype('float32')
-                label = np.random.randint(0, CLASS_NUM - 1, (1,)).astype(
-                    'int64'
-                )
-                return image, label
-
-            def __len__(self):
-                return self.num_samples
 
         class LinearNet(nn.Layer):
             def __init__(self):
