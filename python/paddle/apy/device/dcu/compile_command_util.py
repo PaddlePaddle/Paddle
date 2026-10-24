@@ -20,24 +20,38 @@ class CompileCommandGenerator:
         self.file_ext = "cu"
         self.op_type2generate_func = ap.OrderedDict(
             [
-                ['matmul', self.generate_matmul_compile_command],
+                ['matmul', self.generate_compile_command_with_cutlass],
             ]
         )
 
-    def __call__(self, op_type, tpl_dirname, library_name):
-        return self.op_type2generate_func[op_type](tpl_dirname, library_name)
+    def __call__(self, op_type, source_dir, library_name, enable_autotune):
+        return self.op_type2generate_func[op_type](
+            source_dir, library_name, enable_autotune
+        )
 
-    def generate_matmul_compile_command(self, tpl_dirname, library_name):
-        matmul_source_dir = f"{tpl_dirname}/matmul"
+    def supports(self, op_type):
+        return self.op_type2generate_func.contains(op_type)
 
+    def generate_compile_command_with_cutlass(
+        self, source_dir, library_name, enable_autotune
+    ):
+        # `${AP_CUTLASS_DIR}` below is only expanded by the shell that runs the
+        # compile command, so an unset variable would silently drop the cutlass
+        # include paths and surface as a confusing "cutlass/... not found".
+        assert ap.getenv("AP_CUTLASS_DIR"), (
+            "'AP_CUTLASS_DIR' is not set, but the generated kernel includes "
+            "the cutlass headers from '${AP_CUTLASS_DIR}'"
+        )
+        autotune_flag = 1 if enable_autotune else 0
         compile_cmd = (
             "hipcc -std=c++17 -O3 -fPIC --offload-arch=gfx928 -Wno-return-type"
         )
         compile_cmd = compile_cmd + " -I ${AP_CUTLASS_DIR}/include"
         compile_cmd = compile_cmd + " -I ${AP_CUTLASS_DIR}/tools/util/include"
-        compile_cmd = compile_cmd + " -I " + matmul_source_dir
+        compile_cmd = compile_cmd + " -I " + source_dir
         compile_cmd = (
-            compile_cmd + " -DAP_ENABLE_AUTOTUNE=0 -DAP_ENABLE_DEBUG=0"
+            compile_cmd
+            + f" -DAP_ENABLE_AUTOTUNE={autotune_flag} -DAP_ENABLE_DEBUG=0"
         )
         compile_cmd = (
             compile_cmd
