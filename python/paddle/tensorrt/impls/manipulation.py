@@ -947,9 +947,13 @@ def stack_converter(network, paddle_op, inputs):
     if axis < 0:
         axis += output_rank
 
-    shape_tensor = network.add_shape(input_tensors[0])
-    set_layer_name(shape_tensor, paddle_op)
-    shape_tensor = shape_tensor.get_output(0)
+    # Use trt_shape() instead of raw add_shape: TRT 10.8 changed Shape's output
+    # to int64, which then collides with the int32 add_1D_constant_layer below in
+    # add_concatenation ("Error Code 4: incompatible types Int32 and Int64").
+    # trt_shape() casts the shape tensor back to int32 on TRT>=10.
+    shape_tensor = trt_shape(
+        network, input_tensors[0], name=[paddle_op.name(), 'shape_tensor']
+    )
     shape_tensor_vec = []
     for i in range(output_rank):
         if i < axis:
