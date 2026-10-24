@@ -55,7 +55,6 @@
 #include <ATen/ops/permute.h>
 #include <ATen/ops/reciprocal.h>
 #include <ATen/ops/record_stream.h>
-#include <ATen/ops/rename.h>
 #include <ATen/ops/reshape.h>
 #include <ATen/ops/resize.h>
 #include <ATen/ops/scalar_tensor.h>
