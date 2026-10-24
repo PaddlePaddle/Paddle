@@ -560,7 +560,7 @@ XPUOpMap& get_kl2_ops() {
       {"sin", XPUKernelSet({FLOAT32, FLOAT16})},
       {"sin_grad", XPUKernelSet({FLOAT32})},
       {"cos", XPUKernelSet({FLOAT32, FLOAT16})},
-      {"cos_grad", XPUKernelSet({FLOAT32})},
+      {"cos_grad", XPUKernelSet({FLOAT32, FLOAT16})},
       {"linspace", XPUKernelSet({FLOAT32, INT32, INT64})},
       {"randint", XPUKernelSet({INT32, INT64})},
       {"fused_rms_norm_quant", XPUKernelSet({FLOAT32, FLOAT16, BFLOAT16})},
