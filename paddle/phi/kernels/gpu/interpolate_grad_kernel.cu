@@ -1403,19 +1403,23 @@ static void Interpolate2DCUDABwd(
   funcs::SetConstant<Context, T> zero;
   zero(dev_ctx, input_grad, static_cast<T>(0.0));
 
-  if (in_h == out_h && in_w == out_w) {
-    Copy(dev_ctx, output_grad, dev_ctx.GetPlace(), false, input_grad);
-    return;
-  }
-
 #ifdef PADDLE_WITH_CUDA
-  // An absent scale means coordinates are derived from output dimensions.
-  // This includes explicit size and scale_factor + recompute_scale_factor=True,
+  // Without a scale, coordinates are derived from output dimensions. This
+  // includes explicit size and scale_factor + recompute_scale_factor=True,
   // which the Python API converts to output dimensions before dispatch.
-  if constexpr (std::is_same<T, float>::value) {
+  // With a scale, torch maps coordinates by 1 / scale even if the output size
+  // equals the input size. Paddle may also combine a scale with an overriding
+  // output size, which torch cannot express; that keeps the original kernel.
+  if constexpr (std::is_same<T, float>::value ||
+                std::is_same<T, phi::float16>::value ||
+                std::is_same<T, phi::bfloat16>::value) {
+    const bool has_scale = scale_tensor || !scale.empty();
+    const bool has_size = out_size || (size_tensor && size_tensor->size() > 0);
+    // align_mode only matters without align_corners; torch has no
+    // align_mode=1 equivalent.
     if (FLAGS_use_accuracy_compatible_kernel && interp_method == "bilinear" &&
-        data_layout == DataLayout::NCHW && !align_corners && align_mode == 0 &&
-        scale.empty() && !scale_tensor) {
+        (align_corners || align_mode == 0) && !(has_scale && has_size) &&
+        (has_scale || in_h != out_h || in_w != out_w)) {
       funcs::bilinear_compat::LaunchBackward(output_grad_data,
                                              input_grad_data,
                                              n * c * in_h * in_w,
@@ -1423,11 +1427,21 @@ static void Interpolate2DCUDABwd(
                                              in_w,
                                              out_h,
                                              out_w,
+                                             c,
+                                             data_layout == DataLayout::NHWC,
+                                             align_corners,
+                                             scale_h,
+                                             scale_w,
                                              dev_ctx.stream());
       return;
     }
   }
 #endif
+
+  if (in_h == out_h && in_w == out_w) {
+    Copy(dev_ctx, output_grad, dev_ctx.GetPlace(), false, input_grad);
+    return;
+  }
 
   using MT = typename std::conditional_t<std::is_integral<T>::value,
                                          float,
