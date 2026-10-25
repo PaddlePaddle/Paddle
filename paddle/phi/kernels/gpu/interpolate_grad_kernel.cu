@@ -682,56 +682,20 @@ __global__ void KeTrilinearInterpBw(T* in,
       channel_id = tid % num_channels;
     }
 
-    int64_t in_img_idt =
-        align_flag ? static_cast<int>(ratio_d * (out_img_idt + 0.5) - 0.5)
-                   : static_cast<int>(ratio_d * out_img_idt);
-    in_img_idt = (in_img_idt > 0) ? in_img_idt : 0;
-    int64_t d_id = (in_img_idt < in_img_d - 1) ? 1 : 0;
-    double src_d = static_cast<double>(ratio_d * (out_img_idt + 0.5) - 0.5);
-    src_d = (src_d > static_cast<double>(0)) ? src_d : static_cast<double>(0);
-
-    double d1lambda_mt = align_flag ? src_d - static_cast<double>(in_img_idt)
-                                    : static_cast<double>(ratio_d) *
-                                              static_cast<double>(out_img_idt) -
-                                          static_cast<double>(in_img_idt);
-    double d2lambda_mt = static_cast<double>(1.0) - d1lambda_mt;
-
-    int64_t in_img_idy =
-        align_flag ? static_cast<int>(ratio_h * (out_img_idy + 0.5) - 0.5)
-                   : static_cast<int>(ratio_h * out_img_idy);
-    in_img_idy = (in_img_idy > 0) ? in_img_idy : 0;
-    int64_t h_id = (in_img_idy < in_img_h - 1) ? 1 : 0;
-    double src_h =
-        static_cast<double>(ratio_h) * static_cast<double>(out_img_idy + 0.5) -
-        static_cast<double>(0.5);
-    src_h = (src_h > static_cast<double>(0)) ? src_h : static_cast<double>(0);
-    double h1lambda_mt = align_flag ? src_h - static_cast<double>(in_img_idy)
-                                    : static_cast<double>(ratio_h) *
-                                              static_cast<double>(out_img_idy) -
-                                          static_cast<double>(in_img_idy);
-    double h2lambda_mt = static_cast<double>(1.0) - h1lambda_mt;
-
-    int64_t in_img_idx =
-        align_flag ? static_cast<int>(ratio_w * (out_img_idx + 0.5) - 0.5)
-                   : static_cast<int>(ratio_w * out_img_idx);
-    in_img_idx = (in_img_idx > 0) ? in_img_idx : 0;
-    int64_t w_id = (in_img_idx < in_img_w - 1) ? 1 : 0;
-    double src_w =
-        static_cast<double>(ratio_w) * static_cast<double>(out_img_idx + 0.5) -
-        static_cast<double>(0.5);
-    src_w = (src_w > static_cast<double>(0)) ? src_w : static_cast<double>(0);
-    double w1lambda_mt = align_flag ? src_w - static_cast<double>(in_img_idx)
-                                    : static_cast<double>(ratio_w) *
-                                              static_cast<double>(out_img_idx) -
-                                          static_cast<double>(in_img_idx);
-    double w2lambda_mt = static_cast<double>(1.0) - w1lambda_mt;
-
-    T d1lambda = static_cast<T>(d1lambda_mt);
-    T d2lambda = static_cast<T>(d2lambda_mt);
-    T h1lambda = static_cast<T>(h1lambda_mt);
-    T h2lambda = static_cast<T>(h2lambda_mt);
-    T w1lambda = static_cast<T>(w1lambda_mt);
-    T w2lambda = static_cast<T>(w2lambda_mt);
+    int64_t in_img_idt, in_img_idy, in_img_idx, d_id, h_id, w_id;
+    MT d1lambda, d2lambda, h1lambda, h2lambda, w1lambda, w2lambda;
+    MT src_d = funcs::AreaPixelComputeSourceIndex<MT>(
+        ratio_d, out_img_idt, !align_flag);
+    MT src_h = funcs::AreaPixelComputeSourceIndex<MT>(
+        ratio_h, out_img_idy, !align_flag);
+    MT src_w = funcs::AreaPixelComputeSourceIndex<MT>(
+        ratio_w, out_img_idx, !align_flag);
+    PreCalculatorForLinearInterpInputIndex(
+        &in_img_idt, &d_id, &d1lambda, &d2lambda, src_d, in_img_d);
+    PreCalculatorForLinearInterpInputIndex(
+        &in_img_idy, &h_id, &h1lambda, &h2lambda, src_h, in_img_h);
+    PreCalculatorForLinearInterpInputIndex(
+        &in_img_idx, &w_id, &w1lambda, &w2lambda, src_w, in_img_w);
 
     if (data_layout == DataLayout::NCHW) {
       int64_t in_pos1_idx =
@@ -745,23 +709,25 @@ __global__ void KeTrilinearInterpBw(T* in,
       int64_t in_pos2_idx =
           in_pos1_idx + static_cast<int64_t>(d_id) * in_img_h * in_img_w;
       T* in_pos2 = &in[in_pos2_idx];
-      const T* out_pos = &out[out_id_h * output_w + out_id_w];
+      const MT grad = static_cast<MT>(out[out_id_h * output_w + out_id_w]);
 
       // trilinear interpolation grad
-      CudaAtomicAdd(&in_pos1[0], d2lambda * h2lambda * w2lambda * out_pos[0]);
+      CudaAtomicAdd(&in_pos1[0],
+                    static_cast<T>(d2lambda * h2lambda * w2lambda * grad));
       CudaAtomicAdd(&in_pos1[w_id],
-                    d2lambda * h2lambda * w1lambda * out_pos[0]);
+                    static_cast<T>(d2lambda * h2lambda * w1lambda * grad));
       CudaAtomicAdd(&in_pos1[h_id * in_img_w],
-                    d2lambda * h1lambda * w2lambda * out_pos[0]);
+                    static_cast<T>(d2lambda * h1lambda * w2lambda * grad));
       CudaAtomicAdd(&in_pos1[h_id * in_img_w + w_id],
-                    d2lambda * h1lambda * w1lambda * out_pos[0]);
-      CudaAtomicAdd(&in_pos2[0], d1lambda * h2lambda * w2lambda * out_pos[0]);
+                    static_cast<T>(d2lambda * h1lambda * w1lambda * grad));
+      CudaAtomicAdd(&in_pos2[0],
+                    static_cast<T>(d1lambda * h2lambda * w2lambda * grad));
       CudaAtomicAdd(&in_pos2[w_id],
-                    d1lambda * h2lambda * w1lambda * out_pos[0]);
+                    static_cast<T>(d1lambda * h2lambda * w1lambda * grad));
       CudaAtomicAdd(&in_pos2[h_id * in_img_w],
-                    d1lambda * h1lambda * w2lambda * out_pos[0]);
+                    static_cast<T>(d1lambda * h1lambda * w2lambda * grad));
       CudaAtomicAdd(&in_pos2[h_id * in_img_w + w_id],
-                    d1lambda * h1lambda * w1lambda * out_pos[0]);
+                    static_cast<T>(d1lambda * h1lambda * w1lambda * grad));
     } else {
       int64_t in_pos1_idx =
           static_cast<int64_t>(out_id_h) * input_w +
@@ -775,25 +741,27 @@ __global__ void KeTrilinearInterpBw(T* in,
                                               num_channels;
       T* in_pos2 = &in[in_pos2_idx];
 
-      const T* out_pos = &out[out_id_h * output_w + out_id_w];
+      const MT grad = static_cast<MT>(out[out_id_h * output_w + out_id_w]);
 
       // trilinear interpolation grad
-      CudaAtomicAdd(&in_pos1[0], d2lambda * h2lambda * w2lambda * out_pos[0]);
+      CudaAtomicAdd(&in_pos1[0],
+                    static_cast<T>(d2lambda * h2lambda * w2lambda * grad));
       CudaAtomicAdd(&in_pos1[w_id * num_channels],
-                    d2lambda * h2lambda * w1lambda * out_pos[0]);
+                    static_cast<T>(d2lambda * h2lambda * w1lambda * grad));
       CudaAtomicAdd(&in_pos1[h_id * in_img_w * num_channels],
-                    d2lambda * h1lambda * w2lambda * out_pos[0]);
+                    static_cast<T>(d2lambda * h1lambda * w2lambda * grad));
       CudaAtomicAdd(
           &in_pos1[h_id * in_img_w * num_channels + w_id * num_channels],
-          d2lambda * h1lambda * w1lambda * out_pos[0]);
-      CudaAtomicAdd(&in_pos2[0], d1lambda * h2lambda * w2lambda * out_pos[0]);
+          static_cast<T>(d2lambda * h1lambda * w1lambda * grad));
+      CudaAtomicAdd(&in_pos2[0],
+                    static_cast<T>(d1lambda * h2lambda * w2lambda * grad));
       CudaAtomicAdd(&in_pos2[w_id * num_channels],
-                    d1lambda * h2lambda * w1lambda * out_pos[0]);
+                    static_cast<T>(d1lambda * h2lambda * w1lambda * grad));
       CudaAtomicAdd(&in_pos2[h_id * in_img_w * num_channels],
-                    d1lambda * h1lambda * w2lambda * out_pos[0]);
+                    static_cast<T>(d1lambda * h1lambda * w2lambda * grad));
       CudaAtomicAdd(
           &in_pos2[h_id * in_img_w * num_channels + w_id * num_channels],
-          d1lambda * h1lambda * w1lambda * out_pos[0]);
+          static_cast<T>(d1lambda * h1lambda * w1lambda * grad));
     }
   }
 }
