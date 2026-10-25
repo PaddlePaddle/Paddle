@@ -73,6 +73,8 @@ jobs:
           CCACHE_DIR: /root/.ccache/formers
           CFS_DIR: /home/data/cfs
           paddle_whl: /workspace/dist/*.whl
+          HF_PROXY_PATH: ${{ github.workspace }}/../../../proxy_huggingface
+          AISTUDIO_PROXY_PATH: ${{ github.workspace }}/../../../proxy_aistudio
           formers_docker: ccr-2vdh3abv-pub.cnc.bj.baidubce.com/paddlepaddle/paddle:cuda126-dev-latest
         run: |
           export CUDA_SO="$(\ls -d /usr/lib64/libcuda* | xargs -I{} echo '-v {}:{}') $(\ls -d /usr/lib64/libnvidia* | xargs -I{} echo '-v {}:{}')"
@@ -125,6 +127,8 @@ jobs:
           -e CFS_DIR \
           -e paddle_whl \
           -e no_proxy \
+          -e HF_PROXY_PATH \
+          -e AISTUDIO_PROXY_PATH \
           -w /workspace --network host ${formers_docker}
       - name: Download paddle.tar.gz and merge target branch
         timeout-minutes: 30
@@ -139,13 +143,54 @@ jobs:
           git config --global --add safe.directory /workspace
           git checkout test
           '
-      - name: Test
+      - name: Download formers.tar.gz and Copy models
+        run: |
+          docker exec -t ${{ env.container_name }} /bin/bash -c '
+          cd /workspace
+          set -e
+          export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/lib64/:/usr/local/lib/
+          PATH=/usr/local/bin:${PATH}
+          ln -sf $(which python3.10) /usr/local/bin/python
+          ln -sf $(which pip3.10) /usr/local/bin/pip
+
+          echo "Downloading PaddleFormers.tar.gz..."
+          wget -q https://paddleformers.bj.bcebos.com/wheels/PaddleFormers.tar.gz
+          echo "Extracting PaddleFormers.tar.gz..."
+          tar xf PaddleFormers.tar.gz
+          if [ -d "PaddleFormers" ]; then
+              cd PaddleFormers
+              rm -rf dist/*
+              cp -r ${CFS_DIR}/models ./models
+              echo "Check whether the local model file exists:"
+              ls -l ./models
+              echo "::group::Install paddle dependencies"
+              pip config set global.cache-dir "/root/.cache/pip"
+              pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple
+              echo "::endgroup::"
+              ldconfig
+          else
+              echo "Error: PaddleFormers dir not found after tar xf"
+              exit 1
+          fi
+          '
+      - name: Run Formers API Tests
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           source ${{ github.workspace }}/../../../proxy
           source ${{ github.workspace }}/../../../AISTUDIO_ACCESS_TOKEN
           set -ex
-          bash /workspace/ci/formers_test.sh
+          cd /workspace/PaddleFormers && git config --global --add safe.directory $PWD
+          timeout 30m bash scripts/unit_test/ci_unittest.sh ${paddle_whl} false ${PYTEST_EXECUTE_FLAG_FILE} ${BRANCH}
+          '
+      - name: Run Formers Models Training Tests
+        run: |
+          docker exec -t ${{ env.container_name }} /bin/bash -c '
+          source ${{ github.workspace }}/../../../proxy
+          source ${{ github.workspace }}/../../../AISTUDIO_ACCESS_TOKEN
+          set -ex
+          rm -rf /root/.cache/aistudio/
+          cd /workspace/PaddleFormers && git config --global --add safe.directory $PWD
+          timeout 30m bash scripts/regression/ci_model_unittest.sh ${paddle_whl} false ${AGILE_COMPILE_BRANCH}
           '
       - name: Upload and display logs
         if: always()
