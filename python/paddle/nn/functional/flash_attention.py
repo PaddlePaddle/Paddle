@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+import importlib.util
 from typing import TYPE_CHECKING, Literal, overload
 
 import paddle
@@ -208,6 +209,126 @@ def _select_sdp(head_dim: int) -> str:
     return "mem_efficient"
 
 
+def _is_flash_mask_installed():
+    """Check if flash_mask package is installed."""
+    return importlib.util.find_spec("flash_mask") is not None
+
+
+def get_fa_version(
+    query,
+    key,
+    value,
+    causal=False,
+    startend_row_indices=None,
+) -> int:
+    """
+    Get the optimal flash attention version based on hardware architecture,
+    data type, head dimension, and input properties.
+
+    This function determines the best flash attention version to use:
+    - If FLAGS_flash_attn_version is set (non-zero), use the user-specified version.
+    - For XPU / iluvatar_gpu devices: version 2.
+    - For GPU (CUDA) devices:
+      - FP16 dtype: version 2 (FA3/FA4 do not support FP16).
+      - Blackwell (sm >= 100):
+        - If flash_mask package is installed, head_dim <= 128,
+          and no 4-group FlashMask: version 4.
+        - Otherwise (flash_mask not installed, head_dim > 128,
+          or 4-group FlashMask): version 2.
+      - Hopper (sm 90):
+        - If deterministic mode and head_dim > 128: version 2
+          (FA3 deterministic only supports head_dim <= 128).
+        - Otherwise: version 3.
+      - Ampere (sm 80/86/87): version 2.
+    - Default fallback: version 2 (broadest hardware support).
+
+    Note on version capabilities:
+    - FA2: broadest support, head_dim up to 256, supports FlashMask 4 mask groups.
+    - FA3: Hopper only, head_dim up to 256, supports FlashMask 4 mask groups.
+      Deterministic mode limited to head_dim <= 128.
+    - FA4: Blackwell only, requires flash_mask package, head_dim <= 128,
+      does NOT support FlashMask with 4 mask groups
+      (startend_row_indices.shape[-1] == 4).
+
+    Args:
+        query: The query tensor.
+        key: The key tensor.
+        value: The value tensor.
+        causal (bool): Whether causal masking is used.
+        startend_row_indices: Optional FlashMask startend_row_indices tensor.
+
+    Returns:
+        int: The optimal flash attention version (2, 3 or 4).
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> from paddle.nn.functional.flash_attention import get_fa_version
+            >>> q = paddle.randn([1, 128, 8, 64], dtype='bfloat16')
+            >>> k = paddle.randn([1, 128, 8, 64], dtype='bfloat16')
+            >>> v = paddle.randn([1, 128, 8, 64], dtype='bfloat16')
+            >>> version = get_fa_version(q, k, v)
+    """
+    # If user explicitly specified a version via FLAGS_flash_attn_version, respect it.
+    user_version = paddle.base.framework.get_flags(
+        ["FLAGS_flash_attn_version"]
+    )["FLAGS_flash_attn_version"]
+    if user_version != 0:
+        return user_version
+
+    device = paddle.get_device()
+
+    # Non-GPU devices
+    if "xpu" in device:
+        return 2
+    if "iluvatar_gpu" in device:
+        return 2
+
+    if "gpu" in device:
+        dtype = query.dtype
+        head_dim = query.shape[-1]
+
+        if dtype == paddle.float16:
+            return 2
+
+        device_id = int(device.split(':')[1]) if ':' in device else 0
+        major, minor = paddle.device.cuda.get_device_capability(device_id)
+        sm_version = major * 10 + minor
+
+        is_ampere = sm_version in [80, 86, 87]
+        is_hopper = sm_version in [90]
+        is_blackwell = sm_version >= 100
+
+        if is_blackwell:
+            if _is_flash_mask_installed():
+                head_dim_ok = (
+                    query.shape[-1] <= 128
+                    and key.shape[-1] <= 128
+                    and value.shape[-1] <= 128
+                )
+                has_4group_mask = (
+                    startend_row_indices is not None
+                    and startend_row_indices.shape[-1] == 4
+                )
+                if head_dim_ok and not has_4group_mask:
+                    return 4
+            return 2
+
+        if is_hopper:
+            is_deterministic = paddle.get_flags(["FLAGS_cudnn_deterministic"])[
+                "FLAGS_cudnn_deterministic"
+            ]
+            if is_deterministic and head_dim > 128:
+                return 2
+            return 3
+
+        if is_ampere:
+            return 2
+
+    return 2
+
+
 @overload
 def flash_attention(
     query: Tensor,
@@ -358,18 +479,7 @@ def flash_attention(
     sdp_func_name = _select_sdp(head_dim)
 
     if sdp_func_name == "flash_attn":
-        if "xpu" in paddle.get_device():
-            fa_version = 2
-        elif "iluvatar_gpu" in paddle.get_device():
-            fa_version = 2
-        elif paddle.get_flags(["FLAGS_cudnn_deterministic"])[
-            "FLAGS_cudnn_deterministic"
-        ]:
-            fa_version = 2
-        else:
-            fa_version = paddle.base.framework.get_flags(
-                ["FLAGS_flash_attn_version"]
-            )["FLAGS_flash_attn_version"]
+        fa_version = get_fa_version(query, key, value, causal=causal)
         assert in_dynamic_or_pir_mode() or fa_version == 2, (
             "flash attention 3 only support dynamic or pir mode"
         )
@@ -2085,23 +2195,13 @@ def flashmask_attention(
                 " blockmask attention no supports deterministic now ."
             )
 
-        if "xpu" in paddle.get_device():
-            fa_version = 2
-        elif (
-            paddle.base.framework.get_flags(["FLAGS_flash_attn_version"])[
-                "FLAGS_flash_attn_version"
-            ]
-            == 3
-            and paddle.base.framework.get_flags(["FLAGS_cudnn_deterministic"])[
-                "FLAGS_cudnn_deterministic"
-            ]
-            and query.shape[3] > 128
-        ):
-            fa_version = 2
-        else:
-            fa_version = paddle.base.framework.get_flags(
-                ["FLAGS_flash_attn_version"]
-            )["FLAGS_flash_attn_version"]
+        fa_version = get_fa_version(
+            query,
+            key,
+            value,
+            causal=causal,
+            startend_row_indices=startend_row_indices,
+        )
 
         if fa_version == 2:
             assert softmax_scale is None, (
