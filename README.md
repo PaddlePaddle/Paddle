@@ -51,7 +51,7 @@ For detailed information about installation, please view [Quick Install](https:/
 ## Documentation
 
 We provide [English](https://www.paddlepaddle.org.cn/documentation/docs/en/guides/index_en.html) and
-[Chinese](https://www.paddlepaddle.org.cn/documentation/docs/zh/guide/index_cn.html) documentation.
+[Chinese](https://www.paddlepaddle.org.cn/documentation/docs/zh/guides/index_cn.html) documentation.
 
 * [Guides](https://www.paddlepaddle.org.cn/documentation/docs/en/guides/index_en.html)
 
