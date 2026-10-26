@@ -44,6 +44,10 @@ def fp8_shard_numel(params):
 
 
 def init_fp8_buffer(params_buffer, params):
+    if not params_buffer.is_sharded:
+        raise ValueError(
+            f"fp8_param_gather: group {params_buffer.unique_key} is not sharded"
+        )
     quantizer = _quantizer(params)
     k, full = len(quantizer.orientations), params_buffer.total_buffer_size
     numels = [full] * k + [full // quantizer.block**2] * k

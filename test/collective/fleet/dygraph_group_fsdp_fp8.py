@@ -192,13 +192,11 @@ def build_grouped(fp8, quantizer=None, comm_dtype=None, muon=False):
     return model, opt, model._fsdp_context
 
 
-def train_steps(model, opt, data, steps, on_loss=None):
+def train_steps(model, opt, data, steps):
     losses = []
     for step in steps:
-        for i, x in enumerate(data[step * ACCUM_STEPS :][:ACCUM_STEPS]):
+        for x in data[step * ACCUM_STEPS :][:ACCUM_STEPS]:
             loss = (model(x) ** 2).mean()
-            if on_loss is not None:
-                on_loss(step, i)
             losses.append(loss._md5sum())
             loss.backward()
         opt.step()
@@ -218,17 +216,20 @@ def train_fp8(keep_transpose, fp8_gather, data, muon=False):
         assert all(g.use_muon and g.muon_shard_numel for g in fp8_groups)
     ctx.all_gather_params()
 
-    def record_caches(step, i):
-        if i == 0:
-            caches.append(
-                [
-                    getattr(w, a)._md5sum()
-                    for w in experts(model)
-                    for d, s, _ in quantizer.attrs
-                    for a in (d, s)
-                ]
-            )
+    attrs = [a for d, s, _ in quantizer.attrs for a in (d, s)]
+    n_caches = len(experts(model)) * len(attrs)
 
+    def record_caches(layer, *_):
+        # Within the unit: caches are released once it is done.
+        if len(caches[-1]) < n_caches:
+            caches[-1] += [
+                getattr(w, a)._md5sum()
+                for w in (layer.weight1, layer.weight2)
+                for a in attrs
+            ]
+
+    for layer in model.layers:
+        layer.register_forward_post_hook(record_caches)
     losses, caches = [], []
     for step in range(STEPS):
         if not fp8_gather:  # reference: quantize the full bf16 weight
@@ -238,7 +239,8 @@ def train_fp8(keep_transpose, fp8_gather, data, muon=False):
                         fp8, scale = block_quant(w, transpose)
                         setattr(w, d, fp8)
                         setattr(w, s, scale)
-        losses += train_steps(model, opt, data, [step], record_caches)
+        caches.append([])
+        losses += train_steps(model, opt, data, [step])
         if fp8_gather:
             assert not hasattr(model.layers[0].weight1, "fp8_weight")
             for g in fp8_groups:  # fp32 main, no master
@@ -331,6 +333,28 @@ def check_fp8_checkpoint(ckpt_path, muon):
         )
 
 
+class OddExpertLayer(TransformerLayer):
+    # 3 experts: weight2 is 1.5 alignment units, so the buffer can't shard.
+    def __init__(self):
+        nn.Layer.__init__(self)
+        self.weight1 = self.create_parameter([3, HIDDEN, 2 * INTER])
+        self.weight2 = self.create_parameter([3, INTER, HIDDEN])
+
+
+def check_unaligned_fp8_raises():
+    layer = OddExpertLayer()
+    quantizer = BlockQuantizer(True)
+    for p in (layer.weight1, layer.weight2):
+        p.expert = True
+        p._fsdp_fp8_quantizer = quantizer
+    try:
+        fully_shard(nn.LayerList([layer]), fp8_param_gather=True)
+    except ValueError as e:
+        assert "is not sharded" in str(e), e
+    else:
+        raise AssertionError("unaligned fp8 group must be refused")
+
+
 def run_fp8_checkpoint():
     rank = paddle.distributed.get_rank()
     ckpt_root = [tempfile.mkdtemp() if rank == 0 else None]
@@ -399,6 +423,7 @@ if __name__ == '__main__':
         "sharding_degree": paddle.distributed.get_world_size(),
     }
     fleet.init(is_collective=True, strategy=strategy)
+    check_unaligned_fp8_raises()
     run_fp8_gather()
     run_fp8_checkpoint()
     run_grad_bf16_comm()
