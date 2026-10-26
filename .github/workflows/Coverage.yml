@@ -255,7 +255,7 @@ jobs:
   coverage_approval:
     name: Check coverage approval
     needs: [build, build-docker, check-bypass]
-    if: ${{ always() && needs.check-bypass.outputs.can-skip != 'true' && needs.build.result != 'skipped' }}
+    if: ${{ needs.check-bypass.outputs.can-skip != 'true' }}
     runs-on:
       group: APPROVAL
     permissions:
