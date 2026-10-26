@@ -255,7 +255,7 @@ jobs:
   coverage_approval:
     name: Check coverage approval
     needs: [build, build-docker, check-bypass]
-    if: ${{ always() && needs.check-bypass.outputs.can-skip != 'true' && needs.build.result != 'skipped' }}
+    if: ${{ needs.check-bypass.outputs.can-skip != 'true' }}
     runs-on:
       group: APPROVAL
     permissions:
@@ -269,7 +269,7 @@ jobs:
     outputs:
       can-skip: ${{ steps.check-approval.outputs.can-skip }}
     steps:
-      - name: Check swgu98 coverage approval
+      - name: Check swgu98/sneaxiy coverage approval
         id: check-approval
         run: |
           set -euo pipefail
@@ -277,7 +277,7 @@ jobs:
           reviews=$(gh api --paginate "repos/${REPO}/pulls/${PR_NUMBER}/reviews?per_page=100" | jq -s 'add')
           can_skip=$(echo "${reviews}" | jq -r --arg head "${HEAD_SHA}" '
             [ .[]
-              | select(.user.login == "swgu98")
+              | select(.user.login == "swgu98" or .user.login == "sneaxiy")
               | select(.commit_id == $head)
               | select(.state == "APPROVED" or .state == "CHANGES_REQUESTED" or .state == "DISMISSED")
             ]
@@ -291,7 +291,7 @@ jobs:
               end
           ')
 
-          echo "swgu98 coverage approval: ${can_skip}"
+          echo "swgu98/sneaxiy coverage approval: ${can_skip}"
           echo "can-skip=${can_skip}" >> "${GITHUB_OUTPUT}"
 
   test:

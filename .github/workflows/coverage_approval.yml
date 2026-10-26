@@ -12,7 +12,7 @@ jobs:
     if: >-
       github.event.review.state == 'approved' &&
       github.event.review.commit_id == github.event.pull_request.head.sha &&
-      github.event.review.user.login == 'swgu98' &&
+      (github.event.review.user.login == 'swgu98' || github.event.review.user.login == 'sneaxiy') &&
       contains(github.event.review.body, 'lgtm') &&
       contains(github.event.review.body, 'coverage')
     runs-on:
