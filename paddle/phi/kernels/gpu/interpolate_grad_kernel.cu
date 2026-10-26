@@ -224,44 +224,21 @@ __global__ void KeNearestNeighborInterpBw(
   }
 }
 
-/* Calculate the minimum of partial elements in a block */
-template <typename T>
-__inline__ __device__ T PartialBlockMin(T val,
-                                        size_t threads_num_in_block,
-                                        unsigned mask) {
-  __shared__ T shared[WARP_SIZE];
-  __shared__ T shared_last_val;
-  __shared__ int shared_last_idx;
-  int lane = threadIdx.x & 0x1f;
-  int wid = threadIdx.x >> 5;
-  int threshold = (threads_num_in_block & (-WARP_SIZE));
-
-  if (threadIdx.x < threshold) {
-    shared_last_idx = (threshold >> 5) - 1;
-    val = funcs::WarpReduceMin(val, mask);
-    if (lane == 0) {
-      shared[wid] = val;
-    }
-  } else {
-    shared_last_val = std::numeric_limits<T>::max();
-    CudaAtomicMin(&shared_last_val, val);
-    shared[wid] = shared_last_val;
-    shared_last_idx = wid;
-  }
-  __syncthreads();
-
-  if (threadIdx.x < threshold) {
-    val = (lane <= shared_last_idx) ? shared[lane]
-                                    : std::numeric_limits<T>::max();
-    val = funcs::WarpReduceMin(val, mask);
-    shared_last_val = val;
-  }
-  __syncthreads();
-  if (threadIdx.x >= threshold) {
-    val = shared_last_val;
-  }
-  return val;
-}
+// Each block handles one contiguous segment of a single output row, so every
+// thread shares in_img_idy / h_id / the h lambdas, and the input columns it
+// touches form a narrow window [x_first, x_last + w_id] that is known from
+// the segment endpoints alone: the source column is monotone in the output
+// column. The window is accumulated in shared memory and added back to the
+// input gradient once per block, without any block reduction.
+// Across a segment the source column advances by at most
+// (blockDim - 1) * ratio_w, so the window is at most
+// ceil((blockDim - 1) * ratio_w) + 2 columns wide (+1 for the right
+// neighbour, +1 for the closed interval). The dispatch condition
+// in_w < (out_w >> 6) gives ratio_w < 1/64, i.e. at most 6 columns for
+// blockDim <= 256 (a 1x1 input always has 1), well within
+// kBilinearBwWindow. Wider windows (only possible if the dispatch condition
+// is relaxed) add straight to global memory.
+constexpr int kBilinearBwWindow = 32;
 
 template <typename T, typename MT>
 __global__ void KeBilinearInterpBwShareMemory(T* in,
@@ -270,95 +247,114 @@ __global__ void KeBilinearInterpBwShareMemory(T* in,
                                               const T* __restrict__ out,
                                               const int64_t out_h,
                                               const int64_t out_w,
-                                              const int64_t n,
-                                              const int64_t num_channels,
+                                              const int64_t nc,
                                               MT ratio_h,
                                               MT ratio_w,
                                               const bool align_corners,
-                                              const int align_mode,
-                                              bool is_nchw) {
-  __shared__ MT s_data[2][1024];
-  int64_t tid = static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
-  int64_t stride = static_cast<int64_t>(blockDim.x) * gridDim.x;
-  int64_t in_chw = in_h * in_w * num_channels;
-  int64_t out_chw = num_channels * out_h * out_w;
-  int64_t nthreads = static_cast<int64_t>(n) * out_chw;
-  bool align_flag = (align_mode == 0 && !align_corners);
+                                              const int align_mode) {
+  __shared__ MT s_data[2][kBilinearBwWindow];
+  const bool align_flag = (align_mode == 0 && !align_corners);
+  const int64_t seg_begin = static_cast<int64_t>(blockIdx.x) * blockDim.x;
+  const int64_t seg_last =
+      min(seg_begin + static_cast<int64_t>(blockDim.x), out_w) - 1;
+  const int64_t out_img_idx = seg_begin + threadIdx.x;
+  const bool valid = out_img_idx < out_w;
 
-  for (; tid < nthreads; tid += stride) {
-    int64_t out_id_h = tid / out_chw;
-    int64_t out_id_w = tid % out_chw;
-    const int64_t in_img_size = in_h * in_w;
-    const int64_t out_img_size = out_h * out_w;
-    MT value = static_cast<MT>(out[out_id_h * out_chw + out_id_w]);
+  // Window of input columns, identical for every thread of the block.
+  int64_t x_first, x_last, w_id, unused_id;
+  MT w1lambda, w2lambda;
+  PreCalculatorForLinearInterpInputIndex(
+      &x_first,
+      &unused_id,
+      &w1lambda,
+      &w2lambda,
+      funcs::AreaPixelComputeSourceIndex<MT>(ratio_w, seg_begin, !align_flag),
+      in_w);
+  PreCalculatorForLinearInterpInputIndex(
+      &x_last,
+      &w_id,
+      &w1lambda,
+      &w2lambda,
+      funcs::AreaPixelComputeSourceIndex<MT>(ratio_w, seg_last, !align_flag),
+      in_w);
+  const int64_t span = x_last + w_id - x_first + 1;
+  const bool use_shared = span <= kBilinearBwWindow;
 
-    int64_t channel_id = out_id_w / out_img_size;
-    int64_t out_img_idy = (out_id_w % out_img_size) / out_w;
-    int64_t out_img_idx = tid % out_w;
-
-    int64_t in_img_idx, in_img_idy, w_id, h_id;
-    MT w1lambda, h1lambda, w2lambda, h2lambda;
-    MT src_w = funcs::AreaPixelComputeSourceIndex<MT>(
-        ratio_w, out_img_idx, !align_flag);
-    MT src_h = funcs::AreaPixelComputeSourceIndex<MT>(
-        ratio_h, out_img_idy, !align_flag);
-
+  int64_t in_img_idx = 0;
+  if (valid) {
     PreCalculatorForLinearInterpInputIndex(
-        &in_img_idx, &w_id, &w1lambda, &w2lambda, src_w, in_w);
+        &in_img_idx,
+        &w_id,
+        &w1lambda,
+        &w2lambda,
+        funcs::AreaPixelComputeSourceIndex<MT>(
+            ratio_w, out_img_idx, !align_flag),
+        in_w);
+  }
+
+  // Grid-stride over (plane, output row); the trip count only depends on
+  // blockIdx.y, so all threads of a block reach the same barriers.
+  for (int64_t row = blockIdx.y; row < nc * out_h; row += gridDim.y) {
+    const int64_t plane = row / out_h;
+    const int64_t out_img_idy = row % out_h;
+    int64_t in_img_idy, h_id;
+    MT h1lambda, h2lambda;
     PreCalculatorForLinearInterpInputIndex(
-        &in_img_idy, &h_id, &h1lambda, &h2lambda, src_h, in_h);
+        &in_img_idy,
+        &h_id,
+        &h1lambda,
+        &h2lambda,
+        funcs::AreaPixelComputeSourceIndex<MT>(
+            ratio_h, out_img_idy, !align_flag),
+        in_h);
+    T* in_top = in + (plane * in_h + in_img_idy) * in_w;
+    T* in_bot = in_top + h_id * in_w;
+    MT value = valid ? static_cast<MT>(out[row * out_w + out_img_idx])
+                     : static_cast<MT>(0);
 
-    // top_left_index is just input_index.
-    int64_t input_index = out_id_h * in_chw + channel_id * in_img_size +
-                          in_img_idy * in_w + in_img_idx;
-    int64_t top_right_index = input_index + w_id;
-    int64_t bot_left_index = input_index + h_id * in_w;
-    int64_t bot_right_index = input_index + h_id * in_w + w_id;
-    int64_t in_top_min_index, in_bot_min_index;
-
-    s_data[0][threadIdx.x] = static_cast<MT>(0);
-    s_data[1][threadIdx.x] = static_cast<MT>(0);
-    int64_t remain = nthreads - (tid & (-static_cast<int64_t>(blockDim.x)));
-    int64_t in_top_max_index =
-        funcs::BlockReduceMax(top_right_index, FINAL_MASK);
-    int64_t in_bot_max_index =
-        funcs::BlockReduceMax(bot_right_index, FINAL_MASK);
-
-    if (remain > blockDim.x) {
-      in_top_min_index = funcs::BlockReduceMin(input_index, FINAL_MASK);
-      in_bot_min_index = funcs::BlockReduceMin(bot_left_index, FINAL_MASK);
-    } else {
-      in_top_min_index = PartialBlockMin(input_index, remain, FINAL_MASK);
-      in_bot_min_index = PartialBlockMin(bot_left_index, remain, FINAL_MASK);
+    if (!use_shared) {
+      if (valid) {
+        CudaAtomicAdd(&in_top[in_img_idx],
+                      static_cast<T>(h2lambda * w2lambda * value));
+        CudaAtomicAdd(&in_top[in_img_idx + w_id],
+                      static_cast<T>(h2lambda * w1lambda * value));
+        CudaAtomicAdd(&in_bot[in_img_idx],
+                      static_cast<T>(h1lambda * w2lambda * value));
+        CudaAtomicAdd(&in_bot[in_img_idx + w_id],
+                      static_cast<T>(h1lambda * w1lambda * value));
+      }
+      continue;
     }
-    int64_t upper_limit_share_idx =
-        (in_top_max_index - in_top_min_index) >
-                (in_bot_max_index - in_bot_min_index)
-            ? (in_top_max_index - in_top_min_index)
-            : (in_bot_max_index - in_bot_min_index);
-    if (h_id != 0) {
-      CudaAtomicAdd(&s_data[0][input_index - in_top_min_index],
-                    h2lambda * w2lambda * value);
-      CudaAtomicAdd(&s_data[0][top_right_index - in_top_min_index],
-                    h2lambda * w1lambda * value);
-      CudaAtomicAdd(&s_data[1][bot_left_index - in_bot_min_index],
-                    h1lambda * w2lambda * value);
-      CudaAtomicAdd(&s_data[1][bot_right_index - in_bot_min_index],
-                    h1lambda * w1lambda * value);
-    } else {
-      CudaAtomicAdd(&s_data[0][top_right_index - in_top_min_index],
-                    (h2lambda + h1lambda) * w1lambda * value);
-      CudaAtomicAdd(&s_data[1][bot_left_index - in_bot_min_index],
-                    (h1lambda + h2lambda) * w2lambda * value);
+
+    if (threadIdx.x < kBilinearBwWindow) {
+      s_data[0][threadIdx.x] = static_cast<MT>(0);
+      s_data[1][threadIdx.x] = static_cast<MT>(0);
     }
     __syncthreads();
-
-    if (threadIdx.x <= upper_limit_share_idx) {
-      CudaAtomicAdd(&in[in_top_min_index + threadIdx.x],
-                    static_cast<T>(s_data[0][threadIdx.x]));
-      CudaAtomicAdd(&in[in_bot_min_index + threadIdx.x],
-                    static_cast<T>(s_data[1][threadIdx.x]));
+    if (valid) {
+      const int64_t x = in_img_idx - x_first;
+      if (h_id != 0) {
+        CudaAtomicAdd(&s_data[0][x], h2lambda * w2lambda * value);
+        CudaAtomicAdd(&s_data[0][x + w_id], h2lambda * w1lambda * value);
+        CudaAtomicAdd(&s_data[1][x], h1lambda * w2lambda * value);
+        CudaAtomicAdd(&s_data[1][x + w_id], h1lambda * w1lambda * value);
+      } else {
+        // The bottom row is clamped onto the top row.
+        CudaAtomicAdd(&s_data[0][x], (h2lambda + h1lambda) * w2lambda * value);
+        CudaAtomicAdd(&s_data[0][x + w_id],
+                      (h2lambda + h1lambda) * w1lambda * value);
+      }
     }
+    __syncthreads();
+    if (threadIdx.x < span) {
+      CudaAtomicAdd(&in_top[x_first + threadIdx.x],
+                    static_cast<T>(s_data[0][threadIdx.x]));
+      if (h_id != 0) {
+        CudaAtomicAdd(&in_bot[x_first + threadIdx.x],
+                      static_cast<T>(s_data[1][threadIdx.x]));
+      }
+    }
+    __syncthreads();  // s_data is cleared again for the next row.
   }
 }
 
@@ -454,11 +450,11 @@ __global__ void KeBilinearInterpNCHWBw(T* in,
 
           const MT grad_output = out[nc * out_h * out_w + h2 * out_w + w2];
 
-          float hlambda = (h1 == h1_) ? h0lambda : 0.0f;
-          hlambda += (h1 == h1_ + y_id) ? h1lambda : 0.0f;
+          MT hlambda = (h1 == h1_) ? h0lambda : static_cast<MT>(0);
+          hlambda += (h1 == h1_ + y_id) ? h1lambda : static_cast<MT>(0);
 
-          float wlambda = (w1 == w1_) ? w0lambda : 0.0f;
-          wlambda += (w1 == w1_ + x_id) ? w1lambda : 0.0f;
+          MT wlambda = (w1 == w1_) ? w0lambda : static_cast<MT>(0);
+          wlambda += (w1 == w1_ + x_id) ? w1lambda : static_cast<MT>(0);
 
           d2val_sum += hlambda * wlambda * grad_output;
         }
@@ -1522,22 +1518,25 @@ static void Interpolate2DCUDABwd(
                         : ((in_h == 1 && in_w == 1) ? true : false);
 #endif
     if (optimize_flag & is_nchw) {
-      KeBilinearInterpBwShareMemory<T><<<config.block_per_grid,
-                                         config.thread_per_block,
-                                         0,
-                                         dev_ctx.stream()>>>(input_grad_data,
-                                                             in_h,
-                                                             in_w,
-                                                             output_grad_data,
-                                                             out_h,
-                                                             out_w,
-                                                             n,
-                                                             c,
-                                                             ratio_h,
-                                                             ratio_w,
-                                                             align_corners,
-                                                             align_mode,
-                                                             is_nchw);
+      // One block per segment of an output row; see the kernel comment.
+      const int64_t nc = static_cast<int64_t>(n) * c;
+      const int threads = static_cast<int>(std::min<int64_t>(
+          256, backends::gpu::RoundToNextHighPowOfTwo(out_w, 32)));
+      const dim3 grid(
+          static_cast<unsigned>(backends::gpu::DivUp<int64_t>(out_w, threads)),
+          static_cast<unsigned>(std::min<int64_t>(nc * out_h, 65535)));
+      KeBilinearInterpBwShareMemory<T>
+          <<<grid, threads, 0, dev_ctx.stream()>>>(input_grad_data,
+                                                   in_h,
+                                                   in_w,
+                                                   output_grad_data,
+                                                   out_h,
+                                                   out_w,
+                                                   nc,
+                                                   ratio_h,
+                                                   ratio_w,
+                                                   align_corners,
+                                                   align_mode);
     } else if (!optimize_flag & is_nchw) {
       const int64_t num_kernels = static_cast<int64_t>(n) * c * out_h * out_w;
       const int num_threads = std::min(dev_ctx.GetMaxThreadsPerBlock(), 1024);
