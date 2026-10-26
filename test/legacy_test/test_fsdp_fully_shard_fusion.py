@@ -224,6 +224,7 @@ class _FakeParamsBuffer:
     def __init__(self, status, is_sharded=True):
         self.status = status
         self.is_sharded = is_sharded
+        self.fp8 = None
         self.clear_calls = 0
 
     def clear_tmp_buffer(self):
