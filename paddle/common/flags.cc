@@ -2462,25 +2462,3 @@ PHI_DEFINE_EXPORTED_bool(try_allocate,
 PHI_DEFINE_EXPORTED_bool(record_alloc_event,
                          false,
                          "whether record allocate event.");
-
-#ifdef PADDLE_WITH_XPU_CADA
-/**
- * XPU_CADA related FLAG
- * Name: FLAGS_xpu_cada_batch_norm_use_cudnn
- * Since Version:
- * Value Range: bool, default=false
- * Example:
- * Note: xtrans xpudnn does not support cudnnDeriveBNTensorDescriptor /
- *       cudnnBatchNormalizationForwardInference (returns
- *       XPUDNN_STATUS_NOT_SUPPORTED), so eval-mode BN forces the native
- *       CUDA kernel by default. Set this flag to true only to reproduce
- *       or diagnose the xtrans gap; it is expected to fail at runtime.
- */
-PHI_DEFINE_EXPORTED_bool(xpu_cada_batch_norm_use_cudnn,
-                         false,
-                         "Whether to force eval-mode batch_norm to use the "
-                         "cudnn path under WITH_XPU_CADA, default is false "
-                         "(use native CUDA kernel). xtrans xpudnn does not "
-                         "implement this cudnn API; enabling this is only "
-                         "for reproducing/diagnosing that gap.");
-#endif
