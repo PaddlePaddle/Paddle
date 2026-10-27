@@ -587,10 +587,12 @@ class FSDPCommManager:
         buffer_manager,
         enable_overlap=True,
         prefetch_units=1,
+        prefetch_sizes=None,
     ):
         self.buffer_manager = buffer_manager
         self.enable_overlap = enable_overlap
         self.grad_reduce_queue = []
+        self.prefetch_by_size = prefetch_sizes is not None
 
         # Size limits in whole units: a unit may own several sharded groups.
         unit_sizes = Counter(
@@ -606,10 +608,63 @@ class FSDPCommManager:
         self.need_zero_grads = True
         self._last_backward_unit_id = None
 
+        # By size: gathered param elements and queued grad elements.
+        self.gathered_numel = 0
+        self._grad_queue_numel = 0
+        if self.prefetch_by_size:
+            self._init_prefetch_by_size(prefetch_sizes)
+
+    def _init_prefetch_by_size(self, unit_size):
+        groups = self.buffer_manager.buffer_groups
+
+        # Sharded buffers of one (unit, is_expert) are prefetched together.
+        self._gid_to_bucket_group = []
+        bucket_groups = {}
+        for gid, g in enumerate(groups):
+            if g.fsdp_unit_id is None or not g.params_buffer.is_sharded:
+                self._gid_to_bucket_group.append([gid])
+                continue
+            members = bucket_groups.setdefault(
+                (g.fsdp_unit_id, g.is_expert_param), []
+            )
+            members.append(gid)
+            self._gid_to_bucket_group.append(members)
+
+        unit_size = max(int(unit_size), 0)
+        self.prefetch_sizes = unit_size
+        self.grad_queue_capacity = unit_size
+        self.gather_prefetch_size = unit_size // 2
+
+        # Cache the fixed layout; the hooks are on the host critical path.
+        self._params_buffers = [g.params_buffer for g in groups]
+        self._sharded_gids = [
+            gid for gid, pb in enumerate(self._params_buffers) if pb.is_sharded
+        ]
+        # (req_gids, is_backward) -> (targets, keep, limit)
+        self._prefetch_plans = {}
+
     # ------------------------------------------------------------------
-    # Params all_gather double buffer. Owns buffer_cnt_in_using /
-    # gather_buffer_limit / prefetch_units and the BufferState machine.
+    # Params all_gather pipeline. Owns the BufferState machine,
+    # buffer_cnt_in_using (by layer) and gathered_numel (by size).
     # ------------------------------------------------------------------
+
+    def _count_gathered(self, params_buffer):
+        # A sharded buffer just got its full storage allocated.
+        if self.prefetch_by_size:
+            self.gathered_numel += params_buffer.total_buffer_size
+        else:
+            self.buffer_cnt_in_using += 1
+
+    def _free_params_buffer(self, params_buffer):
+        # USING / READY / SYNCING-waited -> FREED, keeping the accounting.
+        params_buffer.clear_tmp_buffer()
+        params_buffer.status = BufferState.FREED
+        if not params_buffer.is_sharded:
+            return
+        if self.prefetch_by_size:
+            self.gathered_numel -= params_buffer.total_buffer_size
+        elif self.buffer_cnt_in_using > 0:
+            self.buffer_cnt_in_using -= 1
 
     def _release_one_buffer_if_needed(self, keep=()):
         # Release a buffer with the READY status if needed
@@ -655,11 +710,81 @@ class FSDPCommManager:
             next_gid += step
         return gids
 
+    def _release_ready_buffers(self, need_numel, limit, keep=()):
+        # Free READY buffers outside `keep`, oldest first, until it fits.
+        if self.gathered_numel + need_numel <= limit:
+            return
+        for gid in self._sharded_gids:
+            if gid in keep:
+                continue
+            params_buffer = self._params_buffers[gid]
+            if params_buffer.status == BufferState.READY:
+                self._free_params_buffer(params_buffer)
+                if self.gathered_numel + need_numel <= limit:
+                    return
+
+    def _extend_by_prefetch_size(self, req_gids, is_backward):
+        # Walk buffers after the requested ones in execution order, adding a
+        # whole bucket group while under gather_prefetch_size.
+        groups = self.buffer_manager.buffer_groups
+        prefetch_size = self.gather_prefetch_size
+        if prefetch_size <= 0:
+            return []
+        step = -1 if is_backward else 1
+        selected = set(req_gids)
+        targets = []
+        prefetched = 0
+        candidate = (min(req_gids) if is_backward else max(req_gids)) + step
+        while 0 <= candidate < len(groups):
+            if candidate in selected:
+                candidate += step
+                continue
+            # Backward never touches frozen params.
+            if is_backward and not groups[candidate].params_buffer.trainable:
+                selected.add(candidate)
+                candidate += step
+                continue
+            if prefetched >= prefetch_size:
+                break
+            for gid in self._gid_to_bucket_group[candidate]:
+                if gid in selected:
+                    continue
+                params_buffer = groups[gid].params_buffer
+                # Unsharded buckets are never gathered.
+                if not params_buffer.is_sharded or (
+                    is_backward and not params_buffer.trainable
+                ):
+                    continue
+                selected.add(gid)
+                targets.append(gid)
+                prefetched += params_buffer.total_buffer_size
+            candidate += step
+        return targets
+
+    def _prefetch_plan(self, req_gids, is_backward):
+        # Cached per request: prefetch targets, buffers to keep, and the
+        # bound on gathered elements (prefetch_sizes or the window if larger).
+        key = (tuple(req_gids), is_backward)
+        plan = self._prefetch_plans.get(key)
+        if plan is None:
+            targets = self._extend_by_prefetch_size(req_gids, is_backward)
+            keep = frozenset(req_gids) | frozenset(targets)
+            limit = max(
+                self.prefetch_sizes,
+                sum(
+                    self._params_buffers[gid].total_buffer_size
+                    for gid in keep
+                    if self._params_buffers[gid].is_sharded
+                ),
+            )
+            plan = self._prefetch_plans[key] = (tuple(targets), keep, limit)
+        return plan
+
     def _issue_async_gather(self, gid):
         params_buffer = self.buffer_manager.buffer_groups[gid].params_buffer
         params_buffer.status = BufferState.SYNCING
         params_buffer.comm_task = params_buffer.do_all_gather()
-        self.buffer_cnt_in_using += 1
+        self._count_gathered(params_buffer)
 
     def all_gather_params(self, params, is_backward=False):
         if len(params) == 0:
@@ -687,14 +812,28 @@ class FSDPCommManager:
             )
 
         if self.enable_overlap:
-            keep = set(req_gids)
-            for gid in req_gids:
-                group = self.buffer_manager.buffer_groups[gid]
-                if not group.params_buffer.is_sharded:
-                    continue
-                if group.params_buffer.status == BufferState.FREED:
-                    self._release_one_buffer_if_needed(keep)
-                    self._issue_async_gather(gid)
+            if self.prefetch_by_size:
+                targets, keep, limit = self._prefetch_plan(
+                    req_gids, is_backward
+                )
+                for gid in req_gids:
+                    params_buffer = self._params_buffers[gid]
+                    if not params_buffer.is_sharded:
+                        continue
+                    if params_buffer.status == BufferState.FREED:
+                        self._release_ready_buffers(
+                            params_buffer.total_buffer_size, limit, keep
+                        )
+                        self._issue_async_gather(gid)
+            else:
+                keep = set(req_gids)
+                for gid in req_gids:
+                    group = self.buffer_manager.buffer_groups[gid]
+                    if not group.params_buffer.is_sharded:
+                        continue
+                    if group.params_buffer.status == BufferState.FREED:
+                        self._release_one_buffer_if_needed(keep)
+                        self._issue_async_gather(gid)
 
         for param in params:
             gid = self.buffer_manager.param_to_buffer_id[param.name]
@@ -719,7 +858,7 @@ class FSDPCommManager:
                     params_buffer.fsdp_group.process_group.all_gather(
                         params_buffer.data_buffer, tmp_buffer
                     ).wait()
-                    self.buffer_cnt_in_using += 1
+                    self._count_gathered(params_buffer)
                 params_buffer.status = BufferState.USING
 
             # Bind the unsharded param to the real param
@@ -733,7 +872,18 @@ class FSDPCommManager:
             param.get_tensor()._share_data_with(tmp_param.get_tensor())
 
         # Prefetch after waiting on this unit's gathers, or compute stalls on it.
-        if self.enable_overlap:
+        if self.enable_overlap and self.prefetch_by_size:
+            for next_gid in targets:
+                next_params_buffer = self._params_buffers[next_gid]
+                if not next_params_buffer.is_sharded:
+                    continue
+                if next_params_buffer.status != BufferState.FREED:
+                    continue
+                self._release_ready_buffers(
+                    next_params_buffer.total_buffer_size, limit, keep
+                )
+                self._issue_async_gather(next_gid)
+        elif self.enable_overlap:
             keep = set(req_gids)
             for next_gid in self._next_buffer_id(req_gids, is_backward):
                 next_params_buffer = self.buffer_manager.buffer_groups[
@@ -783,12 +933,7 @@ class FSDPCommManager:
                     param._clear_data()
                     param.stop_gradient = stop_gradient
                     param.get_tensor()._set_dims(_shape)
-                params_buffer.clear_tmp_buffer()
-                params_buffer.status = BufferState.FREED
-                if not params_buffer.is_sharded:
-                    continue
-                if self.buffer_cnt_in_using > 0:
-                    self.buffer_cnt_in_using -= 1
+                self._free_params_buffer(params_buffer)
 
     # ------------------------------------------------------------------
     # Grads reduce_scatter queue. Owns grad_reduce_queue / need_zero_grads;
@@ -869,6 +1014,7 @@ class FSDPCommManager:
         self._wait_for_grad_comm()
         grads_buffer.comm_task = grads_buffer.do_reduce_scatter()
         self.grad_reduce_queue.append(grads_buffer)
+        self._grad_queue_numel += grads_buffer.total_buffer_size
         if not self.enable_overlap:
             self._wait_for_grad_comm(queue_limit=0)
 
@@ -896,16 +1042,13 @@ class FSDPCommManager:
             if not params_buffer.is_sharded:
                 continue
             if params_buffer.status in (BufferState.READY, BufferState.USING):
-                params_buffer.status = BufferState.FREED
                 for param in group.params:
                     stop_gradient = param.stop_gradient
                     _shape = param.shape
                     param._clear_data()
                     param.stop_gradient = stop_gradient
                     param.get_tensor()._set_dims(_shape)
-                params_buffer.clear_tmp_buffer()
-                if self.buffer_cnt_in_using > 0:
-                    self.buffer_cnt_in_using -= 1
+                self._free_params_buffer(params_buffer)
 
     def _release_reduced_grad_views(self, grads_buffer):
         if not grads_buffer.is_sharded:
@@ -920,19 +1063,29 @@ class FSDPCommManager:
                 param.main_grad = None
                 param._main_grad_addr = None
 
+    def _retire_grad_comm(self):
+        grads_buffer = self.grad_reduce_queue.pop(0)
+        self._grad_queue_numel -= grads_buffer.total_buffer_size
+        if grads_buffer.comm_task is None:
+            grads_buffer.clear_tmp_buffer()
+            self._release_reduced_grad_views(grads_buffer)
+            return
+        grads_buffer.comm_task.wait()
+        grads_buffer.comm_task = None
+        grads_buffer.accumulate_reduced_grad()
+        self._release_reduced_grad_views(grads_buffer)
+
     def _wait_for_grad_comm(self, queue_limit=None):
+        # Default bound: grad_queue_limit buffers by layer or
+        # grad_queue_capacity elements by size.
+        if queue_limit is None and self.prefetch_by_size:
+            while self._grad_queue_numel > self.grad_queue_capacity:
+                self._retire_grad_comm()
+            return
         if queue_limit is None:
             queue_limit = self.grad_queue_limit
         while len(self.grad_reduce_queue) > queue_limit:
-            grads_buffer = self.grad_reduce_queue.pop(0)
-            if grads_buffer.comm_task is None:
-                grads_buffer.clear_tmp_buffer()
-                self._release_reduced_grad_views(grads_buffer)
-                continue
-            grads_buffer.comm_task.wait()
-            grads_buffer.comm_task = None
-            grads_buffer.accumulate_reduced_grad()
-            self._release_reduced_grad_views(grads_buffer)
+            self._retire_grad_comm()
 
     def finish_grads_sync(self):
         # Wait for all async reduce_scatter tasks, call before optimizer.step()
@@ -1074,6 +1227,7 @@ class FullyShardFusion:
         enable_tensor_fusion_and_overlap=True,
         mp_policy=None,
         prefetch_units=1,
+        prefetch_sizes=None,
     ):
         self.model = model
         self.mp_policy = mp_policy
@@ -1086,6 +1240,7 @@ class FullyShardFusion:
             self.buffer_manager,
             enable_overlap=enable_tensor_fusion_and_overlap,
             prefetch_units=prefetch_units,
+            prefetch_sizes=prefetch_sizes,
         )
         self.register_tensor_fusion_hooks(self.model)
         register_fsdp_context(self)
@@ -1413,10 +1568,8 @@ class FullyShardFusion:
             cm.shard_params(params)
             for gid in was_freed:
                 params_buffer = bm.buffer_groups[gid].params_buffer
-                params_buffer.clear_tmp_buffer()
-                params_buffer.status = BufferState.FREED
-                if params_buffer.is_sharded and cm.buffer_cnt_in_using > 0:
-                    cm.buffer_cnt_in_using -= 1
+                if params_buffer.status != BufferState.FREED:
+                    cm._free_params_buffer(params_buffer)
 
     def optimizer_sharded_state_dict(self, optimizer):
         """Split the state keyed by ``fuse_params_<gid>`` into per-param flattened shards."""

@@ -239,6 +239,7 @@ class _RecordingCommManager:
     ):
         self.buffer_manager = buffer_manager
         self.enable_overlap = True
+        self.prefetch_by_size = False
         self.buffer_cnt_in_using = buffer_cnt_in_using
         self.fail_gather = fail_gather
         self.gathered = None
@@ -263,6 +264,8 @@ class _RecordingCommManager:
         # The real shard_params only drops the param views; buffer state is
         # left for unshard_params to restore.
         self.sharded = list(params)
+
+    _free_params_buffer = fsf.FSDPCommManager._free_params_buffer
 
 
 class TestUnshardParams(unittest.TestCase):
@@ -397,6 +400,258 @@ class TestUnshardParams(unittest.TestCase):
         self.assertEqual(cm.gathered, [])
         self.assertEqual(cm.sharded, [])
         self.assertEqual(groups[0].params_buffer.clear_calls, 0)
+
+    def test_buffer_freed_inside_block_not_freed_twice(self):
+        # A buffer already freed inside the block (e.g. by a reshard) must
+        # not be freed again on exit.
+        fsdp, groups = self._make_fsdp([(fsf.BufferState.FREED,)], {"w": 0})
+        cm = fsdp.comm_manager
+        with fsdp.unshard_params([_NamedParam("w")]):
+            cm._free_params_buffer(groups[0].params_buffer)
+        self.assertEqual(cm.buffer_cnt_in_using, 0)
+        self.assertEqual(groups[0].params_buffer.status, fsf.BufferState.FREED)
+        self.assertEqual(groups[0].params_buffer.clear_calls, 1)
+
+
+def _make_comm_manager(layout, **kwargs):
+    # layout: (fsdp_unit_id, is_expert, numel, is_sharded, trainable) per bucket.
+    groups = [
+        types.SimpleNamespace(
+            fsdp_unit_id=unit,
+            is_expert_param=expert,
+            params_buffer=types.SimpleNamespace(
+                is_sharded=sharded,
+                total_buffer_size=numel,
+                trainable=trainable,
+                status=fsf.BufferState.FREED,
+                clear_tmp_buffer=lambda: None,
+            ),
+        )
+        for unit, expert, numel, sharded, trainable in layout
+    ]
+    bm = types.SimpleNamespace(buffer_groups=groups)
+    return fsf.FSDPCommManager(bm, **kwargs)
+
+
+# Units 0..3, each a dense + an expert bucket of 10 + 30 elements.
+_LAYOUT = [
+    (u, e, n, True, True)
+    for u in range(4)
+    for e, n in ((False, 10), (True, 30))
+]
+
+
+def _fake_grads_buffer(numel, waited, i):
+    return types.SimpleNamespace(
+        comm_task=types.SimpleNamespace(wait=lambda: waited.append(i)),
+        total_buffer_size=numel,
+        is_sharded=False,
+        accumulate_reduced_grad=lambda: None,
+    )
+
+
+class TestPrefetchByLayer(unittest.TestCase):
+    """Covers the default per-unit prefetch of FSDPCommManager."""
+
+    def test_default_is_by_layer(self):
+        cm = _make_comm_manager(_LAYOUT)
+        self.assertFalse(cm.prefetch_by_size)
+        self.assertEqual(cm.prefetch_units, 1)
+        # 2 sharded groups per unit.
+        self.assertEqual(cm.gather_buffer_limit, 4)
+        self.assertEqual(cm.grad_queue_limit, 2)
+
+    def test_prefetch_units_ahead(self):
+        cm = _make_comm_manager(_LAYOUT)
+        self.assertEqual(cm._next_buffer_id([0, 1], False), [2, 3])
+        self.assertEqual(cm._next_buffer_id([6, 7], True), [5, 4])
+        cm = _make_comm_manager(_LAYOUT, prefetch_units=2)
+        self.assertEqual(cm._next_buffer_id([0, 1], False), [2, 3, 4, 5])
+
+    def test_zero_disables_prefetch(self):
+        cm = _make_comm_manager(_LAYOUT, prefetch_units=0)
+        self.assertEqual(cm._next_buffer_id([0, 1], False), [])
+
+    def test_free_counts_buffers(self):
+        cm = _make_comm_manager(_LAYOUT)
+        buf = cm.buffer_manager.buffer_groups[0].params_buffer
+        cm._count_gathered(buf)
+        self.assertEqual(cm.buffer_cnt_in_using, 1)
+        self.assertEqual(cm.gathered_numel, 0)
+        cm._free_params_buffer(buf)
+        cm._free_params_buffer(buf)
+        self.assertEqual(cm.buffer_cnt_in_using, 0)
+
+    def test_grad_queue_bounded_by_count(self):
+        cm = _make_comm_manager(_LAYOUT)
+        waited = []
+        for i in range(4):
+            cm.grad_reduce_queue.append(_fake_grads_buffer(100, waited, i))
+            cm._grad_queue_numel += 100
+        cm._wait_for_grad_comm()
+        self.assertEqual(waited, [0, 1])
+        cm._wait_for_grad_comm(queue_limit=0)
+        self.assertEqual(waited, [0, 1, 2, 3])
+        self.assertEqual(cm._grad_queue_numel, 0)
+
+
+class TestPrefetchBySize(unittest.TestCase):
+    """Covers the by-size (element count) prefetch of FSDPCommManager."""
+
+    def test_sizes_derived_from_unit_size(self):
+        cm = _make_comm_manager(_LAYOUT, prefetch_sizes=80)
+        self.assertTrue(cm.prefetch_by_size)
+        self.assertEqual(cm.grad_queue_capacity, 80)
+        self.assertEqual(cm.gather_prefetch_size, 40)
+
+    def test_forward_prefetches_next_unit(self):
+        cm = _make_comm_manager(_LAYOUT, prefetch_sizes=80)
+        self.assertEqual(cm._extend_by_prefetch_size([0, 1], False), [2, 3])
+        self.assertEqual(cm._extend_by_prefetch_size([6, 7], False), [])
+
+    def test_backward_walks_in_reverse(self):
+        cm = _make_comm_manager(_LAYOUT, prefetch_sizes=80)
+        self.assertEqual(cm._extend_by_prefetch_size([6, 7], True), [5, 4])
+
+    def test_at_least_one_bucket_group_when_positive(self):
+        cm = _make_comm_manager(_LAYOUT, prefetch_sizes=2)
+        self.assertEqual(cm._extend_by_prefetch_size([0], False), [1])
+
+    def test_zero_disables_prefetch(self):
+        cm = _make_comm_manager(_LAYOUT, prefetch_sizes=0)
+        self.assertEqual(cm._extend_by_prefetch_size([0, 1], False), [])
+
+    def test_prefetch_units_ignored(self):
+        cm = _make_comm_manager(_LAYOUT, prefetch_units=3, prefetch_sizes=80)
+        self.assertEqual(cm._extend_by_prefetch_size([0, 1], False), [2, 3])
+
+    def test_backward_skips_frozen_buckets(self):
+        layout = list(_LAYOUT)
+        layout[4] = (2, False, 10, True, False)
+        cm = _make_comm_manager(layout, prefetch_sizes=80)
+        self.assertEqual(cm._extend_by_prefetch_size([6, 7], True), [5, 3])
+
+    def test_skips_unsharded_buckets(self):
+        layout = list(_LAYOUT)
+        layout[2] = (1, False, 1000, False, True)
+        cm = _make_comm_manager(layout, prefetch_sizes=80)
+        self.assertEqual(cm._extend_by_prefetch_size([0, 1], False), [3, 4])
+        _, _, limit = cm._prefetch_plan([2, 3], False)
+        self.assertEqual(limit, 80)
+
+    def test_plan_keep_and_limit(self):
+        cm = _make_comm_manager(_LAYOUT, prefetch_sizes=20)
+        targets, keep, limit = cm._prefetch_plan([0, 1], False)
+        self.assertEqual(targets, (2,))
+        self.assertEqual(keep, frozenset({0, 1, 2}))
+        # Window (50) exceeds one communication unit (20).
+        self.assertEqual(limit, 50)
+        self.assertIs(cm._prefetch_plan([0, 1], False)[1], keep)
+
+    def test_free_counts_numel(self):
+        cm = _make_comm_manager(_LAYOUT, prefetch_sizes=80)
+        buf = cm.buffer_manager.buffer_groups[1].params_buffer
+        cm._count_gathered(buf)
+        self.assertEqual(cm.gathered_numel, 30)
+        self.assertEqual(cm.buffer_cnt_in_using, 0)
+        cm._free_params_buffer(buf)
+        self.assertEqual(cm.gathered_numel, 0)
+
+    def test_grad_queue_bounded_by_numel(self):
+        cm = _make_comm_manager(_LAYOUT, prefetch_sizes=25)
+        waited = []
+        for i in range(4):
+            cm.grad_reduce_queue.append(_fake_grads_buffer(10, waited, i))
+            cm._grad_queue_numel += 10
+        cm._wait_for_grad_comm()
+        self.assertEqual(waited, [0, 1])
+        self.assertEqual(cm._grad_queue_numel, 20)
+        cm._wait_for_grad_comm(queue_limit=0)
+        self.assertEqual(waited, [0, 1, 2, 3])
+        self.assertEqual(cm._grad_queue_numel, 0)
+
+
+class _FakeSub:
+    def __init__(self, keep_whole):
+        self.keep_whole = keep_whole
+
+    def keep_whole_of(self, name):
+        return self.keep_whole
+
+
+class _FakeMixed:
+    def __init__(self, route, decay_fun=None):
+        self._route = route
+        self._sub_opts = list({id(s): s for s in route.values()}.values())
+        self._apply_decay_param_fun = decay_fun
+
+
+class _MarkParam:
+    def __init__(self, name, stop_gradient=False):
+        self.name = name
+        self.stop_gradient = stop_gradient
+
+
+class _MarkLayer:
+    def __init__(self, params):
+        self._params = params
+
+    def named_parameters(self):
+        return [(p.name, p) for p in self._params]
+
+
+class TestMixedOptimizerGrouping(unittest.TestCase):
+    """fully_shard keeps each fused buffer inside one sub-optimizer."""
+
+    def test_params_marked_by_owning_sub(self):
+        from paddle.distributed.fsdp.fully_shard import (
+            _mark_params_for_optimizer,
+        )
+
+        muon, adamw = _FakeSub(True), _FakeSub(None)
+        params = [_MarkParam("w"), _MarkParam("norm"), _MarkParam("x", True)]
+        opt = _FakeMixed(
+            {"w": muon, "norm": adamw}, decay_fun=lambda n: n != "norm"
+        )
+        _mark_params_for_optimizer(_MarkLayer(params), opt)
+        w, norm, frozen = params
+        self.assertEqual((w.fsdp_optimizer_group, w.use_muon), (0, True))
+        self.assertEqual((norm.fsdp_optimizer_group, norm.use_muon), (1, False))
+        self.assertTrue(norm.no_weight_decay)
+        self.assertFalse(w.no_weight_decay)
+        self.assertIsNone(frozen.fsdp_optimizer_group)
+
+    def test_unrouted_trainable_param_raises(self):
+        from paddle.distributed.fsdp.fully_shard import (
+            _mark_params_for_optimizer,
+        )
+
+        opt = _FakeMixed({"w": _FakeSub(None)})
+        with self.assertRaises(ValueError):
+            _mark_params_for_optimizer(
+                _MarkLayer([_MarkParam("w"), _MarkParam("lost")]), opt
+            )
+
+    def test_fused_buffer_routed_to_param_owner(self):
+        adamw = _FakeSub(None)
+        group = types.SimpleNamespace(
+            params=[_NamedParam("norm")],
+            params_buffer=types.SimpleNamespace(
+                data_buffer=_NamedParam("fuse_params_0")
+            ),
+        )
+        ctx = types.SimpleNamespace(
+            buffer_manager=types.SimpleNamespace(buffer_groups=[group])
+        )
+        opt = _FakeMixed({"norm": adamw})
+        wrapper = types.SimpleNamespace(_inner_opt=opt)
+        self.assertTrue(fsf.FullyShardFusion._bind_mixed_routes(ctx, wrapper))
+        self.assertIs(opt._route["fuse_params_0"], adamw)
+        self.assertFalse(
+            fsf.FullyShardFusion._bind_mixed_routes(
+                ctx, types.SimpleNamespace()
+            )
+        )
 
 
 if __name__ == "__main__":
