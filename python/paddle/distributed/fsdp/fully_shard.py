@@ -94,7 +94,6 @@ def _fully_shard_manual_parallel(
     optimizer=None,
     grad_accum_steps=1,
     fp8_param_gather=False,
-    grad_comm_dtype=None,
 ):
     layers = module._layers if isinstance(module, MetaParallelBase) else module
     if optimizer is not None:
@@ -104,7 +103,6 @@ def _fully_shard_manual_parallel(
         enable_tensor_fusion_and_overlap=enable_tensor_fusion_and_overlap,
         mp_policy=mp_policy,
         fp8_param_gather=fp8_param_gather,
-        grad_comm_dtype=grad_comm_dtype,
     )
     layers._fsdp_context.set_grad_accum_steps(grad_accum_steps)
     if optimizer is not None:
@@ -125,12 +123,10 @@ def _fully_shard_auto_parallel(
     optimizer=None,
     grad_accum_steps=1,
     fp8_param_gather=False,
-    grad_comm_dtype=None,
 ):
-    if fp8_param_gather or grad_comm_dtype is not None:
+    if fp8_param_gather:
         raise NotImplementedError(
-            "fp8_param_gather and grad_comm_dtype are only supported "
-            "in manual parallel mode."
+            "fp8_param_gather is only supported in manual parallel mode."
         )
     module._fsdp_context = FullyShardAuto(
         module,
@@ -154,7 +150,6 @@ def fully_shard(
     optimizer: paddle.optimizer.Optimizer | None = None,
     grad_accum_steps: int = 1,
     fp8_param_gather: bool = False,
-    grad_comm_dtype: paddle.dtype | None = None,
 ) -> paddle.nn.Layer:
     """
     Apply fully sharded data parallel (FSDP) to the given module.
@@ -194,9 +189,6 @@ def fully_shard(
         fp8_param_gather (bool, optional): Manual parallel mode only.
             All-gather the params tagged with ``_fsdp_fp8_quantizer`` as fp8.
             Defaults to False.
-        grad_comm_dtype (paddle.dtype|None, optional): Manual parallel mode
-            only. Dtype of the grad reduce-scatter, e.g. ``paddle.bfloat16``.
-            Defaults to None, the grad accumulation dtype.
 
     Returns:
         module: A wrapper module that applies FSDP to the input module.
@@ -242,7 +234,6 @@ def fully_shard(
         optimizer,
         grad_accum_steps,
         fp8_param_gather,
-        grad_comm_dtype,
     )
 
     if in_auto_parallel_mode():

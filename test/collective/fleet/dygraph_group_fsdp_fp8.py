@@ -148,12 +148,10 @@ def experts(model):
     return [w for layer in model.layers for w in (layer.weight1, layer.weight2)]
 
 
-def build_grouped(fp8, quantizer=None, comm_dtype=None, muon=False):
+def build_grouped(fp8, quantizer=None, muon=False):
     group = fleet.get_hybrid_communicate_group().get_sharding_parallel_group()
     paddle.seed(2026)
     model = GroupedExpertModel(fp8)
-    if not fp8:
-        model.to(dtype="bfloat16")
     for p in experts(model):
         p.is_moe_param = True
         p.expert = True
@@ -187,7 +185,6 @@ def build_grouped(fp8, quantizer=None, comm_dtype=None, muon=False):
         optimizer=opt,
         grad_accum_steps=ACCUM_STEPS,
         fp8_param_gather=quantizer is not None,
-        grad_comm_dtype=comm_dtype,
     )
     return model, opt, model._fsdp_context
 
@@ -394,50 +391,6 @@ def run_fp8_checkpoint():
             shutil.rmtree(ckpt_root, ignore_errors=True)
 
 
-def train_bf16_comm(comm_dtype, data):
-    model, opt, ctx = build_grouped(False, comm_dtype=comm_dtype)
-    sharded = [
-        g
-        for g in ctx.buffer_manager.buffer_groups
-        if g.grads_buffer is not None and g.grads_buffer.is_sharded
-    ]
-    n_comm = sum(g.grads_buffer.comm_dtype is not None for g in sharded)
-    assert n_comm == len(sharded) * (comm_dtype is not None), n_comm
-    losses, grads = [], []
-    for step in range(STEPS):
-        for x in data[step * ACCUM_STEPS :][:ACCUM_STEPS]:
-            loss = (model(x.astype("bfloat16")).astype("float32") ** 2).mean()
-            losses.append(float(loss))
-            loss.backward()
-        opt.step()
-        grads.append(
-            [
-                (
-                    g.is_expert_param,
-                    g.grads_buffer.data_buffer.astype("float32").numpy(),
-                )
-                for g in sharded
-            ]
-        )
-        opt.clear_grad()
-    assert not ctx.comm_manager.grad_reduce_queue
-    assert all(g.grads_buffer._comm_buffer is None for g in sharded)
-    return losses, grads
-
-
-def run_grad_bf16_comm():
-    data = rand_data(7 + paddle.distributed.get_rank(), STEPS)
-    ref_losses, ref_grads = train_bf16_comm(None, data)
-    new_losses, new_grads = train_bf16_comm(paddle.bfloat16, data)
-    assert ref_losses[:ACCUM_STEPS] == new_losses[:ACCUM_STEPS]
-    inexact = {False: 0, True: 0}
-    for (is_expert, a), (_, b) in zip(ref_grads[0], new_grads[0]):
-        np.testing.assert_allclose(b, a, rtol=0, atol=1e-2 * np.abs(a).max())
-        inexact[is_expert] += int(not np.array_equal(a, b))
-    assert all(inexact.values()), f"bf16 path left grads exact: {inexact}"
-    np.testing.assert_allclose(new_losses, ref_losses, rtol=1e-2)
-
-
 if __name__ == '__main__':
     paddle.distributed.init_parallel_env()
     strategy = fleet.DistributedStrategy()
@@ -451,4 +404,3 @@ if __name__ == '__main__':
     check_unaligned_fp8_raises()
     run_fp8_gather()
     run_fp8_checkpoint()
-    run_grad_bf16_comm()
