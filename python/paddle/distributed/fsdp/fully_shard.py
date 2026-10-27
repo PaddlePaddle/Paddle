@@ -42,6 +42,7 @@ class MixedPrecisionPolicy:
     reduce_dtype: paddle.dtype | None = None
     output_dtype: paddle.dtype | None = None
     cast_forward_inputs: bool = True
+    grad_comm_dtype: paddle.dtype | None = None
 
 
 # @dataclass
@@ -93,7 +94,6 @@ def _fully_shard_manual_parallel(
     enable_tensor_fusion_and_overlap,
     optimizer=None,
     grad_accum_steps=1,
-    grad_comm_dtype=None,
 ):
     layers = module._layers if isinstance(module, MetaParallelBase) else module
     if optimizer is not None:
@@ -102,7 +102,6 @@ def _fully_shard_manual_parallel(
         layers,
         enable_tensor_fusion_and_overlap=enable_tensor_fusion_and_overlap,
         mp_policy=mp_policy,
-        grad_comm_dtype=grad_comm_dtype,
     )
     layers._fsdp_context.set_grad_accum_steps(grad_accum_steps)
     if optimizer is not None:
@@ -122,7 +121,6 @@ def _fully_shard_auto_parallel(
     enable_tensor_fusion_and_overlap,
     optimizer=None,
     grad_accum_steps=1,
-    grad_comm_dtype=None,
 ):
     module._fsdp_context = FullyShardAuto(
         module,
@@ -145,7 +143,6 @@ def fully_shard(
     enable_tensor_fusion_and_overlap: bool = True,
     optimizer: paddle.optimizer.Optimizer | None = None,
     grad_accum_steps: int = 1,
-    grad_comm_dtype: paddle.dtype | None = None,
 ) -> paddle.nn.Layer:
     """
     Apply fully sharded data parallel (FSDP) to the given module.
@@ -167,6 +164,8 @@ def fully_shard(
             Defaults to None.
         mp_policy (MixedPrecisionPolicy | None, optional): Mixed precision policy configuration.
             If None, creates a default MixedPrecisionPolicy. Defaults to None.
+            ``reduce_dtype`` is the grad accumulation dtype. ``grad_comm_dtype``
+            is the grad reduce-scatter dtype (float32 or bfloat16), None means ``reduce_dtype``.
         offload_policy (OffloadPolicy | None, optional): Offload policy configuration for CPU offloading.
             If None, creates a default OffloadPolicy. Defaults to None.
         ignored_params (Iterable[paddle.Tensor] | None, optional): Parameters that should not be sharded.
@@ -182,9 +181,6 @@ def fully_shard(
             if needed.
         grad_accum_steps (int, optional): Manual parallel mode only. Gradient
             accumulation steps. Defaults to 1.
-        grad_comm_dtype (paddle.dtype|None, optional): Manual parallel mode
-            only. Dtype of the grad reduce-scatter, e.g. ``paddle.bfloat16``.
-            Defaults to None, the grad accumulation dtype.
 
     Returns:
         module: A wrapper module that applies FSDP to the input module.
@@ -212,6 +208,10 @@ def fully_shard(
     """
     if mp_policy is None:
         mp_policy = MixedPrecisionPolicy()
+    if mp_policy.grad_comm_dtype not in (None, paddle.float32, paddle.bfloat16):
+        raise ValueError(
+            f"grad_comm_dtype must be float32 or bfloat16, got {mp_policy.grad_comm_dtype}."
+        )
     if offload_policy is None:
         offload_policy = OffloadPolicy()
     ignored_params_set: set[paddle.Tensor] = (
@@ -229,7 +229,6 @@ def fully_shard(
         enable_tensor_fusion_and_overlap,
         optimizer,
         grad_accum_steps,
-        grad_comm_dtype,
     )
 
     if in_auto_parallel_mode():

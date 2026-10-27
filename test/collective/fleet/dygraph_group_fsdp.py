@@ -27,7 +27,10 @@ from paddle.distributed import fleet
 from paddle.distributed.fleet.utils import mix_precision_utils
 from paddle.distributed.fsdp import fully_shard_fusion
 from paddle.distributed.fsdp._fsdp_context import register_fsdp_context
-from paddle.distributed.fsdp.fully_shard import fully_shard
+from paddle.distributed.fsdp.fully_shard import (
+    MixedPrecisionPolicy,
+    fully_shard,
+)
 from paddle.optimizer.muon import Muon, MuonParamInfo
 
 HIDDEN = 16
@@ -1049,7 +1052,7 @@ def train_grad_comm(comm_dtype, data):
         model,
         optimizer=opt,
         grad_accum_steps=ACCUM_STEPS,
-        grad_comm_dtype=comm_dtype,
+        mp_policy=MixedPrecisionPolicy(grad_comm_dtype=comm_dtype),
     )
     ctx = model._fsdp_context
     sharded = [
@@ -1076,6 +1079,16 @@ def train_grad_comm(comm_dtype, data):
 
 def run_grad_comm_dtype():
     """bf16 grad reduce-scatter stays close to the fp32 one."""
+    for bad in (paddle.float16, paddle.int32, "bfloat16"):
+        try:
+            fully_shard(
+                nn.Linear(HIDDEN, HIDDEN),
+                mp_policy=MixedPrecisionPolicy(grad_comm_dtype=bad),
+            )
+        except ValueError as e:
+            assert "grad_comm_dtype" in str(e), e
+        else:
+            raise AssertionError(f"grad_comm_dtype={bad} was not rejected")
     paddle.seed(7 + paddle.distributed.get_rank())
     data = [paddle.randn([TOKENS, HIDDEN]) for _ in range(STEPS - 1)]
     ref_losses, ref_grads = train_grad_comm(None, data)

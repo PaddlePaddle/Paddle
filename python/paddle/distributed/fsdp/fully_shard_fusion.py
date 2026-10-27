@@ -1089,7 +1089,6 @@ class FullyShardFusion:
         enable_tensor_fusion_and_overlap=True,
         mp_policy=None,
         prefetch_units=1,
-        grad_comm_dtype=None,
     ):
         self.model = model
         self.mp_policy = mp_policy
@@ -1097,7 +1096,9 @@ class FullyShardFusion:
             self.model,
             fsdp_unit_layers,
             None if mp_policy is None else mp_policy.reduce_dtype,
-            grad_comm_dtype=grad_comm_dtype,
+            grad_comm_dtype=None
+            if mp_policy is None
+            else mp_policy.grad_comm_dtype,
         )
         self.comm_manager = FSDPCommManager(
             self.buffer_manager,
