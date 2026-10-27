@@ -220,10 +220,14 @@ class TestForwardPostHookTupleBranch(unittest.TestCase):
         np.testing.assert_array_equal(result[1].numpy(), b.numpy())
 
 
+_BUF_NUMEL = 4
+
+
 class _FakeParamsBuffer:
     def __init__(self, status, is_sharded=True):
         self.status = status
         self.is_sharded = is_sharded
+        self.total_buffer_size = _BUF_NUMEL
         self.clear_calls = 0
 
     def clear_tmp_buffer(self):
@@ -231,15 +235,14 @@ class _FakeParamsBuffer:
 
 
 class _RecordingCommManager:
-    """comm_manager stand-in that mimics the double-buffer accounting of a
-    real gather (FREED -> USING, count += 1) and records how it was called."""
+    """comm_manager stand-in that mimics the gathered_numel accounting of a
+    real gather (FREED -> USING, numel += size if sharded) and records how it
+    was called."""
 
-    def __init__(
-        self, buffer_manager, buffer_cnt_in_using=0, fail_gather=False
-    ):
+    def __init__(self, buffer_manager, gathered_numel=0, fail_gather=False):
         self.buffer_manager = buffer_manager
         self.enable_overlap = True
-        self.buffer_cnt_in_using = buffer_cnt_in_using
+        self.gathered_numel = gathered_numel
         self.fail_gather = fail_gather
         self.gathered = None
         self.sharded = None
@@ -257,12 +260,15 @@ class _RecordingCommManager:
             buf = bm.buffer_groups[gid].params_buffer
             if buf.status == fsf.BufferState.FREED:
                 buf.status = fsf.BufferState.USING
-                self.buffer_cnt_in_using += 1
+                if buf.is_sharded:
+                    self.gathered_numel += buf.total_buffer_size
 
     def shard_params(self, params, is_backward=False):
         # The real shard_params only drops the param views; buffer state is
         # left for unshard_params to restore.
         self.sharded = list(params)
+
+    _free_params_buffer = fsf.FSDPCommManager._free_params_buffer
 
 
 class TestUnshardParams(unittest.TestCase):
@@ -293,7 +299,7 @@ class TestUnshardParams(unittest.TestCase):
             self.assertEqual(
                 groups[0].params_buffer.status, fsf.BufferState.USING
             )
-            self.assertEqual(cm.buffer_cnt_in_using, 1)
+            self.assertEqual(cm.gathered_numel, _BUF_NUMEL)
             # Overlap is restored and grad re-enabled once the gather returns.
             self.assertTrue(cm.enable_overlap)
             self.assertTrue(paddle.is_grad_enabled())
@@ -304,13 +310,13 @@ class TestUnshardParams(unittest.TestCase):
         buf = groups[0].params_buffer
         self.assertEqual(buf.status, fsf.BufferState.FREED)
         self.assertEqual(buf.clear_calls, 1)
-        self.assertEqual(cm.buffer_cnt_in_using, 0)
+        self.assertEqual(cm.gathered_numel, 0)
 
     def test_already_gathered_buffer_left_untouched(self):
         # A buffer that was live before entry belongs to the caller's
-        # schedule: no clear, no state change, no count change.
+        # schedule: no clear, no state change, no numel change.
         fsdp, groups = self._make_fsdp(
-            [(fsf.BufferState.READY,)], {"w": 0}, buffer_cnt_in_using=1
+            [(fsf.BufferState.READY,)], {"w": 0}, gathered_numel=_BUF_NUMEL
         )
         cm = fsdp.comm_manager
         params = [_NamedParam("w")]
@@ -320,7 +326,7 @@ class TestUnshardParams(unittest.TestCase):
         self.assertEqual(cm.sharded, params)
         self.assertEqual(buf.status, fsf.BufferState.READY)
         self.assertEqual(buf.clear_calls, 0)
-        self.assertEqual(cm.buffer_cnt_in_using, 1)
+        self.assertEqual(cm.gathered_numel, _BUF_NUMEL)
 
     def test_unmanaged_params_are_ignored(self):
         fsdp, groups = self._make_fsdp([(fsf.BufferState.FREED,)], {"w": 0})
@@ -335,36 +341,38 @@ class TestUnshardParams(unittest.TestCase):
         fsdp, groups = self._make_fsdp(
             [(fsf.BufferState.FREED,), (fsf.BufferState.USING,)],
             {"a": 0, "b": 1},
-            buffer_cnt_in_using=1,
+            gathered_numel=_BUF_NUMEL,
         )
         cm = fsdp.comm_manager
         with fsdp.unshard_params([_NamedParam("a"), _NamedParam("b")]):
-            self.assertEqual(cm.buffer_cnt_in_using, 2)
+            self.assertEqual(cm.gathered_numel, 2 * _BUF_NUMEL)
         self.assertEqual(groups[0].params_buffer.status, fsf.BufferState.FREED)
         self.assertEqual(groups[0].params_buffer.clear_calls, 1)
         self.assertEqual(groups[1].params_buffer.status, fsf.BufferState.USING)
         self.assertEqual(groups[1].params_buffer.clear_calls, 0)
-        self.assertEqual(cm.buffer_cnt_in_using, 1)
+        self.assertEqual(cm.gathered_numel, _BUF_NUMEL)
 
-    def test_unsharded_buffer_does_not_decrement_count(self):
+    def test_unsharded_buffer_does_not_change_numel(self):
         fsdp, groups = self._make_fsdp(
-            [(fsf.BufferState.FREED, False)], {"w": 0}
+            [(fsf.BufferState.FREED, False)], {"w": 0}, gathered_numel=3
         )
         cm = fsdp.comm_manager
-        cm.buffer_cnt_in_using = 3
         with fsdp.unshard_params([_NamedParam("w")]):
-            cm.buffer_cnt_in_using = 3
+            self.assertEqual(cm.gathered_numel, 3)
         self.assertEqual(groups[0].params_buffer.status, fsf.BufferState.FREED)
         self.assertEqual(groups[0].params_buffer.clear_calls, 1)
-        self.assertEqual(cm.buffer_cnt_in_using, 3)
+        self.assertEqual(cm.gathered_numel, 3)
 
-    def test_count_never_goes_negative(self):
+    def test_buffer_freed_inside_block_not_freed_twice(self):
+        # A buffer already freed inside the block (e.g. by a reshard) must
+        # not be freed again on exit, or gathered_numel would go negative.
         fsdp, groups = self._make_fsdp([(fsf.BufferState.FREED,)], {"w": 0})
         cm = fsdp.comm_manager
         with fsdp.unshard_params([_NamedParam("w")]):
-            cm.buffer_cnt_in_using = 0
-        self.assertEqual(cm.buffer_cnt_in_using, 0)
+            cm._free_params_buffer(groups[0].params_buffer)
+        self.assertEqual(cm.gathered_numel, 0)
         self.assertEqual(groups[0].params_buffer.status, fsf.BufferState.FREED)
+        self.assertEqual(groups[0].params_buffer.clear_calls, 1)
 
     def test_body_exception_still_reshards(self):
         fsdp, groups = self._make_fsdp([(fsf.BufferState.FREED,)], {"w": 0})
@@ -375,7 +383,7 @@ class TestUnshardParams(unittest.TestCase):
         self.assertEqual(cm.sharded, params)
         self.assertEqual(groups[0].params_buffer.status, fsf.BufferState.FREED)
         self.assertEqual(groups[0].params_buffer.clear_calls, 1)
-        self.assertEqual(cm.buffer_cnt_in_using, 0)
+        self.assertEqual(cm.gathered_numel, 0)
 
     def test_gather_exception_restores_overlap(self):
         fsdp, groups = self._make_fsdp(
@@ -397,6 +405,114 @@ class TestUnshardParams(unittest.TestCase):
         self.assertEqual(cm.gathered, [])
         self.assertEqual(cm.sharded, [])
         self.assertEqual(groups[0].params_buffer.clear_calls, 0)
+
+
+def _make_comm_manager(layout, **kwargs):
+    # layout: (fsdp_unit_id, is_expert, numel, is_sharded, trainable) per bucket.
+    groups = [
+        types.SimpleNamespace(
+            fsdp_unit_id=unit,
+            is_expert_param=expert,
+            params_buffer=types.SimpleNamespace(
+                is_sharded=sharded,
+                total_buffer_size=numel,
+                trainable=trainable,
+            ),
+        )
+        for unit, expert, numel, sharded, trainable in layout
+    ]
+    bm = types.SimpleNamespace(buffer_groups=groups)
+    return fsf.FSDPCommManager(bm, **kwargs)
+
+
+class TestPrefetchBySize(unittest.TestCase):
+    """Covers the Megatron-style element-count prefetch of FSDPCommManager."""
+
+    # Units 0..3, each a dense + an expert bucket of 10 + 30 elements.
+    LAYOUT = [
+        (u, e, n, True, True)
+        for u in range(4)
+        for e, n in ((False, 10), (True, 30))
+    ]
+
+    def test_default_unit_size_is_twice_avg_unit(self):
+        cm = _make_comm_manager(self.LAYOUT)
+        self.assertEqual(cm.avg_unit_numel, 40)
+        self.assertEqual(cm.suggested_communication_unit_size, 80)
+        self.assertEqual(cm.suggested_RS_queue_capacity, 80)
+        self.assertEqual(cm.suggested_AG_prefetch_size, 40)
+
+    def test_forward_prefetches_next_unit(self):
+        cm = _make_comm_manager(self.LAYOUT)
+        self.assertEqual(cm._extend_by_prefetch_size([0, 1], False), [2, 3])
+        self.assertEqual(cm._extend_by_prefetch_size([6, 7], False), [])
+
+    def test_backward_walks_in_reverse(self):
+        cm = _make_comm_manager(self.LAYOUT)
+        self.assertEqual(cm._extend_by_prefetch_size([6, 7], True), [5, 4])
+
+    def test_at_least_one_bucket_group_when_positive(self):
+        cm = _make_comm_manager(
+            self.LAYOUT, suggested_communication_unit_size=2
+        )
+        self.assertEqual(cm._extend_by_prefetch_size([0], False), [1])
+
+    def test_zero_disables_prefetch(self):
+        cm = _make_comm_manager(
+            self.LAYOUT, suggested_communication_unit_size=0
+        )
+        self.assertEqual(cm._extend_by_prefetch_size([0, 1], False), [])
+
+    def test_backward_skips_frozen_buckets(self):
+        layout = list(self.LAYOUT)
+        layout[4] = (2, False, 10, True, False)
+        cm = _make_comm_manager(layout)
+        self.assertEqual(cm._extend_by_prefetch_size([6, 7], True), [5, 3])
+
+    def test_skips_unsharded_buckets(self):
+        layout = list(self.LAYOUT)
+        layout[2] = (1, False, 1000, False, True)
+        cm = _make_comm_manager(layout, suggested_communication_unit_size=80)
+        # The unsharded bucket is never gathered nor counted.
+        self.assertEqual(cm._extend_by_prefetch_size([0, 1], False), [3, 4])
+        _, _, limit = cm._prefetch_plan([2, 3], False)
+        self.assertEqual(limit, 80)
+
+    def test_plan_keep_and_limit(self):
+        cm = _make_comm_manager(
+            self.LAYOUT, suggested_communication_unit_size=20
+        )
+        targets, keep, limit = cm._prefetch_plan([0, 1], False)
+        self.assertEqual(targets, (2,))
+        self.assertEqual(keep, frozenset({0, 1, 2}))
+        # Window (50) exceeds one communication unit (20).
+        self.assertEqual(limit, 50)
+        self.assertIs(cm._prefetch_plan([0, 1], False)[1], keep)
+
+
+class TestGradQueueBySize(unittest.TestCase):
+    def test_waits_oldest_until_within_capacity(self):
+        cm = _make_comm_manager(
+            [(0, False, 10, True, True)], suggested_communication_unit_size=25
+        )
+        waited = []
+        for i in range(4):
+            task = types.SimpleNamespace(wait=lambda i=i: waited.append(i))
+            cm.grad_reduce_queue.append(
+                types.SimpleNamespace(
+                    comm_task=task,
+                    total_buffer_size=10,
+                    is_sharded=False,
+                    accumulate_reduced_grad=lambda: None,
+                )
+            )
+            cm._grad_queue_numel += 10
+        cm._wait_for_grad_comm()
+        self.assertEqual(waited, [0, 1])
+        self.assertEqual(cm._grad_queue_numel, 20)
+        cm._wait_for_grad_comm(queue_limit=0)
+        self.assertEqual(waited, [0, 1, 2, 3])
+        self.assertEqual(cm._grad_queue_numel, 0)
 
 
 if __name__ == "__main__":
