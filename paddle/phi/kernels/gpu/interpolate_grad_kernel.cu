@@ -404,28 +404,37 @@ __global__ void KeBilinearInterpNCHWBw(T* in,
       const MT inv_ratio_w = 1.0f / ratio_w;
 
       // Compute the range of output pixels (h2_min, h2_max) that could affect
-      // input pixel h1
+      // input pixel h1. A zero ratio (size-1 input axis with align_corners)
+      // maps every output to input 0; inv_ratio is inf there and converting
+      // +-inf to int64 is undefined (it saturates on CUDA but not on HIP), so
+      // take the whole output range directly.
       const MT h2r_min =
           (h1 - 1 + align_type_value) * inv_ratio_h - align_type_value;
-      const int64_t h2_min =
-          max(static_cast<int64_t>(ceilf(h2r_min)), static_cast<int64_t>(0));
+      const int64_t h2_min = ratio_h == 0
+                                 ? 0
+                                 : max(static_cast<int64_t>(ceilf(h2r_min)),
+                                       static_cast<int64_t>(0));
 
       const MT h2r_max =
           (h1 + 1 + align_type_value) * inv_ratio_h - align_type_value;
       const int64_t h2_max =
-          min(static_cast<int64_t>(floorf(h2r_max)), out_h - 1);
+          ratio_h == 0 ? out_h - 1
+                       : min(static_cast<int64_t>(floorf(h2r_max)), out_h - 1);
 
       // Compute the range of output pixels (w2_min, w2_max) that could affect
       // input pixel w1
       const MT w2r_min =
           (w1 - 1 + align_type_value) * inv_ratio_w - align_type_value;
-      const int64_t w2_min =
-          max(static_cast<int64_t>(ceilf(w2r_min)), static_cast<int64_t>(0));
+      const int64_t w2_min = ratio_w == 0
+                                 ? 0
+                                 : max(static_cast<int64_t>(ceilf(w2r_min)),
+                                       static_cast<int64_t>(0));
 
       const MT w2r_max =
           (w1 + 1 + align_type_value) * inv_ratio_w - align_type_value;
       const int64_t w2_max =
-          min(static_cast<int64_t>(floorf(w2r_max)), out_w - 1);
+          ratio_w == 0 ? out_w - 1
+                       : min(static_cast<int64_t>(floorf(w2r_max)), out_w - 1);
 
       for (int64_t h2 = h2_min; h2 <= h2_max; ++h2) {
         const MT src_y = ratio_h * (h2 + align_type_value) - align_type_value;
