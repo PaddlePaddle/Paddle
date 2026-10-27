@@ -648,7 +648,6 @@ class FSDPCommManager:
         # NCCL communicator and stream. With CUDA_DEVICE_MAX_CONNECTIONS=1 all
         # streams share one hardware queue, and several RS queued back to back
         # on one stream block unrelated compute kernels behind them.
-        # new_group is collective: every rank builds the clones in this order.
         per_unit = {}
         for group in self.buffer_manager.buffer_groups:
             grads_buffer = group.grads_buffer
@@ -660,16 +659,32 @@ class FSDPCommManager:
             ):
                 continue
             per_unit.setdefault(group.fsdp_unit_id, []).append(group)
+
+        # new_group is a collective call: gids come from a per-rank counter and
+        # the NCCL unique-id store key depends only on the gid, so every rank
+        # must create the same groups in the same order, including groups it
+        # is not in (as topology.py does). Gather the rank lists every rank
+        # wants to clone, then clone each of them everywhere.
+        local = sorted(
+            {
+                tuple(group.grads_buffer.fsdp_group.ranks)
+                for groups in per_unit.values()
+                for group in groups
+            }
+        )
+        gathered = []
+        paddle.distributed.all_gather_object(gathered, local)
+        all_ranks = sorted({ranks for lst in gathered for ranks in lst})
+        for ranks in all_ranks:
+            self._dense_rs_groups[ranks] = [
+                paddle.distributed.new_group(ranks=list(ranks))
+                for _ in range(n_streams - 1)
+            ]
+
         for unit_id in sorted(per_unit):
             for k, group in enumerate(per_unit[unit_id]):
                 orig = group.grads_buffer.fsdp_group
-                clones = self._dense_rs_groups.get(id(orig))
-                if clones is None:
-                    clones = [orig] + [
-                        paddle.distributed.new_group(ranks=list(orig.ranks))
-                        for _ in range(n_streams - 1)
-                    ]
-                    self._dense_rs_groups[id(orig)] = clones
+                clones = [orig] + self._dense_rs_groups[tuple(orig.ranks)]
                 group.grads_buffer.fsdp_group = clones[k % n_streams]
 
     def _in_reshard_filter(self, group):
