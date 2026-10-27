@@ -18,27 +18,17 @@ import types
 import paddle
 
 
-def _quantizer(params):
-    quantizers = {getattr(p, "_fsdp_fp8_quantizer", None) for p in params}
-    if len(quantizers) > 1:
-        raise ValueError("fp8_param_gather: a buffer group mixes quantizers")
-    return quantizers.pop()
-
-
-def _shape(param):
-    return list(getattr(param, "original_shape", None) or param.shape)
-
-
 def fp8_shard_numel(params):
-    quantizer = _quantizer(params)
+    # Buffer groups are keyed by quantizer, so all params share one.
+    quantizer = getattr(params[0], "_fsdp_fp8_quantizer", None)
     if quantizer is None:
         return None
     numel = quantizer.block**2
     for p in params:
-        shape = tuple(_shape(p))
+        shape = tuple(getattr(p, "original_shape", None) or p.shape)
         reason = quantizer.check(p, shape) if len(shape) == 3 else "not 3-D"
         if reason is not None:
-            raise ValueError(f"fp8_param_gather: {p.name}: {reason}")
+            raise ValueError(f"_fsdp_fp8_quantizer: {p.name}: {reason}")
         numel = math.lcm(numel, shape[1] * shape[2])
     return numel
 
@@ -46,9 +36,10 @@ def fp8_shard_numel(params):
 def init_fp8_buffer(params_buffer, params):
     if not params_buffer.is_sharded:
         raise ValueError(
-            f"fp8_param_gather: group {params_buffer.unique_key} is not sharded"
+            f"_fsdp_fp8_quantizer: group {params_buffer.unique_key} is not "
+            "sharded"
         )
-    quantizer = _quantizer(params)
+    quantizer = params[0]._fsdp_fp8_quantizer
     k, full = len(quantizer.orientations), params_buffer.total_buffer_size
     numels = [full] * k + [full // quantizer.block**2] * k
     dtypes = [paddle.float8_e4m3fn] * k + [paddle.float32] * k
@@ -66,8 +57,11 @@ def init_fp8_buffer(params_buffer, params):
 
 
 def build_ckpt_weight(params_buffer, dtype):
-    params_buffer.fp8.weight_copy = params_buffer.data_buffer.astype(dtype)
-    return params_buffer.fp8.weight_copy
+    # A param-dtype main weight is saved as is; an fp32 one as a copy.
+    main = params_buffer.data_buffer
+    weight = main if main.dtype == dtype else main.astype(dtype)
+    params_buffer.fp8.weight_copy = weight
+    return weight
 
 
 @paddle.autograd.no_grad()
@@ -77,7 +71,9 @@ def sync_ckpt_weight_to_main(params_buffer):
     if weight is None:
         return
     main = params_buffer.data_buffer
-    if not bool(paddle.equal_all(main.astype(weight.dtype), weight)):
+    if weight is not main and not bool(
+        paddle.equal_all(main.astype(weight.dtype), weight)
+    ):
         paddle.assign(weight.astype(main.dtype), main)
     fp8.quantized = False
 
@@ -94,7 +90,7 @@ def _quantize_fp8(params_buffer):
         if shard is None:
             continue
         lo, hi, _ = shard
-        _, rows, cols = _shape(param)
+        _, rows, cols = getattr(param, "original_shape", None) or param.shape
         weights = paddle._C_ops.view_slice(params_buffer.data_buffer, lo, hi)
         weights.get_tensor()._set_dims([(hi - lo) // (rows * cols), rows, cols])
         weights = weights.astype(param.dtype)
@@ -120,7 +116,7 @@ def get_fp8_tmp_buffer(params_buffer):
 def bind_fp8_param(params_buffer, param):
     fp8 = params_buffer.fp8
     k, bn = len(fp8.quantizer.orientations), fp8.quantizer.block**2
-    shape = _shape(param)
+    shape = list(getattr(param, "original_shape", None) or param.shape)
     begin = params_buffer.param_offsets[param.name]
     end = begin + math.prod(shape)
     fp8.quantizer.bind(

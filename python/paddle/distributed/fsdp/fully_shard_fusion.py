@@ -364,7 +364,7 @@ class FSDPBufferManager:
         model,
         fsdp_unit_layers=None,
         main_grad_dtype=None,
-        fp8_param_gather=False,
+        fp8_main_dtype=paddle.float32,
     ):
         self.model = model
         self.hcg = fleet.get_hybrid_communicate_group()
@@ -442,6 +442,7 @@ class FSDPBufferManager:
                         ("is_firstly_shared", True),
                     )
                 ),
+                getattr(param, "_fsdp_fp8_quantizer", None),
             )
             keyed_params.setdefault(key, []).append(param)
 
@@ -455,6 +456,7 @@ class FSDPBufferManager:
                 is_tie,
                 _,
                 use_muon,
+                _,
                 _,
                 _,
             ) = item[0]
@@ -490,6 +492,7 @@ class FSDPBufferManager:
                 use_muon,
                 hyperball_name,
                 clip_attrs,
+                _,
             ), params in sorted(keyed_params.items(), key=sort_key)
         ]
 
@@ -511,12 +514,14 @@ class FSDPBufferManager:
                 or muon_align is not None
                 or dense_muon_shard
             )
-            fp8_numel = fp8_shard_numel(params) if fp8_param_gather else None
+            fp8_numel = fp8_shard_numel(params)
             shard_align = muon_align
             if fp8_numel:
                 shard_align = math.lcm(muon_align or 1, fp8_numel)
-            # fp8 groups: the fp32 shard is the main weight, no master.
-            main_dtype = paddle.float32 if fp8_numel else group.dtype
+            # fp8 groups: fp8_main_dtype main weight (None: param dtype).
+            main_dtype = (
+                (fp8_main_dtype or group.dtype) if fp8_numel else group.dtype
+            )
             group.params_buffer = TensorFusionBuffer(
                 gid,
                 params,
@@ -1109,7 +1114,7 @@ class FullyShardFusion:
         enable_tensor_fusion_and_overlap=True,
         mp_policy=None,
         prefetch_units=1,
-        fp8_param_gather=False,
+        fp8_main_dtype=paddle.float32,
     ):
         self.model = model
         self.mp_policy = mp_policy
@@ -1117,7 +1122,7 @@ class FullyShardFusion:
             self.model,
             fsdp_unit_layers,
             None if mp_policy is None else mp_policy.reduce_dtype,
-            fp8_param_gather=fp8_param_gather,
+            fp8_main_dtype=fp8_main_dtype,
         )
         self.comm_manager = FSDPCommManager(
             self.buffer_manager,
@@ -1558,6 +1563,8 @@ class FullyShardFusion:
             if group.params_buffer.fp8 is None:
                 continue
             main = group.params_buffer.data_buffer
+            if main.dtype == group.dtype:  # no fp32 main, no master to save
+                continue
             for struct_name, slice_info in self._shard_descs[main.name].items():
                 key = f"{struct_name}.w_0"
                 sharded_state[key] = self._create_sharded_weight(

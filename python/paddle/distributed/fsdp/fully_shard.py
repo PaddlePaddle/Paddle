@@ -93,16 +93,20 @@ def _fully_shard_manual_parallel(
     enable_tensor_fusion_and_overlap,
     optimizer=None,
     grad_accum_steps=1,
-    fp8_param_gather=False,
 ):
     layers = module._layers if isinstance(module, MetaParallelBase) else module
     if optimizer is not None:
         _mark_params_for_optimizer(layers, optimizer)
+    # fp8 groups: fp32 main weight iff an fp32 master (default: yes).
+    inner = optimizer
+    while hasattr(inner, "_inner_opt"):
+        inner = inner._inner_opt
+    multi_precision = getattr(inner, "_multi_precision", True)
     layers._fsdp_context = FullyShardFusion(
         layers,
         enable_tensor_fusion_and_overlap=enable_tensor_fusion_and_overlap,
         mp_policy=mp_policy,
-        fp8_param_gather=fp8_param_gather,
+        fp8_main_dtype=paddle.float32 if multi_precision else None,
     )
     layers._fsdp_context.set_grad_accum_steps(grad_accum_steps)
     if optimizer is not None:
@@ -122,12 +126,7 @@ def _fully_shard_auto_parallel(
     enable_tensor_fusion_and_overlap,
     optimizer=None,
     grad_accum_steps=1,
-    fp8_param_gather=False,
 ):
-    if fp8_param_gather:
-        raise NotImplementedError(
-            "fp8_param_gather is only supported in manual parallel mode."
-        )
     module._fsdp_context = FullyShardAuto(
         module,
         mesh,
@@ -149,7 +148,6 @@ def fully_shard(
     enable_tensor_fusion_and_overlap: bool = True,
     optimizer: paddle.optimizer.Optimizer | None = None,
     grad_accum_steps: int = 1,
-    fp8_param_gather: bool = False,
 ) -> paddle.nn.Layer:
     """
     Apply fully sharded data parallel (FSDP) to the given module.
@@ -186,9 +184,6 @@ def fully_shard(
             if needed.
         grad_accum_steps (int, optional): Manual parallel mode only. Gradient
             accumulation steps. Defaults to 1.
-        fp8_param_gather (bool, optional): Manual parallel mode only.
-            All-gather the params tagged with ``_fsdp_fp8_quantizer`` as fp8.
-            Defaults to False.
 
     Returns:
         module: A wrapper module that applies FSDP to the input module.
@@ -233,7 +228,6 @@ def fully_shard(
         enable_tensor_fusion_and_overlap,
         optimizer,
         grad_accum_steps,
-        fp8_param_gather,
     )
 
     if in_auto_parallel_mode():

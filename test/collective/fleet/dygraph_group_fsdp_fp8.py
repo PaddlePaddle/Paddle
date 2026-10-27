@@ -148,7 +148,7 @@ def experts(model):
     return [w for layer in model.layers for w in (layer.weight1, layer.weight2)]
 
 
-def build_grouped(fp8, quantizer=None, muon=False):
+def build_grouped(fp8, quantizer=None, muon=False, multi_precision=True):
     group = fleet.get_hybrid_communicate_group().get_sharding_parallel_group()
     paddle.seed(2026)
     model = GroupedExpertModel(fp8)
@@ -171,20 +171,19 @@ def build_grouped(fp8, quantizer=None, muon=False):
                 p.name: MuonParamInfo(use_muon=p.use_muon) for p in params
             },
             ns_per_matrix=True,
-            multi_precision=True,
+            multi_precision=multi_precision,
         )
     else:
         opt = paddle.optimizer.AdamW(
             learning_rate=1e-3,
             parameters=params,
             weight_decay=0.0,
-            multi_precision=True,
+            multi_precision=multi_precision,
         )
     model = fully_shard(
         model,
         optimizer=opt,
         grad_accum_steps=ACCUM_STEPS,
-        fp8_param_gather=quantizer is not None,
     )
     return model, opt, model._fsdp_context
 
@@ -221,10 +220,13 @@ def expected_caches(ctx, model, quantizer):
     return md5s
 
 
-def train_fp8(keep_transpose, fp8_gather, data, muon=False):
+def train_fp8(keep_transpose, fp8_gather, data, muon=False, mp=True):
     quantizer = BlockQuantizer(keep_transpose)
     model, opt, ctx = build_grouped(
-        True, quantizer=quantizer if fp8_gather else None, muon=muon
+        True,
+        quantizer=quantizer if fp8_gather else None,
+        muon=muon,
+        multi_precision=mp,
     )
     groups = ctx.buffer_manager.buffer_groups
     fp8_groups = [g for g in groups if g.params_buffer.fp8 is not None]
@@ -263,9 +265,10 @@ def train_fp8(keep_transpose, fp8_gather, data, muon=False):
         if fp8_gather:
             assert caches[-1] == expected, f"step {step}: fp8 caches differ"
             assert not hasattr(model.layers[0].weight1, "fp8_weight")
-            for g in fp8_groups:  # fp32 main, no master
+            for g in fp8_groups:  # fp32 main iff an fp32 master; no master
                 main = g.params_buffer.data_buffer
-                assert main.dtype == paddle.float32, main.dtype
+                main_dtype = paddle.float32 if mp else g.dtype
+                assert main.dtype == main_dtype, main.dtype
                 names = [main.name] + [p.name for p in g.params]
                 assert not set(names) & set(opt._master_weights)
                 assert all(p.dtype == g.dtype for p in g.params)
@@ -283,10 +286,15 @@ def train_fp8(keep_transpose, fp8_gather, data, muon=False):
 def run_fp8_gather():
     """Shard quantization + fp8 gather == quantizing the full weight."""
     data = rand_data(7, STEPS)
-    for keep_transpose, muon in ((True, False), (False, False), (True, True)):
-        ref = train_fp8(keep_transpose, False, data, muon)
-        new = train_fp8(keep_transpose, True, data, muon)
-        tag = f"{keep_transpose=} {muon=}"
+    for keep_transpose, muon, mp in (
+        (True, False, True),
+        (False, False, True),
+        (True, True, True),
+        (True, False, False),
+    ):
+        ref = train_fp8(keep_transpose, False, data, muon, mp)
+        new = train_fp8(keep_transpose, True, data, muon, mp)
+        tag = f"{keep_transpose=} {muon=} {mp=}"
         # Only step 0 across runs: after an optimizer step, bf16 param +
         # master vs fp32 main may round differently on some archs (Volta).
         assert ref[1][0] == new[1][0], f"{tag}: fp8 caches differ"
@@ -301,11 +309,16 @@ def fp8_slices(ctx):
                 yield key, info, main
 
 
-def check_fp8_checkpoint(ckpt_path, muon):
+def check_fp8_checkpoint(ckpt_path, muon, mp=True):
     data = rand_data(7, 3)
 
     def build():
-        return build_grouped(True, quantizer=BlockQuantizer(True), muon=muon)
+        return build_grouped(
+            True,
+            quantizer=BlockQuantizer(True),
+            muon=muon,
+            multi_precision=mp,
+        )
 
     model, opt, ctx = build()
     train_steps(model, opt, data, [0, 1])
@@ -315,8 +328,11 @@ def check_fp8_checkpoint(ckpt_path, muon):
     assert keys, "no fp8 shard on this rank"
     for key in keys:
         weight = state[key].local_tensor
-        master = state[f"{key}.w_0"].local_tensor
         assert weight.dtype == paddle.bfloat16, (key, weight.dtype)
+        if not mp:  # bf16 main weight, no master to save
+            assert f"{key}.w_0" not in state, key
+            continue
+        master = state[f"{key}.w_0"].local_tensor
         assert master.dtype == paddle.float32, (key, master.dtype)
         np.testing.assert_array_equal(
             weight.numpy(), master.astype("bfloat16").numpy(), err_msg=key
@@ -370,7 +386,7 @@ def check_unaligned_fp8_raises():
         p.expert = True
         p._fsdp_fp8_quantizer = quantizer
     try:
-        fully_shard(nn.LayerList([layer]), fp8_param_gather=True)
+        fully_shard(nn.LayerList([layer]))
     except ValueError as e:
         assert "is not sharded" in str(e), e
     else:
@@ -383,8 +399,9 @@ def run_fp8_checkpoint():
     paddle.distributed.broadcast_object_list(ckpt_root, src=0)
     ckpt_root = ckpt_root[0]
     try:
-        for muon in (False, True):
-            check_fp8_checkpoint(os.path.join(ckpt_root, f"{muon=}"), muon)
+        for muon, mp in ((False, True), (True, True), (False, False)):
+            path = os.path.join(ckpt_root, f"{muon=}_{mp=}")
+            check_fp8_checkpoint(path, muon, mp)
     finally:
         paddle.distributed.barrier()
         if rank == 0:
