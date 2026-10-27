@@ -93,7 +93,8 @@ def _fully_shard_manual_parallel(
     enable_tensor_fusion_and_overlap,
     optimizer=None,
     grad_accum_steps=1,
-    keep_expert_params="none",
+    reshard_policy="after_forward",
+    reshard_filter="all",
     dense_reduce_scatter_streams=1,
 ):
     layers = module._layers if isinstance(module, MetaParallelBase) else module
@@ -103,7 +104,8 @@ def _fully_shard_manual_parallel(
         layers,
         enable_tensor_fusion_and_overlap=enable_tensor_fusion_and_overlap,
         mp_policy=mp_policy,
-        keep_expert_params=keep_expert_params,
+        reshard_policy=reshard_policy,
+        reshard_filter=reshard_filter,
         dense_reduce_scatter_streams=dense_reduce_scatter_streams,
     )
     layers._fsdp_context.set_grad_accum_steps(grad_accum_steps)
@@ -146,7 +148,8 @@ def fully_shard(
     enable_tensor_fusion_and_overlap: bool = True,
     optimizer: paddle.optimizer.Optimizer | None = None,
     grad_accum_steps: int = 1,
-    keep_expert_params: str = "none",
+    reshard_policy: str = "after_forward",
+    reshard_filter: str | Callable[..., bool] = "all",
     dense_reduce_scatter_streams: int = 1,
 ) -> paddle.nn.Layer:
     """
@@ -184,13 +187,27 @@ def fully_shard(
             if needed.
         grad_accum_steps (int, optional): Manual parallel mode only. Gradient
             accumulation steps. Defaults to 1.
-        keep_expert_params (str, optional): Manual parallel mode only. Keep
-            gathered expert params (``is_moe_param``) outside the gather-buffer
-            budget so they are not all-gathered again. ``"none"``: no change;
-            ``"backward"``: kept from forward until their unit's backward is
-            done; ``"step"``: kept for the whole step and freed before the
-            optimizer. Costs one full copy of the local expert params per
-            kept layer. Defaults to ``"none"``.
+        reshard_policy (str, optional): Manual parallel mode only. When the
+            all-gathered (unsharded) parameters selected by ``reshard_filter``
+            are freed again.
+
+            - ``"after_forward"``: after forward; backward all-gathers them
+              again. Lowest memory.
+            - ``"after_backward"``: kept from forward until their unit's
+              backward is done, so backward needs no all-gather.
+            - ``"after_step"``: also kept across the micro-batches of a
+              gradient accumulation step and freed before the optimizer step,
+              so each layer is all-gathered once per step.
+
+            The last two cost one full copy of each kept layer's local
+            parameters. Defaults to ``"after_forward"``.
+        reshard_filter (str | Callable, optional): Manual parallel mode only.
+            Which parameters ``reshard_policy`` applies to; the others use
+            ``"after_forward"``. ``"all"``: all sharded parameters;
+            ``"expert"``: expert parameters (``is_moe_param``) only;
+            ``"dense"``: non-expert parameters only. A callable for per-layer
+            selection is reserved and not supported yet. Defaults to
+            ``"all"``.
         dense_reduce_scatter_streams (int, optional): Manual parallel mode
             only. Spread the reduce-scatters of a unit's dense grad groups
             over this many clones of their process group (one NCCL stream
@@ -246,6 +263,7 @@ def fully_shard(
     else:
         return _fully_shard_manual_parallel(
             *args,
-            keep_expert_params=keep_expert_params,
+            reshard_policy=reshard_policy,
+            reshard_filter=reshard_filter,
             dense_reduce_scatter_streams=dense_reduce_scatter_streams,
         )

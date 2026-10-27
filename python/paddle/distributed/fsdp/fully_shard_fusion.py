@@ -582,27 +582,46 @@ class FSDPBufferManager:
 
 
 class FSDPCommManager:
-    KEEP_EXPERT_MODES = ("none", "backward", "step")
+    RESHARD_POLICIES = ("after_forward", "after_backward", "after_step")
+    RESHARD_FILTERS = ("all", "expert", "dense")
 
     def __init__(
         self,
         buffer_manager,
         enable_overlap=True,
         prefetch_units=1,
-        keep_expert_params="none",
+        reshard_policy="after_forward",
+        reshard_filter="all",
         dense_reduce_scatter_streams=1,
     ):
-        if keep_expert_params not in self.KEEP_EXPERT_MODES:
+        if reshard_policy not in self.RESHARD_POLICIES:
             raise ValueError(
-                f"keep_expert_params must be one of {self.KEEP_EXPERT_MODES}, "
-                f"got {keep_expert_params!r}"
+                f"reshard_policy must be one of {self.RESHARD_POLICIES}, "
+                f"got {reshard_policy!r}"
+            )
+        if callable(reshard_filter):
+            raise NotImplementedError(
+                "a callable reshard_filter (per-layer selection) is not "
+                f"supported yet; use one of {self.RESHARD_FILTERS}"
+            )
+        if reshard_filter not in self.RESHARD_FILTERS:
+            raise ValueError(
+                f"reshard_filter must be one of {self.RESHARD_FILTERS}, "
+                f"got {reshard_filter!r}"
             )
         self.buffer_manager = buffer_manager
         self.enable_overlap = enable_overlap
-        # Gathered expert params kept out of the gather-buffer budget:
-        # "backward" keeps them from forward until their unit's backward is
-        # done, "step" until reset_params_buffer_status (before optimizer).
-        self.keep_expert_params = keep_expert_params
+        # When a gathered param buffer is freed (resharded):
+        #   after_forward:  after forward, under gather-buffer budget pressure;
+        #                   backward all-gathers it again (default).
+        #   after_backward: kept outside the budget from forward until its
+        #                   unit's backward is done.
+        #   after_step:     also kept across micro-batches until
+        #                   reset_params_buffer_status (before the optimizer).
+        # reshard_filter selects the buffer groups reshard_policy applies to
+        # ("all", "expert" or "dense"); the others stay "after_forward".
+        self.reshard_policy = reshard_policy
+        self.reshard_filter = reshard_filter
         self.grad_reduce_queue = []
 
         # Size limits in whole units: a unit may own several sharded groups.
@@ -653,20 +672,35 @@ class FSDPCommManager:
                     self._dense_rs_groups[id(orig)] = clones
                 group.grads_buffer.fsdp_group = clones[k % n_streams]
 
-    def _is_kept_expert(self, group):
-        return self.keep_expert_params != "none" and group.is_expert_param
+    def _in_reshard_filter(self, group):
+        if self.reshard_filter == "expert":
+            return group.is_expert_param
+        if self.reshard_filter == "dense":
+            return not group.is_expert_param
+        return True
+
+    def _reshard_policy_of(self, group):
+        if self._in_reshard_filter(group):
+            return self.reshard_policy
+        return "after_forward"
+
+    def _keep_after_forward(self, group):
+        return self._reshard_policy_of(group) != "after_forward"
+
+    def _keep_after_backward(self, group):
+        return self._reshard_policy_of(group) == "after_step"
 
     @property
     def buffer_cnt_in_using(self):
-        if self.keep_expert_params == "none":
+        if self.reshard_policy == "after_forward":
             return self._buffer_cnt_in_using
-        # Kept expert buffers stay gathered outside the budget, so count the
-        # other sharded buffers that are not FREED.
+        # Kept buffers stay gathered outside the budget, so count the other
+        # sharded buffers that are not FREED.
         return sum(
             1
             for group in self.buffer_manager.buffer_groups
             if group.params_buffer.is_sharded
-            and not group.is_expert_param
+            and not self._keep_after_forward(group)
             and group.params_buffer.status != BufferState.FREED
         )
 
@@ -684,7 +718,7 @@ class FSDPCommManager:
         while self.buffer_cnt_in_using >= self.gather_buffer_limit:
             found = False
             for gid_idx, group in enumerate(self.buffer_manager.buffer_groups):
-                if gid_idx in keep or self._is_kept_expert(group):
+                if gid_idx in keep or self._keep_after_forward(group):
                     continue
                 if not group.params_buffer.is_sharded:
                     continue
@@ -960,7 +994,7 @@ class FSDPCommManager:
                 continue
             if group.fsdp_unit_id <= unit_id:
                 continue
-            if self.keep_expert_params == "step" and group.is_expert_param:
+            if self._keep_after_backward(group):
                 # Freed by reset_params_buffer_status at the end of the step.
                 continue
             params_buffer = group.params_buffer
@@ -1145,7 +1179,8 @@ class FullyShardFusion:
         enable_tensor_fusion_and_overlap=True,
         mp_policy=None,
         prefetch_units=1,
-        keep_expert_params="none",
+        reshard_policy="after_forward",
+        reshard_filter="all",
         dense_reduce_scatter_streams=1,
     ):
         self.model = model
@@ -1159,7 +1194,8 @@ class FullyShardFusion:
             self.buffer_manager,
             enable_overlap=enable_tensor_fusion_and_overlap,
             prefetch_units=prefetch_units,
-            keep_expert_params=keep_expert_params,
+            reshard_policy=reshard_policy,
+            reshard_filter=reshard_filter,
             dense_reduce_scatter_streams=dense_reduce_scatter_streams,
         )
         self.register_tensor_fusion_hooks(self.model)
