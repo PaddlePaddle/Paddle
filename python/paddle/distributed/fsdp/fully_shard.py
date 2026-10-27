@@ -93,6 +93,7 @@ def _fully_shard_manual_parallel(
     enable_tensor_fusion_and_overlap,
     optimizer=None,
     grad_accum_steps=1,
+    grad_comm_dtype=None,
 ):
     layers = module._layers if isinstance(module, MetaParallelBase) else module
     if optimizer is not None:
@@ -101,6 +102,7 @@ def _fully_shard_manual_parallel(
         layers,
         enable_tensor_fusion_and_overlap=enable_tensor_fusion_and_overlap,
         mp_policy=mp_policy,
+        grad_comm_dtype=grad_comm_dtype,
     )
     layers._fsdp_context.set_grad_accum_steps(grad_accum_steps)
     if optimizer is not None:
@@ -120,6 +122,7 @@ def _fully_shard_auto_parallel(
     enable_tensor_fusion_and_overlap,
     optimizer=None,
     grad_accum_steps=1,
+    grad_comm_dtype=None,
 ):
     module._fsdp_context = FullyShardAuto(
         module,
@@ -142,6 +145,7 @@ def fully_shard(
     enable_tensor_fusion_and_overlap: bool = True,
     optimizer: paddle.optimizer.Optimizer | None = None,
     grad_accum_steps: int = 1,
+    grad_comm_dtype: paddle.dtype | None = None,
 ) -> paddle.nn.Layer:
     """
     Apply fully sharded data parallel (FSDP) to the given module.
@@ -178,6 +182,9 @@ def fully_shard(
             if needed.
         grad_accum_steps (int, optional): Manual parallel mode only. Gradient
             accumulation steps. Defaults to 1.
+        grad_comm_dtype (paddle.dtype|None, optional): Manual parallel mode
+            only. Dtype of the grad reduce-scatter, e.g. ``paddle.bfloat16``.
+            Defaults to None, the grad accumulation dtype.
 
     Returns:
         module: A wrapper module that applies FSDP to the input module.
@@ -222,6 +229,7 @@ def fully_shard(
         enable_tensor_fusion_and_overlap,
         optimizer,
         grad_accum_steps,
+        grad_comm_dtype,
     )
 
     if in_auto_parallel_mode():

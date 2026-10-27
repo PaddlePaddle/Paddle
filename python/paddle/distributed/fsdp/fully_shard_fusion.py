@@ -102,6 +102,7 @@ class TensorFusionBuffer:
         grad_div=None,
         shard_buffer=True,
         shard_align_numel=None,
+        comm_dtype=None,
     ):
         # Calculate total buffer size needed (with padding)
         self.unique_key = unique_key
@@ -113,6 +114,10 @@ class TensorFusionBuffer:
         self.main_grad_dtype = (
             main_grad_dtype if main_grad_dtype is not None else dtype
         )
+        self.comm_dtype = (
+            comm_dtype if comm_dtype != self.main_grad_dtype else None
+        )
+        self._comm_buffer = None
         self.grad_div = grad_div if grad_div is not None else fsdp_group.nranks
         self.grad_accum_steps = 1
         self.grad_scale = 1.0 / self.grad_div
@@ -293,7 +298,6 @@ class TensorFusionBuffer:
 
     def do_reduce_scatter(self):
         tmp_buffer = self.get_tmp_buffer()
-        shard = tmp_buffer._slice(0, self.data_buffer.shape[0])
         # AVG folds the scale into NCCL when it is exactly 1/nranks of this
         # group; otherwise (grad accumulation, EP groups) pre-scale and SUM.
         if self.grad_div * self.grad_accum_steps == self.fsdp_degree:
@@ -301,16 +305,24 @@ class TensorFusionBuffer:
         else:
             tmp_buffer.scale_(self.grad_scale)
             op = paddle.distributed.ReduceOp.SUM
+        comm = tmp_buffer
+        if self.comm_dtype is not None:
+            comm = paddle.cast(tmp_buffer, self.comm_dtype)
+            self.tmp_data_buffer = None
+        self._comm_buffer = comm
         return paddle.distributed.reduce_scatter(
-            shard,
-            tmp_buffer,
+            comm._slice(0, self.data_buffer.shape[0]),
+            comm,
             op=op,
             group=self.fsdp_group,
             sync_op=False,
         )
 
     def accumulate_reduced_grad(self):
-        shard = self.get_tmp_buffer()._slice(0, self.data_buffer.shape[0])
+        comm, self._comm_buffer = self._comm_buffer, None
+        shard = comm._slice(0, self.data_buffer.shape[0])
+        if shard.dtype != self.data_buffer.dtype:
+            shard = shard.astype(self.data_buffer.dtype)
         self.data_buffer.add_(shard)
         self.clear_tmp_buffer()
 
@@ -345,8 +357,10 @@ class FSDPBufferManager:
         model,
         fsdp_unit_layers=None,
         main_grad_dtype=None,
+        grad_comm_dtype=None,
     ):
         self.model = model
+        self.grad_comm_dtype = grad_comm_dtype
         self.hcg = fleet.get_hybrid_communicate_group()
         self._fsdp_group = self.hcg.get_sharding_parallel_group()
         use_ep = (
@@ -517,6 +531,7 @@ class FSDPBufferManager:
                     grad_div=self._fsdp_group.nranks,
                     shard_buffer=grads_shard_buffer,
                     shard_align_numel=muon_align,
+                    comm_dtype=self.grad_comm_dtype,
                 )
             group.muon_shard_numel = group.params_buffer.shard_align_numel
             if group.hyperball_sharded:
@@ -869,6 +884,7 @@ class FSDPCommManager:
         self._wait_for_grad_comm()
         grads_buffer.comm_task = grads_buffer.do_reduce_scatter()
         self.grad_reduce_queue.append(grads_buffer)
+        self._release_reduced_grad_views(grads_buffer)
         if not self.enable_overlap:
             self._wait_for_grad_comm(queue_limit=0)
 
@@ -932,7 +948,6 @@ class FSDPCommManager:
             grads_buffer.comm_task.wait()
             grads_buffer.comm_task = None
             grads_buffer.accumulate_reduced_grad()
-            self._release_reduced_grad_views(grads_buffer)
 
     def finish_grads_sync(self):
         # Wait for all async reduce_scatter tasks, call before optimizer.step()
@@ -1074,6 +1089,7 @@ class FullyShardFusion:
         enable_tensor_fusion_and_overlap=True,
         mp_policy=None,
         prefetch_units=1,
+        grad_comm_dtype=None,
     ):
         self.model = model
         self.mp_policy = mp_policy
@@ -1081,6 +1097,7 @@ class FullyShardFusion:
             self.model,
             fsdp_unit_layers,
             None if mp_policy is None else mp_policy.reduce_dtype,
+            grad_comm_dtype=grad_comm_dtype,
         )
         self.comm_manager = FSDPCommManager(
             self.buffer_manager,

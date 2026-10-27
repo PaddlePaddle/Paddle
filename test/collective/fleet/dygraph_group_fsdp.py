@@ -1040,9 +1040,59 @@ def run_fused_linear():
             )
 
 
+def train_grad_comm(comm_dtype, data):
+    _, model = build_moe_models(fleet.get_hybrid_communicate_group())
+    opt = paddle.optimizer.AdamW(
+        learning_rate=0.001, parameters=model.parameters(), weight_decay=0.0
+    )
+    model = fully_shard(
+        model,
+        optimizer=opt,
+        grad_accum_steps=ACCUM_STEPS,
+        grad_comm_dtype=comm_dtype,
+    )
+    ctx = model._fsdp_context
+    sharded = [
+        g.grads_buffer
+        for g in ctx.buffer_manager.buffer_groups
+        if g.grads_buffer is not None and g.grads_buffer.is_sharded
+    ]
+    assert sharded, "no sharded grad buffer"
+    for buf in sharded:
+        assert (buf.comm_dtype is not None) == (comm_dtype is not None)
+    losses, grads = [], []
+    for i in range(0, len(data), ACCUM_STEPS):
+        for x in data[i : i + ACCUM_STEPS]:
+            loss = (model(x) ** 2).mean()
+            losses.append(float(loss))
+            loss.backward()
+        opt.step()
+        grads.append([buf.data_buffer.numpy() for buf in sharded])
+        opt.clear_grad()
+    assert not ctx.comm_manager.grad_reduce_queue
+    assert all(buf._comm_buffer is None for buf in sharded)
+    return losses, grads
+
+
+def run_grad_comm_dtype():
+    """bf16 grad reduce-scatter stays close to the fp32 one."""
+    paddle.seed(7 + paddle.distributed.get_rank())
+    data = [paddle.randn([TOKENS, HIDDEN]) for _ in range(STEPS - 1)]
+    ref_losses, ref_grads = train_grad_comm(None, data)
+    new_losses, new_grads = train_grad_comm(paddle.bfloat16, data)
+    assert ref_losses[:ACCUM_STEPS] == new_losses[:ACCUM_STEPS]
+    inexact = 0
+    for a, b in zip(ref_grads[0], new_grads[0]):
+        np.testing.assert_allclose(b, a, rtol=0, atol=1e-2 * np.abs(a).max())
+        inexact += int(not np.array_equal(a, b))
+    assert inexact, "bf16 reduce-scatter left grads exact"
+    np.testing.assert_allclose(new_losses, ref_losses, rtol=1e-2)
+
+
 if __name__ == '__main__':
     run_moe(2)
     run_fused_linear()
+    run_grad_comm_dtype()
     run_muon_shard()
     run_muon_replicated()
     run_adamh_shard()
