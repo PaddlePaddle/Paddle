@@ -122,6 +122,8 @@ def _fully_shard_auto_parallel(
     optimizer=None,
     grad_accum_steps=1,
 ):
+    if mp_policy.grad_comm_dtype is not None:
+        raise NotImplementedError("grad_comm_dtype is manual parallel only.")
     module._fsdp_context = FullyShardAuto(
         module,
         mesh,
