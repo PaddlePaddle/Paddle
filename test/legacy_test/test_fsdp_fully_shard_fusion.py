@@ -469,6 +469,15 @@ class TestPrefetchBySize(unittest.TestCase):
         cm = _make_comm_manager(layout)
         self.assertEqual(cm._extend_by_prefetch_size([6, 7], True), [5, 3])
 
+    def test_skips_unsharded_buckets(self):
+        layout = list(self.LAYOUT)
+        layout[2] = (1, False, 1000, False, True)
+        cm = _make_comm_manager(layout, suggested_communication_unit_size=80)
+        # The unsharded bucket is never gathered nor counted.
+        self.assertEqual(cm._extend_by_prefetch_size([0, 1], False), [3, 4])
+        _, _, limit = cm._prefetch_plan([2, 3], False)
+        self.assertEqual(limit, 80)
+
     def test_plan_keep_and_limit(self):
         cm = _make_comm_manager(
             self.LAYOUT, suggested_communication_unit_size=20

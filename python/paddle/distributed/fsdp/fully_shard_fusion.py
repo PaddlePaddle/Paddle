@@ -661,12 +661,9 @@ class FSDPCommManager:
 
         # The layout is fixed from here on. The hooks below run a few thousand
         # times per step and DeepEP syncs the host every layer, so their host
-        # time is on the critical path: look sizes up instead of recomputing.
+        # time is on the critical path: look the layout up instead of
+        # recomputing it.
         self._params_buffers = [g.params_buffer for g in groups]
-        self._bucket_numels = [
-            pb.total_buffer_size if pb.is_sharded else 0
-            for pb in self._params_buffers
-        ]
         self._sharded_gids = [
             gid for gid, pb in enumerate(self._params_buffers) if pb.is_sharded
         ]
@@ -678,9 +675,6 @@ class FSDPCommManager:
     # Params all_gather pipeline. Owns gathered_numel and the BufferState
     # machine.
     # ------------------------------------------------------------------
-
-    def _bucket_numel(self, gid):
-        return self._bucket_numels[gid]
 
     def _free_params_buffer(self, params_buffer):
         # USING / READY / SYNCING-waited -> FREED, keeping gathered_numel exact.
@@ -731,11 +725,15 @@ class FSDPCommManager:
             for gid in self._gid_to_bucket_group[candidate]:
                 if gid in selected:
                     continue
-                if is_backward and not groups[gid].params_buffer.trainable:
+                params_buffer = groups[gid].params_buffer
+                # Unsharded buckets are never gathered.
+                if not params_buffer.is_sharded or (
+                    is_backward and not params_buffer.trainable
+                ):
                     continue
                 selected.add(gid)
                 targets.append(gid)
-                prefetched += self._bucket_numel(gid)
+                prefetched += params_buffer.total_buffer_size
             candidate += step
         return targets
 
@@ -752,7 +750,11 @@ class FSDPCommManager:
             keep = frozenset(req_gids) | frozenset(targets)
             limit = max(
                 self.suggested_communication_unit_size,
-                sum(self._bucket_numels[gid] for gid in keep),
+                sum(
+                    self._params_buffers[gid].total_buffer_size
+                    for gid in keep
+                    if self._params_buffers[gid].is_sharded
+                ),
             )
             plan = self._prefetch_plans[key] = (tuple(targets), keep, limit)
         return plan
@@ -796,7 +798,7 @@ class FSDPCommManager:
                     continue
                 if params_buffer.status == BufferState.FREED:
                     self._release_ready_buffers(
-                        self._bucket_numels[gid], limit, keep
+                        params_buffer.total_buffer_size, limit, keep
                     )
                     self._issue_async_gather(gid)
 
