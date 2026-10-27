@@ -5249,7 +5249,7 @@ def repeat(
     return tile(input, repeat_times=repeats)
 
 
-@param_two_alias(["x", "input"], ["shape", "size"])
+@expand_decorator
 def broadcast_to(
     x: Tensor,
     shape: ShapeLike,

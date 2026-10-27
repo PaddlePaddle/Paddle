@@ -132,7 +132,22 @@ extern void *cusolver_dso_handle;
   __macro(cusolverDnCheevjBatched);            \
   __macro(cusolverDnZheevjBatched);
 
+// cusolverDn.h declares the batched 64-bit syev only from cuSOLVER 11701
+// (CUDA 12.6.2), and the dynload wrapper needs that compile-time declaration
+// for `decltype(&::__name)`. Register the two symbols only when the header
+// has them; the only caller is likewise behind
+// PADDLE_WITH_CUSOLVER_XSYEV_BATCHED in values_vectors_functor.h, which uses
+// the same version threshold.
+#if defined(CUSOLVER_VERSION) && CUSOLVER_VERSION >= 11701
+#define CUSOLVER_XSYEV_BATCHED_ROUTINE_EACH(__macro) \
+  __macro(cusolverDnXsyevBatched_bufferSize);        \
+  __macro(cusolverDnXsyevBatched);
+#else
+#define CUSOLVER_XSYEV_BATCHED_ROUTINE_EACH(__macro)
+#endif
+
 CUSOLVER_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_CUSOLVER_WRAP);
+CUSOLVER_XSYEV_BATCHED_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_CUSOLVER_WRAP);
 
 #undef DECLARE_DYNAMIC_LOAD_CUSOLVER_WRAP
 }  // namespace dynload

@@ -23,6 +23,9 @@ if TYPE_CHECKING:
     import paddle.distributed as dist
 import paddle
 from paddle.distributed.auto_parallel.fully_shard import FullyShardAuto
+from paddle.distributed.fleet.meta_parallel.meta_parallel_base import (
+    MetaParallelBase,
+)
 
 from .fully_shard_fusion import FullyShardFusion
 
@@ -46,6 +49,39 @@ class OffloadPolicy:
     pin_memory: bool = True
 
 
+def _mark_params_for_optimizer(module, optimizer):
+    decay_fun = getattr(optimizer, "_apply_decay_param_fun", None)
+    muon_info_map = getattr(optimizer, "_muon_param_info_map", None)
+    missing = []
+    for name, param in module.named_parameters():
+        param.no_weight_decay = decay_fun is not None and not decay_fun(
+            param.name
+        )
+        if muon_info_map is None:
+            continue
+        info = muon_info_map.get(param.name)
+        if info is None and not param.stop_gradient:
+            missing.append(name)
+        hyperball = info is not None and getattr(info, "use_hyperball", False)
+        # AdamW+Hyperball runs on shards with all-reduced norms.
+        shape = getattr(param, "original_shape", None) or param.shape
+        param.use_hyperball_sharded = bool(
+            hyperball
+            and not info.use_muon
+            and getattr(info, "split_concat_func", None) is None
+            and len(shape) == 2
+        )
+        param.use_muon = bool(
+            info is not None
+            and (info.use_muon or hyperball)
+            and not param.use_hyperball_sharded
+        )
+    if missing:
+        raise ValueError(
+            f"muon_param_info_map misses trainable params: {missing[:8]}"
+        )
+
+
 def _fully_shard_manual_parallel(
     module,
     mesh,
@@ -55,12 +91,21 @@ def _fully_shard_manual_parallel(
     offload_policy,
     ignored_params,
     enable_tensor_fusion_and_overlap,
+    optimizer=None,
+    grad_accum_steps=1,
 ):
-    FullyShardFusion(
-        module,
+    layers = module._layers if isinstance(module, MetaParallelBase) else module
+    if optimizer is not None:
+        _mark_params_for_optimizer(layers, optimizer)
+    layers._fsdp_context = FullyShardFusion(
+        layers,
         enable_tensor_fusion_and_overlap=enable_tensor_fusion_and_overlap,
         mp_policy=mp_policy,
     )
+    layers._fsdp_context.set_grad_accum_steps(grad_accum_steps)
+    if optimizer is not None:
+        layers._fsdp_context.bind_optimizer(optimizer)
+    module._fsdp_context = layers._fsdp_context
     return module
 
 
@@ -73,8 +118,10 @@ def _fully_shard_auto_parallel(
     offload_policy,
     ignored_params,
     enable_tensor_fusion_and_overlap,
+    optimizer=None,
+    grad_accum_steps=1,
 ):
-    FullyShardAuto(
+    module._fsdp_context = FullyShardAuto(
         module,
         mesh,
         enable_tensor_fusion_and_overlap=enable_tensor_fusion_and_overlap,
@@ -93,6 +140,8 @@ def fully_shard(
     offload_policy: OffloadPolicy | None = None,
     ignored_params: Iterable[paddle.Tensor] | None = None,
     enable_tensor_fusion_and_overlap: bool = True,
+    optimizer: paddle.optimizer.Optimizer | None = None,
+    grad_accum_steps: int = 1,
 ) -> paddle.nn.Layer:
     """
     Apply fully sharded data parallel (FSDP) to the given module.
@@ -123,6 +172,12 @@ def fully_shard(
             contiguous buffers for more efficient communication and memory access, and enables
             prefetching and asynchronous communication to overlap with computation for better
             performance. Defaults to True.
+        optimizer (Optimizer | None, optional): Manual parallel mode only. The optimizer
+            built on ``module``'s parameters. Defaults to None, in which case
+            ``param.no_weight_decay`` and ``param.use_muon`` must be set beforehand
+            if needed.
+        grad_accum_steps (int, optional): Manual parallel mode only. Gradient
+            accumulation steps. Defaults to 1.
 
     Returns:
         module: A wrapper module that applies FSDP to the input module.
@@ -165,6 +220,8 @@ def fully_shard(
         offload_policy,
         ignored_params_set,
         enable_tensor_fusion_and_overlap,
+        optimizer,
+        grad_accum_steps,
     )
 
     if in_auto_parallel_mode():

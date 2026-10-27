@@ -42,14 +42,14 @@ api_params_diff=`python ${PADDLE_ROOT}/tools/check_api_compatible.py ${PADDLE_RO
 api_spec_diff=`python ${PADDLE_ROOT}/tools/diff_api.py ${PADDLE_ROOT}/paddle/fluid/API_DEV.spec.api  ${PADDLE_ROOT}/paddle/fluid/API_PR.spec.api`
 api_annotation_diff=`python ${PADDLE_ROOT}/tools/diff_api.py ${PADDLE_ROOT}/paddle/fluid/API_DEV.spec.annotations  ${PADDLE_ROOT}/paddle/fluid/API_PR.spec.annotations`
 if [ "$api_spec_diff" != "" -o "${api_params_diff}" != "" ]; then
-    echo_line="You must have one RD (XiaoguangHu01, jeff41404, qingqing01, zhwesky2010) approval for API change.\n"
+    echo_line="You must have one RD (jeff41404, zhwesky2010) approval for API change.\n"
 
-    check_approval 1 XiaoguangHu01 jeff41404 qingqing01 zhwesky2010
+    check_approval 1 jeff41404 zhwesky2010
 fi
 
 if [ "$api_annotation_diff" != "" ]; then
-    echo_line="You must have one member of Typing group (zrr1999, megemini, sunzhongkai588) approval for API annotation change.\n"
-    check_approval 1 zrr1999 megemini sunzhongkai588
+    echo_line="You must have one member of Typing group (zrr1999) approval for API annotation change.\n"
+    check_approval 1 zrr1999
 fi
 
 api_yaml_diff=`python ${PADDLE_ROOT}/tools/check_api_yaml_same.py ${PADDLE_ROOT}/paddle/fluid/API_DEV.spec  ${PADDLE_ROOT}/paddle/fluid/API_PR.spec ${BRANCH} ${PADDLE_ROOT}`
@@ -58,7 +58,7 @@ if [ "$api_yaml_diff" != "" ]; then
                 The API or Yaml file you changed may cause inconsistent.\n"
     echo_line="${echo_line} please request one of the RD (jeff41404, zhwesky2010, zhangbo9674) review and approve.\n"
     echo_line="${echo_line}\r\n ${api_yaml_diff}\n"
-    check_approval 1 jeff41404 zhwesky2010 zhangbo9674 XiaoguangHu01
+    check_approval 1 jeff41404 zhwesky2010 zhangbo9674
 fi
 
 op_type_spec_diff=`python ${PADDLE_ROOT}/tools/check_op_register_type.py ${PADDLE_ROOT}/paddle/fluid/OP_TYPE_DEV.spec  ${PADDLE_ROOT}/paddle/fluid/OP_TYPE_PR.spec`
@@ -74,21 +74,9 @@ if [ "$op_kernel_dtype_spec_diff" != "" ]; then
 fi
 
 op_desc_diff=`python ${PADDLE_ROOT}/tools/check_op_desc.py ${PADDLE_ROOT}/paddle/fluid/OP_DESC_DEV.spec  ${PADDLE_ROOT}/paddle/fluid/OP_DESC_PR.spec`
-inference_approve=`echo "$op_desc_diff" | grep "need inference to review" -`
-slim_approve=`echo "$op_desc_diff" | grep "need slim to review" -`
 if [ "$op_desc_diff" != "" ]; then
-    echo_line="You must have one RD (inference[ vivienfanghuagood(Recommend), yuanlehome, qingqing01 ] or slim[ wanghaoshuang(Recommend), qingqing01 ] or train[ zhangbo9674 ]) approval for the changes of Inputs/Output/Attrs of OPs. The changes of OPs will cause that the new version inference fails to load model trained by the old version. Please modify your code. \n For more details, please click [https://github.com/PaddlePaddle/Paddle/wiki/OP-Input-Output-Attribute-Compatibility-Modification].\n${op_desc_diff}\n"
-    check_approval 1 vivienfanghuagood yuanlehome qingqing01 wanghaoshuang zhangbo9674
-fi
-
-if [ "$slim_approve" != "" ]; then
-    echo_line="You must have one RD (wanghaoshuang(Recommend), qingqing01) approval for the changes of `quant` Inputs/Output/Attrs of OPs. \n For more details, please click [https://github.com/PaddlePaddle/Paddle/wiki/OP-Input-Output-Attribute-Compatibility-Modification].\n${slim_approve}\n"
-    check_approval 1 wanghaoshuang qingqing01
-fi
-
-if [ "$inference_approve" != "" ]; then
-    echo_line="You must have one RD (qingqing01(Recommend), heavengate) approval for the changes of `def` Inputs/Output/Attrs of OPs. \n For more details, please click [https://github.com/PaddlePaddle/Paddle/wiki/OP-Input-Output-Attribute-Compatibility-Modification].\n${inference_approve}\n"
-    check_approval 1 qingqing01 heavengate
+    echo_line="You must have one RD (zhangbo9674) approval for the changes of Inputs/Output/Attrs of OPs. The changes of OPs will cause that the new version inference fails to load model trained by the old version. Please modify your code. \n For more details, please click [https://github.com/PaddlePaddle/Paddle/wiki/OP-Input-Output-Attribute-Compatibility-Modification].\n${op_desc_diff}\n"
+    check_approval 1 zhangbo9674
 fi
 
 
@@ -96,8 +84,8 @@ DEV_OP_USE_DEFAULT_GRAD_MAKER_SPEC=${PADDLE_ROOT}/paddle/fluid/op_use_default_gr
 PR_OP_USE_DEFAULT_GRAD_MAKER_SPEC=${PADDLE_ROOT}/paddle/fluid/op_use_default_grad_maker_PR.spec
 ADDED_OP_USE_DEFAULT_GRAD_MAKER=`python ${PADDLE_ROOT}/tools/diff_use_default_grad_op_maker.py ${DEV_OP_USE_DEFAULT_GRAD_MAKER_SPEC} ${PR_OP_USE_DEFAULT_GRAD_MAKER_SPEC}`
 if [ "${ADDED_OP_USE_DEFAULT_GRAD_MAKER}" != "" ]; then
-  echo_line="You must have one RD (xiaoguoguo626807 (Recommend) or zhhsplendid) approval because you use DefaultGradOpMaker for ${ADDED_OP_USE_DEFAULT_GRAD_MAKER}, which manages the grad_op memory optimization.\n"
-  check_approval 1 xiaoguoguo626807 zhhsplendid
+  echo_line="You must have one RD (xiaoguoguo626807) approval because you use DefaultGradOpMaker for ${ADDED_OP_USE_DEFAULT_GRAD_MAKER}, which manages the grad_op memory optimization.\n"
+  check_approval 1 xiaoguoguo626807
 fi
 
 if [ -n "${echo_list}" ];then

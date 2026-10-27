@@ -60,7 +60,7 @@ jobs:
     if: ${{ needs.clone.outputs.can-skip != 'true' && needs.check-bypass.outputs.can-skip != 'true' }}
     runs-on:
       group: GZ_BD-CPU
-    timeout-minutes: 120
+    timeout-minutes: 150
     outputs:
       can-skip: ${{ needs.check-bypass.outputs.can-skip }}
 
@@ -252,10 +252,54 @@ jobs:
           docker stop ${{ env.container_name }}
           docker rm ${{ env.container_name }}
 
+  coverage_approval:
+    name: Check coverage approval
+    needs: [build, build-docker, check-bypass]
+    if: ${{ needs.check-bypass.outputs.can-skip != 'true' }}
+    runs-on:
+      group: APPROVAL
+    permissions:
+      contents: read
+      pull-requests: read
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      REPO: ${{ github.repository }}
+      PR_NUMBER: ${{ github.event.pull_request.number }}
+      HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+    outputs:
+      can-skip: ${{ steps.check-approval.outputs.can-skip }}
+    steps:
+      - name: Check swgu98/sneaxiy coverage approval
+        id: check-approval
+        run: |
+          set -euo pipefail
+
+          reviews=$(gh api --paginate "repos/${REPO}/pulls/${PR_NUMBER}/reviews?per_page=100" | jq -s 'add')
+          can_skip=$(echo "${reviews}" | jq -r --arg head "${HEAD_SHA}" '
+            [ .[]
+              | select(.user.login == "swgu98" or .user.login == "sneaxiy")
+              | select(.commit_id == $head)
+              | select(.state == "APPROVED" or .state == "CHANGES_REQUESTED" or .state == "DISMISSED")
+            ]
+            | sort_by(.submitted_at)
+            | last
+            | if .state == "APPROVED" then
+                ((.body // "") | ascii_downcase) as $body
+                | if ($body | contains("lgtm")) and ($body | contains("coverage")) then "true" else "false" end
+              else
+                "false"
+              end
+          ')
+
+          echo "swgu98/sneaxiy coverage approval: ${can_skip}"
+          echo "can-skip=${can_skip}" >> "${GITHUB_OUTPUT}"
+
   test:
     name: Coverage test
-    needs: [build, build-docker]
-    if: needs.build.outputs.can-skip != 'true'
+    needs: [build, build-docker, coverage_approval]
+    if: >-
+      needs.build.outputs.can-skip != 'true' &&
+      needs.coverage_approval.outputs.can-skip != 'true'
     runs-on:
       group: BD_BJ-V100
     timeout-minutes: 240
