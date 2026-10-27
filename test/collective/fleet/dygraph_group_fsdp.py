@@ -1073,7 +1073,7 @@ def train_grad_comm(comm_dtype, data):
         grads.append([buf.data_buffer.numpy() for buf in sharded])
         opt.clear_grad()
     assert not ctx.comm_manager.grad_reduce_queue
-    assert all(buf._comm_buffer is None for buf in sharded)
+    assert all(buf._rs_comm_buffer is None for buf in sharded)
     return losses, grads
 
 

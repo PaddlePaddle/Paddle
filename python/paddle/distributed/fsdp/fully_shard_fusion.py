@@ -44,7 +44,7 @@ class BufferState(Enum):
     #                             │         (reuse)            │
     #                             └────────────────────────────┘
 
-    FREED = 1  # Released, buffer data is sharded, tmp_buffer not allocated
+    FREED = 1  # Released, buffer data is sharded, full_buffer not allocated
     USING = 2  # Unsharded and actively in use
     READY = 3  # Unsharded, marked for lazy release, can be reused
     SYNCING = 4  # Communication in progress
@@ -117,14 +117,14 @@ class TensorFusionBuffer:
         self.comm_dtype = (
             comm_dtype if comm_dtype != self.main_grad_dtype else None
         )
-        self._comm_buffer = None
+        self._rs_comm_buffer = None
         self.grad_div = grad_div if grad_div is not None else fsdp_group.nranks
         self.grad_accum_steps = 1
         self.grad_scale = 1.0 / self.grad_div
         self.grad_scaled = False
         self.total_buffer_size = 0
         self.param_offsets = {}
-        self.tmp_data_buffer = None
+        self._full_buffer = None
         self.comm_task = None
         self.trainable = params[0].trainable
 
@@ -217,11 +217,11 @@ class TensorFusionBuffer:
                     param._param_offsets = self.param_offsets
                     param._main_grad_addr = None
 
-                    def get_grad_from_tmp_buf(param, shape=None):
-                        tmp_buffer = param._fusion_buffer.get_tmp_buffer()
+                    def get_grad_from_full_buf(param, shape=None):
+                        full_buffer = param._fusion_buffer.get_full_buffer()
                         offset = param._param_offsets[param.name]
                         main_grad = paddle._C_ops.view_slice(
-                            tmp_buffer,
+                            full_buffer,
                             offset,
                             offset + param._numel(),
                         )
@@ -232,11 +232,11 @@ class TensorFusionBuffer:
                         param._main_grad_addr = main_grad.data_ptr()
                         return main_grad
 
-                    param.get_main_grad = get_grad_from_tmp_buf.__get__(param)
+                    param.get_main_grad = get_grad_from_full_buf.__get__(param)
 
     def rebind_main_grad(self, param):
         stale_grad = getattr(param, "main_grad", None)
-        if not (self.is_sharded and self.tmp_data_buffer is None):
+        if not (self.is_sharded and self._full_buffer is None):
             if stale_grad is not None and stale_grad._is_initialized():
                 if stale_grad.data_ptr() == getattr(
                     param, "_main_grad_addr", None
@@ -271,45 +271,45 @@ class TensorFusionBuffer:
             slice(begin - offset, end - offset),
         )
 
-    def get_tmp_buffer(self):
+    def get_full_buffer(self):
         if not self.is_sharded:
             return self.data_buffer
-        # Reuse tmp_buffer if exists, else create
-        if self.tmp_data_buffer is None:
+        # Reuse full_buffer if exists, else create
+        if self._full_buffer is None:
             if self.is_params:
                 # Fully overwritten by all_gather.
-                self.tmp_data_buffer = paddle.empty(
+                self._full_buffer = paddle.empty(
                     shape=[self.total_buffer_size], dtype=self.dtype
                 )
             else:
                 # Grads accumulate into it.
-                self.tmp_data_buffer = paddle.zeros(
+                self._full_buffer = paddle.zeros(
                     shape=[self.total_buffer_size], dtype=self.main_grad_dtype
                 )
-        return self.tmp_data_buffer
+        return self._full_buffer
 
     def do_all_gather(self):
         return paddle.distributed.all_gather(
-            self.get_tmp_buffer(),
+            self.get_full_buffer(),
             self.data_buffer,
             group=self.fsdp_group,
             sync_op=False,
         )
 
     def do_reduce_scatter(self):
-        tmp_buffer = self.get_tmp_buffer()
+        full_buffer = self.get_full_buffer()
         # AVG folds the scale into NCCL when it is exactly 1/nranks of this
         # group; otherwise (grad accumulation, EP groups) pre-scale and SUM.
         if self.grad_div * self.grad_accum_steps == self.fsdp_degree:
             op = paddle.distributed.ReduceOp.AVG
         else:
-            tmp_buffer.scale_(self.grad_scale)
+            full_buffer.scale_(self.grad_scale)
             op = paddle.distributed.ReduceOp.SUM
-        comm = tmp_buffer
+        comm = full_buffer
         if self.comm_dtype is not None:
-            comm = paddle.cast(tmp_buffer, self.comm_dtype)
-            self.tmp_data_buffer = None
-        self._comm_buffer = comm
+            comm = paddle.cast(full_buffer, self.comm_dtype)
+            self._full_buffer = None
+        self._rs_comm_buffer = comm
         return paddle.distributed.reduce_scatter(
             comm._slice(0, self.data_buffer.shape[0]),
             comm,
@@ -319,17 +319,17 @@ class TensorFusionBuffer:
         )
 
     def accumulate_reduced_grad(self):
-        comm, self._comm_buffer = self._comm_buffer, None
+        comm, self._rs_comm_buffer = self._rs_comm_buffer, None
         shard = comm._slice(0, self.data_buffer.shape[0])
         if shard.dtype != self.data_buffer.dtype:
             shard = shard.astype(self.data_buffer.dtype)
         self.data_buffer.add_(shard)
-        self.clear_tmp_buffer()
+        self.clear_full_buffer()
 
-    def clear_tmp_buffer(self):
-        if self.tmp_data_buffer is not None:
-            self.tmp_data_buffer._clear_data()
-            self.tmp_data_buffer = None
+    def clear_full_buffer(self):
+        if self._full_buffer is not None:
+            self._full_buffer._clear_data()
+            self._full_buffer = None
 
     def release_data_buffer(self):
         if self.is_params or self.data_buffer is None:
@@ -637,7 +637,7 @@ class FSDPCommManager:
                     continue
                 if group.params_buffer.status == BufferState.READY:
                     group.params_buffer.status = BufferState.FREED
-                    group.params_buffer.clear_tmp_buffer()
+                    group.params_buffer.clear_full_buffer()
                     self.buffer_cnt_in_using -= 1
                     found = True
                     break
@@ -727,12 +727,12 @@ class FSDPCommManager:
                 params_buffer.comm_task.wait()
                 params_buffer.comm_task = None
 
-            tmp_buffer = params_buffer.get_tmp_buffer()
+            full_buffer = params_buffer.get_full_buffer()
             # Do all_gather in sync: FREED -> USING
             if params_buffer.status == BufferState.FREED:
                 if params_buffer.is_sharded:
                     params_buffer.fsdp_group.process_group.all_gather(
-                        params_buffer.data_buffer, tmp_buffer
+                        params_buffer.data_buffer, full_buffer
                     ).wait()
                     self.buffer_cnt_in_using += 1
                 params_buffer.status = BufferState.USING
@@ -740,7 +740,7 @@ class FSDPCommManager:
             # Bind the unsharded param to the real param
             offset = params_buffer.param_offsets[param.name]
             tmp_param = paddle._C_ops.view_slice(
-                tmp_buffer,
+                full_buffer,
                 offset,
                 offset + param._numel(),
             )
@@ -798,7 +798,7 @@ class FSDPCommManager:
                     param._clear_data()
                     param.stop_gradient = stop_gradient
                     param.get_tensor()._set_dims(_shape)
-                params_buffer.clear_tmp_buffer()
+                params_buffer.clear_full_buffer()
                 params_buffer.status = BufferState.FREED
                 if not params_buffer.is_sharded:
                     continue
@@ -876,7 +876,7 @@ class FSDPCommManager:
         if (
             grads_buffer is None
             or not grads_buffer.is_sharded
-            or grads_buffer.tmp_data_buffer is None
+            or grads_buffer._full_buffer is None
             or grads_buffer in self.grad_reduce_queue
         ):
             return
@@ -919,7 +919,7 @@ class FSDPCommManager:
                     param._clear_data()
                     param.stop_gradient = stop_gradient
                     param.get_tensor()._set_dims(_shape)
-                params_buffer.clear_tmp_buffer()
+                params_buffer.clear_full_buffer()
                 if self.buffer_cnt_in_using > 0:
                     self.buffer_cnt_in_using -= 1
 
@@ -942,7 +942,7 @@ class FSDPCommManager:
         while len(self.grad_reduce_queue) > queue_limit:
             grads_buffer = self.grad_reduce_queue.pop(0)
             if grads_buffer.comm_task is None:
-                grads_buffer.clear_tmp_buffer()
+                grads_buffer.clear_full_buffer()
                 self._release_reduced_grad_views(grads_buffer)
                 continue
             grads_buffer.comm_task.wait()
@@ -988,7 +988,7 @@ class FSDPCommManager:
                     grads_buffer.data_buffer.scale_(grads_buffer.grad_scale)
                     grads_buffer.grad_scaled = True
                 continue
-            if grads_buffer.tmp_data_buffer is None:
+            if grads_buffer._full_buffer is None:
                 continue
             grads_buffer.do_reduce_scatter().wait()
             grads_buffer.accumulate_reduced_grad()
@@ -1431,7 +1431,7 @@ class FullyShardFusion:
             cm.shard_params(params)
             for gid in was_freed:
                 params_buffer = bm.buffer_groups[gid].params_buffer
-                params_buffer.clear_tmp_buffer()
+                params_buffer.clear_full_buffer()
                 params_buffer.status = BufferState.FREED
                 if params_buffer.is_sharded and cm.buffer_cnt_in_using > 0:
                     cm.buffer_cnt_in_using -= 1
@@ -1831,7 +1831,7 @@ class FullyShardFusion:
                 if grad is not None and grad._is_initialized():
                     grad._clear_data()
             elif grad is not None and grad._is_initialized():
-                # Share mem with grads_tmp_buffer
+                # Share mem with grads_full_buffer
                 param.get_main_grad(grad.shape)
                 param.main_grad.add_(grad)
                 grad._clear_data()
