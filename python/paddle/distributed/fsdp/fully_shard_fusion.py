@@ -35,6 +35,23 @@ from paddle.distributed.fsdp._fsdp_context import (
 )
 
 
+class StreamTask:
+    def __init__(self, stream):
+        self._event = stream.record_event()
+
+    def wait(self):
+        paddle.device.current_stream().wait_event(self._event)
+
+
+def run_on_stream(stream, tensors, collective):
+    stream.wait_stream(paddle.device.current_stream())
+    with paddle.device.stream_guard(stream):
+        collective()
+        for t in tensors:
+            t._record_stream()
+    return StreamTask(stream)
+
+
 class BufferState(Enum):
     # Buffer status for lazy double buffer mechanism
     #
@@ -102,10 +119,12 @@ class TensorFusionBuffer:
         grad_div=None,
         shard_buffer=True,
         shard_align_numel=None,
+        comm_stream=None,
     ):
         # Calculate total buffer size needed (with padding)
         self.unique_key = unique_key
         self.fsdp_group = fsdp_group
+        self.comm_stream = comm_stream
         self.fsdp_degree = fsdp_group.nranks
         self.is_sharded = shard_buffer and fsdp_group.nranks > 1
         self.is_params = is_params
@@ -284,16 +303,21 @@ class TensorFusionBuffer:
         return self.tmp_data_buffer
 
     def do_all_gather(self):
-        return paddle.distributed.all_gather(
-            self.get_tmp_buffer(),
-            self.data_buffer,
-            group=self.fsdp_group,
-            sync_op=False,
-        )
+        full, shard = self.get_tmp_buffer(), self.data_buffer
+
+        def gather():
+            paddle.distributed.stream.all_gather(
+                full,
+                shard,
+                group=self.fsdp_group,
+                sync_op=True,
+                use_calc_stream=True,
+            )
+
+        return run_on_stream(self.comm_stream, (full, shard), gather)
 
     def do_reduce_scatter(self):
         tmp_buffer = self.get_tmp_buffer()
-        shard = tmp_buffer._slice(0, self.data_buffer.shape[0])
         # AVG folds the scale into NCCL when it is exactly 1/nranks of this
         # group; otherwise (grad accumulation, EP groups) pre-scale and SUM.
         if self.grad_div * self.grad_accum_steps == self.fsdp_degree:
@@ -301,13 +325,18 @@ class TensorFusionBuffer:
         else:
             tmp_buffer.scale_(self.grad_scale)
             op = paddle.distributed.ReduceOp.SUM
-        return paddle.distributed.reduce_scatter(
-            shard,
-            tmp_buffer,
-            op=op,
-            group=self.fsdp_group,
-            sync_op=False,
-        )
+
+        def reduce():
+            paddle.distributed.stream.reduce_scatter(
+                tmp_buffer._slice(0, self.data_buffer.shape[0]),
+                tmp_buffer,
+                op=op,
+                group=self.fsdp_group,
+                sync_op=True,
+                use_calc_stream=True,
+            )
+
+        return run_on_stream(self.comm_stream, (tmp_buffer,), reduce)
 
     def accumulate_reduced_grad(self):
         shard = self.get_tmp_buffer()._slice(0, self.data_buffer.shape[0])
@@ -347,6 +376,7 @@ class FSDPBufferManager:
         main_grad_dtype=None,
     ):
         self.model = model
+        self._comm_streams = {}
         self.hcg = fleet.get_hybrid_communicate_group()
         self._fsdp_group = self.hcg.get_sharding_parallel_group()
         use_ep = (
@@ -499,6 +529,7 @@ class FSDPBufferManager:
                 is_params=True,
                 shard_buffer=shard_buffer,
                 shard_align_numel=muon_align,
+                comm_stream=self._comm_stream(group.fsdp_group),
             )
             if not params[0].stop_gradient:
                 grads_shard_buffer = (
@@ -517,6 +548,7 @@ class FSDPBufferManager:
                     grad_div=self._fsdp_group.nranks,
                     shard_buffer=grads_shard_buffer,
                     shard_align_numel=muon_align,
+                    comm_stream=self._comm_stream(group.fsdp_group),
                 )
             group.muon_shard_numel = group.params_buffer.shard_align_numel
             if group.hyperball_sharded:
@@ -538,6 +570,13 @@ class FSDPBufferManager:
 
         self._assign_muon_owners()
         self._set_clip_attrs()
+
+    def _comm_stream(self, group):
+        if group.nranks <= 1:
+            return None
+        if group.id not in self._comm_streams:
+            self._comm_streams[group.id] = paddle.device.Stream()
+        return self._comm_streams[group.id]
 
     def _set_clip_attrs(self):
         for group in self.buffer_groups:
@@ -712,20 +751,17 @@ class FSDPCommManager:
                 params_buffer.comm_task.wait()
                 params_buffer.comm_task = None
 
-            tmp_buffer = params_buffer.get_tmp_buffer()
             # Do all_gather in sync: FREED -> USING
             if params_buffer.status == BufferState.FREED:
                 if params_buffer.is_sharded:
-                    params_buffer.fsdp_group.process_group.all_gather(
-                        params_buffer.data_buffer, tmp_buffer
-                    ).wait()
+                    params_buffer.do_all_gather().wait()
                     self.buffer_cnt_in_using += 1
                 params_buffer.status = BufferState.USING
 
             # Bind the unsharded param to the real param
             offset = params_buffer.param_offsets[param.name]
             tmp_param = paddle._C_ops.view_slice(
-                tmp_buffer,
+                params_buffer.get_tmp_buffer(),
                 offset,
                 offset + param._numel(),
             )
