@@ -279,15 +279,15 @@ def run_moe(ep_degree):
         accum_steps=ACCUM_STEPS,
     )
 
-    # (overlap, reshard_policy, reshard_filter, dense_reduce_scatter_streams)
+    # (overlap, reshard_policy, reshard_filter)
     configs = (
-        (True, "after_forward", "all", 1),
-        (False, "after_forward", "all", 1),
-        (True, "after_backward", "all", 1),
-        (True, "after_step", "all", 2),
-        (True, "after_step", "expert", 1),
+        (True, "after_forward", "all"),
+        (False, "after_forward", "all"),
+        (True, "after_backward", "all"),
+        (True, "after_step", "all"),
+        (True, "after_step", "expert"),
     )
-    for enable_overlap, reshard_policy, reshard_filter, rs_streams in configs:
+    for enable_overlap, reshard_policy, reshard_filter in configs:
         if fsdp_model is None:
             _, fsdp_model = build_moe_models(hcg)
         fsdp_model = fully_shard(
@@ -295,7 +295,6 @@ def run_moe(ep_degree):
             enable_tensor_fusion_and_overlap=enable_overlap,
             reshard_policy=reshard_policy,
             reshard_filter=reshard_filter,
-            dense_reduce_scatter_streams=rs_streams,
         )
         fsdp_model = mix_precision_utils.MixPrecisionLayer(
             fsdp_model, dtype="float16"
@@ -312,7 +311,7 @@ def run_moe(ep_degree):
             f"loss MD5 sequence diverged (ep_degree={ep_degree}, "
             f"accum_steps={ACCUM_STEPS}, "
             f"enable_overlap={enable_overlap}, reshard_policy={reshard_policy}, "
-            f"reshard_filter={reshard_filter}, rs_streams={rs_streams}): "
+            f"reshard_filter={reshard_filter}): "
             f"stage1={stage1_loss_md5s}, fsdp={fsdp_loss_md5s}"
         )
 

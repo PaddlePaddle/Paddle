@@ -592,7 +592,6 @@ class FSDPCommManager:
         prefetch_units=1,
         reshard_policy="after_forward",
         reshard_filter="all",
-        dense_reduce_scatter_streams=1,
     ):
         if reshard_policy not in self.RESHARD_POLICIES:
             raise ValueError(
@@ -637,55 +636,6 @@ class FSDPCommManager:
         self.buffer_cnt_in_using = 0
         self.need_zero_grads = True
         self._last_backward_unit_id = None
-        self._dense_rs_groups = {}
-        if dense_reduce_scatter_streams > 1:
-            self._spread_dense_reduce_scatter(int(dense_reduce_scatter_streams))
-
-    def _spread_dense_reduce_scatter(self, n_streams):
-        # The k-th sharded dense group of every unit reduce-scatters over the
-        # (k % n_streams)-th clone of its fsdp_group. Clones keep the same rank
-        # list, so shard layout and results are unchanged; each has its own
-        # NCCL communicator and stream. With CUDA_DEVICE_MAX_CONNECTIONS=1 all
-        # streams share one hardware queue, and several RS queued back to back
-        # on one stream block unrelated compute kernels behind them.
-        per_unit = {}
-        for group in self.buffer_manager.buffer_groups:
-            grads_buffer = group.grads_buffer
-            if (
-                group.fsdp_unit_id is None
-                or group.is_expert_param
-                or grads_buffer is None
-                or not grads_buffer.is_sharded
-            ):
-                continue
-            per_unit.setdefault(group.fsdp_unit_id, []).append(group)
-
-        # new_group is a collective call: gids come from a per-rank counter and
-        # the NCCL unique-id store key depends only on the gid, so every rank
-        # must create the same groups in the same order, including groups it
-        # is not in (as topology.py does). Gather the rank lists every rank
-        # wants to clone, then clone each of them everywhere.
-        local = sorted(
-            {
-                tuple(group.grads_buffer.fsdp_group.ranks)
-                for groups in per_unit.values()
-                for group in groups
-            }
-        )
-        gathered = []
-        paddle.distributed.all_gather_object(gathered, local)
-        all_ranks = sorted({ranks for lst in gathered for ranks in lst})
-        for ranks in all_ranks:
-            self._dense_rs_groups[ranks] = [
-                paddle.distributed.new_group(ranks=list(ranks))
-                for _ in range(n_streams - 1)
-            ]
-
-        for unit_id in sorted(per_unit):
-            for k, group in enumerate(per_unit[unit_id]):
-                orig = group.grads_buffer.fsdp_group
-                clones = [orig] + self._dense_rs_groups[tuple(orig.ranks)]
-                group.grads_buffer.fsdp_group = clones[k % n_streams]
 
     def _in_reshard_filter(self, group):
         if self.reshard_filter == "expert":
@@ -1196,7 +1146,6 @@ class FullyShardFusion:
         prefetch_units=1,
         reshard_policy="after_forward",
         reshard_filter="all",
-        dense_reduce_scatter_streams=1,
     ):
         self.model = model
         self.mp_policy = mp_policy
@@ -1211,7 +1160,6 @@ class FullyShardFusion:
             prefetch_units=prefetch_units,
             reshard_policy=reshard_policy,
             reshard_filter=reshard_filter,
-            dense_reduce_scatter_streams=dense_reduce_scatter_streams,
         )
         self.register_tensor_fusion_hooks(self.model)
         register_fsdp_context(self)

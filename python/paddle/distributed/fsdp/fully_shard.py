@@ -95,7 +95,6 @@ def _fully_shard_manual_parallel(
     grad_accum_steps=1,
     reshard_policy="after_forward",
     reshard_filter="all",
-    dense_reduce_scatter_streams=1,
 ):
     layers = module._layers if isinstance(module, MetaParallelBase) else module
     if optimizer is not None:
@@ -106,7 +105,6 @@ def _fully_shard_manual_parallel(
         mp_policy=mp_policy,
         reshard_policy=reshard_policy,
         reshard_filter=reshard_filter,
-        dense_reduce_scatter_streams=dense_reduce_scatter_streams,
     )
     layers._fsdp_context.set_grad_accum_steps(grad_accum_steps)
     if optimizer is not None:
@@ -150,7 +148,6 @@ def fully_shard(
     grad_accum_steps: int = 1,
     reshard_policy: str = "after_forward",
     reshard_filter: str | Callable[..., bool] = "all",
-    dense_reduce_scatter_streams: int = 1,
 ) -> paddle.nn.Layer:
     """
     Apply fully sharded data parallel (FSDP) to the given module.
@@ -208,10 +205,6 @@ def fully_shard(
             ``"dense"``: non-expert parameters only. A callable for per-layer
             selection is reserved and not supported yet. Defaults to
             ``"all"``.
-        dense_reduce_scatter_streams (int, optional): Manual parallel mode
-            only. Spread the reduce-scatters of a unit's dense grad groups
-            over this many clones of their process group (one NCCL stream
-            each). Defaults to 1.
 
     Returns:
         module: A wrapper module that applies FSDP to the input module.
@@ -265,5 +258,4 @@ def fully_shard(
             *args,
             reshard_policy=reshard_policy,
             reshard_filter=reshard_filter,
-            dense_reduce_scatter_streams=dense_reduce_scatter_streams,
         )
