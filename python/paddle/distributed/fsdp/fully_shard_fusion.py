@@ -37,6 +37,7 @@ from paddle.distributed.fsdp._fp8_utils import (
     fp8_shard_numel,
     get_fp8_tmp_buffer,
     init_fp8_buffer,
+    quantize_fp8_shard,
     share_scratch,
     sync_ckpt_weight_to_main,
 )
@@ -848,6 +849,7 @@ class FSDPCommManager:
             if params_buffer.fp8 is not None:
                 params_buffer.fp8.quantized = False
                 params_buffer.fp8.weight_copy = None
+                params_buffer.fp8.fulls = None
             # A prefetch issued at the end of backward gathers the pre-step
             # shard; drop it so the next forward gathers the updated one.
             if params_buffer.status == BufferState.SYNCING:
@@ -1969,6 +1971,7 @@ class FullyShardFusion:
             for group in self.buffer_manager.buffer_groups:
                 if group.params_buffer.fp8 is not None:
                     sync_ckpt_weight_to_main(group.params_buffer)
+                    quantize_fp8_shard(group.params_buffer)
             self._bind_expert_main_grads(model.parameters())
 
         model.register_forward_pre_hook(_bind_experts_pre_forward)

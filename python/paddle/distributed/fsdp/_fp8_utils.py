@@ -23,12 +23,12 @@ def fp8_shard_numel(params):
     quantizer = getattr(params[0], "_fsdp_fp8_quantizer", None)
     if quantizer is None:
         return None
-    numel = quantizer.block**2
+    block = quantizer.block
+    numel = block**2
     for p in params:
         shape = tuple(getattr(p, "original_shape", None) or p.shape)
-        reason = quantizer.check(p, shape) if len(shape) == 3 else "not 3-D"
-        if reason is not None:
-            raise ValueError(f"_fsdp_fp8_quantizer: {p.name}: {reason}")
+        if len(shape) != 3 or shape[1] % block or shape[2] % block:
+            raise ValueError(f"_fsdp_fp8_quantizer: {p.name}: {shape}")
         numel = math.lcm(numel, shape[1] * shape[2])
     return numel
 
@@ -40,7 +40,7 @@ def init_fp8_buffer(params_buffer, params):
             "sharded"
         )
     quantizer = params[0]._fsdp_fp8_quantizer
-    k, full = len(quantizer.orientations), params_buffer.total_buffer_size
+    k, full = len(quantizer.attrs), params_buffer.total_buffer_size
     numels = [full] * k + [full // quantizer.block**2] * k
     dtypes = [paddle.float8_e4m3fn] * k + [paddle.float32] * k
     params_buffer.fp8 = types.SimpleNamespace(
@@ -79,12 +79,12 @@ def sync_ckpt_weight_to_main(params_buffer):
 
 
 @paddle.autograd.no_grad()
-def _quantize_fp8(params_buffer):
+def quantize_fp8_shard(params_buffer):
     fp8 = params_buffer.fp8
     if fp8.quantized:
         return
     quantizer = fp8.quantizer
-    k, bn = len(quantizer.orientations), quantizer.block**2
+    k, bn = len(quantizer.attrs), quantizer.block**2
     for param in fp8.params:
         shard = params_buffer.param_shard(param)
         if shard is None:
@@ -94,8 +94,8 @@ def _quantize_fp8(params_buffer):
         weights = paddle._C_ops.view_slice(params_buffer.data_buffer, lo, hi)
         weights.get_tensor()._set_dims([(hi - lo) // (rows * cols), rows, cols])
         weights = weights.astype(param.dtype)
-        for i, transpose in enumerate(quantizer.orientations):
-            data, scale = quantizer.quantize(weights, transpose)
+        for i, (_, _, transpose) in enumerate(quantizer.attrs):
+            data, scale = quantizer(weights, transpose)
             paddle.assign(data.flatten(), fp8.shards[i]._slice(lo, hi))
             paddle.assign(
                 scale.flatten(), fp8.shards[k + i]._slice(lo // bn, hi // bn)
@@ -104,7 +104,7 @@ def _quantize_fp8(params_buffer):
 
 
 def get_fp8_tmp_buffer(params_buffer):
-    _quantize_fp8(params_buffer)
+    quantize_fp8_shard(params_buffer)
     fp8 = params_buffer.fp8
     fp8.fulls = [
         paddle.empty([s.shape[0] * params_buffer.fsdp_degree], s.dtype)
@@ -115,16 +115,19 @@ def get_fp8_tmp_buffer(params_buffer):
 
 def bind_fp8_param(params_buffer, param):
     fp8 = params_buffer.fp8
-    k, bn = len(fp8.quantizer.orientations), fp8.quantizer.block**2
+    attrs, block = fp8.quantizer.attrs, fp8.quantizer.block
+    k, bn = len(attrs), block**2
     shape = list(getattr(param, "original_shape", None) or param.shape)
     begin = params_buffer.param_offsets[param.name]
     end = begin + math.prod(shape)
-    fp8.quantizer.bind(
-        param,
-        shape,
-        [data._slice(begin, end) for data in fp8.fulls[:k]],
-        [scale._slice(begin // bn, end // bn) for scale in fp8.fulls[k:]],
-    )
+    num, kn, nn = shape
+    view = paddle._C_ops.view_shape
+    for i, (d, s, transpose) in enumerate(attrs):
+        rows, cols = (nn, kn) if transpose else (kn, nn)
+        data = fp8.fulls[i]._slice(begin, end)
+        scale = fp8.fulls[k + i]._slice(begin // bn, end // bn)
+        setattr(param, d, view(data, [num * rows, cols]))
+        setattr(param, s, view(scale, [num * rows // block, cols // block]))
     # Zero-byte storage: read only through the fp8 caches.
     dims = param.shape
     share_scratch(param, param.dtype)
@@ -141,5 +144,8 @@ def share_scratch(param, dtype):
 
 def clear_fp8_tmp_buffer(params_buffer):
     for param in params_buffer.fp8.params:
-        params_buffer.fp8.quantizer.clear(param)
+        for d, s, _ in params_buffer.fp8.quantizer.attrs:
+            for attr in (d, s):
+                if hasattr(param, attr):
+                    delattr(param, attr)
     params_buffer.fp8.fulls = None

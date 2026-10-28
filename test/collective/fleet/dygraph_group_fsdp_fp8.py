@@ -55,30 +55,13 @@ def block_quant(weights, transpose):
     )
 
 
-class BlockQuantizer:
-    block = BLOCK
-    quantize = staticmethod(block_quant)
+def BlockQuantizer(keep_transpose):
+    def quantize(weights, transpose):
+        return block_quant(weights, transpose)
 
-    def __init__(self, keep_transpose):
-        self.attrs = FP8_ATTRS if keep_transpose else FP8_ATTRS[:1]
-        self.orientations = tuple(t for _, _, t in self.attrs)
-
-    def check(self, param, shape):
-        return None if shape[1] % BLOCK == shape[2] % BLOCK == 0 else "blocks"
-
-    def bind(self, param, shape, datas, scales):
-        num, k, n = shape
-        for (d, s, transpose), data, scale in zip(self.attrs, datas, scales):
-            rows, cols = (n, k) if transpose else (k, n)
-            view = paddle._C_ops.view_shape
-            setattr(param, d, view(data, [num * rows, cols]))
-            setattr(param, s, view(scale, [num * rows // BLOCK, cols // BLOCK]))
-
-    def clear(self, param):
-        for d, s, _ in FP8_ATTRS:
-            for attr in (d, s):
-                if hasattr(param, attr):
-                    delattr(param, attr)
+    quantize.block = BLOCK
+    quantize.attrs = FP8_ATTRS if keep_transpose else FP8_ATTRS[:1]
+    return quantize
 
 
 def dequant(fp8, scale):
