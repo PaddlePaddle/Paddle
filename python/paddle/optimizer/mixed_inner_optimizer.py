@@ -381,6 +381,12 @@ class MixedInnerOptimizer(InnerOptimizer):
         if g_shard_bypass_dygraph_optimizer:
             return
 
+        from paddle.distributed.fsdp._fsdp_context import get_fsdp_context
+
+        fsdp_context = get_fsdp_context()
+        if fsdp_context is not None:
+            params_grads = self._fsdp_params_grads(fsdp_context)
+
         # Global gradient clip, exactly once, over the full mixed batch -- keeps
         # the clipped-norm bit-identical to the single-optimizer path. Each
         # sub-optimizer is constructed with grad_clip=None (set in __init__), so
@@ -415,6 +421,33 @@ class MixedInnerOptimizer(InnerOptimizer):
         # (ZCC). No-op otherwise.
         self._maybe_refuse()
 
+        if fsdp_context is not None and hasattr(
+            fsdp_context, "broadcast_muon_params"
+        ):
+            fsdp_context.broadcast_muon_params()
+
+    def _fsdp_params_grads(self, fsdp_context):
+        """FSDP params_grads: whole params for keep_whole subs, fused shards
+        for the rest."""
+        fsdp_context.comm_sync_and_reset_status()
+        params_grads = list(fsdp_context.muon_params_grads())
+        for group in fsdp_context.buffer_manager.buffer_groups:
+            if group.use_muon or group.grads_buffer is None:
+                continue
+            data_buffer = group.params_buffer.data_buffer
+            if data_buffer.stop_gradient:
+                continue
+            params_grads.append((data_buffer, group.grads_buffer.data_buffer))
+
+        fsdp_context.bind_optimizer(self)
+        for sub in self._sub_opts:
+            fsdp_context.bind_decay_param_fun(sub)
+        fsdp_context.bind_decay_param_fun(self)
+        if self._grad_clip is not None:
+            self._grad_clip.should_comm_on_shard_dim = True
+            self._grad_clip.fsdp_group = fsdp_context.buffer_manager._fsdp_group
+        return params_grads
+
     # ------------------------------------------------------------------
     # State dict (checkpoint save / load) -- aggregate over sub-optimizers
     # ------------------------------------------------------------------
@@ -441,7 +474,11 @@ class MixedInnerOptimizer(InnerOptimizer):
             sub_sd = sub.state_dict()
             sub_master_weights = sub_sd.pop("master_weights", None)
             if sub_master_weights:
+                # _route also holds the FSDP fused buffers (fuse_params_*).
                 owned_names = {p.name for p in sub._parameter_list}
+                owned_names.update(
+                    n for n, s in self._route.items() if s is sub
+                )
                 for param_name, master_weight in sub_master_weights.items():
                     if param_name not in owned_names:
                         continue

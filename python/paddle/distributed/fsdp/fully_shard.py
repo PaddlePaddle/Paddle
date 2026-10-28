@@ -49,8 +49,36 @@ class OffloadPolicy:
     pin_memory: bool = True
 
 
+def _mark_params_for_mixed_optimizer(module, optimizer, decay_fun):
+    # Buffers are split by owning sub; keep_whole subs take the Muon path.
+    route = optimizer._route
+    sub_ids = {id(sub): i for i, sub in enumerate(optimizer._sub_opts)}
+    missing = []
+    for name, param in module.named_parameters():
+        param.no_weight_decay = decay_fun is not None and not decay_fun(
+            param.name
+        )
+        param.use_hyperball_sharded = False
+        sub = route.get(param.name)
+        if sub is None:
+            if not param.stop_gradient:
+                missing.append(name)
+            param.fsdp_optimizer_group = None
+            param.use_muon = False
+            continue
+        param.fsdp_optimizer_group = sub_ids[id(sub)]
+        param.use_muon = bool(sub.keep_whole_of(param.name))
+    if missing:
+        raise ValueError(
+            f"MixedInnerOptimizer misses trainable params: {missing[:8]}"
+        )
+
+
 def _mark_params_for_optimizer(module, optimizer):
     decay_fun = getattr(optimizer, "_apply_decay_param_fun", None)
+    if getattr(optimizer, "_sub_opts", None) is not None:
+        _mark_params_for_mixed_optimizer(module, optimizer, decay_fun)
+        return
     muon_info_map = getattr(optimizer, "_muon_param_info_map", None)
     missing = []
     for name, param in module.named_parameters():

@@ -436,6 +436,8 @@ class FSDPBufferManager:
                 # A buffer must not mix params with and without weight decay.
                 bool(getattr(param, "no_weight_decay", False)),
                 bool(getattr(param, "use_muon", False)),
+                # A buffer is stepped by one sub-optimizer of a mixed optimizer.
+                getattr(param, "fsdp_optimizer_group", None),
                 # Sharded-Hyperball params get their own buffer.
                 (
                     param.name
@@ -465,6 +467,7 @@ class FSDPBufferManager:
                 is_tie,
                 _,
                 use_muon,
+                _,
                 _,
                 _,
             ) = item[0]
@@ -498,6 +501,7 @@ class FSDPBufferManager:
                 is_tie,
                 no_decay,
                 use_muon,
+                _,
                 hyperball_name,
                 clip_attrs,
             ), params in sorted(keyed_params.items(), key=sort_key)
@@ -1299,7 +1303,22 @@ class FullyShardFusion:
                 return True
         return False
 
+    def _bind_mixed_routes(self, optimizer):
+        # Route each fused buffer to the sub owning its params.
+        inner = optimizer
+        while hasattr(inner, "_inner_opt"):
+            inner = inner._inner_opt
+        route = getattr(inner, "_route", None)
+        if getattr(inner, "_sub_opts", None) is None or route is None:
+            return False
+        for group in self.buffer_manager.buffer_groups:
+            name = group.params_buffer.data_buffer.name
+            if name not in route and group.params[0].name in route:
+                route[name] = route[group.params[0].name]
+        return True
+
     def bind_optimizer(self, optimizer):
+        self._bind_mixed_routes(optimizer)
         if getattr(optimizer, "_fsdp_state_dict_ctx", None) is self:
             return
         info_map = getattr(optimizer, "_muon_param_info_map", None)
@@ -1325,7 +1344,8 @@ class FullyShardFusion:
         inner = optimizer
         while hasattr(inner, "_inner_opt"):
             inner = inner._inner_opt
-        is_muon = isinstance(inner, Muon)
+        # Mixed subs that keep whole matrices are stepped like Muon's.
+        is_muon = isinstance(inner, Muon) or self._bind_mixed_routes(inner)
         parameter_list = [
             group.params_buffer.data_buffer
             for group in self.buffer_manager.buffer_groups
@@ -1463,10 +1483,12 @@ class FullyShardFusion:
         while hasattr(inner, "_inner_opt"):
             inner = inner._inner_opt
         # Keep the raw value: Adadelta's acc names start with '_' themselves.
+        # A mixed optimizer declares no accumulators; its subs do.
         tags = sorted(
             {
                 getattr(cls, attr)
-                for cls in type(inner).__mro__
+                for opt in (getattr(inner, "_sub_opts", None) or [inner])
+                for cls in type(opt).__mro__
                 for attr in vars(cls)
                 if attr.endswith("_str")
                 and "_acc" in attr
