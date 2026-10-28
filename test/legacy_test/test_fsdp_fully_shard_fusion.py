@@ -570,6 +570,243 @@ class TestPrefetchBySize(unittest.TestCase):
         self.assertEqual(waited, [0, 1, 2, 3])
         self.assertEqual(cm._grad_queue_numel, 0)
 
+    def test_release_ready_buffers_oldest_first(self):
+        cm = _make_comm_manager(_LAYOUT, prefetch_sizes=80)
+        bufs = [g.params_buffer for g in cm.buffer_manager.buffer_groups]
+        # gid 0, 1, 3 READY (70), gid 2 SYNCING (10), gid 4 USING (10).
+        statuses = {
+            0: fsf.BufferState.READY,
+            1: fsf.BufferState.READY,
+            2: fsf.BufferState.SYNCING,
+            3: fsf.BufferState.READY,
+            4: fsf.BufferState.USING,
+        }
+        for gid, status in statuses.items():
+            bufs[gid].status = status
+            cm.gathered_numel += bufs[gid].total_buffer_size
+        self.assertEqual(cm.gathered_numel, 90)
+
+        # Fits already: nothing freed.
+        cm._release_ready_buffers(10, 100)
+        self.assertEqual(cm.gathered_numel, 90)
+
+        # gid 0 is kept, so gid 1 (30) goes first and is enough.
+        cm._release_ready_buffers(10, 70, keep={0})
+        self.assertEqual(bufs[1].status, fsf.BufferState.FREED)
+        self.assertEqual(bufs[0].status, fsf.BufferState.READY)
+        self.assertEqual(bufs[3].status, fsf.BufferState.READY)
+        self.assertEqual(cm.gathered_numel, 60)
+
+        # Only READY buffers are freed, even if the limit stays exceeded.
+        cm._release_ready_buffers(10, 0)
+        self.assertEqual(bufs[0].status, fsf.BufferState.FREED)
+        self.assertEqual(bufs[3].status, fsf.BufferState.FREED)
+        self.assertEqual(bufs[2].status, fsf.BufferState.SYNCING)
+        self.assertEqual(bufs[4].status, fsf.BufferState.USING)
+        self.assertEqual(cm.gathered_numel, 20)
+
+
+class _FakeTask:
+    def __init__(self, log, gid):
+        self.log = log
+        self.gid = gid
+
+    def wait(self):
+        self.log.append(self.gid)
+
+
+class _GatherParamsBuffer:
+    """Sharded params buffer whose "gathered" storage is filled with its
+    gid, so a bound param shows which buffer it was viewed from."""
+
+    def __init__(self, gid, params, is_sharded, issued, waited):
+        self.gid = gid
+        self.is_sharded = is_sharded
+        self.trainable = True
+        self.status = (
+            fsf.BufferState.FREED if is_sharded else fsf.BufferState.USING
+        )
+        self.comm_task = None
+        self.param_offsets = {}
+        offset = 0
+        for param in params:
+            self.param_offsets[param.name] = offset
+            offset += param._numel()
+        self.total_buffer_size = offset
+        self.tmp_data_buffer = None
+        self._issued = issued
+        self._waited = waited
+
+    def get_tmp_buffer(self):
+        if self.tmp_data_buffer is None:
+            self.tmp_data_buffer = paddle.full(
+                [self.total_buffer_size], float(self.gid), dtype="float32"
+            )
+        return self.tmp_data_buffer
+
+    def do_all_gather(self):
+        self.get_tmp_buffer()
+        self._issued.append(self.gid)
+        return _FakeTask(self._waited, self.gid)
+
+    def clear_tmp_buffer(self):
+        self.tmp_data_buffer = None
+
+
+class TestPrefetchBySizeSequence(unittest.TestCase):
+    """Drives FSDPCommManager.all_gather_params / shard_params through whole
+    forward + backward passes in prefetch-by-size mode."""
+
+    def _build(self, prefetch_sizes, layout=_LAYOUT):
+        self.issued, self.waited = [], []
+        groups, param_to_gid = [], {}
+        for gid, (unit, expert, numel, sharded, _) in enumerate(layout):
+            params = [
+                paddle.create_parameter([numel // 2], "float32"),
+                paddle.create_parameter([numel - numel // 2], "float32"),
+            ]
+            for param in params:
+                param_to_gid[param.name] = gid
+            groups.append(
+                types.SimpleNamespace(
+                    fsdp_unit_id=unit,
+                    is_expert_param=expert,
+                    params=params,
+                    grads_buffer=None,
+                    params_buffer=_GatherParamsBuffer(
+                        gid, params, sharded, self.issued, self.waited
+                    ),
+                )
+            )
+        bm = types.SimpleNamespace(
+            buffer_groups=groups, param_to_buffer_id=param_to_gid
+        )
+        self.cm = fsf.FSDPCommManager(bm, prefetch_sizes=prefetch_sizes)
+        self.units = {}
+        for gid, g in enumerate(groups):
+            self.units.setdefault(g.fsdp_unit_id, []).append(gid)
+        return groups
+
+    def _unit_params(self, unit):
+        groups = self.cm.buffer_manager.buffer_groups
+        return [p for gid in self.units[unit] for p in groups[gid].params]
+
+    def _check_accounting(self):
+        live = sum(
+            g.params_buffer.total_buffer_size
+            for g in self.cm.buffer_manager.buffer_groups
+            if g.params_buffer.is_sharded
+            and g.params_buffer.status != fsf.BufferState.FREED
+        )
+        self.assertEqual(self.cm.gathered_numel, live)
+
+    def _gather(self, unit, is_backward):
+        params = self._unit_params(unit)
+        self.cm.all_gather_params(params, is_backward=is_backward)
+        _, _, limit = self.cm._prefetch_plan(self.units[unit], is_backward)
+        self.assertLessEqual(self.cm.gathered_numel, limit)
+        self._check_accounting()
+        groups = self.cm.buffer_manager.buffer_groups
+        for gid in self.units[unit]:
+            buf = groups[gid].params_buffer
+            if buf.is_sharded:
+                self.assertEqual(buf.status, fsf.BufferState.USING)
+            # Each param is a view of its own gathered buffer.
+            for param in groups[gid].params:
+                np.testing.assert_array_equal(
+                    param.numpy(), np.full(param.shape, gid, "float32")
+                )
+        return params
+
+    def _run_step(self):
+        groups = self.cm.buffer_manager.buffer_groups
+        order = sorted(self.units)
+        statuses_before = {}
+        for unit in order:
+            statuses_before[("fwd", unit)] = [
+                groups[gid].params_buffer.status for gid in self.units[unit]
+            ]
+            params = self._gather(unit, is_backward=False)
+            self.cm.shard_params(params)
+            self._check_accounting()
+        for unit in reversed(order):
+            statuses_before[("bwd", unit)] = [
+                groups[gid].params_buffer.status for gid in self.units[unit]
+            ]
+            params = self._gather(unit, is_backward=True)
+            # Sharded units after this one were released on entering it.
+            for later in order:
+                if later <= unit:
+                    continue
+                for gid in self.units[later]:
+                    buf = groups[gid].params_buffer
+                    if not buf.is_sharded:
+                        continue
+                    self.assertEqual(buf.status, fsf.BufferState.FREED)
+            self.cm.shard_params(params, is_backward=True)
+            self._check_accounting()
+        self.cm.reset_params_buffer_status()
+        self.assertEqual(self.cm.gathered_numel, 0)
+        for g in groups:
+            if g.params_buffer.is_sharded:
+                self.assertEqual(g.params_buffer.status, fsf.BufferState.FREED)
+        # Every issued all_gather was waited on exactly once.
+        self.assertEqual(sorted(self.issued), sorted(self.waited))
+        return statuses_before
+
+    def test_window_fits_limit(self):
+        # One unit = 40 elements; 80 holds the current and the next unit.
+        self._build(prefetch_sizes=80)
+        for _ in range(2):
+            self.issued.clear()
+            self.waited.clear()
+            before = self._run_step()
+            self.assertLessEqual(self.cm.gathered_numel, 80)
+            # Forward units after the first were prefetched by the previous
+            # call (SYNCING); the last unit is reused at backward start.
+            for unit in (1, 2, 3):
+                self.assertEqual(
+                    before[("fwd", unit)], [fsf.BufferState.SYNCING] * 2
+                )
+            self.assertEqual(before[("bwd", 3)], [fsf.BufferState.READY] * 2)
+            self.assertEqual(before[("bwd", 2)], [fsf.BufferState.READY] * 2)
+            self.assertEqual(before[("bwd", 1)], [fsf.BufferState.SYNCING] * 2)
+            # 8 forward gathers; backward regathers units 1 and 0 only.
+            self.assertEqual(self.issued, [0, 1, 2, 3, 4, 5, 6, 7, 3, 2, 1, 0])
+
+    def test_small_limit(self):
+        # Window larger than prefetch_sizes: bounded by the plan's limit.
+        self._build(prefetch_sizes=20)
+        for _ in range(2):
+            self.issued.clear()
+            self.waited.clear()
+            self._run_step()
+
+    def test_zero_disables_prefetch(self):
+        self._build(prefetch_sizes=0)
+        before = self._run_step()
+        for unit in (1, 2, 3):
+            self.assertEqual(before[("fwd", unit)], [fsf.BufferState.FREED] * 2)
+        # Gathered on demand, waited right away.
+        self.assertEqual(self.issued, self.waited)
+
+    def test_large_limit(self):
+        # Everything prefetched; no READY buffer is ever freed in forward.
+        self._build(prefetch_sizes=1000)
+        before = self._run_step()
+        self.assertEqual(self.issued[:8], list(range(8)))
+        for unit in (1, 2, 3):
+            self.assertEqual(
+                before[("fwd", unit)], [fsf.BufferState.SYNCING] * 2
+            )
+
+    def test_unsharded_buckets_not_counted(self):
+        layout = list(_LAYOUT)
+        layout[2] = (1, False, 10, False, True)
+        self._build(prefetch_sizes=80, layout=layout)
+        self._run_step()
+        self.assertNotIn(2, self.issued)
+
 
 if __name__ == "__main__":
     unittest.main()
