@@ -119,7 +119,7 @@ class TensorFusionBuffer:
         grad_div=None,
         shard_buffer=True,
         shard_align_numel=None,
-        comm_dtype=None,
+        grad_comm_dtype=None,
         comm_stream=None,
     ):
         # Calculate total buffer size needed (with padding)
@@ -133,8 +133,8 @@ class TensorFusionBuffer:
         self.main_grad_dtype = (
             main_grad_dtype if main_grad_dtype is not None else dtype
         )
-        self.comm_dtype = (
-            comm_dtype if comm_dtype != self.main_grad_dtype else None
+        self.grad_comm_dtype = (
+            grad_comm_dtype if grad_comm_dtype != self.main_grad_dtype else None
         )
         self._rs_comm_buffer = None
         self.grad_div = grad_div if grad_div is not None else fsdp_group.nranks
@@ -330,27 +330,29 @@ class TensorFusionBuffer:
         else:
             tmp_buffer.scale_(self.grad_scale)
             op = paddle.distributed.ReduceOp.SUM
-        comm = tmp_buffer
-        if self.comm_dtype is not None:
-            comm = paddle.cast(tmp_buffer, self.comm_dtype)
+        if self.grad_comm_dtype is None:
+            self._rs_comm_buffer = tmp_buffer
+        else:
+            self._rs_comm_buffer = paddle.cast(tmp_buffer, self.grad_comm_dtype)
             self.tmp_data_buffer = None
-        self._rs_comm_buffer = comm
+        full = self._rs_comm_buffer
+        shard = full._slice(0, self.data_buffer.shape[0])
 
         def reduce():
             paddle.distributed.stream.reduce_scatter(
-                comm._slice(0, self.data_buffer.shape[0]),
-                comm,
+                shard,
+                full,
                 op=op,
                 group=self.fsdp_group,
                 sync_op=True,
                 use_calc_stream=True,
             )
 
-        return run_on_stream(self.comm_stream, (comm,), reduce)
+        return run_on_stream(self.comm_stream, (full,), reduce)
 
     def accumulate_reduced_grad(self):
-        comm, self._rs_comm_buffer = self._rs_comm_buffer, None
-        shard = comm._slice(0, self.data_buffer.shape[0])
+        shard = self._rs_comm_buffer._slice(0, self.data_buffer.shape[0])
+        self._rs_comm_buffer = None
         if shard.dtype != self.data_buffer.dtype:
             shard = shard.astype(self.data_buffer.dtype)
         self.data_buffer.add_(shard)
@@ -563,7 +565,7 @@ class FSDPBufferManager:
                     grad_div=self._fsdp_group.nranks,
                     shard_buffer=grads_shard_buffer,
                     shard_align_numel=muon_align,
-                    comm_dtype=self.grad_comm_dtype,
+                    grad_comm_dtype=self.grad_comm_dtype,
                     comm_stream=self._comm_stream(group.fsdp_group),
                 )
             group.muon_shard_numel = group.params_buffer.shard_align_numel

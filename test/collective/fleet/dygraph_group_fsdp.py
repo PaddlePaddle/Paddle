@@ -1043,7 +1043,7 @@ def run_fused_linear():
             )
 
 
-def train_grad_comm(comm_dtype, data):
+def train_grad_comm(grad_comm_dtype, data):
     _, model = build_moe_models(fleet.get_hybrid_communicate_group())
     opt = paddle.optimizer.AdamW(
         learning_rate=0.001, parameters=model.parameters(), weight_decay=0.0
@@ -1052,7 +1052,7 @@ def train_grad_comm(comm_dtype, data):
         model,
         optimizer=opt,
         grad_accum_steps=ACCUM_STEPS,
-        mp_policy=MixedPrecisionPolicy(grad_comm_dtype=comm_dtype),
+        mp_policy=MixedPrecisionPolicy(grad_comm_dtype=grad_comm_dtype),
     )
     ctx = model._fsdp_context
     sharded = [
@@ -1062,7 +1062,9 @@ def train_grad_comm(comm_dtype, data):
     ]
     assert sharded, "no sharded grad buffer"
     for buf in sharded:
-        assert (buf.comm_dtype is not None) == (comm_dtype is not None)
+        assert (buf.grad_comm_dtype is not None) == (
+            grad_comm_dtype is not None
+        )
     losses, grads = [], []
     for i in range(0, len(data), ACCUM_STEPS):
         for x in data[i : i + ACCUM_STEPS]:

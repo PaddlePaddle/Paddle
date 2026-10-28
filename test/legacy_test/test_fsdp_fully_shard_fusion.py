@@ -226,7 +226,7 @@ class _FakeParamsBuffer:
         self.is_sharded = is_sharded
         self.clear_calls = 0
 
-    def clear_full_buffer(self):
+    def clear_tmp_buffer(self):
         self.clear_calls += 1
 
 
