@@ -3029,6 +3029,66 @@ class TestRelu_NanInput(TestActivation):
         pass
 
 
+class TestRelu_NonFinite(unittest.TestCase):
+    def setUp(self):
+        self.places = [paddle.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            self.places.append(paddle.CUDAPlace(0))
+
+    def relu(self, place, x):
+        with dynamic_guard():
+            return F.relu(paddle.to_tensor(x, place=place)).numpy()
+
+    def relu_grad(self, place, x, dout):
+        with dynamic_guard():
+            x = paddle.to_tensor(x, place=place, stop_gradient=False)
+            (dx,) = paddle.grad(
+                F.relu(x), x, grad_outputs=paddle.to_tensor(dout, place=place)
+            )
+            return dx.numpy()
+
+    def test_nan_input(self):
+        x = [float('nan'), float('inf'), -float('inf'), -1.0, 0.0, 1.0]
+        expected = [float('nan'), float('inf'), 0.0, 0.0, 0.0, 1.0]
+
+        for place in self.places:
+            np.testing.assert_array_equal(
+                self.relu(place, x), expected, err_msg=str(place)
+            )
+
+    def test_inf_grad(self):
+        x = [-1.0, 0.0, 1.0]
+        dout = [float('inf'), float('inf'), float('inf')]
+        expected = [0.0, 0.0, float('inf')]
+
+        for place in self.places:
+            np.testing.assert_array_equal(
+                self.relu_grad(place, x, dout), expected, err_msg=str(place)
+            )
+
+    def test_nan_grad(self):
+        x = [-1.0, 0.0, 1.0]
+        dout = [float('nan'), float('nan'), float('nan')]
+        expected = [0.0, 0.0, float('nan')]
+
+        for place in self.places:
+            np.testing.assert_array_equal(
+                self.relu_grad(place, x, dout), expected, err_msg=str(place)
+            )
+
+    def test_sqrt_relu_grad(self):
+        for place in self.places:
+            with dynamic_guard():
+                x = paddle.to_tensor(
+                    [-1.0, 0.0, 1.0], place=place, stop_gradient=False
+                )
+                paddle.sqrt(F.relu(x)).sum().backward()
+
+                np.testing.assert_array_equal(
+                    x.grad.numpy(), [0.0, 0.0, 0.5], err_msg=str(place)
+                )
+
+
 class TestReluAPI(unittest.TestCase):
     # test paddle.nn.ReLU, paddle.nn.functional.relu
     def setUp(self):
