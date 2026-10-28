@@ -610,15 +610,6 @@ class FSDPCommManager:
             )
         self.buffer_manager = buffer_manager
         self.enable_overlap = enable_overlap
-        # When a gathered param buffer is freed (resharded):
-        #   after_forward:  after forward, under gather-buffer budget pressure;
-        #                   backward all-gathers it again (default).
-        #   after_backward: kept outside the budget from forward until its
-        #                   unit's backward is done.
-        #   after_step:     also kept across micro-batches until
-        #                   reset_params_buffer_status (before the optimizer).
-        # reshard_filter selects the buffer groups reshard_policy applies to
-        # ("all", "expert" or "dense"); the others stay "after_forward".
         self.reshard_policy = reshard_policy
         self.reshard_filter = reshard_filter
         self.grad_reduce_queue = []
