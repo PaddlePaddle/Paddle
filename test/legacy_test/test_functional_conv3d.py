@@ -238,9 +238,11 @@ class TestFunctionalConv3DErrorCase11(TestCase):
 
 class TestFunctionalConv3D_ZeroSize(TestCase):
     def init_data(self):
-        self.input = np.random.random([4, 3, 0, 8, 8])
+        # 0-size batch dim is legal (matches PyTorch); a 0-size spatial dim is
+        # now rejected -- see TestFunctionalConv3D_SpatialZeroError below.
+        self.input = np.random.random([0, 3, 4, 8, 8])
         self.filter = np.random.random([5, 3, 3, 3, 3])
-        self.np_out = np.zeros([4, 5, 0, 8, 8])
+        self.np_out = np.zeros([0, 5, 4, 8, 8])
 
     def setUp(self):
         self.init_data()
@@ -276,9 +278,37 @@ class TestFunctionalConv3D_ZeroSize(TestCase):
 
 class TestFunctionalConv3D_ZeroSize2(TestFunctionalConv3D_ZeroSize):
     def init_data(self):
-        self.input = np.random.random([4, 0, 0, 8, 8])
+        self.input = np.random.random([0, 0, 4, 8, 8])
         self.filter = np.random.random([5, 0, 3, 3, 3])
-        self.np_out = np.zeros([4, 0, 0, 8, 8])
+        self.np_out = np.zeros([0, 0, 4, 8, 8])
+
+
+class TestFunctionalConv3D_SpatialZeroError(TestCase):
+    """A 0-size spatial dim whose padded input is smaller than the kernel must
+    raise InvalidArgument (align with PyTorch)."""
+
+    def _assert_raises(self, x_shape, w_shape, **kwargs):
+        for place in get_places():
+            with dg.guard(place):
+                x = paddle.to_tensor(
+                    np.random.random(x_shape).astype('float32')
+                )
+                w = paddle.to_tensor(
+                    np.random.random(w_shape).astype('float32')
+                )
+                with self.assertRaises(ValueError):
+                    F.conv3d(x, w, **kwargs)
+
+    def test_spatial_zero(self):
+        # D=0, padding=1, kernel=3 -> padded 2 < 3
+        self._assert_raises([4, 3, 0, 8, 8], [5, 3, 3, 3, 3], padding=1)
+
+    def test_spatial_zero_with_channel_zero(self):
+        self._assert_raises([4, 0, 0, 8, 8], [5, 0, 3, 3, 3], padding=1)
+
+    def test_spatial_zero_last_dim(self):
+        # W=0 -> padded 2 < 3
+        self._assert_raises([4, 3, 8, 8, 0], [5, 3, 3, 3, 3], padding=1)
 
 
 if __name__ == "__main__":

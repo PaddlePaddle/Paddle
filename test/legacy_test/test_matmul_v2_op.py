@@ -1021,6 +1021,94 @@ class TestMatMulOp_trans_y(TestMatMulV2Op):
         )
 
 
+class TestMatMulOp_BatchBroadcastError(unittest.TestCase):
+    """Batch dims must satisfy standard broadcasting (equal, or one of them is
+    1). A 0-size dim is not broadcastable against a non-zero, non-one dim."""
+
+    def setUp(self):
+        paddle.disable_static()
+
+    def tearDown(self):
+        paddle.enable_static()
+
+    def _assert_raises(self, x_shape, y_shape):
+        x = paddle.zeros(x_shape)
+        y = paddle.zeros(y_shape)
+        with self.assertRaises(ValueError):
+            paddle.matmul(x, y)
+
+    def test_zero_vs_nonzero(self):
+        self._assert_raises([0, 4, 5], [10, 5, 6])
+
+    def test_nonzero_vs_zero(self):
+        self._assert_raises([10, 4, 5], [0, 5, 6])
+
+    def test_mismatched_nonzero(self):
+        self._assert_raises([10, 4, 5], [20, 5, 6])
+
+    def test_zero_vs_one_allowed(self):
+        out = paddle.matmul(paddle.zeros([0, 4, 5]), paddle.zeros([1, 5, 6]))
+        self.assertEqual(out.shape, [0, 4, 6])
+
+    def test_zero_vs_zero_allowed(self):
+        out = paddle.matmul(paddle.zeros([0, 4, 5]), paddle.zeros([0, 5, 6]))
+        self.assertEqual(out.shape, [0, 4, 6])
+
+    def test_nonzero_vs_one_allowed(self):
+        out = paddle.matmul(paddle.zeros([10, 4, 5]), paddle.zeros([1, 5, 6]))
+        self.assertEqual(out.shape, [10, 4, 6])
+
+    # --- unequal-rank batch dims (right-aligned) ---
+
+    def test_zero_vs_nonzero_unequal_rank(self):
+        # x batch [0] right-aligns against y batch [3, 10]: 0 vs 10 -> error
+        self._assert_raises([0, 4, 5], [3, 10, 5, 6])
+
+    def test_nonzero_mismatch_unequal_rank(self):
+        self._assert_raises([2, 4, 5], [3, 10, 5, 6])
+
+    def test_zero_vs_one_unequal_rank_allowed(self):
+        out = paddle.matmul(paddle.zeros([0, 4, 5]), paddle.zeros([3, 1, 5, 6]))
+        self.assertEqual(out.shape, [3, 0, 4, 6])
+
+    def test_lower_rank_broadcast_allowed(self):
+        out = paddle.matmul(paddle.zeros([4, 5]), paddle.zeros([3, 10, 5, 6]))
+        self.assertEqual(out.shape, [3, 10, 4, 6])
+
+
+class TestMatMulOp_BatchBroadcastSymbolic(unittest.TestCase):
+    """The equal-rank batch loop must keep the result static when only one side
+    is an unknown (-1) dim: unknown vs n (>1) -> n, unknown vs 0 -> 0,
+    unknown vs 1 -> unknown."""
+
+    def setUp(self):
+        paddle.enable_static()
+
+    def tearDown(self):
+        paddle.disable_static()
+
+    def _infer(self, x_shape, y_shape):
+        main = paddle.static.Program()
+        with paddle.static.program_guard(main):
+            x = paddle.static.data(name='x', shape=x_shape, dtype='float32')
+            y = paddle.static.data(name='y', shape=y_shape, dtype='float32')
+            out = paddle.matmul(x, y)
+        return list(out.shape)
+
+    def test_unknown_vs_large(self):
+        self.assertEqual(
+            self._infer([-1, 8, 4, 5], [32, 8, 5, 6]), [32, 8, 4, 6]
+        )
+
+    def test_unknown_vs_zero(self):
+        self.assertEqual(self._infer([-1, 8, 4, 5], [0, 8, 5, 6]), [0, 8, 4, 6])
+
+    def test_unknown_vs_one(self):
+        self.assertEqual(
+            self._infer([-1, 8, 4, 5], [1, 8, 5, 6]), [-1, 8, 4, 6]
+        )
+
+
 if __name__ == "__main__":
     paddle.enable_static()
     unittest.main()

@@ -204,5 +204,30 @@ class TestFunctionalConv1D_ZeroKernelError(TestCase):
                     F.conv1d(x, w, padding=0, stride=2, groups=3)
 
 
+class TestFunctionalConv1D_SpatialZeroError(TestCase):
+    """A 0-size length dim whose padded input is smaller than the kernel must
+    raise InvalidArgument (align with PyTorch)."""
+
+    def _assert_raises(self, x_shape, w_shape, **kwargs):
+        for place in get_places():
+            with dg.guard(place):
+                x = paddle.to_tensor(
+                    np.random.random(x_shape).astype('float32')
+                )
+                w = paddle.to_tensor(
+                    np.random.random(w_shape).astype('float32')
+                )
+                with self.assertRaises(ValueError):
+                    F.conv1d(x, w, **kwargs)
+
+    def test_length_zero(self):
+        # L=0, padding=1, kernel=3 -> padded 2 < 3
+        self._assert_raises([1, 128, 0], [768, 128, 3], padding=1)
+
+    def test_length_zero_stride2(self):
+        # stride truncation would otherwise yield a bogus non-empty output
+        self._assert_raises([1, 768, 0], [768, 768, 3], padding=1, stride=2)
+
+
 if __name__ == "__main__":
     unittest.main()

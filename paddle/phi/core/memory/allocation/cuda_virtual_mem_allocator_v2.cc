@@ -70,7 +70,7 @@ size_t GetPoolVAMultiplier(PoolType pool_type) {
     case PoolType::kSmall:
       return 1;
     case PoolType::kLarge:
-      return 4;
+      return 16;
   }
   return 1;
 }

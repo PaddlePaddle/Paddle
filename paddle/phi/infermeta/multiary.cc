@@ -405,6 +405,7 @@ void AddNInferMeta(const std::vector<const MetaTensor*>& x,
     VLOG(3) << "Warning: AddNOp have only one input, may waste memory";
   }
   bool is_all_0d_tensor = true;
+  bool has_0d_tensor = false;
   DDim in_dim({0});
   bool has_in_dim = false;
   for (size_t i = 0; i < x.size(); ++i) {
@@ -413,8 +414,11 @@ void AddNInferMeta(const std::vector<const MetaTensor*>& x,
     if (x[i]->is_selected_rows() && x_dim.size() == 1) {
       continue;
     }
-    // for 0D tensor
+    // A 0-D tensor holds a single element. add_n does not broadcast, so a
+    // 0-D tensor can only be summed with other single-element tensors. Keep
+    // it out of the same-shape check here and validate numel after the loop.
     if (x_dim.size() == 0) {
+      has_0d_tensor = true;
       continue;
     }
     is_all_0d_tensor = false;
@@ -465,6 +469,33 @@ void AddNInferMeta(const std::vector<const MetaTensor*>& x,
                   x_dim));
         }
       }
+    }
+  }
+  // A 0-D tensor mixed with a non-0-D tensor only sums correctly when the
+  // non-0-D tensor also has a single element (e.g. [1], [1, 1]); add_n does
+  // not broadcast, so mixing a 0-D tensor with a multi-element tensor used
+  // to produce a wrong result such as [11, 0, 0] and must be rejected.
+  if (has_0d_tensor && has_in_dim) {
+    bool has_unknown_dim = false;
+    int64_t numel = 1;
+    for (int j = 0; j < in_dim.size(); ++j) {
+      if (in_dim[j] == -1) {
+        has_unknown_dim = true;
+        break;
+      }
+      numel *= in_dim[j];
+    }
+    if (!has_unknown_dim) {
+      PADDLE_ENFORCE_EQ(
+          numel,
+          1,
+          common::errors::InvalidArgument(
+              "The input tensor X of AddNOp mixes a 0-D tensor with a tensor "
+              "of shape [%s] that has %d elements. add_n sums tensors "
+              "element-wise without broadcasting, so a 0-D tensor can only be "
+              "added to single-element tensors.",
+              in_dim,
+              numel));
     }
   }
   if (is_all_0d_tensor) {
@@ -3289,7 +3320,10 @@ static void Interpolate1DInferShapeCheck(
                         "Input(X) dimension is 3, but got method = %s .",
                         interp_method));
   const DataLayout data_layout = StringToDataLayout(data_layout_str);
-  for (int i = 2; i < dim_x.size(); ++i) {
+  // Only the batch dimension (index 0) is allowed to be empty; a 0-size
+  // channel or spatial dimension is rejected, aligning with PyTorch which
+  // requires a non-empty data tensor.
+  for (int i = 1; i < dim_x.size(); ++i) {
     PADDLE_ENFORCE_NE(dim_x[i],
                       0,
                       common::errors::InvalidArgument(
@@ -3421,7 +3455,10 @@ static void Interpolate2DInferShapeCheck(
           interp_method));
   const DataLayout data_layout = StringToDataLayout(data_layout_str);
 
-  for (int i = 2; i < dim_x.size(); ++i) {
+  // Only the batch dimension (index 0) is allowed to be empty; a 0-size
+  // channel or spatial dimension is rejected, aligning with PyTorch which
+  // requires a non-empty data tensor.
+  for (int i = 1; i < dim_x.size(); ++i) {
     PADDLE_ENFORCE_NE(dim_x[i],
                       0,
                       common::errors::InvalidArgument(
@@ -3574,7 +3611,10 @@ static void Interpolate3DInferShapeCheck(
           interp_method));
   const DataLayout data_layout = StringToDataLayout(data_layout_str);
 
-  for (int i = 2; i < dim_x.size(); ++i) {
+  // Only the batch dimension (index 0) is allowed to be empty; a 0-size
+  // channel or spatial dimension is rejected, aligning with PyTorch which
+  // requires a non-empty data tensor.
+  for (int i = 1; i < dim_x.size(); ++i) {
     PADDLE_ENFORCE_NE(dim_x[i],
                       0,
                       common::errors::InvalidArgument(
