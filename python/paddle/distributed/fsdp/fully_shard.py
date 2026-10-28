@@ -93,7 +93,7 @@ def _fully_shard_manual_parallel(
     enable_tensor_fusion_and_overlap,
     optimizer=None,
     grad_accum_steps=1,
-    sync_grads_each_microbatch=False,
+    sync_grads_each_microbatch=True,
 ):
     layers = module._layers if isinstance(module, MetaParallelBase) else module
     if optimizer is not None:
@@ -122,7 +122,7 @@ def _fully_shard_auto_parallel(
     enable_tensor_fusion_and_overlap,
     optimizer=None,
     grad_accum_steps=1,
-    sync_grads_each_microbatch=False,
+    sync_grads_each_microbatch=True,
 ):
     module._fsdp_context = FullyShardAuto(
         module,
@@ -145,7 +145,7 @@ def fully_shard(
     enable_tensor_fusion_and_overlap: bool = True,
     optimizer: paddle.optimizer.Optimizer | None = None,
     grad_accum_steps: int = 1,
-    sync_grads_each_microbatch: bool = False,
+    sync_grads_each_microbatch: bool = True,
 ) -> paddle.nn.Layer:
     """
     Apply fully sharded data parallel (FSDP) to the given module.

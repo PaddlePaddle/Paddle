@@ -626,7 +626,7 @@ class FSDPCommManager:
         buffer_manager,
         enable_overlap=True,
         prefetch_units=1,
-        sync_grads_each_microbatch=False,
+        sync_grads_each_microbatch=True,
     ):
         self.buffer_manager = buffer_manager
         self.enable_overlap = enable_overlap
@@ -1127,7 +1127,7 @@ class FullyShardFusion:
         enable_tensor_fusion_and_overlap=True,
         mp_policy=None,
         prefetch_units=1,
-        sync_grads_each_microbatch=False,
+        sync_grads_each_microbatch=True,
     ):
         self.model = model
         self.mp_policy = mp_policy
