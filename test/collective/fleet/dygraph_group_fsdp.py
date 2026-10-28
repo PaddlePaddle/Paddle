@@ -48,9 +48,9 @@ CE_CHUNK = 16
 FSDP_CONFIGS = [
     {"enable_tensor_fusion_and_overlap": True},
     {"enable_tensor_fusion_and_overlap": False},
-    {"prefetch_sizes": 0},
-    {"prefetch_sizes": 512},
-    {"prefetch_sizes": 1 << 20},
+    {"comm_unit_size": 0},
+    {"comm_unit_size": 512},
+    {"comm_unit_size": 1 << 20},
 ]
 
 

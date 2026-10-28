@@ -499,48 +499,48 @@ class TestPrefetchBySize(unittest.TestCase):
     """Covers the by-size (element count) prefetch of FSDPCommManager."""
 
     def test_sizes_derived_from_unit_size(self):
-        cm = _make_comm_manager(_LAYOUT, prefetch_sizes=80)
+        cm = _make_comm_manager(_LAYOUT, comm_unit_size=80)
         self.assertTrue(cm.prefetch_by_size)
         self.assertEqual(cm.grad_queue_capacity, 80)
         self.assertEqual(cm.gather_prefetch_size, 40)
 
     def test_forward_prefetches_next_unit(self):
-        cm = _make_comm_manager(_LAYOUT, prefetch_sizes=80)
+        cm = _make_comm_manager(_LAYOUT, comm_unit_size=80)
         self.assertEqual(cm._extend_by_prefetch_size([0, 1], False), [2, 3])
         self.assertEqual(cm._extend_by_prefetch_size([6, 7], False), [])
 
     def test_backward_walks_in_reverse(self):
-        cm = _make_comm_manager(_LAYOUT, prefetch_sizes=80)
+        cm = _make_comm_manager(_LAYOUT, comm_unit_size=80)
         self.assertEqual(cm._extend_by_prefetch_size([6, 7], True), [5, 4])
 
     def test_at_least_one_bucket_group_when_positive(self):
-        cm = _make_comm_manager(_LAYOUT, prefetch_sizes=2)
+        cm = _make_comm_manager(_LAYOUT, comm_unit_size=2)
         self.assertEqual(cm._extend_by_prefetch_size([0], False), [1])
 
     def test_zero_disables_prefetch(self):
-        cm = _make_comm_manager(_LAYOUT, prefetch_sizes=0)
+        cm = _make_comm_manager(_LAYOUT, comm_unit_size=0)
         self.assertEqual(cm._extend_by_prefetch_size([0, 1], False), [])
 
     def test_prefetch_units_ignored(self):
-        cm = _make_comm_manager(_LAYOUT, prefetch_units=3, prefetch_sizes=80)
+        cm = _make_comm_manager(_LAYOUT, prefetch_units=3, comm_unit_size=80)
         self.assertEqual(cm._extend_by_prefetch_size([0, 1], False), [2, 3])
 
     def test_backward_skips_frozen_buckets(self):
         layout = list(_LAYOUT)
         layout[4] = (2, False, 10, True, False)
-        cm = _make_comm_manager(layout, prefetch_sizes=80)
+        cm = _make_comm_manager(layout, comm_unit_size=80)
         self.assertEqual(cm._extend_by_prefetch_size([6, 7], True), [5, 3])
 
     def test_skips_unsharded_buckets(self):
         layout = list(_LAYOUT)
         layout[2] = (1, False, 1000, False, True)
-        cm = _make_comm_manager(layout, prefetch_sizes=80)
+        cm = _make_comm_manager(layout, comm_unit_size=80)
         self.assertEqual(cm._extend_by_prefetch_size([0, 1], False), [3, 4])
         _, _, limit = cm._prefetch_plan([2, 3], False)
         self.assertEqual(limit, 80)
 
     def test_plan_keep_and_limit(self):
-        cm = _make_comm_manager(_LAYOUT, prefetch_sizes=20)
+        cm = _make_comm_manager(_LAYOUT, comm_unit_size=20)
         targets, keep, limit = cm._prefetch_plan([0, 1], False)
         self.assertEqual(targets, (2,))
         self.assertEqual(keep, frozenset({0, 1, 2}))
@@ -549,7 +549,7 @@ class TestPrefetchBySize(unittest.TestCase):
         self.assertIs(cm._prefetch_plan([0, 1], False)[1], keep)
 
     def test_free_counts_numel(self):
-        cm = _make_comm_manager(_LAYOUT, prefetch_sizes=80)
+        cm = _make_comm_manager(_LAYOUT, comm_unit_size=80)
         buf = cm.buffer_manager.buffer_groups[1].params_buffer
         cm._count_gathered(buf)
         self.assertEqual(cm.gathered_numel, 30)
@@ -558,7 +558,7 @@ class TestPrefetchBySize(unittest.TestCase):
         self.assertEqual(cm.gathered_numel, 0)
 
     def test_grad_queue_bounded_by_numel(self):
-        cm = _make_comm_manager(_LAYOUT, prefetch_sizes=25)
+        cm = _make_comm_manager(_LAYOUT, comm_unit_size=25)
         waited = []
         for i in range(4):
             cm.grad_reduce_queue.append(_fake_grads_buffer(10, waited, i))
@@ -570,8 +570,25 @@ class TestPrefetchBySize(unittest.TestCase):
         self.assertEqual(waited, [0, 1, 2, 3])
         self.assertEqual(cm._grad_queue_numel, 0)
 
+    def test_grad_queue_reserves_next_numel(self):
+        cm = _make_comm_manager(_LAYOUT, comm_unit_size=25)
+        waited = []
+        for i in range(2):
+            cm.grad_reduce_queue.append(_fake_grads_buffer(10, waited, i))
+            cm._grad_queue_numel += 10
+        # 20 + 10 > 25: retire one so the next buffer fits.
+        cm._wait_for_grad_comm(next_numel=10)
+        self.assertEqual(waited, [0])
+        self.assertEqual(cm._grad_queue_numel, 10)
+        # A buffer larger than the capacity drains the queue and stops.
+        cm._wait_for_grad_comm(next_numel=100)
+        self.assertEqual(waited, [0, 1])
+        self.assertEqual(cm._grad_queue_numel, 0)
+        cm._wait_for_grad_comm(next_numel=100)
+        self.assertEqual(waited, [0, 1])
+
     def test_release_ready_buffers_oldest_first(self):
-        cm = _make_comm_manager(_LAYOUT, prefetch_sizes=80)
+        cm = _make_comm_manager(_LAYOUT, comm_unit_size=80)
         bufs = [g.params_buffer for g in cm.buffer_manager.buffer_groups]
         # gid 0, 1, 3 READY (70), gid 2 SYNCING (10), gid 4 USING (10).
         statuses = {
@@ -657,7 +674,7 @@ class TestPrefetchBySizeSequence(unittest.TestCase):
     """Drives FSDPCommManager.all_gather_params / shard_params through whole
     forward + backward passes in prefetch-by-size mode."""
 
-    def _build(self, prefetch_sizes, layout=_LAYOUT):
+    def _build(self, comm_unit_size, layout=_LAYOUT):
         self.issued, self.waited = [], []
         groups, param_to_gid = [], {}
         for gid, (unit, expert, numel, sharded, _) in enumerate(layout):
@@ -681,7 +698,7 @@ class TestPrefetchBySizeSequence(unittest.TestCase):
         bm = types.SimpleNamespace(
             buffer_groups=groups, param_to_buffer_id=param_to_gid
         )
-        self.cm = fsf.FSDPCommManager(bm, prefetch_sizes=prefetch_sizes)
+        self.cm = fsf.FSDPCommManager(bm, comm_unit_size=comm_unit_size)
         self.units = {}
         for gid, g in enumerate(groups):
             self.units.setdefault(g.fsdp_unit_id, []).append(gid)
@@ -756,7 +773,7 @@ class TestPrefetchBySizeSequence(unittest.TestCase):
 
     def test_window_fits_limit(self):
         # One unit = 40 elements; 80 holds the current and the next unit.
-        self._build(prefetch_sizes=80)
+        self._build(comm_unit_size=80)
         for _ in range(2):
             self.issued.clear()
             self.waited.clear()
@@ -775,15 +792,15 @@ class TestPrefetchBySizeSequence(unittest.TestCase):
             self.assertEqual(self.issued, [0, 1, 2, 3, 4, 5, 6, 7, 3, 2, 1, 0])
 
     def test_small_limit(self):
-        # Window larger than prefetch_sizes: bounded by the plan's limit.
-        self._build(prefetch_sizes=20)
+        # Window larger than comm_unit_size: bounded by the plan's limit.
+        self._build(comm_unit_size=20)
         for _ in range(2):
             self.issued.clear()
             self.waited.clear()
             self._run_step()
 
     def test_zero_disables_prefetch(self):
-        self._build(prefetch_sizes=0)
+        self._build(comm_unit_size=0)
         before = self._run_step()
         for unit in (1, 2, 3):
             self.assertEqual(before[("fwd", unit)], [fsf.BufferState.FREED] * 2)
@@ -792,7 +809,7 @@ class TestPrefetchBySizeSequence(unittest.TestCase):
 
     def test_large_limit(self):
         # Everything prefetched; no READY buffer is ever freed in forward.
-        self._build(prefetch_sizes=1000)
+        self._build(comm_unit_size=1000)
         before = self._run_step()
         self.assertEqual(self.issued[:8], list(range(8)))
         for unit in (1, 2, 3):
@@ -803,7 +820,7 @@ class TestPrefetchBySizeSequence(unittest.TestCase):
     def test_unsharded_buckets_not_counted(self):
         layout = list(_LAYOUT)
         layout[2] = (1, False, 10, False, True)
-        self._build(prefetch_sizes=80, layout=layout)
+        self._build(comm_unit_size=80, layout=layout)
         self._run_step()
         self.assertNotIn(2, self.issued)
 

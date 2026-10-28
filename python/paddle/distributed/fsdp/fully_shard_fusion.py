@@ -626,12 +626,12 @@ class FSDPCommManager:
         buffer_manager,
         enable_overlap=True,
         prefetch_units=1,
-        prefetch_sizes=None,
+        comm_unit_size=None,
     ):
         self.buffer_manager = buffer_manager
         self.enable_overlap = enable_overlap
         self.grad_reduce_queue = []
-        self.prefetch_by_size = prefetch_sizes is not None
+        self.prefetch_by_size = comm_unit_size is not None
 
         # Size limits in whole units: a unit may own several sharded groups.
         unit_sizes = Counter(
@@ -651,7 +651,7 @@ class FSDPCommManager:
         self.gathered_numel = 0
         self._grad_queue_numel = 0
         if self.prefetch_by_size:
-            self._init_prefetch_by_size(prefetch_sizes)
+            self._init_prefetch_by_size(comm_unit_size)
 
     def _init_prefetch_by_size(self, unit_size):
         groups = self.buffer_manager.buffer_groups
@@ -670,7 +670,7 @@ class FSDPCommManager:
             self._gid_to_bucket_group.append(members)
 
         unit_size = max(int(unit_size), 0)
-        self.prefetch_sizes = unit_size
+        self.comm_unit_size = unit_size
         self.grad_queue_capacity = unit_size
         self.gather_prefetch_size = unit_size // 2
 
@@ -802,14 +802,14 @@ class FSDPCommManager:
 
     def _prefetch_plan(self, req_gids, is_backward):
         # Cached per request: prefetch targets, buffers to keep, and the
-        # bound on gathered elements (prefetch_sizes or the window if larger).
+        # bound on gathered elements (comm_unit_size or the window if larger).
         key = (tuple(req_gids), is_backward)
         plan = self._prefetch_plans.get(key)
         if plan is None:
             targets = self._extend_by_prefetch_size(req_gids, is_backward)
             keep = frozenset(req_gids) | frozenset(targets)
             limit = max(
-                self.prefetch_sizes,
+                self.comm_unit_size,
                 sum(
                     self._params_buffers[gid].total_buffer_size
                     for gid in keep
@@ -1047,7 +1047,7 @@ class FSDPCommManager:
         ):
             return
         # Grad queue mechanism: wait and release completed reduce_scatter async tasks
-        self._wait_for_grad_comm()
+        self._wait_for_grad_comm(next_numel=grads_buffer.total_buffer_size)
         grads_buffer.comm_task = grads_buffer.do_reduce_scatter()
         self.grad_reduce_queue.append(grads_buffer)
         self._grad_queue_numel += grads_buffer.total_buffer_size
@@ -1111,11 +1111,15 @@ class FSDPCommManager:
         grads_buffer.accumulate_reduced_grad()
         self._release_reduced_grad_views(grads_buffer)
 
-    def _wait_for_grad_comm(self, queue_limit=None):
+    def _wait_for_grad_comm(self, queue_limit=None, next_numel=0):
         # Default bound: grad_queue_limit buffers by layer or
-        # grad_queue_capacity elements by size.
+        # grad_queue_capacity elements (including the next one) by size.
         if queue_limit is None and self.prefetch_by_size:
-            while self._grad_queue_numel > self.grad_queue_capacity:
+            while (
+                self.grad_reduce_queue
+                and self._grad_queue_numel + next_numel
+                > self.grad_queue_capacity
+            ):
                 self._retire_grad_comm()
             return
         if queue_limit is None:
@@ -1263,7 +1267,7 @@ class FullyShardFusion:
         enable_tensor_fusion_and_overlap=True,
         mp_policy=None,
         prefetch_units=1,
-        prefetch_sizes=None,
+        comm_unit_size=None,
     ):
         self.model = model
         self.mp_policy = mp_policy
@@ -1276,7 +1280,7 @@ class FullyShardFusion:
             self.buffer_manager,
             enable_overlap=enable_tensor_fusion_and_overlap,
             prefetch_units=prefetch_units,
-            prefetch_sizes=prefetch_sizes,
+            comm_unit_size=comm_unit_size,
         )
         self.register_tensor_fusion_hooks(self.model)
         register_fsdp_context(self)
