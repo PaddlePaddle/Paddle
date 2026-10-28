@@ -183,9 +183,8 @@ def fully_shard(
         grad_accum_steps (int, optional): Manual parallel mode only. Gradient
             accumulation steps. Defaults to 1.
         sync_grads_each_microbatch (bool, optional): Manual parallel mode
-            only. If True, reduce-scatter dense grads every micro-batch;
-            if False, only in the last one, keeping unsharded grads until
-            then. Defaults to False.
+            only. Reduce-scatter dense grads every micro-batch instead of
+            only the last one. Defaults to True.
 
     Returns:
         module: A wrapper module that applies FSDP to the input module.
