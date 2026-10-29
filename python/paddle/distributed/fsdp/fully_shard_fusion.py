@@ -1420,17 +1420,21 @@ class FullyShardFusion:
             self._shard_descs[params_buffer.data_buffer.name] = param_slice_info
         return result
 
-    def bind_decay_param_fun(self, optimizer):
+    def bind_decay_param_fun(self, optimizer, buffer_groups=None):
         """Answer ``apply_decay_param_fun`` for the fused buffers.
 
         The callback matches model param names, so every ``fuse_params_*`` name
         would answer False and weight decay would be dropped silently.
+        ``buffer_groups`` limits the check to the buffers ``optimizer`` steps
+        (default: all of them).
         """
         fun = getattr(optimizer, "_apply_decay_param_fun", None)
         if fun is None or getattr(optimizer, "_fsdp_decay_fun_bound", False):
             return
+        if buffer_groups is None:
+            buffer_groups = self.buffer_manager.buffer_groups
         buffer_decay = {}
-        for group in self.buffer_manager.buffer_groups:
+        for group in buffer_groups:
             buffer_name = group.params_buffer.data_buffer.name
             decayed, exempt = [], []
             for param in group.params:
@@ -1439,7 +1443,8 @@ class FullyShardFusion:
                 # A fused update can only honor one decay answer per buffer.
                 raise ValueError(
                     f"FSDP: fused buffer {buffer_name} mixes params with and "
-                    "without weight decay; mark the exempt ones with "
+                    "without weight decay; pass the optimizer to "
+                    "fully_shard(optimizer=...), or mark the exempt ones with "
                     "`param.no_weight_decay = True` before fully_shard(). "
                     f"Decayed: {decayed}; exempt: {exempt}."
                 )
@@ -1477,9 +1482,9 @@ class FullyShardFusion:
         return True
 
     def bind_optimizer(self, optimizer):
-        self._bind_mixed_routes(optimizer)
         if getattr(optimizer, "_fsdp_state_dict_ctx", None) is self:
             return
+        self._bind_mixed_routes(optimizer)
         info_map = getattr(optimizer, "_muon_param_info_map", None)
         if info_map is not None:
             from paddle.optimizer.muon import MuonParamInfo

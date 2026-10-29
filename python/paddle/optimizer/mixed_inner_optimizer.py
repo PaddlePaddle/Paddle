@@ -440,9 +440,22 @@ class MixedInnerOptimizer(InnerOptimizer):
             params_grads.append((data_buffer, group.grads_buffer.data_buffer))
 
         fsdp_context.bind_optimizer(self)
+        # Check each buffer against the callback that marked it in
+        # fully_shard(): the owning sub's, else this optimizer's.
+        groups_of_sub = {id(sub): [] for sub in self._sub_opts}
+        for group in fsdp_context.buffer_manager.buffer_groups:
+            sub = self._route.get(group.params[0].name)
+            if sub is not None:
+                groups_of_sub[id(sub)].append(group)
+        fallback_groups = [
+            group
+            for sub in self._sub_opts
+            if getattr(sub, "_apply_decay_param_fun", None) is None
+            for group in groups_of_sub[id(sub)]
+        ]
         for sub in self._sub_opts:
-            fsdp_context.bind_decay_param_fun(sub)
-        fsdp_context.bind_decay_param_fun(self)
+            fsdp_context.bind_decay_param_fun(sub, groups_of_sub[id(sub)])
+        fsdp_context.bind_decay_param_fun(self, fallback_groups)
         if self._grad_clip is not None:
             self._grad_clip.should_comm_on_shard_dim = True
             self._grad_clip.fsdp_group = fsdp_context.buffer_manager._fsdp_group

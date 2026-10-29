@@ -55,11 +55,11 @@ def _mark_params_for_mixed_optimizer(module, optimizer, decay_fun):
     sub_ids = {id(sub): i for i, sub in enumerate(optimizer._sub_opts)}
     missing = []
     for name, param in module.named_parameters():
-        param.no_weight_decay = decay_fun is not None and not decay_fun(
-            param.name
-        )
-        param.use_hyperball_sharded = False
         sub = route.get(param.name)
+        # The owning sub decays its params with its own callback.
+        fun = getattr(sub, "_apply_decay_param_fun", None) or decay_fun
+        param.no_weight_decay = fun is not None and not fun(param.name)
+        param.use_hyperball_sharded = False
         if sub is None:
             if not param.stop_gradient:
                 missing.append(name)
