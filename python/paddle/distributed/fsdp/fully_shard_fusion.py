@@ -726,6 +726,8 @@ class FSDPCommManager:
 
     def _count_gathered(self, params_buffer):
         # A sharded buffer just got its full storage allocated.
+        if params_buffer.fp8 is not None:
+            return
         if self.prefetch_by_size:
             self.gathered_numel += params_buffer.total_buffer_size
         else:
@@ -735,7 +737,7 @@ class FSDPCommManager:
         # USING / READY / SYNCING-waited -> FREED, keeping the accounting.
         params_buffer.clear_tmp_buffer()
         params_buffer.status = BufferState.FREED
-        if not params_buffer.is_sharded:
+        if not params_buffer.is_sharded or params_buffer.fp8 is not None:
             return
         if self.prefetch_by_size:
             self.gathered_numel -= params_buffer.total_buffer_size
@@ -749,7 +751,10 @@ class FSDPCommManager:
             for gid_idx, group in enumerate(self.buffer_manager.buffer_groups):
                 if gid_idx in keep:
                     continue
-                if not group.params_buffer.is_sharded:
+                if (
+                    not group.params_buffer.is_sharded
+                    or group.params_buffer.fp8 is not None
+                ):
                     continue
                 if group.params_buffer.status == BufferState.READY:
                     group.params_buffer.status = BufferState.FREED
@@ -794,6 +799,8 @@ class FSDPCommManager:
             if gid in keep:
                 continue
             params_buffer = self._params_buffers[gid]
+            if params_buffer.fp8 is not None:
+                continue
             if params_buffer.status == BufferState.READY:
                 self._free_params_buffer(params_buffer)
                 if self.gathered_numel + need_numel <= limit:
@@ -999,7 +1006,7 @@ class FSDPCommManager:
             if params_buffer.fp8 is not None:
                 params_buffer.fp8.quantized = False
                 params_buffer.fp8.weight_copy = None
-                params_buffer.fp8.fulls = None
+                clear_fp8_tmp_buffer(params_buffer)
             # A prefetch issued at the end of backward gathers the pre-step
             # shard; drop it so the next forward gathers the updated one.
             if params_buffer.status == BufferState.SYNCING:
@@ -2090,6 +2097,10 @@ class FullyShardFusion:
 
             @paddle.autograd.no_grad()
             def all_gather_comm(*_):
+                for group in self.buffer_manager.buffer_groups:
+                    if group.params_buffer.fp8 is not None:
+                        sync_ckpt_weight_to_main(group.params_buffer)
+                        quantize_fp8_shard(group.params_buffer)
                 params = sublayers.parameters(include_sublayers=recursive)
                 comm_manager.all_gather_params(params)
                 self._bind_expert_main_grads(params)
@@ -2125,10 +2136,6 @@ class FullyShardFusion:
 
         @paddle.autograd.no_grad()
         def _bind_experts_pre_forward(layer, inputs):
-            for group in self.buffer_manager.buffer_groups:
-                if group.params_buffer.fp8 is not None:
-                    sync_ckpt_weight_to_main(group.params_buffer)
-                    quantize_fp8_shard(group.params_buffer)
             self._bind_expert_main_grads(model.parameters())
 
         model.register_forward_pre_hook(_bind_experts_pre_forward)

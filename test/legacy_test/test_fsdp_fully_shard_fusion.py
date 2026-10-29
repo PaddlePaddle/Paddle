@@ -425,6 +425,7 @@ def _make_comm_manager(layout, **kwargs):
                 total_buffer_size=numel,
                 trainable=trainable,
                 status=fsf.BufferState.FREED,
+                fp8=None,
                 clear_tmp_buffer=lambda: None,
             ),
         )
@@ -645,6 +646,7 @@ class _GatherParamsBuffer:
             fsf.BufferState.FREED if is_sharded else fsf.BufferState.USING
         )
         self.comm_task = None
+        self.fp8 = None
         self.param_offsets = {}
         offset = 0
         for param in params:
