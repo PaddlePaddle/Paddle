@@ -93,6 +93,8 @@ def _fully_shard_manual_parallel(
     enable_tensor_fusion_and_overlap,
     optimizer=None,
     grad_accum_steps=1,
+    prefetch_units=1,
+    comm_unit_size=None,
 ):
     layers = module._layers if isinstance(module, MetaParallelBase) else module
     if optimizer is not None:
@@ -101,6 +103,8 @@ def _fully_shard_manual_parallel(
         layers,
         enable_tensor_fusion_and_overlap=enable_tensor_fusion_and_overlap,
         mp_policy=mp_policy,
+        prefetch_units=prefetch_units,
+        comm_unit_size=comm_unit_size,
     )
     layers._fsdp_context.set_grad_accum_steps(grad_accum_steps)
     if optimizer is not None:
@@ -120,6 +124,8 @@ def _fully_shard_auto_parallel(
     enable_tensor_fusion_and_overlap,
     optimizer=None,
     grad_accum_steps=1,
+    prefetch_units=1,
+    comm_unit_size=None,
 ):
     module._fsdp_context = FullyShardAuto(
         module,
@@ -142,6 +148,8 @@ def fully_shard(
     enable_tensor_fusion_and_overlap: bool = True,
     optimizer: paddle.optimizer.Optimizer | None = None,
     grad_accum_steps: int = 1,
+    prefetch_units: int = 1,
+    comm_unit_size: int | None = None,
 ) -> paddle.nn.Layer:
     """
     Apply fully sharded data parallel (FSDP) to the given module.
@@ -178,6 +186,14 @@ def fully_shard(
             if needed.
         grad_accum_steps (int, optional): Manual parallel mode only. Gradient
             accumulation steps. Defaults to 1.
+        prefetch_units (int, optional): Number of FSDP units all_gathered
+            ahead (prefetch by layer). 0 disables prefetch. Ignored when
+            ``comm_unit_size`` is set. Defaults to 1.
+        comm_unit_size (int | None, optional): If set, bound communication
+            by size: params are all_gathered ``comm_unit_size // 2``
+            elements ahead and at most ``comm_unit_size`` grad elements
+            stay in reduce_scatter. 0 disables prefetch. Defaults to None
+            (prefetch by layer).
 
     Returns:
         module: A wrapper module that applies FSDP to the input module.
@@ -222,6 +238,8 @@ def fully_shard(
         enable_tensor_fusion_and_overlap,
         optimizer,
         grad_accum_steps,
+        prefetch_units,
+        comm_unit_size,
     )
 
     if in_auto_parallel_mode():

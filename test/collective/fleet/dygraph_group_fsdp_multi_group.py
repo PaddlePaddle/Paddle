@@ -83,10 +83,14 @@ def check_clone_gids(cm, rs_streams):
     [2, 3] clone the same gid, so their NCCL unique ids collide in the store.
     """
     local = {}
+    streams = set()
     for group in cm.buffer_manager.buffer_groups:
         buf = group.grads_buffer
         if buf is not None and buf.is_sharded:
             local[buf.fsdp_group.id] = tuple(buf.fsdp_group.ranks)
+            streams.add(id(buf.comm_stream))
+    # Each communicator used for the dense RS gets its own comm stream.
+    assert len(streams) == len(local), (len(streams), local)
     gathered = []
     paddle.distributed.all_gather_object(gathered, local)
     gid_to_ranks = {}
