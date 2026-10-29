@@ -51,6 +51,15 @@ FSDP_CONFIGS = [
     {"comm_unit_size": 0},
     {"comm_unit_size": 512},
     {"comm_unit_size": 1 << 20},
+    {"reshard_policy": "after_backward"},
+    {"reshard_policy": "after_step"},
+    {"reshard_policy": "after_step", "reshard_filter": "expert"},
+    {"reshard_policy": "after_step", "comm_unit_size": 512},
+    {
+        "reshard_policy": "after_backward",
+        "reshard_filter": "expert",
+        "comm_unit_size": 1 << 20,
+    },
 ]
 
 

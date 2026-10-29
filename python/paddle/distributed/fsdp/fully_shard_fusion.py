@@ -621,15 +621,39 @@ class FSDPBufferManager:
 
 
 class FSDPCommManager:
+    RESHARD_POLICIES = ("after_forward", "after_backward", "after_step")
+    RESHARD_FILTERS = ("all", "expert", "dense")
+
     def __init__(
         self,
         buffer_manager,
         enable_overlap=True,
         prefetch_units=1,
         comm_unit_size=None,
+        reshard_policy="after_forward",
+        reshard_filter="all",
     ):
+        if reshard_policy not in self.RESHARD_POLICIES:
+            raise ValueError(
+                f"reshard_policy must be one of {self.RESHARD_POLICIES}, "
+                f"got {reshard_policy!r}"
+            )
+        if callable(reshard_filter):
+            raise NotImplementedError(
+                "a callable reshard_filter (per-layer selection) is not "
+                f"supported yet; use one of {self.RESHARD_FILTERS}"
+            )
+        if reshard_filter not in self.RESHARD_FILTERS:
+            raise ValueError(
+                f"reshard_filter must be one of {self.RESHARD_FILTERS}, "
+                f"got {reshard_filter!r}"
+            )
         self.buffer_manager = buffer_manager
         self.enable_overlap = enable_overlap
+        self.reshard_policy = reshard_policy
+        self.reshard_filter = reshard_filter
+        for group in buffer_manager.buffer_groups:
+            group.params_buffer.keep_gathered = self._keep_after_forward(group)
         self.grad_reduce_queue = []
         self.prefetch_by_size = comm_unit_size is not None
 
@@ -687,8 +711,29 @@ class FSDPCommManager:
     # buffer_cnt_in_using (by layer) and gathered_numel (by size).
     # ------------------------------------------------------------------
 
+    def _in_reshard_filter(self, group):
+        if self.reshard_filter == "expert":
+            return group.is_expert_param
+        if self.reshard_filter == "dense":
+            return not group.is_expert_param
+        return True
+
+    def _reshard_policy_of(self, group):
+        if self._in_reshard_filter(group):
+            return self.reshard_policy
+        return "after_forward"
+
+    def _keep_after_forward(self, group):
+        return self._reshard_policy_of(group) != "after_forward"
+
+    def _keep_after_backward(self, group):
+        return self._reshard_policy_of(group) == "after_step"
+
     def _count_gathered(self, params_buffer):
-        # A sharded buffer just got its full storage allocated.
+        # A sharded buffer just got its full storage allocated. Kept buffers
+        # stay gathered outside the budget (by layer or by size).
+        if getattr(params_buffer, "keep_gathered", False):
+            return
         if self.prefetch_by_size:
             self.gathered_numel += params_buffer.total_buffer_size
         else:
@@ -698,7 +743,9 @@ class FSDPCommManager:
         # USING / READY / SYNCING-waited -> FREED, keeping the accounting.
         params_buffer.clear_tmp_buffer()
         params_buffer.status = BufferState.FREED
-        if not params_buffer.is_sharded:
+        if not params_buffer.is_sharded or getattr(
+            params_buffer, "keep_gathered", False
+        ):
             return
         if self.prefetch_by_size:
             self.gathered_numel -= params_buffer.total_buffer_size
@@ -710,7 +757,7 @@ class FSDPCommManager:
         while self.buffer_cnt_in_using >= self.gather_buffer_limit:
             found = False
             for gid_idx, group in enumerate(self.buffer_manager.buffer_groups):
-                if gid_idx in keep:
+                if gid_idx in keep or self._keep_after_forward(group):
                     continue
                 if not group.params_buffer.is_sharded:
                     continue
@@ -757,6 +804,8 @@ class FSDPCommManager:
             if gid in keep:
                 continue
             params_buffer = self._params_buffers[gid]
+            if getattr(params_buffer, "keep_gathered", False):
+                continue
             if params_buffer.status == BufferState.READY:
                 self._free_params_buffer(params_buffer)
                 if self.gathered_numel + need_numel <= limit:
@@ -1074,6 +1123,9 @@ class FSDPCommManager:
                 continue
             if group.fsdp_unit_id <= unit_id:
                 continue
+            if self._keep_after_backward(group):
+                # Freed by reset_params_buffer_status at the end of the step.
+                continue
             params_buffer = group.params_buffer
             if not params_buffer.is_sharded:
                 continue
@@ -1268,6 +1320,8 @@ class FullyShardFusion:
         mp_policy=None,
         prefetch_units=1,
         comm_unit_size=None,
+        reshard_policy="after_forward",
+        reshard_filter="all",
     ):
         self.model = model
         self.mp_policy = mp_policy
@@ -1281,6 +1335,8 @@ class FullyShardFusion:
             enable_overlap=enable_tensor_fusion_and_overlap,
             prefetch_units=prefetch_units,
             comm_unit_size=comm_unit_size,
+            reshard_policy=reshard_policy,
+            reshard_filter=reshard_filter,
         )
         self.register_tensor_fusion_hooks(self.model)
         register_fsdp_context(self)
