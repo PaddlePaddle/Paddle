@@ -25,6 +25,7 @@
 #endif
 
 #include <gloo/reduce.h>
+#include <gloo/rendezvous/prefix_store.h>
 
 #include "glog/logging.h"
 #include "paddle/fluid/distributed/collective/common.h"
@@ -162,7 +163,9 @@ ProcessGroupGloo::ProcessGroupGloo(
       _tag(0),
       _store(new GlooStore(store)) {
   _context = std::make_shared<gloo::rendezvous::Context>(rank, world_size);
-  _context->connectFullMesh(*_store, options->device);
+  gloo::rendezvous::PrefixStore prefix_store(
+      "process_group_gloo/" + std::to_string(gid), *_store);
+  _context->connectFullMesh(prefix_store, options->device);
 }
 
 class BroadcastGlooTask : public ProcessGroupGloo::GlooTask {

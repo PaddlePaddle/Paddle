@@ -471,5 +471,20 @@ if((WITH_GPU) AND (LINUX))
     "PADDLE_DIST_UT_PORT=22304;http_proxy=;https_proxy=")
   set_tests_properties(test_comm_group_num PROPERTIES TIMEOUT "120")
 endif()
+if(WITH_DISTRIBUTE)
+  if(WITH_GLOO)
+    if(LOCAL_ALL_ARCH AND (LINUX))
+      py_test_modules(
+        test_process_group_gloo_new_group
+        MODULES
+        test_process_group_gloo_new_group
+        ENVS
+        "PYTHONPATH=..:${PADDLE_BINARY_DIR}/python;http_proxy=;https_proxy=;OMP_NUM_THREADS=1;OPENBLAS_NUM_THREADS=1"
+      )
+      set_tests_properties(test_process_group_gloo_new_group
+                           PROPERTIES TIMEOUT "90" LABELS "RUN_TYPE=DIST")
+    endif()
+  endif()
+endif()
 add_subdirectory(fleet)
 add_subdirectory(multinode)
