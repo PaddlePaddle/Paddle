@@ -1738,10 +1738,11 @@ class FullyShardFusion:
             inner = inner._inner_opt
         # Keep the raw value: Adadelta's acc names start with '_' themselves.
         # A mixed optimizer declares no accumulators; its subs do.
+        opts = getattr(inner, "_sub_opts", None) or [inner]
         tags = sorted(
             {
                 getattr(cls, attr)
-                for opt in (getattr(inner, "_sub_opts", None) or [inner])
+                for opt in opts
                 for cls in type(opt).__mro__
                 for attr in vars(cls)
                 if attr.endswith("_str")
@@ -1752,8 +1753,14 @@ class FullyShardFusion:
             reverse=True,
         )
         _master_weight_suffix = re.compile(r"^(.*)_fp32_master_\d+$")
-        # ``_add_accumulator`` prefixes the accumulator with the optimizer name.
-        opt_name = getattr(inner, "_name", None)
+        # ``_add_accumulator`` prefixes the accumulator with the name of the
+        # optimizer that creates it: each sub of a mixed optimizer uses its own.
+        opt_names = sorted(
+            {getattr(opt, "_name", None) for opt in [inner, *opts]}
+            - {None, ""},
+            key=len,
+            reverse=True,
+        )
 
         def _split_optimizer_state_name(vname):
             """``fuse_params_0_fp32_master_0_moment1_3`` -> ``("fuse_params_0", "moment1_0")``."""
@@ -1765,8 +1772,10 @@ class FullyShardFusion:
                 if not vname[idx + len(marker) :].isdigit():
                     continue
                 base = vname[:idx]
-                if opt_name and base.endswith("_" + opt_name):
-                    base = base[: -len(opt_name) - 1]
+                for opt_name in opt_names:
+                    if base.endswith("_" + opt_name):
+                        base = base[: -len(opt_name) - 1]
+                        break
                 matched = _master_weight_suffix.match(base)
                 if matched:
                     base = matched.group(1)

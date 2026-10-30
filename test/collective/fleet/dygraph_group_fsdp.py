@@ -951,13 +951,14 @@ class KeepWholeInner(ElementwiseInner):
         return moment / (norm + 1e-6)
 
 
-def build_mixed_optimizer(model):
+def build_mixed_optimizer(model, sub_name=None):
     """embed (2D, owner path with P2P gather) and w_up / w_down (3D,
     matrix-aligned path) -> KeepWholeInner; attn / bf16 w_low / head ->
     ElementwiseInner on fused shards.
 
     Only the element-wise sub has a decay callback (head is exempt); the
     top-level one is None, so fully_shard() must mark params by the sub's.
+    ``sub_name`` names the element-wise sub, which prefixes its accumulators.
     """
     whole, elementwise = [model.embed.weight], []
     for layer in model.layers:
@@ -978,6 +979,7 @@ def build_mixed_optimizer(model):
             weight_decay=0.1,
             apply_decay_param_fun=lambda name: name != head_name,
             multi_precision=True,
+            name=sub_name,
         ),
     ]
     return MixedInnerOptimizer(
@@ -988,10 +990,10 @@ def build_mixed_optimizer(model):
     )
 
 
-def build_mixed_fsdp_run(init_state):
+def build_mixed_fsdp_run(init_state, sub_name=None):
     model = MuonModel(low="bfloat16")
     model.set_state_dict(init_state)
-    mixed = build_mixed_optimizer(model)
+    mixed = build_mixed_optimizer(model, sub_name)
     model = fully_shard(model, optimizer=mixed)
     fsdp_context = model._fsdp_context
     model = mix_precision_utils.MixPrecisionLayer(model, dtype="float16")
@@ -1094,7 +1096,7 @@ def run_mixed_shard():
     )
 
 
-def check_mixed_checkpoint(ckpt_path):
+def check_mixed_checkpoint(ckpt_path, sub_name=None):
     """Mixed optimizer state, fp32 masters included, survives a save/load."""
     init_state = mixed_init_state()
     paddle.seed(2026)
@@ -1105,12 +1107,16 @@ def check_mixed_checkpoint(ckpt_path):
         state.update(ctx.optimizer_sharded_state_dict(optimizer))
         return state
 
-    model, ctx, mixed, optimizer = build_mixed_fsdp_run(init_state)
+    model, ctx, mixed, optimizer = build_mixed_fsdp_run(init_state, sub_name)
     train_mixed(model, optimizer, data[:2])
     state = state_dict(model, ctx, optimizer)
 
     # The element-wise sub keeps the masters of its bf16 fused buffers.
     elementwise = mixed._sub_opts[1]
+    if sub_name is not None:
+        assert any(
+            f"_{sub_name}_moment1_" in key for key in elementwise.state_dict()
+        ), "the named sub did not prefix its accumulators"
     low_buffers = [
         group.params_buffer.data_buffer.name
         for group in ctx.buffer_manager.buffer_groups
@@ -1133,7 +1139,7 @@ def check_mixed_checkpoint(ckpt_path):
     train_mixed(model, optimizer, data[2:])
     expected = [value for _, value in gathered_params(model, ctx)]
 
-    model, ctx, mixed, optimizer = build_mixed_fsdp_run(init_state)
+    model, ctx, mixed, optimizer = build_mixed_fsdp_run(init_state, sub_name)
     # Bind the wrapper: FSDP has to unwrap it down to the mixed optimizer.
     ctx.bind_optimizer(optimizer)
     optimizer.init_state_for_load()
@@ -1157,6 +1163,10 @@ def run_mixed_checkpoint():
     paddle.distributed.broadcast_object_list(ckpt_root, src=0)
     try:
         check_mixed_checkpoint(os.path.join(ckpt_root[0], "mixed"))
+        # A named sub prefixes its accumulators with its own name.
+        check_mixed_checkpoint(
+            os.path.join(ckpt_root[0], "mixed_named"), sub_name="ew"
+        )
     finally:
         paddle.distributed.barrier()
         if paddle.distributed.get_rank() == 0:
