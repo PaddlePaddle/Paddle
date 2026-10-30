@@ -184,7 +184,9 @@ PyObject * eager_api_{}(PyObject *self, PyObject *args, PyObject *kwargs) {{
     // the GIL is still held (near-zero cost when recording is disabled). The
     // RAII guard pushes the id for the whole op (incl. the GIL-released kernel
     // section) and pops it on scope exit / exception unwind.
-    paddle::memory::MemStackGuard __mem_stack_guard(paddle::pybind::CaptureCurrentPyStack());
+    const auto __mem_stack_capture = paddle::pybind::CaptureCurrentPyStack();
+    paddle::memory::MemStackGuard __mem_stack_guard(
+        __mem_stack_capture.active, __mem_stack_capture.stack_id);
     tstate = PyEval_SaveThread();
 
     // Set Device ID
