@@ -99,10 +99,16 @@ def _fully_shard_manual_parallel(
     layers = module._layers if isinstance(module, MetaParallelBase) else module
     if optimizer is not None:
         _mark_params_for_optimizer(layers, optimizer)
+    # fp8 groups: fp32 main weight iff an fp32 master (default: yes).
+    inner = optimizer
+    while hasattr(inner, "_inner_opt"):
+        inner = inner._inner_opt
+    multi_precision = getattr(inner, "_multi_precision", True)
     layers._fsdp_context = FullyShardFusion(
         layers,
         enable_tensor_fusion_and_overlap=enable_tensor_fusion_and_overlap,
         mp_policy=mp_policy,
+        fp8_main_dtype=paddle.float32 if multi_precision else None,
         prefetch_units=prefetch_units,
         comm_unit_size=comm_unit_size,
     )
