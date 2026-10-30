@@ -113,6 +113,19 @@ def _muon_3d_shard_numel(params, fsdp_group):
     return granularity
 
 
+def _view_slice(x, start, end):
+    """``view_slice`` that always aliases ``x``.
+
+    Under auto_cast, AMP casts a low-precision input whose dtype differs from
+    the AMP dtype (e.g. a bf16 buffer under fp16 O1), so ``view_slice`` returns
+    a casted copy instead of a view of ``x``.
+    """
+    if not paddle.amp.is_autocast_enabled():
+        return paddle._C_ops.view_slice(x, start, end)
+    with paddle.amp.auto_cast(enable=False):
+        return paddle._C_ops.view_slice(x, start, end)
+
+
 class TensorFusionBuffer:
     class _CompletedTask:
         # Placeholder for the broadcast (sync) path where callers still .wait().
@@ -251,7 +264,7 @@ class TensorFusionBuffer:
                     def get_grad_from_tmp_buf(param, shape=None):
                         tmp_buffer = param._fusion_buffer.get_tmp_buffer()
                         offset = param._param_offsets[param.name]
-                        main_grad = paddle._C_ops.view_slice(
+                        main_grad = _view_slice(
                             tmp_buffer,
                             offset,
                             offset + param._numel(),
@@ -473,6 +486,8 @@ class FSDPBufferManager:
                 # A buffer must not mix params with and without weight decay.
                 bool(getattr(param, "no_weight_decay", False)),
                 bool(getattr(param, "use_muon", False)),
+                # A buffer is stepped by one sub-optimizer of a mixed optimizer.
+                getattr(param, "fsdp_optimizer_group", None),
                 # Sharded-Hyperball params get their own buffer.
                 (
                     param.name
@@ -503,6 +518,7 @@ class FSDPBufferManager:
                 is_tie,
                 _,
                 use_muon,
+                _,
                 _,
                 _,
                 _,
@@ -537,6 +553,7 @@ class FSDPBufferManager:
                 is_tie,
                 no_decay,
                 use_muon,
+                _,
                 hyperball_name,
                 clip_attrs,
                 _,
@@ -964,7 +981,7 @@ class FSDPCommManager:
                 continue
             # Bind the unsharded param to the real param
             offset = params_buffer.param_offsets[param.name]
-            tmp_param = paddle._C_ops.view_slice(
+            tmp_param = _view_slice(
                 params_buffer.get_tmp_buffer(),
                 offset,
                 offset + param._numel(),
@@ -1384,7 +1401,7 @@ class FullyShardFusion:
             for dtype, numel in scratch.items()
         }
         for param, shape, numel in cleared:
-            view = paddle._C_ops.view_slice(scratch[param.dtype], 0, numel)
+            view = _view_slice(scratch[param.dtype], 0, numel)
             view.get_tensor()._set_dims(shape)
             param.get_tensor()._share_data_with(view.get_tensor())
         try:
@@ -1494,17 +1511,21 @@ class FullyShardFusion:
             self._shard_descs[params_buffer.data_buffer.name] = param_slice_info
         return result
 
-    def bind_decay_param_fun(self, optimizer):
+    def bind_decay_param_fun(self, optimizer, buffer_groups=None):
         """Answer ``apply_decay_param_fun`` for the fused buffers.
 
         The callback matches model param names, so every ``fuse_params_*`` name
         would answer False and weight decay would be dropped silently.
+        ``buffer_groups`` limits the check to the buffers ``optimizer`` steps
+        (default: all of them).
         """
         fun = getattr(optimizer, "_apply_decay_param_fun", None)
         if fun is None or getattr(optimizer, "_fsdp_decay_fun_bound", False):
             return
+        if buffer_groups is None:
+            buffer_groups = self.buffer_manager.buffer_groups
         buffer_decay = {}
-        for group in self.buffer_manager.buffer_groups:
+        for group in buffer_groups:
             buffer_name = group.params_buffer.data_buffer.name
             decayed, exempt = [], []
             for param in group.params:
@@ -1513,7 +1534,8 @@ class FullyShardFusion:
                 # A fused update can only honor one decay answer per buffer.
                 raise ValueError(
                     f"FSDP: fused buffer {buffer_name} mixes params with and "
-                    "without weight decay; mark the exempt ones with "
+                    "without weight decay; pass the optimizer to "
+                    "fully_shard(optimizer=...), or mark the exempt ones with "
                     "`param.no_weight_decay = True` before fully_shard(). "
                     f"Decayed: {decayed}; exempt: {exempt}."
                 )
@@ -1536,9 +1558,24 @@ class FullyShardFusion:
                 return True
         return False
 
+    def _bind_mixed_routes(self, optimizer):
+        # Route each fused buffer to the sub owning its params.
+        inner = optimizer
+        while hasattr(inner, "_inner_opt"):
+            inner = inner._inner_opt
+        route = getattr(inner, "_route", None)
+        if getattr(inner, "_sub_opts", None) is None or route is None:
+            return False
+        for group in self.buffer_manager.buffer_groups:
+            name = group.params_buffer.data_buffer.name
+            if name not in route and group.params[0].name in route:
+                route[name] = route[group.params[0].name]
+        return True
+
     def bind_optimizer(self, optimizer):
         if getattr(optimizer, "_fsdp_state_dict_ctx", None) is self:
             return
+        self._bind_mixed_routes(optimizer)
         info_map = getattr(optimizer, "_muon_param_info_map", None)
         if info_map is not None:
             from paddle.optimizer.muon import MuonParamInfo
@@ -1562,7 +1599,8 @@ class FullyShardFusion:
         inner = optimizer
         while hasattr(inner, "_inner_opt"):
             inner = inner._inner_opt
-        is_muon = isinstance(inner, Muon)
+        # Mixed subs that keep whole matrices are stepped like Muon's.
+        is_muon = isinstance(inner, Muon) or self._bind_mixed_routes(inner)
         parameter_list = [
             group.params_buffer.data_buffer
             for group in self.buffer_manager.buffer_groups
@@ -1699,10 +1737,13 @@ class FullyShardFusion:
         while hasattr(inner, "_inner_opt"):
             inner = inner._inner_opt
         # Keep the raw value: Adadelta's acc names start with '_' themselves.
+        # A mixed optimizer declares no accumulators; its subs do.
+        opts = getattr(inner, "_sub_opts", None) or [inner]
         tags = sorted(
             {
                 getattr(cls, attr)
-                for cls in type(inner).__mro__
+                for opt in opts
+                for cls in type(opt).__mro__
                 for attr in vars(cls)
                 if attr.endswith("_str")
                 and "_acc" in attr
@@ -1712,8 +1753,14 @@ class FullyShardFusion:
             reverse=True,
         )
         _master_weight_suffix = re.compile(r"^(.*)_fp32_master_\d+$")
-        # ``_add_accumulator`` prefixes the accumulator with the optimizer name.
-        opt_name = getattr(inner, "_name", None)
+        # ``_add_accumulator`` prefixes the accumulator with the name of the
+        # optimizer that creates it: each sub of a mixed optimizer uses its own.
+        opt_names = sorted(
+            {getattr(opt, "_name", None) for opt in [inner, *opts]}
+            - {None, ""},
+            key=len,
+            reverse=True,
+        )
 
         def _split_optimizer_state_name(vname):
             """``fuse_params_0_fp32_master_0_moment1_3`` -> ``("fuse_params_0", "moment1_0")``."""
@@ -1725,8 +1772,10 @@ class FullyShardFusion:
                 if not vname[idx + len(marker) :].isdigit():
                     continue
                 base = vname[:idx]
-                if opt_name and base.endswith("_" + opt_name):
-                    base = base[: -len(opt_name) - 1]
+                for opt_name in opt_names:
+                    if base.endswith("_" + opt_name):
+                        base = base[: -len(opt_name) - 1]
+                        break
                 matched = _master_weight_suffix.match(base)
                 if matched:
                     base = matched.group(1)
@@ -1936,14 +1985,10 @@ class FullyShardFusion:
                         continue
                     offset = params_buffer.param_offsets[param.name]
                     numel = param._numel()
-                    view = paddle._C_ops.view_slice(
-                        param_full, offset, offset + numel
-                    )
+                    view = _view_slice(param_full, offset, offset + numel)
                     view.get_tensor()._set_dims(param.shape)
                     param.get_tensor()._share_data_with(view.get_tensor())
-                    grad = paddle._C_ops.view_slice(
-                        grad_full, offset, offset + numel
-                    )
+                    grad = _view_slice(grad_full, offset, offset + numel)
                     grad.get_tensor()._set_dims(param.shape)
                     out.append((param, grad))
                 continue
@@ -1955,12 +2000,12 @@ class FullyShardFusion:
                     continue
                 offset = params_buffer.param_offsets[param.name]
                 numel = param._numel()
-                view = paddle._C_ops.view_slice(
+                view = _view_slice(
                     params_buffer.data_buffer, offset, offset + numel
                 )
                 view.get_tensor()._set_dims(param.shape)
                 param.get_tensor()._share_data_with(view.get_tensor())
-                grad = paddle._C_ops.view_slice(
+                grad = _view_slice(
                     grads_buffer.data_buffer, offset, offset + numel
                 )
                 grad.get_tensor()._set_dims(param.shape)
@@ -1989,9 +2034,7 @@ class FullyShardFusion:
         span = n_local * mnumel
         dims = [n_local, m, n]
         lo = begin - params_buffer.shard_start
-        view = paddle._C_ops.view_slice(
-            params_buffer.data_buffer, lo, lo + span
-        )
+        view = _view_slice(params_buffer.data_buffer, lo, lo + span)
         view.get_tensor()._set_dims(dims)
         param.get_tensor()._share_data_with(view.get_tensor())
         param.original_shape = dims
@@ -2013,9 +2056,7 @@ class FullyShardFusion:
                 if grads_buffer.is_sharded
                 else begin
             )
-            grad = paddle._C_ops.view_slice(
-                grads_buffer.data_buffer, gbegin, gbegin + span
-            )
+            grad = _view_slice(grads_buffer.data_buffer, gbegin, gbegin + span)
             grad.get_tensor()._set_dims(dims)
             out.append((param, grad))
         return out
@@ -2124,8 +2165,11 @@ class FullyShardFusion:
                         sync_ckpt_weight_to_main(group.params_buffer)
                         quantize_fp8_shard(group.params_buffer)
                 params = sublayers.parameters(include_sublayers=recursive)
-                comm_manager.all_gather_params(params)
-                self._bind_expert_main_grads(params)
+                # Leave the user's auto_cast once per unit, so _view_slice
+                # skips its per-param guard on this hot path.
+                with paddle.amp.auto_cast(enable=False):
+                    comm_manager.all_gather_params(params)
+                    self._bind_expert_main_grads(params)
 
             return all_gather_comm
 

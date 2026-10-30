@@ -31,6 +31,8 @@ from paddle.distributed.fsdp.fully_shard import (
     MixedPrecisionPolicy,
     fully_shard,
 )
+from paddle.optimizer.inner_optimizer import InnerOptimizer
+from paddle.optimizer.mixed_inner_optimizer import MixedInnerOptimizer
 from paddle.optimizer.muon import Muon, MuonParamInfo
 
 HIDDEN = 16
@@ -46,6 +48,8 @@ MUON_STEPS = 1
 MUON_MATS_DOWN = 3
 VOCAB = 24
 CE_CHUNK = 16
+# Below the grad norm, so the mixed optimizer really clips.
+MIXED_CLIP_NORM = 1e-2
 # fully_shard kwargs compared against the baseline: by-layer overlap on/off,
 # then by-size prefetch with no, a small and a large window.
 FSDP_CONFIGS = [
@@ -888,6 +892,287 @@ def run_muon_checkpoint():
             shutil.rmtree(ckpt_root, ignore_errors=True)
 
 
+class ElementwiseInner(InnerOptimizer):
+    """Momentum SGD with decoupled weight decay; correct on any shard."""
+
+    keep_whole = False
+    _moment_acc_str = "moment1"
+
+    def __init__(self, parameters, **kwargs):
+        super().__init__(parameters=parameters, **kwargs)
+        self._wd = kwargs["weight_decay"]
+
+    def _ensure_accumulators(self, param):
+        if param.name in self._accumulators[self._moment_acc_str]:
+            return
+        self._ensure_master_weight(param)
+        self._add_accumulator(
+            self._moment_acc_str,
+            param,
+            dtype=paddle.float32,
+            fill_value=0.0,
+            shape=param.shape,
+        )
+
+    def optimizer_state_layout(self):
+        return {
+            "vector": ["moment1_0"],
+            "scalar": [],
+            "master": "fp32_master_0",
+        }
+
+    def _direction(self, moment):
+        return moment
+
+    @paddle.autograd.no_grad()
+    def _update_parameters(self, params_grads, lr):
+        for param, grad in params_grads:
+            moment = self._get_accumulator(self._moment_acc_str, param)
+            paddle.assign(0.9 * moment + grad.astype("float32"), moment)
+            master = self._master_weights.get(param.name)
+            w = param.astype("float32") if master is None else master
+            new_w = w - self._effective_lr(param, lr) * self._direction(moment)
+            fun = self._apply_decay_param_fun
+            if self._wd and (fun is None or fun(param.name)):
+                new_w = new_w - lr * self._wd * w
+            if master is not None:
+                paddle.assign(new_w, master)
+            paddle.assign(new_w.astype(param.dtype), param)
+
+
+class KeepWholeInner(ElementwiseInner):
+    """Normalizes the update per matrix, so it needs whole matrices."""
+
+    keep_whole = True
+
+    def _direction(self, moment):
+        axes = [-2, -1] if len(moment.shape) >= 2 else [-1]
+        norm = paddle.sqrt((moment * moment).sum(axis=axes, keepdim=True))
+        return moment / (norm + 1e-6)
+
+
+def build_mixed_optimizer(model, sub_name=None):
+    """embed (2D, owner path with P2P gather) and w_up / w_down (3D,
+    matrix-aligned path) -> KeepWholeInner; attn / bf16 w_low / head ->
+    ElementwiseInner on fused shards.
+
+    Only the element-wise sub has a decay callback (head is exempt); the
+    top-level one is None, so fully_shard() must mark params by the sub's.
+    ``sub_name`` names the element-wise sub, which prefixes its accumulators.
+    """
+    whole, elementwise = [model.embed.weight], []
+    for layer in model.layers:
+        whole += [layer.w_up, layer.w_down]
+        elementwise += [layer.attn.weight, layer.w_low]
+    elementwise.append(model.head.weight)
+    head_name = model.head.weight.name
+    subs = [
+        KeepWholeInner(
+            parameters=whole,
+            learning_rate=0.01,
+            weight_decay=0.0,
+            multi_precision=True,
+        ),
+        ElementwiseInner(
+            parameters=elementwise,
+            learning_rate=0.01,
+            weight_decay=0.1,
+            apply_decay_param_fun=lambda name: name != head_name,
+            multi_precision=True,
+            name=sub_name,
+        ),
+    ]
+    return MixedInnerOptimizer(
+        subs,
+        learning_rate=0.01,
+        grad_clip=nn.ClipGradByGlobalNorm(MIXED_CLIP_NORM),
+        multi_precision=True,
+    )
+
+
+def build_mixed_fsdp_run(init_state, sub_name=None):
+    model = MuonModel(low="bfloat16")
+    model.set_state_dict(init_state)
+    mixed = build_mixed_optimizer(model, sub_name)
+    model = fully_shard(model, optimizer=mixed)
+    fsdp_context = model._fsdp_context
+    model = mix_precision_utils.MixPrecisionLayer(model, dtype="float16")
+    optimizer = mix_precision_utils.MixPrecisionOptimizer(mixed)
+    return model, fsdp_context, mixed, optimizer
+
+
+def train_mixed(model, optimizer, data):
+    losses = []
+    for x in data:
+        model.train()
+        with paddle.amp.auto_cast(level="O1", dtype="float16"):
+            loss = model(x).mean()
+        losses.append(float(loss.astype("float32")))
+        loss.backward()
+        optimizer.step()
+        optimizer.clear_grad()
+    return losses
+
+
+def assert_params_close(actual, expected, what):
+    for (name, value), ref in zip(actual, expected):
+        low = value.dtype != np.float32
+        np.testing.assert_allclose(
+            value.astype("float32"),
+            ref.astype("float32"),
+            rtol=1e-2 if low else 1e-5,
+            atol=1e-3 if low else 1e-6,
+            err_msg=f"{name} diverged ({what})",
+        )
+
+
+def gathered_params(model, fsdp_context):
+    fsdp_context.all_gather_params()
+    return [(p.name, p.numpy()) for p in model.parameters()]
+
+
+def mixed_init_state():
+    paddle.seed(2026)
+    model = MuonModel(low="bfloat16")
+    return {k: v.clone() for k, v in model.state_dict().items()}
+
+
+def run_mixed_shard():
+    """MixedInnerOptimizer under FSDP must match the single-card run."""
+    init_state = mixed_init_state()
+    paddle.seed(2026)
+    data = [paddle.randn([TOKENS, HIDDEN]) for _ in range(STEPS)]
+
+    register_fsdp_context(None)
+    base_model = MuonModel(low="bfloat16")
+    base_model.set_state_dict(init_state)
+    base_optimizer = mix_precision_utils.MixPrecisionOptimizer(
+        build_mixed_optimizer(base_model)
+    )
+    base_model = mix_precision_utils.MixPrecisionLayer(
+        base_model, dtype="float16"
+    )
+    base_losses = train_mixed(base_model, base_optimizer, data)
+    base_params = [p.numpy() for p in base_model.parameters()]
+
+    model, fsdp_context, mixed, optimizer = build_mixed_fsdp_run(init_state)
+    whole, elementwise = mixed._sub_opts
+    head_name = elementwise._parameter_list[-1].name
+    groups = fsdp_context.buffer_manager.buffer_groups
+    for group in groups:
+        owners = {mixed._route.get(p.name) for p in group.params}
+        assert len(owners) == 1, f"a buffer spans subs: {group.params}"
+        owner = owners.pop()
+        if owner is None:
+            continue
+        assert group.use_muon == (owner is whole), group.params
+        if owner is elementwise:
+            # Marked by the sub's callback, not the top-level None.
+            is_head = group.params[0].name == head_name
+            assert group.no_decay == is_head, group.params
+    whole_groups = [
+        group
+        for group in groups
+        if group.use_muon and group.grads_buffer is not None
+    ]
+    assert any(
+        group.muon_owner_rank is not None and group.params_buffer.is_sharded
+        for group in whole_groups
+    ), "no keep_whole buffer took the P2P owner path"
+    assert any(
+        group.muon_shard_numel == HIDDEN * INTER for group in whole_groups
+    ), "no keep_whole buffer was sharded by matrix"
+
+    losses = train_mixed(model, optimizer, data)
+    np.testing.assert_allclose(
+        losses, base_losses, rtol=1e-5, err_msg="mixed losses diverged"
+    )
+    for group in groups:
+        name = group.params_buffer.data_buffer.name
+        if group.grads_buffer is not None and not group.use_muon:
+            assert mixed._route[name] is mixed._route[group.params[0].name]
+    assert_params_close(
+        gathered_params(model, fsdp_context), base_params, "mixed vs base"
+    )
+
+
+def check_mixed_checkpoint(ckpt_path, sub_name=None):
+    """Mixed optimizer state, fp32 masters included, survives a save/load."""
+    init_state = mixed_init_state()
+    paddle.seed(2026)
+    data = [paddle.randn([TOKENS, HIDDEN]) for _ in range(3)]
+
+    def state_dict(model, ctx, optimizer):
+        state = dict(model.sharded_state_dict())
+        state.update(ctx.optimizer_sharded_state_dict(optimizer))
+        return state
+
+    model, ctx, mixed, optimizer = build_mixed_fsdp_run(init_state, sub_name)
+    train_mixed(model, optimizer, data[:2])
+    state = state_dict(model, ctx, optimizer)
+
+    # The element-wise sub keeps the masters of its bf16 fused buffers.
+    elementwise = mixed._sub_opts[1]
+    if sub_name is not None:
+        assert any(
+            f"_{sub_name}_moment1_" in key for key in elementwise.state_dict()
+        ), "the named sub did not prefix its accumulators"
+    low_buffers = [
+        group.params_buffer.data_buffer.name
+        for group in ctx.buffer_manager.buffer_groups
+        if group.params[0].dtype == paddle.bfloat16
+    ]
+    assert low_buffers, "no bf16 fused buffer"
+    for name in low_buffers:
+        assert name in elementwise._master_weights, name
+        for struct_name in ctx._shard_descs[name]:
+            for tag in ("w_0", "moment1_0"):
+                key = f"{struct_name}.{tag}"
+                assert key in state, f"{key} missing from the checkpoint"
+    saved = {
+        key: sharded.local_tensor.astype("float32").numpy()
+        for key, sharded in state.items()
+    }
+    paddle.distributed.save_state_dict(state, ckpt_path)
+    paddle.distributed.barrier()
+
+    train_mixed(model, optimizer, data[2:])
+    expected = [value for _, value in gathered_params(model, ctx)]
+
+    model, ctx, mixed, optimizer = build_mixed_fsdp_run(init_state, sub_name)
+    # Bind the wrapper: FSDP has to unwrap it down to the mixed optimizer.
+    ctx.bind_optimizer(optimizer)
+    optimizer.init_state_for_load()
+    state = state_dict(model, ctx, optimizer)
+    assert sorted(state) == sorted(saved), sorted(set(state) ^ set(saved))
+    paddle.distributed.load_state_dict(state, ckpt_path)
+    for key, sharded in state.items():
+        np.testing.assert_array_equal(
+            sharded.local_tensor.astype("float32").numpy(),
+            saved[key],
+            err_msg=key,
+        )
+    train_mixed(model, optimizer, data[2:])
+    assert_params_close(gathered_params(model, ctx), expected, "resumed")
+
+
+def run_mixed_checkpoint():
+    ckpt_root = [None]
+    if paddle.distributed.get_rank() == 0:
+        ckpt_root = [tempfile.mkdtemp()]
+    paddle.distributed.broadcast_object_list(ckpt_root, src=0)
+    try:
+        check_mixed_checkpoint(os.path.join(ckpt_root[0], "mixed"))
+        # A named sub prefixes its accumulators with its own name.
+        check_mixed_checkpoint(
+            os.path.join(ckpt_root[0], "mixed_named"), sub_name="ew"
+        )
+    finally:
+        paddle.distributed.barrier()
+        if paddle.distributed.get_rank() == 0:
+            shutil.rmtree(ckpt_root[0], ignore_errors=True)
+
+
 class FusedLinearCE(PyLayer):
     """Chunked linear + cross-entropy, mirroring the fused LM-head loss.
 
@@ -1117,3 +1402,5 @@ if __name__ == '__main__':
     run_muon_replicated()
     run_adamh_shard()
     run_muon_checkpoint()
+    run_mixed_shard()
+    run_mixed_checkpoint()

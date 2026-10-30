@@ -28,6 +28,7 @@ import unittest
 import paddle
 import paddle.optimizer.mixed_inner_optimizer as mixed_mod
 from paddle.base import core
+from paddle.distributed.fsdp.fully_shard import _mark_params_for_optimizer
 from paddle.optimizer.inner_optimizer import (
     KEEP_WHOLE_UNDECLARED,
     InnerOptimizer,
@@ -619,6 +620,22 @@ class TestMixedStateDict(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "more than one"):
             mixed.state_dict()
 
+    def test_state_dict_keeps_routed_fused_buffer_master(self):
+        # FSDP steps fused buffers (fuse_params_*) that no sub lists as a
+        # parameter; their masters are kept once the buffer is routed.
+        mixed, subA, subB, _pa, _pb = _make_mixed()
+        fused_a, fused_b = (f"fuse_params_{next(_UID)}" for _ in range(2))
+        mixed._route[fused_a] = subA
+        mixed._route[fused_b] = subB
+        subA._master_weights[fused_a] = paddle.ones([4])
+        subB._master_weights[fused_b] = paddle.full([4], 2.0)
+        # Routed to subA: subB's copy is not its own and is dropped.
+        subB._master_weights[fused_a] = paddle.zeros([4])
+        masters = mixed.state_dict()["master_weights"]
+        self.assertEqual(set(masters), {fused_a, fused_b})
+        self.assertEqual(float(masters[fused_a].mean()), 1.0)
+        self.assertEqual(float(masters[fused_b].mean()), 2.0)
+
     def test_set_state_dict_longest_prefix_routing(self):
         # "<base>" is a prefix of "<base>_extra": the longest owning name must
         # win so each accumulator lands on its true owner.
@@ -703,6 +720,75 @@ class TestMixedFusionStorage(unittest.TestCase):
         )
         mixed._maybe_refuse()
         self.assertGreater(mixed._fuse_buffer_version, v)
+
+
+def _layer_of(params):
+    layer = paddle.nn.Layer()
+    for i, p in enumerate(params):
+        layer.add_parameter(f"p{i}", p)
+    return layer
+
+
+class TestMarkParamsForFSDP(unittest.TestCase):
+    """fully_shard(optimizer=mixed) marks each param by its owning sub."""
+
+    def _mixed(self, top_decay_fun=False):
+        """subA exempts pa[1]; with ``top_decay_fun`` the top level exempts
+        pb[0] (and claims pa[1] decays, which subA's callback overrides)."""
+        pa = [_param("markA0"), _param("markA1")]
+        pb = [_param("markB0"), _param("markB1")]
+        exempt_a, exempt_b = pa[1].name, pb[0].name
+        subA = _SGDInner(
+            parameters=pa,
+            learning_rate=0.1,
+            weight_decay=0.1,
+            apply_decay_param_fun=lambda name: name != exempt_a,
+        )
+        subB = _AdamInner(parameters=pb, learning_rate=0.1)
+        mixed = MixedInnerOptimizer(
+            [subA, subB],
+            learning_rate=0.1,
+            apply_decay_param_fun=(lambda name: name != exempt_b)
+            if top_decay_fun
+            else None,
+        )
+        return mixed, pa, pb
+
+    def test_routing_and_decay(self):
+        mixed, pa, pb = self._mixed(top_decay_fun=True)
+        _mark_params_for_optimizer(_layer_of(pa + pb), mixed)
+        self.assertEqual(
+            [p.fsdp_optimizer_group for p in pa + pb], [0, 0, 1, 1]
+        )
+        self.assertEqual(
+            [p.use_muon for p in pa + pb], [False, False, True, True]
+        )
+        self.assertEqual(
+            [p.no_weight_decay for p in pa + pb], [False, True, True, False]
+        )
+        self.assertFalse(any(p.use_hyperball_sharded for p in pa + pb))
+
+    def test_no_decay_fun_anywhere(self):
+        mixed, pa, pb = self._mixed()
+        _mark_params_for_optimizer(_layer_of(pa + pb), mixed)
+        # subB and the top level have no callback: subB's params decay.
+        self.assertEqual(
+            [p.no_weight_decay for p in pa + pb], [False, True, False, False]
+        )
+
+    def test_frozen_unrouted_param(self):
+        mixed, pa, pb = self._mixed()
+        frozen = _param("markFrozen")
+        frozen.stop_gradient = True
+        _mark_params_for_optimizer(_layer_of([*pa, *pb, frozen]), mixed)
+        self.assertIsNone(frozen.fsdp_optimizer_group)
+        self.assertFalse(frozen.use_muon)
+
+    def test_trainable_unrouted_param_raises(self):
+        mixed, pa, pb = self._mixed()
+        stray = _param("markStray")
+        with self.assertRaisesRegex(ValueError, "misses trainable params"):
+            _mark_params_for_optimizer(_layer_of([*pa, *pb, stray]), mixed)
 
 
 if __name__ == "__main__":
