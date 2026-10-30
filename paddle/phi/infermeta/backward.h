@@ -313,6 +313,14 @@ PADDLE_API void GeneralBinaryGradInferMeta(const MetaTensor& x,
                                            MetaTensor* dx,
                                            MetaTensor* dy);
 
+PADDLE_API void MatmulGradInferMeta(const MetaTensor& x,
+                                    const MetaTensor& y,
+                                    bool transpose_x,
+                                    bool transpose_y,
+                                    MetaTensor* dx,
+                                    MetaTensor* dy,
+                                    MetaConfig config = MetaConfig());
+
 PADDLE_API void GeneralTernaryGradInferMeta(const MetaTensor& x,
                                             const MetaTensor& y,
                                             const MetaTensor& z,

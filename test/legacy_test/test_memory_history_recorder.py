@@ -21,11 +21,15 @@ import unittest
 import paddle
 
 _VMM_FLAG = 'FLAGS_use_virtual_memory_auto_growth'
+_VMM_V2_FLAG = 'FLAGS_use_vmm_auto_growth_best_fit_allocator_v2'
 
 # The GPU allocator is built lazily on the first allocation, so the VMM V1 stack
 # has to be selected before anything touches device memory -- hence module
-# scope rather than setUp().
+# scope rather than setUp(). V2 is default-on in some builds, so remember its
+# original value to restore after the gate tests below toggle it.
+_ORIG_VMM_V2 = False
 if paddle.is_compiled_with_cuda():
+    _ORIG_VMM_V2 = paddle.get_flags([_VMM_V2_FLAG])[_VMM_V2_FLAG]
     paddle.set_flags({_VMM_FLAG: 1})
 
 
@@ -53,14 +57,34 @@ class TestMemoryHistoryRecorder(unittest.TestCase):
         return snapshot["device_traces"][0]
 
     def test_requires_vmm_allocator_flag(self):
-        # Enabling without the VMM V1 allocator must fail loudly rather than
-        # arm a recorder that cannot produce allocation events.
-        paddle.set_flags({_VMM_FLAG: 0})
+        # Enabling with neither VMM stack (V1 nor V2) selected must fail loudly
+        # rather than arm a recorder that cannot produce allocation events.
+        paddle.set_flags({_VMM_FLAG: 0, _VMM_V2_FLAG: 0})
         try:
             with self.assertRaises(RuntimeError):
                 paddle.device.cuda._record_memory_history(enabled="all")
         finally:
-            paddle.set_flags({_VMM_FLAG: 1})
+            paddle.set_flags({_VMM_FLAG: 1, _VMM_V2_FLAG: _ORIG_VMM_V2})
+
+    def test_v1_flag_alone_allows_recording(self):
+        # V1 selected, V2 off: the gate must accept it.
+        paddle.set_flags({_VMM_FLAG: 1, _VMM_V2_FLAG: 0})
+        try:
+            paddle.device.cuda._record_memory_history(enabled="all")
+        finally:
+            paddle.device.cuda._record_memory_history(enabled=None)
+            paddle.set_flags({_VMM_FLAG: 1, _VMM_V2_FLAG: _ORIG_VMM_V2})
+
+    def test_v2_flag_alone_allows_recording(self):
+        # V2 selected, V1 off: the gate must accept it too (V2 support). The
+        # recorder is armed purely from the flag check, independent of which
+        # allocator was actually built first.
+        paddle.set_flags({_VMM_FLAG: 0, _VMM_V2_FLAG: 1})
+        try:
+            paddle.device.cuda._record_memory_history(enabled="all")
+        finally:
+            paddle.device.cuda._record_memory_history(enabled=None)
+            paddle.set_flags({_VMM_FLAG: 1, _VMM_V2_FLAG: _ORIG_VMM_V2})
 
     def test_disable_is_allowed_without_the_flag(self):
         # Turning recording off must never raise, whatever the flag says.

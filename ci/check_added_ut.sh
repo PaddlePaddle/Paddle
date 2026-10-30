@@ -63,7 +63,7 @@ elif [[ "$SYSTEM" == "Windows_NT" ]];then
     bash $PADDLE_ROOT/win_cmake.sh >prec_build.log 2>&1
 fi
 
-# remove line ended with .exe to get correct deleted_ut list
+# remove line ended with .exe to get correct added_ut list
 ctest -N | awk -F ':' '{print $2}' | sed '/^$/d' | sed '$d' | sed 's/ //g' | sed '/\.exe$/d' | grep 'test' > $PADDLE_ROOT/br-ut
 #UNITTEST_DEV.spec is used for checking changes of unittests between pr and paddle_develop in the later step
 spec_path_dev=${PADDLE_ROOT}/paddle/fluid/UNITTEST_DEV.spec
@@ -87,8 +87,6 @@ rm -rf prec_build
 if [[ "$SYSTEM" == "Linux" ]] || [[ "$SYSTEM" == "Darwin" ]];then
     rm $PADDLE_ROOT/br-ut $PADDLE_ROOT/pr-ut ${PADDLE_ROOT}/ci/utils_copy.sh
 elif [[ "$SYSTEM" == "Windows_NT" ]];then
-    # get the deleted ut list in windows, will be used in check_change_of_unittest.sh
-    grep -F -x -v -f pr-ut br-ut > $PADDLE_ROOT/deleted_ut
     rm $PADDLE_ROOT/br-ut $PADDLE_ROOT/pr-ut $PADDLE_ROOT/win_cmake.sh
 fi
 

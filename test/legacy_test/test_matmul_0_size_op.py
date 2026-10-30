@@ -40,6 +40,41 @@ class TestMatmulDygraph(unittest.TestCase):
         self.assertEqual(out[0].shape, x.shape)
         self.assertEqual(out[1].shape, y.shape)
 
+    def test_matmul_grad_zero_k(self):
+        # A legit zero-size backward with a matching (K=0) contraction dim
+        # must keep working: [M, 0] . [0, N].
+        x = paddle.ones([8, 0], dtype="float32")
+        y = paddle.ones([0, 4], dtype="float32")
+        dz = paddle.ones([8, 4], dtype="float32")
+        out = _C_ops.matmul_grad(x, y, dz, False, False)
+        self.assertEqual(out[0].shape, x.shape)
+        self.assertEqual(out[1].shape, y.shape)
+
+    def test_matmul_grad_k_mismatch(self):
+        # The backward matmul_grad must reject a mismatched contraction (K)
+        # dim, matching the forward MatmulInferMeta check instead of blindly
+        # sharing X/Y meta with dx/dy.
+        # No transpose: X[..., K_x], Y[K_y, ...]; K_x != K_y.
+        x = paddle.ones([1024, 32], dtype="float32")
+        y = paddle.ones([64, 16], dtype="float32")
+        dz = paddle.ones([1024, 16], dtype="float32")
+        with self.assertRaises(ValueError):
+            _C_ops.matmul_grad(x, y, dz, False, False)
+
+        # transpose_x=True: reduction dim of X is the leading axis.
+        x = paddle.ones([32, 1024], dtype="float32")
+        y = paddle.ones([64, 16], dtype="float32")
+        dz = paddle.ones([1024, 16], dtype="float32")
+        with self.assertRaises(ValueError):
+            _C_ops.matmul_grad(x, y, dz, True, False)
+
+        # transpose_y=True: reduction dim of Y is the trailing axis.
+        x = paddle.ones([1024, 32], dtype="float32")
+        y = paddle.ones([16, 64], dtype="float32")
+        dz = paddle.ones([1024, 16], dtype="float32")
+        with self.assertRaises(ValueError):
+            _C_ops.matmul_grad(x, y, dz, False, True)
+
 
 if __name__ == "__main__":
     unittest.main()

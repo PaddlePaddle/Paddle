@@ -131,6 +131,7 @@ type_promote_white_list = {
     "copysign": ["x", "y"],
     "cross": ["x", "y"],
     "multiply": ["x", "y"],
+    "logaddexp": ["x", "y"],
     "addcmul": ["input", "tensor1", "tensor2"],
 }
 
@@ -240,6 +241,7 @@ strided_compute_op_list = {
     "heaviside",
     "fmax",
     "fmin",
+    "logaddexp",
     # reduce
     "amax",
     "amin",

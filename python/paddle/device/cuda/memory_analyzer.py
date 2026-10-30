@@ -175,15 +175,6 @@ class MemoryAnalysisTool:
             if device_id is not None
             else core.get_cuda_current_device_id()
         )
-        nvidia_smi_AVAILABLE = False
-        try:
-            # import nvidia_smi, pip install nvidia-ml-py3
-            import nvidia_smi
-
-            nvidia_smi_AVAILABLE = True
-        except ImportError:
-            nvidia_smi_AVAILABLE = False
-
         THRESHOLDS = [
             1 * MB,
             10 * MB,
@@ -213,13 +204,13 @@ class MemoryAnalysisTool:
         ]
 
         allocator_lists = self.all_block_info(device_id=device_id)
-        # --- Feature 1: Global Summary with NVML & Rates ---
+        # --- Feature 1: Global Summary with CUDA & Rates ---
 
         # 1.1 Get Paddle Stats
-        mem_allocated = paddle.device.cuda.memory_allocated()
-        max_mem_allocated = paddle.device.cuda.max_memory_allocated()
-        mem_reserved = paddle.device.cuda.memory_reserved()
-        max_mem_reserved = paddle.device.cuda.max_memory_reserved()
+        mem_allocated = paddle.device.cuda.memory_allocated(device_id)
+        max_mem_allocated = paddle.device.cuda.max_memory_allocated(device_id)
+        mem_reserved = paddle.device.cuda.memory_reserved(device_id)
+        max_mem_reserved = paddle.device.cuda.max_memory_reserved(device_id)
 
         # 1.2 Calculate Rates (Utilization of the Reserved Pool)
         # Rate = How much of the reserved pool is actually holding tensor data?
@@ -229,26 +220,17 @@ class MemoryAnalysisTool:
             else 0.0
         )
 
-        # 1.3 Get Physical Usage via nvidia_smi
-        phy_used_str = "N/A"
-        if nvidia_smi_AVAILABLE:
-            try:
-                nvidia_smi.nvmlInit()
-
-                handle = nvidia_smi.nvmlDeviceGetHandleByIndex(device_id)
-                info = nvidia_smi.nvmlDeviceGetMemoryInfo(handle)
-                phy_used_str = format_size(info.used)
-                phy_total_str = format_size(info.total)
-                # nvidia_smi.nvmlShutdown() # Optional, depends on lifecycle
-            except Exception as e:
-                phy_used_str = "Err"
-                phy_total_str = "Err"
-        else:
-            print(
-                "Place install nvidia-smi to check real memory usage, pip install command: `pip install nvidia-ml-py3`"
-            )
-            phy_used_str = "No nvidia_smi"
-            phy_total_str = "No nvidia_smi"
+        # 1.3 Get device-wide usage from CUDA; this may differ from NVML.
+        phy_used_str = "Err"
+        phy_total_str = "Err"
+        try:
+            free_bytes, total_bytes = paddle.cuda.mem_get_info(device_id)
+            # The CUDA binding may return invalid sizes on query failure.
+            if total_bytes > 0 and 0 <= free_bytes <= total_bytes:
+                phy_used_str = format_size(total_bytes - free_bytes)
+                phy_total_str = format_size(total_bytes)
+        except Exception:
+            pass
 
         global_headers = [
             "Allocators",
@@ -257,7 +239,7 @@ class MemoryAnalysisTool:
             "Reserved",
             "Max Reserved",
             "Max Frag Rate",
-            "Phy GPU Used / Total",
+            "CUDA GPU Used / Total",
         ]
 
         global_rows = [

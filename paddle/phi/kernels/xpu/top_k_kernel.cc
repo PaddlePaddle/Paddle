@@ -62,9 +62,13 @@ void TopkKernel(const Context& dev_ctx,
     indices->Resize(out_dims_);
   }
   if (x.numel() == 0) {
-    Full<T, Context>(dev_ctx, out->dims(), NAN, out);
-    Full<int64_t, Context>(dev_ctx, indices->dims(), 0, indices);
-    return;
+    // Reaching here with a non-empty output implies the topk axis has size 0,
+    // which cannot supply the requested k (>=1) elements. Align with the
+    // "selected index k out of range" semantics instead of returning NaN.
+    PADDLE_THROW(errors::InvalidArgument(
+        "topk cannot select k = %d elements from an axis of size 0 "
+        "(selected index k out of range).",
+        static_cast<int>(k)));
   }
   PADDLE_ENFORCE_GE(
       x.numel(),

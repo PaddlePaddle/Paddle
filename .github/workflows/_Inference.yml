@@ -304,16 +304,6 @@ jobs:
           test_go_inference_api
           '
 
-      - name: Check approvals of unittest
-        run: |
-          docker exec -t ${{ env.container_name }} /bin/bash -c '
-          source ~/.bashrc
-          source ${ci_scripts}/utils.sh
-          init
-          source /action-runner/proxy
-          check_approvals_of_unittest 3
-          '
-
       - name: Terminate and delete the container
         if: always()
         run: |

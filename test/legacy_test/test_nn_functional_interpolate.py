@@ -266,5 +266,46 @@ class TestInterpolateAntialias(unittest.TestCase):
         self.assertTrue(np.any(x.grad.numpy() != 0))
 
 
+class TestInterpolateZeroSizeError(unittest.TestCase):
+    """A 0-size non-batch dim must raise (align with PyTorch's
+    "Non-empty data tensor" requirement), while an empty batch dim (index 0)
+    is still allowed. Covers the three Interpolate{1,2,3}DInferShapeCheck
+    functions (3-D / 4-D / 5-D inputs)."""
+
+    def _assert_raises(self, shape, size, mode):
+        x = paddle.zeros(shape)
+        with self.assertRaises(ValueError):
+            paddle.nn.functional.interpolate(x, size=size, mode=mode)
+
+    def test_1d_channel_zero(self):
+        self._assert_raises([1, 0, 1500], [5], "linear")
+
+    def test_2d_channel_zero(self):
+        self._assert_raises([1, 0, 52, 52], [10, 23], "bilinear")
+
+    def test_3d_channel_zero(self):
+        self._assert_raises([1, 0, 4, 4, 4], [2, 2, 2], "trilinear")
+
+    def test_1d_spatial_zero(self):
+        self._assert_raises([1, 3, 0], [5], "linear")
+
+    def test_2d_spatial_zero(self):
+        self._assert_raises([1, 3, 0, 52], [10, 23], "bilinear")
+
+    def test_3d_spatial_zero(self):
+        self._assert_raises([1, 3, 0, 4, 4], [2, 2, 2], "trilinear")
+
+    def test_empty_batch_allowed(self):
+        # batch == 0 remains legal (matches PyTorch).
+        for shape, size, mode in (
+            ([0, 3, 8], [4], "linear"),
+            ([0, 3, 8, 8], [4, 4], "bilinear"),
+            ([0, 3, 4, 8, 8], [2, 4, 4], "trilinear"),
+        ):
+            x = paddle.zeros(shape)
+            out = paddle.nn.functional.interpolate(x, size=size, mode=mode)
+            self.assertEqual(out.shape[0], 0)
+
+
 if __name__ == '__main__':
     unittest.main()
