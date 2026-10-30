@@ -164,7 +164,7 @@ __device__ static __forceinline__ void ibgda_post_send(
   ibgda_lock_release(&mvars->post_send_lock);
 }
 
-template <bool kAlwaysDoPostSend>
+template <bool kAlwaysDoPostSend, bool kDoPostSend = true>
 __device__ static __forceinline__ void ibgda_submit_requests(
     nvshmemi_ibgda_device_qp_t *qp,
     uint64_t base_wqe_idx,
@@ -182,10 +182,12 @@ __device__ static __forceinline__ void ibgda_submit_requests(
   while (atomicCAS(ready_idx, base_wqe_idx, new_wqe_idx) != base_wqe_idx)
     ;
 
-  // Always post, not in batch
-  constexpr int kNumRequestInBatch = 4;
-  if (kAlwaysDoPostSend or (message_idx + 1) % kNumRequestInBatch == 0)
-    ibgda_post_send(qp, new_wqe_idx);
+  if constexpr (kDoPostSend) {
+    // Always post, not in batch
+    constexpr int kNumRequestInBatch = 4;
+    if (kAlwaysDoPostSend or (message_idx + 1) % kNumRequestInBatch == 0)
+      ibgda_post_send(qp, new_wqe_idx);
+  }
 }
 
 __device__ static __forceinline__ void ibgda_write_rdma_write_inl_wqe(
@@ -409,7 +411,7 @@ __device__ static __forceinline__ void ibgda_write_empty_recv_wqe(
                 *reinterpret_cast<const int4 *>(&data_seg));
 }
 
-template <bool kAlwaysDoPostSend = false>
+template <bool kAlwaysDoPostSend = false, bool kDoPostSend = true>
 __device__ static __forceinline__ void nvshmemi_ibgda_put_nbi_warp(
     uint64_t req_rptr,
     uint64_t req_lptr,
@@ -468,7 +470,7 @@ __device__ static __forceinline__ void nvshmemi_ibgda_put_nbi_warp(
 
   // Submit
   if (lane_id == 0)
-    ibgda_submit_requests<kAlwaysDoPostSend>(
+    ibgda_submit_requests<kAlwaysDoPostSend, kDoPostSend>(
         qp, base_wqe_idx, num_wqes, message_idx);
   __syncwarp();
 }
