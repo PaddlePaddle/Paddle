@@ -664,6 +664,7 @@ class FSDPCommManager:
         enable_overlap=True,
         prefetch_units=1,
         comm_unit_size=None,
+        sync_grads_each_microbatch=True,
     ):
         self.buffer_manager = buffer_manager
         self.enable_overlap = enable_overlap
@@ -683,6 +684,9 @@ class FSDPCommManager:
         self.buffer_cnt_in_using = 0
         self.need_zero_grads = True
         self._last_backward_unit_id = None
+        self.sync_grads_each_microbatch = sync_grads_each_microbatch
+        self.grad_accum_steps = 1
+        self._backward_cnt = 0
 
         # By size: gathered param elements and queued grad elements.
         self.gathered_numel = 0
@@ -884,6 +888,11 @@ class FSDPCommManager:
                 req_gids[0]
             ].fsdp_unit_id
             if unit_id != self._last_backward_unit_id:
+                prev_unit_id = self._last_backward_unit_id
+                if unit_id is not None and (
+                    prev_unit_id is None or unit_id > prev_unit_id
+                ):
+                    self._backward_cnt += 1
                 self._last_backward_unit_id = unit_id
                 self._flush_expert_grads_after_unit(unit_id)
                 self._release_params_after_unit(unit_id)
@@ -1097,6 +1106,13 @@ class FSDPCommManager:
             or grads_buffer in self.grad_reduce_queue
         ):
             return
+        if (
+            not self.sync_grads_each_microbatch
+            and self._backward_cnt < self.grad_accum_steps
+            and not group.is_expert_param
+        ):
+            self._release_reduced_grad_views(grads_buffer)
+            return
         # Grad queue mechanism: wait and release completed reduce_scatter async tasks
         self._wait_for_grad_comm(next_numel=grads_buffer.total_buffer_size)
         grads_buffer.comm_task = grads_buffer.do_reduce_scatter()
@@ -1232,6 +1248,7 @@ class FSDPCommManager:
                 mg._clear_data()
                 param.main_grad = None
                 param._main_grad_addr = None
+        self._backward_cnt = 0
 
 
 def _find_exposed_param_names(outputs, own_param_names, _depth=0):
@@ -1320,6 +1337,7 @@ class FullyShardFusion:
         fp8_main_dtype=paddle.float32,
         prefetch_units=1,
         comm_unit_size=None,
+        sync_grads_each_microbatch=True,
     ):
         self.model = model
         self.mp_policy = mp_policy
@@ -1334,6 +1352,7 @@ class FullyShardFusion:
             enable_overlap=enable_tensor_fusion_and_overlap,
             prefetch_units=prefetch_units,
             comm_unit_size=comm_unit_size,
+            sync_grads_each_microbatch=sync_grads_each_microbatch,
         )
         self.register_tensor_fusion_hooks(self.model)
         register_fsdp_context(self)
@@ -1797,6 +1816,7 @@ class FullyShardFusion:
 
     def set_grad_accum_steps(self, steps):
         steps = max(int(steps), 1)
+        self.comm_manager.grad_accum_steps = steps
         for group in self.buffer_manager.buffer_groups:
             grads_buffer = group.grads_buffer
             if grads_buffer is None:

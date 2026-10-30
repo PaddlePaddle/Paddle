@@ -95,6 +95,7 @@ def _fully_shard_manual_parallel(
     grad_accum_steps=1,
     prefetch_units=1,
     comm_unit_size=None,
+    sync_grads_each_microbatch=True,
 ):
     layers = module._layers if isinstance(module, MetaParallelBase) else module
     if optimizer is not None:
@@ -111,6 +112,7 @@ def _fully_shard_manual_parallel(
         fp8_main_dtype=paddle.float32 if multi_precision else None,
         prefetch_units=prefetch_units,
         comm_unit_size=comm_unit_size,
+        sync_grads_each_microbatch=sync_grads_each_microbatch,
     )
     layers._fsdp_context.set_grad_accum_steps(grad_accum_steps)
     if optimizer is not None:
@@ -132,6 +134,7 @@ def _fully_shard_auto_parallel(
     grad_accum_steps=1,
     prefetch_units=1,
     comm_unit_size=None,
+    sync_grads_each_microbatch=True,
 ):
     module._fsdp_context = FullyShardAuto(
         module,
@@ -156,6 +159,7 @@ def fully_shard(
     grad_accum_steps: int = 1,
     prefetch_units: int = 1,
     comm_unit_size: int | None = None,
+    sync_grads_each_microbatch: bool = True,
 ) -> paddle.nn.Layer:
     """
     Apply fully sharded data parallel (FSDP) to the given module.
@@ -200,6 +204,9 @@ def fully_shard(
             elements ahead and at most ``comm_unit_size`` grad elements
             stay in reduce_scatter. 0 disables prefetch. Defaults to None
             (prefetch by layer).
+        sync_grads_each_microbatch (bool, optional): Manual parallel mode
+            only. Reduce-scatter dense grads every micro-batch instead of
+            only the last one. Defaults to True.
 
     Returns:
         module: A wrapper module that applies FSDP to the input module.
@@ -246,6 +253,7 @@ def fully_shard(
         grad_accum_steps,
         prefetch_units,
         comm_unit_size,
+        sync_grads_each_microbatch,
     )
 
     if in_auto_parallel_mode():
