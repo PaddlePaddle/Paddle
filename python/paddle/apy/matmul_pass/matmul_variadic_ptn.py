@@ -321,10 +321,10 @@ class MatmulEpilogueFusion(abstract_drr.DrrPass):
         )
 
 
-def register_class(base_class, max_num_inputs, max_num_outputs):
+def register_matmul_epilogue_class(base_class, max_num_inputs, max_num_outputs):
     def register_drr_class(num_inputs, num_outputs):
         abstract_drr.register_drr_pass(
-            f"matmul_binary_in{num_inputs}_out{num_outputs}_fusion", nice=0
+            f"matmul_epilogue_in{num_inputs}_out{num_outputs}_fusion", nice=0
         )(
             variadic_mixin.get_mixin_class(
                 base_class,
@@ -343,6 +343,6 @@ def register_class(base_class, max_num_inputs, max_num_outputs):
     ap.map(register_num_inputs_drr_classes, range(max_num_inputs))
 
 
-register_class(
+register_matmul_epilogue_class(
     base_class=MatmulEpilogueFusion, max_num_inputs=10, max_num_outputs=10
 )

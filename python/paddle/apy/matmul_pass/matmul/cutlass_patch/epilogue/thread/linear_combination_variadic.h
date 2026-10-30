@@ -294,7 +294,7 @@ class LinearCombinationVariadic {
     }
 
     if constexpr (GenericVariadicTraits<
-                      VariadicOp<FragmentCompute>>::IsArgumentsNeeded) {
+                      VariadicOp<ElementCompute>>::IsArgumentsNeeded) {
       if (!skip_elementwise_) {
 #if CUTLASS_EPILOGUE_ENABLE_VECTORIZE
         intermediate = variadic_op.Compute<kElementsPerAccess>(
