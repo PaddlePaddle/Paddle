@@ -119,12 +119,19 @@ class GroupedExpertModel(nn.Layer):
             [GroupedExpertLayer(fp8) for _ in range(LAYERS)]
         )
         self.head = nn.Linear(HIDDEN, 1, bias_attr=False)
+        # Alone in its (bf16) buffer, so rank 1's shard is only padding.
+        self.scale = self.create_parameter(
+            [1],
+            dtype="bfloat16",
+            default_initializer=nn.initializer.Constant(1.0),
+        )
 
     def forward(self, x):
         x = self.embed(x)
         for layer in self.layers:
             x = layer(x)
-        return self.head(x)
+        x = self.head(x)
+        return x * self.scale.astype(x.dtype)
 
 
 def experts(model):
@@ -305,6 +312,16 @@ def check_fp8_checkpoint(ckpt_path, muon, mp=True):
 
     model, opt, ctx = build()
     train_steps(model, opt, data, [0, 1])
+    # A padding-only shard gets no optimizer state.
+    padding = [
+        g.params_buffer.data_buffer
+        for g in ctx.buffer_manager.buffer_groups
+        if not any(g.params_buffer.param_shard(p) for p in g.params)
+    ]
+    assert padding or paddle.distributed.get_rank() == 0
+    for buf in padding:
+        assert buf.stop_gradient
+        assert all(buf.name not in a for a in opt._accumulators.values())
     state = dict(model.sharded_state_dict())
     state.update(opt.sharded_state_dict())
     keys = [key for key, _, _ in fp8_slices(ctx)]
@@ -332,6 +349,8 @@ def check_fp8_checkpoint(ckpt_path, muon, mp=True):
     state = dict(model.sharded_state_dict())
     state.update(opt.sharded_state_dict())
     assert sorted(state) == sorted(saved), sorted(set(state) ^ set(saved))
+    # Another call before loading (as EMA does) must reuse the fp8 copies.
+    model.sharded_state_dict()
     paddle.distributed.load_state_dict(state, ckpt_path)
     for key, sharded in state.items():
         np.testing.assert_array_equal(

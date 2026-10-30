@@ -57,11 +57,12 @@ def init_fp8_buffer(params_buffer, params):
 
 
 def build_ckpt_weight(params_buffer, dtype):
-    # A param-dtype main weight is saved as is; an fp32 one as a copy.
-    main = params_buffer.data_buffer
-    weight = main if main.dtype == dtype else main.astype(dtype)
-    params_buffer.fp8.weight_copy = weight
-    return weight
+    # fp32 main is saved as a copy, reused until the next forward syncs it.
+    fp8 = params_buffer.fp8
+    if fp8.weight_copy is None:
+        main = params_buffer.data_buffer
+        fp8.weight_copy = main if main.dtype == dtype else main.astype(dtype)
+    return fp8.weight_copy
 
 
 @paddle.autograd.no_grad()
