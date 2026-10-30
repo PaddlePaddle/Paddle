@@ -130,6 +130,7 @@ class TensorFusionBuffer:
         grad_div=None,
         shard_buffer=True,
         shard_align_numel=None,
+        grad_comm_dtype=None,
         comm_stream=None,
     ):
         # Calculate total buffer size needed (with padding)
@@ -143,6 +144,10 @@ class TensorFusionBuffer:
         self.main_grad_dtype = (
             main_grad_dtype if main_grad_dtype is not None else dtype
         )
+        self.grad_comm_dtype = (
+            grad_comm_dtype if grad_comm_dtype != self.main_grad_dtype else None
+        )
+        self._rs_comm_buffer = None
         self.grad_div = grad_div if grad_div is not None else fsdp_group.nranks
         self.grad_accum_steps = 1
         self.grad_scale = 1.0 / self.grad_div
@@ -342,21 +347,31 @@ class TensorFusionBuffer:
         else:
             tmp_buffer.scale_(self.grad_scale)
             op = paddle.distributed.ReduceOp.SUM
+        if self.grad_comm_dtype is None:
+            self._rs_comm_buffer = tmp_buffer
+        else:
+            self._rs_comm_buffer = paddle.cast(tmp_buffer, self.grad_comm_dtype)
+            self.tmp_data_buffer = None
+        full = self._rs_comm_buffer
+        shard = full._slice(0, self.data_buffer.shape[0])
 
         def reduce():
             paddle.distributed.stream.reduce_scatter(
-                tmp_buffer._slice(0, self.data_buffer.shape[0]),
-                tmp_buffer,
+                shard,
+                full,
                 op=op,
                 group=self.fsdp_group,
                 sync_op=True,
                 use_calc_stream=True,
             )
 
-        return run_on_stream(self.comm_stream, (tmp_buffer,), reduce)
+        return run_on_stream(self.comm_stream, (full,), reduce)
 
     def accumulate_reduced_grad(self):
-        shard = self.get_tmp_buffer()._slice(0, self.data_buffer.shape[0])
+        shard = self._rs_comm_buffer._slice(0, self.data_buffer.shape[0])
+        self._rs_comm_buffer = None
+        if shard.dtype != self.data_buffer.dtype:
+            shard = shard.astype(self.data_buffer.dtype)
         self.data_buffer.add_(shard)
         self.clear_tmp_buffer()
 
@@ -393,9 +408,11 @@ class FSDPBufferManager:
         model,
         fsdp_unit_layers=None,
         main_grad_dtype=None,
+        grad_comm_dtype=None,
         fp8_main_dtype=paddle.float32,
     ):
         self.model = model
+        self.grad_comm_dtype = grad_comm_dtype
         self._comm_streams = {}
         self.hcg = fleet.get_hybrid_communicate_group()
         self._fsdp_group = self.hcg.get_sharding_parallel_group()
@@ -581,6 +598,7 @@ class FSDPBufferManager:
                     grad_div=self._fsdp_group.nranks,
                     shard_buffer=grads_shard_buffer,
                     shard_align_numel=shard_align,
+                    grad_comm_dtype=self.grad_comm_dtype,
                     comm_stream=self._comm_stream(group.fsdp_group),
                 )
             group.muon_shard_numel = (
@@ -1102,6 +1120,7 @@ class FSDPCommManager:
         grads_buffer.comm_task = grads_buffer.do_reduce_scatter()
         self.grad_reduce_queue.append(grads_buffer)
         self._grad_queue_numel += grads_buffer.total_buffer_size
+        self._release_reduced_grad_views(grads_buffer)
         if not self.enable_overlap:
             self._wait_for_grad_comm(queue_limit=0)
 
@@ -1327,6 +1346,9 @@ class FullyShardFusion:
             self.model,
             fsdp_unit_layers,
             None if mp_policy is None else mp_policy.reduce_dtype,
+            grad_comm_dtype=None
+            if mp_policy is None
+            else mp_policy.grad_comm_dtype,
             fp8_main_dtype=fp8_main_dtype,
         )
         self.comm_manager = FSDPCommManager(
