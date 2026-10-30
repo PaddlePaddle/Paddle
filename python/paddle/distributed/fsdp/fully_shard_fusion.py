@@ -646,12 +646,84 @@ class FSDPCommManager:
         self.buffer_cnt_in_using = 0
         self.need_zero_grads = True
         self._last_backward_unit_id = None
+        self.dense_reduce_scatter_streams = 1
+        self._dense_rs_groups = {}
+        self._grads_reduced = False
 
         # By size: gathered param elements and queued grad elements.
         self.gathered_numel = 0
         self._grad_queue_numel = 0
         if self.prefetch_by_size:
             self._init_prefetch_by_size(comm_unit_size)
+
+    def set_dense_reduce_scatter_streams(self, n_streams):
+        n_streams = int(n_streams)
+        if n_streams < 1:
+            raise ValueError(
+                f"dense reduce-scatter streams must be >= 1, got {n_streams}"
+            )
+        if self._grads_reduced:
+            raise RuntimeError(
+                "set_dense_reduce_scatter_streams must be called before the "
+                "first backward"
+            )
+        if self.dense_reduce_scatter_streams != 1:
+            raise RuntimeError(
+                "dense reduce-scatter streams are already set to "
+                f"{self.dense_reduce_scatter_streams}"
+            )
+        if n_streams == 1:
+            return
+        # The k-th sharded dense group of every unit reduce-scatters over the
+        # (k % n_streams)-th clone of its fsdp_group. Clones keep the same rank
+        # list, so shard layout and results are unchanged; each has its own
+        # NCCL communicator and stream. With CUDA_DEVICE_MAX_CONNECTIONS=1 all
+        # streams share one hardware queue, and several RS queued back to back
+        # on one stream block unrelated compute kernels behind them.
+        per_unit = {}
+        for group in self.buffer_manager.buffer_groups:
+            grads_buffer = group.grads_buffer
+            if (
+                group.fsdp_unit_id is None
+                or group.is_expert_param
+                or grads_buffer is None
+                or not grads_buffer.is_sharded
+            ):
+                continue
+            per_unit.setdefault(group.fsdp_unit_id, []).append(group)
+
+        # new_group is a collective call: gids come from a per-rank counter and
+        # the NCCL unique-id store key depends only on the gid, so every rank
+        # must create the same groups in the same order, including groups it
+        # is not in (as topology.py does). Gather the rank lists every rank
+        # wants to clone, then clone each of them everywhere.
+        local = sorted(
+            {
+                tuple(group.grads_buffer.fsdp_group.ranks)
+                for groups in per_unit.values()
+                for group in groups
+            }
+        )
+        gathered = []
+        paddle.distributed.all_gather_object(gathered, local)
+        all_ranks = sorted({ranks for lst in gathered for ranks in lst})
+        for ranks in all_ranks:
+            self._dense_rs_groups[ranks] = [
+                paddle.distributed.new_group(ranks=list(ranks))
+                for _ in range(n_streams - 1)
+            ]
+
+        for unit_id in sorted(per_unit):
+            for k, group in enumerate(per_unit[unit_id]):
+                orig = group.grads_buffer.fsdp_group
+                clones = [orig] + self._dense_rs_groups[tuple(orig.ranks)]
+                clone = clones[k % n_streams]
+                group.grads_buffer.fsdp_group = clone
+                # Collectives run on a per-group stream; give the clone its own.
+                group.grads_buffer.comm_stream = (
+                    self.buffer_manager._comm_stream(clone)
+                )
+        self.dense_reduce_scatter_streams = n_streams
 
     def _init_prefetch_by_size(self, unit_size):
         groups = self.buffer_manager.buffer_groups
@@ -1048,6 +1120,7 @@ class FSDPCommManager:
             return
         # Grad queue mechanism: wait and release completed reduce_scatter async tasks
         self._wait_for_grad_comm(next_numel=grads_buffer.total_buffer_size)
+        self._grads_reduced = True
         grads_buffer.comm_task = grads_buffer.do_reduce_scatter()
         self.grad_reduce_queue.append(grads_buffer)
         self._grad_queue_numel += grads_buffer.total_buffer_size
@@ -1734,6 +1807,21 @@ class FullyShardFusion:
                 continue
             grads_buffer.grad_accum_steps = steps
             grads_buffer.grad_scale = 1.0 / (grads_buffer.grad_div * steps)
+
+    def set_dense_reduce_scatter_streams(self, n_streams):
+        """Spread the reduce-scatters of each unit's dense grad groups over
+        ``n_streams`` clones of their process group, one NCCL communicator
+        and stream each. Clones keep the rank list, so results are unchanged.
+
+        Helps when ``CUDA_DEVICE_MAX_CONNECTIONS=1`` serializes the dense
+        reduce-scatters of a unit behind each other and stalls compute
+        kernels queued after them. Each clone costs one more communicator.
+
+        Collective: call it on all ranks with the same ``n_streams``, after
+        ``fully_shard`` and before the first backward. ``1`` keeps one
+        stream; it can be set only once.
+        """
+        self.comm_manager.set_dense_reduce_scatter_streams(n_streams)
 
     def comm_sync_and_reset_status(self):
         self.comm_manager.finish_grads_sync()

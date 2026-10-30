@@ -12,11 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import time
 import unittest
 
 from legacy_test.test_parallel_dygraph_dataparallel import (
     TestMultipleAccelerators,
+    get_cluster_from_args,
+    get_devices,
+    start_local_trainers,
+    watch_local_trainers,
 )
+
+from paddle import base
 
 
 class TestDygraphGroupSharded(TestMultipleAccelerators):
@@ -31,6 +38,28 @@ class TestDygraphGroupSharded(TestMultipleAccelerators):
     # check dygraph fsdp for some functions.
     def test_dygraph_group_fsdp(self):
         self.run_mnist_2accelerators('dygraph_group_fsdp.py')
+
+    # fsdp with several sharding groups (dp x sharding); needs 4 cards.
+    def test_dygraph_group_fsdp_multi_group(self):
+        if (
+            not base.core.is_compiled_with_cuda()
+            or base.core.get_cuda_device_count() < 4
+        ):
+            return
+        cluster, pod = get_cluster_from_args(get_devices('0,1,2,3'))
+        procs = start_local_trainers(
+            cluster,
+            pod,
+            allocator_strategy="auto_growth",
+            training_script='dygraph_group_fsdp_multi_group.py',
+            training_script_args=[],
+        )
+        while True:
+            alive = watch_local_trainers(procs, cluster.trainers_endpoints())
+            if not alive:
+                print(f"Local procs complete, POD info:{pod}")
+                break
+            time.sleep(3)
 
 
 if __name__ == "__main__":
