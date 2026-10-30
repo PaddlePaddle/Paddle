@@ -813,8 +813,7 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
                     dygraph_function_call_str + ", predefined_out"
                 )
         if forward_api_name == "addcmul" and get_predefined_out_str:
-            # Same as PyTorch and paddle.addmm, out= does not support autograd,
-            # checked before anything is written to out.
+            # Check autograd before anything is written to out
             get_predefined_out_str += """
     if (predefined_out && egr::EagerUtils::ComputeRequireGrad(
             egr::Controller::Instance().HasGrad(),
@@ -876,7 +875,7 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
         else:
             return_str = "    return ToPyObject(ad_func_out);"
             if forward_api_name == "addcmul" and get_predefined_out_str:
-                # Preserve the Python identity of the explicitly supplied out.
+                # Return the out object passed in by the user
                 return_str = (
                     """    if (predefined_out) {
       PyObject* out = PyDict_GetItemString(kwargs, "out");

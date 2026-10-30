@@ -67,8 +67,7 @@ def get_attr_default_value(op_name):
 
 
 def to_json_value(value):
-    # The default of a Scalar attribute (ScalarType in ops.yaml) is a
-    # core.Scalar, which json cannot encode, so keep the number it holds.
+    # core.Scalar is not JSON serializable
     if isinstance(value, core.Scalar):
         return value.value()
     return value

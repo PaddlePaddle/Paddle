@@ -28,13 +28,8 @@
 namespace phi {
 namespace funcs {
 
-// The two host-only helpers below are static, so the CPU kernels run their own
-// copy rather than the one in the .cu objects, which the coverage build does
-// not instrument.
-
-// Whether value overflows type To, the same as PyTorch: inf and nan can be
-// cast to floating-point types, and negative values can wrap around for
-// unsigned integer types.
+// inf and nan can be cast to floating-point types, and negative values can
+// wrap around for unsigned integer types
 template <typename To, typename From>
 static bool AddcmulValueOverflows(From value) {
   using Limits = std::numeric_limits<To>;
@@ -56,8 +51,6 @@ static bool AddcmulValueOverflows(From value) {
   }
 }
 
-// Converts value to the computation type of T, raising an error if it
-// overflows, the same as PyTorch.
 template <typename T>
 static typename phi::dtype::MPTypeTrait<T>::Type GetAddcmulValue(
     const Scalar& value) {
@@ -95,8 +88,7 @@ static typename phi::dtype::MPTypeTrait<T>::Type GetAddcmulValue(
   return value.to<MPType>();
 }
 
-// out = input + value * tensor1 * tensor2, computed in MPType so that
-// float16 and bfloat16 inputs are accumulated in float.
+// out = input + value * tensor1 * tensor2
 template <typename T>
 struct AddcmulFunctor {
   using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
@@ -115,8 +107,7 @@ struct AddcmulFunctor {
   MPType value_;
 };
 
-// Gradient of addcmul w.r.t. one multiplicand: out_grad * conj(value * other),
-// where other is the other multiplicand.
+// dtensor1 = dout * conj(value * tensor2), and vice versa
 template <typename T>
 struct AddcmulGradFunctor {
   using MPType = typename phi::dtype::MPTypeTrait<T>::Type;

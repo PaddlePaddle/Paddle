@@ -256,8 +256,6 @@ MULTI_INPUTS_TYPE_PROMOTION_LOGIC_TEMPLATE = """
   }}
 """
 
-# For inplace ops, the result is computed in the promoted dtype and then written
-# back to the inplaced input without changing its dtype, the same as PyTorch.
 MULTI_INPUTS_INPLACE_TYPE_PROMOTION_LOGIC_TEMPLATE = """
     std::vector<phi::DataType> input_dtypes = {{{input_dtypes}}};
     if (phi::NeedTypePromotion("{op_name}", input_dtypes)) {{
@@ -920,7 +918,6 @@ class CodeGen:
                 x_cast=x_cast,
                 args=args,
             )
-        # ops with more than two inputs, e.g. addcmul
         inputs_cast = [
             f'auto new_{name} = pir::PromoteCast("{name}", {name}, promotion_type);'
             for name in promote_inputs[1:]

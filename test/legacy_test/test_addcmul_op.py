@@ -24,7 +24,6 @@ from paddle.base.framework import _dygraph_guard
 HAS_CUDA = (
     paddle.is_compiled_with_cuda() and paddle.device.cuda.device_count() > 0
 )
-# Without stride kernels, as on the Linux-XPU CI, transpose returns a copy.
 USE_STRIDE_KERNEL = paddle.get_flags('FLAGS_use_stride_kernel')[
     'FLAGS_use_stride_kernel'
 ]
@@ -93,10 +92,7 @@ class AddcmulTestBase(unittest.TestCase):
         self.rng = np.random.default_rng(2026)
 
     def run_static(self, feed, build):
-        """Runs a PIR program that applies build to the paddle.static.data of
-        the arrays in feed, and fetches the values build returns."""
-        # Leave dygraph mode through _dygraph_guard instead of IrGuard, whose
-        # paddle.disable_static resets the place of the later dygraph code.
+        # IrGuard alone would reset the place of the later dygraph code
         with _dygraph_guard(None), paddle.pir_utils.IrGuard():
             main = paddle.static.Program()
             with paddle.static.program_guard(main, paddle.static.Program()):
@@ -129,7 +125,6 @@ class TestAddcmulAPI(AddcmulTestBase):
         return inputs[0].numpy()
 
     def check(self, arrays, expected, value=None, inplace=False, exact=False):
-        """Checks the results of both dygraph and static graph."""
         for static in (False, True):
             with self.subTest(static=static):
                 actual = self.run_addcmul(arrays, value, static, inplace)
@@ -207,9 +202,7 @@ class TestAddcmulAPI(AddcmulTestBase):
         np.testing.assert_array_equal(out.numpy(), expected)
 
     def test_type_promotion(self):
-        # Same as PyTorch, a 0-D operand does not widen the N-D operands of the
-        # same category, e.g. a float64 0-D tensor with float32 vectors gives
-        # float32.
+        # A 0-D operand does not widen the N-D operands of the same category
         vector, scalar = (2,), ()
         for dtypes, shapes, expected_dtype in (
             (('int32', 'int64', 'int64'), (vector,) * 3, 'int64'),
@@ -285,7 +278,7 @@ class TestAddcmulAPI(AddcmulTestBase):
         self.check((real,) * 3, np.full(2, 2, 'float32'), value=1 + 0j)
 
     def test_value_overflow(self):
-        # Same as PyTorch, value is checked even when the output is empty.
+        # value is checked even when the output is empty
         for static in (False, True):
             for shape in ((1,), (0,)):
                 for dtype, value in (
@@ -313,8 +306,6 @@ class TestAddcmulAPI(AddcmulTestBase):
         self.check((one, np.array([inf]), one), np.array([np.nan]), value=0)
 
     def test_out(self):
-        # out keeps its dtype and identity, rejects an unsafe cast, and can be
-        # input itself.
         x = paddle.to_tensor([1.0, 2.0])
         for dtype in ('float32', 'float64'):
             with self.subTest(dtype=dtype):
@@ -331,8 +322,7 @@ class TestAddcmulAPI(AddcmulTestBase):
         np.testing.assert_array_equal(x.numpy(), [5, 11])
 
     def test_out_rejects_autograd(self):
-        # Same as PyTorch, out= does not support autograd and keeps out
-        # unchanged, but it can still be used under no_grad.
+        # out= does not support autograd, but can be used under no_grad
         for dtype in ('float32', 'float64'):
             for i, name in enumerate(('input', 'tensor1', 'tensor2', 'out')):
                 with self.subTest(dtype=dtype, requires_grad=name):
@@ -358,8 +348,6 @@ class TestAddcmulAPI(AddcmulTestBase):
                     np.testing.assert_array_equal(target.numpy(), [2])
 
     def test_inplace(self):
-        # The multipliers are broadcast to input, which keeps its dtype while
-        # the result is computed in the promoted dtype.
         a, b = np.array([[2.0], [4.0]]), np.array([1.0, 2.0, 3.0])
         expected = np.array([[2.0, 3, 4], [3, 5, 7]])
         self.check((np.ones((2, 3)), a, b), expected, value=0.5, inplace=True)
@@ -374,7 +362,6 @@ class TestAddcmulAPI(AddcmulTestBase):
         np.testing.assert_array_equal(x.numpy(), expected)
 
     def test_inplace_errors(self):
-        # input can neither be broadcast nor be cast unsafely.
         for static in (False, True):
             for dtype in ('float32', 'float64'):
                 arrays = (
@@ -398,7 +385,6 @@ class TestAddcmulAPI(AddcmulTestBase):
                 self.run_addcmul(arrays, static=static, inplace=True)
 
     def test_inplace_grad_leaf(self):
-        # A leaf that requires grad can only be updated in place under no_grad.
         for dtype in ('float32', 'float64'):
             with self.subTest(multiplier_dtype=dtype):
                 x = paddle.to_tensor([1.0], stop_gradient=False)
@@ -441,7 +427,6 @@ class TestAddcmulGrad(AddcmulTestBase):
         )
 
     def first_grads(self, data, upstream, value, mask, static):
-        """Returns the grads of the inputs selected by the bits of mask."""
         selected = [i for i in range(3) if mask & (1 << i)]
 
         def build(*tensors):
@@ -460,9 +445,7 @@ class TestAddcmulGrad(AddcmulTestBase):
         return [grad.numpy() for grad in build(*tensors)]
 
     def second_grads(self, data, upstream, seeds, value, wrt, static):
-        """Returns the grads of the first order grads with the seeds as their
-        upstream grads, with respect to the tensors of NAMES at wrt. A None
-        seed leaves that first order grad unused."""
+        # A None seed leaves that first order grad unused
         used = [i for i, seed in enumerate(seeds) if seed is not None]
 
         def build(*tensors):
@@ -535,8 +518,7 @@ class TestAddcmulGrad(AddcmulTestBase):
                     )
 
     def test_first_gradient_input_dtypes(self):
-        # All products, partial sums, and expected gradients are exactly
-        # representable in both float16 and bfloat16.
+        # All the values are exactly representable in float16 and bfloat16
         cases = [((paddle.float16,) * 3, paddle.float16)]
         if not self.use_cuda or core.is_bfloat16_supported(self.place):
             cases.append(((paddle.bfloat16,) * 3, paddle.bfloat16))
@@ -565,7 +547,6 @@ class TestAddcmulGrad(AddcmulTestBase):
                 output = paddle.addcmul(*inputs, value=0.5)
                 self.assertEqual(output.dtype, out_dtype)
                 grads = paddle.grad(output, inputs, grad_outputs=upstream)
-                # The grads keep the dtypes of the inputs.
                 for grad, reference, dtype in zip(grads, expected, dtypes):
                     self.assertEqual(grad.dtype, dtype)
                     self.assertEqual(tuple(grad.shape), reference.shape)
@@ -640,7 +621,6 @@ class TestAddcmulGrad(AddcmulTestBase):
             self.array(shape, dtype) if mask & (1 << i) else None
             for i, shape in enumerate(shapes)
         ]
-        # Only request the connected derivatives.
         wrt, expected = [], []
         if mask & 4:
             wrt.append(1)
@@ -671,8 +651,7 @@ class TestAddcmulGrad(AddcmulTestBase):
                     self.assert_gradient(grad, reference)
 
     def test_second_gradient(self):
-        # Omitted first order grads exercise the optional grad_input_grad,
-        # grad_tensor1_grad and grad_tensor2_grad of the double grad.
+        # Omitted first order grads exercise the optional inputs of double grad
         for dtype, value in (('float64', -0.75), ('complex128', 1 + 2j)):
             for shapes, masks in (
                 (((2, 1), (1, 3), ()), range(1, 8)),
@@ -699,14 +678,10 @@ class TestAddcmulGrad(AddcmulTestBase):
                     )
 
     def test_second_gradient_float16(self):
-        # Same as PyTorch, float16 is computed in float32, where value and the
-        # intermediate results do not overflow.
         x, half, upstream = (np.array([v], 'float16') for v in (0, 0.5, 2**-10))
         seed = np.ones(1, 'float16')
-        # PyTorch's double backward gives value * 2**-10 and value * 0.5. 73728
-        # overflows float16 but both results are exact in it, so they do not
-        # depend on the rounding of the final float32 -> float16 cast, which
-        # truncates on ARM CPUs (PADDLE_WITH_ARM).
+        # Computed in float32, where 73728 does not overflow. The results are
+        # exact in float16, so the truncating cast on ARM CPUs keeps them.
         for value, expected in ((0.5, (2**-11, 0.25)), (73728, (72, 36864))):
             for static in (False, True):
                 with self.subTest(value=value, static=static):
@@ -725,8 +700,8 @@ class TestAddcmulGrad(AddcmulTestBase):
                         )
 
     def test_second_gradient_missing_or_zero_first_grad(self):
-        # Same as PyTorch, a missing first order grad is skipped, while a zero
-        # one still gives value * 0, which is nan when value is inf or nan.
+        # A missing first order grad is skipped, while a zero one still gives
+        # value * 0, which is nan when value is inf or nan
         data = [np.ones(shape) for shape in ((2, 3), (3,), (2, 1))]
         for value in (0.75, float('inf'), float('nan')):
             for seed_values in (

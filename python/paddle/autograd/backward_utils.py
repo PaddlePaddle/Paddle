@@ -28,8 +28,7 @@ from paddle.base.libpaddle.pir import (
 from paddle.base.wrapped_decorator import signature_safe_contextmanager
 
 # The unused output grads of these ops are passed to their vjps as empty values
-# instead of zeros, since their double grads treat a missing grad differently
-# from a zero one, e.g. value * 0 is nan when the value of addcmul is inf.
+# instead of zeros, e.g. value * 0 is nan when the value of addcmul is inf.
 ALLOW_EMPTY_OUTPUT_GRAD_OPS = [
     "pd_op.addcmul_grad",
 ]

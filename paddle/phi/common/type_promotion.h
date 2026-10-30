@@ -232,8 +232,7 @@ inline bool NeedTypePromotion(
   }
 }
 
-// Type promotion for ops with more than two inputs, e.g. addcmul. Unlike the
-// two inputs case, any mix of data types is promoted, the same as PyTorch.
+// Ops with more than two inputs promote any mix of data types
 inline bool NeedTypePromotion(const std::string& op_name,
                               const std::vector<DataType>& dtypes) {
   for (const auto& dtype : dtypes) {
@@ -244,9 +243,8 @@ inline bool NeedTypePromotion(const std::string& op_name,
   return false;
 }
 
-// Same as PyTorch, the 0-d tensors only take part in the promotion when their
-// category (bool < integer < floating-point < complex) is higher than the
-// other tensors.
+// 0-d tensors only take part in the promotion when their category
+// (bool < integer < floating-point < complex) is higher than other tensors
 inline DataType GetPromoteDtype(
     const std::string& op_name,
     const std::vector<DataType>& dtypes,
@@ -281,8 +279,7 @@ inline DataType GetPromoteDtype(
   return dtype;
 }
 
-// Whether a result of dtype from can be written into a tensor of dtype to,
-// the same as torch.can_cast.
+// Same as torch.can_cast
 inline bool CanCast(const DataType& from, const DataType& to) {
   if (is_support_complex(from) && !is_support_complex(to)) {
     return false;

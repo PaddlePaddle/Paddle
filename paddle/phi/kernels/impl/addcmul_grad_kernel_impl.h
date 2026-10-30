@@ -26,7 +26,6 @@
 
 namespace phi {
 
-// Sums grad_b, which has the broadcast output shape, into grad.
 template <typename T, typename Context>
 void AddcmulReduceGrad(const Context& dev_ctx,
                        const DenseTensor& grad_b,
@@ -39,9 +38,6 @@ void AddcmulReduceGrad(const Context& dev_ctx,
   grad->Resize(grad_dims);
 }
 
-// Computes the gradient of one multiplicand: out_grad * conj(value * other),
-// then reduces it to the shape of grad. The broadcast intermediate result is
-// only allocated when grad really needs a reduction.
 template <typename T, typename Context>
 void AddcmulMultiplicandGrad(const Context& dev_ctx,
                              const DenseTensor& out_grad,
@@ -118,8 +114,7 @@ void AddcmulDoubleGradKernel(
     DenseTensor* tensor2_grad,
     DenseTensor* grad_out_grad) {
   funcs::AddcmulGradFunctor<T> functor(funcs::GetAddcmulValue<T>(value));
-  // The grad of one multiplicand is grad_out * conj(value * other), so its
-  // grad w.r.t. the other one has the same form with grad_other_grad.
+  // dtensor1 = dout * conj(value * ddtensor2), and vice versa
   auto multiplicand_grad =
       [&](const paddle::optional<DenseTensor>& grad_other_grad,
           DenseTensor* grad) {
@@ -137,10 +132,9 @@ void AddcmulDoubleGradKernel(
   multiplicand_grad(grad_tensor1_grad, tensor2_grad);
 
   if (grad_out_grad) {
-    // grad_out_grad = grad_input_grad + value * (grad_tensor1_grad * tensor2 +
-    // grad_tensor2_grad * tensor1), broadcast to the shape of grad_out. The
-    // missing grads are skipped instead of being treated as zeros, since
-    // value * 0 is nan when value is inf or nan.
+    // ddout = ddinput + value * (ddtensor1 * tensor2 + ddtensor2 * tensor1).
+    // Missing grads are skipped rather than treated as zeros, since value * 0
+    // is nan when value is inf or nan.
     Full<T, Context>(dev_ctx, grad_out_grad->dims(), 0, grad_out_grad);
     if (grad_input_grad) {
       funcs::ElementwiseCompute<funcs::AddFunctor<T>, T>(dev_ctx,

@@ -68,7 +68,6 @@ bool AddcmulOpInferSymbolicShape(
       infer_context->GetShapeOrDataForValue(op->operand_source(0)).shape(),
       infer_context->GetShapeOrDataForValue(op->operand_source(1)).shape(),
       infer_context->GetShapeOrDataForValue(op->operand_source(2)).shape()};
-  // NOTE(large-tensor): tensor rank is a small integer
   size_t out_rank = 0;
   for (const auto &shape : input_shapes) {
     out_rank = std::max(out_rank, shape.size());

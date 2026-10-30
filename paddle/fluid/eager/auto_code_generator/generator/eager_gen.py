@@ -927,8 +927,6 @@ MULTI_INPUTS_TYPE_PROMOTION_LOGIC_TEMPLATE = """
   }}
 """
 
-# The predefined out keeps its dtype and the result is cast to it, the same as
-# PyTorch.
 MULTI_INPUTS_OUT_CAST_TEMPLATE = """
     if (predefined_out && (*predefined_out)->initialized() && (*predefined_out)->dtype() != promotion_type) {{
       paddle::Tensor& out_tensor = **predefined_out;
@@ -938,8 +936,6 @@ MULTI_INPUTS_OUT_CAST_TEMPLATE = """
     }}
 """
 
-# For inplace ops, the result is computed in the promoted dtype and then written
-# back to the inplaced input without changing its dtype, the same as PyTorch.
 MULTI_INPUTS_INPLACE_TYPE_PROMOTION_LOGIC_TEMPLATE = """
     if (phi::NeedTypePromotion({op_func_name}, {{{input_dtypes}}})) {{
     LOG_FIRST_N(WARNING, 1) << "Got different data type, run type promotion automatically, this may cause data type been changed.";
@@ -1152,7 +1148,6 @@ def GenerateTypePromotionLogic(
             op_name=op_name,
             return_value=return_value,
         )
-    # ops with more than two inputs, e.g. addcmul
     inputs_cast = [
         f'auto new_{name} = egr::PromoteCast("{name}", {name}, promotion_type);'
         for name in promote_inputs[1:]
@@ -2726,8 +2721,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
         else:
             early_check_inplace_str = ""
             if forward_api_name == "addcmul_":
-                # Check the original input before promotion can return through
-                # assign_out_, and before the kernel can modify a leaf tensor.
+                # Check inplace before type promotion or the API call modifies input
                 early_check_inplace_str = f"""
   {{
 {inputs_autograd_meta_str}

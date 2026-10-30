@@ -36,8 +36,7 @@ void AddcmulKernel(const Context& dev_ctx,
   }
 
   // BroadcastKernel aligns all lower-rank inputs with the same axis, which is
-  // wrong when the three inputs have different ranks. Extend every input to
-  // the output rank first, this only changes the metadata.
+  // wrong for inputs of different ranks, so extend them to the output rank.
   const int rank = out->dims().size();
   DenseTensor input_ext(input);
   DenseTensor tensor1_ext(tensor1);

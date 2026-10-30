@@ -272,7 +272,6 @@ def prepare_grad_outputs(grad_outputs, outputs, state):
                 visited_output.add(opresult)
                 continue
             elif output.get_defining_op().name() in ALLOW_EMPTY_OUTPUT_GRAD_OPS:
-                # Keep the grad missing, it is passed to the vjp as empty.
                 continue
             else:
                 if paddle.pir.is_fake_value(opresult):
@@ -470,8 +469,6 @@ def append_backward_ops(
 
                     zero_flag[i] = True
                     if op.name() in ALLOW_EMPTY_OUTPUT_GRAD_OPS:
-                        # Pass the missing grad to the vjp as an empty value
-                        # instead of zeros.
                         outputs.append(new_value)
                         output_grads.append([paddle.pir.fake_value()])
                         continue

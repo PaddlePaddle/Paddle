@@ -1067,8 +1067,7 @@ void addcmul_double_grad(const Tensor& tensor1,
   const phi::DataType dtype = grad_out.dtype();
   const bool is_complex =
       dtype == phi::DataType::COMPLEX64 || dtype == phi::DataType::COMPLEX128;
-  // Compute float16 and bfloat16 in float32 like the kernels, since value can
-  // overflow them and some of their kernels are missing on CPU.
+  // Compute float16 and bfloat16 in float32, since value may overflow them.
   const bool need_cast =
       dtype == phi::DataType::FLOAT16 || dtype == phi::DataType::BFLOAT16;
   const phi::DataType compute_dtype =
@@ -1079,14 +1078,10 @@ void addcmul_double_grad(const Tensor& tensor1,
   auto restore = [&](const Tensor& x) {
     return need_cast ? cast<T>(x, dtype) : x;
   };
-  // Multiply by a 0-D tensor instead of scale, whose grad does not conjugate
-  // a complex scale in higher order derivatives.
+  // Use a 0-D tensor instead of scale, whose grad does not conjugate value.
   auto value_tensor =
       full<T>(std::vector<int64_t>(), value, compute_dtype, grad_out.place());
-  // The first order grad of one multiplicand is
-  // grad_out * conj(value * other), so its grad w.r.t. other is
-  // conj(grad_other_grad * conj(grad_out) * value), reduced to the shape of
-  // other.
+  // dtensor1 = conj(ddtensor2 * conj(dout) * value), and vice versa
   auto multiplicand_grad = [&](const optional<Tensor>& grad_other_grad,
                                const Tensor& other) {
     if (!grad_other_grad) {
@@ -1123,8 +1118,7 @@ void addcmul_double_grad(const Tensor& tensor1,
     set_output<T>(multiplicand_grad(grad_tensor1_grad, tensor2), tensor2_grad);
   }
   if (grad_out_grad) {
-    // ddout = ddinput + value * (ddtensor1 * tensor2 + ddtensor2 * tensor1),
-    // broadcast to the shape of grad_out.
+    // ddout = ddinput + value * (ddtensor1 * tensor2 + ddtensor2 * tensor1)
     auto ddout = full<T>(
         common::vectorize(grad_out.dims()), 0, compute_dtype, grad_out.place());
     if (grad_input_grad) {
