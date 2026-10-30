@@ -14,7 +14,10 @@
 
 from __future__ import annotations
 
+import contextlib
+import functools
 import gc
+import inspect
 import json
 import math
 import os
@@ -77,6 +80,87 @@ PATH_TO_CHECKPOINT_FILES: dict[str, tuple[list, list]] = {}
 _UNINIT_TENSOR_MODES = ["send_recv", "grouped_send_recv"]
 
 _metadata_manager = MetadataManager()
+
+
+def _is_pinned_target(tensor) -> bool:
+    return (
+        isinstance(tensor, paddle.Tensor)
+        and tensor._is_initialized()
+        and tensor.place.is_cuda_pinned_place()
+    )
+
+
+def _cpu_copy_of_pinned(tensor):
+    # ``.cpu()`` on a non-contiguous pinned view needs a strided copy, which
+    # has no pinned-input kernel; go through numpy for that case. Neither path
+    # moves the pinned tensor.
+    if tensor.is_contiguous():
+        return tensor.cpu()
+    # ``paddle.to_tensor`` restores the original dtype, including bfloat16,
+    # which numpy carries as uint16.
+    return paddle.to_tensor(tensor.numpy(), place=paddle.CPUPlace())
+
+
+@contextlib.contextmanager
+def _stage_pinned_targets_on_cpu(state_dict):
+    """Load into CPU staging copies of targets that live on CUDA pinned memory.
+
+    The load path reshapes, flattens and slices the target tensors and then
+    assigns into them. With a CUDA-pinned input those ops select the GPU kernel
+    and share the GPU copy back into the input, so an offloaded optimizer
+    state would silently migrate to GPU (or the write would land in a
+    discarded buffer), and strided copies into a pinned view are not
+    supported. Every pinned target is therefore swapped for a CPU copy for the
+    duration of the load, and the result is copied back into the original
+    pinned tensor on exit, so it keeps its place and storage.
+    """
+    staged = []  # (holder, key, original); key is None for a ShardedWeight
+    for key, value in state_dict.items():
+        if isinstance(value, ShardedWeight):
+            if _is_pinned_target(value.local_tensor):
+                staged.append((value, None, value.local_tensor))
+                value.local_tensor = _cpu_copy_of_pinned(value.local_tensor)
+        elif (
+            isinstance(value, paddle.Tensor)
+            and not value.is_dist()
+            and _is_pinned_target(value)
+        ):
+            staged.append((state_dict, key, value))
+            state_dict[key] = _cpu_copy_of_pinned(value)
+    if not staged:
+        yield
+        return
+
+    loaded = False
+    try:
+        yield
+        loaded = True
+    finally:
+        for holder, key, original in staged:
+            if key is None:
+                result = holder.local_tensor
+                holder.local_tensor = original
+            else:
+                result = holder[key]
+                holder[key] = original
+            if loaded:
+                if result.shape != original.shape:
+                    result = result.reshape(original.shape)
+                original.copy_(result, True)
+
+
+def _keep_pinned_targets(func):
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        state_dict = kwargs["state_dict"] if "state_dict" in kwargs else args[0]
+        with _stage_pinned_targets_on_cpu(state_dict):
+            return func(*args, **kwargs)
+
+    # ``functools.wraps`` does not keep the argument spec, so
+    # ``inspect.getfullargspec`` would report ``(*args, **kwargs)`` and the
+    # public signature of the decorated API would look changed.
+    wrapper.__signature__ = inspect.signature(func)
+    return wrapper
 
 
 def _state_key_name(
@@ -1004,6 +1088,7 @@ def _finish_unflatten(flat_shards, padding_info):
         flat_shard.local_tensor.flatten_()
 
 
+@_keep_pinned_targets
 def local_load_state_dict(
     state_dict: dict[str, Tensor] | dict[str, ShardedWeight],
     path: str,
@@ -1042,6 +1127,7 @@ def local_load_state_dict(
         paddle.assign(source_tensor, local_tensor)
 
 
+@_keep_pinned_targets
 def load_state_dict(
     state_dict: dict[str, Tensor] | dict[str, ShardedWeight],
     path: str,
