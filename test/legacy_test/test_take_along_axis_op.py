@@ -27,32 +27,60 @@ from op_test import (
 from utils import dygraph_guard
 
 import paddle
+from paddle.base.dygraph.base import switch_to_static_graph
 from paddle.framework import core
 
 paddle.enable_static()
 
 
-class TestTakeAlongAxis0Size(OpTest):
-    def setUp(self):
-        self.python_api = paddle.take_along_axis
-        self.op_type = "take_along_axis"
-        self.dtype = "float64"
-        self.check_pir = True
+class TestTakeAlongAxisEmptyAxis(unittest.TestCase):
+    """Taking from an axis of size 0 with a non-empty index has no valid index
+    value. It used to return a zero-filled output and must now raise
+    OutOfRange (IndexError)."""
 
-        x = np.zeros((2, 0, 5)).astype(self.dtype)
-        indices = np.zeros((2, 3, 5)).astype("int64")
+    def test_dygraph_raises(self):
+        with dygraph_guard():
+            arr = paddle.zeros([2, 0, 5], dtype='float32')
+            indices = paddle.zeros([2, 3, 5], dtype='int64')
+            # a negative axis is canonicalized before the check
+            for axis in (1, -2):
+                with self.assertRaises(IndexError):
+                    paddle.take_along_axis(arr, indices, axis, False)
 
-        self.inputs = {'Input': x, 'Index': indices}
-        self.attrs = {'Axis': 1}
+    def test_static_raises(self):
+        @switch_to_static_graph
+        def build():
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
+                arr = paddle.static.data('arr', [2, 0, 5], 'float32')
+                indices = paddle.static.data('indices', [2, 3, 5], 'int64')
+                paddle.take_along_axis(arr, indices, 1, False)
 
-        output = np.zeros((2, 3, 5)).astype(self.dtype)
-        self.outputs = {'Result': output}
+        with self.assertRaises(IndexError):
+            build()
 
-    def test_check_output(self):
-        self.check_output(check_pir=self.check_pir)
+    def test_static_unknown_index_dim_skips_check(self):
+        # The index is not statically known to be non-empty when one of its dims
+        # is unknown, so the compile-time check is skipped and building must not
+        # raise.
+        @switch_to_static_graph
+        def build():
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
+                arr = paddle.static.data('arr', [2, 0, 5], 'float32')
+                indices = paddle.static.data('indices', [2, -1, 5], 'int64')
+                paddle.take_along_axis(arr, indices, 1, False)
 
-    def test_check_grad(self):
-        self.check_grad(['Input'], 'Result', check_pir=self.check_pir)
+        build()
+
+    def test_empty_index_still_passes(self):
+        with dygraph_guard():
+            arr = paddle.zeros([2, 0, 5], dtype='float32')
+            indices = paddle.zeros([2, 0, 5], dtype='int64')
+            out = paddle.take_along_axis(arr, indices, 1, False)
+            self.assertEqual(out.shape, [2, 0, 5])
 
 
 class TestTakeAlongAxis0Size2(OpTest):
@@ -739,42 +767,29 @@ class TestTakeAlongAxisAPICase4(unittest.TestCase):
             _ = static_f(x, ind, axis=0, broadcast=False)
 
 
-class TestTakeAlongAxis_ZeroSize(OpTest):
+class TestTakeAlongAxis_ZeroSize(unittest.TestCase):
+    """Was an OpTest expecting a zero-filled output and a zero gradient. Taking
+    from an axis of size 0 with a non-empty index has no valid index value, and
+    torch.take_along_dim / torch.gather raise on it, so it now raises
+    OutOfRange (IndexError) on every place."""
+
     def setUp(self):
-        self.python_api = paddle.take_along_axis
-        self.op_type = "take_along_axis"
-        self.dtype = "float64"
-        self.check_pir = True
-
-        x = np.zeros((2, 0, 5)).astype(self.dtype)
-        indices = np.zeros((2, 3, 5)).astype("int64")
-
-        self.inputs = {'Input': x, 'Index': indices}
-        self.attrs = {'Axis': 1}
-
-        output = np.zeros((2, 3, 5)).astype(self.dtype)
-        self.outputs = {'Result': output}
-
-    def test_check_output(self):
-        self.check_output_with_place(
-            paddle.CPUPlace(), check_pir=self.check_pir
-        )
+        self.places = [paddle.CPUPlace()]
         if core.is_compiled_with_cuda() or is_custom_device():
-            self.check_output_with_place(
-                get_device_place(), check_pir=self.check_pir
-            )
+            self.places.append(get_device_place())
 
-    def test_check_grad(self):
-        self.check_grad_with_place(
-            paddle.CPUPlace(), ['Input'], 'Result', check_pir=self.check_pir
-        )
-        if core.is_compiled_with_cuda() or is_custom_device():
-            self.check_grad_with_place(
-                get_device_place(),
-                ['Input'],
-                'Result',
-                check_pir=self.check_pir,
-            )
+    def test_dygraph_raises(self):
+        with dygraph_guard():
+            for place in self.places:
+                x = paddle.to_tensor(
+                    np.zeros((2, 0, 5)), dtype='float64', place=place
+                )
+                x.stop_gradient = False
+                indices = paddle.to_tensor(
+                    np.zeros((2, 3, 5)), dtype='int64', place=place
+                )
+                with self.assertRaises(IndexError):
+                    paddle.take_along_axis(x, indices, 1)
 
 
 class TestTakeAlongAxisInt16(TestTakeAlongAxisOp):
