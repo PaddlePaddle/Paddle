@@ -59,7 +59,8 @@ jobs:
     if: ${{ inputs.clone-can-skip != 'true' && needs.check-bypass.outputs.can-skip != 'true' }}
     needs: [check-bypass]
     runs-on:
-      group: Mac-CI
+      #group: Mac-CI
+      - m4-1
     timeout-minutes: 60
 
     steps:
