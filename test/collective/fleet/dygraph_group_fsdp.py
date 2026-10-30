@@ -27,12 +27,12 @@ from paddle.distributed import fleet
 from paddle.distributed.fleet.utils import mix_precision_utils
 from paddle.distributed.fsdp import fully_shard_fusion
 from paddle.distributed.fsdp._fsdp_context import register_fsdp_context
-from paddle.optimizer.inner_optimizer import InnerOptimizer
-from paddle.optimizer.mixed_inner_optimizer import MixedInnerOptimizer
 from paddle.distributed.fsdp.fully_shard import (
     MixedPrecisionPolicy,
     fully_shard,
 )
+from paddle.optimizer.inner_optimizer import InnerOptimizer
+from paddle.optimizer.mixed_inner_optimizer import MixedInnerOptimizer
 from paddle.optimizer.muon import Muon, MuonParamInfo
 
 HIDDEN = 16
