@@ -1052,6 +1052,94 @@ class TestGatherOp_ZeroSize2(TestGatherOp_ZeroSize):
         self.index_type = "int32"
 
 
+class TestGatherEmptyAxis(unittest.TestCase):
+    """Gathering from an axis of size 0 with a non-empty index has no valid
+    index value, so gather must raise OutOfRange (IndexError) instead of
+    returning uninitialized data."""
+
+    def test_dygraph_raises(self):
+        with dygraph_guard():
+            # gathered axis is 0 (default axis)
+            with self.assertRaises(IndexError):
+                paddle.gather(
+                    paddle.zeros([0], dtype='float32'),
+                    paddle.to_tensor([0, 0, 0], dtype='int64'),
+                )
+            # gathered axis is not 0; a negative axis is canonicalized
+            for axis in (1, -2):
+                with self.assertRaises(IndexError):
+                    paddle.gather(
+                        paddle.zeros([2, 0, 3], dtype='float32'),
+                        paddle.to_tensor([0, 0], dtype='int64'),
+                        axis=axis,
+                    )
+            # a [N, 1] index is non-empty as well
+            with self.assertRaises(IndexError):
+                paddle.gather(
+                    paddle.zeros([0], dtype='float32'),
+                    paddle.to_tensor([[0], [0]], dtype='int64'),
+                )
+
+    def test_dygraph_0d_index_raises(self):
+        with dygraph_guard():
+            # a 0-D index holds exactly one element, so it is non-empty
+            with self.assertRaises(IndexError):
+                paddle.gather(
+                    paddle.zeros([0], dtype='float32'), paddle.to_tensor(0)
+                )
+
+    def test_static_raises(self):
+        @switch_to_static_graph
+        def build():
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
+                x = paddle.static.data('x', [0], 'float32')
+                index = paddle.static.data('index', [3], 'int64')
+                paddle.gather(x, index)
+
+        with self.assertRaises(IndexError):
+            build()
+
+    def test_static_tensor_axis_skips_check(self):
+        # The value of a Tensor axis is unknown when the program is built, so
+        # the compile-time check is skipped and building must not raise.
+        @switch_to_static_graph
+        def build():
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
+                x = paddle.static.data('x', [4, 0], 'float32')
+                index = paddle.static.data('index', [3], 'int64')
+                axis = paddle.static.data('axis', [1], 'int32')
+                paddle.gather(x, index, axis=axis)
+
+        build()
+
+    def test_valid_empty_cases_still_pass(self):
+        with dygraph_guard():
+            # an empty index into an empty axis is a valid empty gather
+            out = paddle.gather(
+                paddle.zeros([0], dtype='float32'),
+                paddle.to_tensor([], dtype='int64'),
+            )
+            self.assertEqual(out.shape, [0])
+            # x is empty on another axis, the gathered axis is not
+            out = paddle.gather(
+                paddle.zeros([0, 5], dtype='float32'),
+                paddle.to_tensor([0, 4, 2], dtype='int64'),
+                axis=1,
+            )
+            self.assertEqual(out.shape, [0, 3])
+            # a 0-D index into a non-empty axis of an x empty elsewhere
+            out = paddle.gather(
+                paddle.zeros([5, 0], dtype='float32'),
+                paddle.to_tensor(1),
+                axis=0,
+            )
+            self.assertEqual(out.shape, [0])
+
+
 @unittest.skipIf(
     not core.is_compiled_with_cuda() and not is_custom_device(),
     "the deterministic gather_grad kernel is only available on GPU",

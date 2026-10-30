@@ -2238,6 +2238,37 @@ void FusedMatmulInferMeta(const MetaTensor& x,
   }
 }
 
+// Returns true only when the rank of `dims` is known and every dim is known and
+// positive, i.e. the tensor is statically known to hold at least one element.
+// A 0-D tensor holds exactly one element, so it returns true.
+static bool IsKnownNonEmpty(const DDim& dims) {
+  if (dims.size() < 0) return false;  // unknown rank
+  for (int i = 0; i < dims.size(); ++i) {
+    if (dims[i] <= 0) return false;
+  }
+  return true;
+}
+
+// Indexing into an axis of size 0 with a non-empty index has no valid index
+// value, so every index is out of bounds. Reject it on the host side (device
+// agnostic) instead of letting the kernels return uninitialized, unallocated or
+// zero-filled output. Nothing is checked when the axis is out of range or the
+// index shape is not fully known; those cases are left to the other checks and
+// to the runtime.
+static void CheckIndexOnEmptyAxis(const DDim& input_dims,
+                                  int axis,
+                                  const DDim& index_dims) {
+  const int axis_v = funcs::CanonicalAxis(axis, input_dims.size());
+  if (axis_v < 0 || axis_v >= input_dims.size()) return;
+  if (input_dims[axis_v] != 0 || !IsKnownNonEmpty(index_dims)) return;
+  PADDLE_THROW(common::errors::OutOfRange(
+      "The index is out of bounds: dimension [%d] of the input has size 0, "
+      "which leaves no valid index value, but received a non-empty index "
+      "of shape [%s].",
+      axis_v,
+      index_dims));
+}
+
 void GatherInferMeta(const MetaTensor& x,
                      const MetaTensor& index,
                      const Scalar& axis,
@@ -2284,6 +2315,12 @@ void GatherInferMeta(const MetaTensor& x,
           -input_dim.size(),
           input_dim.size() - 1,
           axis_v));
+
+  // Skipped when the axis comes from a Tensor, since its value is unknown at
+  // compile time.
+  if (!axis.FromTensor()) {
+    CheckIndexOnEmptyAxis(input_dim, axis_v, index_dims);
+  }
 
   if (index_dims.size() == 0) {
     // 0D index will decrease the dimension
@@ -2608,6 +2645,9 @@ void IndexSampleInferMeta(const MetaTensor& x,
           "Inputs(Index) shape of IndexSample op should be 2-D, but "
           "got Index's shape [%s] , please check index shape.",
           input_dims));
+
+  // index_sample picks columns of x, so the indexed axis is always axis 1.
+  CheckIndexOnEmptyAxis(input_dims, 1, index_dims);
   if (config.is_runtime && index_dims[0] != 0) {  // 0-size not check
     PADDLE_ENFORCE_EQ(input_dims[0],
                       index_dims[0],
@@ -4587,6 +4627,10 @@ void TakeAlongAxisInferMeta(const MetaTensor& x,
           "Dimension of the input(Index) of TakeAlongAxisOp should be greater "
           "than 0, but received %d.",
           index_dim.size()));
+
+  // Previously a size-0 `axis` with a non-empty index silently returned a
+  // zero-filled output; it is now rejected like any other out-of-bounds index.
+  CheckIndexOnEmptyAxis(input_dim, axis, index_dim);
 
   out->set_dims(index_dim);
   out->set_dtype(x.dtype());
