@@ -43,6 +43,15 @@ MUON_STEPS = 1
 MUON_MATS_DOWN = 3
 VOCAB = 24
 CE_CHUNK = 16
+# fully_shard kwargs compared against the baseline: by-layer overlap on/off,
+# then by-size prefetch with no, a small and a large window.
+FSDP_CONFIGS = [
+    {"enable_tensor_fusion_and_overlap": True},
+    {"enable_tensor_fusion_and_overlap": False},
+    {"comm_unit_size": 0},
+    {"comm_unit_size": 512},
+    {"comm_unit_size": 1 << 20},
+]
 
 
 class EPAllGather(PyLayer):
@@ -279,12 +288,10 @@ def run_moe(ep_degree):
         accum_steps=ACCUM_STEPS,
     )
 
-    for enable_overlap in (True, False):
+    for fsdp_kwargs in FSDP_CONFIGS:
         if fsdp_model is None:
             _, fsdp_model = build_moe_models(hcg)
-        fsdp_model = fully_shard(
-            fsdp_model, enable_tensor_fusion_and_overlap=enable_overlap
-        )
+        fsdp_model = fully_shard(fsdp_model, **fsdp_kwargs)
         fsdp_model = mix_precision_utils.MixPrecisionLayer(
             fsdp_model, dtype="float16"
         )
@@ -299,7 +306,7 @@ def run_moe(ep_degree):
         assert fsdp_loss_md5s == stage1_loss_md5s, (
             f"loss MD5 sequence diverged (ep_degree={ep_degree}, "
             f"accum_steps={ACCUM_STEPS}, "
-            f"enable_overlap={enable_overlap}): "
+            f"{fsdp_kwargs}): "
             f"stage1={stage1_loss_md5s}, fsdp={fsdp_loss_md5s}"
         )
 
@@ -1066,12 +1073,10 @@ def run_fused_linear():
     base_losses = train_fused_linear(base_model, data, fsdp=False)
     base_params = [p.numpy() for p in base_model.parameters()]
 
-    for enable_overlap in (True, False):
+    for fsdp_kwargs in FSDP_CONFIGS:
         fsdp_model = FusedLinearModel()
         fsdp_model.set_state_dict(init_state)
-        fsdp_model = fully_shard(
-            fsdp_model, enable_tensor_fusion_and_overlap=enable_overlap
-        )
+        fsdp_model = fully_shard(fsdp_model, **fsdp_kwargs)
         fsdp_context = fsdp_model._fsdp_context
         fsdp_model = mix_precision_utils.MixPrecisionLayer(
             fsdp_model, dtype="float16"
@@ -1081,7 +1086,7 @@ def run_fused_linear():
             fsdp_losses,
             base_losses,
             rtol=1e-6,
-            err_msg=f"fused linear losses diverged (overlap={enable_overlap})",
+            err_msg=f"fused linear losses diverged ({fsdp_kwargs})",
         )
         fsdp_context.all_gather_params()
         for param, expected in zip(fsdp_model.parameters(), base_params):
@@ -1090,7 +1095,7 @@ def run_fused_linear():
                 expected,
                 rtol=1e-6,
                 atol=1e-7,
-                err_msg=f"{param.name} diverged (overlap={enable_overlap})",
+                err_msg=f"{param.name} diverged ({fsdp_kwargs})",
             )
 
 
