@@ -593,6 +593,13 @@ class FSDPBufferManager:
                 data_buffer._hyperball_group = (
                     group.fsdp_group if group.params_buffer.is_sharded else None
                 )
+            elif (
+                group.params_buffer.is_sharded
+                and not group.use_muon
+                and not any(group.params_buffer.param_shard(p) for p in params)
+            ):
+                # Padding-only shard: no optimizer state (ckpt saves nothing).
+                group.params_buffer.data_buffer.stop_gradient = True
             if group.muon_shard_numel is not None:
                 for param in params:
                     full = tuple(
