@@ -352,6 +352,7 @@ class BaseAPI:
         attr_types_map = {
             'IntArray': 'const IntArray&',
             'Scalar': 'const Scalar&',
+            'ScalarType': 'const Scalar&',
             'Scalar(int)': 'const Scalar&',
             'Scalar(int64_t)': 'const Scalar&',
             'Scalar(float)': 'const Scalar&',

@@ -66,6 +66,13 @@ def get_attr_default_value(op_name):
     return core.get_op_attrs_default_value(op_name.encode())
 
 
+def to_json_value(value):
+    # core.Scalar is not JSON serializable
+    if isinstance(value, core.Scalar):
+        return value.value()
+    return value
+
+
 def get_vars_info(op_vars_proto):
     vars_info = {}
     for var_proto in op_vars_proto:
@@ -88,7 +95,7 @@ def get_attrs_info(op_proto, op_attrs_proto):
         attrs_info[attr_name][TYPE] = attr_proto.type
         attrs_info[attr_name][GENERATED] = attr_proto.generated
         attrs_info[attr_name][DEFAULT_VALUE] = (
-            attrs_default_values[attr_name]
+            to_json_value(attrs_default_values[attr_name])
             if attr_name in attrs_default_values
             else None
         )
