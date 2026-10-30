@@ -102,6 +102,19 @@ def _muon_3d_shard_numel(params, fsdp_group):
     return granularity
 
 
+def _view_slice(x, start, end):
+    """``view_slice`` that always aliases ``x``.
+
+    Under auto_cast, AMP casts a low-precision input whose dtype differs from
+    the AMP dtype (e.g. a bf16 buffer under fp16 O1), so ``view_slice`` returns
+    a casted copy instead of a view of ``x``.
+    """
+    if not paddle.amp.is_autocast_enabled():
+        return paddle._C_ops.view_slice(x, start, end)
+    with paddle.amp.auto_cast(enable=False):
+        return paddle._C_ops.view_slice(x, start, end)
+
+
 class TensorFusionBuffer:
     class _CompletedTask:
         # Placeholder for the broadcast (sync) path where callers still .wait().
@@ -234,7 +247,7 @@ class TensorFusionBuffer:
                     def get_grad_from_tmp_buf(param, shape=None):
                         tmp_buffer = param._fusion_buffer.get_tmp_buffer()
                         offset = param._param_offsets[param.name]
-                        main_grad = paddle._C_ops.view_slice(
+                        main_grad = _view_slice(
                             tmp_buffer,
                             offset,
                             offset + param._numel(),
@@ -903,7 +916,7 @@ class FSDPCommManager:
 
             # Bind the unsharded param to the real param
             offset = params_buffer.param_offsets[param.name]
-            tmp_param = paddle._C_ops.view_slice(
+            tmp_param = _view_slice(
                 params_buffer.get_tmp_buffer(),
                 offset,
                 offset + param._numel(),
@@ -1313,7 +1326,7 @@ class FullyShardFusion:
             for dtype, numel in scratch.items()
         }
         for param, shape, numel in cleared:
-            view = paddle._C_ops.view_slice(scratch[param.dtype], 0, numel)
+            view = _view_slice(scratch[param.dtype], 0, numel)
             view.get_tensor()._set_dims(shape)
             param.get_tensor()._share_data_with(view.get_tensor())
         try:
@@ -1872,14 +1885,10 @@ class FullyShardFusion:
                         continue
                     offset = params_buffer.param_offsets[param.name]
                     numel = param._numel()
-                    view = paddle._C_ops.view_slice(
-                        param_full, offset, offset + numel
-                    )
+                    view = _view_slice(param_full, offset, offset + numel)
                     view.get_tensor()._set_dims(param.shape)
                     param.get_tensor()._share_data_with(view.get_tensor())
-                    grad = paddle._C_ops.view_slice(
-                        grad_full, offset, offset + numel
-                    )
+                    grad = _view_slice(grad_full, offset, offset + numel)
                     grad.get_tensor()._set_dims(param.shape)
                     out.append((param, grad))
                 continue
@@ -1891,12 +1900,12 @@ class FullyShardFusion:
                     continue
                 offset = params_buffer.param_offsets[param.name]
                 numel = param._numel()
-                view = paddle._C_ops.view_slice(
+                view = _view_slice(
                     params_buffer.data_buffer, offset, offset + numel
                 )
                 view.get_tensor()._set_dims(param.shape)
                 param.get_tensor()._share_data_with(view.get_tensor())
-                grad = paddle._C_ops.view_slice(
+                grad = _view_slice(
                     grads_buffer.data_buffer, offset, offset + numel
                 )
                 grad.get_tensor()._set_dims(param.shape)
@@ -1915,9 +1924,7 @@ class FullyShardFusion:
         span = n_local * mnumel
         dims = [n_local, m, n]
         lo = begin - params_buffer.shard_start
-        view = paddle._C_ops.view_slice(
-            params_buffer.data_buffer, lo, lo + span
-        )
+        view = _view_slice(params_buffer.data_buffer, lo, lo + span)
         view.get_tensor()._set_dims(dims)
         param.get_tensor()._share_data_with(view.get_tensor())
         param.original_shape = dims
@@ -1939,9 +1946,7 @@ class FullyShardFusion:
                 if grads_buffer.is_sharded
                 else begin
             )
-            grad = paddle._C_ops.view_slice(
-                grads_buffer.data_buffer, gbegin, gbegin + span
-            )
+            grad = _view_slice(grads_buffer.data_buffer, gbegin, gbegin + span)
             grad.get_tensor()._set_dims(dims)
             out.append((param, grad))
         return out
@@ -2049,8 +2054,11 @@ class FullyShardFusion:
             @paddle.autograd.no_grad()
             def all_gather_comm(*_):
                 params = sublayers.parameters(include_sublayers=recursive)
-                comm_manager.all_gather_params(params)
-                self._bind_expert_main_grads(params)
+                # Leave the user's auto_cast once per unit, so _view_slice
+                # skips its per-param guard on this hot path.
+                with paddle.amp.auto_cast(enable=False):
+                    comm_manager.all_gather_params(params)
+                    self._bind_expert_main_grads(params)
 
             return all_gather_comm
 
