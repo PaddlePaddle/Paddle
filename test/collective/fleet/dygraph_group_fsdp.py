@@ -1032,6 +1032,65 @@ def mixed_init_state():
     return {k: v.clone() for k, v in model.state_dict().items()}
 
 
+def run_mixed_shard():
+    """MixedInnerOptimizer under FSDP must match the single-card run."""
+    init_state = mixed_init_state()
+    paddle.seed(2026)
+    data = [paddle.randn([TOKENS, HIDDEN]) for _ in range(STEPS)]
+
+    register_fsdp_context(None)
+    base_model = MuonModel(low="bfloat16")
+    base_model.set_state_dict(init_state)
+    base_optimizer = mix_precision_utils.MixPrecisionOptimizer(
+        build_mixed_optimizer(base_model)
+    )
+    base_model = mix_precision_utils.MixPrecisionLayer(
+        base_model, dtype="float16"
+    )
+    base_losses = train_mixed(base_model, base_optimizer, data)
+    base_params = [p.numpy() for p in base_model.parameters()]
+
+    model, fsdp_context, mixed, optimizer = build_mixed_fsdp_run(init_state)
+    whole, elementwise = mixed._sub_opts
+    head_name = elementwise._parameter_list[-1].name
+    groups = fsdp_context.buffer_manager.buffer_groups
+    for group in groups:
+        owners = {mixed._route.get(p.name) for p in group.params}
+        assert len(owners) == 1, f"a buffer spans subs: {group.params}"
+        owner = owners.pop()
+        if owner is None:
+            continue
+        assert group.use_muon == (owner is whole), group.params
+        if owner is elementwise:
+            # Marked by the sub's callback, not the top-level None.
+            is_head = group.params[0].name == head_name
+            assert group.no_decay == is_head, group.params
+    whole_groups = [
+        group
+        for group in groups
+        if group.use_muon and group.grads_buffer is not None
+    ]
+    assert any(
+        group.muon_owner_rank is not None and group.params_buffer.is_sharded
+        for group in whole_groups
+    ), "no keep_whole buffer took the P2P owner path"
+    assert any(
+        group.muon_shard_numel == HIDDEN * INTER for group in whole_groups
+    ), "no keep_whole buffer was sharded by matrix"
+
+    losses = train_mixed(model, optimizer, data)
+    np.testing.assert_allclose(
+        losses, base_losses, rtol=1e-5, err_msg="mixed losses diverged"
+    )
+    for group in groups:
+        name = group.params_buffer.data_buffer.name
+        if group.grads_buffer is not None and not group.use_muon:
+            assert mixed._route[name] is mixed._route[group.params[0].name]
+    assert_params_close(
+        gathered_params(model, fsdp_context), base_params, "mixed vs base"
+    )
+
+
 def check_mixed_checkpoint(ckpt_path):
     """Mixed optimizer state, fp32 masters included, survives a save/load."""
     init_state = mixed_init_state()
@@ -1268,4 +1327,5 @@ if __name__ == '__main__':
     run_muon_replicated()
     run_adamh_shard()
     run_muon_checkpoint()
+    run_mixed_shard()
     run_mixed_checkpoint()
