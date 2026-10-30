@@ -67,9 +67,42 @@ static void CheckEighResult(const int batch, const int info) {
 #ifdef PADDLE_WITH_CUDA
 
 #if CUDA_VERSION >= 11031
-static bool use_cusolver_syevj_batched = true;
+constexpr bool kSyevjBatchedAvailable = true;
 #else
-static bool use_cusolver_syevj_batched = false;
+constexpr bool kSyevjBatchedAvailable = false;
+#endif
+
+#if defined(CUSOLVER_VERSION) && CUSOLVER_VERSION >= 11701
+// cuSOLVER 11701 (CUDA 12.6.2) adds the 64-bit batched syev. Unlike the Jacobi
+// routines it is a direct solver, so it stays accurate at any matrix size.
+#define PADDLE_WITH_CUSOLVER_XSYEV_BATCHED
+
+template <typename T>
+struct CusolverEighDataType;
+
+template <>
+struct CusolverEighDataType<float> {
+  static constexpr cudaDataType kMatrix = CUDA_R_32F;
+  static constexpr cudaDataType kValue = CUDA_R_32F;
+};
+
+template <>
+struct CusolverEighDataType<double> {
+  static constexpr cudaDataType kMatrix = CUDA_R_64F;
+  static constexpr cudaDataType kValue = CUDA_R_64F;
+};
+
+template <>
+struct CusolverEighDataType<phi::complex64> {
+  static constexpr cudaDataType kMatrix = CUDA_C_32F;
+  static constexpr cudaDataType kValue = CUDA_R_32F;
+};
+
+template <>
+struct CusolverEighDataType<phi::complex128> {
+  static constexpr cudaDataType kMatrix = CUDA_C_64F;
+  static constexpr cudaDataType kValue = CUDA_R_64F;
+};
 #endif
 
 #define CUDASOLVER_SYEVJ_BATCHED_BUFFERSIZE_ARGTYPES(scalar_t, value_t)     \
@@ -497,15 +530,40 @@ struct MatrixEighFunctor<GPUContext, T> {
     DenseTensor input_trans = TransposeLast2Dim<T>(dev_ctx, input);
     T *input_vector = input_trans.data<T>();
 
+    // cusolverDn<t>syevjBatched is a batched Jacobi solver meant for tiny
+    // matrices: beyond n == 32 it silently loses several digits of accuracy
+    // while still reporting info == 0, so gate it on the matrix size.
     // Precision loss will occur in some cases while using
     // cusolverDnZheevjBatched to calculate in Paddle(cuda11.7) but it works
     // well in Paddle(cuda10.2)
-    use_cusolver_syevj_batched = (use_cusolver_syevj_batched) &&
-                                 (batch_size > 1) &&
-                                 (input.dtype() != DataType::COMPLEX128);
-    bool use_cusolver_syevj = (input.dtype() == DataType::FLOAT32 &&
-                               last_dim >= 32 && last_dim <= 512);
+    const bool use_cusolver_syevj_batched =
+        kSyevjBatchedAvailable && batch_size > 1 && last_dim <= 32 &&
+        input.dtype() != DataType::COMPLEX128;
     auto handle = dev_ctx.cusolver_dn_handle();
+
+#ifdef PADDLE_WITH_CUSOLVER_XSYEV_BATCHED
+    // Past the Jacobi fast path a batched direct solve beats looping syevd.
+    if (batch_size > 1 && !use_cusolver_syevj_batched) {
+      XsyevBatched(dev_ctx,
+                   jobz,
+                   uplo,
+                   last_dim,
+                   lda,
+                   batch_size,
+                   input_vector,
+                   out_value);
+      if (has_vectors) {
+        PADDLE_ENFORCE_NOT_NULL(eigen_vectors,
+                                common::errors::InvalidArgument(
+                                    "When has_vectors is true,"
+                                    "the eigenvectors needs to be calculated,"
+                                    "so the eigenvectors must be provided."));
+        input_trans = TransposeLast2Dim<T>(dev_ctx, input_trans);
+        eigen_vectors->ShareDataWith(input_trans);
+      }
+      return;
+    }
+#endif
 
     syevjInfo_t syevj_params;
     if (use_cusolver_syevj_batched) {
@@ -521,19 +579,6 @@ struct MatrixEighFunctor<GPUContext, T> {
                                  &workspace_size,
                                  syevj_params,
                                  batch_size);
-    } else if (use_cusolver_syevj) {
-      PADDLE_ENFORCE_GPU_SUCCESS(
-          dynload::cusolverDnCreateSyevjInfo(&syevj_params));
-      PADDLE_ENFORCE_GPU_SUCCESS(dynload::cusolverDnSsyevj_bufferSize(
-          dev_ctx.cusolver_dn_handle(),
-          jobz,
-          uplo,
-          last_dim,
-          reinterpret_cast<const float *>(input_vector),
-          lda,
-          reinterpret_cast<const float *>(out_value),
-          &workspace_size,
-          syevj_params));
     } else {
       EvdBuffer(dev_ctx.cusolver_dn_handle(),
                 jobz,
@@ -569,19 +614,6 @@ struct MatrixEighFunctor<GPUContext, T> {
                         syevj_params,
                         batch_size);
         break;
-      } else if (use_cusolver_syevj) {
-        PADDLE_ENFORCE_GPU_SUCCESS(
-            dynload::cusolverDnSsyevj(handle,
-                                      jobz,
-                                      uplo,
-                                      last_dim,
-                                      reinterpret_cast<float *>(input_data),
-                                      lda,
-                                      reinterpret_cast<float *>(value_data),
-                                      reinterpret_cast<float *>(work_ptr),
-                                      workspace_size,
-                                      &info_ptr[i],
-                                      syevj_params));
       } else {
         Evd(handle,
             jobz,
@@ -597,7 +629,7 @@ struct MatrixEighFunctor<GPUContext, T> {
     }
     CheckEighResult(dev_ctx, batch_size, info_ptr);
 
-    if (use_cusolver_syevj_batched || use_cusolver_syevj) {
+    if (use_cusolver_syevj_batched) {
       PADDLE_ENFORCE_GPU_SUCCESS(
           dynload::cusolverDnDestroySyevjInfo(syevj_params));
     }
@@ -613,6 +645,69 @@ struct MatrixEighFunctor<GPUContext, T> {
   }
 
   using ValueType = phi::dtype::Real<T>;
+
+#ifdef PADDLE_WITH_CUSOLVER_XSYEV_BATCHED
+  void XsyevBatched(const GPUContext &dev_ctx,
+                    cusolverEigMode_t jobz,
+                    cublasFillMode_t uplo,
+                    int64_t n,
+                    int64_t lda,
+                    int64_t batch_size,
+                    T *a,
+                    ValueType *w) const {
+    constexpr cudaDataType kMatrix = CusolverEighDataType<T>::kMatrix;
+    constexpr cudaDataType kValue = CusolverEighDataType<T>::kValue;
+    auto handle = dev_ctx.cusolver_dn_handle();
+
+    cusolverDnParams_t params;
+    PADDLE_ENFORCE_GPU_SUCCESS(dynload::cusolverDnCreateParams(&params));
+    size_t device_bytes = 0, host_bytes = 0;
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        dynload::cusolverDnXsyevBatched_bufferSize(handle,
+                                                   params,
+                                                   jobz,
+                                                   uplo,
+                                                   n,
+                                                   kMatrix,
+                                                   a,
+                                                   lda,
+                                                   kValue,
+                                                   w,
+                                                   kMatrix,
+                                                   &device_bytes,
+                                                   &host_bytes,
+                                                   batch_size));
+
+    auto device_work = phi::memory_utils::Alloc(
+        dev_ctx.GetPlace(),
+        device_bytes + sizeof(int) * batch_size,
+        phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
+    auto *device_ptr = reinterpret_cast<uint8_t *>(device_work->ptr());
+    auto *info_ptr = reinterpret_cast<int *>(device_ptr + device_bytes);
+    std::vector<uint8_t> host_work(host_bytes);
+
+    PADDLE_ENFORCE_GPU_SUCCESS(dynload::cusolverDnXsyevBatched(handle,
+                                                               params,
+                                                               jobz,
+                                                               uplo,
+                                                               n,
+                                                               kMatrix,
+                                                               a,
+                                                               lda,
+                                                               kValue,
+                                                               w,
+                                                               kMatrix,
+                                                               device_ptr,
+                                                               device_bytes,
+                                                               host_work.data(),
+                                                               host_bytes,
+                                                               info_ptr,
+                                                               batch_size));
+    PADDLE_ENFORCE_GPU_SUCCESS(dynload::cusolverDnDestroyParams(params));
+    CheckEighResult(dev_ctx, batch_size, info_ptr);
+  }
+#endif
+
   inline void EvdBuffer(cusolverDnHandle_t handle,
                         cusolverEigMode_t jobz,
                         cublasFillMode_t uplo,

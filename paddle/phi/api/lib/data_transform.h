@@ -176,6 +176,15 @@ inline bool NeedTransformPlace(const phi::Place& src_place,
   }
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  // With FLAGS_pinned_memory_as_cpu_backend, a pinned input selects the CPU
+  // kernel, which can read pinned memory directly. Copying it is useless, and
+  // the copy is shared back into the input (see TransformData), which would
+  // silently move the input tensor itself off pinned memory.
+  if (src_place.GetType() == AllocationType::GPUPINNED &&
+      target == Backend::CPU &&
+      phi::TransToPhiBackend(src_place) == Backend::CPU) {
+    return false;
+  }
   bool ret = src_place.GetType() == AllocationType::GPUPINNED ||
              (target != Backend::ALL_BACKEND &&
               phi::TransToPhiBackend(src_place) !=

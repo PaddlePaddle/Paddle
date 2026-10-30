@@ -11,11 +11,37 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-#include "glog/logging.h"
-
 #include "paddle/phi/core/distributed/store/tcp_store_libuv.h"
 
+#include <cinttypes>
+#include <cstdarg>
+#include <cstdio>
+
+#include "glog/logging.h"
+
 namespace phi::distributed::detail {
+
+namespace {
+// Logging helper for the libuv callbacks that are only reached while a
+// connection is being torn down. Those callbacks must not use glog, see the
+// comment in LibUVClient::readCallback for why. Writing straight to stderr
+// keeps the diagnostics without depending on glog's static state:
+//   - FLAGS_v is a plain int32 with no destructor, so reading it stays valid
+//     for the whole lifetime of the process;
+//   - stderr is unbuffered, so the ordering relative to the rest of the log is
+//     preserved and nothing depends on a flush at exit time.
+// Gating on FLAGS_v keeps the default behaviour unchanged: silent unless the
+// user already asked for this verbosity level.
+void TeardownLog(int level, const char* format, ...) {
+  if (FLAGS_v < level) {
+    return;
+  }
+  va_list args;
+  va_start(args, format);
+  vfprintf(stderr, format, args);
+  va_end(args);
+}
+}  // namespace
 
 // SegmentedDataStream
 void SegmentedDataStream::append(uv_buf_t buf) {
@@ -271,9 +297,13 @@ void WriteUVContent::writeDone(uv_write_t* req, int status) {
   delete data_ptr;
   uv_req_set_data(reinterpret_cast<uv_req_t*>(req), nullptr);
   if (self && status) {
-    VLOG(2) << "Write to client failed. code:" << status
-            << " desc:" << uv_strerror(status)
-            << " name:" << uv_err_name(status);
+    // NOTE: no glog here, see the comment in LibUVClient::readCallback.
+    TeardownLog(2,
+                "tcp_store_libuv: write to client failed. code:%d desc:%s "
+                "name:%s\n",
+                status,
+                uv_strerror(status),
+                uv_err_name(status));
     self->handle->close();
   }
 }
@@ -296,8 +326,12 @@ void WriteUVContent::send() {
                      1,
                      writeDone);
   if (res) {
-    VLOG(2) << "Write failed. code:" << res << " desc:" << uv_strerror(res)
-            << " name:" << uv_err_name(res);
+    // NOTE: no glog here, see the comment in LibUVClient::readCallback.
+    TeardownLog(2,
+                "tcp_store_libuv: write failed. code:%d desc:%s name:%s\n",
+                res,
+                uv_strerror(res),
+                uv_err_name(res));
     handle->close();
   } else {
     auto data_ptr = static_cast<RequestData*>(
@@ -342,23 +376,42 @@ void LibUVClient::allocBuffer(uv_handle_t* handle,
 void LibUVClient::readCallback(uv_stream_t* client,
                                ssize_t nread,
                                const uv_buf_t* buf) {
+  // NOTE: Deliberately no glog in this function and in the other libuv
+  // callbacks reached when a peer disconnects. They use TeardownLog instead.
+  //
+  // The master daemon runs its uv loop on a background thread whose lifetime
+  // is bounded by ~TCPStore. If anything still holds a reference to the global
+  // TCPStore when exit() starts running handlers, the loop keeps polling while
+  // static destructors tear down glog, which destroys its internal mutexes.
+  // A peer closing its socket then lands here and glog's one-time per-call-site
+  // VLOG initialization locks an already destroyed mutex, so glog's internal
+  // SAFE_PTHREAD aborts the process without emitting anything. These branches
+  // only ever execute during teardown, which is exactly when that happens.
   auto uv_socket = LibUVTCPSocket::getTCPSocket(client);
   if (nread > 0) {
     try {
       uv_socket->doProcess(buf, nread);
       return;
-    } catch (std::exception& ex) {
-      VLOG(2) << "Failed to process incoming client message: " << ex.what();
+    } catch (const std::exception& ex) {
+      TeardownLog(2,
+                  "tcp_store_libuv: failed to process incoming client "
+                  "message: %s\n",
+                  ex.what());
       uv_socket->close();
     }
   } else if (nread == UV_EOF) {
     // EOF
-    VLOG(5) << "Remote peer closed the connection.";
+    TeardownLog(5, "tcp_store_libuv: remote peer closed the connection.\n");
     uv_socket->close();
   } else if (nread < 0) {
     // error and EOF
-    VLOG(5) << "Read callback handler exception. code:" << nread
-            << " desc:" << uv_strerror(nread) << " name:" << uv_err_name(nread);
+    TeardownLog(
+        5,
+        "tcp_store_libuv: read callback handler exception. code:%" PRId64
+        " desc:%s name:%s\n",
+        static_cast<int64_t>(nread),
+        uv_strerror(nread),
+        uv_err_name(nread));
     uv_socket->close();
   }
   free(buf->base);

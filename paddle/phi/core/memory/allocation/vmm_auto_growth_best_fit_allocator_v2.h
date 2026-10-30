@@ -19,6 +19,7 @@
 #include <list>
 #include <map>
 #include <memory>
+#include <mutex>
 #include <tuple>
 #include <vector>
 
@@ -84,6 +85,10 @@ class VMMAutoGrowthBestFitAllocatorV2 : public Allocator {
   std::vector<BlockInfo> SnapshotBlockInfo() const;
   PoolType pool_type() const { return pool_type_; }
   size_t alignment() const { return alignment_; }
+  size_t handle_size() const {
+    std::lock_guard<SpinLock> guard(spinlock_);
+    return underlying_allocator_->handle_size();
+  }
 
   // Query aggregate free-block statistics for OOM dispatch decisions.
   // total_free = sum of all FREE block sizes, max_free = largest FREE block.

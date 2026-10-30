@@ -17,6 +17,7 @@
 #if defined(PADDLE_WITH_CUDA)
 
 #include "paddle/phi/core/enforce.h"
+#include "paddle/phi/core/memory/allocation/memory_history_recorder.h"
 #include "paddle/phi/core/platform/cuda_device_guard.h"
 
 namespace paddle {
@@ -86,10 +87,27 @@ phi::Allocation* VMMAutoGrowthBestFitMultiPoolAllocatorV2::AllocateImpl(
       common::errors::NotFound("No VMM pool allocator found for pool %d.",
                                static_cast<int>(route.pool_type)));
   auto allocation = route.allocator->Allocate(size);
-  return new VMMAutoGrowthBestFitMultiPoolAllocationV2(  // NOLINT
-      std::move(allocation),
-      route.allocator,
-      route.pool_type);
+  auto* wrapped_allocation =
+      new VMMAutoGrowthBestFitMultiPoolAllocationV2(  // NOLINT
+          std::move(allocation),
+          route.allocator,
+          route.pool_type);
+  if (MemHistoryEnabled()) {
+    // Migrated from the VMM V1 MultiScalePoolAllocator hook: this is the
+    // top-level pool decorator, so it is the single choke point where every
+    // user allocation is observed once (the underlying per-pool allocators are
+    // not instrumented). Record the actual block size (rounded up to the pool
+    // alignment, 256B on GPU), not the request: kFreeRequested /
+    // kFreeCompleted report the same, so using `size` here would make a pair
+    // disagree (alloc=1 vs free=256).
+    RecordMemHistory(MemHistoryAction::kAlloc,
+                     place_.GetDeviceId(),
+                     reinterpret_cast<uintptr_t>(wrapped_allocation->ptr()),
+                     wrapped_allocation->size(),
+                     wrapped_allocation->id(),
+                     0);
+  }
+  return wrapped_allocation;
 }
 
 size_t VMMAutoGrowthBestFitMultiPoolAllocatorV2::CompactImpl(
@@ -107,16 +125,33 @@ size_t VMMAutoGrowthBestFitMultiPoolAllocatorV2::RemapForAllocation(
   }
   if (requested_size > 0) {
     const auto route = RouteAllocation(requested_size);
-    if (route.pool_type == PoolType::kSmall) {
+    if (route.pool_type == PoolType::kSmall &&
+        small_allocation_threshold_ <= small_allocator_->handle_size()) {
+      // A free whole handle already fits any small request; partial handles
+      // cannot be remapped. Skip the scan and leave release to the caller.
       return 0;
     }
     return route.allocator->RemapForAllocation(
         place, requested_size, grow_oom, attempt_result);
   }
-  // Compact/remap targets the large pool only. Small-pool requests are cheap
-  // to satisfy through normal reuse/grow and do not justify remap overhead.
-  return large_allocator_->RemapForAllocation(
+  // Unbounded maintenance always compacts the large pool and includes the
+  // small pool when its routing threshold exceeds its handle size.
+  size_t remapped_bytes = large_allocator_->RemapForAllocation(
       place, requested_size, grow_oom, attempt_result);
+  if (small_allocation_threshold_ > small_allocator_->handle_size()) {
+    VMMRemapAttemptResult small_result;
+    remapped_bytes += small_allocator_->RemapForAllocation(
+        place, requested_size, grow_oom, &small_result);
+    if (attempt_result != nullptr) {
+      // Zero-size maintenance returns kNoMovableMemory or kAttempted from
+      // each pool; required_bytes stays zero because there is no request.
+      if (small_result.status == VMMRemapAttemptStatus::kAttempted) {
+        attempt_result->status = VMMRemapAttemptStatus::kAttempted;
+      }
+      attempt_result->movable_bytes += small_result.movable_bytes;
+    }
+  }
+  return remapped_bytes;
 }
 
 void VMMAutoGrowthBestFitMultiPoolAllocatorV2::FreeImpl(
@@ -129,6 +164,17 @@ void VMMAutoGrowthBestFitMultiPoolAllocatorV2::FreeImpl(
       common::errors::NotFound(
           "No VMM pool allocator found for pool %d.",
           static_cast<int>(wrapped_allocation->pool_type())));
+  if (MemHistoryEnabled()) {
+    // Paired with the kAlloc hook above: recorded here (the actual free
+    // completion) rather than at StreamSafeCUDAAllocator, which only emits the
+    // earlier kFreeRequested event.
+    RecordMemHistory(MemHistoryAction::kFreeCompleted,
+                     place_.GetDeviceId(),
+                     reinterpret_cast<uintptr_t>(wrapped_allocation->ptr()),
+                     wrapped_allocation->size(),
+                     wrapped_allocation->id(),
+                     0);
+  }
   auto underlying_allocation = wrapped_allocation->TakeUnderlyingAllocation();
   allocator->Free(underlying_allocation.release());
   delete wrapped_allocation;

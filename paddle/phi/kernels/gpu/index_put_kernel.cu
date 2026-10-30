@@ -13,12 +13,18 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/index_put_kernel.h"
+#include "paddle/common/flags.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/cast_kernel.h"
 #include "paddle/phi/kernels/funcs/index_put_utils.h"
+#if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
+#include "paddle/phi/kernels/funcs/index_put_with_sort.cu.h"
+#endif
+
+COMMON_DECLARE_bool(cudnn_deterministic);
 
 namespace phi {
 
@@ -170,6 +176,47 @@ void IndexPutKernel(const Context& dev_ctx,
   } else {
     ptr_value = &value;
   }
+
+// The sort-based deterministic path relies on RadixSortPairs (CUB), which is
+// not available on HIP/ROCm; keep the atomic path there.
+#if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
+  // The default accumulate path (LaunchIndexPutCudaKernel) scatters with
+  // CudaAtomicAdd, whose summation order is nondeterministic across runs, so
+  // duplicated indices give run-to-run bitwise drift. When
+  // FLAGS_cudnn_deterministic is set, route to the sort-based accumulate, which
+  // groups colliding indices and adds them in a fixed order (same result, just
+  // deterministic). Scoped to a single index into a 1-D destination: that is
+  // exactly the flat scatter the strided-view backward emits
+  // (StridedTensorAccumulate builds a 1-D storage and one linear index), and it
+  // matches index_elementwise_get_grad's single-index use of the same helper.
+  // Other shapes keep the atomic path.
+  if (accumulate && FLAGS_cudnn_deterministic && int_indices_v.size() == 1 &&
+      x.dims().size() == 1) {
+    // IndexPutWithSortKernel accumulates into `out` in place and does not copy
+    // `x` in, so reproduce LaunchIndexPutCudaKernel's prologue: an
+    // uninitialized destination starts as a copy of x (plain index_put
+    // semantics); an already initialized one (e.g. the pre-zeroed strided
+    // gradient buffer) is left as is.
+    bool is_initialized = out->initialized();
+    dev_ctx.template Alloc<T>(out);
+    if (!is_initialized) {
+      Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+    }
+    // The helper builds the linear index against the axes the indices address.
+    // The single index here covers the whole 1-D destination, so the indexed
+    // view is `out` itself: no axes precede it and there is no slice offset.
+    funcs::SortedPathLayout layout;
+    layout.dims_before = 0;
+    layout.view_dims = vectorize<int64_t>(out->dims());
+    layout.view_strides = vectorize<int64_t>(out->strides());
+    layout.view_offset = 0;
+    layout.is_whole_tensor = true;
+
+    funcs::IndexPutWithSortKernel<T, int64_t>(
+        dev_ctx, *ptr_value, res_indices_v, layout, /*accumulate=*/true, out);
+    return;
+  }
+#endif  // PADDLE_WITH_CUDA && !PADDLE_WITH_HIP
 
   LaunchIndexPutCudaKernel<T, Context>(
       dev_ctx, x, res_indices_v, *ptr_value, accumulate, out);

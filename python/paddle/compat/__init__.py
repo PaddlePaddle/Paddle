@@ -84,6 +84,10 @@ def __getattr__(name):
         module = importlib.import_module("paddle.compat.distributions")
         globals()[name] = module
         return module
+    if name == "distributed":
+        module = importlib.import_module("paddle.compat.distributed")
+        globals()[name] = module
+        return module
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 

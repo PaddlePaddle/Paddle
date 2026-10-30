@@ -62,12 +62,12 @@ static void GetBroadcastFromDims(const int x_ndim,
 
   for (int i = 0; i < ndim; ++i) {
     PADDLE_ENFORCE_EQ(
-        x_bd_dims[i] == y_bd_dims[i] || x_bd_dims[i] <= 1 || y_bd_dims[i] <= 1,
+        x_bd_dims[i] == y_bd_dims[i] || x_bd_dims[i] == 1 || y_bd_dims[i] == 1,
         true,
         common::errors::InvalidArgument(
             "Input(X) and Input(Y) has error dim. "
             "X_broadcast's shape[%s] must be equal to Y_broadcast's shape[%s], "
-            "or X_broadcast's shape[%s] <= 1, or Y_broadcast's shape[%s] <= 1, "
+            "or X_broadcast's shape[%s] == 1, or Y_broadcast's shape[%s] == 1, "
             "but received X_broadcast's shape[%s] = [%s]"
             "received Y_broadcast's shape[%s] = [%s].",
             i,

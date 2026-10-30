@@ -280,12 +280,31 @@ class TestElementwiseBitwiseAndOp_Stride_ZeroDim1(
 class TestElementwiseBitwiseAndOp_Stride_ZeroSize1(
     TestElementwiseBitwiseAndOp_Stride
 ):
-    def init_data(self):
+    def init_input_output(self):
         self.strided_input_type = "transpose"
-        self.x = np.random.rand(1, 0, 2).astype('float32')
-        self.y = np.random.rand(3, 0, 1).astype('float32')
+        self.x = np.random.randint(
+            self.low, self.high, [16384, 0], dtype=self.dtype
+        )
+        self.y = np.random.randint(
+            self.low, self.high, [16384, 0], dtype=self.dtype
+        )
         self.out = np.bitwise_and(self.x, self.y)
-        self.perm = [2, 1, 0]
+        self.perm = [1, 0]
+        self.y_trans = np.transpose(self.y, self.perm)
+
+
+class TestElementwiseBitwiseAndOp_Stride_ZeroSize_Bool1(
+    TestElementwiseBitwiseAndOp_Stride
+):
+    def init_dtype(self):
+        self.dtype = np.bool_
+
+    def init_input_output(self):
+        self.strided_input_type = "transpose"
+        self.x = np.random.randint(0, 2, [16384, 0]).astype(self.dtype)
+        self.y = np.random.randint(0, 2, [16384, 0]).astype(self.dtype)
+        self.out = np.bitwise_and(self.x, self.y)
+        self.perm = [1, 0]
         self.y_trans = np.transpose(self.y, self.perm)
 
 
@@ -546,12 +565,31 @@ class TestElementwiseBitwiseOrOp_Stride_ZeroDim1(
 class TestElementwiseBitwiseOrOp_Stride_ZeroSize1(
     TestElementwiseBitwiseOrOp_Stride
 ):
-    def init_data(self):
+    def init_input_output(self):
         self.strided_input_type = "transpose"
-        self.x = np.random.rand(1, 0, 2).astype('float32')
-        self.y = np.random.rand(3, 0, 1).astype('float32')
+        self.x = np.random.randint(
+            self.low, self.high, [16384, 0], dtype=self.dtype
+        )
+        self.y = np.random.randint(
+            self.low, self.high, [16384, 0], dtype=self.dtype
+        )
         self.out = np.bitwise_or(self.x, self.y)
-        self.perm = [2, 1, 0]
+        self.perm = [1, 0]
+        self.y_trans = np.transpose(self.y, self.perm)
+
+
+class TestElementwiseBitwiseOrOp_Stride_ZeroSize_Bool1(
+    TestElementwiseBitwiseOrOp_Stride
+):
+    def init_dtype(self):
+        self.dtype = np.bool_
+
+    def init_input_output(self):
+        self.strided_input_type = "transpose"
+        self.x = np.random.randint(0, 2, [16384, 0]).astype(self.dtype)
+        self.y = np.random.randint(0, 2, [16384, 0]).astype(self.dtype)
+        self.out = np.bitwise_or(self.x, self.y)
+        self.perm = [1, 0]
         self.y_trans = np.transpose(self.y, self.perm)
 
 
@@ -813,12 +851,31 @@ class TestElementwiseBitwiseXorOp_Stride_ZeroDim1(
 class TestElementwiseBitwiseXorOp_Stride_ZeroSize1(
     TestElementwiseBitwiseXorOp_Stride
 ):
-    def init_data(self):
+    def init_input_output(self):
         self.strided_input_type = "transpose"
-        self.x = np.random.rand(1, 0, 2).astype('float32')
-        self.y = np.random.rand(3, 0, 1).astype('float32')
+        self.x = np.random.randint(
+            self.low, self.high, [16384, 0], dtype=self.dtype
+        )
+        self.y = np.random.randint(
+            self.low, self.high, [16384, 0], dtype=self.dtype
+        )
         self.out = np.bitwise_xor(self.x, self.y)
-        self.perm = [2, 1, 0]
+        self.perm = [1, 0]
+        self.y_trans = np.transpose(self.y, self.perm)
+
+
+class TestElementwiseBitwiseXorOp_Stride_ZeroSize_Bool1(
+    TestElementwiseBitwiseXorOp_Stride
+):
+    def init_dtype(self):
+        self.dtype = np.bool_
+
+    def init_input_output(self):
+        self.strided_input_type = "transpose"
+        self.x = np.random.randint(0, 2, [16384, 0]).astype(self.dtype)
+        self.y = np.random.randint(0, 2, [16384, 0]).astype(self.dtype)
+        self.out = np.bitwise_xor(self.x, self.y)
+        self.perm = [1, 0]
         self.y_trans = np.transpose(self.y, self.perm)
 
 

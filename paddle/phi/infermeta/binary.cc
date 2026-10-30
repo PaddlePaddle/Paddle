@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/phi/infermeta/binary.h"
 
 #include <algorithm>
+#include <string>
 #include <vector>
 
 #include "glog/logging.h"
@@ -727,10 +728,29 @@ void ConvInferMeta(const MetaTensor& input,
       output_shape.push_back(-1);
     } else {
       const int64_t dkernel = dilations_[i] * (filter_data_dims[i] - 1) + 1;
-      int64_t output_size = (in_data_dims[i] + paddings_[2 * i] +
-                             paddings_[2 * i + 1] - dkernel) /
-                                strides[i] +
-                            1;
+      const int64_t padded_input =
+          in_data_dims[i] + paddings_[2 * i] + paddings_[2 * i + 1];
+      // Align with PyTorch: the padded input size per channel must not be
+      // smaller than the effective (dilated) kernel size, i.e. the kernel
+      // size can't be greater than the actual input size.
+      PADDLE_ENFORCE_GE(
+          padded_input,
+          dkernel,
+          common::errors::InvalidArgument(
+              "The padded input size per channel (%d) of Op(Conv) in spatial "
+              "dimension %d should not be smaller than the effective kernel "
+              "size (%d, i.e. dilation * (kernel - 1) + 1); the kernel size "
+              "can't be greater than the actual input size. Received input "
+              "size %d, paddings (%d, %d), dilation %d, kernel size %d.",
+              padded_input,
+              i,
+              dkernel,
+              in_data_dims[i],
+              paddings_[2 * i],
+              paddings_[2 * i + 1],
+              dilations_[i],
+              filter_data_dims[i]));
+      int64_t output_size = (padded_input - dkernel) / strides[i] + 1;
       output_shape.push_back(output_size);
     }
   }
@@ -1928,6 +1948,33 @@ void ExpandAsInferMeta(const MetaTensor& x,
                         "to %d. But received: rank %u.",
                         MAX_RANK_SUPPORTED,
                         target_shape.size()));
+  // Validate the expand contract per dimension here instead of only inside the
+  // kernels: a dimension of x can be expanded only when it is 1 (singleton) or
+  // already equals the target size, matching torch. Doing it in InferMeta makes
+  // the check device-independent (cpu/gpu/xpu share it) and, crucially, runs
+  // even for 0-size inputs, which every kernel otherwise skips through its
+  // `x.numel() == 0` early return.
+  auto vec_x_dims = vectorize(x_dims);
+  auto diff = target_shape.size() - vec_x_dims.size();
+  vec_x_dims.insert(vec_x_dims.begin(), diff, 1);
+  for (size_t i = 0; i < vec_x_dims.size(); ++i) {
+    // Skip dynamic (unknown) sizes on either side.
+    if (target_shape[i] < 0 || vec_x_dims[i] < 0) {
+      continue;
+    }
+    PADDLE_ENFORCE_EQ(
+        vec_x_dims[i] == 1 || vec_x_dims[i] == target_shape[i],
+        true,
+        common::errors::InvalidArgument(
+            "The expanded size of the tensor (%d) must match the existing "
+            "size (%d) at non-singleton dimension %d. Target sizes: [%s]. "
+            "Tensor sizes: [%s].",
+            target_shape[i],
+            vec_x_dims[i],
+            static_cast<int>(i),
+            make_ddim(target_shape),
+            x_dims));
+  }
   out->set_dims(make_ddim(target_shape));
   out->set_dtype(x.dtype());
 #undef MAX_RANK_SUPPORTED
@@ -2101,14 +2148,57 @@ void FusedMatmulInferMeta(const MetaTensor& x,
   }
 
   std::vector<int64_t> new_dims;
-  if (ndims_x > ndims_y) {
-    new_dims.assign(dims_x.begin(), dims_x.end() - 2);
-  } else if (ndims_x < ndims_y) {
-    new_dims.assign(dims_y.begin(), dims_y.end() - 2);
-  } else {
-    new_dims.reserve(ndims_x);
-    for (size_t i = 0; i < ndims_x - 2; ++i) {
-      new_dims.push_back(std::max(dims_x[i], dims_y[i]));
+  {
+    // Broadcast the batch dims, right-aligned. Align with PyTorch/NumPy:
+    // compatible iff equal or one of them is 1; a 0-size dim is not
+    // broadcastable against a non-zero, non-one dim. Leading dims missing on
+    // the lower-rank side count as 1.
+    const size_t bx = ndims_x - 2;
+    const size_t by = ndims_y - 2;
+    const size_t nb = std::max(bx, by);
+    new_dims.reserve(nb);
+    for (size_t i = 0; i < nb; ++i) {
+      const int64_t dx = (i + bx >= nb) ? dims_x[i + bx - nb] : 1;
+      const int64_t dy = (i + by >= nb) ? dims_y[i + by - nb] : 1;
+      if (dx == -1 || dy == -1) {
+        // An unknown dim is compatible only with 1, the other dim, or 0 under
+        // standard broadcasting, so the result is often still static:
+        //   unknown vs unknown/1 -> unknown (-1)
+        //   unknown vs 0         -> 0
+        //   unknown vs n (n > 1) -> n
+        const int64_t known = (dx == -1) ? dy : dx;
+        if (known == -1 || known == 1) {
+          new_dims.push_back(-1);
+        } else if (known == 0) {
+          new_dims.push_back(0);
+        } else {
+          new_dims.push_back(known);
+        }
+        continue;
+      }
+      // i indexes the right-aligned broadcast result, not either input. A
+      // lower-rank side has no dim at this position and counts as 1, so report
+      // each side's own index instead of i, which points at the wrong dim.
+      const std::string x_pos =
+          (i + bx >= nb) ? std::to_string(i + bx - nb) : "absent (counts as 1)";
+      const std::string y_pos =
+          (i + by >= nb) ? std::to_string(i + by - nb) : "absent (counts as 1)";
+      PADDLE_ENFORCE_EQ(
+          dx == dy || dx == 1 || dy == 1,
+          true,
+          common::errors::InvalidArgument(
+              "In fused_matmul, the batch dimensions of Input(X) and Input(Y) "
+              "must be broadcastable (equal, or one of them is 1), but "
+              "received X's shape = [%s] and Y's shape = [%s]: X's batch "
+              "dimension [%s] = %d is not broadcastable with Y's batch "
+              "dimension [%s] = %d.",
+              common::make_ddim(dims_x),
+              common::make_ddim(dims_y),
+              x_pos,
+              dx,
+              y_pos,
+              dy));
+      new_dims.push_back((dx == 0 || dy == 0) ? 0 : std::max(dx, dy));
     }
   }
   if (!x_broadcasted) {
@@ -3181,19 +3271,57 @@ void MatmulInferMeta(const MetaTensor& x,
   }
 
   std::vector<int64_t> new_dims;
-  if (ndims_x > ndims_y) {
-    new_dims.assign(dims_x.begin(), dims_x.end() - 2);
-  } else if (ndims_x < ndims_y) {
-    new_dims.assign(dims_y.begin(), dims_y.end() - 2);
-  } else {
-    new_dims.reserve(ndims_x);
-    for (size_t i = 0; i < ndims_x - 2; ++i) {
-      // If one of them is 0, choose 0.
-      if (dims_x[i] == 0 || dims_y[i] == 0) {
-        new_dims.push_back(0);
-      } else {
-        new_dims.push_back(std::max(dims_x[i], dims_y[i]));
+  {
+    // Broadcast the batch dims, right-aligned. Align with PyTorch/NumPy:
+    // compatible iff equal or one of them is 1; a 0-size dim is not
+    // broadcastable against a non-zero, non-one dim. Leading dims missing on
+    // the lower-rank side count as 1.
+    const size_t bx = ndims_x - 2;
+    const size_t by = ndims_y - 2;
+    const size_t nb = std::max(bx, by);
+    new_dims.reserve(nb);
+    for (size_t i = 0; i < nb; ++i) {
+      const int64_t dx = (i + bx >= nb) ? dims_x[i + bx - nb] : 1;
+      const int64_t dy = (i + by >= nb) ? dims_y[i + by - nb] : 1;
+      if (dx == -1 || dy == -1) {
+        // An unknown dim is compatible only with 1, the other dim, or 0 under
+        // standard broadcasting, so the result is often still static:
+        //   unknown vs unknown/1 -> unknown (-1)
+        //   unknown vs 0         -> 0
+        //   unknown vs n (n > 1) -> n
+        const int64_t known = (dx == -1) ? dy : dx;
+        if (known == -1 || known == 1) {
+          new_dims.push_back(-1);
+        } else if (known == 0) {
+          new_dims.push_back(0);
+        } else {
+          new_dims.push_back(known);
+        }
+        continue;
       }
+      // i indexes the right-aligned broadcast result, not either input. A
+      // lower-rank side has no dim at this position and counts as 1, so report
+      // each side's own index instead of i, which points at the wrong dim.
+      const std::string x_pos =
+          (i + bx >= nb) ? std::to_string(i + bx - nb) : "absent (counts as 1)";
+      const std::string y_pos =
+          (i + by >= nb) ? std::to_string(i + by - nb) : "absent (counts as 1)";
+      PADDLE_ENFORCE_EQ(
+          dx == dy || dx == 1 || dy == 1,
+          true,
+          common::errors::InvalidArgument(
+              "In matmul, the batch dimensions of Input(X) and Input(Y) "
+              "must be broadcastable (equal, or one of them is 1), but "
+              "received X's shape = [%s] and Y's shape = [%s]: X's batch "
+              "dimension [%s] = %d is not broadcastable with Y's batch "
+              "dimension [%s] = %d.",
+              common::make_ddim(dims_x),
+              common::make_ddim(dims_y),
+              x_pos,
+              dx,
+              y_pos,
+              dy));
+      new_dims.push_back((dx == 0 || dy == 0) ? 0 : std::max(dx, dy));
     }
   }
   if (!x_broadcasted) {
@@ -5150,6 +5278,25 @@ void BatchedGemmInferMeta(const MetaTensor& lhs,
       common::errors::InvalidArgument(
           "The rhs's dimension must be 3, but got[%d]", rhs_shape.size()));
 
+  int64_t total_batch = 0;
+  for (const int64_t bs : batch_sizes) {
+    PADDLE_ENFORCE_GE(
+        bs,
+        0,
+        common::errors::InvalidArgument(
+            "Each element of batch_sizes must be non-negative, but got [%d].",
+            bs));
+    total_batch += bs;
+  }
+  PADDLE_ENFORCE_EQ(
+      total_batch,
+      total_tokens,
+      common::errors::InvalidArgument(
+          "The sum of batch_sizes must be equal to the total number of tokens "
+          "(lhs's first dim), but got [%d] and [%d].",
+          total_batch,
+          total_tokens));
+
   // We expect layout below:
   // 1. trans_lhs = false && trans_rhs = false (group forward) :
   //    [M_total, input_hidden_size] x [num_experts, input_hidden_size,
@@ -5171,6 +5318,24 @@ void BatchedGemmInferMeta(const MetaTensor& lhs,
     // hidden_out For each expert i, This case views lhs as [Mi x K] and rhs as
     // [E x K x N] or [E x N x K], so the output is [Mtotal x N], N could be
     // input_hidden_size or output_hidden_size.
+
+    PADDLE_ENFORCE_EQ(
+        rhs_shape[0],
+        num_experts,
+        common::errors::InvalidArgument(
+            "The rhs's first dim (number of experts) must be equal to the "
+            "number of groups in batch_sizes, but got [%d] and [%d].",
+            rhs_shape[0],
+            num_experts));
+    const int64_t rhs_contract_dim = trans_rhs ? rhs_shape[2] : rhs_shape[1];
+    PADDLE_ENFORCE_EQ(
+        lhs_shape[1],
+        rhs_contract_dim,
+        common::errors::InvalidArgument(
+            "The contraction dim of lhs and rhs must match, but got lhs's "
+            "last dim [%d] and rhs's contraction dim [%d].",
+            lhs_shape[1],
+            rhs_contract_dim));
 
     const int64_t hidden_out = trans_rhs ? rhs_shape[1] : rhs_shape[2];
     output->set_dims(make_ddim({total_tokens, hidden_out}));
