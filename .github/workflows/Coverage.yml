@@ -304,6 +304,9 @@ jobs:
       group: BD_BJ-V100
     timeout-minutes: 240
     steps:
+      - name: Test skip coverage test
+        run: |
+          exit 1
       - name: Check docker image and run container
         env:
           CACHE_DIR: "/root/.cache/coverage"
