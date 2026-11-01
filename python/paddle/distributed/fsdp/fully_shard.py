@@ -42,6 +42,7 @@ class MixedPrecisionPolicy:
     reduce_dtype: paddle.dtype | None = None
     output_dtype: paddle.dtype | None = None
     cast_forward_inputs: bool = True
+    grad_comm_dtype: paddle.dtype | None = None
 
 
 # @dataclass
@@ -101,10 +102,16 @@ def _fully_shard_manual_parallel(
     layers = module._layers if isinstance(module, MetaParallelBase) else module
     if optimizer is not None:
         _mark_params_for_optimizer(layers, optimizer)
+    # fp8 groups: fp32 main weight iff an fp32 master (default: yes).
+    inner = optimizer
+    while hasattr(inner, "_inner_opt"):
+        inner = inner._inner_opt
+    multi_precision = getattr(inner, "_multi_precision", True)
     layers._fsdp_context = FullyShardFusion(
         layers,
         enable_tensor_fusion_and_overlap=enable_tensor_fusion_and_overlap,
         mp_policy=mp_policy,
+        fp8_main_dtype=paddle.float32 if multi_precision else None,
         prefetch_units=prefetch_units,
         comm_unit_size=comm_unit_size,
         reshard_policy=reshard_policy,
@@ -131,6 +138,8 @@ def _fully_shard_auto_parallel(
     prefetch_units=1,
     comm_unit_size=None,
 ):
+    if mp_policy.grad_comm_dtype is not None:
+        raise NotImplementedError("grad_comm_dtype is manual parallel only.")
     module._fsdp_context = FullyShardAuto(
         module,
         mesh,
@@ -177,6 +186,8 @@ def fully_shard(
             Defaults to None.
         mp_policy (MixedPrecisionPolicy | None, optional): Mixed precision policy configuration.
             If None, creates a default MixedPrecisionPolicy. Defaults to None.
+            ``reduce_dtype`` is the grad accumulation dtype. ``grad_comm_dtype``
+            is the grad reduce-scatter dtype (float32 or bfloat16), None means ``reduce_dtype``.
         offload_policy (OffloadPolicy | None, optional): Offload policy configuration for CPU offloading.
             If None, creates a default OffloadPolicy. Defaults to None.
         ignored_params (Iterable[paddle.Tensor] | None, optional): Parameters that should not be sharded.
@@ -248,6 +259,10 @@ def fully_shard(
     """
     if mp_policy is None:
         mp_policy = MixedPrecisionPolicy()
+    if mp_policy.grad_comm_dtype not in (None, paddle.float32, paddle.bfloat16):
+        raise ValueError(
+            f"grad_comm_dtype must be float32 or bfloat16, got {mp_policy.grad_comm_dtype}."
+        )
     if offload_policy is None:
         offload_policy = OffloadPolicy()
     ignored_params_set: set[paddle.Tensor] = (

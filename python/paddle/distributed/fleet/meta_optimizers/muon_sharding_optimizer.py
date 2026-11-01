@@ -33,6 +33,7 @@ communication group to use:
     from the param, no code changes needed to add new color groups.
 """
 
+import contextlib
 import math
 import os
 import socket
@@ -61,6 +62,26 @@ from paddle.distributed.fleet.utils.tensor_fusion_helper import (
     FusedCommBuffer,
     assign_group_by_size,
 )
+
+
+@contextlib.contextmanager
+def _pinned_memory_as_cpu_backend():
+    """Run ops on CUDA-pinned tensors with CPU kernels inside this block.
+
+    By default a pinned input selects the GPU kernel and is copied to the
+    device, and the copy is shared back into the input tensor, so the input
+    itself ends up on GPU. Optimizer states offloaded to pinned memory must
+    stay there; with this flag the view ops used below (reshape / slice) run
+    as CPU stride kernels and return views on the same pinned memory.
+    """
+    name = "FLAGS_pinned_memory_as_cpu_backend"
+    old = paddle.get_flags([name])[name]
+    paddle.set_flags({name: True})
+    try:
+        yield
+    finally:
+        paddle.set_flags({name: old})
+
 
 g_shard_bypass_dygraph_optimizer = int(
     os.environ.get("FLAGS_shard_bypass_dygraph_optimizer", 0)
@@ -1926,6 +1947,12 @@ class MuonShardingOptimizer:
                 break
 
     def sharded_state_dict(self, model_sharded_state_dict):
+        # Offloaded states live on pinned memory; keep them there while
+        # reshaping / slicing them into ShardedWeights.
+        with _pinned_memory_as_cpu_backend():
+            return self._sharded_state_dict_impl(model_sharded_state_dict)
+
+    def _sharded_state_dict_impl(self, model_sharded_state_dict):
         """Build a sharded optimizer state dict for flex checkpoint save/load.
 
         Overrides the inner Muon optimizer's sharded_state_dict to handle V3's
