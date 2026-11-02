@@ -145,13 +145,13 @@ def build_grouped(fp8, quantizer=None, muon=False, multi_precision=True):
     if muon:
         names = {p.name for p in experts(model)}
         for p in params:
-            p.use_muon = p.name in names
+            p.keep_whole = p.name in names
         opt = Muon(
             learning_rate=1e-3,
             parameters=params,
             weight_decay=0.0,
             muon_param_info_map={
-                p.name: MuonParamInfo(use_muon=p.use_muon) for p in params
+                p.name: MuonParamInfo(use_muon=p.keep_whole) for p in params
             },
             ns_per_matrix=True,
             multi_precision=multi_precision,
@@ -215,7 +215,7 @@ def train_fp8(keep_transpose, fp8_gather, data, muon=False, mp=True):
     fp8_groups = [g for g in groups if g.params_buffer.fp8 is not None]
     assert len(fp8_groups) == LAYERS * fp8_gather
     if muon:
-        assert all(g.use_muon and g.muon_shard_numel for g in fp8_groups)
+        assert all(g.keep_whole and g.whole_shard_numel for g in fp8_groups)
     ctx.all_gather_params()
 
     attrs = [a for d, s, _ in quantizer.attrs for a in (d, s)]

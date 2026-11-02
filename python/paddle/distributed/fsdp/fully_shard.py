@@ -50,8 +50,36 @@ class OffloadPolicy:
     pin_memory: bool = True
 
 
+def _mark_params_for_mixed_optimizer(module, optimizer, decay_fun):
+    # Buffers are split by owning sub; keep_whole subs take the whole-param path.
+    route = optimizer._route
+    sub_ids = {id(sub): i for i, sub in enumerate(optimizer._sub_opts)}
+    missing = []
+    for name, param in module.named_parameters():
+        sub = route.get(param.name)
+        # The owning sub decays its params with its own callback.
+        fun = getattr(sub, "_apply_decay_param_fun", None) or decay_fun
+        param.no_weight_decay = fun is not None and not fun(param.name)
+        param.use_hyperball_sharded = False
+        if sub is None:
+            if not param.stop_gradient:
+                missing.append(name)
+            param.fsdp_optimizer_group = None
+            param.keep_whole = False
+            continue
+        param.fsdp_optimizer_group = sub_ids[id(sub)]
+        param.keep_whole = bool(sub.keep_whole_of(param.name))
+    if missing:
+        raise ValueError(
+            f"MixedInnerOptimizer misses trainable params: {missing[:8]}"
+        )
+
+
 def _mark_params_for_optimizer(module, optimizer):
     decay_fun = getattr(optimizer, "_apply_decay_param_fun", None)
+    if getattr(optimizer, "_sub_opts", None) is not None:
+        _mark_params_for_mixed_optimizer(module, optimizer, decay_fun)
+        return
     muon_info_map = getattr(optimizer, "_muon_param_info_map", None)
     missing = []
     for name, param in module.named_parameters():
@@ -72,7 +100,7 @@ def _mark_params_for_optimizer(module, optimizer):
             and getattr(info, "split_concat_func", None) is None
             and len(shape) == 2
         )
-        param.use_muon = bool(
+        param.keep_whole = bool(
             info is not None
             and (info.use_muon or hyperball)
             and not param.use_hyperball_sharded
@@ -193,7 +221,7 @@ def fully_shard(
             performance. Defaults to True.
         optimizer (Optimizer | None, optional): Manual parallel mode only. The optimizer
             built on ``module``'s parameters. Defaults to None, in which case
-            ``param.no_weight_decay`` and ``param.use_muon`` must be set beforehand
+            ``param.no_weight_decay`` and ``param.keep_whole`` must be set beforehand
             if needed.
         grad_accum_steps (int, optional): Manual parallel mode only. Gradient
             accumulation steps. Defaults to 1.
