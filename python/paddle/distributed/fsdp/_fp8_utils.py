@@ -34,7 +34,7 @@ def fp8_shard_numel(params):
 
 
 def init_fp8_buffer(params_buffer, params):
-    if not params_buffer.is_sharded:
+    if not params_buffer.is_sharded and params_buffer.fsdp_degree > 1:
         raise ValueError(
             f"_fsdp_fp8_quantizer: group {params_buffer.unique_key} is not "
             "sharded"
@@ -115,6 +115,9 @@ def get_fp8_tmp_buffer(params_buffer):
 
 def bind_fp8_param(params_buffer, param):
     fp8 = params_buffer.fp8
+    if fp8.fulls is None and not params_buffer.is_sharded:
+        quantize_fp8_shard(params_buffer)
+        fp8.fulls = fp8.shards
     attrs, block = fp8.quantizer.attrs, fp8.quantizer.block
     k, bn = len(attrs), block**2
     shape = list(getattr(param, "original_shape", None) or param.shape)
