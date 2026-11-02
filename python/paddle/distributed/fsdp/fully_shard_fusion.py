@@ -664,7 +664,6 @@ class FSDPCommManager:
         enable_overlap=True,
         prefetch_units=1,
         comm_unit_size=None,
-        sync_grads_each_microbatch=True,
     ):
         self.buffer_manager = buffer_manager
         self.enable_overlap = enable_overlap
@@ -684,7 +683,8 @@ class FSDPCommManager:
         self.buffer_cnt_in_using = 0
         self.need_zero_grads = True
         self._last_backward_unit_id = None
-        self.sync_grads_each_microbatch = sync_grads_each_microbatch
+        # Experimental: False syncs grads only on the last micro-batch.
+        self.sync_grads_each_microbatch = True
         self.grad_accum_steps = 1
         self._backward_cnt = 0
 
@@ -1109,7 +1109,6 @@ class FSDPCommManager:
         if (
             not self.sync_grads_each_microbatch
             and self._backward_cnt < self.grad_accum_steps
-            and not group.is_expert_param
         ):
             self._release_reduced_grad_views(grads_buffer)
             return
@@ -1337,7 +1336,6 @@ class FullyShardFusion:
         fp8_main_dtype=paddle.float32,
         prefetch_units=1,
         comm_unit_size=None,
-        sync_grads_each_microbatch=True,
     ):
         self.model = model
         self.mp_policy = mp_policy
@@ -1352,7 +1350,6 @@ class FullyShardFusion:
             enable_overlap=enable_tensor_fusion_and_overlap,
             prefetch_units=prefetch_units,
             comm_unit_size=comm_unit_size,
-            sync_grads_each_microbatch=sync_grads_each_microbatch,
         )
         self.register_tensor_fusion_hooks(self.model)
         register_fsdp_context(self)
