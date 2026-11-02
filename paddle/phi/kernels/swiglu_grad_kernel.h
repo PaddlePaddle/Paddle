@@ -37,64 +37,44 @@ void SwiGLUGradKernel(const Context &dev_ctx,
                       const DenseTensor &dz,
                       DenseTensor *dx,
                       DenseTensor *dy) {
-  if (dx && dx->numel() == 0) {
-    dev_ctx.template Alloc<T>(dx);
-    if (dy) {
-      Full<T, Context>(dev_ctx, dy->dims(), 0, dy);
-    }
-    return;
-  }
-
-  if (dy && dy->numel() == 0) {
-    dev_ctx.template Alloc<T>(dy);
-    if (dx) {
-      Full<T, Context>(dev_ctx, dx->dims(), 0, dx);
-    }
-    return;
-  }
-
-  const auto *x_ptr = x.data<T>();
-  const auto *dz_ptr = dz.data<T>();
-  auto *dx_ptr = dx ? dev_ctx.template Alloc<T>(dx) : nullptr;
-  auto *dy_ptr = y && dy ? dev_ctx.template Alloc<T>(dy) : nullptr;
   const auto &dims = x.dims();
-
+  const auto &dz_dims = dz.dims();
+  // Validate shapes before the 0-size early returns below, otherwise a
+  // mismatched dz/y is silently accepted whenever x has no elements.
+  int64_t m = 0, n = 0;
   if (y) {
-    const auto &y_tensor = y.get();
-    const auto &y_dims = y_tensor.dims();
-    const auto &dz_dims = dz.dims();
-    PADDLE_ENFORCE_EQ(y_dims,
-                      dims,
-                      common::errors::InvalidArgument(
-                          "The shape of Input(Y):[%s] must be equal "
-                          "to the shape of Input(X):[%s].",
-                          y_dims,
-                          dims));
+    const auto &y_dims = y.get().dims();
+    // Mirror SwiGLUInferMeta: x and y may differ when either is 0-size, and
+    // out (hence dz) then takes y's shape only if x is the non-empty one.
+    const bool x_empty = x.numel() == 0;
+    const bool y_empty = y.get().numel() == 0;
+    if (!x_empty && !y_empty) {
+      PADDLE_ENFORCE_EQ(y_dims,
+                        dims,
+                        common::errors::InvalidArgument(
+                            "The shape of Input(Y):[%s] must be equal "
+                            "to the shape of Input(X):[%s].",
+                            y_dims,
+                            dims));
+    }
+    const auto &out_dims = (!x_empty && y_empty) ? y_dims : dims;
     PADDLE_ENFORCE_EQ(dz_dims,
-                      dims,
+                      out_dims,
                       common::errors::InvalidArgument(
                           "The shape of Input(dz):[%s] must be equal "
-                          "to the shape of Input(X):[%s].",
+                          "to the shape of Out:[%s].",
                           dz_dims,
-                          dims));
-    SwiGLUGradKernelImpl<T, Context>(dev_ctx,
-                                     x_ptr,
-                                     y_tensor.data<T>(),
-                                     dz_ptr,
-                                     dx_ptr,
-                                     dy_ptr,
-                                     x.numel(),
-                                     1);
+                          out_dims));
   } else {
     auto dims_2d = flatten_to_2d(dims, dims.size() - 1);
-    int64_t m = dims_2d[0], n = dims_2d[1];
+    m = dims_2d[0];
+    n = dims_2d[1];
     PADDLE_ENFORCE_EQ(n % 2,
                       0,
                       common::errors::InvalidArgument(
                           "The last dim of Input(X) should be exactly divided "
                           "by 2 when Input(Y) is None, but got %d",
                           n));
-    const auto &dz_dims = dz.dims();
     PADDLE_ENFORCE_EQ(
         dz_dims.size(),
         dims.size(),
@@ -121,6 +101,39 @@ void SwiGLUGradKernel(const Context &dev_ctx,
             "last dim of Input(X):[%d] when Input(Y) is None.",
             dz_dims[dz_dims.size() - 1],
             n));
+  }
+
+  if (dx && dx->numel() == 0) {
+    dev_ctx.template Alloc<T>(dx);
+    if (dy) {
+      Full<T, Context>(dev_ctx, dy->dims(), 0, dy);
+    }
+    return;
+  }
+
+  if (dy && dy->numel() == 0) {
+    dev_ctx.template Alloc<T>(dy);
+    if (dx) {
+      Full<T, Context>(dev_ctx, dx->dims(), 0, dx);
+    }
+    return;
+  }
+
+  const auto *x_ptr = x.data<T>();
+  const auto *dz_ptr = dz.data<T>();
+  auto *dx_ptr = dx ? dev_ctx.template Alloc<T>(dx) : nullptr;
+  auto *dy_ptr = y && dy ? dev_ctx.template Alloc<T>(dy) : nullptr;
+
+  if (y) {
+    SwiGLUGradKernelImpl<T, Context>(dev_ctx,
+                                     x_ptr,
+                                     y.get().data<T>(),
+                                     dz_ptr,
+                                     dx_ptr,
+                                     dy_ptr,
+                                     x.numel(),
+                                     1);
+  } else {
     SwiGLUGradKernelImpl<T, Context>(
         dev_ctx, x_ptr, nullptr, dz_ptr, dx_ptr, nullptr, m, n / 2);
   }
