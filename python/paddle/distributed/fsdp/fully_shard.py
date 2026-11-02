@@ -124,6 +124,8 @@ def _fully_shard_manual_parallel(
     grad_accum_steps=1,
     prefetch_units=1,
     comm_unit_size=None,
+    reshard_policy="after_forward",
+    reshard_filter="all",
 ):
     layers = module._layers if isinstance(module, MetaParallelBase) else module
     if optimizer is not None:
@@ -140,6 +142,8 @@ def _fully_shard_manual_parallel(
         fp8_main_dtype=paddle.float32 if multi_precision else None,
         prefetch_units=prefetch_units,
         comm_unit_size=comm_unit_size,
+        reshard_policy=reshard_policy,
+        reshard_filter=reshard_filter,
     )
     layers._fsdp_context.set_grad_accum_steps(grad_accum_steps)
     if optimizer is not None:
@@ -187,6 +191,8 @@ def fully_shard(
     grad_accum_steps: int = 1,
     prefetch_units: int = 1,
     comm_unit_size: int | None = None,
+    reshard_policy: str = "after_forward",
+    reshard_filter: str | Callable[..., bool] = "all",
 ) -> paddle.nn.Layer:
     """
     Apply fully sharded data parallel (FSDP) to the given module.
@@ -233,6 +239,27 @@ def fully_shard(
             elements ahead and at most ``comm_unit_size`` grad elements
             stay in reduce_scatter. 0 disables prefetch. Defaults to None
             (prefetch by layer).
+        reshard_policy (str, optional): Manual parallel mode only. When the
+            all-gathered (unsharded) parameters selected by ``reshard_filter``
+            are freed again.
+
+            - ``"after_forward"``: after forward; backward all-gathers them
+              again. Lowest memory.
+            - ``"after_backward"``: kept from forward until their unit's
+              backward is done, so backward needs no all-gather.
+            - ``"after_step"``: also kept across the micro-batches of a
+              gradient accumulation step and freed before the optimizer step,
+              so each layer is all-gathered once per step.
+
+            The last two cost one full copy of each kept layer's local
+            parameters. Defaults to ``"after_forward"``.
+        reshard_filter (str | Callable, optional): Manual parallel mode only.
+            Which parameters ``reshard_policy`` applies to; the others use
+            ``"after_forward"``. ``"all"``: all sharded parameters;
+            ``"expert"``: expert parameters (``is_moe_param``) only;
+            ``"dense"``: non-expert parameters only. A callable for per-layer
+            selection is reserved and not supported yet. Defaults to
+            ``"all"``.
 
     Returns:
         module: A wrapper module that applies FSDP to the input module.
@@ -288,4 +315,8 @@ def fully_shard(
     if in_auto_parallel_mode():
         return _fully_shard_auto_parallel(*args)
     else:
-        return _fully_shard_manual_parallel(*args)
+        return _fully_shard_manual_parallel(
+            *args,
+            reshard_policy=reshard_policy,
+            reshard_filter=reshard_filter,
+        )

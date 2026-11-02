@@ -828,5 +828,123 @@ class TestPrefetchBySizeSequence(unittest.TestCase):
         self.assertNotIn(2, self.issued)
 
 
+class TestReshardPolicy(unittest.TestCase):
+    """Covers reshard_policy / reshard_filter of FSDPCommManager."""
+
+    def _kept(self, cm):
+        return [
+            g.params_buffer.keep_gathered
+            for g in cm.buffer_manager.buffer_groups
+        ]
+
+    def test_invalid_args(self):
+        with self.assertRaises(ValueError):
+            _make_comm_manager(_LAYOUT, reshard_policy="never")
+        with self.assertRaises(ValueError):
+            _make_comm_manager(_LAYOUT, reshard_filter="moe")
+        with self.assertRaises(NotImplementedError):
+            _make_comm_manager(_LAYOUT, reshard_filter=lambda unit: True)
+
+    def test_default_keeps_nothing(self):
+        cm = _make_comm_manager(_LAYOUT)
+        self.assertEqual(self._kept(cm), [False] * 8)
+
+    def test_filter_selects_groups(self):
+        # Even gids are dense, odd gids are expert.
+        for reshard_filter, expected in (
+            ("all", [True] * 8),
+            ("expert", [False, True] * 4),
+            ("dense", [True, False] * 4),
+        ):
+            for policy in ("after_backward", "after_step"):
+                cm = _make_comm_manager(
+                    _LAYOUT,
+                    reshard_policy=policy,
+                    reshard_filter=reshard_filter,
+                )
+                self.assertEqual(self._kept(cm), expected)
+                groups = cm.buffer_manager.buffer_groups
+                self.assertEqual(
+                    [cm._keep_after_backward(g) for g in groups],
+                    [k and policy == "after_step" for k in expected],
+                )
+
+    def test_kept_buffers_outside_budget(self):
+        for comm_unit_size in (None, 80):
+            cm = _make_comm_manager(
+                _LAYOUT,
+                comm_unit_size=comm_unit_size,
+                reshard_policy="after_backward",
+                reshard_filter="expert",
+            )
+            groups = cm.buffer_manager.buffer_groups
+            for gid in (0, 1):
+                cm._count_gathered(groups[gid].params_buffer)
+            # Only the dense bucket (gid 0) is counted.
+            self.assertEqual(cm.buffer_cnt_in_using, 0 if comm_unit_size else 1)
+            self.assertEqual(cm.gathered_numel, 10 if comm_unit_size else 0)
+            for gid in (0, 1):
+                cm._free_params_buffer(groups[gid].params_buffer)
+            self.assertEqual(cm.buffer_cnt_in_using, 0)
+            self.assertEqual(cm.gathered_numel, 0)
+
+    def test_release_skips_kept_buffers(self):
+        cm = _make_comm_manager(
+            _LAYOUT, reshard_policy="after_backward", reshard_filter="expert"
+        )
+        bufs = [g.params_buffer for g in cm.buffer_manager.buffer_groups]
+        for buf in bufs:
+            buf.status = fsf.BufferState.READY
+        cm.buffer_cnt_in_using = cm.gather_buffer_limit + 4
+        cm._release_one_buffer_if_needed()
+        self.assertEqual(
+            [b.status == fsf.BufferState.READY for b in bufs],
+            [False, True] * 4,
+        )
+
+        cm = _make_comm_manager(
+            _LAYOUT,
+            comm_unit_size=80,
+            reshard_policy="after_backward",
+            reshard_filter="expert",
+        )
+        bufs = [g.params_buffer for g in cm.buffer_manager.buffer_groups]
+        for buf in bufs:
+            buf.status = fsf.BufferState.READY
+        cm.gathered_numel = 40
+        cm._release_ready_buffers(10, 0)
+        self.assertEqual(
+            [b.status == fsf.BufferState.READY for b in bufs],
+            [False, True] * 4,
+        )
+        self.assertEqual(cm.gathered_numel, 0)
+
+    def test_after_step_keeps_through_backward(self):
+        for policy, expected in (
+            ("after_backward", [False, False]),
+            ("after_step", [False, True]),
+        ):
+            cm = _make_comm_manager(
+                _LAYOUT, reshard_policy=policy, reshard_filter="expert"
+            )
+            groups = cm.buffer_manager.buffer_groups
+            for g in groups:
+                g.params = []
+                g.params_buffer.status = fsf.BufferState.USING
+            # Backward of unit 2 is done: unit 3 (gid 6, 7) is released.
+            cm._release_params_after_unit(2)
+            self.assertEqual(
+                [
+                    groups[gid].params_buffer.status == fsf.BufferState.USING
+                    for gid in (6, 7)
+                ],
+                expected,
+            )
+            for gid in range(6):
+                self.assertEqual(
+                    groups[gid].params_buffer.status, fsf.BufferState.USING
+                )
+
+
 if __name__ == "__main__":
     unittest.main()
