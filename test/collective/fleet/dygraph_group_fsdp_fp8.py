@@ -131,8 +131,12 @@ def experts(model):
     return [w for layer in model.layers for w in (layer.weight1, layer.weight2)]
 
 
-def build_grouped(fp8, quantizer=None, muon=False, multi_precision=True):
-    group = fleet.get_hybrid_communicate_group().get_sharding_parallel_group()
+def build_grouped(
+    fp8, quantizer=None, muon=False, multi_precision=True, group=None
+):
+    if group is None:
+        hcg = fleet.get_hybrid_communicate_group()
+        group = hcg.get_sharding_parallel_group()
     paddle.seed(2026)
     model = GroupedExpertModel(fp8)
     for p in experts(model):
@@ -190,11 +194,14 @@ def expected_caches(ctx, model, quantizer):
         for w in (layer.weight1, layer.weight2):
             buf = bm.buffer_groups[bm.param_to_buffer_id[w.name]].params_buffer
             if buf.unique_key not in fulls:
-                parts = []
-                paddle.distributed.all_gather(
-                    parts, buf.data_buffer, group=buf.fsdp_group
-                )
-                fulls[buf.unique_key] = paddle.concat(parts)
+                if not buf.is_sharded:  # one-rank group: the shard is whole
+                    fulls[buf.unique_key] = buf.data_buffer
+                else:
+                    parts = []
+                    paddle.distributed.all_gather(
+                        parts, buf.data_buffer, group=buf.fsdp_group
+                    )
+                    fulls[buf.unique_key] = paddle.concat(parts)
             begin = buf.param_offsets[w.name]
             full = fulls[buf.unique_key][begin : begin + int(np.prod(w.shape))]
             full = full.astype(w.dtype).reshape(w.shape)
@@ -203,13 +210,16 @@ def expected_caches(ctx, model, quantizer):
     return md5s
 
 
-def train_fp8(keep_transpose, fp8_gather, data, muon=False, mp=True):
+def train_fp8(
+    keep_transpose, fp8_gather, data, muon=False, mp=True, group=None
+):
     quantizer = BlockQuantizer(keep_transpose)
     model, opt, ctx = build_grouped(
         True,
         quantizer=quantizer if fp8_gather else None,
         muon=muon,
         multi_precision=mp,
+        group=group,
     )
     groups = ctx.buffer_manager.buffer_groups
     fp8_groups = [g for g in groups if g.params_buffer.fp8 is not None]
@@ -292,7 +302,7 @@ def fp8_slices(ctx):
                 yield key, info, main
 
 
-def check_fp8_checkpoint(ckpt_path, muon, mp=True):
+def check_fp8_checkpoint(ckpt_path, muon, mp=True, group=None):
     data = rand_data(7, 3)
 
     def build():
@@ -301,6 +311,7 @@ def check_fp8_checkpoint(ckpt_path, muon, mp=True):
             quantizer=BlockQuantizer(True),
             muon=muon,
             multi_precision=mp,
+            group=group,
         )
 
     model, opt, ctx = build()
@@ -376,7 +387,7 @@ def check_unaligned_fp8_raises():
         raise AssertionError("unaligned fp8 group must be refused")
 
 
-def run_fp8_checkpoint():
+def run_fp8_checkpoint(group=None):
     rank = paddle.distributed.get_rank()
     ckpt_root = [tempfile.mkdtemp() if rank == 0 else None]
     paddle.distributed.broadcast_object_list(ckpt_root, src=0)
@@ -384,11 +395,25 @@ def run_fp8_checkpoint():
     try:
         for muon, mp in ((False, True), (True, True), (False, False)):
             path = os.path.join(ckpt_root, f"{muon=}_{mp=}")
-            check_fp8_checkpoint(path, muon, mp)
+            check_fp8_checkpoint(path, muon, mp, group=group)
     finally:
         paddle.distributed.barrier()
         if rank == 0:
             shutil.rmtree(ckpt_root, ignore_errors=True)
+
+
+def run_fp8_single_rank():
+    """A one-rank fsdp group keeps the fp8 buffer unsharded."""
+    # Every rank creates every group, in the same order.
+    world_size = paddle.distributed.get_world_size()
+    groups = [paddle.distributed.new_group([r]) for r in range(world_size)]
+    group = groups[paddle.distributed.get_rank()]
+    data = rand_data(9, STEPS)
+    for keep_transpose, mp in ((True, True), (False, True), (True, False)):
+        ref = train_fp8(keep_transpose, False, data, mp=mp, group=group)
+        new = train_fp8(keep_transpose, True, data, mp=mp, group=group)
+        assert ref == new, f"single rank {keep_transpose=} {mp=}"
+    run_fp8_checkpoint(group=group)
 
 
 if __name__ == '__main__':
@@ -404,3 +429,4 @@ if __name__ == '__main__':
     check_unaligned_fp8_raises()
     run_fp8_gather()
     run_fp8_checkpoint()
+    run_fp8_single_rank()
