@@ -353,7 +353,7 @@ def check_clip_attrs(hcg):
                 rank = paddle.distributed.get_rank(group.fsdp_group)
                 expected = expected and (
                     group.fsdp_group.nranks == 1
-                    or group.muon_owner_rank is not None
+                    or group.whole_owner_rank is not None
                     or rank == 0
                 )
             assert getattr(data_buffer, attr) == expected, (
@@ -424,7 +424,7 @@ def tag_muon_params(model):
         if w_low is not None:
             stacks.append(w_low)
         for param in stacks:
-            param.use_muon = True
+            param.keep_whole = True
             info_map[param.name] = MuonParamInfo(use_muon=True)
     return info_map
 
@@ -465,7 +465,7 @@ def muon_groups_of(fsdp_context):
     return [
         group
         for group in fsdp_context.buffer_manager.buffer_groups
-        if group.use_muon and group.grads_buffer is not None
+        if group.keep_whole and group.grads_buffer is not None
     ]
 
 
@@ -473,7 +473,7 @@ def gather_muon_params(fsdp_context):
     """Every Muon group's full params buffer, gathered on all ranks."""
     buffers = {}
     for gid, group in enumerate(fsdp_context.buffer_manager.buffer_groups):
-        if not group.use_muon or group.grads_buffer is None:
+        if not group.keep_whole or group.grads_buffer is None:
             continue
         params_buffer = group.params_buffer
         buffer = params_buffer.data_buffer
@@ -510,18 +510,18 @@ def run_muon_shard():
     paddle.seed(2026)
     data = [paddle.randn([TOKENS, HIDDEN]) for _ in range(MUON_STEPS)]
 
-    origin_shard_numel = fully_shard_fusion._muon_3d_shard_numel
-    fully_shard_fusion._muon_3d_shard_numel = lambda *args, **kwargs: None
+    origin_shard_numel = fully_shard_fusion._whole_3d_shard_numel
+    fully_shard_fusion._whole_3d_shard_numel = lambda *args, **kwargs: None
     try:
         dense_losses, dense_ctx = train_muon(dense_model, dense_info, data)
     finally:
-        fully_shard_fusion._muon_3d_shard_numel = origin_shard_numel
+        fully_shard_fusion._whole_3d_shard_numel = origin_shard_numel
 
     dense_groups = muon_groups_of(dense_ctx)
     assert dense_groups
     for group in dense_groups:
-        assert group.muon_shard_numel is None
-        assert group.muon_owner_rank is not None
+        assert group.whole_shard_numel is None
+        assert group.whole_owner_rank is not None
         assert group.params_buffer.is_sharded
     dense_params = gather_muon_params(dense_ctx)
 
@@ -530,11 +530,11 @@ def run_muon_shard():
     matrix_groups = muon_groups_of(matrix_ctx)
     assert len(matrix_groups) == len(dense_groups)
     for group in matrix_groups:
-        assert group.muon_shard_numel == HIDDEN * INTER, (
-            f"expected matrix-aligned sharding, got {group.muon_shard_numel}"
+        assert group.whole_shard_numel == HIDDEN * INTER, (
+            f"expected matrix-aligned sharding, got {group.whole_shard_numel}"
         )
         assert group.params_buffer.is_sharded
-        assert group.muon_owner_rank is None
+        assert group.whole_owner_rank is None
     matrix_params = gather_muon_params(matrix_ctx)
 
     assert matrix_losses == dense_losses, (
@@ -578,14 +578,14 @@ def run_muon_replicated():
     paddle.seed(2026)
     data = [paddle.randn([TOKENS, HIDDEN]) for _ in range(2)]
 
-    origin_shard_numel = fully_shard_fusion._muon_3d_shard_numel
-    fully_shard_fusion._muon_3d_shard_numel = lambda *args, **kwargs: None
+    origin_shard_numel = fully_shard_fusion._whole_3d_shard_numel
+    fully_shard_fusion._whole_3d_shard_numel = lambda *args, **kwargs: None
     try:
         dense_losses, dense_ctx = train_muon(
             dense_model, dense_info, data[:MUON_STEPS]
         )
     finally:
-        fully_shard_fusion._muon_3d_shard_numel = origin_shard_numel
+        fully_shard_fusion._whole_3d_shard_numel = origin_shard_numel
     dense_params = gather_muon_params(dense_ctx)
 
     snapshot = {}
@@ -602,10 +602,10 @@ def run_muon_replicated():
     assert len(groups) == MUON_LAYERS, groups
     my_rank = paddle.distributed.get_rank()
     for group in groups:
-        assert group.muon_shard_numel is None
+        assert group.whole_shard_numel is None
         assert not group.params_buffer.is_sharded
-        assert group.muon_owner_rank is not None
-        if group.fsdp_group.ranks[group.muon_owner_rank] != my_rank:
+        assert group.whole_owner_rank is not None
+        if group.fsdp_group.ranks[group.whole_owner_rank] != my_rank:
             assert group.grads_buffer._data_released
 
     assert replicated_losses[:MUON_STEPS] == dense_losses, (
@@ -725,13 +725,13 @@ def run_adamh_shard():
         for group in sharded:
             assert len(group.params) == 1
             assert len(group.params[0].shape) == 2
-            assert not group.use_muon
+            assert not group.keep_whole
             data_buffer = group.params_buffer.data_buffer
             assert data_buffer._hyperball_group is group.fsdp_group
         for layer in fsdp_model.layers:
             for param in (layer.w_up, layer.w_down):
                 assert not param.use_hyperball_sharded, param.name
-                assert param.use_muon, param.name
+                assert param.keep_whole, param.name
 
         fsdp_model = mix_precision_utils.MixPrecisionLayer(
             fsdp_model, dtype="float16"
@@ -802,7 +802,7 @@ def check_muon_checkpoint(num_mats_down, ckpt_path, dense):
     train_step(data[1])
     assert inner._fsdp_state_dict_ctx is ctx, "Muon never bound FSDP"
     groups = muon_groups_of(ctx)
-    matrix_sharded = all(g.muon_shard_numel is not None for g in groups)
+    matrix_sharded = all(g.whole_shard_numel is not None for g in groups)
     assert matrix_sharded == (not dense and num_mats_down is None)
 
     state = state_dict()
@@ -813,7 +813,7 @@ def check_muon_checkpoint(num_mats_down, ckpt_path, dense):
         if name in muon_names
     ]
     for name in held:
-        key = f"{ctx._muon_state_descs[name][0]}.moment1_0"
+        key = f"{ctx._whole_state_descs[name][0]}.moment1_0"
         assert key in state, f"Muon state {key} missing from the checkpoint"
         assert np.abs(state[key].local_tensor.numpy()).max() > 0, key
     num_held = paddle.to_tensor([len(held)])
@@ -824,7 +824,7 @@ def check_muon_checkpoint(num_mats_down, ckpt_path, dense):
         assert int(num_held) == len(muon_names), int(num_held)
     masters = [name for name in inner._master_weights if name in muon_names]
     for name in masters:
-        key = f"{ctx._muon_state_descs[name][0]}.w_0"
+        key = f"{ctx._whole_state_descs[name][0]}.w_0"
         assert key in state, f"Muon master weight {key} missing"
     num_masters = paddle.to_tensor([len(masters)])
     paddle.distributed.all_reduce(num_masters)
@@ -877,12 +877,12 @@ def run_muon_checkpoint():
     ckpt_root = ckpt_root[0]
     try:
         check_muon_checkpoint(None, os.path.join(ckpt_root, "matrix"), False)
-        origin_shard_numel = fully_shard_fusion._muon_3d_shard_numel
-        fully_shard_fusion._muon_3d_shard_numel = lambda *args, **kwargs: None
+        origin_shard_numel = fully_shard_fusion._whole_3d_shard_numel
+        fully_shard_fusion._whole_3d_shard_numel = lambda *args, **kwargs: None
         try:
             check_muon_checkpoint(None, os.path.join(ckpt_root, "dense"), True)
         finally:
-            fully_shard_fusion._muon_3d_shard_numel = origin_shard_numel
+            fully_shard_fusion._whole_3d_shard_numel = origin_shard_numel
         check_muon_checkpoint(
             MUON_MATS_DOWN, os.path.join(ckpt_root, "replicated"), False
         )
@@ -1065,7 +1065,7 @@ def run_mixed_shard():
         owner = owners.pop()
         if owner is None:
             continue
-        assert group.use_muon == (owner is whole), group.params
+        assert group.keep_whole == (owner is whole), group.params
         if owner is elementwise:
             # Marked by the sub's callback, not the top-level None.
             is_head = group.params[0].name == head_name
@@ -1073,14 +1073,14 @@ def run_mixed_shard():
     whole_groups = [
         group
         for group in groups
-        if group.use_muon and group.grads_buffer is not None
+        if group.keep_whole and group.grads_buffer is not None
     ]
     assert any(
-        group.muon_owner_rank is not None and group.params_buffer.is_sharded
+        group.whole_owner_rank is not None and group.params_buffer.is_sharded
         for group in whole_groups
     ), "no keep_whole buffer took the P2P owner path"
     assert any(
-        group.muon_shard_numel == HIDDEN * INTER for group in whole_groups
+        group.whole_shard_numel == HIDDEN * INTER for group in whole_groups
     ), "no keep_whole buffer was sharded by matrix"
 
     losses = train_mixed(model, optimizer, data)
@@ -1089,7 +1089,7 @@ def run_mixed_shard():
     )
     for group in groups:
         name = group.params_buffer.data_buffer.name
-        if group.grads_buffer is not None and not group.use_muon:
+        if group.grads_buffer is not None and not group.keep_whole:
             assert mixed._route[name] is mixed._route[group.params[0].name]
     assert_params_close(
         gathered_params(model, fsdp_context), base_params, "mixed vs base"

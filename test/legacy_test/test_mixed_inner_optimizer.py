@@ -761,7 +761,7 @@ class TestMarkParamsForFSDP(unittest.TestCase):
             [p.fsdp_optimizer_group for p in pa + pb], [0, 0, 1, 1]
         )
         self.assertEqual(
-            [p.use_muon for p in pa + pb], [False, False, True, True]
+            [p.keep_whole for p in pa + pb], [False, False, True, True]
         )
         self.assertEqual(
             [p.no_weight_decay for p in pa + pb], [False, True, True, False]
@@ -782,7 +782,7 @@ class TestMarkParamsForFSDP(unittest.TestCase):
         frozen.stop_gradient = True
         _mark_params_for_optimizer(_layer_of([*pa, *pb, frozen]), mixed)
         self.assertIsNone(frozen.fsdp_optimizer_group)
-        self.assertFalse(frozen.use_muon)
+        self.assertFalse(frozen.keep_whole)
 
     def test_trainable_unrouted_param_raises(self):
         mixed, pa, pb = self._mixed()

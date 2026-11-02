@@ -422,17 +422,17 @@ class MixedInnerOptimizer(InnerOptimizer):
         self._maybe_refuse()
 
         if fsdp_context is not None and hasattr(
-            fsdp_context, "broadcast_muon_params"
+            fsdp_context, "broadcast_whole_params"
         ):
-            fsdp_context.broadcast_muon_params()
+            fsdp_context.broadcast_whole_params()
 
     def _fsdp_params_grads(self, fsdp_context):
         """FSDP params_grads: whole params for keep_whole subs, fused shards
         for the rest."""
         fsdp_context.comm_sync_and_reset_status()
-        params_grads = list(fsdp_context.muon_params_grads())
+        params_grads = list(fsdp_context.whole_params_grads())
         for group in fsdp_context.buffer_manager.buffer_groups:
-            if group.use_muon or group.grads_buffer is None:
+            if group.keep_whole or group.grads_buffer is None:
                 continue
             data_buffer = group.params_buffer.data_buffer
             if data_buffer.stop_gradient:
