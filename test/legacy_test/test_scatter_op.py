@@ -936,7 +936,9 @@ class TestScatterOp_ZeroSize(OpTest):
         self.public_python_api = paddle.scatter
         self._set_dtype()
         ref_np = np.ones((100, 1)).astype(self.dtype)
-        updates_np = np.random.random((4, 1)).astype(self.dtype)
+        # one index selects one row of updates, so an empty index pairs with
+        # an empty updates
+        updates_np = np.random.random((0, 1)).astype(self.dtype)
         index_np = np.random.random([0]).astype("int32")
 
         output_np = np.copy(ref_np)
@@ -966,7 +968,7 @@ class TestScatterOp_ZeroSize2(TestScatterOp_ZeroSize):
         self.public_python_api = paddle.scatter
         self._set_dtype()
         ref_np = np.ones((0, 1)).astype(self.dtype)
-        updates_np = np.random.random((4, 1)).astype(self.dtype)
+        updates_np = np.random.random((0, 1)).astype(self.dtype)
         # x has no row to scatter into, so only an empty index is in range
         index_np = np.random.random([0]).astype("int32")
 
@@ -1009,18 +1011,75 @@ class TestZeroSizeAxisOutOfRangeError(unittest.TestCase):
                 )
                 x = paddle.ones([4, 1], dtype="float32")
                 x.stop_gradient = False
-                updates = paddle.ones([2, 1], dtype="float32")
+                # an empty index selects no row, so updates is empty as well
+                updates = paddle.ones([0, 1], dtype="float32")
                 updates.stop_gradient = False
                 index = paddle.zeros([0], dtype="int64")
                 out = paddle.scatter(x, index, updates)
                 np.testing.assert_allclose(out.numpy(), x.numpy())
-                # nothing is scattered, so dX passes through and dUpdates is all zeros
+                # nothing is scattered, so dX passes through and dUpdates keeps
+                # the shape of updates
                 out_grad = paddle.full_like(out, 3.0)
                 x_grad, updates_grad = paddle.grad(out, [x, updates], out_grad)
                 np.testing.assert_allclose(x_grad.numpy(), out_grad.numpy())
-                np.testing.assert_allclose(
-                    updates_grad.numpy(), np.zeros([2, 1], dtype="float32")
-                )
+                self.assertEqual(updates_grad.shape, [0, 1])
+
+
+class TestScatterUpdatesShapeError(unittest.TestCase):
+    """updates must match x except dim 0 and match index there, on every device."""
+
+    def set_device(self, place):
+        paddle.set_device("cpu" if isinstance(place, base.CPUPlace) else "gpu")
+
+    def test_dygraph_error(self):
+        cases = [
+            # trailing dims, empty index: the kernels return early before
+            # reaching their own check
+            ([8, 4], [], [0, 3]),
+            ([16, 2, 3], [], [0, 3, 2]),
+            # trailing dims, non-empty index: the GPU kernel has no check
+            ([8, 4], [0, 2], [2, 3]),
+            ([16, 2, 3], [1], [1, 2, 4]),
+            # 0-D index: updates must be one row of x
+            ([8, 4], 1, [3]),
+            # index length must equal updates's first dimension size
+            ([8, 4], [], [5, 4]),
+            ([8, 4], [0, 2], [5, 4]),
+            ([8, 4], [0, 2, 3], [2, 4]),
+            ([8], [0, 1], [5]),
+        ]
+        with dygraph_guard():
+            for place in get_places():
+                self.set_device(place)
+                for x_shape, index, updates_shape in cases:
+                    with (
+                        self.subTest(
+                            place=str(place), x=x_shape, updates=updates_shape
+                        ),
+                        self.assertRaises(ValueError),
+                    ):
+                        paddle.scatter(
+                            paddle.ones(x_shape),
+                            paddle.to_tensor(index, dtype="int64"),
+                            paddle.ones(updates_shape),
+                        )
+
+    def test_dygraph_valid(self):
+        with dygraph_guard():
+            for place in get_places():
+                self.set_device(place)
+                for index, updates_shape in (
+                    ([], [0, 4]),
+                    ([0, 2], [2, 4]),
+                    ([0, 2, 3], [3, 4]),
+                    (1, [4]),
+                ):
+                    out = paddle.scatter(
+                        paddle.ones([8, 4]),
+                        paddle.to_tensor(index, dtype="int64"),
+                        paddle.zeros(updates_shape),
+                    )
+                    self.assertEqual(out.shape, [8, 4])
 
 
 if __name__ == "__main__":

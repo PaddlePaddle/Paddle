@@ -2961,15 +2961,34 @@ void ScatterInferMeta(const MetaTensor& x,
             ref_dims.size(),
             updates_dims.size()));
     if (index_dims[0] != -1 && updates_dims[0] != -1) {
-      PADDLE_ENFORCE_LE(
+      // One index selects one row of updates, so the two must have the same
+      // length. The kernels and the SPMD rule already assume this: both derive
+      // dUpdates as gather(dOut, index), whose row count is the index length.
+      PADDLE_ENFORCE_EQ(
           index_dims[0],
           updates_dims[0],
           common::errors::InvalidArgument(
-              "The first dimension size of Input(Index) should be no greater "
-              "than Input(Updates), but received first dimension size of "
-              "Input(Index) is %d, Input(Updates) is  %d.",
+              "Number of indices (%d) should be equal to the first dimension "
+              "size of Input(Updates) (%d).",
               index_dims[0],
               updates_dims[0]));
+    }
+    // updates[i] overwrites the whole row x[index[i]], so every dim but the
+    // first must match. Check it here: the kernels skip their own check on an
+    // empty index, and the GPU kernel never checks it at all.
+    for (int i = 1; i < ref_dims.size(); ++i) {
+      if (ref_dims[i] != -1 && updates_dims[i] != -1) {
+        PADDLE_ENFORCE_EQ(
+            updates_dims[i],
+            ref_dims[i],
+            common::errors::InvalidArgument(
+                "The shape of Input(Updates) should match Input(X) except "
+                "the first dimension, but received dimension %d of "
+                "Input(Updates) is %d and of Input(X) is %d.",
+                i,
+                updates_dims[i],
+                ref_dims[i]));
+      }
     }
   } else {
     PADDLE_ENFORCE_EQ(
@@ -2982,6 +3001,23 @@ void ScatterInferMeta(const MetaTensor& x,
             " the size of Input(Updates)'s shape is %d.",
             ref_dims.size(),
             updates_dims.size()));
+    // A 0-D index selects a single row, so updates must be that row's shape.
+    for (int i = 0; i < updates_dims.size(); ++i) {
+      if (ref_dims[i + 1] != -1 && updates_dims[i] != -1) {
+        PADDLE_ENFORCE_EQ(
+            updates_dims[i],
+            ref_dims[i + 1],
+            common::errors::InvalidArgument(
+                "When the Input(Index) is a 0D tensor, the shape of "
+                "Input(Updates) should match Input(X) without its first "
+                "dimension, but received dimension %d of Input(Updates) is "
+                "%d and dimension %d of Input(X) is %d.",
+                i,
+                updates_dims[i],
+                i + 1,
+                ref_dims[i + 1]));
+      }
+    }
   }
   out->set_dims(ref_dims);
   out->share_lod(x);
