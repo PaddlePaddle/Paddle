@@ -977,6 +977,31 @@ class TestMatMulOp_ZeroSize2(TestMatMulOp_ZeroSize):
         self.y = np.random.random((1, 3, 3, 2))
 
 
+class TestMatMulOp_ZeroSizeDtypeMismatch(unittest.TestCase):
+    """A 0-size input must not hide a dtype mismatch: it raises like a
+    non-empty input does, instead of returning an all-zero tensor."""
+
+    def test_zero_size_dtype_mismatch_raises(self):
+        with base.dygraph.guard():
+            x = paddle.zeros([0, 5, 6], dtype='float32')
+            y = paddle.zeros([6, 7], dtype='float64')
+            with self.assertRaises(ValueError):
+                paddle.matmul(x, y)
+
+    def test_non_zero_size_dtype_mismatch_raises(self):
+        with base.dygraph.guard():
+            x = paddle.zeros([2, 5, 6], dtype='float32')
+            y = paddle.zeros([6, 7], dtype='float64')
+            with self.assertRaises(ValueError):
+                paddle.matmul(x, y)
+
+    def test_zero_size_same_dtype_still_passes(self):
+        with base.dygraph.guard():
+            x = paddle.zeros([0, 5, 6], dtype='float32')
+            y = paddle.zeros([6, 7], dtype='float32')
+            self.assertEqual(paddle.matmul(x, y).shape, [0, 5, 7])
+
+
 class TestMatMulOp_trans_y(TestMatMulV2Op):
     # y is 1-D and trans_y is True
     def config(self):
