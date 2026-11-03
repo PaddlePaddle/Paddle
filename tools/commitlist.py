@@ -1,5 +1,6 @@
-# Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
-#
+
+# Copyright (c) 2026 PaddlePaddle Authors. All Rights Reserved.
+
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -11,6 +12,25 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+
+"""Generate release-note worksheets from git history and GitHub PR metadata.
+
+By default the script walks commits in
+`merge-base(base_ref, head_ref)..head_ref`, extracts PR numbers from commit
+titles such as `... (#12345)`, optionally enriches them with GitHub GraphQL
+metadata, and writes:
+
+- `commitlist.csv`
+- `contributors.txt`
+- `export/<category>/result_<category>.md`
+- `export/<category>/result_<category>.csv`
+
+Category and topic prefer the `release notes:` and `topic:` labels. If those
+labels are absent, the script falls back to the `PR Category`, `PR Types`, and
+`Description` sections in the PR body. `--local-only` skips GitHub lookups and
+keeps the output based on local git metadata only.
+"""
 
 from __future__ import annotations
 
@@ -625,14 +645,41 @@ def write_category_exports(
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description='Generate release-note CSV and Markdown between two commits in one command.'
+        description=(
+            'Generate release-note CSV plus per-category Markdown/CSV '
+            'worksheets between two refs.'
+        ),
+        epilog=(
+            'Notes:\n'
+            '  By default the compared range is '
+            'merge-base(base_ref, head_ref)..head_ref.\n'
+            '  GitHub tokens are loaded from --token, then '
+            'GITHUB_API_TOKEN,\n'
+            '  GITHUB_TOKEN, GH_TOKEN, and finally ~/.gh_tokenrc.\n'
+            '  PR category/topic prefer `release notes:` and `topic:` labels;\n'
+            '  otherwise the script reads the PR body sections '
+            '`PR Category`,\n'
+            '  `PR Types`, and `Description`.\n'
+            '\n'
+            'Examples:\n'
+            '  python tools/commitlist.py release/3.0 develop\n'
+            '  python tools/commitlist.py v3.0.0 HEAD --direct-range\n'
+            '  python tools/commitlist.py HEAD~20 HEAD --local-only '
+            '--output-dir /tmp/commitlist\n'
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    parser.add_argument('base_ref', help='Base git ref or commit')
+    parser.add_argument(
+        'base_ref', help='Base git ref or commit (merge-base anchor by default)'
+    )
     parser.add_argument('head_ref', help='Head git ref or commit')
     parser.add_argument(
         '--output-dir',
         default='results',
-        help='Directory for generated files (default: results)',
+        help=(
+            'Directory for generated files: commitlist.csv, contributors.txt, '
+            'and export/<category>/* (default: results)'
+        ),
     )
     parser.add_argument(
         '--owner',
@@ -646,12 +693,15 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         '--token',
-        help='GitHub token; falls back to env vars or ~/.gh_tokenrc',
+        help=(
+            'GitHub token; falls back to GITHUB_API_TOKEN, GITHUB_TOKEN, '
+            'GH_TOKEN, or ~/.gh_tokenrc'
+        ),
     )
     parser.add_argument(
         '--cache-path',
         default='results/pr_cache.json',
-        help='PR metadata cache path (default: results/pr_cache.json)',
+        help='PR metadata cache JSON path (default: results/pr_cache.json)',
     )
     parser.add_argument(
         '--batch-size',
@@ -668,12 +718,18 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         '--direct-range',
         action='store_true',
-        help='Use base_ref..head_ref directly instead of merge-base(base_ref, head_ref)..head_ref',
+        help=(
+            'Use base_ref..head_ref directly instead of '
+            'merge-base(base_ref, head_ref)..head_ref'
+        ),
     )
     parser.add_argument(
         '--local-only',
         action='store_true',
-        help='Skip GitHub API calls and only use local git metadata',
+        help=(
+            'Skip GitHub API calls and only use local git metadata '
+            '(category/topic fall back to Others and descriptions stay empty)'
+        ),
     )
     return parser.parse_args()
 
