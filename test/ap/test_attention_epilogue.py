@@ -118,7 +118,8 @@ class TestAttentionEpilogueDynamicHeadDimNotFused(unittest.TestCase):
 
     The template bakes head_dim into the cutlass kernel template arguments
     (``kMaxK`` / ``Alignment``), so a non-constant head_dim would emit an
-    undeclared ``D`` and fail to compile; ``_has_static_head_dim`` rejects it.
+    undeclared ``D`` and fail to compile; ``_has_supported_head_dim`` rejects
+    it.
     """
 
     def setUp(self):

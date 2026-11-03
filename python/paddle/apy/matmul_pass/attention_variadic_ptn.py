@@ -33,13 +33,6 @@ import variadic_mixin
 
 
 class AttentionEpilogueFusion(abstract_drr.DrrPass):
-    # mea has a fixed 10-operand / 3-result signature; every operand slot exists
-    # even when the optional inputs are null, and the matcher walks all
-    # num_operands(), so the full signature is declared explicitly (native-op
-    # source patterns do not support packed / variadic operands):
-    #   inputs : query, key, value, bias, cu_seqlens_q, cu_seqlens_k,
-    #            causal_diagonal, seqlen_k, max_seqlen_q, max_seqlen_k
-    #   outputs: output, logsumexp, seed_and_offset
     def source_pattern(self, o, t):
         in_num = self.number_of_inputs()
         out_num = self.number_of_outputs()
@@ -72,7 +65,10 @@ class AttentionEpilogueFusion(abstract_drr.DrrPass):
     def constraint(self, o, t):
         return self._is_supported_by_device() and (
             self._is_supported_by_backend(o, t)
-            and self._epilogue_can_fuse(o, t)
+            and (
+                self._has_no_optional_inputs(o)
+                and (self._has_no_dropout(o) and self._epilogue_can_fuse(o, t))
+            )
         )
 
     def _is_supported_by_device(self):
@@ -86,10 +82,11 @@ class AttentionEpilogueFusion(abstract_drr.DrrPass):
         # - BMHK layout: query [B, M, H, Dh], key [B, N, H, Dh],
         #   value [B, N, H, Dv], output [B, M, H, Dv].
         # - Q/K/V share the same number of heads (no GQA / MQA) and
-        #   head_dim (Dh == Dv), both must be compile-time constants because
-        #   the template bakes head_dim into `kMaxK` / `Alignment`.
+        #   head_dim (Dh == Dv), and the head dim must be a compile-time
+        #   constant the generated kernel supports, see
+        #   `_has_supported_head_dim`.
         # - no optional bias / variable seqlen in the first version.
-        return self._is_bmhk_layout(t) and self._has_static_head_dim(t)
+        return self._is_bmhk_layout(t) and self._has_supported_head_dim(t)
 
     def _is_bmhk_layout(self, t):
         query_shape = t.input0.symbolic_shape_to_list()
@@ -107,16 +104,39 @@ class AttentionEpilogueFusion(abstract_drr.DrrPass):
         same_head_dim = query_shape[3] == value_shape[3]
         return is_4d and (same_heads and same_head_dim)
 
-    def _has_static_head_dim(self, t):
+    def _has_supported_head_dim(self, t):
         query_shape = t.input0.symbolic_shape_to_list()
         value_shape = t.input2.symbolic_shape_to_list()
-        is_static_dh = query_shape[3].match(
-            int64=lambda head_dim: True, _=lambda: False
+        is_supported_dh = query_shape[3].match(
+            int64=lambda head_dim: (head_dim <= 128) and (head_dim % 8 == 0),
+            _=lambda: False,
         )
-        is_static_dv = value_shape[3].match(
-            int64=lambda head_dim: True, _=lambda: False
+        is_supported_dv = value_shape[3].match(
+            int64=lambda head_dim: (head_dim <= 128) and (head_dim % 8 == 0),
+            _=lambda: False,
         )
-        return is_static_dh and is_static_dv
+        return is_supported_dh and is_supported_dv
+
+    def _has_no_optional_inputs(self, o):
+        return self._is_null_operand(o, 3) and (
+            self._is_null_operand(o, 4)
+            and (
+                self._is_null_operand(o, 5)
+                and (
+                    self._is_null_operand(o, 6) and self._is_null_operand(o, 7)
+                )
+            )
+        )
+
+    def _is_null_operand(self, o, index):
+        return o.attention_op.operand_source(index).type.match(
+            t_null=lambda: True, _=lambda: False
+        )
+
+    def _has_no_dropout(self, o):
+        return self._get_bool_attr(o.attention_op.is_test) or (
+            self._get_f64_attr(o.attention_op.dropout_p) == 0.0
+        )
 
     def _epilogue_can_fuse(self, o, t):
         program = ir_tools.copy_fused_ops_to_program(
@@ -162,6 +182,9 @@ class AttentionEpilogueFusion(abstract_drr.DrrPass):
 
     def _get_float_attr(self, attr):
         return attr.match(a_f32=lambda x: float(x))
+
+    def _get_f64_attr(self, attr):
+        return attr.match(a_f64=lambda x: float(x))
 
     def _get_bool_attr(self, attr):
         return attr.match(a_bool=lambda x: bool(x))
