@@ -23,6 +23,7 @@ test/collective/fleet/hybrid_parallel_sharding_mixed_model.py.
 """
 
 import itertools
+import types
 import unittest
 
 import paddle
@@ -789,6 +790,27 @@ class TestMarkParamsForFSDP(unittest.TestCase):
         stray = _param("markStray")
         with self.assertRaisesRegex(ValueError, "misses trainable params"):
             _mark_params_for_optimizer(_layer_of([*pa, *pb, stray]), mixed)
+
+    def test_sharded_hyperball(self):
+        class _AdamHInner(_AdamInner):
+            supports_sharded_hyperball = True
+
+        plain, fused = _param("markH2D"), _param("markHFused")
+        expert = _param("markH3D", shape=(2, 4, 4))
+        info = {fused.name: types.SimpleNamespace(split_concat_func=len)}
+        sub = _AdamHInner(
+            parameters=[plain, fused, expert], param_info_map=info
+        )
+        mixed = MixedInnerOptimizer([sub], learning_rate=0.1)
+        _mark_params_for_optimizer(_layer_of([plain, fused, expert]), mixed)
+        self.assertEqual(
+            [p.use_hyperball_sharded for p in (plain, fused, expert)],
+            [True, False, False],
+        )
+        self.assertEqual(
+            [p.keep_whole for p in (plain, fused, expert)],
+            [False, True, True],
+        )
 
 
 if __name__ == "__main__":

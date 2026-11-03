@@ -68,7 +68,15 @@ def _mark_params_for_mixed_optimizer(module, optimizer, decay_fun):
             param.keep_whole = False
             continue
         param.fsdp_optimizer_group = sub_ids[id(sub)]
-        param.keep_whole = bool(sub.keep_whole_of(param.name))
+        keep_whole = bool(sub.keep_whole_of(param.name))
+        info = sub._param_info_map.get(param.name)
+        shape = getattr(param, "original_shape", None) or param.shape
+        param.use_hyperball_sharded = bool(
+            getattr(sub, "supports_sharded_hyperball", False)
+            and getattr(info, "split_concat_func", None) is None
+            and len(shape) == 2
+        )
+        param.keep_whole = keep_whole and not param.use_hyperball_sharded
     if missing:
         raise ValueError(
             f"MixedInnerOptimizer misses trainable params: {missing[:8]}"
