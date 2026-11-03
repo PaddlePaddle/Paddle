@@ -25,6 +25,7 @@ from op_test import (
 import paddle
 from paddle import base
 from paddle.base import core
+from paddle.base.dygraph.base import switch_to_static_graph
 
 
 class TestIndexSampleOp(OpTest):
@@ -279,6 +280,45 @@ class TestIndexSampleDynamic(unittest.TestCase):
                 [[1.0, 2.0, 3.0], [6.0, 7.0, 8.0], [9.0, 9.0, 9.0]]
             )
             assert out_z1.numpy().all() == except_output.all()
+
+
+class TestIndexSampleEmptyAxis(unittest.TestCase):
+    """An empty axis 1 has no valid index, so a non-empty index must raise."""
+
+    def test_dygraph_raises(self):
+        with base.dygraph.guard():
+            x = paddle.zeros([3, 0], dtype='float32')
+            index = paddle.zeros([3, 2], dtype='int64')
+            with self.assertRaises(IndexError):
+                paddle.index_sample(x, index)
+
+    def test_static_raises(self):
+        @switch_to_static_graph
+        def build():
+            with paddle.static.program_guard(paddle.static.Program()):
+                x = paddle.static.data('x', [3, 0], 'float32')
+                index = paddle.static.data('index', [3, 2], 'int64')
+                paddle.index_sample(x, index)
+
+        with self.assertRaises(IndexError):
+            build()
+
+    def test_static_unknown_index_dim_skips_check(self):
+        @switch_to_static_graph
+        def build():
+            with paddle.static.program_guard(paddle.static.Program()):
+                x = paddle.static.data('x', [3, 0], 'float32')
+                index = paddle.static.data('index', [3, -1], 'int64')
+                paddle.index_sample(x, index)
+
+        build()
+
+    def test_empty_index_still_passes(self):
+        with base.dygraph.guard():
+            x = paddle.zeros([3, 0], dtype='float32')
+            index = paddle.zeros([3, 0], dtype='int64')
+            out = paddle.index_sample(x, index)
+            self.assertEqual(out.shape, [3, 0])
 
 
 if __name__ == "__main__":

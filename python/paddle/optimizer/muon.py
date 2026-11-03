@@ -1235,25 +1235,25 @@ class Muon(Optimizer):
                 )
 
         if fsdp_context is not None and hasattr(
-            fsdp_context, "broadcast_muon_params"
+            fsdp_context, "broadcast_whole_params"
         ):
-            fsdp_context.broadcast_muon_params()
+            fsdp_context.broadcast_whole_params()
 
     _FSDP_FUSED_PREFIX = "fuse_params_"
 
     def _fsdp_collect_params_grads(self, fsdp_context, params_grads):
         muon_entries = (
-            fsdp_context.muon_params_grads()
-            if hasattr(fsdp_context, "muon_params_grads")
+            fsdp_context.whole_params_grads()
+            if hasattr(fsdp_context, "whole_params_grads")
             else [
                 (param, grad)
                 for param, grad in params_grads
-                if grad is not None and getattr(param, "use_muon", False)
+                if grad is not None and getattr(param, "keep_whole", False)
             ]
         )
         fused_entries = []
         for group in fsdp_context.buffer_manager.buffer_groups:
-            if group.use_muon or group.grads_buffer is None:
+            if group.keep_whole or group.grads_buffer is None:
                 continue
             if group.params_buffer.data_buffer.stop_gradient:
                 continue

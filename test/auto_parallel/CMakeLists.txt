@@ -113,6 +113,10 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
                   test_semi_auto_parallel_for_flex_checkpoint)
   set_tests_properties(test_semi_auto_parallel_for_flex_checkpoint
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 100)
+  py_test_modules(test_flex_checkpoint_pinned_load MODULES
+                  test_flex_checkpoint_pinned_load)
+  set_tests_properties(test_flex_checkpoint_pinned_load
+                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 200)
   py_test_modules(test_dist_tensor_api MODULES test_dist_tensor_api)
   set_tests_properties(test_dist_tensor_api
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 200)
