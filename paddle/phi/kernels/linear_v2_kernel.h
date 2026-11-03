@@ -31,6 +31,15 @@ inline std::tuple<int64_t, int64_t, int64_t> canonicalize_dims(
   const int64_t N = weight_dims.size() < 2 ? 1 : weight_dims[!transpose_weight];
   const int64_t K =
       weight_dims.size() < 2 ? weight_dims[0] : weight_dims[transpose_weight];
+  const int64_t K_from_input = input_dims[input_dims.size() - 1];
+  PADDLE_ENFORCE_EQ(K_from_input,
+                    K,
+                    phi::errors::InvalidArgument(
+                        "The last dimension of input should be equal to the %d "
+                        "dimension of weight, but got %d and %d.",
+                        transpose_weight ? 1 : 0,
+                        K_from_input,
+                        K));
 
   int64_t M = input_dims.size() >= 2 ? input_dims[input_dims.size() - 2] : 1;
   if (input_dims.size() > 2) {
