@@ -2900,6 +2900,17 @@ void RoiPoolInferMeta(const MetaTensor& x,
   arg_max->set_dtype(DataType::INT64);
 }
 
+// Returns true only when the rank of `dims` is known and every dim is known and
+// positive, i.e. the tensor is statically known to hold at least one element.
+// A 0-D tensor holds exactly one element, so it returns true.
+static bool IsKnownNonEmpty(const DDim& dims) {
+  if (dims.size() < 0) return false;  // unknown rank
+  for (int i = 0; i < dims.size(); ++i) {
+    if (dims[i] <= 0) return false;
+  }
+  return true;
+}
+
 void ScatterInferMeta(const MetaTensor& x,
                       const MetaTensor& index,
                       const MetaTensor& updates,
@@ -2925,6 +2936,18 @@ void ScatterInferMeta(const MetaTensor& x,
                           "The index should be a 0D or 1D tensor when the "
                           "index is not a 2D tensor, but we get %d.",
                           index_dims.size()));
+  }
+  // scatter always writes whole rows, so the indexed axis is axis 0. A size-0
+  // axis leaves no valid index value, so every index is out of bounds. The
+  // kernels miss this because they return early on a 0-size output; checking
+  // here also covers XPU and the static graph, and matches what
+  // gather/take_along_axis/index_sample do in their InferMeta.
+  if (ref_dims.size() > 0 && ref_dims[0] == 0 && IsKnownNonEmpty(index_dims)) {
+    PADDLE_THROW(common::errors::OutOfRange(
+        "The index is out of bounds: dimension [0] of Input(X) has size 0, "
+        "which leaves no valid index value, but received a non-empty "
+        "Input(Index) of shape [%s].",
+        index_dims));
   }
   if (index_dims.size() != 0) {
     PADDLE_ENFORCE_EQ(
