@@ -42,21 +42,8 @@ jobs:
     with:
       clone-can-skip: ${{ needs.clone.outputs.can-skip }}
 
-  xpu:
-    name: Linux-XPU
-    uses: ./.github/workflows/_Linux-XPU.yml
-    needs: [clone, build-docker]
-    with:
-      docker_xpu_image: ${{ needs.build-docker.outputs.docker_xpu_image }}
-      clone-can-skip: ${{ needs.clone.outputs.can-skip }}
-
-  dcu:
-    name: Linux-DCU
-    uses: ./.github/workflows/_Linux-DCU.yml
-    needs: [clone, build-docker]
-    with:
-      docker_dcu_image: ${{ needs.build-docker.outputs.docker_dcu_image }}
-      clone-can-skip: ${{ needs.clone.outputs.can-skip }}
+  # Linux-XPU and Linux-DCU moved off the PR gate to nightly CE regression.
+  # See .github/workflows/CE-DCU-XPU.yml (scheduled at 02:00 UTC+8).
 
   cpu:
     name: Linux-CPU
