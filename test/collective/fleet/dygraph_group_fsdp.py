@@ -327,6 +327,7 @@ def run_moe(ep_degree):
         )
 
     check_clip_attrs(hcg)
+    check_acc_sync(hcg)
 
 
 def check_clip_attrs(hcg):
@@ -370,6 +371,65 @@ def check_clip_attrs(hcg):
                 f"expected {expected}"
             )
         assert data_buffer.no_sync == group.is_expert_param, gid
+
+
+def check_acc_sync(hcg):
+    """sync_grads_each_microbatch=False reduce-scatters every sharded grad
+    group once per step and matches the default per-micro-batch path."""
+    paddle.seed(2026)
+    data = [paddle.randn([TOKENS, HIDDEN]) for _ in range(STEPS * ACCUM_STEPS)]
+    orig_rs = fully_shard_fusion.TensorFusionBuffer.do_reduce_scatter
+    results = {}
+    for sync in (True, False):
+        _, model = build_moe_models(hcg)
+        model = fully_shard(model, grad_accum_steps=ACCUM_STEPS)
+        model._fsdp_context.comm_manager.sync_grads_each_microbatch = sync
+        sharded = {
+            id(g.grads_buffer): g.is_expert_param
+            for g in model._fsdp_context.buffer_manager.buffer_groups
+            if g.grads_buffer is not None and g.grads_buffer.is_sharded
+        }
+        model = mix_precision_utils.MixPrecisionLayer(model, dtype="float16")
+        optimizer = build_moe_optimizer(model)
+        calls = []
+
+        def counted(buf):
+            calls.append(id(buf))
+            return orig_rs(buf)
+
+        fully_shard_fusion.TensorFusionBuffer.do_reduce_scatter = counted
+        try:
+            losses = []
+            for i in range(0, len(data), ACCUM_STEPS):
+                for x in data[i : i + ACCUM_STEPS]:
+                    with paddle.amp.auto_cast(level="O1", dtype="float16"):
+                        loss = model(x).mean()
+                    losses.append(float(loss.astype("float32")))
+                    loss.backward()
+                optimizer.step()
+                optimizer.clear_grad()
+        finally:
+            fully_shard_fusion.TensorFusionBuffer.do_reduce_scatter = orig_rs
+        rs = {
+            expert: sum(sharded.get(c) is expert for c in calls)
+            for expert in (False, True)
+        }
+        num = {
+            expert: sum(v is expert for v in sharded.values())
+            for expert in (False, True)
+        }
+        results[sync] = (losses, rs, num)
+
+    sync_losses, sync_rs, num = results[True]
+    acc_losses, acc_rs, _ = results[False]
+    assert num[False] > 0, "no sharded dense group, test is vacuous"
+    for expert in (False, True):
+        # Every sharded group, dense or expert, reduce-scatters once per step.
+        assert acc_rs[expert] == num[expert] * STEPS, (expert, acc_rs, num)
+        if num[expert]:
+            assert sync_rs[expert] > acc_rs[expert], (expert, sync_rs, acc_rs)
+    # Same math, different fp32 summation order.
+    np.testing.assert_allclose(acc_losses, sync_losses, rtol=1e-5, atol=1e-6)
 
 
 class MuonStackedLayer(TransformerLayer):
