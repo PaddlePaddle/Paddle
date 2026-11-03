@@ -967,7 +967,8 @@ class TestScatterOp_ZeroSize2(TestScatterOp_ZeroSize):
         self._set_dtype()
         ref_np = np.ones((0, 1)).astype(self.dtype)
         updates_np = np.random.random((4, 1)).astype(self.dtype)
-        index_np = np.random.random([4]).astype("int32")
+        # x has no row to scatter into, so only an empty index is in range
+        index_np = np.random.random([0]).astype("int32")
 
         output_np = np.copy(ref_np)
         self.inputs = {'X': ref_np, 'Ids': index_np, 'Updates': updates_np}
@@ -980,6 +981,46 @@ class TestScatterOp_ZeroSize2(TestScatterOp_ZeroSize):
             check_pir=True,
             max_relative_error=0.008,
         )
+
+
+class TestZeroSizeAxisOutOfRangeError(unittest.TestCase):
+    """x without any row has no valid index, so any non-empty index is out of range."""
+
+    def test_dygraph_error(self):
+        with dygraph_guard():
+            for place in get_places():
+                paddle.set_device(
+                    "cpu" if isinstance(place, base.CPUPlace) else "gpu"
+                )
+                for overwrite in (True, False):
+                    with self.assertRaises(IndexError):
+                        _ = paddle.scatter(
+                            x=paddle.zeros([0, 1], dtype="float32"),
+                            index=paddle.to_tensor([0, 0], dtype="int64"),
+                            updates=paddle.ones([2, 1], dtype="float32"),
+                            overwrite=overwrite,
+                        )
+
+    def test_dygraph_empty_index_grad(self):
+        with dygraph_guard():
+            for place in get_places():
+                paddle.set_device(
+                    "cpu" if isinstance(place, base.CPUPlace) else "gpu"
+                )
+                x = paddle.ones([4, 1], dtype="float32")
+                x.stop_gradient = False
+                updates = paddle.ones([2, 1], dtype="float32")
+                updates.stop_gradient = False
+                index = paddle.zeros([0], dtype="int64")
+                out = paddle.scatter(x, index, updates)
+                np.testing.assert_allclose(out.numpy(), x.numpy())
+                # nothing is scattered, so dX passes through and dUpdates is all zeros
+                out_grad = paddle.full_like(out, 3.0)
+                x_grad, updates_grad = paddle.grad(out, [x, updates], out_grad)
+                np.testing.assert_allclose(x_grad.numpy(), out_grad.numpy())
+                np.testing.assert_allclose(
+                    updates_grad.numpy(), np.zeros([2, 1], dtype="float32")
+                )
 
 
 if __name__ == "__main__":
