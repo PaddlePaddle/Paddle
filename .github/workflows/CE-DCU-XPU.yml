@@ -1,6 +1,9 @@
 name: CE-DCU-XPU
 
 on:
+  pull_request:
+    types: [opened, synchronize]
+    branches: [develop]
   schedule:
     - cron: "0 18 * * *" # Daily at 02:00 UTC+8
   workflow_dispatch:

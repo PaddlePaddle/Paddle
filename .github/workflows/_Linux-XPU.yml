@@ -13,8 +13,8 @@ on:
 
 env:
   docker_image: ${{ inputs.docker_xpu_image }}
-  PR_ID: ${{ '0' }}
-  COMMIT_ID: ${{ github.sha }}
+  PR_ID: ${{ github.event.pull_request.number || '0' }}
+  COMMIT_ID: ${{ github.event.pull_request.head.sha || github.sha }}
   ci_scripts: /paddle/ci
   ci_scripts_runner: ${{ github.workspace }}/ci
   work_dir: /paddle
