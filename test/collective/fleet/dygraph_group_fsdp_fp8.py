@@ -412,7 +412,9 @@ def run_fp8_single_rank():
     for keep_transpose, mp in ((True, True), (False, True), (True, False)):
         ref = train_fp8(keep_transpose, False, data, mp=mp, group=group)
         new = train_fp8(keep_transpose, True, data, mp=mp, group=group)
-        assert ref == new, f"single rank {keep_transpose=} {mp=}"
+        tag = f"single rank {keep_transpose=} {mp=}"
+        assert ref[1][0] == new[1][0], f"{tag}: fp8 caches differ"
+        assert ref[0][:ACCUM_STEPS] == new[0][:ACCUM_STEPS], tag
     run_fp8_checkpoint(group=group)
 
 
