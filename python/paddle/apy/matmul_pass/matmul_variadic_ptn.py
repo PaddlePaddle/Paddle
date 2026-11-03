@@ -15,6 +15,7 @@
 import abstract_drr
 import access_topo_drr  # noqa: F401
 import ap
+import compile_command_util
 import epilogue_access_topo_simplify
 import ir_tools
 import kernel_arg_id_util
@@ -55,6 +56,17 @@ class MatmulEpilogueFusion(variadic_mixin.VariadicEpilogueFusionBase):
         )
 
     def constraint(self, o, t):
+        return self._is_supported_by_device() and (
+            self._epilogue_can_fuse(o, t)
+        )
+
+    def _is_supported_by_device(self):
+        compile_command_generator = (
+            compile_command_util.CompileCommandGenerator()
+        )
+        return compile_command_generator.supports("matmul")
+
+    def _epilogue_can_fuse(self, o, t):
         program = ir_tools.copy_fused_ops_to_program(
             o.trivial_op, tensor_match_ctx=t
         )

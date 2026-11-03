@@ -30,7 +30,7 @@ namespace {
 adt::Result<axpr::Value> GetComputeCapability(
     const axpr::Value&, const std::vector<axpr::Value>& args) {
   ADT_CHECK(args.size() == 0) << adt::errors::TypeError{
-      "pir.compute_capability() takes no "
+      "pir.get_compute_capability() takes no "
       "arguments, but " +
       std::to_string(args.size()) + " were given."};
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)

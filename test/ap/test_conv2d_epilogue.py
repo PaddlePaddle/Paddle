@@ -31,15 +31,12 @@ def GetPirProgram(fused_func, tensor_args):
 
 
 def IsSupportDevice():
-    if paddle.is_compiled_with_cuda():
-        prop = paddle.device.cuda.get_device_properties()
-        cc = prop.major * 10 + prop.minor
-        return cc == 80
-
-    if paddle.is_compiled_with_rocm():
+    # Keep this in sync with `CompileCommandGenerator.supports()` in
+    # paddle/apy/device/cuda/compile_command_util.py: the AP epilogue backends
+    # are compiled with `-arch=sm_80` and only fusable on compute capability 8.0.
+    if not paddle.is_compiled_with_cuda():
         return False
-
-    return False
+    return paddle.device.cuda.get_device_capability() == (8, 0)
 
 
 class TestConv2dEpilogue(unittest.TestCase):
