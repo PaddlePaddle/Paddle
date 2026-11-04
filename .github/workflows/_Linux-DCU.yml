@@ -6,21 +6,17 @@ on:
       docker_dcu_image:
         type: string
         required: true
-      clone-can-skip:
-        type: string
-        required: false
-        default: "false"
 
 env:
   docker_image: ${{ inputs.docker_dcu_image }}
-  PR_ID: ${{ github.event.pull_request.number || '0' }}
-  COMMIT_ID: ${{ github.event.pull_request.head.sha || github.sha }}
+  PR_ID: ${{ '0' }}
+  COMMIT_ID: ${{ github.sha }}
   ci_scripts: /paddle/ci
   ci_scripts_runner: ${{ github.workspace }}/ci
   work_dir: /paddle
   PADDLE_ROOT: /paddle
-  BRANCH: develop
-  PADDLE_BRANCH: develop
+  BRANCH: ${{ github.ref_name }}
+  PADDLE_BRANCH: ${{ github.ref_name }}
   CI_name: dcu
   no_proxy: "bcebos.com,apiin.im.baidu.com,gitee.com,aliyun.com,.baidu.com,.tuna.tsinghua.edu.cn"
 
@@ -29,18 +25,8 @@ defaults:
     shell: bash
 
 jobs:
-  check-bypass:
-    name: Check bypass
-    uses: ./.github/workflows/check-bypass.yml
-    with:
-      workflow-name: "dcu"
-    secrets:
-      github-token: ${{ secrets.GITHUB_TOKEN }}
-
   build:
     name: Build
-    needs: [check-bypass]
-    if: ${{ needs.check-bypass.outputs.can-skip != 'true' && inputs.clone-can-skip != 'true' }}
     env:
       TASK: paddle-CI-dcu_build
     runs-on:

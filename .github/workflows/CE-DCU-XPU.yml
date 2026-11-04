@@ -1,9 +1,6 @@
 name: CE-DCU-XPU
 
 on:
-  pull_request:
-    types: [opened, synchronize]
-    branches: [develop]
   schedule:
     - cron: "0 18 * * *" # Daily at 02:00 UTC+8
   workflow_dispatch:
@@ -33,7 +30,6 @@ jobs:
     needs: [clone, build-docker]
     with:
       docker_xpu_image: ${{ needs.build-docker.outputs.docker_xpu_image }}
-      clone-can-skip: ${{ needs.clone.outputs.can-skip }}
 
   dcu:
     name: Linux-DCU
@@ -41,4 +37,3 @@ jobs:
     needs: [clone, build-docker]
     with:
       docker_dcu_image: ${{ needs.build-docker.outputs.docker_dcu_image }}
-      clone-can-skip: ${{ needs.clone.outputs.can-skip }}
