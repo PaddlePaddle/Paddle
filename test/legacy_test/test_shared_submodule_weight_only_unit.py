@@ -302,5 +302,89 @@ class TestAllreduceNonDynamicMode(unittest.TestCase):
         self.assertEqual(mock_tracer.trace_op.call_count, num_params)
 
 
+class TestConstructSharedCommNWay(unittest.TestCase):
+    """Unit test for _construct_shared_comm N-way grouping (mock new_group/topo).
+
+    Covers >=3 sharing stages and heterogeneous attrs, which the pp_degree=2
+    integration tests cannot reach.
+    """
+
+    def _run(self, descs, stage_of, global_rank=0, pp=4):
+        from types import SimpleNamespace
+
+        class _Topo:
+            # No _parent_hcg attr -> _construct_shared_comm uses self._topo.
+            def get_dim(self, name):
+                return pp
+
+            def get_comm_list(self, name):
+                # One pipe comm list; maps stage idx -> global rank (identity).
+                return [{0: 0, 1: 1, 2: 2, 3: 3}]
+
+        pipe = SimpleNamespace(
+            _topo=_Topo(),
+            _layers_desc=descs,
+            get_stage_from_index=lambda idx: stage_of[idx],
+            global_rank=global_rank,
+            shared_layers={"shared": nn.Linear(hidden_size, hidden_size)},
+        )
+        pp_cfg = SimpleNamespace(
+            sync_moment=False, sync_param=False, shared_nccl_config=None
+        )
+        fake_fleet = MagicMock()
+        fake_fleet._user_defined_strategy.hybrid_configs = {
+            "pp_configs": pp_cfg
+        }
+        with (
+            patch(
+                'paddle.distributed.new_group',
+                side_effect=lambda ranks, **kw: tuple(ranks),
+            ),
+            patch(
+                'paddle.distributed.fleet.base.topology.message2nccl_config',
+                return_value=None,
+            ),
+            patch('paddle.distributed.fleet.fleet', fake_fleet),
+        ):
+            comm = PipelineLayer._construct_shared_comm(pipe)
+        # ranks-set -> sorted attrs
+        return {
+            tuple(v["ranks"]): sorted(v["weight_attr"]) for v in comm.values()
+        }
+
+    def test_three_stage_heterogeneous_attrs(self):
+        """w/w2 on stages {0,1,2}, b only on {0,1}: one N-way group per stage set,
+        and attrs on the same stage set are aggregated into a single group."""
+        descs = [
+            SharedLayerDesc(
+                "shared", nn.Linear, shared_weight_attr=["w", "w2", "b"]
+            ),
+            SharedLayerDesc(
+                "shared", nn.Linear, shared_weight_attr=["w", "w2", "b"]
+            ),
+            SharedLayerDesc(
+                "shared", nn.Linear, shared_weight_attr=["w", "w2"]
+            ),
+        ]
+        got = self._run(descs, {0: 0, 1: 1, 2: 2})
+        # Exactly two groups: the 3-way set and the 2-way set.
+        self.assertEqual(len(got), 2)
+        # 3-way group covers all stages and aggregates w, w2 (NOT one group per attr).
+        self.assertEqual(got[(0, 1, 2)], ["w", "w2"])
+        # b only lives on stages {0,1} -> its own N-way(=2) group.
+        self.assertEqual(got[(0, 1)], ["b"])
+
+    def test_two_stage_multi_attr_single_group(self):
+        """N=2 with k attrs builds ONE group (same communicator count as the
+        original pairwise code), not k groups."""
+        descs = [
+            SharedLayerDesc("shared", nn.Linear, shared_weight_attr=["w", "b"]),
+            SharedLayerDesc("shared", nn.Linear, shared_weight_attr=["w", "b"]),
+        ]
+        got = self._run(descs, {0: 0, 1: 1})
+        self.assertEqual(len(got), 1)
+        self.assertEqual(got[(0, 1)], ["b", "w"])
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -562,7 +562,8 @@ class PipelineLayer(nn.Layer):
         if self._topo.get_dim("pipe") == 1:
             return shared_comm
 
-        # The first loop gets the pivot stage and all different shared_weight_attrs for one layer name.
+        # The first loop records, for each shared layer name, the stages holding
+        # it and the shared attrs present on each of those stages.
         # Maps stage idx to all shared attrs of each different layer names on that stage.
         stage_idx_to_layer_name_to_attrs = {}
         # Maps one layer name to all stage idx that contain that layer.
@@ -603,45 +604,48 @@ class PipelineLayer(nn.Layer):
                     current_layer_idx_to_stage_idx
                 ] = layer_name_to_attrs_on_stage_idx
 
-        # The second loop generates comm keys and assigns stages and attrs to the comm key.
-        # Each shared (layer_name, attr) gets ONE comm key whose stage list covers
-        # ALL stages holding that attr, i.e. a single N-way group (not a star of
-        # pairwise pivot groups). This way the gradient all_reduce in
-        # allreduce_shared_weight_gradients sums every replica to the full value,
-        # which is correct for any number (>=2) of sharing stages.
+        # The second loop generates comm keys. Attrs that share the SAME set of
+        # stages are aggregated into ONE N-way comm group covering all those
+        # stages, so a layer with k attrs on the same stages still builds a
+        # single group (same group / NCCL communicator count as the original
+        # code for the common case), while attrs living on different stage sets
+        # (heterogeneous sharing) each get their own N-way group. Reducing over
+        # the full group makes the gradient correct for any number (>=2) of
+        # sharing stages; N=2 is identical (topology and attrs) to the original.
         comm_keys = []
         # Maps comm key to layer name.
         comm_key_to_layer_name = {}
         # Maps comm key to the list of stage idx in the N-way comm group.
         comm_key_to_stage_idx = {}
-        # Maps comm key to the shared attr communicated by that comm group (one per key).
+        # Maps comm key to all shared attrs communicated by that comm group.
         comm_key_to_shared_attrs = {}
         for layer_name in layer_name_to_stage_idx.keys():
             all_stage_idx_contains_layer = layer_name_to_stage_idx[layer_name]
-            # Union of all shared attrs of this layer across the stages holding it.
-            all_attrs = []
+            # attr -> the set of stages that actually hold it.
+            attr_to_stages = {}
             for stage_idx in all_stage_idx_contains_layer:
-                all_attrs.extend(
-                    stage_idx_to_layer_name_to_attrs[stage_idx][layer_name]
+                for attr in stage_idx_to_layer_name_to_attrs[stage_idx][
+                    layer_name
+                ]:
+                    attr_to_stages.setdefault(attr, set()).add(stage_idx)
+            # Aggregate attrs by their stage set: one N-way group per stage set.
+            stages_to_attrs = {}
+            for attr, stages in attr_to_stages.items():
+                stages_to_attrs.setdefault(tuple(sorted(stages)), []).append(
+                    attr
                 )
-            # Keep a deterministic order so all ranks create groups identically.
-            all_attrs = sorted(set(all_attrs))
-            for attr in all_attrs:
-                # Exactly the stages that actually hold this attr form one N-way group.
-                stages_with_attr = sorted(
-                    stage_idx
-                    for stage_idx in all_stage_idx_contains_layer
-                    if attr
-                    in stage_idx_to_layer_name_to_attrs[stage_idx][layer_name]
-                )
-                if len(stages_with_attr) < 2:
+            # Deterministic order so all ranks create groups identically.
+            for stages_tuple in sorted(stages_to_attrs.keys()):
+                if len(stages_tuple) < 2:
                     # A single stage needs no cross-stage communication.
                     continue
-                comm_key = f'LAYER_NAME:{layer_name},ATTR:{attr}'
+                attrs = sorted(stages_to_attrs[stages_tuple])
+                stages_tag = "_".join(str(s) for s in stages_tuple)
+                comm_key = f'LAYER_NAME:{layer_name},STAGES:{stages_tag}'
                 comm_keys.append(comm_key)
                 comm_key_to_layer_name[comm_key] = layer_name
-                comm_key_to_stage_idx[comm_key] = stages_with_attr
-                comm_key_to_shared_attrs[comm_key] = [attr]
+                comm_key_to_stage_idx[comm_key] = list(stages_tuple)
+                comm_key_to_shared_attrs[comm_key] = attrs
 
         if len(comm_keys) == 0:
             warnings.warn(
