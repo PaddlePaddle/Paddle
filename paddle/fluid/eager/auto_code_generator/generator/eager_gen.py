@@ -3333,14 +3333,10 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
                 """
                 if in_prim_white_list:
                     code = f"""
-bool original_global_grad = egr::Controller::Instance().HasGrad();
-if (!create_graph) {{
-{indent}egr::Controller::Instance().SetHasGrad(create_graph);
-}}
-{composite_grad_api_namespace}{composite_grad_api_name}{composite_template_name}({composite_grad_api_args_str});
-VLOG(4) << "Composite api {composite_grad_api_name} is called";
-if (!create_graph) {{
-{indent}egr::Controller::Instance().SetHasGrad(original_global_grad);
+{{
+{indent}egr::HasGradGuard has_grad_guard(create_graph && egr::Controller::Instance().HasGrad());
+{indent}{composite_grad_api_namespace}{composite_grad_api_name}{composite_template_name}({composite_grad_api_args_str});
+{indent}VLOG(4) << "Composite api {composite_grad_api_name} is called";
 }}
 """
                 else:
@@ -3348,15 +3344,9 @@ if (!create_graph) {{
 std::string grad_op_name = "{composite_grad_api_name}";
 auto need_skip = paddle::prim::StaticCompositeContext::Instance().CheckSkipCompOps(grad_op_name);
 if (paddle::prim::PrimCommonUtils::IsEagerPrimEnabled() && !need_skip) {{
-{indent}bool original_global_grad = egr::Controller::Instance().HasGrad();
-{indent}if (!create_graph) {{
-{indent}{indent}egr::Controller::Instance().SetHasGrad(create_graph);
-{indent}}}
+{indent}egr::HasGradGuard has_grad_guard(create_graph && egr::Controller::Instance().HasGrad());
 {indent}{composite_grad_api_namespace}{composite_grad_api_name}{composite_template_name}({composite_grad_api_args_str});
-{indent}VLOG(4) << "Composite api {composite_grad_api_name} is called";
-{indent}if (!create_graph) {{
-{indent}{indent}egr::Controller::Instance().SetHasGrad(original_global_grad);
-{indent}}}"""
+{indent}VLOG(4) << "Composite api {composite_grad_api_name} is called";"""
                     if has_kernel_impl:
                         code = (
                             code

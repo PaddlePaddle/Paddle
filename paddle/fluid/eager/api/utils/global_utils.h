@@ -179,6 +179,34 @@ class EagerBackwardStateGuard {
 
   ~EagerBackwardStateGuard() { Controller::Instance().SetIsInBackward(false); }
 };
+
+// NOTE(yangyang): Temporarily switch the global grad switch to `value` and
+// restore the previous one on scope exit. Composite backward implementations
+// call differentiable forward APIs, so they have to turn grad recording off
+// while running. Restoring by hand is not exception safe: if the composite
+// implementation throws, the restore statement is skipped and the whole thread
+// silently stops recording the computation graph.
+class HasGradGuard {
+ public:
+  explicit HasGradGuard(bool value)
+      : original_(Controller::Instance().HasGrad()) {
+    if (value != original_) {
+      Controller::Instance().SetHasGrad(value);
+    }
+  }
+
+  ~HasGradGuard() {
+    if (Controller::Instance().HasGrad() != original_) {
+      Controller::Instance().SetHasGrad(original_);
+    }
+  }
+
+  HasGradGuard(const HasGradGuard&) = delete;
+  HasGradGuard& operator=(const HasGradGuard&) = delete;
+
+ private:
+  bool original_;
+};
 class EagerBackwardSubGraphNodeRecorder {
  public:
   /**

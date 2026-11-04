@@ -168,15 +168,17 @@ GradNodePyLayer::operator()(
     PADDLE_THROW(common::errors::InvalidArgument(
         "%s:Get backward function failed.", name()));
   }
-  bool need_grad_tmp = egr::Controller::Instance().HasGrad();
-  egr::Controller::Instance().SetHasGrad(create_graph && need_grad_tmp);
+  PyObject* outputs = nullptr;
+  {
+    egr::HasGradGuard has_grad_guard(create_graph &&
+                                     egr::Controller::Instance().HasGrad());
 #ifdef PADDLE_WITH_CUDA
-  for (auto& functor : ctx->reload_functors) {
-    functor.Reload();
-  }
+    for (auto& functor : ctx->reload_functors) {
+      functor.Reload();
+    }
 #endif
-  auto outputs = PyObject_CallObject(backward_fn, backward_args);
-  egr::Controller::Instance().SetHasGrad(need_grad_tmp);
+    outputs = PyObject_CallObject(backward_fn, backward_args);
+  }
   if (!outputs) {
     std::string err_msg =
         FormatPyLayerBackwardErrorMsg(this, pybind11::detail::error_string());
