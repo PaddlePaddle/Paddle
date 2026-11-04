@@ -385,6 +385,26 @@ class TestConstructSharedCommNWay(unittest.TestCase):
         self.assertEqual(len(got), 1)
         self.assertEqual(got[(0, 1)], ["b", "w"])
 
+    def test_single_stage_attr_skipped_with_warning(self):
+        """An attr present on only one stage builds no group (and warns), while
+        the attr shared across all stages forms one N-way group."""
+        descs = [
+            SharedLayerDesc("shared", nn.Linear, shared_weight_attr=["w", "x"]),
+            SharedLayerDesc("shared", nn.Linear, shared_weight_attr=["w"]),
+            SharedLayerDesc("shared", nn.Linear, shared_weight_attr=["w"]),
+        ]
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            got = self._run(descs, {0: 0, 1: 1, 2: 2})
+        # Only the all-stage attr 'w' forms a group; single-stage 'x' is skipped.
+        self.assertEqual(len(got), 1)
+        self.assertEqual(got[(0, 1, 2)], ["w"])
+        self.assertFalse(any("x" in attrs for attrs in got.values()))
+        self.assertTrue(
+            any("x" in str(w.message) for w in caught),
+            "expected a warning naming the skipped single-stage attr",
+        )
+
 
 if __name__ == '__main__':
     unittest.main()

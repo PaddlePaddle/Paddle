@@ -604,14 +604,14 @@ class PipelineLayer(nn.Layer):
                     current_layer_idx_to_stage_idx
                 ] = layer_name_to_attrs_on_stage_idx
 
-        # The second loop generates comm keys. Attrs that share the SAME set of
-        # stages are aggregated into ONE N-way comm group covering all those
-        # stages, so a layer with k attrs on the same stages still builds a
-        # single group (same group / NCCL communicator count as the original
-        # code for the common case), while attrs living on different stage sets
-        # (heterogeneous sharing) each get their own N-way group. Reducing over
-        # the full group makes the gradient correct for any number (>=2) of
-        # sharing stages; N=2 is identical (topology and attrs) to the original.
+        # The second loop generates comm keys. Grouping rule:
+        #   * attrs that live on the SAME set of stages are aggregated into a
+        #     single N-way comm group covering all those stages;
+        #   * attrs on different stage sets each get their own N-way group;
+        #   * an attr that lives on only one stage needs no cross-stage comm and
+        #     is skipped (with a warning, as it is usually a misconfiguration).
+        # Reducing the gradient over the full group is correct for any number
+        # (>=2) of sharing stages.
         comm_keys = []
         # Maps comm key to layer name.
         comm_key_to_layer_name = {}
@@ -637,7 +637,17 @@ class PipelineLayer(nn.Layer):
             # Deterministic order so all ranks create groups identically.
             for stages_tuple in sorted(stages_to_attrs.keys()):
                 if len(stages_tuple) < 2:
-                    # A single stage needs no cross-stage communication.
+                    # Only one stage holds these attrs, so no cross-stage sync
+                    # is possible. This is usually a misconfiguration (an attr
+                    # declared on a shared layer that no other stage shares);
+                    # warn with context instead of silently dropping it.
+                    warnings.warn(
+                        f"Shared layer '{layer_name}' declares attr(s) "
+                        f"{stages_to_attrs[stages_tuple]} only on stage "
+                        f"{stages_tuple[0]}; they will NOT be synchronized "
+                        f"across pipeline stages. Check the shared_weight_attr "
+                        f"declarations if this is unexpected."
+                    )
                     continue
                 attrs = sorted(stages_to_attrs[stages_tuple])
                 stages_tag = "_".join(str(s) for s in stages_tuple)
