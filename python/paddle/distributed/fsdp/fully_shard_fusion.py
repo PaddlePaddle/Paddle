@@ -15,6 +15,7 @@
 import contextlib
 import math
 import re
+import socket
 from collections import Counter, OrderedDict
 from dataclasses import dataclass, field
 from enum import Enum
@@ -24,6 +25,7 @@ import numpy as np
 import paddle
 from paddle.autograd import PyLayer
 from paddle.distributed import fleet
+from paddle.distributed.fleet.utils.log_util import logger
 from paddle.distributed.fleet.utils.tensor_fusion_helper import (
     align,
     alignment,
@@ -415,6 +417,26 @@ class TensorFusionBuffer:
         self._data_released = False
 
 
+# As Megatron's outer_dp_sharding_strategy.
+_HSDP_OUTER_STRATEGIES = ("no_shard", "optim_grads_params")
+
+
+def _check_hsdp_strategy(name, strategy, hsdp_degree, default):
+    if hsdp_degree is None or hsdp_degree == 1:
+        if strategy is not None:
+            raise ValueError(f"{name} needs hsdp_degree > 1.")
+        return None
+    strategy = default if strategy is None else strategy
+    if strategy in ("optim", "optim_grads"):
+        raise NotImplementedError(f"{name}={strategy!r} is not supported yet.")
+    if strategy not in _HSDP_OUTER_STRATEGIES:
+        raise ValueError(
+            f"{name} must be one of {list(_HSDP_OUTER_STRATEGIES)}, got "
+            f"{strategy!r}."
+        )
+    return strategy
+
+
 class FSDPBufferManager:
     def __init__(
         self,
@@ -423,6 +445,9 @@ class FSDPBufferManager:
         main_grad_dtype=None,
         grad_comm_dtype=None,
         fp8_main_dtype=paddle.float32,
+        hsdp_degree=None,
+        hsdp_dense_outer=None,
+        hsdp_expert_outer=None,
     ):
         self.model = model
         self.grad_comm_dtype = grad_comm_dtype
@@ -438,6 +463,25 @@ class FSDPBufferManager:
             if use_ep
             else self._fsdp_group
         )
+        # _fsdp_group stays the full DP group (grad_div, clip).
+        self._fsdp_inner_group = self._fsdp_group
+        self._fsdp_outer_group = None
+        # id(inner group) -> outer group.
+        self._hsdp_outers = {}
+        dense_strategy = _check_hsdp_strategy(
+            "hsdp_dense_outer",
+            hsdp_dense_outer,
+            hsdp_degree,
+            "no_shard",
+        )
+        expert_strategy = _check_hsdp_strategy(
+            "hsdp_expert_outer",
+            hsdp_expert_outer,
+            hsdp_degree,
+            dense_strategy,
+        )
+        if dense_strategy is not None:
+            self._init_hsdp_groups(hsdp_degree, dense_strategy)
         self.main_grad_dtype = (
             main_grad_dtype if main_grad_dtype is not None else paddle.float32
         )
@@ -464,18 +508,34 @@ class FSDPBufferManager:
                 for p in m.parameters():
                     param_to_unit_id[p.name] = unit_id
 
-        keyed_params = OrderedDict()
-        for param in self.model.parameters():
-            is_expert = getattr(param, "is_moe_param", False) or getattr(
-                param, "expert", False
-            )
+        def group_of(param, is_expert):
             color = getattr(param, "color", None)
             if isinstance(color, dict) and color.get("group") is not None:
-                fsdp_group = color["group"]
-            elif is_expert:
-                fsdp_group = self._ep_fsdp_group
-            else:
-                fsdp_group = self._fsdp_group
+                return color["group"]
+            return self._ep_fsdp_group if is_expert else self._fsdp_inner_group
+
+        def is_expert_param(param):
+            return getattr(param, "is_moe_param", False) or getattr(
+                param, "expert", False
+            )
+
+        expert_inner = {}
+        if expert_strategy == "no_shard":
+            expert_groups = {}
+            for param in self.model.parameters():
+                if is_expert_param(param):
+                    group = group_of(param, True)
+                    expert_groups.setdefault(id(group), group)
+            expert_inner = self._init_hsdp_expert_groups(
+                list(expert_groups.values())
+            )
+
+        keyed_params = OrderedDict()
+        for param in self.model.parameters():
+            is_expert = is_expert_param(param)
+            fsdp_group = group_of(param, is_expert)
+            if is_expert:
+                fsdp_group = expert_inner.get(id(fsdp_group), fsdp_group)
             key = (
                 param.dtype,
                 param.trainable,
@@ -596,6 +656,13 @@ class FSDPBufferManager:
                 shard_align_numel=shard_align,
                 comm_stream=self._comm_stream(group.fsdp_group),
             )
+            outer = self._outer_group_of(group)
+            if outer is not None:
+                paddle.distributed.broadcast(
+                    group.params_buffer.data_buffer,
+                    src=outer.ranks[0],
+                    group=outer,
+                )
             if fp8_numel:
                 init_fp8_buffer(group.params_buffer, params)
             if not params[0].stop_gradient:
@@ -618,6 +685,7 @@ class FSDPBufferManager:
                     grad_comm_dtype=self.grad_comm_dtype,
                     comm_stream=self._comm_stream(group.fsdp_group),
                 )
+                group.grads_buffer.outer_group = outer
             group.whole_shard_numel = (
                 group.params_buffer.shard_align_numel
                 if group.keep_whole
@@ -650,6 +718,109 @@ class FSDPBufferManager:
         self._assign_whole_owners()
         self._set_clip_attrs()
 
+    def _init_hsdp_groups(self, hsdp_degree, dense_strategy):
+        ranks = list(self._fsdp_group.ranks)
+        if len(ranks) % hsdp_degree or len(ranks) // hsdp_degree < 2:
+            raise ValueError(
+                f"hsdp_degree={hsdp_degree} must divide the sharding group "
+                f"size {len(ranks)} and leave at least 2 ranks per group."
+            )
+        inner_size = len(ranks) // hsdp_degree
+        self._hsdp_inner_size = inner_size
+        hosts = []
+        paddle.distributed.all_gather_object(
+            hosts, socket.gethostname(), group=self._fsdp_group
+        )
+        for i in range(0, len(ranks), inner_size):
+            block = set(hosts[i : i + inner_size])
+            if len(block) != 1:
+                raise ValueError(
+                    f"HSDP group {ranks[i : i + inner_size]} spans "
+                    f"several hosts {sorted(block)}; it must stay in one node."
+                )
+        if dense_strategy != "no_shard":
+            logger.info(
+                f"[FSDP] HSDP inner={inner_size}: dense keeps the sharding group"
+            )
+            return
+        idx = ranks.index(paddle.distributed.get_rank())
+        # Every rank creates every group, in the same order.
+        inners = [
+            paddle.distributed.new_group(ranks[i : i + inner_size])
+            for i in range(0, len(ranks), inner_size)
+        ]
+        self._fsdp_inner_group = inners[idx // inner_size]
+        # Reuse the same-ranked expert group to save a communicator; it is
+        # only used after all grad comm is drained.
+        same = paddle.to_tensor(
+            int(
+                list(self._ep_fsdp_group.ranks)
+                == ranks[idx % inner_size :: inner_size]
+            )
+        )
+        paddle.distributed.all_reduce(
+            same, op=paddle.distributed.ReduceOp.MIN, group=self._fsdp_group
+        )
+        if int(same):
+            self._fsdp_outer_group = self._ep_fsdp_group
+        else:
+            outers = [
+                paddle.distributed.new_group(ranks[i::inner_size])
+                for i in range(inner_size)
+            ]
+            self._fsdp_outer_group = outers[idx % inner_size]
+        self._hsdp_outers[id(self._fsdp_inner_group)] = self._fsdp_outer_group
+        logger.info(
+            f"[FSDP] HSDP inner={inner_size} outer={len(ranks) // inner_size}: "
+            f"dense inner {self._fsdp_inner_group.ranks}, outer "
+            f"{self._fsdp_outer_group.ranks}"
+        )
+
+    def _init_hsdp_expert_groups(self, expert_groups):
+        """Experts unsharded, replicated over their expert group; needs one
+        expert rank per HSDP group."""
+        ranks = list(self._fsdp_group.ranks)
+        block = {r: ranks.index(r) // self._hsdp_inner_size for r in ranks}
+        counts = set()
+        for group in expert_groups:
+            per_block = Counter(block[r] for r in group.ranks)
+            counts.update(per_block.values())
+        # 0: no experts, 1: supported, 2: unsupported.
+        if not counts:
+            local = 0
+        elif counts == {1} and len(expert_groups) == 1:
+            local = 1
+        else:
+            local = 2
+        lo, hi = paddle.to_tensor(local), paddle.to_tensor(local)
+        paddle.distributed.all_reduce(
+            lo, op=paddle.distributed.ReduceOp.MIN, group=self._fsdp_group
+        )
+        paddle.distributed.all_reduce(
+            hi, op=paddle.distributed.ReduceOp.MAX, group=self._fsdp_group
+        )
+        if int(hi) == 0:
+            return {}
+        if int(lo) != 1 or int(hi) != 1:
+            raise NotImplementedError(
+                "hsdp_expert_outer='no_shard' needs one expert sharding group "
+                "per rank with one rank per HSDP group; use "
+                "'optim_grads_params'."
+            )
+        # Every rank creates every one-rank group, in the same order.
+        singles = [paddle.distributed.new_group([r]) for r in ranks]
+        inner = singles[ranks.index(paddle.distributed.get_rank())]
+        (outer,) = expert_groups
+        self._hsdp_outers[id(inner)] = outer
+        logger.info(
+            f"[FSDP] HSDP experts: not sharded in the node, replicas over "
+            f"{outer.ranks}"
+        )
+        return {id(outer): inner}
+
+    def _outer_group_of(self, group):
+        return self._hsdp_outers.get(id(group.fsdp_group))
+
     def _comm_stream(self, group):
         if group.nranks <= 1:
             return None
@@ -662,6 +833,13 @@ class FSDPBufferManager:
             data_buffer = group.params_buffer.data_buffer
             for attr, value in group.clip_attrs:
                 setattr(data_buffer, attr, value)
+            # Count HSDP replicas once; keep-whole groups clip the params.
+            outer = self._outer_group_of(group)
+            if outer is not None and paddle.distributed.get_rank(outer) != 0:
+                replicas = group.params if group.keep_whole else []
+                for t in [data_buffer, *replicas]:
+                    t.is_firstly_shared = False
+                    t._hsdp_replica = True
             # A replicated grad buffer is counted in the global norm by rank 0.
             if (
                 group.grads_buffer is not None
@@ -1335,6 +1513,29 @@ class FSDPCommManager:
             grads_buffer.accumulate_reduced_grad()
             self._release_reduced_grad_views(grads_buffer)
 
+        # HSDP: sum the scaled grads over the outer group.
+        for group in self.buffer_manager.buffer_groups:
+            grads_buffer = group.grads_buffer
+            if (
+                grads_buffer is None
+                or getattr(grads_buffer, "outer_group", None) is None
+                or getattr(grads_buffer, "_data_released", False)
+            ):
+                continue
+            if not (
+                grads_buffer.is_sharded
+                or grads_buffer.fsdp_degree == 1
+                or group.whole_shard_numel is not None
+                or group.whole_owner_rank is not None
+            ):
+                continue
+            paddle.distributed.all_reduce(
+                grads_buffer.data_buffer,
+                op=paddle.distributed.ReduceOp.SUM,
+                group=grads_buffer.outer_group,
+                sync_op=True,
+            )
+
         for param in self.buffer_manager.model.parameters():
             buf = getattr(param, "_fusion_buffer", None)
             if buf is None or not buf.is_sharded:
@@ -1435,6 +1636,9 @@ class FullyShardFusion:
         comm_unit_size=None,
         reshard_policy="after_forward",
         reshard_filter="all",
+        hsdp_degree=None,
+        hsdp_dense_outer=None,
+        hsdp_expert_outer=None,
     ):
         self.model = model
         self.mp_policy = mp_policy
@@ -1446,6 +1650,9 @@ class FullyShardFusion:
             if mp_policy is None
             else mp_policy.grad_comm_dtype,
             fp8_main_dtype=fp8_main_dtype,
+            hsdp_degree=hsdp_degree,
+            hsdp_dense_outer=hsdp_dense_outer,
+            hsdp_expert_outer=hsdp_expert_outer,
         )
         self.comm_manager = FSDPCommManager(
             self.buffer_manager,

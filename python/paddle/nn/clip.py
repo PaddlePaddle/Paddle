@@ -742,6 +742,9 @@ class ClipGradByGlobalNorm(ClipGradBase):
                 continue
             if getattr(p, 'need_clip', True) is False:
                 continue
+            # HSDP: count a replica once.
+            if getattr(p, '_hsdp_replica', False):
+                continue
             merge_grad = g
 
             if in_dynamic_mode() and g.is_selected_rows():
