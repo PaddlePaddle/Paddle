@@ -170,8 +170,7 @@ GradNodePyLayer::operator()(
   }
   PyObject* outputs = nullptr;
   {
-    egr::HasGradGuard has_grad_guard(create_graph &&
-                                     egr::Controller::Instance().HasGrad());
+    egr::HasGradGuard has_grad_guard(create_graph);
 #ifdef PADDLE_WITH_CUDA
     for (auto& functor : ctx->reload_functors) {
       functor.Reload();

@@ -3334,7 +3334,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
                 if in_prim_white_list:
                     code = f"""
 {{
-{indent}egr::HasGradGuard has_grad_guard(create_graph && egr::Controller::Instance().HasGrad());
+{indent}egr::HasGradGuard has_grad_guard(create_graph);
 {indent}{composite_grad_api_namespace}{composite_grad_api_name}{composite_template_name}({composite_grad_api_args_str});
 {indent}VLOG(4) << "Composite api {composite_grad_api_name} is called";
 }}
@@ -3344,7 +3344,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
 std::string grad_op_name = "{composite_grad_api_name}";
 auto need_skip = paddle::prim::StaticCompositeContext::Instance().CheckSkipCompOps(grad_op_name);
 if (paddle::prim::PrimCommonUtils::IsEagerPrimEnabled() && !need_skip) {{
-{indent}egr::HasGradGuard has_grad_guard(create_graph && egr::Controller::Instance().HasGrad());
+{indent}egr::HasGradGuard has_grad_guard(create_graph);
 {indent}{composite_grad_api_namespace}{composite_grad_api_name}{composite_template_name}({composite_grad_api_args_str});
 {indent}VLOG(4) << "Composite api {composite_grad_api_name} is called";"""
                     if has_kernel_impl:

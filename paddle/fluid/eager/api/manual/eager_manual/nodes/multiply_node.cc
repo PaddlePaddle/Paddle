@@ -150,8 +150,7 @@ MultiplyGradNode::operator()(
       paddle::prim::StaticCompositeContext::Instance().CheckSkipCompOps(
           grad_op_name);
   if (paddle::prim::PrimCommonUtils::IsEagerPrimEnabled() && !need_skip) {
-    egr::HasGradGuard has_grad_guard(create_graph &&
-                                     egr::Controller::Instance().HasGrad());
+    egr::HasGradGuard has_grad_guard(create_graph);
     paddle::prim::multiply_grad<paddle::Tensor>(
         x, y, grad_out, axis, api_output_0, api_output_1);
     VLOG(4) << "Composite api multiply_grad is called ";
@@ -435,8 +434,7 @@ MultiplyDoubleGradNode::operator()(
       paddle::prim::StaticCompositeContext::Instance().CheckSkipCompOps(
           grad_op_name);
   if (!need_skip) {
-    egr::HasGradGuard has_grad_guard(create_graph &&
-                                     egr::Controller::Instance().HasGrad());
+    egr::HasGradGuard has_grad_guard(create_graph);
     paddle::prim::multiply_double_grad<paddle::Tensor>(x,
                                                        y,
                                                        fwd_grad_out,

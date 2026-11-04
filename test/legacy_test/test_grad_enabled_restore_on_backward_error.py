@@ -35,20 +35,19 @@ def build_failing_graph():
 
 
 class TestGradEnabledRestoreOnBackwardError(unittest.TestCase):
-    """A backward node raising an exception must not leak the global grad switch.
+    """Raising from a backward node must not leak the global grad switch.
 
-    Composite (prim) backward nodes turn grad recording off before running and
-    turn it back on afterwards. When the composite implementation throws, the
-    restore must still happen, otherwise the whole thread silently stops
-    recording the computation graph.
+    Composite (prim) backward nodes and the saved_tensors_hooks turn grad
+    recording off before running and turn it back on afterwards. When the code
+    in between throws, the restore must still happen, otherwise the whole
+    thread silently stops recording the computation graph.
     """
 
-    def check_restored(self, run_backward):
+    def check_restored(self, action, expected_error=ValueError):
         paddle.set_grad_enabled(True)
-        inputs, dx = build_failing_graph()
 
-        with self.assertRaises(ValueError):
-            run_backward(inputs, dx)
+        with self.assertRaises(expected_error):
+            action()
 
         self.assertTrue(paddle.is_grad_enabled())
         probe = paddle.randn([2, 2])
@@ -56,7 +55,8 @@ class TestGradEnabledRestoreOnBackwardError(unittest.TestCase):
         self.assertFalse((probe * 2).stop_gradient)
 
     def test_paddle_grad_without_create_graph(self):
-        def run(inputs, dx):
+        def action():
+            inputs, dx = build_failing_graph()
             paddle.grad(
                 [dx],
                 inputs,
@@ -65,10 +65,11 @@ class TestGradEnabledRestoreOnBackwardError(unittest.TestCase):
                 allow_unused=True,
             )
 
-        self.check_restored(run)
+        self.check_restored(action)
 
     def test_paddle_grad_with_create_graph(self):
-        def run(inputs, dx):
+        def action():
+            inputs, dx = build_failing_graph()
             paddle.grad(
                 [dx],
                 inputs,
@@ -77,19 +78,56 @@ class TestGradEnabledRestoreOnBackwardError(unittest.TestCase):
                 allow_unused=True,
             )
 
-        self.check_restored(run)
+        self.check_restored(action)
 
     def test_tensor_backward(self):
-        def run(inputs, dx):
+        def action():
+            _, dx = build_failing_graph()
             dx.backward(paddle.randn(dx.shape))
 
-        self.check_restored(run)
+        self.check_restored(action)
 
     def test_tensor_backward_with_retain_graph(self):
-        def run(inputs, dx):
+        def action():
+            _, dx = build_failing_graph()
             dx.backward(paddle.randn(dx.shape), retain_graph=True)
 
-        self.check_restored(run)
+        self.check_restored(action)
+
+    def test_saved_tensors_pack_hook_error(self):
+        """The pack hook runs in forward and reports failure by returning NULL."""
+
+        def pack_hook(tensor):
+            raise RuntimeError("pack hook fails on purpose")
+
+        def unpack_hook(value):
+            return value
+
+        def action():
+            x = paddle.randn([2, 2])
+            x.stop_gradient = False
+            with paddle.autograd.saved_tensors_hooks(pack_hook, unpack_hook):
+                return x * x
+
+        self.check_restored(action, OSError)
+
+    def test_saved_tensors_unpack_hook_error(self):
+        """The unpack hook runs while the backward graph is being walked."""
+
+        def pack_hook(tensor):
+            return tensor
+
+        def unpack_hook(value):
+            raise RuntimeError("unpack hook fails on purpose")
+
+        def action():
+            x = paddle.randn([2, 2])
+            x.stop_gradient = False
+            with paddle.autograd.saved_tensors_hooks(pack_hook, unpack_hook):
+                out = (x * x).sum()
+            out.backward()
+
+        self.check_restored(action, OSError)
 
 
 if __name__ == '__main__':
