@@ -819,8 +819,14 @@ template PADDLE_API void LayerNormKernel<double, GPUContext>(
 
 #ifdef PADDLE_WITH_HIP
 // MIOPEN do not support double
-PD_REGISTER_KERNEL(
-    layer_norm, GPU, ALL_LAYOUT, phi::LayerNormKernel, float, phi::float16) {
+// bfloat16 uses the generic custom HIP kernel (not MIOpen), so it works on ROCm
+PD_REGISTER_KERNEL(layer_norm,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::LayerNormKernel,
+                   float,
+                   phi::float16,
+                   phi::bfloat16) {
   kernel->OutputAt(1).SetDataType(phi::DataType::UNDEFINED);
   kernel->OutputAt(2).SetDataType(phi::DataType::UNDEFINED);
 }
