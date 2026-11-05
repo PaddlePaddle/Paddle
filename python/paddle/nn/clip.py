@@ -753,8 +753,8 @@ class ClipGradByGlobalNorm(ClipGradBase):
                 merge_grad = get_tensor_from_selected_rows(merge_grad)
 
             sum_square = _squared_l2_norm(merge_grad)
-            # FSDP sets _hsdp_replica on HSDP replicas; add 0, still clip.
-            if getattr(p, '_hsdp_replica', False):
+            # FSDP sets _outer_replica on outer replicas; add 0, still clip.
+            if getattr(p, '_outer_replica', False):
                 sum_square = paddle.zeros_like(sum_square)
 
             # if the gradient mesh is not equal to src mesh

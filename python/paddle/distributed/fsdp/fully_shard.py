@@ -271,11 +271,9 @@ def fully_shard(
             ``"all"``.
         hsdp_degree (int | None, optional): Manual parallel mode only.
             Number of HSDP groups the sharding group is split into, each
-            in one node (Megatron's num_distributed_optimizer_instances).
-            None or 1 disables HSDP. Defaults to None.
+            in one node. None or 1 disables HSDP. Defaults to None.
         hsdp_dense_outer (str | None, optional): Manual parallel mode only.
-            Dense params across HSDP groups (Megatron's
-            outer_dp_sharding_strategy): ``"no_shard"`` (replicated,
+            Dense params across HSDP groups: ``"no_shard"`` (replicated,
             default) or ``"optim_grads_params"`` (not HSDP). Defaults to None.
         hsdp_expert_outer (str | None, optional): Manual parallel mode only.
             Same for expert params; None follows ``hsdp_dense_outer``.
@@ -333,11 +331,6 @@ def fully_shard(
     )
 
     if in_auto_parallel_mode():
-        if any(
-            a is not None
-            for a in (hsdp_degree, hsdp_dense_outer, hsdp_expert_outer)
-        ):
-            raise NotImplementedError("HSDP is manual parallel only.")
         return _fully_shard_auto_parallel(*args)
     else:
         return _fully_shard_manual_parallel(
