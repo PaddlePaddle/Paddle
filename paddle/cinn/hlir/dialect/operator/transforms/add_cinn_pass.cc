@@ -154,7 +154,9 @@ void ApplyPdToCinnPass(
   pass_manager->AddPass(
       cinn::dialect::ir::CreateFoldOutputDataDerivableOpsPass());
   pass_manager->AddPass(cinn::dialect::ir::CreateConv2dTransposeFilterPass());
-  pass_manager->AddPass(cinn::dialect::ir::CreateConvertMEA2FAPass());
+  if (!FLAGS_enable_ap) {
+    pass_manager->AddPass(cinn::dialect::ir::CreateConvertMEA2FAPass());
+  }
   pass_manager->AddPass(cinn::dialect::ir::CreateConvertFA2QKVMHAPass());
   pass_manager->AddPass(cinn::dialect::ir::CreatePdOpToCinnOpPass());
 

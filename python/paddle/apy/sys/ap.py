@@ -42,3 +42,4 @@ sorted = __builtin__.sorted
 
 dirname = __builtin__.dirname
 basename = __builtin__.basename
+getenv = __builtin__.getenv
