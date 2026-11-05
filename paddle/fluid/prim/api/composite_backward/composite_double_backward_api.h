@@ -1260,6 +1260,31 @@ void put_along_axis_double_grad(const Tensor& arr,
 }
 
 template <typename T>
+void scatter_nd_add_double_grad(const Tensor& index,
+                                const Tensor& grad_out,
+                                const optional<Tensor>& grad_x_grad,
+                                const optional<Tensor>& grad_updates_grad,
+                                Tensor* grad_out_grad) {
+  if (grad_out_grad) {
+    Tensor grad_out_grad_tmp;
+    if (grad_x_grad) {
+      grad_out_grad_tmp = grad_x_grad.get();
+    } else {
+      grad_out_grad_tmp = full<T>(common::vectorize(grad_out.dims()),
+                                  0,
+                                  grad_out.dtype(),
+                                  grad_out.place());
+    }
+
+    if (grad_updates_grad) {
+      grad_out_grad_tmp =
+          scatter_nd_add<T>(grad_out_grad_tmp, index, grad_updates_grad.get());
+    }
+    set_output<T>(grad_out_grad_tmp, grad_out_grad);
+  }
+}
+
+template <typename T>
 void index_add_double_grad(const Tensor& index,
                            const Tensor& out_grad,
                            const optional<Tensor>& grad_x_grad,

@@ -645,6 +645,80 @@ class TestScatterNdAdd_ZeroSize2(unittest.TestCase):
                 )
 
 
+class TestScatterNdAddDoubleGrad(unittest.TestCase):
+    def _compute_double_grad(self, first_grad):
+        x = paddle.to_tensor([[0.2, 0.4], [-0.5, 0.1]], dtype="float64")
+        updates = paddle.to_tensor(
+            [[0.7, -0.3], [0.5, 0.2], [-0.4, 0.8]],
+            dtype="float64",
+        )
+        index = paddle.to_tensor([[0], [0], [1]], dtype="int64")
+        x.stop_gradient = False
+        updates.stop_gradient = False
+
+        output = paddle.scatter_nd_add(x, index, updates)
+        loss = output.square().sum()
+        x_grad, updates_grad = paddle.grad(
+            loss, [x, updates], create_graph=True
+        )
+        if first_grad == "x":
+            grad_sum = x_grad.sum()
+        elif first_grad == "updates":
+            grad_sum = updates_grad.sum()
+        else:
+            grad_sum = x_grad.sum() + updates_grad.sum()
+        return paddle.grad(grad_sum, [x, updates])
+
+    def test_create_graph(self):
+        with base.dygraph.guard(base.CPUPlace()):
+            updates = paddle.randn([3, 2], dtype="float64")
+            updates.stop_gradient = False
+            index = paddle.to_tensor([[0], [0], [1]], dtype="int64")
+            output = paddle.scatter_nd_add(
+                paddle.zeros([2, 2], dtype="float64"), index, updates
+            )
+            (updates_grad,) = paddle.grad(
+                output.square().sum(), updates, create_graph=True
+            )
+            self.assertEqual(updates_grad.shape, updates.shape)
+
+    def test_double_grad(self):
+        cases = (
+            (
+                "x",
+                [[2.0, 2.0], [2.0, 2.0]],
+                [[2.0, 2.0], [2.0, 2.0], [2.0, 2.0]],
+            ),
+            (
+                "updates",
+                [[4.0, 4.0], [2.0, 2.0]],
+                [[4.0, 4.0], [4.0, 4.0], [2.0, 2.0]],
+            ),
+            (
+                "both",
+                [[6.0, 6.0], [4.0, 4.0]],
+                [[6.0, 6.0], [6.0, 6.0], [4.0, 4.0]],
+            ),
+        )
+        original_prim = core._is_eager_prim_enabled()
+        core.set_prim_eager_enabled(True)
+        try:
+            with base.dygraph.guard(base.CPUPlace()):
+                for first_grad, expected_x, expected_updates in cases:
+                    with self.subTest(first_grad=first_grad):
+                        x_double_grad, updates_double_grad = (
+                            self._compute_double_grad(first_grad)
+                        )
+                        np.testing.assert_allclose(
+                            x_double_grad.numpy(), expected_x
+                        )
+                        np.testing.assert_allclose(
+                            updates_double_grad.numpy(), expected_updates
+                        )
+        finally:
+            core.set_prim_eager_enabled(original_prim)
+
+
 if __name__ == "__main__":
     paddle.enable_static()
     unittest.main()
