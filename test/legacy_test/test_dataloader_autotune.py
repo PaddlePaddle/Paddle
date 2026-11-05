@@ -76,7 +76,7 @@ class TestAutoTune(unittest.TestCase):
         loader = DataLoader(
             self.dataset, batch_size=self.batch_size, num_workers=2
         )
-        if sys.platform == 'darwin' or sys.platform == 'win32':
+        if sys.platform == 'darwin':
             self.assertEqual(loader.num_workers, 0)
         else:
             self.assertEqual(loader.num_workers, 2)

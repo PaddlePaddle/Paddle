@@ -109,9 +109,7 @@ class CleanupFuncRegistrar:
 # BlockingQueue) may not be completely released, resulting in the corresponding
 # memory-mapped file remaining on the disk (/dev/shm), so register this function
 # to clean up shared memory objects in these two queues before the python interpreter exits.
-# NOTE: Currently multi-process DataLoader only supports Linux platform
-if not (sys.platform == 'darwin' or sys.platform == 'win32'):
-    CleanupFuncRegistrar.register(_cleanup)
+CleanupFuncRegistrar.register(_cleanup)
 
 # ------------ SIGCHLD handler setting --------------
 _SIGCHLD_handler_set = False
@@ -120,6 +118,11 @@ _SIGCHLD_handler_set = False
 def _set_SIGCHLD_handler():
     global _SIGCHLD_handler_set
     if _SIGCHLD_handler_set:
+        return
+    if sys.platform == 'win32':
+        # Windows does not have SIGCHLD; worker failure is detected
+        # via periodic polling in ThrowErrorIfLoadProcessFailed.
+        _SIGCHLD_handler_set = True
         return
 
     current_handler = signal.getsignal(signal.SIGCHLD)
