@@ -30,6 +30,7 @@
 
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/phi/kernels/gpu/interpolate_bilinear_compat.cuh"
+#include "paddle/phi/kernels/gpu/interpolate_trilinear_compat.cuh"
 #endif
 
 COMMON_DECLARE_bool(use_accuracy_compatible_kernel);
@@ -1219,19 +1220,23 @@ static void Interpolate2DCUDAFwd(
   output->Resize(dim_out);
   auto output_data = dev_ctx.template Alloc<T>(output);
 
-  if (in_h == out_h && in_w == out_w) {
-    Copy(dev_ctx, input, dev_ctx.GetPlace(), false, output);
-    return;
-  }
-
 #ifdef PADDLE_WITH_CUDA
-  // An absent scale means coordinates are derived from output dimensions.
-  // This includes explicit size and scale_factor + recompute_scale_factor=True,
+  // Without a scale, coordinates are derived from output dimensions. This
+  // includes explicit size and scale_factor + recompute_scale_factor=True,
   // which the Python API converts to output dimensions before dispatch.
-  if constexpr (std::is_same<T, float>::value) {
+  // With a scale, torch maps coordinates by 1 / scale even if the output size
+  // equals the input size. Paddle may also combine a scale with an overriding
+  // output size, which torch cannot express; that keeps the original kernel.
+  if constexpr (std::is_same<T, float>::value ||
+                std::is_same<T, phi::float16>::value ||
+                std::is_same<T, phi::bfloat16>::value) {
+    const bool has_scale = scale_tensor || !scale.empty();
+    const bool has_size = out_size || (size_tensor && size_tensor->size() > 0);
+    // align_mode only matters without align_corners; torch has no
+    // align_mode=1 equivalent.
     if (FLAGS_use_accuracy_compatible_kernel && interp_method == "bilinear" &&
-        data_layout == DataLayout::NCHW && !align_corners && align_mode == 0 &&
-        scale.empty() && !scale_tensor) {
+        (align_corners || align_mode == 0) && !(has_scale && has_size) &&
+        (has_scale || in_h != out_h || in_w != out_w)) {
       funcs::bilinear_compat::LaunchForward(input_data,
                                             output_data,
                                             n * c * out_h * out_w,
@@ -1239,11 +1244,21 @@ static void Interpolate2DCUDAFwd(
                                             in_w,
                                             out_h,
                                             out_w,
+                                            c,
+                                            data_layout == DataLayout::NHWC,
+                                            align_corners,
+                                            scale_h,
+                                            scale_w,
                                             dev_ctx.stream());
       return;
     }
   }
 #endif
+
+  if (in_h == out_h && in_w == out_w) {
+    Copy(dev_ctx, input, dev_ctx.GetPlace(), false, output);
+    return;
+  }
 
   using MT = std::conditional_t<std::is_integral<T>::value,
                                 float,
@@ -1745,6 +1760,37 @@ static void Interpolate3DCUDAFwd(
   }
   output->Resize(dim_out);
   auto output_data = dev_ctx.template Alloc<T>(output);
+
+#ifdef PADDLE_WITH_CUDA
+  // Same dispatch rules as the bilinear compat kernel in Interpolate2DCUDAFwd.
+  if constexpr (std::is_same<T, float>::value ||
+                std::is_same<T, phi::float16>::value ||
+                std::is_same<T, phi::bfloat16>::value) {
+    const bool has_scale = scale_tensor || !scale.empty();
+    const bool has_size = out_size || (size_tensor && size_tensor->size() > 0);
+    if (FLAGS_use_accuracy_compatible_kernel && interp_method == "trilinear" &&
+        (align_corners || align_mode == 0) && !(has_scale && has_size) &&
+        (has_scale || in_d != out_d || in_h != out_h || in_w != out_w)) {
+      funcs::trilinear_compat::LaunchForward(input_data,
+                                             output_data,
+                                             n * c * out_d * out_h * out_w,
+                                             in_d,
+                                             in_h,
+                                             in_w,
+                                             out_d,
+                                             out_h,
+                                             out_w,
+                                             c,
+                                             data_layout == DataLayout::NHWC,
+                                             align_corners,
+                                             scale_d,
+                                             scale_h,
+                                             scale_w,
+                                             dev_ctx.stream());
+      return;
+    }
+  }
+#endif
 
   if (in_d == out_d && in_h == out_h && in_w == out_w) {
     Copy(dev_ctx, input, dev_ctx.GetPlace(), false, output);

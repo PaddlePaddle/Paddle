@@ -1038,6 +1038,53 @@ class TestTrilinearInterpDatalayoutForFloat16(TestTrilinearInterpOpForFloat16):
         self.data_layout = "NDHWC"
 
 
+@unittest.skipIf(
+    not (base.core.is_compiled_with_cuda() or is_custom_device()),
+    "core is not compiled with CUDA",
+)
+class TestTrilinearInterpGradHalfPrecision(unittest.TestCase):
+    # Downsampling by scale_factor=0.3 gives every input element at most one
+    # contribution, so the atomic adds are exact. Like torch, each FP16/BF16
+    # contribution is formed in FP32 and rounded once, which makes the result
+    # the rounded FP32 gradient.
+    def grad(self, x_np, dy_np, dtype, data_format):
+        x = paddle.to_tensor(x_np).astype(dtype)
+        x.stop_gradient = False
+        y = interpolate(
+            x,
+            scale_factor=0.3,
+            mode='trilinear',
+            align_corners=False,
+            data_format=data_format,
+        )
+        dy = paddle.to_tensor(dy_np).astype(dtype)
+        return paddle.grad(y, x, grad_outputs=dy)[0]
+
+    def test_main(self):
+        dtypes = ['float16']
+        if core.is_bfloat16_supported(get_device_place()):
+            dtypes.append('bfloat16')
+        with base.dygraph.guard(get_device_place()):
+            for data_format, x_shape, dy_shape in [
+                ('NCDHW', [2, 3, 10, 10, 10], [2, 3, 3, 3, 3]),
+                ('NDHWC', [2, 10, 10, 10, 3], [2, 3, 3, 3, 3]),
+            ]:
+                x_np = np.random.random(x_shape).astype('float32')
+                dy_np = np.random.random(dy_shape).astype('float32')
+                for dtype in dtypes:
+                    with self.subTest(data_format=data_format, dtype=dtype):
+                        dy_low = paddle.to_tensor(dy_np).astype(dtype)
+                        dy_low = dy_low.astype('float32').numpy()
+                        expected = self.grad(
+                            x_np, dy_low, 'float32', data_format
+                        ).astype(dtype)
+                        actual = self.grad(x_np, dy_low, dtype, data_format)
+                        np.testing.assert_array_equal(
+                            actual.astype('float32').numpy(),
+                            expected.astype('float32').numpy(),
+                        )
+
+
 class TestTrilinearInterpOpAPI(unittest.TestCase):
     def test_case(self):
         import paddle

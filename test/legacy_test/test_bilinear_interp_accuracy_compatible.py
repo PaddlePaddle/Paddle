@@ -21,23 +21,35 @@ import paddle
 from paddle.base import core
 
 
-def coordinates(in_size, out_size):
-    scale = np.float32(in_size / out_size)
-    source = np.maximum(
-        (np.arange(out_size, dtype=np.float32) + np.float32(0.5)) * scale
-        - np.float32(0.5),
-        np.float32(0),
-    )
+def coordinates(in_size, out_size, align_corners=False, scale_factor=None):
+    if align_corners:
+        scale = np.float32(
+            (in_size - 1.0) / (out_size - 1.0) if out_size > 1 else 0.0
+        )
+        source = np.arange(out_size, dtype=np.float32) * scale
+    else:
+        if scale_factor is not None:
+            scale = np.float32(1.0 / scale_factor)
+        else:
+            scale = np.float32(in_size / out_size)
+        source = (
+            np.arange(out_size, dtype=np.float32) + np.float32(0.5)
+        ) * scale - np.float32(0.5)
+    source = np.maximum(source, np.float32(0))
     lower = source.astype(np.int64)
     upper = np.minimum(lower + 1, in_size - 1)
     weight = np.clip(source - lower.astype(np.float32), 0, 1)
     return lower, upper, weight
 
 
-def reference_forward(x, size):
+def reference_forward(x, size, align_corners=False, scale_factor=(None, None)):
     """Separate NumPy ufuncs preserve the decomposition's FP32 rounding."""
-    y0, y1, wy = coordinates(x.shape[2], size[0])
-    x0, x1, wx = coordinates(x.shape[3], size[1])
+    y0, y1, wy = coordinates(
+        x.shape[2], size[0], align_corners, scale_factor[0]
+    )
+    x0, x1, wx = coordinates(
+        x.shape[3], size[1], align_corners, scale_factor[1]
+    )
     v00 = x[:, :, y0[:, None], x0]
     v01 = x[:, :, y0[:, None], x1]
     v10 = x[:, :, y1[:, None], x0]
@@ -47,10 +59,16 @@ def reference_forward(x, size):
     return top + (bottom - top) * wy[:, None]
 
 
-def reference_backward(shape, grad):
+def reference_backward(
+    shape, grad, align_corners=False, scale_factor=(None, None)
+):
     """Independent stable-index reduction, including the 32-lane sum tree."""
-    y0, y1, wy = coordinates(shape[2], grad.shape[2])
-    x0, x1, wx = coordinates(shape[3], grad.shape[3])
+    y0, y1, wy = coordinates(
+        shape[2], grad.shape[2], align_corners, scale_factor[0]
+    )
+    x0, x1, wx = coordinates(
+        shape[3], grad.shape[3], align_corners, scale_factor[1]
+    )
     bottom = grad * wy[:, None]
     top = grad - bottom
     contributions = [
@@ -93,6 +111,15 @@ def round_to_bfloat16(x):
     return (rounded & np.uint32(0xFFFF0000)).view(np.float32)
 
 
+def round_to(x, dtype):
+    """Round FP32 values to dtype, keeping them stored as FP32."""
+    if dtype == 'float16':
+        return x.astype(np.float16).astype(np.float32)
+    if dtype == 'bfloat16':
+        return round_to_bfloat16(x)
+    return x
+
+
 def md5(x):
     return hashlib.md5(x.tobytes()).hexdigest()
 
@@ -120,14 +147,16 @@ class TestBilinearAccuracyCompatible(unittest.TestCase):
             actual.view(np.uint32), expected.view(np.uint32)
         )
 
-    def evaluate(self, data, size, grad, **kwargs):
+    def evaluate(
+        self, data, size, grad, align_corners=False, align_mode=0, **kwargs
+    ):
         x = paddle.to_tensor(data, stop_gradient=False)
         y = paddle.nn.functional.interpolate(
             x,
             size=size,
             mode='bilinear',
-            align_corners=False,
-            align_mode=0,
+            align_corners=align_corners,
+            align_mode=align_mode,
             **kwargs,
         )
         dx = paddle.grad(y, x, grad_outputs=paddle.to_tensor(grad))[0]
@@ -206,6 +235,72 @@ class TestBilinearAccuracyCompatible(unittest.TestCase):
                 )
                 self.assertEqual(md5(y), forward_hash)
                 self.assertEqual(md5(dx), backward_hash)
+
+    def test_align_corners(self):
+        rng = np.random.default_rng(11)
+        for source, size in [
+            ((52, 52), (31, 68)),
+            ((8, 8), (16, 16)),
+            ((1, 1), (20, 20)),
+            ((1, 7), (1, 40)),
+            ((7, 1), (40, 1)),
+            ((2, 3), (120, 90)),
+            ((3, 4), (7, 9)),
+            ((7, 9), (1, 1)),
+            ((7, 9), (3, 4)),
+        ]:
+            with self.subTest(source=source, size=size):
+                data = rng.standard_normal((2, 3, *source)).astype(np.float32)
+                grad = rng.standard_normal((2, 3, *size)).astype(np.float32)
+                grad[..., ::2, ::2] = 0
+                expected_y = reference_forward(data, size, True)
+                expected_dx = reference_backward(data.shape, grad, True)
+                for align_mode in [0, 1]:
+                    # align_mode is ignored when align_corners=True.
+                    y, dx = self.evaluate(
+                        data, size, grad, True, align_mode=align_mode
+                    )
+                    self.assert_bitwise_equal(y, expected_y)
+                    self.assert_bitwise_equal(dx, expected_dx)
+
+    def test_low_precision(self):
+        # torch widens FP16/BF16 to FP32 (pw_cast_for_opmath) and rounds the
+        # forward output and input gradient back once.
+        rng = np.random.default_rng(2027)
+        for dtype in ['float16', 'bfloat16']:
+            for source, size in [
+                ((52, 52), (31, 68)),
+                ((8, 8), (16, 16)),
+                ((1, 1), (20, 20)),
+                ((2, 3), (120, 90)),
+                ((7, 9), (3, 4)),
+            ]:
+                with self.subTest(dtype=dtype, source=source, size=size):
+                    data = round_to(
+                        rng.standard_normal((2, 3, *source)).astype(np.float32),
+                        dtype,
+                    )
+                    grad = round_to(
+                        rng.standard_normal((2, 3, *size)).astype(np.float32),
+                        dtype,
+                    )
+                    x = paddle.to_tensor(data).astype(dtype)
+                    x.stop_gradient = False
+                    y = paddle.nn.functional.interpolate(
+                        x, size=size, mode='bilinear', align_corners=False
+                    )
+                    dx = paddle.grad(
+                        y, x, grad_outputs=paddle.to_tensor(grad).astype(dtype)
+                    )[0]
+                    self.assertEqual(y.dtype, x.dtype)
+                    self.assert_bitwise_equal(
+                        y.astype('float32').numpy(),
+                        round_to(reference_forward(data, size), dtype),
+                    )
+                    self.assert_bitwise_equal(
+                        dx.astype('float32').numpy(),
+                        round_to(reference_backward(data.shape, grad), dtype),
+                    )
 
     def test_pir(self):
         data = (
@@ -318,10 +413,23 @@ class TestBilinearAccuracyCompatible(unittest.TestCase):
                     self.assert_bitwise_equal(y, size_y)
                     self.assert_bitwise_equal(dx, size_dx)
 
-    def test_nonrecomputed_scale_keeps_existing_path(self):
+    def test_nonrecomputed_scale(self):
+        # Without recompute, torch maps coordinates by 1 / scale_factor.
         rng = np.random.default_rng(43)
         data = rng.standard_normal((2, 3, 7, 9)).astype(np.float32)
-        for scale in [0.75, 1.5, (0.5, 0.75), (1.5, 2.25), (0.75, 1.5)]:
+        for scale in [
+            0.75,
+            1.5,
+            (0.5, 0.75),
+            (1.5, 2.25),
+            (0.75, 1.5),
+            # Output size equals input size, but coordinates still move.
+            (1.1, 1.1),
+            # Slightly above 2 while the output stays within 2x the input.
+            (2.05, 2.1),
+            # Beyond 2x the warp reduction path is used.
+            (2.5, 3.0),
+        ]:
             factors = [scale, scale] if isinstance(scale, float) else scale
             size = [
                 int(np.floor(dim * factor))
@@ -330,28 +438,128 @@ class TestBilinearAccuracyCompatible(unittest.TestCase):
             grad = rng.standard_normal((*data.shape[:2], *size)).astype(
                 np.float32
             )
-            for recompute in [False, None]:
-                with self.subTest(scale=scale, recompute=recompute):
-                    kwargs = {
-                        "scale_factor": scale,
-                        "recompute_scale_factor": recompute,
-                    }
-                    paddle.set_flags(
-                        {'FLAGS_use_accuracy_compatible_kernel': False}
-                    )
-                    expected_y, expected_dx = self.evaluate(
-                        data, None, grad, **kwargs
-                    )
-                    paddle.set_flags(
-                        {'FLAGS_use_accuracy_compatible_kernel': True}
-                    )
-                    y, dx = self.evaluate(data, None, grad, **kwargs)
-                    self.assert_bitwise_equal(y, expected_y)
-                    # The original backward uses atomic accumulation, so its
-                    # rounding order can vary across otherwise identical calls.
-                    np.testing.assert_allclose(
-                        dx, expected_dx, rtol=1e-6, atol=1e-6
-                    )
+            for align_corners in [False, True]:
+                expected_y = reference_forward(
+                    data, size, align_corners, factors
+                )
+                expected_dx = reference_backward(
+                    data.shape, grad, align_corners, factors
+                )
+                for recompute in [False, None]:
+                    with self.subTest(
+                        scale=scale,
+                        align_corners=align_corners,
+                        recompute=recompute,
+                    ):
+                        y, dx = self.evaluate(
+                            data,
+                            None,
+                            grad,
+                            align_corners,
+                            scale_factor=scale,
+                            recompute_scale_factor=recompute,
+                        )
+                        self.assert_bitwise_equal(y, expected_y)
+                        self.assert_bitwise_equal(dx, expected_dx)
+
+    def test_scale_tensor_pir(self):
+        # FP32-exact factors, since the Scale input is read as FP32.
+        factors = (1.5, 0.75)
+        data = (
+            np.random.default_rng(14)
+            .standard_normal((1, 2, 7, 9))
+            .astype(np.float32)
+        )
+        size = [int(dim * f) for dim, f in zip(data.shape[2:], factors)]
+        grad = (
+            np.random.default_rng(15)
+            .standard_normal((1, 2, *size))
+            .astype(np.float32)
+        )
+        with paddle.pir_utils.IrGuard():
+            paddle.enable_static()
+            main, startup = paddle.static.Program(), paddle.static.Program()
+            with paddle.static.program_guard(main, startup):
+                x = paddle.static.data('x', data.shape, 'float32')
+                x.stop_gradient = False
+                g = paddle.static.data('g', grad.shape, 'float32')
+                s = paddle.static.data('s', [2], 'float32')
+                y = paddle.nn.functional.interpolate(
+                    x, scale_factor=s, mode='bilinear', align_corners=False
+                )
+                dx = paddle.static.gradients([y], [x], [g])[0]
+            executor = paddle.static.Executor(paddle.CUDAPlace(0))
+            executor.run(startup)
+            actual_y, actual_dx = executor.run(
+                main,
+                feed={
+                    'x': data,
+                    'g': grad,
+                    's': np.array(factors, np.float32),
+                },
+                fetch_list=[y, dx],
+            )
+        self.assert_bitwise_equal(
+            actual_y, reference_forward(data, size, False, factors)
+        )
+        self.assert_bitwise_equal(
+            actual_dx, reference_backward(data.shape, grad, False, factors)
+        )
+
+    def test_nhwc(self):
+        # NHWC only changes addressing; torch sums in logical index order.
+        rng = np.random.default_rng(16)
+        for dtype, source, size, kwargs in [
+            ('float32', (52, 52), (31, 68), {}),
+            ('float32', (2, 3), (120, 90), {}),
+            ('float32', (7, 9), (3, 4), {"align_corners": True}),
+            ('float32', (7, 9), None, {"scale_factor": (1.5, 2.25)}),
+            ('float32', (7, 9), None, {"scale_factor": (2.5, 3.0)}),
+            ('float16', (8, 8), (16, 16), {}),
+            ('bfloat16', (19, 37), (20, 35), {}),
+        ]:
+            with self.subTest(
+                dtype=dtype, source=source, size=size, kwargs=kwargs
+            ):
+                align_corners = kwargs.get("align_corners", False)
+                factors = kwargs.get("scale_factor", (None, None))
+                out = size or [int(dim * f) for dim, f in zip(source, factors)]
+                data = round_to(
+                    rng.standard_normal((2, 5, *source)).astype(np.float32),
+                    dtype,
+                )
+                grad = round_to(
+                    rng.standard_normal((2, 5, *out)).astype(np.float32),
+                    dtype,
+                )
+                x = paddle.to_tensor(data.transpose(0, 2, 3, 1).copy())
+                x = x.astype(dtype)
+                x.stop_gradient = False
+                y = paddle.nn.functional.interpolate(
+                    x,
+                    size=size,
+                    mode='bilinear',
+                    data_format='NHWC',
+                    **kwargs,
+                )
+                dy = paddle.to_tensor(grad.transpose(0, 2, 3, 1).copy())
+                dx = paddle.grad(y, x, grad_outputs=dy.astype(dtype))[0]
+                self.assert_bitwise_equal(
+                    y.astype('float32').numpy().transpose(0, 3, 1, 2).copy(),
+                    round_to(
+                        reference_forward(data, out, align_corners, factors),
+                        dtype,
+                    ),
+                )
+                self.assert_bitwise_equal(
+                    dx.astype('float32').numpy().transpose(0, 3, 1, 2).copy(),
+                    round_to(
+                        reference_backward(
+                            data.shape, grad, align_corners, factors
+                        ),
+                        dtype,
+                    ),
+                )
 
     def test_other_modes_keep_existing_path(self):
         data = (
@@ -360,15 +568,9 @@ class TestBilinearAccuracyCompatible(unittest.TestCase):
             .astype(np.float32)
         )
         cases = [
-            (data, {"size": [3, 4], "mode": 'bilinear', "align_corners": True}),
             (data, {"size": [3, 4], "mode": 'bilinear', "align_mode": 1}),
             (data, {"size": [3, 4], "mode": 'nearest'}),
             (data, {"size": [3, 4], "mode": 'bicubic'}),
-            (data, {"scale_factor": 0.75, "mode": 'bilinear'}),
-            (
-                data.transpose(0, 2, 3, 1).copy(),
-                {"size": [3, 4], "mode": 'bilinear', "data_format": 'NHWC'},
-            ),
             (
                 data.astype(np.float64),
                 {"size": [3, 4], "mode": 'bilinear'},

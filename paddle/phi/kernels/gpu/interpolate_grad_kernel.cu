@@ -30,6 +30,7 @@
 
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/phi/kernels/gpu/interpolate_bilinear_compat.cuh"
+#include "paddle/phi/kernels/gpu/interpolate_trilinear_compat.cuh"
 #endif
 
 COMMON_DECLARE_bool(use_accuracy_compatible_kernel);
@@ -681,56 +682,20 @@ __global__ void KeTrilinearInterpBw(T* in,
       channel_id = tid % num_channels;
     }
 
-    int64_t in_img_idt =
-        align_flag ? static_cast<int>(ratio_d * (out_img_idt + 0.5) - 0.5)
-                   : static_cast<int>(ratio_d * out_img_idt);
-    in_img_idt = (in_img_idt > 0) ? in_img_idt : 0;
-    int64_t d_id = (in_img_idt < in_img_d - 1) ? 1 : 0;
-    double src_d = static_cast<double>(ratio_d * (out_img_idt + 0.5) - 0.5);
-    src_d = (src_d > static_cast<double>(0)) ? src_d : static_cast<double>(0);
-
-    double d1lambda_mt = align_flag ? src_d - static_cast<double>(in_img_idt)
-                                    : static_cast<double>(ratio_d) *
-                                              static_cast<double>(out_img_idt) -
-                                          static_cast<double>(in_img_idt);
-    double d2lambda_mt = static_cast<double>(1.0) - d1lambda_mt;
-
-    int64_t in_img_idy =
-        align_flag ? static_cast<int>(ratio_h * (out_img_idy + 0.5) - 0.5)
-                   : static_cast<int>(ratio_h * out_img_idy);
-    in_img_idy = (in_img_idy > 0) ? in_img_idy : 0;
-    int64_t h_id = (in_img_idy < in_img_h - 1) ? 1 : 0;
-    double src_h =
-        static_cast<double>(ratio_h) * static_cast<double>(out_img_idy + 0.5) -
-        static_cast<double>(0.5);
-    src_h = (src_h > static_cast<double>(0)) ? src_h : static_cast<double>(0);
-    double h1lambda_mt = align_flag ? src_h - static_cast<double>(in_img_idy)
-                                    : static_cast<double>(ratio_h) *
-                                              static_cast<double>(out_img_idy) -
-                                          static_cast<double>(in_img_idy);
-    double h2lambda_mt = static_cast<double>(1.0) - h1lambda_mt;
-
-    int64_t in_img_idx =
-        align_flag ? static_cast<int>(ratio_w * (out_img_idx + 0.5) - 0.5)
-                   : static_cast<int>(ratio_w * out_img_idx);
-    in_img_idx = (in_img_idx > 0) ? in_img_idx : 0;
-    int64_t w_id = (in_img_idx < in_img_w - 1) ? 1 : 0;
-    double src_w =
-        static_cast<double>(ratio_w) * static_cast<double>(out_img_idx + 0.5) -
-        static_cast<double>(0.5);
-    src_w = (src_w > static_cast<double>(0)) ? src_w : static_cast<double>(0);
-    double w1lambda_mt = align_flag ? src_w - static_cast<double>(in_img_idx)
-                                    : static_cast<double>(ratio_w) *
-                                              static_cast<double>(out_img_idx) -
-                                          static_cast<double>(in_img_idx);
-    double w2lambda_mt = static_cast<double>(1.0) - w1lambda_mt;
-
-    T d1lambda = static_cast<T>(d1lambda_mt);
-    T d2lambda = static_cast<T>(d2lambda_mt);
-    T h1lambda = static_cast<T>(h1lambda_mt);
-    T h2lambda = static_cast<T>(h2lambda_mt);
-    T w1lambda = static_cast<T>(w1lambda_mt);
-    T w2lambda = static_cast<T>(w2lambda_mt);
+    int64_t in_img_idt, in_img_idy, in_img_idx, d_id, h_id, w_id;
+    MT d1lambda, d2lambda, h1lambda, h2lambda, w1lambda, w2lambda;
+    MT src_d = funcs::AreaPixelComputeSourceIndex<MT>(
+        ratio_d, out_img_idt, !align_flag);
+    MT src_h = funcs::AreaPixelComputeSourceIndex<MT>(
+        ratio_h, out_img_idy, !align_flag);
+    MT src_w = funcs::AreaPixelComputeSourceIndex<MT>(
+        ratio_w, out_img_idx, !align_flag);
+    PreCalculatorForLinearInterpInputIndex(
+        &in_img_idt, &d_id, &d1lambda, &d2lambda, src_d, in_img_d);
+    PreCalculatorForLinearInterpInputIndex(
+        &in_img_idy, &h_id, &h1lambda, &h2lambda, src_h, in_img_h);
+    PreCalculatorForLinearInterpInputIndex(
+        &in_img_idx, &w_id, &w1lambda, &w2lambda, src_w, in_img_w);
 
     if (data_layout == DataLayout::NCHW) {
       int64_t in_pos1_idx =
@@ -744,23 +709,25 @@ __global__ void KeTrilinearInterpBw(T* in,
       int64_t in_pos2_idx =
           in_pos1_idx + static_cast<int64_t>(d_id) * in_img_h * in_img_w;
       T* in_pos2 = &in[in_pos2_idx];
-      const T* out_pos = &out[out_id_h * output_w + out_id_w];
+      const MT grad = static_cast<MT>(out[out_id_h * output_w + out_id_w]);
 
       // trilinear interpolation grad
-      CudaAtomicAdd(&in_pos1[0], d2lambda * h2lambda * w2lambda * out_pos[0]);
+      CudaAtomicAdd(&in_pos1[0],
+                    static_cast<T>(d2lambda * h2lambda * w2lambda * grad));
       CudaAtomicAdd(&in_pos1[w_id],
-                    d2lambda * h2lambda * w1lambda * out_pos[0]);
+                    static_cast<T>(d2lambda * h2lambda * w1lambda * grad));
       CudaAtomicAdd(&in_pos1[h_id * in_img_w],
-                    d2lambda * h1lambda * w2lambda * out_pos[0]);
+                    static_cast<T>(d2lambda * h1lambda * w2lambda * grad));
       CudaAtomicAdd(&in_pos1[h_id * in_img_w + w_id],
-                    d2lambda * h1lambda * w1lambda * out_pos[0]);
-      CudaAtomicAdd(&in_pos2[0], d1lambda * h2lambda * w2lambda * out_pos[0]);
+                    static_cast<T>(d2lambda * h1lambda * w1lambda * grad));
+      CudaAtomicAdd(&in_pos2[0],
+                    static_cast<T>(d1lambda * h2lambda * w2lambda * grad));
       CudaAtomicAdd(&in_pos2[w_id],
-                    d1lambda * h2lambda * w1lambda * out_pos[0]);
+                    static_cast<T>(d1lambda * h2lambda * w1lambda * grad));
       CudaAtomicAdd(&in_pos2[h_id * in_img_w],
-                    d1lambda * h1lambda * w2lambda * out_pos[0]);
+                    static_cast<T>(d1lambda * h1lambda * w2lambda * grad));
       CudaAtomicAdd(&in_pos2[h_id * in_img_w + w_id],
-                    d1lambda * h1lambda * w1lambda * out_pos[0]);
+                    static_cast<T>(d1lambda * h1lambda * w1lambda * grad));
     } else {
       int64_t in_pos1_idx =
           static_cast<int64_t>(out_id_h) * input_w +
@@ -774,25 +741,27 @@ __global__ void KeTrilinearInterpBw(T* in,
                                               num_channels;
       T* in_pos2 = &in[in_pos2_idx];
 
-      const T* out_pos = &out[out_id_h * output_w + out_id_w];
+      const MT grad = static_cast<MT>(out[out_id_h * output_w + out_id_w]);
 
       // trilinear interpolation grad
-      CudaAtomicAdd(&in_pos1[0], d2lambda * h2lambda * w2lambda * out_pos[0]);
+      CudaAtomicAdd(&in_pos1[0],
+                    static_cast<T>(d2lambda * h2lambda * w2lambda * grad));
       CudaAtomicAdd(&in_pos1[w_id * num_channels],
-                    d2lambda * h2lambda * w1lambda * out_pos[0]);
+                    static_cast<T>(d2lambda * h2lambda * w1lambda * grad));
       CudaAtomicAdd(&in_pos1[h_id * in_img_w * num_channels],
-                    d2lambda * h1lambda * w2lambda * out_pos[0]);
+                    static_cast<T>(d2lambda * h1lambda * w2lambda * grad));
       CudaAtomicAdd(
           &in_pos1[h_id * in_img_w * num_channels + w_id * num_channels],
-          d2lambda * h1lambda * w1lambda * out_pos[0]);
-      CudaAtomicAdd(&in_pos2[0], d1lambda * h2lambda * w2lambda * out_pos[0]);
+          static_cast<T>(d2lambda * h1lambda * w1lambda * grad));
+      CudaAtomicAdd(&in_pos2[0],
+                    static_cast<T>(d1lambda * h2lambda * w2lambda * grad));
       CudaAtomicAdd(&in_pos2[w_id * num_channels],
-                    d1lambda * h2lambda * w1lambda * out_pos[0]);
+                    static_cast<T>(d1lambda * h2lambda * w1lambda * grad));
       CudaAtomicAdd(&in_pos2[h_id * in_img_w * num_channels],
-                    d1lambda * h1lambda * w2lambda * out_pos[0]);
+                    static_cast<T>(d1lambda * h1lambda * w2lambda * grad));
       CudaAtomicAdd(
           &in_pos2[h_id * in_img_w * num_channels + w_id * num_channels],
-          d1lambda * h1lambda * w1lambda * out_pos[0]);
+          static_cast<T>(d1lambda * h1lambda * w1lambda * grad));
     }
   }
 }
@@ -1403,19 +1372,23 @@ static void Interpolate2DCUDABwd(
   funcs::SetConstant<Context, T> zero;
   zero(dev_ctx, input_grad, static_cast<T>(0.0));
 
-  if (in_h == out_h && in_w == out_w) {
-    Copy(dev_ctx, output_grad, dev_ctx.GetPlace(), false, input_grad);
-    return;
-  }
-
 #ifdef PADDLE_WITH_CUDA
-  // An absent scale means coordinates are derived from output dimensions.
-  // This includes explicit size and scale_factor + recompute_scale_factor=True,
+  // Without a scale, coordinates are derived from output dimensions. This
+  // includes explicit size and scale_factor + recompute_scale_factor=True,
   // which the Python API converts to output dimensions before dispatch.
-  if constexpr (std::is_same<T, float>::value) {
+  // With a scale, torch maps coordinates by 1 / scale even if the output size
+  // equals the input size. Paddle may also combine a scale with an overriding
+  // output size, which torch cannot express; that keeps the original kernel.
+  if constexpr (std::is_same<T, float>::value ||
+                std::is_same<T, phi::float16>::value ||
+                std::is_same<T, phi::bfloat16>::value) {
+    const bool has_scale = scale_tensor || !scale.empty();
+    const bool has_size = out_size || (size_tensor && size_tensor->size() > 0);
+    // align_mode only matters without align_corners; torch has no
+    // align_mode=1 equivalent.
     if (FLAGS_use_accuracy_compatible_kernel && interp_method == "bilinear" &&
-        data_layout == DataLayout::NCHW && !align_corners && align_mode == 0 &&
-        scale.empty() && !scale_tensor) {
+        (align_corners || align_mode == 0) && !(has_scale && has_size) &&
+        (has_scale || in_h != out_h || in_w != out_w)) {
       funcs::bilinear_compat::LaunchBackward(output_grad_data,
                                              input_grad_data,
                                              n * c * in_h * in_w,
@@ -1423,11 +1396,21 @@ static void Interpolate2DCUDABwd(
                                              in_w,
                                              out_h,
                                              out_w,
+                                             c,
+                                             data_layout == DataLayout::NHWC,
+                                             align_corners,
+                                             scale_h,
+                                             scale_w,
                                              dev_ctx.stream());
       return;
     }
   }
 #endif
+
+  if (in_h == out_h && in_w == out_w) {
+    Copy(dev_ctx, output_grad, dev_ctx.GetPlace(), false, input_grad);
+    return;
+  }
 
   using MT = typename std::conditional_t<std::is_integral<T>::value,
                                          float,
@@ -1944,6 +1927,37 @@ static void Interpolate3DCUDABwd(
   auto* input_grad_data = dev_ctx.template Alloc<T>(input_grad);
   funcs::SetConstant<Context, T> zero;
   zero(dev_ctx, input_grad, static_cast<T>(0.0));
+
+#ifdef PADDLE_WITH_CUDA
+  // Same dispatch rules as the bilinear compat kernel in Interpolate2DCUDABwd.
+  if constexpr (std::is_same<T, float>::value ||
+                std::is_same<T, phi::float16>::value ||
+                std::is_same<T, phi::bfloat16>::value) {
+    const bool has_scale = scale_tensor || !scale.empty();
+    const bool has_size = out_size || (size_tensor && size_tensor->size() > 0);
+    if (FLAGS_use_accuracy_compatible_kernel && interp_method == "trilinear" &&
+        (align_corners || align_mode == 0) && !(has_scale && has_size) &&
+        (has_scale || in_d != out_d || in_h != out_h || in_w != out_w)) {
+      funcs::trilinear_compat::LaunchBackward(output_grad_data,
+                                              input_grad_data,
+                                              n * c * in_d * in_h * in_w,
+                                              in_d,
+                                              in_h,
+                                              in_w,
+                                              out_d,
+                                              out_h,
+                                              out_w,
+                                              c,
+                                              data_layout == DataLayout::NHWC,
+                                              align_corners,
+                                              scale_d,
+                                              scale_h,
+                                              scale_w,
+                                              dev_ctx.stream());
+      return;
+    }
+  }
+#endif
 
   if (in_d == out_d && in_h == out_h && in_w == out_w) {
     Copy(dev_ctx, output_grad, dev_ctx.GetPlace(), false, input_grad);
