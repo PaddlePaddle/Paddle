@@ -2811,10 +2811,12 @@ class Unflatten(Layer):
 
     Parameters:
         axis (int): :attr:`axis` to be unflattened, specified as an index into `x.shape`.
+            Alias: ``dim``.
         shape (list|tuple|Tensor): Unflatten :attr:`shape` on the specified :attr:`axis`. At most one dimension of the target :attr:`shape` can be -1.
             If the input :attr:`shape` does not contain -1 , the product of all elements in ``shape`` should be equal to ``x.shape[axis]``.
             The data type is `int` . If :attr:`shape` is a list or tuple, the elements of it should be integers or Tensors with shape [].
             If :attr:`shape` is an Tensor, it should be an 1-D Tensor.
+            Alias: ``unflattened_size``.
         name(str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
@@ -2840,6 +2842,7 @@ class Unflatten(Layer):
     shape: ShapeLike
     name: str | None
 
+    @param_two_alias(["axis", "dim"], ["shape", "unflattened_size"])
     def __init__(
         self, axis: int, shape: ShapeLike, name: str | None = None
     ) -> None:
