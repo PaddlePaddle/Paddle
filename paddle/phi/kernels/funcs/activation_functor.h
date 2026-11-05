@@ -1640,7 +1640,7 @@ struct ReluCPUFunctor : public BaseActivationFunctor<T> {
   template <typename Device, typename X, typename Out>
   void operator()(Device d, X x, Out out) const {
     out.device(d) = x.unaryExpr([] HOSTDEVICE(T v) {
-      return v > static_cast<T>(0) ? v : static_cast<T>(0);
+      return v < static_cast<T>(0) ? static_cast<T>(0) : v;
     });
   }
 };
@@ -1661,7 +1661,8 @@ struct ReluGradFunctor : public BaseActivationFunctor<T> {
             typename dOut,
             typename dX>
   void operator()(Device d, X x UNUSED, Out out, dOut dout, dX dx) const {
-    dx.device(d) = dout * (out > static_cast<T>(0)).template cast<T>();
+    dx.device(d) = (out > static_cast<T>(0))
+                       .select(dout, dout.constant(static_cast<T>(0)));
   }
 
   static constexpr ActBwdOpFwdDeps FwdDeps() {
