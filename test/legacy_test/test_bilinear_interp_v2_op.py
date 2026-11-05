@@ -1359,5 +1359,86 @@ class TestBilinearInterpOpAPI_0DTensorOutSize(unittest.TestCase):
             np.testing.assert_allclose(out.numpy(), expect_res, rtol=1e-05)
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
+class TestBilinearInterpLargeUpsampleGrad(unittest.TestCase):
+    """Backward of NCHW upsampling by more than 64x in both directions.
+
+    These shapes take KeBilinearInterpBwShareMemory, which no other test
+    reaches. It previously raced between back-to-back block reductions
+    (gradients landed on neighbouring inputs, varying per run) and dropped
+    the tail of a row when a block straddled two output rows with
+    in_w >= blockDim. With grad_output = ones the exact input gradient is the
+    outer product of the per-axis interpolation weight sums.
+    """
+
+    @staticmethod
+    def axis_weight_sums(in_size, out_size, align_corners):
+        if align_corners:
+            ratio = (in_size - 1.0) / (out_size - 1.0) if out_size > 1 else 0.0
+            src = ratio * np.arange(out_size)
+        else:
+            src = (np.arange(out_size) + 0.5) * (in_size / out_size) - 0.5
+        src = np.maximum(src, 0)
+        idx0 = src.astype(np.int64)
+        idx1 = np.minimum(idx0 + 1, in_size - 1)
+        lambda1 = src - idx0
+        return np.bincount(idx0, 1.0 - lambda1, in_size) + np.bincount(
+            idx1, lambda1, in_size
+        )
+
+    def check(self, shape, out_hw, align_corners, dtype, rtol, repeat=1):
+        x = paddle.to_tensor(np.zeros(shape, dtype=dtype), stop_gradient=False)
+        expected = np.broadcast_to(
+            np.outer(
+                self.axis_weight_sums(shape[2], out_hw[0], align_corners),
+                self.axis_weight_sums(shape[3], out_hw[1], align_corners),
+            ),
+            shape,
+        )
+        for _ in range(repeat):
+            y = interpolate(
+                x, size=out_hw, mode="bilinear", align_corners=align_corners
+            )
+            (dx,) = paddle.grad(y, x, paddle.ones_like(y))
+            np.testing.assert_allclose(dx.numpy(), expected, rtol=rtol, atol=0)
+
+    def test_large_upsample(self):
+        paddle.disable_static()
+        place = paddle.CUDAPlace(0)
+        with base.dygraph.guard(place):
+            for shape, out_hw in [
+                ([1, 1, 3, 7], [256, 512]),  # race between reductions
+                ([2, 3, 3, 5], [256, 400]),  # blocks straddle output rows
+                ([1, 1, 3, 600], [256, 38464]),  # straddle with in_w > 512
+                ([4, 2, 1, 1], [5, 7]),  # 1x1 input
+                ([2, 2, 2, 3], [192, 260]),  # partial last block of a row
+            ]:
+                for align_corners in [False, True]:
+                    with self.subTest(
+                        shape=shape, out_hw=out_hw, align_corners=align_corners
+                    ):
+                        self.check(
+                            shape,
+                            out_hw,
+                            align_corners,
+                            "float32",
+                            rtol=1e-4,
+                            repeat=3,
+                        )
+
+    def test_float64_gather(self):
+        # 3x upsampling takes the gather branch of KeBilinearInterpNCHWBw,
+        # whose weights used to be truncated to float.
+        paddle.disable_static()
+        with base.dygraph.guard(paddle.CUDAPlace(0)):
+            for align_corners in [False, True]:
+                with self.subTest(align_corners=align_corners):
+                    self.check(
+                        [2, 3, 7, 9], [21, 27], align_corners, "float64", 1e-12
+                    )
+
+
 if __name__ == "__main__":
     unittest.main()
