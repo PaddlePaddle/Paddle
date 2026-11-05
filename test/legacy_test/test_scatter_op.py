@@ -985,15 +985,23 @@ class TestScatterOp_ZeroSize2(TestScatterOp_ZeroSize):
         )
 
 
+def get_scatter_check_places():
+    # op_test.get_places() drops CPUPlace on a CUDA build, which would leave the
+    # CPU kernels of the checks below untested. Keep CPU unless the build only
+    # has a custom device, mirroring get_places()'s own exclusion.
+    places = [] if is_custom_device() else [paddle.CPUPlace()]
+    if core.is_compiled_with_cuda() or is_custom_device():
+        places.append(get_device_place())
+    return places
+
+
 class TestZeroSizeAxisOutOfRangeError(unittest.TestCase):
     """x without any row has no valid index, so any non-empty index is out of range."""
 
     def test_dygraph_error(self):
         with dygraph_guard():
-            for place in get_places():
-                paddle.set_device(
-                    "cpu" if isinstance(place, base.CPUPlace) else "gpu"
-                )
+            for place in get_scatter_check_places():
+                paddle.set_device(place)
                 for overwrite in (True, False):
                     with self.assertRaises(IndexError):
                         _ = paddle.scatter(
@@ -1005,10 +1013,8 @@ class TestZeroSizeAxisOutOfRangeError(unittest.TestCase):
 
     def test_dygraph_empty_index_grad(self):
         with dygraph_guard():
-            for place in get_places():
-                paddle.set_device(
-                    "cpu" if isinstance(place, base.CPUPlace) else "gpu"
-                )
+            for place in get_scatter_check_places():
+                paddle.set_device(place)
                 x = paddle.ones([4, 1], dtype="float32")
                 x.stop_gradient = False
                 # an empty index selects no row, so updates is empty as well
@@ -1029,7 +1035,7 @@ class TestScatterUpdatesShapeError(unittest.TestCase):
     """updates must match x except dim 0 and match index there, on every device."""
 
     def set_device(self, place):
-        paddle.set_device("cpu" if isinstance(place, base.CPUPlace) else "gpu")
+        paddle.set_device(place)
 
     def test_dygraph_error(self):
         cases = [
@@ -1049,7 +1055,7 @@ class TestScatterUpdatesShapeError(unittest.TestCase):
             ([8], [0, 1], [5]),
         ]
         with dygraph_guard():
-            for place in get_places():
+            for place in get_scatter_check_places():
                 self.set_device(place)
                 for x_shape, index, updates_shape in cases:
                     with (
@@ -1066,7 +1072,7 @@ class TestScatterUpdatesShapeError(unittest.TestCase):
 
     def test_dygraph_valid(self):
         with dygraph_guard():
-            for place in get_places():
+            for place in get_scatter_check_places():
                 self.set_device(place)
                 for index, updates_shape in (
                     ([], [0, 4]),
