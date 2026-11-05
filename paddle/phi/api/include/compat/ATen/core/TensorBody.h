@@ -23,6 +23,7 @@
 #include <c10/core/Stream.h>
 #include <c10/core/SymIntArrayRef.h>
 #include <c10/util/OptionalArrayRef.h>
+#include <c10/util/string_view.h>
 #include "paddle/phi/api/include/api.h"
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/common/int_array.h"
@@ -310,6 +311,20 @@ class Tensor : public TensorBase {
   at::Tensor index_put(const c10::List<::std::optional<at::Tensor>>& indices,
                        const at::Tensor& values,
                        bool accumulate = false) const;
+
+  // index_reduce: Reduce values from source into self at specified indices
+  at::Tensor index_reduce(int64_t dim,
+                          const at::Tensor& index,
+                          const at::Tensor& source,
+                          c10::string_view reduce,
+                          bool include_self = true) const;
+
+  // index_reduce_: In-place version of index_reduce
+  at::Tensor& index_reduce_(int64_t dim,
+                            const at::Tensor& index,
+                            const at::Tensor& source,
+                            c10::string_view reduce,
+                            bool include_self = true) const;
 
   Tensor toType(ScalarType t) const {
     return Tensor(paddle::experimental::cast(
