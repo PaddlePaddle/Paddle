@@ -125,7 +125,7 @@ class Buffer:
             # Enable IBGDA
             assert num_qps_per_rank > 0
             num_qps = num_qps_per_rank
-            internode_ll_two_stage_num_max_qps = 32
+            internode_ll_two_stage_num_max_qps = 1024
             if num_qps_per_rank < internode_ll_two_stage_num_max_qps:
                 num_qps = internode_ll_two_stage_num_max_qps
             if not os.getenv("NVSHMEM_DISABLE_P2P"):
