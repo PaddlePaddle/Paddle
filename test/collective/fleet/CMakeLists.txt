@@ -171,13 +171,12 @@ if((WITH_GPU) AND LOCAL_ALL_PLAT)
     START_BASH
     ../../legacy_test/dist_test.sh
     TIMEOUT
-    "300"
+    "800"
     LABELS
     "RUN_TYPE=DIST"
     ENVS
-    "PADDLE_DIST_UT_PORT=21329;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
-  )
-  set_tests_properties(test_pp_with_shared_weight_nway PROPERTIES TIMEOUT "300")
+    "http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python")
+  set_tests_properties(test_pp_with_shared_weight_nway PROPERTIES TIMEOUT "800")
 endif()
 if((WITH_GPU OR WITH_XPU) AND LOCAL_ALL_PLAT)
   bash_test_modules(

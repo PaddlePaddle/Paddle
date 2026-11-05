@@ -12,130 +12,57 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Shared-weight N-way gradient sync test (>=3 sharing stages).
+"""4-accelerator launcher for the shared-weight N-way sync test.
 
-The engine previously built a *star* of pairwise (pivot, stage) groups, so a
-shared key whose replicas live on >=3 distinct stages got incomplete gradients
-on the non-pivot stages (silent divergence).  ``_construct_shared_comm`` now
-builds one N-way group per distinct stage set, and this test guards the >=3
-stage path (the existing shared-weight tests all run pp_degree=2).
-
-Run with four GPUs::
-
-    python -m paddle.distributed.launch --gpus=0,1,2,3 \
-        test/collective/fleet/test_pp_with_shared_weight_nway.py
+The existing shared-weight tests all run pp_degree=2 (``run_mnist_2accelerators``),
+which cannot cover the >=3-stage path this change fixes.  Spawn the worker
+(``hybrid_parallel_pp_shared_weight_nway.py``) on 4 devices explicitly, skipping
+only when fewer than 4 GPUs are available.
 """
 
-import os
+import time
 import unittest
 
-import numpy as np
-
-import paddle
-import paddle.distributed as dist
-from paddle import nn
-from paddle.distributed import fleet
-from paddle.distributed.fleet.meta_parallel import (
-    PipelineLayer,
-    SharedLayerDesc,
+from legacy_test.test_parallel_dygraph_dataparallel import (
+    get_cluster_from_args,
+    get_devices,
+    start_local_trainers,
+    watch_local_trainers,
 )
 
-PP_SIZE = 4
-VOCAB_SIZE = 64
-HIDDEN_SIZE = 16
+from paddle import base
+
+WORKER = 'hybrid_parallel_pp_shared_weight_nway.py'
 
 
-def setUpModule():
-    if "FLAGS_selected_gpus" not in os.environ:
-        raise unittest.SkipTest("requires paddle.distributed.launch")
-    strategy = fleet.DistributedStrategy()
-    strategy.hybrid_configs = {
-        "dp_degree": 1,
-        "mp_degree": 1,
-        "pp_degree": PP_SIZE,
-    }
-    fleet.init(is_collective=True, strategy=strategy)
-    if dist.get_world_size() != PP_SIZE:
-        raise unittest.SkipTest(
-            f"requires {PP_SIZE} ranks, got {dist.get_world_size()}"
+class TestPPWithSharedWeightNWay(unittest.TestCase):
+    """4 accelerators, so a shared key can live on 4 distinct PP stages."""
+
+    def _run_4accelerators(self):
+        if (
+            not base.core.is_compiled_with_cuda()
+            or base.core.get_cuda_device_count() < 4
+        ):
+            return
+
+        cluster, pod = get_cluster_from_args(get_devices('0,1,2,3'))
+        procs = start_local_trainers(
+            cluster,
+            pod,
+            allocator_strategy="auto_growth",
+            training_script=WORKER,
+            training_script_args=[],
         )
 
+        while True:
+            alive = watch_local_trainers(procs, cluster.trainers_endpoints())
+            if not alive:
+                print(f"Local procs complete, POD info:{pod}")
+                break
+            time.sleep(3)
 
-class EmbeddingPipe(nn.Layer):
-    def __init__(self):
-        super().__init__()
-        self.embed_tokens = nn.Embedding(VOCAB_SIZE, HIDDEN_SIZE)
-
-    @property
-    def embedding_weight(self):
-        return self.embed_tokens.weight
-
-    def forward(self, args):
-        return args
-
-
-class NWayEmbedNet(PipelineLayer):
-    """One shared embedding placed on every one of 4 PP stages."""
-
-    def __init__(self, **kwargs):
-        layers = [
-            SharedLayerDesc(
-                "embed",
-                EmbeddingPipe,
-                shared_weight_attr="embedding_weight",
-            )
-            for _ in range(PP_SIZE)
-        ]
-        super().__init__(layers=layers, **kwargs)
-
-
-def _local_embed_weight(model):
-    for sub in model.sublayers():
-        if isinstance(sub, EmbeddingPipe):
-            return sub.embedding_weight
-    return None
-
-
-def _grad_of(param):
-    if hasattr(param, "main_grad") and param.main_grad is not None:
-        return param.main_grad
-    return param.grad
-
-
-class TestNWaySharedWeightSync(unittest.TestCase):
-    def test_gradient_full_sum_across_4_stages(self):
-        """Every replica must end with the full N-way sum after allreduce."""
-        paddle.seed(2026)
-        hcg = fleet.get_hybrid_communicate_group()
-        model = NWayEmbedNet(topology=hcg.topology())
-
-        weight = _local_embed_weight(model)
-        self.assertIsNotNone(weight, "each PP stage must hold an embed copy")
-
-        pp_rank = hcg.get_stage_id()
-        pipe_group = hcg.get_pipe_parallel_group()
-
-        # Distinct local gradient per stage: 10, 20, 30, 40 -> full sum 100.
-        weight.grad = paddle.full_like(weight, float((pp_rank + 1) * 10))
-
-        model.allreduce_shared_weight_gradients()
-
-        grad = _grad_of(weight)
-        self.assertIsNotNone(grad)
-        copies = []
-        dist.all_gather(copies, grad.detach(), group=pipe_group)
-        self.assertEqual(len(copies), PP_SIZE)
-
-        expected = float(sum((r + 1) * 10 for r in range(PP_SIZE)))  # 100
-        for r, c in enumerate(copies):
-            np.testing.assert_allclose(
-                c.astype("float32").numpy(),
-                np.full_like(c.astype("float32").numpy(), expected),
-                err_msg=(
-                    f"stage {r} gradient != full N-way sum {expected}; "
-                    "pairwise star leaves non-pivot stages incomplete"
-                ),
-            )
+    def test_nway_gradient_full_sum(self):
+        self._run_4accelerators()
 
 
 if __name__ == "__main__":
