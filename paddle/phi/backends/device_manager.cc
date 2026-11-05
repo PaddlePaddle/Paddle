@@ -24,7 +24,6 @@
 #endif
 
 #include <functional>
-#include <regex>
 
 #include "glog/logging.h"
 #include "paddle/utils/string/split.h"
@@ -1019,14 +1018,24 @@ void DeviceManager::Release() {
 
 std::vector<std::string> ListAllLibraries(const std::string& library_dir) {
   std::vector<std::string> libraries;
-#if defined(__APPLE__)
-  std::regex express(".*\\.dylib");
-#else
-  std::regex express(".*\\.so");
-#endif
-  std::match_results<std::string::iterator> results;
-
 #if !defined(_WIN32)
+#if defined(__APPLE__)
+  const std::string suffix = ".dylib";
+#else
+  const std::string suffix = ".so";
+#endif
+
+  // Match the library suffix with a plain comparison instead of std::regex.
+  // This is equivalent to the previous std::regex_match against ".*\\.so"
+  // (or ".*\\.dylib"), which matched the whole filename, but avoids
+  // constructing std::regex: that initializes locale facets and can abort when
+  // an incompatible libstdc++ has already been loaded by another plugin.
+  auto has_suffix = [&suffix](const std::string& filename) {
+    return filename.size() >= suffix.size() &&
+           filename.compare(
+               filename.size() - suffix.size(), suffix.size(), suffix) == 0;
+  };
+
   DIR* dir = nullptr;
   dirent* ptr = nullptr;
 
@@ -1036,8 +1045,7 @@ std::vector<std::string> ListAllLibraries(const std::string& library_dir) {
   } else {
     while ((ptr = readdir(dir)) != nullptr) {
       std::string filename(ptr->d_name);
-      if (std::regex_match(
-              filename.begin(), filename.end(), results, express)) {
+      if (has_suffix(filename)) {
         libraries.push_back(
             std::string(library_dir).append("/").append(filename));
         VLOG(4) << "Found lib: " << libraries.back();
