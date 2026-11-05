@@ -363,5 +363,67 @@ class TestSwigluGradOp(unittest.TestCase):
         # y_grad is not initialized when y is none
 
 
+class TestSwigluGrad0SizeShapeCheck(unittest.TestCase):
+    """A 0-size x must not let a mismatched dz/y skip the shape checks."""
+
+    def setUp(self):
+        self.devices = ["cpu"]
+        if core.is_compiled_with_cuda():
+            self.devices.append("gpu")
+
+    def swiglu_grad(self, x_shape, y_shape, dz_shape):
+        x = paddle.zeros(x_shape, dtype="float32")
+        y = None if y_shape is None else paddle.zeros(y_shape, dtype="float32")
+        dz = paddle.zeros(dz_shape, dtype="float32")
+        return _C_ops.swiglu_grad(x, y, dz)
+
+    def test_mismatch_raises(self):
+        cases = [
+            # y is None: dz must be x with the last dim halved
+            ([0, 8], None, [5, 4]),
+            ([5, 0], None, [5, 4]),
+            ([0, 8], None, [0, 4, 1]),
+            ([2, 0, 8], None, [2, 4]),
+            ([0, 8], None, [1, 4]),
+            # y is given: dz must match the forward output shape
+            ([0, 4], [0, 4], [5, 4]),
+            ([0, 4], [3, 4], [5, 4]),
+            ([3, 4], [0, 4], [3, 4]),
+        ]
+        for device in self.devices:
+            paddle.set_device(device)
+            for x_shape, y_shape, dz_shape in cases:
+                with (
+                    self.subTest(
+                        device=device, x=x_shape, y=y_shape, dz=dz_shape
+                    ),
+                    self.assertRaises(ValueError),
+                ):
+                    self.swiglu_grad(x_shape, y_shape, dz_shape)
+
+    def test_valid_0size(self):
+        cases = [
+            ([0, 8], None, [0, 4]),
+            ([5, 0], None, [5, 0]),
+            ([0, 4], [0, 4], [0, 4]),
+            # x and y may differ when either is 0-size, see SwiGLUInferMeta
+            ([0, 4], [3, 4], [0, 4]),
+            ([3, 4], [0, 4], [0, 4]),
+        ]
+        for device in self.devices:
+            paddle.set_device(device)
+            for x_shape, y_shape, dz_shape in cases:
+                with self.subTest(
+                    device=device, x=x_shape, y=y_shape, dz=dz_shape
+                ):
+                    dx, dy = self.swiglu_grad(x_shape, y_shape, dz_shape)
+                    self.assertEqual(dx.shape, x_shape)
+                    if y_shape is not None:
+                        self.assertEqual(dy.shape, y_shape)
+                        np.testing.assert_array_equal(
+                            dy.numpy(), np.zeros(y_shape, dtype="float32")
+                        )
+
+
 if __name__ == "__main__":
     unittest.main()

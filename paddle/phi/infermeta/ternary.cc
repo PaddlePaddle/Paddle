@@ -2900,6 +2900,17 @@ void RoiPoolInferMeta(const MetaTensor& x,
   arg_max->set_dtype(DataType::INT64);
 }
 
+// Returns true only when the rank of `dims` is known and every dim is known and
+// positive, i.e. the tensor is statically known to hold at least one element.
+// A 0-D tensor holds exactly one element, so it returns true.
+static bool IsKnownNonEmpty(const DDim& dims) {
+  if (dims.size() < 0) return false;  // unknown rank
+  for (int i = 0; i < dims.size(); ++i) {
+    if (dims[i] <= 0) return false;
+  }
+  return true;
+}
+
 void ScatterInferMeta(const MetaTensor& x,
                       const MetaTensor& index,
                       const MetaTensor& updates,
@@ -2926,6 +2937,18 @@ void ScatterInferMeta(const MetaTensor& x,
                           "index is not a 2D tensor, but we get %d.",
                           index_dims.size()));
   }
+  // scatter always writes whole rows, so the indexed axis is axis 0. A size-0
+  // axis leaves no valid index value, so every index is out of bounds. The
+  // kernels miss this because they return early on a 0-size output; checking
+  // here also covers XPU and the static graph, and matches what
+  // gather/take_along_axis/index_sample do in their InferMeta.
+  if (ref_dims.size() > 0 && ref_dims[0] == 0 && IsKnownNonEmpty(index_dims)) {
+    PADDLE_THROW(common::errors::OutOfRange(
+        "The index is out of bounds: dimension [0] of Input(X) has size 0, "
+        "which leaves no valid index value, but received a non-empty "
+        "Input(Index) of shape [%s].",
+        index_dims));
+  }
   if (index_dims.size() != 0) {
     PADDLE_ENFORCE_EQ(
         (ref_dims.size() == updates_dims.size()),
@@ -2938,15 +2961,34 @@ void ScatterInferMeta(const MetaTensor& x,
             ref_dims.size(),
             updates_dims.size()));
     if (index_dims[0] != -1 && updates_dims[0] != -1) {
-      PADDLE_ENFORCE_LE(
+      // One index selects one row of updates, so the two must have the same
+      // length. The kernels and the SPMD rule already assume this: both derive
+      // dUpdates as gather(dOut, index), whose row count is the index length.
+      PADDLE_ENFORCE_EQ(
           index_dims[0],
           updates_dims[0],
           common::errors::InvalidArgument(
-              "The first dimension size of Input(Index) should be no greater "
-              "than Input(Updates), but received first dimension size of "
-              "Input(Index) is %d, Input(Updates) is  %d.",
+              "Number of indices (%d) should be equal to the first dimension "
+              "size of Input(Updates) (%d).",
               index_dims[0],
               updates_dims[0]));
+    }
+    // updates[i] overwrites the whole row x[index[i]], so every dim but the
+    // first must match. Check it here: the kernels skip their own check on an
+    // empty index, and the GPU kernel never checks it at all.
+    for (int i = 1; i < ref_dims.size(); ++i) {
+      if (ref_dims[i] != -1 && updates_dims[i] != -1) {
+        PADDLE_ENFORCE_EQ(
+            updates_dims[i],
+            ref_dims[i],
+            common::errors::InvalidArgument(
+                "The shape of Input(Updates) should match Input(X) except "
+                "the first dimension, but received dimension %d of "
+                "Input(Updates) is %d and of Input(X) is %d.",
+                i,
+                updates_dims[i],
+                ref_dims[i]));
+      }
     }
   } else {
     PADDLE_ENFORCE_EQ(
@@ -2959,6 +3001,23 @@ void ScatterInferMeta(const MetaTensor& x,
             " the size of Input(Updates)'s shape is %d.",
             ref_dims.size(),
             updates_dims.size()));
+    // A 0-D index selects a single row, so updates must be that row's shape.
+    for (int i = 0; i < updates_dims.size(); ++i) {
+      if (ref_dims[i + 1] != -1 && updates_dims[i] != -1) {
+        PADDLE_ENFORCE_EQ(
+            updates_dims[i],
+            ref_dims[i + 1],
+            common::errors::InvalidArgument(
+                "When the Input(Index) is a 0D tensor, the shape of "
+                "Input(Updates) should match Input(X) without its first "
+                "dimension, but received dimension %d of Input(Updates) is "
+                "%d and dimension %d of Input(X) is %d.",
+                i,
+                updates_dims[i],
+                i + 1,
+                ref_dims[i + 1]));
+      }
+    }
   }
   out->set_dims(ref_dims);
   out->share_lod(x);
