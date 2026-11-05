@@ -30,6 +30,40 @@ if TYPE_CHECKING:
     from collections.abc import Callable, Sequence
 
 
+def group_norm_with_linspace(x):
+    weight = paddle.linspace(0.75, 1.25, 6, dtype='float32')
+    bias = paddle.linspace(-0.3, 0.3, 6, dtype='float32')
+    return paddle.nn.functional.group_norm(
+        x,
+        num_groups=3,
+        weight=weight,
+        bias=bias,
+        epsilon=1e-5,
+    )
+
+
+def instance_norm_with_linspace(x):
+    weight = paddle.linspace(0.8, 1.2, 6, dtype='float32')
+    bias = paddle.linspace(-0.2, 0.1, 6, dtype='float32')
+    return paddle.nn.functional.instance_norm(
+        x,
+        weight=weight,
+        bias=bias,
+        use_input_stats=True,
+        eps=1e-5,
+    )
+
+
+def instance_norm_with_affine_inputs(x, weight, bias):
+    return paddle.nn.functional.instance_norm(
+        x,
+        weight=weight,
+        bias=bias,
+        use_input_stats=True,
+        eps=1e-5,
+    )
+
+
 class TestDynamicShapeInfermeta(Dy2StTestBase):
     def check_dynamic_shape(
         self,
@@ -74,6 +108,39 @@ class TestDynamicShapeInfermeta(Dy2StTestBase):
             paddle.nn.GroupNorm(3, 3),
             [paddle.randn([1, 3, 32, 32])],
             [InputSpec(shape=[None, None, None, None], dtype='float32')],
+        )
+
+    @test_ast_only
+    def test_group_norm_with_linspace(self):
+        x = paddle.arange(-96, 96, dtype='float32').reshape([2, 6, 4, 4])
+        self.check_dynamic_shape(
+            group_norm_with_linspace,
+            [x / 17.0],
+            [InputSpec(shape=[2, 6, 4, 4], dtype='float32')],
+        )
+
+    @test_ast_only
+    def test_instance_norm_with_linspace(self):
+        x = paddle.arange(-150, 150, dtype='float32').reshape([2, 6, 5, 5])
+        self.check_dynamic_shape(
+            instance_norm_with_linspace,
+            [x / 23.0],
+            [InputSpec(shape=[2, 6, 5, 5], dtype='float32')],
+        )
+
+    @test_ast_only
+    def test_instance_norm_with_dynamic_channel(self):
+        x = paddle.arange(-150, 150, dtype='float32').reshape([2, 6, 5, 5])
+        weight = paddle.linspace(0.8, 1.2, 6, dtype='float32')
+        bias = paddle.linspace(-0.2, 0.1, 6, dtype='float32')
+        self.check_dynamic_shape(
+            instance_norm_with_affine_inputs,
+            [x / 23.0, weight, bias],
+            [
+                InputSpec(shape=[None, None, None, None], dtype='float32'),
+                InputSpec(shape=[6], dtype='float32'),
+                InputSpec(shape=[6], dtype='float32'),
+            ],
         )
 
     @test_ast_only
