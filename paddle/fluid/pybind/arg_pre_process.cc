@@ -722,5 +722,15 @@ void InplaceShapePreProcess(pir::Value* x, pir::Value* y) {
                                    common::make_ddim(x_shape)));
 }
 
+void InplaceShapePreProcess(Tensor* x, Tensor* y, Tensor* z) {
+  InplaceShapePreProcess(x, y);
+  InplaceShapePreProcess(x, z);
+}
+
+void InplaceShapePreProcess(pir::Value* x, pir::Value* y, pir::Value* z) {
+  InplaceShapePreProcess(x, y);
+  InplaceShapePreProcess(x, z);
+}
+
 }  // namespace pybind
 }  // namespace paddle
