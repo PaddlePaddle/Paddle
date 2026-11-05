@@ -18,7 +18,9 @@ limitations under the License. */
 #include <cstdio>
 #include <vector>
 #ifdef __NVCC__
+#include <cub/version.cuh>
 #include "cub/cub.cuh"
+#include "paddle/phi/kernels/funcs/cub.h"
 #endif
 #ifdef __HIPCC__
 #include <hipcub/hipcub.hpp>
@@ -88,17 +90,10 @@ struct float_bit_mask<phi::bfloat16> : float_bit_mask<rocprim::bfloat16> {};
 #endif  // ROCPRIM_VERSION
 namespace cub = hipcub;
 #else
-// set cub base traits in order to handle float16
-namespace cub {
-template <>
-struct NumericTraits<phi::float16>
-    : BaseTraits<FLOATING_POINT, true, false, uint16_t, phi::float16> {};
 
-template <>
-struct NumericTraits<phi::bfloat16>
-    : BaseTraits<FLOATING_POINT, true, false, uint16_t, phi::bfloat16> {};
-
-}  // namespace cub
+// phi half/bfloat16 CUB NumericTraits registration and the CCCL 3.x
+// cuda::std::numeric_limits / cuda::is_floating_point specializations now live
+// in paddle/phi/kernels/funcs/cub.h (included above) so they are defined once.
 #endif
 
 namespace phi {
