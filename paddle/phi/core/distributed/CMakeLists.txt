@@ -2,6 +2,7 @@ add_subdirectory(check)
 add_subdirectory(store)
 add_subdirectory(auto_parallel)
 add_subdirectory(collective)
+add_subdirectory(symmetric_memory)
 
 set(DISTRIBUTED_COMMON_SRCS comm_context_manager.cc utils.cc)
 
