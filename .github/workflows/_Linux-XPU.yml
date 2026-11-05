@@ -6,20 +6,16 @@ on:
       docker_xpu_image:
         type: string
         required: true
-      clone-can-skip:
-        type: string
-        required: false
-        default: "false"
 
 env:
   docker_image: ${{ inputs.docker_xpu_image }}
-  PR_ID: ${{ github.event.pull_request.number }}
-  COMMIT_ID: ${{ github.event.pull_request.head.sha }}
+  PR_ID: ${{ '0' }}
+  COMMIT_ID: ${{ github.sha }}
   ci_scripts: /paddle/ci
   ci_scripts_runner: ${{ github.workspace }}/ci
   work_dir: /paddle
   PADDLE_ROOT: /paddle
-  BRANCH: ${{ github.event.pull_request.base.ref }}
+  BRANCH: ${{ github.ref_name }}
   CI_name: xpu
   no_proxy: "bcebos.com,apiin.im.baidu.com,gitee.com,aliyun.com,.baidu.com,.tuna.tsinghua.edu.cn"
 
@@ -28,20 +24,10 @@ defaults:
     shell: bash
 
 jobs:
-  check-bypass:
-    name: Check bypass
-    uses: ./.github/workflows/check-bypass.yml
-    with:
-      workflow-name: "xpu"
-    secrets:
-      github-token: ${{ secrets.GITHUB_TOKEN }}
-
   build:
     name: Build
-    needs: [check-bypass]
-    if: ${{ needs.check-bypass.outputs.can-skip != 'true' && inputs.clone-can-skip != 'true' }}
     env:
-      TASK: paddle-CI-${{ github.event.pull_request.number }}-xpu_build
+      TASK: paddle-CI-xpu_build
     runs-on:
       group: XPU-build
     timeout-minutes: 120
@@ -52,7 +38,7 @@ jobs:
           WITH_XPU: "ON"
           COVERALLS_UPLOAD: "OFF"
           WITH_AVX: "OFF"
-          GIT_PR_ID: ${{ github.event.pull_request.number }}
+          GIT_PR_ID: ${{ '0' }}
           PADDLE_VERSION: 0.0.0
           WITH_TESTING: "ON"
           WITH_DISTRIBUTE: "ON"
@@ -125,7 +111,7 @@ jobs:
           git remote add upstream https://github.com/PaddlePaddle/Paddle.git
           source ${{ github.workspace }}/../../../proxy
           git config pull.rebase false
-          git checkout test
+          git checkout test 2>/dev/null || git checkout "$BRANCH"
           echo "Pull upstream develop or target branch"
           bash ci/git_pull.sh $BRANCH
           git submodule update
@@ -182,7 +168,7 @@ jobs:
     name: Test
     needs: build
     env:
-      TASK: paddle-CI-${{ github.event.pull_request.number }}-xpu_test
+      TASK: paddle-CI-xpu_test
     runs-on:
       group: Kunlun
     timeout-minutes: 120
@@ -202,7 +188,7 @@ jobs:
           COVERALLS_UPLOAD: "OFF"
           CMAKE_BUILD_TYPE: Release
           WITH_AVX: "OFF"
-          GIT_PR_ID: ${{ github.event.pull_request.number }}
+          GIT_PR_ID: ${{ '0' }}
           PADDLE_VERSION: 0.0.0
           WITH_TESTING: "ON"
           WITH_DISTRIBUTE: "ON"
