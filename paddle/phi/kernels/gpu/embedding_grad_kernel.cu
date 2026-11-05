@@ -28,6 +28,7 @@
 #include "paddle/phi/kernels/funcs/embedding_util.h"
 
 COMMON_DECLARE_int64(embedding_deterministic);
+COMMON_DECLARE_bool(use_accuracy_compatible_kernel);
 
 namespace phi {
 
@@ -107,8 +108,21 @@ struct EmbeddingGradCUDAFunctor {
 #endif
 
       if (FLAGS_embedding_deterministic == 1) {
-        funcs::LaunchEmbeddingGradDeterministicKernel<T, IdT>(
-            dev_ctx_, ids, d_output, d_table, N, D, K);
+        // Same dispatch as torch's embedding_dense_backward_cuda: the feature
+        // kernel for K <= 3072, otherwise sort + two pass accumulation.
+        constexpr size_t kSortThreshold = 3072;
+#if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
+        if (K > kSortThreshold) {
+          funcs::LaunchEmbeddingGradSortKernel<T, IdT>(
+              dev_ctx_, ids, d_output, d_table, N, D, K);
+        } else  // NOLINT
+#endif
+        {
+          bool round_acc_first =
+              FLAGS_use_accuracy_compatible_kernel && K <= kSortThreshold;
+          funcs::LaunchEmbeddingGradDeterministicKernel<T, IdT>(
+              dev_ctx_, ids, d_output, d_table, N, D, K, -1, round_acc_first);
+        }
       } else {
         const int gridx = 2 * dev_ctx_.GetSMCount();
         dim3 threads(128, 8);
