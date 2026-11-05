@@ -150,16 +150,10 @@ MultiplyGradNode::operator()(
       paddle::prim::StaticCompositeContext::Instance().CheckSkipCompOps(
           grad_op_name);
   if (paddle::prim::PrimCommonUtils::IsEagerPrimEnabled() && !need_skip) {
-    bool original_global_grad = egr::Controller::Instance().HasGrad();
-    if (!create_graph) {
-      egr::Controller::Instance().SetHasGrad(create_graph);
-    }
+    egr::HasGradGuard has_grad_guard(create_graph);
     paddle::prim::multiply_grad<paddle::Tensor>(
         x, y, grad_out, axis, api_output_0, api_output_1);
     VLOG(4) << "Composite api multiply_grad is called ";
-    if (!create_graph) {
-      egr::Controller::Instance().SetHasGrad(original_global_grad);
-    }
   } else {
     paddle::experimental::multiply_grad(
         x, y, grad_out, axis, api_output_0, api_output_1);
@@ -440,10 +434,7 @@ MultiplyDoubleGradNode::operator()(
       paddle::prim::StaticCompositeContext::Instance().CheckSkipCompOps(
           grad_op_name);
   if (!need_skip) {
-    bool original_global_grad = egr::Controller::Instance().HasGrad();
-    if (!create_graph) {
-      egr::Controller::Instance().SetHasGrad(create_graph);
-    }
+    egr::HasGradGuard has_grad_guard(create_graph);
     paddle::prim::multiply_double_grad<paddle::Tensor>(x,
                                                        y,
                                                        fwd_grad_out,
@@ -454,9 +445,6 @@ MultiplyDoubleGradNode::operator()(
                                                        api_output_1,
                                                        api_output_2);
     VLOG(4) << "Composite api multiply_double_grad is called ";
-    if (!create_graph) {
-      egr::Controller::Instance().SetHasGrad(original_global_grad);
-    }
   } else {
     paddle::experimental::multiply_double_grad(x,
                                                y,

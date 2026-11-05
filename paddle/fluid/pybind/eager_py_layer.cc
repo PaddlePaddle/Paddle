@@ -422,9 +422,11 @@ PyObject* pylayer_method_apply(PyObject* cls,
         common::errors::InvalidArgument("Get forward function failed."));
   }
   bool trace_backward = egr::Controller::Instance().HasGrad();
-  egr::Controller::Instance().SetHasGrad(false);
-  auto outputs = PyObject_Call(forward_fn, forward_args, kwargs);
-  egr::Controller::Instance().SetHasGrad(trace_backward);
+  PyObject* outputs = nullptr;
+  {
+    egr::HasGradGuard has_grad_guard(false);
+    outputs = PyObject_Call(forward_fn, forward_args, kwargs);
+  }
   if (!outputs) {
     Py_XDECREF(forward_args);
     Py_XDECREF(kwargs_value_list);
