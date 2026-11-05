@@ -742,9 +742,6 @@ class ClipGradByGlobalNorm(ClipGradBase):
                 continue
             if getattr(p, 'need_clip', True) is False:
                 continue
-            # HSDP: count a replica once.
-            if getattr(p, '_hsdp_replica', False):
-                continue
             merge_grad = g
 
             if in_dynamic_mode() and g.is_selected_rows():
@@ -756,6 +753,9 @@ class ClipGradByGlobalNorm(ClipGradBase):
                 merge_grad = get_tensor_from_selected_rows(merge_grad)
 
             sum_square = _squared_l2_norm(merge_grad)
+            # FSDP sets _hsdp_replica on HSDP replicas; add 0, still clip.
+            if getattr(p, '_hsdp_replica', False):
+                sum_square = paddle.zeros_like(sum_square)
 
             # if the gradient mesh is not equal to src mesh
             # do reshard to get the result of squared_l2 from other pp stage mesh

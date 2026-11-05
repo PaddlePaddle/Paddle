@@ -95,6 +95,7 @@ class BufferGroup:
     whole_owner_rank: int = None
     whole_shard_numel: int = None
     fsdp_group: object = None
+    outer_group: object = None
     params_buffer: 'TensorFusionBuffer' = None
     grads_buffer: 'TensorFusionBuffer' = None
     grads_use_sum: int = 0
@@ -468,6 +469,7 @@ class FSDPBufferManager:
         self._fsdp_outer_group = None
         # id(inner group) -> outer group.
         self._hsdp_outers = {}
+        self._hsdp_inner_size = None
         dense_strategy = _check_hsdp_strategy(
             "hsdp_dense_outer",
             hsdp_dense_outer,
@@ -656,7 +658,9 @@ class FSDPBufferManager:
                 shard_align_numel=shard_align,
                 comm_stream=self._comm_stream(group.fsdp_group),
             )
-            outer = self._outer_group_of(group)
+            outer = group.outer_group = self._hsdp_outers.get(
+                id(group.fsdp_group)
+            )
             if outer is not None:
                 paddle.distributed.broadcast(
                     group.params_buffer.data_buffer,
@@ -685,7 +689,6 @@ class FSDPBufferManager:
                     grad_comm_dtype=self.grad_comm_dtype,
                     comm_stream=self._comm_stream(group.fsdp_group),
                 )
-                group.grads_buffer.outer_group = outer
             group.whole_shard_numel = (
                 group.params_buffer.shard_align_numel
                 if group.keep_whole
@@ -720,7 +723,15 @@ class FSDPBufferManager:
 
     def _init_hsdp_groups(self, hsdp_degree, dense_strategy):
         ranks = list(self._fsdp_group.ranks)
-        if len(ranks) % hsdp_degree or len(ranks) // hsdp_degree < 2:
+        if len(ranks) != paddle.distributed.get_world_size():
+            raise NotImplementedError(
+                "HSDP needs a single sharding group (dp/mp/pp/sep = 1)."
+            )
+        if (
+            hsdp_degree < 1
+            or len(ranks) % hsdp_degree
+            or len(ranks) // hsdp_degree < 2
+        ):
             raise ValueError(
                 f"hsdp_degree={hsdp_degree} must divide the sharding group "
                 f"size {len(ranks)} and leave at least 2 ranks per group."
@@ -818,9 +829,6 @@ class FSDPBufferManager:
         )
         return {id(outer): inner}
 
-    def _outer_group_of(self, group):
-        return self._hsdp_outers.get(id(group.fsdp_group))
-
     def _comm_stream(self, group):
         if group.nranks <= 1:
             return None
@@ -834,7 +842,7 @@ class FSDPBufferManager:
             for attr, value in group.clip_attrs:
                 setattr(data_buffer, attr, value)
             # Count HSDP replicas once; keep-whole groups clip the params.
-            outer = self._outer_group_of(group)
+            outer = group.outer_group
             if outer is not None and paddle.distributed.get_rank(outer) != 0:
                 replicas = group.params if group.keep_whole else []
                 for t in [data_buffer, *replicas]:
@@ -1518,10 +1526,11 @@ class FSDPCommManager:
             grads_buffer = group.grads_buffer
             if (
                 grads_buffer is None
-                or getattr(grads_buffer, "outer_group", None) is None
+                or group.outer_group is None
                 or getattr(grads_buffer, "_data_released", False)
             ):
                 continue
+            # Outer-sum sharded, 1-rank and keep-whole grads (Muon owners too).
             if not (
                 grads_buffer.is_sharded
                 or grads_buffer.fsdp_degree == 1
@@ -1532,7 +1541,7 @@ class FSDPCommManager:
             paddle.distributed.all_reduce(
                 grads_buffer.data_buffer,
                 op=paddle.distributed.ReduceOp.SUM,
-                group=grads_buffer.outer_group,
+                group=group.outer_group,
                 sync_op=True,
             )
 
