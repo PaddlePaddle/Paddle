@@ -31,11 +31,12 @@ class OuterLayout:
         return self.rank != 0
 
     def sync_grad(self, grad):
-        paddle.distributed.all_reduce(
+        paddle.distributed.stream.all_reduce(
             grad,
             op=paddle.distributed.ReduceOp.SUM,
             group=self.group,
             sync_op=True,
+            use_calc_stream=True,
         )
 
 

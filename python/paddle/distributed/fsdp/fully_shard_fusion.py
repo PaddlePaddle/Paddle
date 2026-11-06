@@ -175,6 +175,7 @@ class TensorFusionBuffer:
         self.param_offsets = {}
         self.tmp_data_buffer = None
         self.comm_task = None
+        self.outer_task = None
         self.fp8 = None  # set by init_fp8_buffer
         self.trainable = params[0].trainable
 
@@ -1281,6 +1282,10 @@ class FSDPCommManager:
                 continue
             if group.fsdp_unit_id > unit_id:
                 self._reduce_group_grads(group)
+                gb = group.grads_buffer
+                # 1-rank inner (replicated experts) has no RS: sync now.
+                if gb is not None and gb.fsdp_degree == 1:
+                    self._issue_outer_sync(gb, scale=True)
 
     def _release_params_after_unit(self, unit_id):
         if unit_id is None:
@@ -1329,6 +1334,31 @@ class FSDPCommManager:
         grads_buffer.comm_task = None
         grads_buffer.accumulate_reduced_grad()
         self._release_reduced_grad_views(grads_buffer)
+        self._issue_outer_sync(grads_buffer)
+
+    def _issue_outer_sync(self, grads_buffer, scale=False):
+        # Last micro-batch: overlap the outer sync with backward.
+        group = self.buffer_manager.buffer_groups[grads_buffer.unique_key]
+        if (
+            group.outer is None
+            or grads_buffer.outer_task is not None
+            or self._backward_cnt < self.grad_accum_steps
+        ):
+            return
+        # Scale before the outer sum, as finish_grads_sync does.
+        if (
+            scale
+            and grads_buffer.grad_scale != 1.0
+            and not grads_buffer.grad_scaled
+        ):
+            grads_buffer.data_buffer.scale_(grads_buffer.grad_scale)
+            grads_buffer.grad_scaled = True
+        buf = grads_buffer.data_buffer
+        grads_buffer.outer_task = run_on_stream(
+            self.buffer_manager._comm_stream(group.outer.group),
+            (buf,),
+            lambda: group.outer.sync_grad(buf),
+        )
 
     def _wait_for_grad_comm(self, queue_limit=None, next_numel=0):
         # Default bound: grad_queue_limit buffers by layer or
@@ -1399,6 +1429,10 @@ class FSDPCommManager:
                 or group.outer is None
                 or getattr(grads_buffer, "_data_released", False)
             ):
+                continue
+            if grads_buffer.outer_task is not None:
+                grads_buffer.outer_task.wait()
+                grads_buffer.outer_task = None
                 continue
             # Outer-sum sharded, 1-rank and keep-whole grads (Muon owners too).
             if not (
