@@ -765,7 +765,11 @@ class FSDPBufferManager:
                         if zero_sm_all_gather
                         else self.buffer_pool
                     )
-                if buffer_pool == "all" and grads_buf.is_sharded:
+                if (
+                    buffer_pool == "all"
+                    and grads_buf is not None
+                    and grads_buf.is_sharded
+                ):
                     grads_buf.pool = self.buffer_pool
 
         self._assign_whole_owners()
