@@ -745,7 +745,10 @@ class FSDPCommManager:
         groups_per_unit = max(2, max(unit_sizes.values(), default=0))
         self.prefetch_units = max(int(prefetch_units), 0)
         self.gather_buffer_limit = groups_per_unit * (self.prefetch_units + 1)
-        self.grad_queue_limit = groups_per_unit * max(self.prefetch_units, 1)
+        # Up to 2 * prefetch_units units of grads in flight.
+        self.grad_queue_limit = (
+            2 * groups_per_unit * max(self.prefetch_units, 1) - 1
+        )
         self.buffer_cnt_in_using = 0
         self.need_zero_grads = True
         self._last_backward_unit_id = None
