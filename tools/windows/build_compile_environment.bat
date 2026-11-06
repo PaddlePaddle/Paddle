@@ -22,7 +22,7 @@
 ::   Include:
 ::     1. CMake 3.18.0
 ::     2. Git 2.28.0
-::     3. Python 3.9.7\3.10.0\3.11.8\3.12.8
+::     3. Python 3.9.7\3.10.0\3.11.8\3.12.8\3.13.2\3.14.10
 ::     4. Visual Studio 2017\2019\2022 Community
 ::     5. CUDA 11.2\12\12.3  cudnn 8.1\8.4\8.9\9.6
 ::     6. java jre
@@ -113,6 +113,7 @@ if /i "%NEED_MORE_PY%"=="need_more_python" (
   where python 2>&1 | findstr /C:"Python311" > nul 2> nul || call :install_python3.11.8
   where python 2>&1 | findstr /C:"Python312" > nul 2> nul || call :install_python3.12.8
   where python 2>&1 | findstr /C:"Python313" > nul 2> nul || call :install_python3.13.2
+  where python 2>&1 | findstr /C:"Python314" > nul 2> nul || call :install_python3.14.10 || exit /b 1
 )
 goto vs
 
@@ -178,6 +179,20 @@ if %errorlevel% == 0 (
   echo Install python-3.13.2 success!
 ) else (
   echo Error***** Install python-3.13.2 failed, please re-install it manually.
+)
+goto :eof
+
+:install_python3.14.10
+echo There is not Python 3.14 in this PC, will install Python-3.14.10
+echo Download package from https://www.python.org/ftp/python/3.14.10/python-3.14.10-amd64.exe ...
+wget -O python-3.14.10-amd64.exe https://www.python.org/ftp/python/3.14.10/python-3.14.10-amd64.exe || exit /b 1
+echo Install Python-3.14.10 ...
+start /wait python-3.14.10-amd64.exe /passive InstallAllUsers=1 PrependPath=1 TargetDir=C:\Python314
+if %errorlevel% == 0 (
+  echo Install python-3.14.10 success!
+) else (
+  echo Error***** Install python-3.14.10 failed, please re-install it manually.
+  exit /b 1
 )
 goto :eof
 
