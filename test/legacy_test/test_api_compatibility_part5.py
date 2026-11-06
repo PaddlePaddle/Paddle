@@ -4407,5 +4407,50 @@ class TestQrAPICompatibility(unittest.TestCase):
         paddle.disable_static()
 
 
+class TestLocalResponseNormAlias(unittest.TestCase):
+    def setUp(self):
+        self.np_x = np.arange(96, dtype="float32").reshape(2, 3, 4, 4) / 100.0
+
+    def test_dygraph_compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+
+        out1 = paddle.nn.functional.local_response_norm(x, size=3)
+        out2 = paddle.nn.functional.local_response_norm(x=x, size=3)
+        out3 = paddle.nn.functional.local_response_norm(input=x, size=3)
+
+        for out in [out2, out3]:
+            np.testing.assert_allclose(
+                out.numpy(), out1.numpy(), rtol=1e-6, atol=1e-6
+            )
+
+    def test_static_compatibility(self):
+        paddle.enable_static()
+        self.addCleanup(paddle.disable_static)
+
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+
+        with paddle.static.program_guard(main, startup):
+            x = paddle.static.data(
+                name="x", shape=[2, 3, 4, 4], dtype="float32"
+            )
+
+            out1 = paddle.nn.functional.local_response_norm(x, size=3)
+            out2 = paddle.nn.functional.local_response_norm(x=x, size=3)
+            out3 = paddle.nn.functional.local_response_norm(input=x, size=3)
+
+        exe = paddle.static.Executor(paddle.CPUPlace())
+        exe.run(startup)
+        results = exe.run(
+            main,
+            feed={"x": self.np_x},
+            fetch_list=[out1, out2, out3],
+        )
+
+        for out in results[1:]:
+            np.testing.assert_allclose(out, results[0], rtol=1e-6, atol=1e-6)
+
+
 if __name__ == "__main__":
     unittest.main()
