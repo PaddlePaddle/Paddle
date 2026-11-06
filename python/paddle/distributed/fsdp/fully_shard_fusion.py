@@ -486,11 +486,11 @@ class FSDPBufferManager:
                 for p in m.parameters():
                     param_to_unit_id[p.name] = unit_id
 
-        def group_of(param, is_expert):
+        def group_of(param, default):
             color = getattr(param, "color", None)
             if isinstance(color, dict) and color.get("group") is not None:
                 return color["group"]
-            return self._ep_fsdp_group if is_expert else dense_inner
+            return default
 
         def is_expert_param(param):
             return getattr(param, "is_moe_param", False) or getattr(
@@ -501,7 +501,7 @@ class FSDPBufferManager:
         if expert_strategy == "no_shard":
             for param in self.model.parameters():
                 if is_expert_param(param):
-                    group = group_of(param, True)
+                    group = group_of(param, self._ep_fsdp_group)
                     expert_groups.setdefault(id(group), group)
         dense_inner, outers, expert_inner = build_hybrid_groups(
             self._fsdp_group,
@@ -514,7 +514,9 @@ class FSDPBufferManager:
         keyed_params = OrderedDict()
         for param in self.model.parameters():
             is_expert = is_expert_param(param)
-            fsdp_group = group_of(param, is_expert)
+            fsdp_group = group_of(
+                param, self._ep_fsdp_group if is_expert else dense_inner
+            )
             if is_expert:
                 fsdp_group = expert_inner.get(id(fsdp_group), fsdp_group)
             key = (
