@@ -33,7 +33,7 @@
 
 :: Echo command is not required.
 :: This script is executed in the Downloads directory
-:: 输入参数 1：若需要安装 python3.11 及 3.12，设为need_more_python，不需要则随意设置一个占位符
+:: 输入参数 1：若需要安装 python3.11 至 3.14，设为need_more_python，不需要则随意设置一个占位符
 :: 输入参数 2：vs 版本，可选vs2017, vs2019, vs2022
 :: 输入参数 3：cuda 版本，自动选定对应的 cudnn 及 tensorrt 版本，可选cuda112, cuda116, cuda118, cuda12, cuda123
 
