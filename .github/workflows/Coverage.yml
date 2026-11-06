@@ -309,7 +309,7 @@ jobs:
           CACHE_DIR: "/root/.cache/coverage"
           CCACHE_DIR: "/root/.ccache/coverage"
           FLAGS_fraction_of_gpu_memory_to_use: 0.15
-          CTEST_PARALLEL_LEVEL: 2
+          CTEST_PARALLEL_LEVEL: 4
           WITH_GPU: "ON"
           CUDA_ARCH_NAME: Auto
           WITH_AVX: "ON"
@@ -392,7 +392,7 @@ jobs:
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           source ${{ github.workspace }}/../../../proxy
-          bash $ci_scripts/coverage_test.sh
+          bash $ci_scripts/coverage_test.sh parallel
           TEST_EXIT_CODE=$?
           echo "TEST_EXIT_CODE=${TEST_EXIT_CODE}" >> ${{ github.env }}
           if [[ "$TEST_EXIT_CODE" -ne 0 && "$TEST_EXIT_CODE" -ne 9 ]]; then
