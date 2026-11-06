@@ -43,7 +43,7 @@ class TestPPWithSharedWeightNWay(unittest.TestCase):
             not base.core.is_compiled_with_cuda()
             or base.core.get_cuda_device_count() < 4
         ):
-            return
+            self.skipTest("requires 4 CUDA devices")
 
         cluster, pod = get_cluster_from_args(get_devices('0,1,2,3'))
         procs = start_local_trainers(
