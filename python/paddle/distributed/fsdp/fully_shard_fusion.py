@@ -99,6 +99,8 @@ class BufferGroup:
     whole_shard_numel: int = None
     fsdp_group: object = None
     outer: OuterLayout = None
+    # Params shared by several FSDP units get grads late; no early sync.
+    outer_eager: bool = True
     params_buffer: 'TensorFusionBuffer' = None
     grads_buffer: 'TensorFusionBuffer' = None
     grads_use_sum: int = 0
@@ -482,10 +484,12 @@ class FSDPBufferManager:
                 self.tie_param_name = input_embeddings.weight.name
 
         param_to_unit_id = {}
+        unit_cnt = Counter()
         for unit_id, m in enumerate(self.model.modules()):
             if self.is_fsdp_unit(m):
                 for p in m.parameters():
                     param_to_unit_id[p.name] = unit_id
+                    unit_cnt[p.name] += 1
 
         def group_of(param, default):
             color = getattr(param, "color", None)
@@ -641,6 +645,7 @@ class FSDPBufferManager:
                 comm_stream=self._comm_stream(group.fsdp_group),
             )
             outer = group.outer = outers.get(id(group.fsdp_group))
+            group.outer_eager = all(unit_cnt[p.name] <= 1 for p in params)
             if outer is not None:
                 paddle.distributed.broadcast(
                     group.params_buffer.data_buffer,
@@ -1214,6 +1219,10 @@ class FSDPCommManager:
         grads_buffer = self.buffer_manager.buffer_groups[gid].grads_buffer
         if grads_buffer is None:
             return
+        if grads_buffer.outer_task is not None:
+            raise RuntimeError(
+                f"Grad of {param.name} arrived after its outer sync started."
+            )
         while grads_buffer in self.grad_reduce_queue:
             self._wait_for_grad_comm(
                 queue_limit=len(self.grad_reduce_queue) - 1
@@ -1341,6 +1350,7 @@ class FSDPCommManager:
         group = self.buffer_manager.buffer_groups[grads_buffer.unique_key]
         if (
             group.outer is None
+            or not group.outer_eager
             or grads_buffer.outer_task is not None
             or self._backward_cnt < self.grad_accum_steps
         ):
