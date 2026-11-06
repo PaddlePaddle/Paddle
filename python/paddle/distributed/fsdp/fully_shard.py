@@ -331,6 +331,12 @@ def fully_shard(
     )
 
     if in_auto_parallel_mode():
+        if (
+            hsdp_degree not in (None, 1)
+            or hsdp_dense_outer
+            or hsdp_expert_outer
+        ):
+            raise NotImplementedError("HSDP is manual parallel only.")
         return _fully_shard_auto_parallel(*args)
     else:
         return _fully_shard_manual_parallel(

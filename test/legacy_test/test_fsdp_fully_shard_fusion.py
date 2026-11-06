@@ -24,8 +24,10 @@ distributed launch:
   back untouched while routing the rest through the backward all_gather hook.
 * ``unshard_params`` -- the synchronous gather / reshard context manager and
   the double-buffer bookkeeping it restores on exit.
+* HSDP argument checks and the clip of outer replicas.
 """
 
+import sys
 import types
 import unittest
 
@@ -420,6 +422,7 @@ def _make_comm_manager(layout, **kwargs):
         types.SimpleNamespace(
             fsdp_unit_id=unit,
             is_expert_param=expert,
+            outer=None,
             params_buffer=types.SimpleNamespace(
                 is_sharded=sharded,
                 total_buffer_size=numel,
@@ -448,6 +451,7 @@ def _fake_grads_buffer(numel, waited, i):
         comm_task=types.SimpleNamespace(wait=lambda: waited.append(i)),
         total_buffer_size=numel,
         is_sharded=False,
+        unique_key=0,
         accumulate_reduced_grad=lambda: None,
     )
 
@@ -944,6 +948,56 @@ class TestReshardPolicy(unittest.TestCase):
                 self.assertEqual(
                     groups[gid].params_buffer.status, fsf.BufferState.USING
                 )
+
+
+class TestHsdpArgs(unittest.TestCase):
+    def test_check_outer_strategy(self):
+        from paddle.distributed.fsdp._hybrid_shard import check_outer_strategy
+
+        check = check_outer_strategy
+        self.assertIsNone(check("x", None, None, "no_shard"))
+        self.assertIsNone(check("x", None, 1, "no_shard"))
+        self.assertEqual(check("x", None, 2, "no_shard"), "no_shard")
+        self.assertEqual(
+            check("x", "optim_grads_params", 2, "no_shard"),
+            "optim_grads_params",
+        )
+        for degree, strategy in ((None, "no_shard"), (1, "no_shard")):
+            with self.assertRaises(ValueError):
+                check("x", strategy, degree, "no_shard")
+        with self.assertRaises(ValueError):
+            check("x", "foo", 2, "no_shard")
+
+    def test_auto_parallel_rejects_hsdp(self):
+        import paddle.distributed.fsdp.fully_shard
+
+        fs = sys.modules["paddle.distributed.fsdp.fully_shard"]
+        orig = fs.in_auto_parallel_mode
+        fs.in_auto_parallel_mode = lambda: True
+        try:
+            with self.assertRaises(NotImplementedError):
+                fs.fully_shard(paddle.nn.Linear(2, 2), hsdp_degree=2)
+        finally:
+            fs.in_auto_parallel_mode = orig
+
+
+class TestClipOuterReplica(unittest.TestCase):
+    def test_replica_adds_zero_and_is_clipped(self):
+        p1 = paddle.create_parameter([4], "float32")
+        p2 = paddle.create_parameter([4], "float32")
+        g1 = paddle.full([4], 3.0)
+        g2 = paddle.full([4], 4.0)
+        p2._outer_replica = True
+        clip = paddle.nn.ClipGradByGlobalNorm(clip_norm=1.0)
+        out = {
+            id(p): g.numpy()
+            for p, g in clip._dygraph_clip([(p1, g1), (p2, g2)])
+        }
+        # Norm counts only p1 (6.0), and both grads are scaled by 1/6.
+        np.testing.assert_allclose(out[id(p1)], np.full([4], 0.5), rtol=1e-6)
+        np.testing.assert_allclose(
+            out[id(p2)], np.full([4], 4.0 / 6), rtol=1e-6
+        )
 
 
 if __name__ == "__main__":
