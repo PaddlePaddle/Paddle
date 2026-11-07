@@ -744,6 +744,14 @@ class FSDPCommManager:
             if g.params_buffer.is_sharded and g.fsdp_unit_id is not None
         )
         groups_per_unit = max(2, max(unit_sizes.values(), default=0))
+        self._first_unit_id = min(
+            (
+                g.fsdp_unit_id
+                for g in buffer_manager.buffer_groups
+                if g.fsdp_unit_id is not None
+            ),
+            default=None,
+        )
         self.prefetch_units = max(int(prefetch_units), 0)
         self.gather_buffer_limit = groups_per_unit * (self.prefetch_units + 1)
         self.grad_queue_limit = groups_per_unit * max(self.prefetch_units, 1)
@@ -988,15 +996,21 @@ class FSDPCommManager:
                 ):
                     self._backward_cnt += 1
                 self._last_backward_unit_id = unit_id
-                if unit_id is not None:
-                    self._flush_expert_grads_after_unit(unit_id)
-                elif (
-                    prev_unit_id is not None
+                self._flush_expert_grads_after_unit(unit_id)
+                if (
+                    unit_id is None
+                    and prev_unit_id is not None
                     and self._backward_cnt >= self.grad_accum_steps
                 ):
-                    # Backward left the first unit on the last micro-batch, so
-                    # its grads are final: reduce now, not in finish_grads_sync.
-                    self._flush_expert_grads_after_unit(-1)
+                    # Expert grads bypass the grad hook, so the count trigger in
+                    # reduce_scatter_grads never fires for them. Backward left
+                    # the first unit on the last micro-batch: they are final.
+                    for group in self.buffer_manager.buffer_groups:
+                        if (
+                            group.is_expert_param
+                            and group.fsdp_unit_id == prev_unit_id
+                        ):
+                            self._reduce_group_grads(group)
                 self._release_params_after_unit(unit_id)
             self._bind_sharded_expert_main_grads(params)
         elif self.grad_reduce_queue:
@@ -1192,28 +1206,32 @@ class FSDPCommManager:
         group.grads_use_cnt += 1
         param.main_grad = None
 
-        if group.grads_buffer is not None and (
-            group.is_expert_param or not group.grads_buffer.is_sharded
-        ):
-            return
-
-        # Groups outside the FSDP units (lm_head, final norm, embedding) have no
-        # unit-change trigger. Reduce one as soon as all its grads of the last
-        # micro-batch have landed, so it overlaps the rest of backward.
+        # Dense groups outside the FSDP units (lm_head, final norm, embedding)
+        # and of the first unit have no later unit change to flush them.
+        # Reduce one as soon as every param's grad hook of the last
+        # micro-batch has fired, so it overlaps the rest of backward. A
+        # param's hook fires once per backward, after all its uses; a
+        # unit-change signal is not enough, as a weight's grad can land after
+        # backward has moved on.
         grads_buffer = group.grads_buffer
         if (
-            group.fsdp_unit_id is None
-            and grads_buffer is not None
-            and group.grads_use_cnt >= group.grads_use_sum
+            grads_buffer is None
+            or not grads_buffer.is_sharded
+            or group.is_expert_param
         ):
-            group.grads_use_cnt = 0
-            group.grads_ready_cnt += 1
-            if (
-                group.grads_ready_cnt >= self.grad_accum_steps
-                and grads_buffer.tmp_data_buffer is not None
-                and grads_buffer not in self.grad_reduce_queue
-            ):
-                self._issue_reduce_scatter(grads_buffer)
+            return
+        if group.fsdp_unit_id not in (None, self._first_unit_id):
+            return
+        if group.grads_use_cnt < group.grads_use_sum:
+            return
+        group.grads_use_cnt = 0
+        group.grads_ready_cnt += 1
+        if (
+            group.grads_ready_cnt >= self.grad_accum_steps
+            and grads_buffer.tmp_data_buffer is not None
+            and grads_buffer not in self.grad_reduce_queue
+        ):
+            self._issue_reduce_scatter(grads_buffer)
 
     def _reduce_group_grads(self, group):
         # Reduce-scatter one group's fused grad buffer over its own fsdp_group.
