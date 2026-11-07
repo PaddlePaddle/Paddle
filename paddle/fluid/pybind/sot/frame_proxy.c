@@ -23,6 +23,16 @@ limitations under the License. */
 
 #if PY_3_11_PLUS
 
+#if PY_3_14_PLUS && defined(_WIN32)
+PyCodeObject *PaddleSot_Frame_GetCode(FrameObject *frame) {
+  return (PyCodeObject *)PyStackRef_AsPyObjectBorrow(frame->f_executable);
+}
+
+PyObject *PaddleSot_Frame_GetGlobals(FrameObject *frame) {
+  return frame->f_globals;
+}
+#endif
+
 #define DECLARE_PROXY_PROPERTY(name)                        \
   static PyObject *PyInterpreterFrameProxy_property_##name( \
       PyInterpreterFrameProxy *self, void *closure) {       \

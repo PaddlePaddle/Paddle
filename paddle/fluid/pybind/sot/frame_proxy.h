@@ -35,6 +35,12 @@ extern "C" {
 
 typedef _PyInterpreterFrame FrameObject;
 
+#if PY_3_14_PLUS && defined(_WIN32)
+// Keep CPython's C-only internal frame helpers out of C++ translation units.
+PyCodeObject *PaddleSot_Frame_GetCode(FrameObject *frame);
+PyObject *PaddleSot_Frame_GetGlobals(FrameObject *frame);
+#endif
+
 // clang-format off
 // Define a proxy PyObject to access _PyInterpreterFrame's properties.
 // It will be passed as an argument to the eval frame's callback.
