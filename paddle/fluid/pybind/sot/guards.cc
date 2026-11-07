@@ -297,11 +297,9 @@ std::string LocalVarExprNode::stringify(int indent) {
 }
 
 PyObject* GlobalVarExprNode::eval(FrameProxy* frame) {
-#if PY_3_14_PLUS && defined(_WIN32)
-  return PyDict_GetItemString(PaddleSot_Frame_GetGlobals(frame->frame),
+#if PY_3_11_PLUS
+  return PyDict_GetItemString(SOT_FRAME_GET_GLOBALS(frame->frame),
                               var_name_.c_str());
-#elif PY_3_11_PLUS
-  return PyDict_GetItemString(frame->frame->f_globals, var_name_.c_str());
 #else
   return PyDict_GetItemString(frame->f_globals, var_name_.c_str());
 #endif

@@ -25,7 +25,7 @@ limitations under the License. */
 
 #if PY_3_14_PLUS && defined(_WIN32)
 PyCodeObject *PaddleSot_Frame_GetCode(FrameObject *frame) {
-  return (PyCodeObject *)PyStackRef_AsPyObjectBorrow(frame->f_executable);
+  return PyFrame_GET_CODE(frame);
 }
 
 PyObject *PaddleSot_Frame_GetGlobals(FrameObject *frame) {

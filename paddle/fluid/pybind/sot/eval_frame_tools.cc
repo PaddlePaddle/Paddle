@@ -224,11 +224,7 @@ void CodeStatus::clear() {
 
 int need_skip(FrameObject* frame) {
   auto& skip_info = SkipCodeInfo::Instance();
-#if PY_3_14_PLUS && defined(_WIN32)
-  PyCodeObject* code = PaddleSot_Frame_GetCode(frame);
-#else
-  PyCodeObject* code = PyFrame_GET_CODE(frame);
-#endif
+  PyCodeObject* code = SOT_FRAME_GET_CODE(frame);
   PyObject* co_filename = code->co_filename;
 
   if (skip_info.is_no_skip_code(code)) {
@@ -239,11 +235,7 @@ int need_skip(FrameObject* frame) {
   const char* filename = pystr_to_cstr(co_filename);
   PyObject* _filename = NULL;
   if (memcmp(filename, "<frozen", 7) == 0) {
-#if PY_3_14_PLUS && defined(_WIN32)
-    PyObject* f_globals = PaddleSot_Frame_GetGlobals(frame);
-#else
-    PyObject* f_globals = frame->f_globals;
-#endif
+    PyObject* f_globals = SOT_FRAME_GET_GLOBALS(frame);
     _filename = PyDict_GetItemString(f_globals, "__file__");
     if (_filename != NULL) {
       Py_INCREF(_filename);
