@@ -28,10 +28,11 @@ PyReader::PyReader(
   queue_ = queue;
 }
 
-void PyReader::ReadNext(phi::TensorArray* out) {
+bool PyReader::ReadNext(phi::TensorArray* out) {
   bool success = false;
   *out = queue_->Pop(&success);
   if (!success) out->clear();
+  return success;
 }
 
 PyReader::~PyReader() {  // NOLINT

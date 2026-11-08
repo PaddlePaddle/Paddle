@@ -118,9 +118,9 @@ void BufferedReader::ReadTillBufferFullAsync() {
 void BufferedReader::ReadAsync(size_t i) {
   position_.emplace(thread_pool_.enqueue([this, i]() -> size_t {
     TensorVec &cpu = cpu_buffer_[i];
-    reader_->ReadNext(&cpu);
+    bool success = reader_->ReadNext(&cpu);
 
-    if (cpu.empty()) {
+    if (!success) {
       return -1UL;
     }
 
@@ -382,17 +382,17 @@ void BufferedReader::StartImpl() {
   ReadTillBufferFullAsync();
 }
 
-void BufferedReader::ReadNextImpl(phi::TensorArray *out) {
+bool BufferedReader::ReadNextImpl(phi::TensorArray *out) {
   if (position_.empty()) {
     out->clear();
-    return;
+    return false;
   }
   size_t i = position_.front().get();
   position_.pop();
 
   if (i == -1UL) {
-    ReadNextImpl(out);
-    return;
+    out->clear();
+    return false;
   }
 
   if (place_.GetType() == AllocationType::GPU) {  // NOLINT
@@ -412,6 +412,7 @@ void BufferedReader::ReadNextImpl(phi::TensorArray *out) {
     ReadAsync(prev_pos_);
   }
   prev_pos_ = i;
+  return true;
 }
 
 }  // namespace paddle::operators::reader
