@@ -309,7 +309,9 @@ jobs:
     timeout-minutes: 180
     env:
       SHARD_INDEX: ${{ matrix.shard }}
-      NUM_SHARDS: 4
+      NUM_SHARDS: ${{ strategy.job-total }}
+    outputs:
+      shard-count: ${{ strategy.job-total }}
     steps:
       - name: Check docker image and run container
         env:
@@ -403,7 +405,7 @@ jobs:
         run: |
           docker exec -t ${{ env.container_name }} /bin/bash -c '
           source ${{ github.workspace }}/../../../proxy
-          bash $ci_scripts/coverage_test.sh parallel
+          bash $ci_scripts/coverage_test.sh
           TEST_EXIT_CODE=$?
           echo "TEST_EXIT_CODE=${TEST_EXIT_CODE}" >> ${{ github.env }}
           if [[ "$TEST_EXIT_CODE" -ne 0 && "$TEST_EXIT_CODE" -ne 9 ]]; then
@@ -449,6 +451,7 @@ jobs:
           PR_ID: ${{ github.event.pull_request.number }}
           COMMIT_ID: ${{ github.event.pull_request.head.sha }}
           GIT_PR_ID: ${{ github.event.pull_request.number }}
+          NUM_SHARDS: ${{ needs.test.outputs.shard-count }}
           no_proxy: "bcebos.com,apiin.im.baidu.com,gitee.com,aliyun.com,.baidu.com,.tuna.tsinghua.edu.cn"
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -474,6 +477,7 @@ jobs:
             -e GITHUB_API_TOKEN \
             -e CFS_DIR \
             -e no_proxy \
+            -e NUM_SHARDS \
             -w /paddle --network host ${docker_image}
 
       - name: Download paddle.tar.gz

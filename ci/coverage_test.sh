@@ -97,7 +97,7 @@ SHARD_INDEX=${SHARD_INDEX:-0}
 if [ "${NUM_SHARDS}" -gt 1 ]; then
     echo "::group::Generate shard ${SHARD_INDEX}/${NUM_SHARDS} ut_list"
     ctest -N | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d' > all_ut_list
-    python ${PADDLE_ROOT}/tools/shard_ut_list.py ${PADDLE_ROOT} ${SHARD_INDEX} ${NUM_SHARDS}
+    python ${PADDLE_ROOT}/tools/shard_ut_list.py ${PADDLE_ROOT} ${SHARD_INDEX} ${NUM_SHARDS} || exit 1
     echo "::endgroup::"
 fi
 

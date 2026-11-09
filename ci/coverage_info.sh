@@ -17,18 +17,10 @@ set +e
 
 PADDLE_ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}")/../" && pwd )"
 
+source ${PADDLE_ROOT}/ci/coverage_common.sh
+
 # install lcov
-if [ ! -f "/root/.cache/lcov-1.16.tar.gz" ];then
-wget -P /home https://paddle-ci.cdn.bcebos.com/coverage/lcov-1.16.tar.gz --no-proxy --no-check-certificate || exit 101
-cp /home/lcov-1.16.tar.gz /root/.cache/lcov-1.16.tar.gz
-else
-    cp /root/.cache/lcov-1.16.tar.gz /home/lcov-1.16.tar.gz
-fi
-tar -xf /home/lcov-1.16.tar.gz -C /
-cd /lcov-1.16
-echo "::group::Install lcov"
-make install
-echo "::endgroup::"
+install_lcov
 
 cd ${PADDLE_ROOT}/build
 
@@ -197,16 +189,7 @@ if [ "${COVERAGE_SHARD_ONLY:-OFF}" == "ON" ]; then
     coverage xml -i -o python-coverage.xml || [[ "${NO_PYTHON_COVERAGE_DATA}" == "1" ]]
     `$(python ${PADDLE_ROOT}/ci/coverage_python_coverage.py > python-coverage.info)` || [[ "${NO_PYTHON_COVERAGE_DATA}" == "1" ]]
     if [ "${NO_PYTHON_COVERAGE_DATA}" != "1" ]; then
-        lcov --extract python-coverage.info \
-            "${PADDLE_ROOT}/python/*" \
-            -o python-coverage-full.tmp \
-            --rc lcov_branch_coverage=0
-        mv -f python-coverage-full.tmp python-coverage-full.info
-        lcov --remove python-coverage-full.info \
-            '/*/tests/*' \
-            -o python-coverage-full.tmp \
-            --rc lcov_branch_coverage=0
-        mv -f python-coverage-full.tmp python-coverage-full.info
+        gen_python_full_report
     fi
     echo "::endgroup::"
     shard_dir=${CFS_DIR}/coverage_shard/${PR_ID}/${COMMIT_ID}/shard-${SHARD_INDEX}
@@ -221,26 +204,7 @@ fi
 
 # mkdir coverage
 
-if [ "${PR_ID}" != "" ]; then
-
-    COVERAGE_DIFF_PATTERN="`python ${PADDLE_ROOT}/ci/coverage_pull_request.py files ${PR_ID}`"
-
-    python ${PADDLE_ROOT}/ci/coverage_pull_request.py diff ${PR_ID} > git-diff.out
-fi
-
-lcov --extract coverage-full.info \
-    ${COVERAGE_DIFF_PATTERN} \
-    -o coverage-diff.info \
-    --rc lcov_branch_coverage=0
-
-python ${PADDLE_ROOT}/ci/coverage_diff.py coverage-diff.info git-diff.out > coverage-diff.tmp
-
-mv -f coverage-diff.tmp coverage-diff.info
-
-cp coverage-diff.info coverage_files
-
 # python coverage
-
 coverage combine $(ls python-coverage.data.*) || NO_PYTHON_COVERAGE_DATA=1
 
 coverage xml -i -o python-coverage.xml || [[ "${NO_PYTHON_COVERAGE_DATA}" == "1" ]]
@@ -249,39 +213,6 @@ coverage xml -i -o python-coverage.xml || [[ "${NO_PYTHON_COVERAGE_DATA}" == "1"
 
 `$(python ${PADDLE_ROOT}/ci/coverage_python_coverage.py > python-coverage.info)` || [[ "${NO_PYTHON_COVERAGE_DATA}" == "1" ]]
 
-
-function gen_python_full_report() {
-    lcov --extract python-coverage.info \
-        "${PADDLE_ROOT}/python/*" \
-        -o python-coverage-full.tmp \
-        --rc lcov_branch_coverage=0
-
-    mv -f python-coverage-full.tmp python-coverage-full.info
-
-    lcov --remove python-coverage-full.info \
-        '/*/tests/*' \
-        -o python-coverage-full.tmp \
-        --rc lcov_branch_coverage=0
-
-    mv -f python-coverage-full.tmp python-coverage-full.info
-}
-
 gen_python_full_report || true  # python-coverage-full.info
 
-
-if [ "${GIT_PR_ID}" != "" ]; then
-    COVERAGE_DIFF_PATTERN="`python ${PADDLE_ROOT}/ci/coverage_pull_request.py files ${GIT_PR_ID}`"
-
-    python ${PADDLE_ROOT}/ci/coverage_pull_request.py diff ${GIT_PR_ID} > python-git-diff.out
-fi
-
-lcov --extract python-coverage-full.info \
-    ${COVERAGE_DIFF_PATTERN} \
-    -o python-coverage-diff.info \
-    --rc lcov_branch_coverage=0
-
-python ${PADDLE_ROOT}/ci/coverage_diff.py python-coverage-diff.info python-git-diff.out > python-coverage-diff.tmp
-
-mv -f python-coverage-diff.tmp python-coverage-diff.info
-
-cp python-coverage-diff.info coverage_files
+gen_coverage_diff
