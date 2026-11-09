@@ -97,6 +97,7 @@ class BufferGroup:
     grads_buffer: 'TensorFusionBuffer' = None
     grads_use_sum: int = 0
     grads_use_cnt: int = 0
+    grads_ready_cnt: int = 0
 
 
 def _whole_3d_shard_numel(params, fsdp_group):
@@ -743,6 +744,14 @@ class FSDPCommManager:
             if g.params_buffer.is_sharded and g.fsdp_unit_id is not None
         )
         groups_per_unit = max(2, max(unit_sizes.values(), default=0))
+        self._first_unit_id = min(
+            (
+                g.fsdp_unit_id
+                for g in buffer_manager.buffer_groups
+                if g.fsdp_unit_id is not None
+            ),
+            default=None,
+        )
         self.prefetch_units = max(int(prefetch_units), 0)
         self.gather_buffer_limit = groups_per_unit * (self.prefetch_units + 1)
         # Up to 2 * max(prefetch_units, 1) units of grads in flight; -1 since
@@ -992,6 +1001,20 @@ class FSDPCommManager:
                     self._backward_cnt += 1
                 self._last_backward_unit_id = unit_id
                 self._flush_expert_grads_after_unit(unit_id)
+                if (
+                    unit_id is None
+                    and prev_unit_id is not None
+                    and self._backward_cnt >= self.grad_accum_steps
+                ):
+                    # Expert grads bypass the grad hook, so the count trigger in
+                    # reduce_scatter_grads never fires for them. Backward left
+                    # the first unit on the last micro-batch: they are final.
+                    for group in self.buffer_manager.buffer_groups:
+                        if (
+                            group.is_expert_param
+                            and group.fsdp_unit_id == prev_unit_id
+                        ):
+                            self._reduce_group_grads(group)
                 self._release_params_after_unit(unit_id)
             self._bind_sharded_expert_main_grads(params)
         elif self.grad_reduce_queue:
@@ -1187,10 +1210,32 @@ class FSDPCommManager:
         group.grads_use_cnt += 1
         param.main_grad = None
 
-        if group.grads_buffer is not None and (
-            group.is_expert_param or not group.grads_buffer.is_sharded
+        # Dense groups outside the FSDP units (lm_head, final norm, embedding)
+        # and of the first unit have no later unit change to flush them.
+        # Reduce one as soon as every param's grad hook of the last
+        # micro-batch has fired, so it overlaps the rest of backward. A
+        # param's hook fires once per backward, after all its uses; a
+        # unit-change signal is not enough, as a weight's grad can land after
+        # backward has moved on.
+        grads_buffer = group.grads_buffer
+        if (
+            grads_buffer is None
+            or not grads_buffer.is_sharded
+            or group.is_expert_param
         ):
             return
+        if group.fsdp_unit_id not in (None, self._first_unit_id):
+            return
+        if group.grads_use_cnt < group.grads_use_sum:
+            return
+        group.grads_use_cnt = 0
+        group.grads_ready_cnt += 1
+        if (
+            group.grads_ready_cnt >= self.grad_accum_steps
+            and grads_buffer.tmp_data_buffer is not None
+            and grads_buffer not in self.grad_reduce_queue
+        ):
+            self._issue_reduce_scatter(grads_buffer)
 
     def _reduce_group_grads(self, group):
         # Reduce-scatter one group's fused grad buffer over its own fsdp_group.
@@ -1209,6 +1254,9 @@ class FSDPCommManager:
         ):
             self._release_reduced_grad_views(grads_buffer)
             return
+        self._issue_reduce_scatter(grads_buffer)
+
+    def _issue_reduce_scatter(self, grads_buffer):
         # Grad queue mechanism: wait and release completed reduce_scatter async tasks
         self._wait_for_grad_comm(next_numel=grads_buffer.total_buffer_size)
         grads_buffer.comm_task = grads_buffer.do_reduce_scatter()
@@ -1297,11 +1345,13 @@ class FSDPCommManager:
     def finish_grads_sync(self):
         # Wait for all async reduce_scatter tasks, call before optimizer.step()
         self._wait_for_grad_comm(queue_limit=0)
+        pending = []
         for group in self.buffer_manager.buffer_groups:
             grads_buffer = group.grads_buffer
             if grads_buffer is None:
                 continue
             group.grads_use_cnt = 0
+            group.grads_ready_cnt = 0
             if not grads_buffer.is_sharded:
                 if group.whole_shard_numel is not None:
                     paddle.distributed.all_reduce(
@@ -1335,7 +1385,12 @@ class FSDPCommManager:
                 continue
             if grads_buffer.tmp_data_buffer is None:
                 continue
-            grads_buffer.do_reduce_scatter().wait()
+            grads_buffer.comm_task = grads_buffer.do_reduce_scatter()
+            pending.append(grads_buffer)
+
+        for grads_buffer in pending:
+            grads_buffer.comm_task.wait()
+            grads_buffer.comm_task = None
             grads_buffer.accumulate_reduced_grad()
             self._release_reduced_grad_views(grads_buffer)
 
