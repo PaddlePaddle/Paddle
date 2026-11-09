@@ -319,6 +319,38 @@ class TestMaskedSelectOp_ZeroSize3(unittest.TestCase):
             self._test_out_0size(place)
 
 
+class TestMaskedSelectOp_ZeroSizeBroadcastMismatch(unittest.TestCase):
+    """A 0-size input must not hide a shape mismatch between x and mask: it
+    raises like the non-empty case, on every device."""
+
+    def setUp(self):
+        self.place = get_places()
+
+    def test_zero_size_mismatch_raises(self):
+        for place in self.place:
+            with paddle.base.dygraph.guard(place):
+                x = paddle.zeros([0, 8], dtype='float32')
+                mask = paddle.ones([4, 8], dtype='bool')
+                with self.assertRaises(RuntimeError):
+                    paddle.masked_select(x, mask)
+
+    def test_non_zero_size_mismatch_raises(self):
+        for place in self.place:
+            with paddle.base.dygraph.guard(place):
+                x = paddle.zeros([3, 8], dtype='float32')
+                mask = paddle.ones([4, 8], dtype='bool')
+                with self.assertRaises(RuntimeError):
+                    paddle.masked_select(x, mask)
+
+    def test_zero_size_broadcastable_still_passes(self):
+        for place in self.place:
+            with paddle.base.dygraph.guard(place):
+                x = paddle.zeros([0, 8], dtype='float32')
+                # mask broadcasts against the 0-size dim, the result is empty
+                mask = paddle.ones([1, 8], dtype='bool')
+                self.assertEqual(paddle.masked_select(x, mask).shape, [0])
+
+
 class TestMaskedSelectAPI_Compatibility(unittest.TestCase):
     def test_imperative_mode(self):
         paddle.disable_static()

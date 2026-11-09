@@ -159,6 +159,14 @@ class TestMaskedSelectGradAPI(unittest.TestCase):
         np.testing.assert_equal(list(out.shape), [0])
         paddle.enable_static()
 
+    def test_zerosize_broadcast_mismatch_raises(self):
+        # A 0-size input must not hide a shape mismatch between x and mask.
+        with paddle.base.dygraph.guard(paddle.XPUPlace(0)):
+            x = paddle.empty([0, 1], dtype='float32')
+            mask = paddle.ones([2, 1], dtype='bool')
+            with self.assertRaises(RuntimeError):
+                paddle.masked_select(x, mask)
+
     def test_getitem_bool_mask_int64_grad_empty_out(self):
         paddle.disable_static(paddle.XPUPlace(0))
         x_np = np.array([1, 2], dtype=np.int64)

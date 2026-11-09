@@ -461,7 +461,8 @@ class TestPrefetchByLayer(unittest.TestCase):
         self.assertEqual(cm.prefetch_units, 1)
         # 2 sharded groups per unit.
         self.assertEqual(cm.gather_buffer_limit, 4)
-        self.assertEqual(cm.grad_queue_limit, 2)
+        # Up to 2 units (4 buffers) in flight after queuing the next one.
+        self.assertEqual(cm.grad_queue_limit, 3)
 
     def test_prefetch_units_ahead(self):
         cm = _make_comm_manager(_LAYOUT)
@@ -487,13 +488,13 @@ class TestPrefetchByLayer(unittest.TestCase):
     def test_grad_queue_bounded_by_count(self):
         cm = _make_comm_manager(_LAYOUT)
         waited = []
-        for i in range(4):
+        for i in range(5):
             cm.grad_reduce_queue.append(_fake_grads_buffer(100, waited, i))
             cm._grad_queue_numel += 100
         cm._wait_for_grad_comm()
         self.assertEqual(waited, [0, 1])
         cm._wait_for_grad_comm(queue_limit=0)
-        self.assertEqual(waited, [0, 1, 2, 3])
+        self.assertEqual(waited, [0, 1, 2, 3, 4])
         self.assertEqual(cm._grad_queue_numel, 0)
 
 
