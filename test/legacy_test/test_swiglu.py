@@ -391,6 +391,7 @@ class TestSwigluGrad0SizeShapeCheck(unittest.TestCase):
             ([3, 4], [0, 4], [3, 4]),
         ]
         for device in self.devices:
+            origin_device = paddle.get_device()
             paddle.set_device(device)
             for x_shape, y_shape, dz_shape in cases:
                 with (
@@ -400,6 +401,7 @@ class TestSwigluGrad0SizeShapeCheck(unittest.TestCase):
                     self.assertRaises(ValueError),
                 ):
                     self.swiglu_grad(x_shape, y_shape, dz_shape)
+            paddle.set_device(origin_device)
 
     def test_valid_0size(self):
         cases = [
@@ -411,6 +413,7 @@ class TestSwigluGrad0SizeShapeCheck(unittest.TestCase):
             ([3, 4], [0, 4], [0, 4]),
         ]
         for device in self.devices:
+            origin_device = paddle.get_device()
             paddle.set_device(device)
             for x_shape, y_shape, dz_shape in cases:
                 with self.subTest(
@@ -423,6 +426,7 @@ class TestSwigluGrad0SizeShapeCheck(unittest.TestCase):
                         np.testing.assert_array_equal(
                             dy.numpy(), np.zeros(y_shape, dtype="float32")
                         )
+            paddle.set_device(origin_device)
 
 
 if __name__ == "__main__":
