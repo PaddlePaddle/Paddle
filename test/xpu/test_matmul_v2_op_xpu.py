@@ -412,6 +412,24 @@ class XPUTestMatmulV2Op(XPUOpTestWrapper):
             self.trans_y = False
 
 
+class TestMatMulV2ZeroSizeDtypeMismatch(unittest.TestCase):
+    """A 0-size input must not hide a dtype mismatch on XPU either: it raises
+    like a non-empty input does instead of returning an all-zero tensor."""
+
+    def test_zero_size_dtype_mismatch_raises(self):
+        with paddle.base.dygraph.guard(paddle.XPUPlace(0)):
+            x = paddle.zeros([0, 5, 6], dtype='float32')
+            y = paddle.zeros([6, 7], dtype='float16')
+            with self.assertRaises(ValueError):
+                paddle.matmul(x, y)
+
+    def test_zero_size_same_dtype_still_passes(self):
+        with paddle.base.dygraph.guard(paddle.XPUPlace(0)):
+            x = paddle.zeros([0, 5, 6], dtype='float32')
+            y = paddle.zeros([6, 7], dtype='float32')
+            self.assertEqual(paddle.matmul(x, y).shape, [0, 5, 7])
+
+
 support_types = get_xpu_op_support_types('matmul_v2')
 for stype in support_types:
     create_test_class(globals(), XPUTestMatmulV2Op, stype)

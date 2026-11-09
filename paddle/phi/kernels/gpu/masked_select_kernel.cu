@@ -53,15 +53,19 @@ void MaskedSelectKernel(const Context& dev_ctx,
   DenseTensor mask_expand;
   DenseTensor x_expand;
 
+  // Check that x and mask are broadcastable before the empty-input early
+  // return below, so that 0-size inputs with mismatched shapes (e.g. x [0, N]
+  // and mask [M, N]) raise like the CPU kernel instead of returning an empty
+  // tensor.
+  auto expanded_size = funcs::MatrixGetBroadcastBatchPortion(
+      vectorize(x.dims()), vectorize(mask.dims()));
+
   if (x.numel() == 0 || mask.numel() == 0) {
     out->Resize({0});
     dev_ctx.template Alloc<T>(out);
 
     return;
   }
-
-  auto expanded_size = funcs::MatrixGetBroadcastBatchPortion(
-      vectorize(x.dims()), vectorize(mask.dims()));
 
   DDim expand_dims = make_ddim(expanded_size);
   if (mask.dims() != expand_dims) {
