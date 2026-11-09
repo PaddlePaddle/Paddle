@@ -188,6 +188,37 @@ else
     echo "::endgroup::"
 fi
 
+# Shard mode (COVERAGE_SHARD_ONLY=ON): each test shard produces only the full
+# C++/python reports for the tests it ran and uploads them to CFS. The
+# "Coverage collect" job merges all shard reports and does the diff/judge part.
+if [ "${COVERAGE_SHARD_ONLY:-OFF}" == "ON" ]; then
+    echo "::group::Gen python full report (shard ${SHARD_INDEX})"
+    coverage combine $(ls python-coverage.data.*) || NO_PYTHON_COVERAGE_DATA=1
+    coverage xml -i -o python-coverage.xml || [[ "${NO_PYTHON_COVERAGE_DATA}" == "1" ]]
+    `$(python ${PADDLE_ROOT}/ci/coverage_python_coverage.py > python-coverage.info)` || [[ "${NO_PYTHON_COVERAGE_DATA}" == "1" ]]
+    if [ "${NO_PYTHON_COVERAGE_DATA}" != "1" ]; then
+        lcov --extract python-coverage.info \
+            "${PADDLE_ROOT}/python/*" \
+            -o python-coverage-full.tmp \
+            --rc lcov_branch_coverage=0
+        mv -f python-coverage-full.tmp python-coverage-full.info
+        lcov --remove python-coverage-full.info \
+            '/*/tests/*' \
+            -o python-coverage-full.tmp \
+            --rc lcov_branch_coverage=0
+        mv -f python-coverage-full.tmp python-coverage-full.info
+    fi
+    echo "::endgroup::"
+    shard_dir=${CFS_DIR}/coverage_shard/${PR_ID}/${COMMIT_ID}/shard-${SHARD_INDEX}
+    mkdir -p ${shard_dir}
+    cp coverage-full.info ${shard_dir}/
+    if [ "${NO_PYTHON_COVERAGE_DATA}" != "1" ]; then
+        cp python-coverage-full.info ${shard_dir}/
+    fi
+    echo "Uploaded shard coverage to ${shard_dir}"
+    exit 0
+fi
+
 # mkdir coverage
 
 if [ "${PR_ID}" != "" ]; then

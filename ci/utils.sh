@@ -997,8 +997,16 @@ set +x
         echo "ipipe_log_param_Rerun_TestCases_Total_Time: $[ $rerun_ut_endTime_s - $rerun_ut_startTime_s ]s"
         echo "ipipe_log_param_Rerun_TestCases_Total_Time: $[ $rerun_ut_endTime_s - $rerun_ut_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
         if [ "$WITH_ROCM" != "ON" ];then
-            mkdir -p /home/data/cfs/coverage/${PR_ID}/${COMMIT_ID}/
-            cp $PADDLE_ROOT/build/Testing/Temporary/CTestCostData.txt /home/data/cfs/coverage/${PR_ID}/${COMMIT_ID}/
+            if [ "${NUM_SHARDS:-1}" -gt 1 ]; then
+                # Sharded run: upload each shard's partial cost data to its own
+                # shard dir; the collect job concatenates them into the canonical
+                # path so the full test cost data is preserved.
+                mkdir -p /home/data/cfs/coverage_shard/${PR_ID}/${COMMIT_ID}/shard-${SHARD_INDEX}/
+                cp $PADDLE_ROOT/build/Testing/Temporary/CTestCostData.txt /home/data/cfs/coverage_shard/${PR_ID}/${COMMIT_ID}/shard-${SHARD_INDEX}/CTestCostData.txt
+            else
+                mkdir -p /home/data/cfs/coverage/${PR_ID}/${COMMIT_ID}/
+                cp $PADDLE_ROOT/build/Testing/Temporary/CTestCostData.txt /home/data/cfs/coverage/${PR_ID}/${COMMIT_ID}/
+            fi
         fi
         if [[ "$EXIT_CODE" != "0" ]]; then
             show_ut_retry_result

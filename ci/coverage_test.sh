@@ -88,6 +88,19 @@ echo "::endgroup::"
 cp ${PADDLE_ROOT}/build/test/legacy_test/testsuite.py ${PADDLE_ROOT}/build/python
 cp -r ${PADDLE_ROOT}/build/test/white_list ${PADDLE_ROOT}/build/python
 
+# Shard the unit-test list across machines. When NUM_SHARDS > 1, build/ut_list
+# is written with only this shard's tests; group_case_for_parallel.py reads
+# build/ut_list with the highest priority, so all grouping and the parallel
+# batches below only contain this shard's subset.
+NUM_SHARDS=${NUM_SHARDS:-1}
+SHARD_INDEX=${SHARD_INDEX:-0}
+if [ "${NUM_SHARDS}" -gt 1 ]; then
+    echo "::group::Generate shard ${SHARD_INDEX}/${NUM_SHARDS} ut_list"
+    ctest -N | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d' > all_ut_list
+    python ${PADDLE_ROOT}/tools/shard_ut_list.py ${PADDLE_ROOT} ${SHARD_INDEX} ${NUM_SHARDS}
+    echo "::endgroup::"
+fi
+
 ut_total_startTime_s=`date +%s`
 
 parallel_test_base_gpu_test
