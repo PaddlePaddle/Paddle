@@ -428,21 +428,14 @@ class FSDPBufferManager:
         self.grad_comm_dtype = grad_comm_dtype
         self._comm_streams = {}
         self.hcg = fleet.get_hybrid_communicate_group()
-        self._fsdp_group = self.hcg.get_sharding_parallel_group()
-        use_ep = (
-            hasattr(self.hcg, "get_expert_parallel_world_size")
-            and self.hcg.get_expert_parallel_world_size() > 1
-        )
-        self._ep_fsdp_group = (
-            self.hcg.get_moe_sharding_parallel_group()
-            if use_ep
-            else self._fsdp_group
-        )
+        self._fsdp_group = self.hcg.get_fsdp_group()
+        self._ep_fsdp_group = self.hcg.get_fsdp_group(is_expert=True)
+
         self.main_grad_dtype = (
             main_grad_dtype if main_grad_dtype is not None else paddle.float32
         )
 
-        # Layer types to wrap as FSDP sharding layers
+        # Layer types to wrap as FSDP layers
         # Note: 'Qwen3VLTextDecoderLayer' is temporary; fleet models all use 'TransformerLayer'
         self.fsdp_unit_layers = fsdp_unit_layers or [
             'TransformerLayer',
