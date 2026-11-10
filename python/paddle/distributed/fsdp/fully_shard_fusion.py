@@ -165,8 +165,8 @@ class TensorFusionBuffer:
         self.grad_div = grad_div if grad_div is not None else fsdp_group.nranks
         self.grad_accum_steps = 1
         self.grad_scale = 1.0 / self.grad_div
-        self.grad_scaled = False
-        self.grad_scale_pending = False
+        self.grad_scaled = False  # unsharded: already scaled this step
+        self.grad_scale_pending = False  # sharded: shard still needs scaling
         self.total_buffer_size = 0
         self.param_offsets = {}
         self.tmp_data_buffer = None
