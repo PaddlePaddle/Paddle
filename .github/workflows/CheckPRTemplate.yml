@@ -34,7 +34,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install httpx requests
+          pip install httpx==0.28.1 requests==2.34.2
 
       - name: Check PR Template
         env:
