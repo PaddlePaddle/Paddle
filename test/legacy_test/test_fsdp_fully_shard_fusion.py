@@ -420,7 +420,6 @@ def _make_comm_manager(layout, **kwargs):
         types.SimpleNamespace(
             fsdp_unit_id=unit,
             is_expert_param=expert,
-            outer=None,
             params_buffer=types.SimpleNamespace(
                 is_sharded=sharded,
                 total_buffer_size=numel,
@@ -449,7 +448,6 @@ def _fake_grads_buffer(numel, waited, i):
         comm_task=types.SimpleNamespace(wait=lambda: waited.append(i)),
         total_buffer_size=numel,
         is_sharded=False,
-        unique_key=0,
         accumulate_reduced_grad=lambda: None,
     )
 
