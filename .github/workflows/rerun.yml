@@ -184,6 +184,16 @@ jobs:
           REPO: ${{ github.event.repository.name }}
           JOB_NAME: 'Coverage test'
 
+      - name: Rerun Coverage collect
+        if: ${{ contains(github.event.comment.body, 'coverage') && contains(github.event.comment.body, 'collect') }}
+        uses: ./.github/actions/rerun-workflow
+        with:
+          PR_ID: ${{ github.event.issue.number }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OWNER: ${{ github.repository_owner }}
+          REPO: ${{ github.event.repository.name }}
+          JOB_NAME: 'Coverage collect'
+
       - name: Rerun XPU
         if: ${{ contains(github.event.comment.body, 'xpu') && !contains(github.event.comment.body, 'build') && !contains(github.event.comment.body, 'test') }}
         uses: ./.github/actions/rerun-workflow

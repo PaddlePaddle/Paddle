@@ -188,37 +188,9 @@ else
     echo "::endgroup::"
 fi
 
-# mkdir coverage
-
-if [ "${PR_ID}" != "" ]; then
-
-    COVERAGE_DIFF_PATTERN="`python ${PADDLE_ROOT}/ci/coverage_pull_request.py files ${PR_ID}`"
-
-    python ${PADDLE_ROOT}/ci/coverage_pull_request.py diff ${PR_ID} > git-diff.out
-fi
-
-lcov --extract coverage-full.info \
-    ${COVERAGE_DIFF_PATTERN} \
-    -o coverage-diff.info \
-    --rc lcov_branch_coverage=0
-
-python ${PADDLE_ROOT}/ci/coverage_diff.py coverage-diff.info git-diff.out > coverage-diff.tmp
-
-mv -f coverage-diff.tmp coverage-diff.info
-
-cp coverage-diff.info coverage_files
-
-# python coverage
-
-coverage combine $(ls python-coverage.data.*) || NO_PYTHON_COVERAGE_DATA=1
-
-coverage xml -i -o python-coverage.xml || [[ "${NO_PYTHON_COVERAGE_DATA}" == "1" ]]
-
-# sed -i "s#/mnt\/paddle#${PADDLE_ROOT//\//\\/}#g" python-coverage.xml
-
-`$(python ${PADDLE_ROOT}/ci/coverage_python_coverage.py > python-coverage.info)` || [[ "${NO_PYTHON_COVERAGE_DATA}" == "1" ]]
-
-
+# Shard mode (COVERAGE_SHARD_ONLY=ON): each test shard produces only the full
+# C++/python reports for the tests it ran and uploads them to CFS. The
+# "Coverage collect" job merges all shard reports and does the diff/judge part.
 function gen_python_full_report() {
     lcov --extract python-coverage.info \
         "${PADDLE_ROOT}/python/*" \
@@ -235,22 +207,69 @@ function gen_python_full_report() {
     mv -f python-coverage-full.tmp python-coverage-full.info
 }
 
-gen_python_full_report || true  # python-coverage-full.info
+function gen_coverage_diff() {
+    # C++ diff
+    if [ "${PR_ID}" != "" ]; then
+        COVERAGE_DIFF_PATTERN="`python ${PADDLE_ROOT}/ci/coverage_pull_request.py files ${PR_ID}`"
+        python ${PADDLE_ROOT}/ci/coverage_pull_request.py diff ${PR_ID} > git-diff.out
+    fi
 
+    lcov --extract coverage-full.info \
+        ${COVERAGE_DIFF_PATTERN} \
+        -o coverage-diff.info \
+        --rc lcov_branch_coverage=0
 
-if [ "${GIT_PR_ID}" != "" ]; then
-    COVERAGE_DIFF_PATTERN="`python ${PADDLE_ROOT}/ci/coverage_pull_request.py files ${GIT_PR_ID}`"
+    python ${PADDLE_ROOT}/ci/coverage_diff.py coverage-diff.info git-diff.out > coverage-diff.tmp
+    mv -f coverage-diff.tmp coverage-diff.info
+    cp coverage-diff.info coverage_files
 
-    python ${PADDLE_ROOT}/ci/coverage_pull_request.py diff ${GIT_PR_ID} > python-git-diff.out
+    # python diff
+    if [ "${GIT_PR_ID}" != "" ]; then
+        COVERAGE_DIFF_PATTERN="`python ${PADDLE_ROOT}/ci/coverage_pull_request.py files ${GIT_PR_ID}`"
+        python ${PADDLE_ROOT}/ci/coverage_pull_request.py diff ${GIT_PR_ID} > python-git-diff.out
+    fi
+
+    if [ "${NO_PYTHON_COVERAGE_DATA}" != "1" ]; then
+        lcov --extract python-coverage-full.info \
+            ${COVERAGE_DIFF_PATTERN} \
+            -o python-coverage-diff.info \
+            --rc lcov_branch_coverage=0
+        python ${PADDLE_ROOT}/ci/coverage_diff.py python-coverage-diff.info python-git-diff.out > python-coverage-diff.tmp
+        mv -f python-coverage-diff.tmp python-coverage-diff.info
+        cp python-coverage-diff.info coverage_files
+    fi
+}
+
+if [ "${COVERAGE_SHARD_ONLY:-OFF}" == "ON" ]; then
+    echo "::group::Gen python full report (shard ${SHARD_INDEX})"
+    coverage combine $(ls python-coverage.data.*) || NO_PYTHON_COVERAGE_DATA=1
+    coverage xml -i -o python-coverage.xml || [[ "${NO_PYTHON_COVERAGE_DATA}" == "1" ]]
+    `$(python ${PADDLE_ROOT}/ci/coverage_python_coverage.py > python-coverage.info)` || [[ "${NO_PYTHON_COVERAGE_DATA}" == "1" ]]
+    if [ "${NO_PYTHON_COVERAGE_DATA}" != "1" ]; then
+        gen_python_full_report
+    fi
+    echo "::endgroup::"
+    shard_dir=${CFS_DIR}/coverage_shard/${PR_ID}/${COMMIT_ID}/shard-${SHARD_INDEX}
+    mkdir -p ${shard_dir}
+    cp coverage-full.info ${shard_dir}/
+    if [ "${NO_PYTHON_COVERAGE_DATA}" != "1" ]; then
+        cp python-coverage-full.info ${shard_dir}/
+    fi
+    echo "Uploaded shard coverage to ${shard_dir}"
+    exit 0
 fi
 
-lcov --extract python-coverage-full.info \
-    ${COVERAGE_DIFF_PATTERN} \
-    -o python-coverage-diff.info \
-    --rc lcov_branch_coverage=0
+# mkdir coverage
 
-python ${PADDLE_ROOT}/ci/coverage_diff.py python-coverage-diff.info python-git-diff.out > python-coverage-diff.tmp
+# python coverage
+coverage combine $(ls python-coverage.data.*) || NO_PYTHON_COVERAGE_DATA=1
 
-mv -f python-coverage-diff.tmp python-coverage-diff.info
+coverage xml -i -o python-coverage.xml || [[ "${NO_PYTHON_COVERAGE_DATA}" == "1" ]]
 
-cp python-coverage-diff.info coverage_files
+# sed -i "s#/mnt\/paddle#${PADDLE_ROOT//\//\\/}#g" python-coverage.xml
+
+`$(python ${PADDLE_ROOT}/ci/coverage_python_coverage.py > python-coverage.info)` || [[ "${NO_PYTHON_COVERAGE_DATA}" == "1" ]]
+
+gen_python_full_report || true  # python-coverage-full.info
+
+gen_coverage_diff
