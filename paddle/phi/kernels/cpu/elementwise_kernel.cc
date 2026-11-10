@@ -154,6 +154,9 @@ PD_REGISTER_KERNEL(
 PD_REGISTER_KERNEL(
     fmin, CPU, ALL_LAYOUT, phi::FMinKernel, float, double, int, int64_t) {}
 
+PD_REGISTER_KERNEL(
+    logaddexp, CPU, ALL_LAYOUT, phi::LogAddExpKernel, float, double) {}
+
 PD_REGISTER_KERNEL(maximum,
                    CPU,
                    ALL_LAYOUT,

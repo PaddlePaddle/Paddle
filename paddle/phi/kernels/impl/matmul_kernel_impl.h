@@ -62,12 +62,12 @@ static void GetBroadcastFromDims(const int x_ndim,
 
   for (int i = 0; i < ndim; ++i) {
     PADDLE_ENFORCE_EQ(
-        x_bd_dims[i] == y_bd_dims[i] || x_bd_dims[i] <= 1 || y_bd_dims[i] <= 1,
+        x_bd_dims[i] == y_bd_dims[i] || x_bd_dims[i] == 1 || y_bd_dims[i] == 1,
         true,
         common::errors::InvalidArgument(
             "Input(X) and Input(Y) has error dim. "
             "X_broadcast's shape[%s] must be equal to Y_broadcast's shape[%s], "
-            "or X_broadcast's shape[%s] <= 1, or Y_broadcast's shape[%s] <= 1, "
+            "or X_broadcast's shape[%s] == 1, or Y_broadcast's shape[%s] == 1, "
             "but received X_broadcast's shape[%s] = [%s]"
             "received Y_broadcast's shape[%s] = [%s].",
             i,
@@ -2185,6 +2185,16 @@ void MatmulKernel(const Context& dev_ctx,
                   bool transpose_x,
                   bool transpose_y,
                   DenseTensor* out) {
+  // Checked before the empty-input early return so that 0-size inputs with
+  // mismatched dtypes raise like non-empty ones instead of returning zeros.
+  PADDLE_ENFORCE_EQ(
+      x.dtype(),
+      y.dtype(),
+      common::errors::InvalidArgument(
+          "The dtype of Input(X) and Input(Y) in matmul must be the same, "
+          "but received %s and %s.",
+          x.dtype(),
+          y.dtype()));
   if (x.numel() == 0 || y.numel() == 0) {
     // input shape [1, 1, 5, 0], [1, 1, 0, 5], result shape is [1, 1, 5, 5]
     Full<T, Context>(dev_ctx, out->dims(), 0, out);

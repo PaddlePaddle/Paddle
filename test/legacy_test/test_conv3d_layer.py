@@ -406,7 +406,10 @@ class Conv3DZeroSizeXPUTestCase(unittest.TestCase):
             return
         paddle.device.set_device('xpu')
         paddle.disable_static()
-        x = paddle.randn([4, 3, 0, 8, 8], dtype='float32')
+        # Empty batch (N=0) is a valid 0-size input for both Paddle and PyTorch.
+        # A 0-size spatial dim where padded_input < kernel is rejected (aligned
+        # with PyTorch), so it must not be used here.
+        x = paddle.randn([0, 3, 8, 8, 8], dtype='float32')
         w = paddle.randn([5, 3, 3, 3, 3], dtype='float32')
         b = paddle.randn([5], dtype='float32')
         out = paddle.nn.functional.conv3d(
@@ -419,7 +422,7 @@ class Conv3DZeroSizeXPUTestCase(unittest.TestCase):
             groups=1,
             data_format='NCDHW',
         )
-        self.assertEqual(list(out.shape), [4, 5, 0, 10, 10])
+        self.assertEqual(list(out.shape), [0, 5, 8, 10, 10])
         paddle.enable_static()
 
 

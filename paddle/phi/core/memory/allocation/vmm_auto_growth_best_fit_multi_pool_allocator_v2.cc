@@ -125,16 +125,33 @@ size_t VMMAutoGrowthBestFitMultiPoolAllocatorV2::RemapForAllocation(
   }
   if (requested_size > 0) {
     const auto route = RouteAllocation(requested_size);
-    if (route.pool_type == PoolType::kSmall) {
+    if (route.pool_type == PoolType::kSmall &&
+        small_allocation_threshold_ <= small_allocator_->handle_size()) {
+      // A free whole handle already fits any small request; partial handles
+      // cannot be remapped. Skip the scan and leave release to the caller.
       return 0;
     }
     return route.allocator->RemapForAllocation(
         place, requested_size, grow_oom, attempt_result);
   }
-  // Compact/remap targets the large pool only. Small-pool requests are cheap
-  // to satisfy through normal reuse/grow and do not justify remap overhead.
-  return large_allocator_->RemapForAllocation(
+  // Unbounded maintenance always compacts the large pool and includes the
+  // small pool when its routing threshold exceeds its handle size.
+  size_t remapped_bytes = large_allocator_->RemapForAllocation(
       place, requested_size, grow_oom, attempt_result);
+  if (small_allocation_threshold_ > small_allocator_->handle_size()) {
+    VMMRemapAttemptResult small_result;
+    remapped_bytes += small_allocator_->RemapForAllocation(
+        place, requested_size, grow_oom, &small_result);
+    if (attempt_result != nullptr) {
+      // Zero-size maintenance returns kNoMovableMemory or kAttempted from
+      // each pool; required_bytes stays zero because there is no request.
+      if (small_result.status == VMMRemapAttemptStatus::kAttempted) {
+        attempt_result->status = VMMRemapAttemptStatus::kAttempted;
+      }
+      attempt_result->movable_bytes += small_result.movable_bytes;
+    }
+  }
+  return remapped_bytes;
 }
 
 void VMMAutoGrowthBestFitMultiPoolAllocatorV2::FreeImpl(

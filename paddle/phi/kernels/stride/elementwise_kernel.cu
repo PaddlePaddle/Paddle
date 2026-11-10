@@ -156,6 +156,7 @@ DEFINE_CUDA_BINARY_ELEMENTWISE_STRIDE_OP(FloorDivide, FloorDivide)
 DEFINE_CUDA_BINARY_ELEMENTWISE_STRIDE_OP(Heaviside, ElementwiseHeaviside)
 DEFINE_CUDA_BINARY_ELEMENTWISE_STRIDE_OP(FMax, FMax)
 DEFINE_CUDA_BINARY_ELEMENTWISE_STRIDE_OP(FMin, FMin)
+DEFINE_CUDA_BINARY_ELEMENTWISE_STRIDE_OP(LogAddExp, LogAddExp)
 #undef DEFINE_CUDA_BINARY_ELEMENTWISE_STRIDE_OP
 
 template <typename T, typename Context>
@@ -544,5 +545,14 @@ PD_REGISTER_KERNEL(fmin,
                    float16,
                    bfloat16,
                    int64_t) {}
+
+PD_REGISTER_KERNEL(logaddexp,
+                   GPU,
+                   STRIDED,
+                   phi::LogAddExpStrideKernel,
+                   float,
+                   double,
+                   float16,
+                   bfloat16) {}
 
 #endif

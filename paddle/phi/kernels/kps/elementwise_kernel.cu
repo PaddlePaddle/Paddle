@@ -367,6 +367,15 @@ PD_REGISTER_KERNEL(fmin,
                    bfloat16,
                    int64_t) {}
 
+PD_REGISTER_KERNEL(logaddexp,
+                   KPS,
+                   ALL_LAYOUT,
+                   phi::LogAddExpKernel,
+                   float,
+                   double,
+                   float16,
+                   bfloat16) {}
+
 PD_REGISTER_KERNEL(heaviside,
                    KPS,
                    ALL_LAYOUT,

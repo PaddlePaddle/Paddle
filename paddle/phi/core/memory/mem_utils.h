@@ -14,9 +14,12 @@
 
 #pragma once
 
+#include <cstdint>
 #include <list>
 #include <map>
 #include <set>
+#include <string>
+#include <tuple>
 #include <vector>
 
 #include "paddle/phi/core/memory/allocation/allocator.h"
@@ -131,6 +134,58 @@ PADDLE_API extern std::vector<size_t> GetCompactSize(const GPUPlace& place);
 // MemoryHistoryRecorder::SetEnabled.
 PADDLE_API extern std::vector<MemHistoryTraceEntry> GpuMemoryHistoryTrace(
     const GPUPlace& place);
+
+namespace allocation {
+class VMMAutoGrowthBestFitMultiPoolAllocatorV2;
+}  // namespace allocation
+
+// Return `title` framed like the "Error Message Summary:" section of Paddle
+// error messages: "\n" + dashes + "\n" + title + "\n" + dashes + "\n". The
+// dash lines are at least as long as the title.
+PADDLE_API extern std::string MessageSectionHeader(const std::string& title);
+
+// Write `blocks` (all_block_info layout: one inner list of
+// (size, address, is_free) per group) as a Python literal to a new file
+// mem_info.core.<YYYYmmdd_HHMMSS>_<usec>_gpu<device>_pid<pid>_<seq> in the
+// current working directory. Never overwrites an existing file and removes a
+// partially written one. Return "all_block_info saved to <absolute path>\n",
+// or a "Failed to write all_block_info to <path>: <reason>.\n" line.
+PADDLE_API extern std::string DumpAllBlockInfoToFile(
+    const std::vector<std::vector<std::tuple<size_t, uintptr_t, bool>>>& blocks,
+    int device);
+
+// Return a one-line summary of `blocks`: group count with `group_names`,
+// block count, mapped / used / free bytes, free block count and the largest
+// free block.
+PADDLE_API extern std::string AllBlockInfoSummary(
+    const std::vector<std::vector<std::tuple<size_t, uintptr_t, bool>>>& blocks,
+    const std::vector<std::string>& group_names);
+
+// Return the three paddle.device.cuda.memory_summary tables (Global Memory
+// Snapshot, Allocator Summary Statistics, Block Size Distribution) for
+// `blocks`, using the same columns, size format and bucket boundaries as
+// python/paddle/device/cuda/memory_analyzer.py. `allocated` and `reserved`
+// are current device statistics; peaks are read from the device stats.
+PADDLE_API extern std::string MemorySummaryTables(
+    const std::vector<std::vector<std::tuple<size_t, uintptr_t, bool>>>& blocks,
+    const GPUPlace& place,
+    int64_t allocated,
+    int64_t reserved,
+    size_t driver_available,
+    size_t driver_total);
+
+// Build the diagnostics appended to a VMM V2 final OOM message: snapshot the
+// failing allocator's nonempty pools (small, then large), then emit the
+// summary line, the dump file result (also logged as a WARNING) and the
+// memory_summary tables. Never throws; returns a single "diagnostics
+// unavailable" line if the diagnostics cannot be built.
+PADDLE_API extern std::string BuildOOMMemoryDiagnostics(
+    allocation::VMMAutoGrowthBestFitMultiPoolAllocatorV2* allocator,
+    const GPUPlace& place,
+    int64_t allocated,
+    int64_t reserved,
+    size_t driver_available,
+    size_t driver_total);
 #endif
 
 }  // namespace memory

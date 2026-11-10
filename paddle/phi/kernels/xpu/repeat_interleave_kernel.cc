@@ -79,14 +79,16 @@ void RepeatInterleaveWithTensorIndexKernel(const Context& dev_ctx,
   }
   using XPUType = typename XPUTypeTrait<T>::Type;
   DenseTensor index;
-  PADDLE_ENFORCE_EQ(repeats_tensor.dims()[0] == x.dims()[dim],
-                    true,
-                    common::errors::InvalidArgument(
-                        "The length of Input(RepeatsTensor) must be the "
-                        "same as length of Input(X) in axis. "
-                        "But received: [%s], required: [%d].",
-                        repeats_tensor.dims()[0],
-                        x.dims()[dim]));
+  PADDLE_ENFORCE_EQ(
+      repeats_tensor.dims()[0] == x.dims()[dim] ||
+          repeats_tensor.dims()[0] == 1,
+      true,
+      common::errors::InvalidArgument(
+          "The length of Input(RepeatsTensor) must be 1 (broadcast) or the "
+          "same as length of Input(X) in axis. "
+          "But received: [%s], required: [%d].",
+          repeats_tensor.dims()[0],
+          x.dims()[dim]));
   const auto& index_type = repeats_tensor.dtype();
   bool index_type_match =
       index_type == DataType::INT32 || index_type == DataType::INT64;
@@ -99,17 +101,20 @@ void RepeatInterleaveWithTensorIndexKernel(const Context& dev_ctx,
           DataTypeToString(index_type),
           DataTypeToString(DataType::INT32),
           DataTypeToString(DataType::INT64)));
+  DenseTensor repeats_holder;
+  const DenseTensor& repeats_use = funcs::BroadcastRepeatsIfNeeded(
+      dev_ctx, repeats_tensor, x.dims()[dim], &repeats_holder);
   auto xshape = vectorize(x.dims());
   auto out_shape = xshape;
   if (x.numel() == 0) {
     // infer out shape
     if (index_type == DataType::INT32) {
       funcs::RepeatsTensor2IndexTensorFunctor<Context, int>()(
-          dev_ctx, repeats_tensor, &index);
+          dev_ctx, repeats_use, &index);
 
     } else if (index_type == DataType::INT64) {
       funcs::RepeatsTensor2IndexTensorFunctor<Context, int64_t>()(
-          dev_ctx, repeats_tensor, &index);
+          dev_ctx, repeats_use, &index);
     }
     auto output_dim = vectorize(x.dims());
     if (output_size > 0) {
@@ -132,7 +137,7 @@ void RepeatInterleaveWithTensorIndexKernel(const Context& dev_ctx,
   }
   if (index_type == DataType::INT64) {
     funcs::RepeatsTensor2IndexTensorFunctor<Context, int64_t>()(
-        dev_ctx, repeats_tensor, &index);
+        dev_ctx, repeats_use, &index);
     if (output_size > 0) {
       PADDLE_ENFORCE_EQ(
           output_size,
@@ -160,7 +165,7 @@ void RepeatInterleaveWithTensorIndexKernel(const Context& dev_ctx,
     PADDLE_ENFORCE_XDNN_SUCCESS(ret, "paddle_gather");
   } else {
     funcs::RepeatsTensor2IndexTensorFunctor<Context, int>()(
-        dev_ctx, repeats_tensor, &index);
+        dev_ctx, repeats_use, &index);
     if (output_size > 0) {
       PADDLE_ENFORCE_EQ(
           output_size,

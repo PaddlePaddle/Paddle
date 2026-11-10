@@ -55,6 +55,7 @@ type_promote_white_list = {
     "multiply": ["x", "y"],
     "copysign": ["x", "y"],
     "cross": ["x", "y"],
+    "logaddexp": ["x", "y"],
 }
 
 type_promote_inplace_white_list = {

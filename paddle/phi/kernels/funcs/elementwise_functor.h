@@ -646,6 +646,22 @@ struct FMaxFunctor<int64_t> {
   }
 };
 
+// LogAddExp: same algorithm as torch's CUDA logaddexp_kernel, computed in MT.
+// x == y == +-inf is special-cased, otherwise inf - inf would yield NaN.
+template <typename T>
+struct LogAddExpFunctor {
+  using MT = typename MPTypeTrait<T>::Type;
+  inline HOSTDEVICE T operator()(const T x, const T y) const {
+    const MT a = static_cast<MT>(x);
+    const MT b = static_cast<MT>(y);
+    if (std::isinf(a) && a == b) {
+      return x;
+    }
+    const MT m = a > b ? a : b;
+    return static_cast<T>(m + std::log1p(std::exp(-std::abs(a - b))));
+  }
+};
+
 template <typename T>
 struct FMaxGradDx {
   HOSTDEVICE T operator()(T x, T y, T out UNUSED, T dout) const {

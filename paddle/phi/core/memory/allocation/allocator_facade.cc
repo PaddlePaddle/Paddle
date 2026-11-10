@@ -104,8 +104,10 @@ PHI_DEFINE_EXPORTED_bool(
     "Whether VMM V2 remap recovery is enabled on OOM. When true, "
     "StreamSafeCUDAAllocator may run request-bounded remap before its final "
     "allocation retry.");
+// VMM driver calls are paid per handle, so a larger handle makes grow and
+// release faster, at the cost of coarser empty_cache/remap granularity.
 PHI_DEFINE_EXPORTED_uint64(vmm_v2_large_pool_handle_size_in_mb,
-                           16,
+                           64,
                            "VMM V2 large-pool physical handle size in MiB.");
 
 // NOTE(Ruibiao): This FLAGS is just to be compatible with

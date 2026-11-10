@@ -42,6 +42,7 @@ class MixedPrecisionPolicy:
     reduce_dtype: paddle.dtype | None = None
     output_dtype: paddle.dtype | None = None
     cast_forward_inputs: bool = True
+    grad_comm_dtype: paddle.dtype | None = None
 
 
 # @dataclass
@@ -49,8 +50,46 @@ class OffloadPolicy:
     pin_memory: bool = True
 
 
+def _hyperball_shardable(param, info):
+    shape = getattr(param, "original_shape", None) or param.shape
+    return getattr(info, "split_concat_func", None) is None and len(shape) == 2
+
+
+def _mark_params_for_mixed_optimizer(module, optimizer, decay_fun):
+    # Buffers are split by owning sub; keep_whole subs take the whole-param path.
+    route = optimizer._route
+    sub_ids = {id(sub): i for i, sub in enumerate(optimizer._sub_opts)}
+    missing = []
+    for name, param in module.named_parameters():
+        sub = route.get(param.name)
+        # The owning sub decays its params with its own callback.
+        fun = getattr(sub, "_apply_decay_param_fun", None) or decay_fun
+        param.no_weight_decay = fun is not None and not fun(param.name)
+        param.use_hyperball_sharded = False
+        if sub is None:
+            if not param.stop_gradient:
+                missing.append(name)
+            param.fsdp_optimizer_group = None
+            param.keep_whole = False
+            continue
+        param.fsdp_optimizer_group = sub_ids[id(sub)]
+        keep_whole = bool(sub.keep_whole_of(param.name))
+        info = sub._param_info_map.get(param.name)
+        param.use_hyperball_sharded = bool(
+            sub.supports_sharded_hyperball and _hyperball_shardable(param, info)
+        )
+        param.keep_whole = keep_whole and not param.use_hyperball_sharded
+    if missing:
+        raise ValueError(
+            f"MixedInnerOptimizer misses trainable params: {missing[:8]}"
+        )
+
+
 def _mark_params_for_optimizer(module, optimizer):
     decay_fun = getattr(optimizer, "_apply_decay_param_fun", None)
+    if getattr(optimizer, "_sub_opts", None) is not None:
+        _mark_params_for_mixed_optimizer(module, optimizer, decay_fun)
+        return
     muon_info_map = getattr(optimizer, "_muon_param_info_map", None)
     missing = []
     for name, param in module.named_parameters():
@@ -62,9 +101,17 @@ def _mark_params_for_optimizer(module, optimizer):
         info = muon_info_map.get(param.name)
         if info is None and not param.stop_gradient:
             missing.append(name)
-        param.use_muon = bool(
+        hyperball = info is not None and getattr(info, "use_hyperball", False)
+        # AdamW+Hyperball runs on shards with all-reduced norms.
+        param.use_hyperball_sharded = bool(
+            hyperball
+            and not info.use_muon
+            and _hyperball_shardable(param, info)
+        )
+        param.keep_whole = bool(
             info is not None
-            and (info.use_muon or getattr(info, "use_hyperball", False))
+            and (info.use_muon or hyperball)
+            and not param.use_hyperball_sharded
         )
     if missing:
         raise ValueError(
@@ -83,14 +130,28 @@ def _fully_shard_manual_parallel(
     enable_tensor_fusion_and_overlap,
     optimizer=None,
     grad_accum_steps=1,
+    prefetch_units=1,
+    comm_unit_size=None,
+    reshard_policy="after_forward",
+    reshard_filter="all",
 ):
     layers = module._layers if isinstance(module, MetaParallelBase) else module
     if optimizer is not None:
         _mark_params_for_optimizer(layers, optimizer)
+    # fp8 groups: fp32 main weight iff an fp32 master (default: yes).
+    inner = optimizer
+    while hasattr(inner, "_inner_opt"):
+        inner = inner._inner_opt
+    multi_precision = getattr(inner, "_multi_precision", True)
     layers._fsdp_context = FullyShardFusion(
         layers,
         enable_tensor_fusion_and_overlap=enable_tensor_fusion_and_overlap,
         mp_policy=mp_policy,
+        fp8_main_dtype=paddle.float32 if multi_precision else None,
+        prefetch_units=prefetch_units,
+        comm_unit_size=comm_unit_size,
+        reshard_policy=reshard_policy,
+        reshard_filter=reshard_filter,
     )
     layers._fsdp_context.set_grad_accum_steps(grad_accum_steps)
     if optimizer is not None:
@@ -110,7 +171,11 @@ def _fully_shard_auto_parallel(
     enable_tensor_fusion_and_overlap,
     optimizer=None,
     grad_accum_steps=1,
+    prefetch_units=1,
+    comm_unit_size=None,
 ):
+    if mp_policy.grad_comm_dtype is not None:
+        raise NotImplementedError("grad_comm_dtype is manual parallel only.")
     module._fsdp_context = FullyShardAuto(
         module,
         mesh,
@@ -132,6 +197,10 @@ def fully_shard(
     enable_tensor_fusion_and_overlap: bool = True,
     optimizer: paddle.optimizer.Optimizer | None = None,
     grad_accum_steps: int = 1,
+    prefetch_units: int = 1,
+    comm_unit_size: int | None = None,
+    reshard_policy: str = "after_forward",
+    reshard_filter: str | Callable[..., bool] = "all",
 ) -> paddle.nn.Layer:
     """
     Apply fully sharded data parallel (FSDP) to the given module.
@@ -153,6 +222,8 @@ def fully_shard(
             Defaults to None.
         mp_policy (MixedPrecisionPolicy | None, optional): Mixed precision policy configuration.
             If None, creates a default MixedPrecisionPolicy. Defaults to None.
+            ``reduce_dtype`` is the grad accumulation dtype. ``grad_comm_dtype``
+            is the grad reduce-scatter dtype (float32 or bfloat16), None means ``reduce_dtype``.
         offload_policy (OffloadPolicy | None, optional): Offload policy configuration for CPU offloading.
             If None, creates a default OffloadPolicy. Defaults to None.
         ignored_params (Iterable[paddle.Tensor] | None, optional): Parameters that should not be sharded.
@@ -164,10 +235,39 @@ def fully_shard(
             performance. Defaults to True.
         optimizer (Optimizer | None, optional): Manual parallel mode only. The optimizer
             built on ``module``'s parameters. Defaults to None, in which case
-            ``param.no_weight_decay`` and ``param.use_muon`` must be set beforehand
+            ``param.no_weight_decay`` and ``param.keep_whole`` must be set beforehand
             if needed.
         grad_accum_steps (int, optional): Manual parallel mode only. Gradient
             accumulation steps. Defaults to 1.
+        prefetch_units (int, optional): Number of FSDP units all_gathered
+            ahead (prefetch by layer). 0 disables prefetch. Ignored when
+            ``comm_unit_size`` is set. Defaults to 1.
+        comm_unit_size (int | None, optional): If set, bound communication
+            by size: params are all_gathered ``comm_unit_size // 2``
+            elements ahead and at most ``comm_unit_size`` grad elements
+            stay in reduce_scatter. 0 disables prefetch. Defaults to None
+            (prefetch by layer).
+        reshard_policy (str, optional): Manual parallel mode only. When the
+            all-gathered (unsharded) parameters selected by ``reshard_filter``
+            are freed again.
+
+            - ``"after_forward"``: after forward; backward all-gathers them
+              again. Lowest memory.
+            - ``"after_backward"``: kept from forward until their unit's
+              backward is done, so backward needs no all-gather.
+            - ``"after_step"``: also kept across the micro-batches of a
+              gradient accumulation step and freed before the optimizer step,
+              so each layer is all-gathered once per step.
+
+            The last two cost one full copy of each kept layer's local
+            parameters. Defaults to ``"after_forward"``.
+        reshard_filter (str | Callable, optional): Manual parallel mode only.
+            Which parameters ``reshard_policy`` applies to; the others use
+            ``"after_forward"``. ``"all"``: all sharded parameters;
+            ``"expert"``: expert parameters (``is_moe_param``) only;
+            ``"dense"``: non-expert parameters only. A callable for per-layer
+            selection is reserved and not supported yet. Defaults to
+            ``"all"``.
 
     Returns:
         module: A wrapper module that applies FSDP to the input module.
@@ -195,6 +295,10 @@ def fully_shard(
     """
     if mp_policy is None:
         mp_policy = MixedPrecisionPolicy()
+    if mp_policy.grad_comm_dtype not in (None, paddle.float32, paddle.bfloat16):
+        raise ValueError(
+            f"grad_comm_dtype must be float32 or bfloat16, got {mp_policy.grad_comm_dtype}."
+        )
     if offload_policy is None:
         offload_policy = OffloadPolicy()
     ignored_params_set: set[paddle.Tensor] = (
@@ -212,9 +316,15 @@ def fully_shard(
         enable_tensor_fusion_and_overlap,
         optimizer,
         grad_accum_steps,
+        prefetch_units,
+        comm_unit_size,
     )
 
     if in_auto_parallel_mode():
         return _fully_shard_auto_parallel(*args)
     else:
-        return _fully_shard_manual_parallel(*args)
+        return _fully_shard_manual_parallel(
+            *args,
+            reshard_policy=reshard_policy,
+            reshard_filter=reshard_filter,
+        )

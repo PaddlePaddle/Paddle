@@ -81,4 +81,17 @@ void FMinKernel(const Context& dev_ctx,
       dev_ctx, x, y, funcs::FMinFunctor<T>(), out);
 }
 
+template <typename T, typename Context>
+void LogAddExpKernel(const Context& dev_ctx,
+                     const DenseTensor& x,
+                     const DenseTensor& y,
+                     DenseTensor* out) {
+  dev_ctx.template Alloc<T>(out);
+  if (out->numel() == 0) {
+    return;
+  }
+  funcs::ElementwiseCompute<funcs::LogAddExpFunctor<T>, T>(
+      dev_ctx, x, y, funcs::LogAddExpFunctor<T>(), out);
+}
+
 }  // namespace phi

@@ -131,5 +131,47 @@ class TestAddnOpZeroSizeAndNonZeroSize(unittest.TestCase):
             paddle.enable_static()
 
 
+class TestAddN0DShapeCheck(unittest.TestCase):
+    def test_0d_mixed_with_multi_element_raises(self):
+        # A 0-D scalar mixed with a multi-element tensor cannot be summed
+        # element-wise (add_n does not broadcast) and must raise. This case
+        # used to silently produce a garbage result like [11, 0, 0].
+        paddle.disable_static()
+        with self.assertRaises(ValueError):
+            paddle.add_n(
+                [paddle.to_tensor(10.0), paddle.to_tensor([1.0, 2.0, 3.0])]
+            )
+
+    def test_0d_mixed_with_multi_element_raises_static(self):
+        # The same mismatch must also be rejected at static-graph compile
+        # time, where the shapes ([] vs [3]) differ in element count.
+        paddle.enable_static()
+        try:
+            main = paddle.static.Program()
+            startup = paddle.static.Program()
+            with paddle.static.program_guard(main, startup):
+                x0 = paddle.static.data(name='x0', shape=[], dtype='float32')
+                x1 = paddle.static.data(name='x1', shape=[3], dtype='float32')
+                with self.assertRaises(ValueError):
+                    paddle.add_n([x0, x1])
+        finally:
+            paddle.enable_static()
+
+    def test_0d_mixed_with_single_element_passes(self):
+        # A 0-D scalar and a single-element tensor (e.g. [1]) have the same
+        # number of elements, so add_n sums them correctly and keeps the
+        # non-0-D shape. This behavior must be preserved.
+        paddle.disable_static()
+        out = paddle.add_n([paddle.to_tensor(10.0), paddle.to_tensor([1.0])])
+        self.assertEqual(out.shape, [1])
+        np.testing.assert_allclose(out.numpy(), [11.0])
+
+    def test_all_0d_still_passes(self):
+        # All-0D inputs share the same (empty) shape and should still sum.
+        paddle.disable_static()
+        out = paddle.add_n([paddle.to_tensor(1.0), paddle.to_tensor(2.0)])
+        np.testing.assert_allclose(out.numpy(), 3.0)
+
+
 if __name__ == "__main__":
     unittest.main()

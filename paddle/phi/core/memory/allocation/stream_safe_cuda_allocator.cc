@@ -27,6 +27,7 @@
 #include "paddle/phi/core/memory/allocation/retry_allocator.h"
 #include "paddle/phi/core/memory/allocation/stat_allocator.h"
 #include "paddle/phi/core/memory/allocation/vmm_allocator_v2_types.h"
+#include "paddle/phi/core/memory/mem_utils.h"
 #include "paddle/phi/core/memory/stats.h"
 #include "paddle/phi/core/platform/device/gpu/gpu_info.h"
 #include "paddle/utils/string/printf.h"
@@ -165,7 +166,7 @@ std::string BuildVMMV2OOMSummary(
         string::HumanReadableSize(total));
   }
 
-  return string::Sprintf(
+  std::string oom_summary = string::Sprintf(
       "\n\nOut of memory error on GPU %d. Cannot allocate %s memory.\n"
       "Paddle allocator memory:\n"
       "  Allocated (in use): %s\n"
@@ -186,6 +187,13 @@ std::string BuildVMMV2OOMSummary(
       string::HumanReadableSize(driver_total),
       configured_limit,
       remap_result);
+  return oom_summary +
+         paddle::memory::BuildOOMMemoryDiagnostics(allocator,
+                                                   place,
+                                                   paddle_allocated,
+                                                   paddle_reserved,
+                                                   driver_available,
+                                                   driver_total);
 }
 
 void MarkVMMV2RemapPendingStream(StreamSafeCUDAAllocator* allocator,
@@ -479,12 +487,15 @@ phi::Allocation* StreamSafeCUDAAllocator::AllocateImpl(size_t size) {
       try {
         underlying_allocation = underlying_allocator_->Allocate(size);
       } catch (const BadAlloc& second_bad_alloc) {
+        VMMV2RemapOutcome remap_status_outcome = VMMV2RemapOutcome::kDisabled;
+        VMMRemapAttemptResult remap_result;
+        size_t remapped_bytes = 0;
+        std::string recovery_retry_summary;
         if (FLAGS_vmm_v2_remap_on_oom) {
           const auto* grow_oom =
               dynamic_cast<const VMMGrowOOM*>(&second_bad_alloc);
           const auto remap_start = std::chrono::steady_clock::now();
-          VMMRemapAttemptResult remap_result;
-          const size_t remapped_bytes = vmm->RemapForAllocation(
+          remapped_bytes = vmm->RemapForAllocation(
               place_,
               size,
               grow_oom == nullptr ? nullptr : &grow_oom->info(),
@@ -493,8 +504,7 @@ phi::Allocation* StreamSafeCUDAAllocator::AllocateImpl(size_t size) {
               std::chrono::duration_cast<std::chrono::microseconds>(
                   std::chrono::steady_clock::now() - remap_start)
                   .count();
-          VMMV2RemapOutcome remap_status_outcome =
-              VMMV2RemapOutcome::kNotAttempted;
+          remap_status_outcome = VMMV2RemapOutcome::kNotAttempted;
           switch (remap_result.status) {
             case VMMRemapAttemptStatus::kNotAttempted:
               break;
@@ -532,7 +542,7 @@ phi::Allocation* StreamSafeCUDAAllocator::AllocateImpl(size_t size) {
                         << " after a sufficiently large free block became "
                            "available during OOM recovery.";
               }
-            } catch (const BadAlloc& final_bad_alloc) {
+            } catch (const BadAlloc& recovery_bad_alloc) {
               if (remapped_bytes > 0) {
                 VLOG(3) << "The remap phase moved "
                         << string::HumanReadableSize(remapped_bytes) << " in "
@@ -547,73 +557,57 @@ phi::Allocation* StreamSafeCUDAAllocator::AllocateImpl(size_t size) {
                         << " allocation retry still failed on GPU "
                         << static_cast<int>(place_.device) << ".";
               }
-              const auto remap_outcome = remapped_bytes > 0
-                                             ? VMMV2RemapOutcome::kRetryFailed
-                                             : remap_status_outcome;
-              const std::string oom_summary = BuildVMMV2OOMSummary(
-                  vmm, place_, size, remap_outcome, remapped_bytes);
-              const std::string initial_summary =
-                  ExtractAllocationFailureSummary(first_bad_alloc);
-              const std::string reclaim_retry_summary =
-                  ExtractAllocationFailureSummary(second_bad_alloc);
-              const std::string final_summary =
-                  ExtractAllocationFailureSummary(final_bad_alloc);
-              const char* final_retry_label =
+              if (remapped_bytes > 0) {
+                remap_status_outcome = VMMV2RemapOutcome::kRetryFailed;
+              }
+              const char* recovery_retry_label =
                   retry_without_remap
                       ? "Retry after detecting an available free block"
                       : "Retry after memory defragmentation";
-              ClearGpuLastError();
-              PADDLE_THROW_BAD_ALLOC(common::errors::ResourceExhausted(
-                  "%s"
-                  "Allocation failure summary:\n"
-                  "1. Initial attempt: %s\n"
-                  "2. Retry after reclaiming pending frees: %s\n"
-                  "3. %s: %s",
-                  oom_summary,
-                  initial_summary.c_str(),
-                  reclaim_retry_summary.c_str(),
-                  final_retry_label,
-                  final_summary.c_str()));
+              recovery_retry_summary = string::Sprintf(
+                  "3. %s: %s\n",
+                  recovery_retry_label,
+                  ExtractAllocationFailureSummary(recovery_bad_alloc));
             }
-          } else {
+          }
+        }
+        if (!underlying_allocation) {
+          ReleaseImpl(place_);
+          try {
+            underlying_allocation = underlying_allocator_->Allocate(size);
+          } catch (const BadAlloc& final_bad_alloc) {
             const std::string oom_summary =
                 BuildVMMV2OOMSummary(vmm,
                                      place_,
                                      size,
                                      remap_status_outcome,
-                                     0,
+                                     remapped_bytes,
                                      remap_result.movable_bytes,
                                      remap_result.required_bytes);
             const std::string initial_summary =
                 ExtractAllocationFailureSummary(first_bad_alloc);
-            const std::string retry_summary =
+            const std::string reclaim_retry_summary =
                 ExtractAllocationFailureSummary(second_bad_alloc);
+            const std::string final_summary =
+                ExtractAllocationFailureSummary(final_bad_alloc);
+            const int final_attempt = recovery_retry_summary.empty() ? 3 : 4;
             ClearGpuLastError();
             PADDLE_THROW_BAD_ALLOC(common::errors::ResourceExhausted(
-                "%s"
-                "Allocation failure summary:\n"
+                "%s%s"
                 "1. Initial attempt: %s\n"
-                "2. Retry after reclaiming pending frees: %s",
+                "2. Retry after reclaiming pending frees: %s\n"
+                "%s"
+                "%d. Retry after releasing memory from all registered "
+                "allocators: %s",
                 oom_summary,
+                paddle::memory::MessageSectionHeader(
+                    "Allocation Failure Summary:"),
                 initial_summary.c_str(),
-                retry_summary.c_str()));
+                reclaim_retry_summary.c_str(),
+                recovery_retry_summary.c_str(),
+                final_attempt,
+                final_summary.c_str()));
           }
-        } else {
-          const std::string oom_summary = BuildVMMV2OOMSummary(
-              vmm, place_, size, VMMV2RemapOutcome::kDisabled);
-          const std::string initial_summary =
-              ExtractAllocationFailureSummary(first_bad_alloc);
-          const std::string retry_summary =
-              ExtractAllocationFailureSummary(second_bad_alloc);
-          ClearGpuLastError();
-          PADDLE_THROW_BAD_ALLOC(common::errors::ResourceExhausted(
-              "%s"
-              "Allocation failure summary:\n"
-              "1. Initial attempt: %s\n"
-              "2. Retry after reclaiming pending frees: %s",
-              oom_summary,
-              initial_summary.c_str(),
-              retry_summary.c_str()));
         }
       }
     }

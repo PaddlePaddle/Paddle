@@ -91,6 +91,7 @@ static std::unordered_set<std::string> support_promotion_ops = {
     "pow",       "elementwise_pow", "equal",           "not_equal",
     "less_than", "less_equal",      "greater_than",    "greater_equal",
     "copysign",  "cross",           "trunc_divide",    "equal_all",
+    "logaddexp",
 };
 
 static std::unordered_set<std::string> support_autocast_ops = {
