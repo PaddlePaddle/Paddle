@@ -18,14 +18,22 @@ set +e
 
 PADDLE_ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}")/../" && pwd )"
 
-source ${PADDLE_ROOT}/ci/coverage_common.sh
-
 echo "::group::Install PyGithub"
 pip install PyGithub
 echo "::endgroup::"
 
 # install lcov
-install_lcov
+if [ ! -f "/root/.cache/lcov-1.16.tar.gz" ];then
+wget -P /home https://paddle-ci.cdn.bcebos.com/coverage/lcov-1.16.tar.gz --no-proxy --no-check-certificate || exit 101
+cp /home/lcov-1.16.tar.gz /root/.cache/lcov-1.16.tar.gz
+else
+    cp /root/.cache/lcov-1.16.tar.gz /home/lcov-1.16.tar.gz
+fi
+tar -xf /home/lcov-1.16.tar.gz -C /
+cd /lcov-1.16
+echo "::group::Install lcov"
+make install
+echo "::endgroup::"
 
 cd ${PADDLE_ROOT}/build
 mkdir -p coverage_files
@@ -65,8 +73,41 @@ else
     NO_PYTHON_COVERAGE_DATA=1
 fi
 
-# ---- C++/python diff part (shared with coverage_info.sh) ----
-gen_coverage_diff
+# ---- C++ diff ----
+if [ "${PR_ID}" != "" ]; then
+    COVERAGE_DIFF_PATTERN="`python ${PADDLE_ROOT}/ci/coverage_pull_request.py files ${PR_ID}`"
+    python ${PADDLE_ROOT}/ci/coverage_pull_request.py diff ${PR_ID} > git-diff.out
+fi
+
+lcov --extract coverage-full.info \
+    ${COVERAGE_DIFF_PATTERN} \
+    -o coverage-diff.info \
+    --rc lcov_branch_coverage=0
+
+python ${PADDLE_ROOT}/ci/coverage_diff.py coverage-diff.info git-diff.out > coverage-diff.tmp
+
+mv -f coverage-diff.tmp coverage-diff.info
+
+cp coverage-diff.info coverage_files
+
+# ---- python diff ----
+if [ "${GIT_PR_ID}" != "" ]; then
+    COVERAGE_DIFF_PATTERN="`python ${PADDLE_ROOT}/ci/coverage_pull_request.py files ${GIT_PR_ID}`"
+    python ${PADDLE_ROOT}/ci/coverage_pull_request.py diff ${GIT_PR_ID} > python-git-diff.out
+fi
+
+if [ "${NO_PYTHON_COVERAGE_DATA}" != "1" ]; then
+    lcov --extract python-coverage-full.info \
+        ${COVERAGE_DIFF_PATTERN} \
+        -o python-coverage-diff.info \
+        --rc lcov_branch_coverage=0
+
+    python ${PADDLE_ROOT}/ci/coverage_diff.py python-coverage-diff.info python-git-diff.out > python-coverage-diff.tmp
+
+    mv -f python-coverage-diff.tmp python-coverage-diff.info
+
+    cp python-coverage-diff.info coverage_files
+fi
 
 # Merge shard cost data into the canonical CFS path. Each shard only recorded
 # the tests it actually ran, so concatenation is duplicate-free; dedupe anyway
