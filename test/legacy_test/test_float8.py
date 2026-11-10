@@ -162,6 +162,54 @@ class TestFP8FullOp(unittest.TestCase):
 
 
 @unittest.skipIf(
+    not core.is_compiled_with_cuda(),
+    "fp8_fp8_half_gemm_fused is a CUDA op",
+)
+class TestFP8GemmBatchBroadcastInferMeta(unittest.TestCase):
+    """FP8OutHalfGemmFusedInferMeta shares the right-aligned batch broadcast
+    loop. Exercise it through static shape inference only, so it runs on any
+    CUDA build regardless of fp8 execution support (no kernel is launched)."""
+
+    def setUp(self):
+        paddle.enable_static()
+
+    def tearDown(self):
+        paddle.disable_static()
+
+    def _infer(self, x_shape, y_shape):
+        main = paddle.static.Program()
+        with paddle.static.program_guard(main):
+            x = paddle.static.data(
+                name='x', shape=x_shape, dtype='float8_e4m3fn'
+            )
+            y = paddle.static.data(
+                name='y', shape=y_shape, dtype='float8_e4m3fn'
+            )
+            out = paddle.linalg.fp8_fp8_half_gemm_fused(
+                x,
+                y,
+                transpose_x=False,
+                transpose_y=True,
+                output_dtype='float16',
+            )
+        return list(out.shape)
+
+    def test_batch_broadcast_error(self):
+        # batch dims 0 vs 10 are not broadcastable (transpose_y: [10,64,32]).
+        with self.assertRaises(ValueError):
+            self._infer([0, 16, 32], [10, 64, 32])
+
+    def test_unknown_vs_zero(self):
+        self.assertEqual(self._infer([-1, 16, 32], [0, 64, 32]), [0, 16, 64])
+
+    def test_unknown_vs_large(self):
+        self.assertEqual(self._infer([-1, 16, 32], [32, 64, 32]), [32, 16, 64])
+
+    def test_unknown_vs_one(self):
+        self.assertEqual(self._infer([-1, 16, 32], [1, 64, 32]), [-1, 16, 64])
+
+
+@unittest.skipIf(
     not (core.is_compiled_with_cuda() or is_custom_device())
     or not check_fp8_support(),
     "Fp8 matmul requires CUDA >= 12.1 on Ada arch or hopper arch",
@@ -179,6 +227,22 @@ class TestFP8MatmulOp(unittest.TestCase):
             "float8_e4m3fn": core.VarDesc.VarType.FP8_E4M3FN,
             "float8_e5m2": core.VarDesc.VarType.FP8_E5M2,
         }
+
+    def test_batch_broadcast_error(self):
+        # batch dims 0 vs 10 are not broadcastable under standard rules.
+        for self.device in [get_device()]:
+            paddle.device.set_device(self.device)
+            for self.dtype in ["float8_e4m3fn"]:
+                input1 = paddle.ones([0, 16, 32], dtype=self.dtype)
+                input2 = paddle.ones([10, 64, 32], dtype=self.dtype)
+                with self.assertRaises(ValueError):
+                    paddle.linalg.fp8_fp8_half_gemm_fused(
+                        input1,
+                        input2,
+                        transpose_x=False,
+                        transpose_y=True,
+                        output_dtype="float16",
+                    )
 
     def test_matmul(self):
         for self.device in [get_device()]:

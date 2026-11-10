@@ -154,8 +154,10 @@ class TestTPConv:
             )
 
         def compare_grads(name, grad1, grad2):
+            # Full and sharded convs may use different cuDNN engines
+            # (e.g. cuDNN v8 heuristics), so allow fp32 accumulation error.
             np.testing.assert_allclose(
-                grad1.numpy(), grad2.numpy(), rtol=1e-6, atol=1e-6
+                grad1.numpy(), grad2.numpy(), rtol=1e-3, atol=2e-5
             )
 
         if data_format == "NCHW":
@@ -256,8 +258,10 @@ class TestTPConv:
             bias_grad_shard = conv_layer.bias.grad.clone()
 
         def compare_grads(name, grad1, grad2):
+            # Full and sharded convs may use different cuDNN engines
+            # (e.g. cuDNN v8 heuristics), so allow fp32 accumulation error.
             np.testing.assert_allclose(
-                grad1.numpy(), grad2.numpy(), rtol=1e-6, atol=1e-7
+                grad1.numpy(), grad2.numpy(), rtol=1e-3, atol=2e-5
             )
 
         def compare_tensors(name, tensor1, tensor2):

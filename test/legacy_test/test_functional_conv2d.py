@@ -361,6 +361,30 @@ class TestFunctionalConv2D_ZeroKernelError(TestCase):
         )
 
 
+class TestFunctionalConv2D_SpatialZeroError(TestCase):
+    """A 0-size spatial dim whose padded input is smaller than the kernel must
+    raise InvalidArgument (align with PyTorch)."""
+
+    def _assert_raises(self, x_shape, w_shape, **kwargs):
+        for place in get_places():
+            with dg.guard(place):
+                x = paddle.to_tensor(
+                    np.random.random(x_shape).astype('float32')
+                )
+                w = paddle.to_tensor(
+                    np.random.random(w_shape).astype('float32')
+                )
+                with self.assertRaises(ValueError):
+                    F.conv2d(x, w, **kwargs)
+
+    def test_height_zero(self):
+        # H=0, padding=0, kernel=3 -> padded 0 < 3
+        self._assert_raises([1, 3, 0, 196], [768, 3, 14, 14], stride=14)
+
+    def test_width_zero(self):
+        self._assert_raises([1, 3, 126, 0], [768, 3, 14, 14], stride=14)
+
+
 if __name__ == "__main__":
     paddle.enable_static()
     unittest.main()

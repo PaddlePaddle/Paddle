@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/phi/infermeta/binary.h"
 
 #include <algorithm>
+#include <string>
 #include <vector>
 
 #include "glog/logging.h"
@@ -727,10 +728,29 @@ void ConvInferMeta(const MetaTensor& input,
       output_shape.push_back(-1);
     } else {
       const int64_t dkernel = dilations_[i] * (filter_data_dims[i] - 1) + 1;
-      int64_t output_size = (in_data_dims[i] + paddings_[2 * i] +
-                             paddings_[2 * i + 1] - dkernel) /
-                                strides[i] +
-                            1;
+      const int64_t padded_input =
+          in_data_dims[i] + paddings_[2 * i] + paddings_[2 * i + 1];
+      // Align with PyTorch: the padded input size per channel must not be
+      // smaller than the effective (dilated) kernel size, i.e. the kernel
+      // size can't be greater than the actual input size.
+      PADDLE_ENFORCE_GE(
+          padded_input,
+          dkernel,
+          common::errors::InvalidArgument(
+              "The padded input size per channel (%d) of Op(Conv) in spatial "
+              "dimension %d should not be smaller than the effective kernel "
+              "size (%d, i.e. dilation * (kernel - 1) + 1); the kernel size "
+              "can't be greater than the actual input size. Received input "
+              "size %d, paddings (%d, %d), dilation %d, kernel size %d.",
+              padded_input,
+              i,
+              dkernel,
+              in_data_dims[i],
+              paddings_[2 * i],
+              paddings_[2 * i + 1],
+              dilations_[i],
+              filter_data_dims[i]));
+      int64_t output_size = (padded_input - dkernel) / strides[i] + 1;
       output_shape.push_back(output_size);
     }
   }
@@ -2128,14 +2148,57 @@ void FusedMatmulInferMeta(const MetaTensor& x,
   }
 
   std::vector<int64_t> new_dims;
-  if (ndims_x > ndims_y) {
-    new_dims.assign(dims_x.begin(), dims_x.end() - 2);
-  } else if (ndims_x < ndims_y) {
-    new_dims.assign(dims_y.begin(), dims_y.end() - 2);
-  } else {
-    new_dims.reserve(ndims_x);
-    for (size_t i = 0; i < ndims_x - 2; ++i) {
-      new_dims.push_back(std::max(dims_x[i], dims_y[i]));
+  {
+    // Broadcast the batch dims, right-aligned. Align with PyTorch/NumPy:
+    // compatible iff equal or one of them is 1; a 0-size dim is not
+    // broadcastable against a non-zero, non-one dim. Leading dims missing on
+    // the lower-rank side count as 1.
+    const size_t bx = ndims_x - 2;
+    const size_t by = ndims_y - 2;
+    const size_t nb = std::max(bx, by);
+    new_dims.reserve(nb);
+    for (size_t i = 0; i < nb; ++i) {
+      const int64_t dx = (i + bx >= nb) ? dims_x[i + bx - nb] : 1;
+      const int64_t dy = (i + by >= nb) ? dims_y[i + by - nb] : 1;
+      if (dx == -1 || dy == -1) {
+        // An unknown dim is compatible only with 1, the other dim, or 0 under
+        // standard broadcasting, so the result is often still static:
+        //   unknown vs unknown/1 -> unknown (-1)
+        //   unknown vs 0         -> 0
+        //   unknown vs n (n > 1) -> n
+        const int64_t known = (dx == -1) ? dy : dx;
+        if (known == -1 || known == 1) {
+          new_dims.push_back(-1);
+        } else if (known == 0) {
+          new_dims.push_back(0);
+        } else {
+          new_dims.push_back(known);
+        }
+        continue;
+      }
+      // i indexes the right-aligned broadcast result, not either input. A
+      // lower-rank side has no dim at this position and counts as 1, so report
+      // each side's own index instead of i, which points at the wrong dim.
+      const std::string x_pos =
+          (i + bx >= nb) ? std::to_string(i + bx - nb) : "absent (counts as 1)";
+      const std::string y_pos =
+          (i + by >= nb) ? std::to_string(i + by - nb) : "absent (counts as 1)";
+      PADDLE_ENFORCE_EQ(
+          dx == dy || dx == 1 || dy == 1,
+          true,
+          common::errors::InvalidArgument(
+              "In fused_matmul, the batch dimensions of Input(X) and Input(Y) "
+              "must be broadcastable (equal, or one of them is 1), but "
+              "received X's shape = [%s] and Y's shape = [%s]: X's batch "
+              "dimension [%s] = %d is not broadcastable with Y's batch "
+              "dimension [%s] = %d.",
+              common::make_ddim(dims_x),
+              common::make_ddim(dims_y),
+              x_pos,
+              dx,
+              y_pos,
+              dy));
+      new_dims.push_back((dx == 0 || dy == 0) ? 0 : std::max(dx, dy));
     }
   }
   if (!x_broadcasted) {
@@ -2173,6 +2236,37 @@ void FusedMatmulInferMeta(const MetaTensor& x,
   } else {
     out->set_dtype(DataType::INT8);
   }
+}
+
+// Returns true only when the rank of `dims` is known and every dim is known and
+// positive, i.e. the tensor is statically known to hold at least one element.
+// A 0-D tensor holds exactly one element, so it returns true.
+static bool IsKnownNonEmpty(const DDim& dims) {
+  if (dims.size() < 0) return false;  // unknown rank
+  for (int i = 0; i < dims.size(); ++i) {
+    if (dims[i] <= 0) return false;
+  }
+  return true;
+}
+
+// Indexing into an axis of size 0 with a non-empty index has no valid index
+// value, so every index is out of bounds. Reject it on the host side (device
+// agnostic) instead of letting the kernels return uninitialized, unallocated or
+// zero-filled output. Nothing is checked when the axis is out of range or the
+// index shape is not fully known; those cases are left to the other checks and
+// to the runtime.
+static void CheckIndexOnEmptyAxis(const DDim& input_dims,
+                                  int axis,
+                                  const DDim& index_dims) {
+  const int axis_v = funcs::CanonicalAxis(axis, input_dims.size());
+  if (axis_v < 0 || axis_v >= input_dims.size()) return;
+  if (input_dims[axis_v] != 0 || !IsKnownNonEmpty(index_dims)) return;
+  PADDLE_THROW(common::errors::OutOfRange(
+      "The index is out of bounds: dimension [%d] of the input has size 0, "
+      "which leaves no valid index value, but received a non-empty index "
+      "of shape [%s].",
+      axis_v,
+      index_dims));
 }
 
 void GatherInferMeta(const MetaTensor& x,
@@ -2221,6 +2315,14 @@ void GatherInferMeta(const MetaTensor& x,
           -input_dim.size(),
           input_dim.size() - 1,
           axis_v));
+
+  // Skipped when `axis` is held as a Tensor (e.g. in a static graph), since
+  // the value read above is only a placeholder then. This path is not covered
+  // by the kernels either: they return early on an empty x without checking
+  // the index.
+  if (!axis.FromTensor()) {
+    CheckIndexOnEmptyAxis(input_dim, axis_v, index_dims);
+  }
 
   if (index_dims.size() == 0) {
     // 0D index will decrease the dimension
@@ -2545,6 +2647,9 @@ void IndexSampleInferMeta(const MetaTensor& x,
           "Inputs(Index) shape of IndexSample op should be 2-D, but "
           "got Index's shape [%s] , please check index shape.",
           input_dims));
+
+  // index_sample picks columns of x, so the indexed axis is always axis 1.
+  CheckIndexOnEmptyAxis(input_dims, 1, index_dims);
   if (config.is_runtime && index_dims[0] != 0) {  // 0-size not check
     PADDLE_ENFORCE_EQ(input_dims[0],
                       index_dims[0],
@@ -3208,19 +3313,57 @@ void MatmulInferMeta(const MetaTensor& x,
   }
 
   std::vector<int64_t> new_dims;
-  if (ndims_x > ndims_y) {
-    new_dims.assign(dims_x.begin(), dims_x.end() - 2);
-  } else if (ndims_x < ndims_y) {
-    new_dims.assign(dims_y.begin(), dims_y.end() - 2);
-  } else {
-    new_dims.reserve(ndims_x);
-    for (size_t i = 0; i < ndims_x - 2; ++i) {
-      // If one of them is 0, choose 0.
-      if (dims_x[i] == 0 || dims_y[i] == 0) {
-        new_dims.push_back(0);
-      } else {
-        new_dims.push_back(std::max(dims_x[i], dims_y[i]));
+  {
+    // Broadcast the batch dims, right-aligned. Align with PyTorch/NumPy:
+    // compatible iff equal or one of them is 1; a 0-size dim is not
+    // broadcastable against a non-zero, non-one dim. Leading dims missing on
+    // the lower-rank side count as 1.
+    const size_t bx = ndims_x - 2;
+    const size_t by = ndims_y - 2;
+    const size_t nb = std::max(bx, by);
+    new_dims.reserve(nb);
+    for (size_t i = 0; i < nb; ++i) {
+      const int64_t dx = (i + bx >= nb) ? dims_x[i + bx - nb] : 1;
+      const int64_t dy = (i + by >= nb) ? dims_y[i + by - nb] : 1;
+      if (dx == -1 || dy == -1) {
+        // An unknown dim is compatible only with 1, the other dim, or 0 under
+        // standard broadcasting, so the result is often still static:
+        //   unknown vs unknown/1 -> unknown (-1)
+        //   unknown vs 0         -> 0
+        //   unknown vs n (n > 1) -> n
+        const int64_t known = (dx == -1) ? dy : dx;
+        if (known == -1 || known == 1) {
+          new_dims.push_back(-1);
+        } else if (known == 0) {
+          new_dims.push_back(0);
+        } else {
+          new_dims.push_back(known);
+        }
+        continue;
       }
+      // i indexes the right-aligned broadcast result, not either input. A
+      // lower-rank side has no dim at this position and counts as 1, so report
+      // each side's own index instead of i, which points at the wrong dim.
+      const std::string x_pos =
+          (i + bx >= nb) ? std::to_string(i + bx - nb) : "absent (counts as 1)";
+      const std::string y_pos =
+          (i + by >= nb) ? std::to_string(i + by - nb) : "absent (counts as 1)";
+      PADDLE_ENFORCE_EQ(
+          dx == dy || dx == 1 || dy == 1,
+          true,
+          common::errors::InvalidArgument(
+              "In matmul, the batch dimensions of Input(X) and Input(Y) "
+              "must be broadcastable (equal, or one of them is 1), but "
+              "received X's shape = [%s] and Y's shape = [%s]: X's batch "
+              "dimension [%s] = %d is not broadcastable with Y's batch "
+              "dimension [%s] = %d.",
+              common::make_ddim(dims_x),
+              common::make_ddim(dims_y),
+              x_pos,
+              dx,
+              y_pos,
+              dy));
+      new_dims.push_back((dx == 0 || dy == 0) ? 0 : std::max(dx, dy));
     }
   }
   if (!x_broadcasted) {
@@ -4486,6 +4629,10 @@ void TakeAlongAxisInferMeta(const MetaTensor& x,
           "Dimension of the input(Index) of TakeAlongAxisOp should be greater "
           "than 0, but received %d.",
           index_dim.size()));
+
+  // Previously a size-0 `axis` with a non-empty index silently returned a
+  // zero-filled output; it is now rejected like any other out-of-bounds index.
+  CheckIndexOnEmptyAxis(input_dim, axis, index_dim);
 
   out->set_dims(index_dim);
   out->set_dtype(x.dtype());
