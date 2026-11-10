@@ -23,6 +23,28 @@
 
 namespace phi {
 namespace funcs {
+
+// Host-side dispatch predicate shared by the bilinear (2D) and trilinear (3D)
+// accuracy-compatible kernels and by their forward/backward paths, so the four
+// call sites stay in lockstep; a divergence would silently run the forward on
+// the compat kernel and the backward on the original one. Callers still gate on
+// FLAGS_use_accuracy_compatible_kernel, the dtype whitelist and interp_method;
+// `size_changed` is whether any spatial extent differs between input and
+// output.
+//
+// align_mode only matters without align_corners; torch has no align_mode=1
+// equivalent. torch cannot express a scale together with an overriding output
+// size, so that combination keeps the original kernel. Without a scale the
+// same-size case falls through to the Copy fast path.
+inline bool UseAccuracyCompatibleKernel(bool align_corners,
+                                        int align_mode,
+                                        bool has_scale,
+                                        bool has_size,
+                                        bool size_changed) {
+  return (align_corners || align_mode == 0) && !(has_scale && has_size) &&
+         (has_scale || size_changed);
+}
+
 namespace bilinear_compat {
 
 // Match the separate FP32 operations in torch 2.12's _upsample_linear.

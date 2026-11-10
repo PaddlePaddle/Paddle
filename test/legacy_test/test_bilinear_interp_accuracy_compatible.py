@@ -575,6 +575,8 @@ class TestBilinearAccuracyCompatible(unittest.TestCase):
                 data.astype(np.float64),
                 {"size": [3, 4], "mode": 'bilinear'},
             ),
+            # Without a scale, an unchanged size is still a copy.
+            (data, {"size": [7, 9], "mode": 'bilinear'}),
         ]
         for values, kwargs in cases:
             with self.subTest(kwargs=kwargs, dtype=values.dtype):

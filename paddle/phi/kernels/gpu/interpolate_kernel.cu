@@ -1232,11 +1232,12 @@ static void Interpolate2DCUDAFwd(
                 std::is_same<T, phi::bfloat16>::value) {
     const bool has_scale = scale_tensor || !scale.empty();
     const bool has_size = out_size || (size_tensor && size_tensor->size() > 0);
-    // align_mode only matters without align_corners; torch has no
-    // align_mode=1 equivalent.
     if (FLAGS_use_accuracy_compatible_kernel && interp_method == "bilinear" &&
-        (align_corners || align_mode == 0) && !(has_scale && has_size) &&
-        (has_scale || in_h != out_h || in_w != out_w)) {
+        funcs::UseAccuracyCompatibleKernel(align_corners,
+                                           align_mode,
+                                           has_scale,
+                                           has_size,
+                                           in_h != out_h || in_w != out_w)) {
       funcs::bilinear_compat::LaunchForward(input_data,
                                             output_data,
                                             n * c * out_h * out_w,
@@ -1245,7 +1246,7 @@ static void Interpolate2DCUDAFwd(
                                             out_h,
                                             out_w,
                                             c,
-                                            data_layout == DataLayout::NHWC,
+                                            data_layout != DataLayout::NCHW,
                                             align_corners,
                                             scale_h,
                                             scale_w,
@@ -1769,8 +1770,12 @@ static void Interpolate3DCUDAFwd(
     const bool has_scale = scale_tensor || !scale.empty();
     const bool has_size = out_size || (size_tensor && size_tensor->size() > 0);
     if (FLAGS_use_accuracy_compatible_kernel && interp_method == "trilinear" &&
-        (align_corners || align_mode == 0) && !(has_scale && has_size) &&
-        (has_scale || in_d != out_d || in_h != out_h || in_w != out_w)) {
+        funcs::UseAccuracyCompatibleKernel(
+            align_corners,
+            align_mode,
+            has_scale,
+            has_size,
+            in_d != out_d || in_h != out_h || in_w != out_w)) {
       funcs::trilinear_compat::LaunchForward(input_data,
                                              output_data,
                                              n * c * out_d * out_h * out_w,
@@ -1781,7 +1786,7 @@ static void Interpolate3DCUDAFwd(
                                              out_h,
                                              out_w,
                                              c,
-                                             data_layout == DataLayout::NHWC,
+                                             data_layout != DataLayout::NCHW,
                                              align_corners,
                                              scale_d,
                                              scale_h,
