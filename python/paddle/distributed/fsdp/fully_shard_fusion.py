@@ -357,10 +357,13 @@ class TensorFusionBuffer:
         tmp_buffer = self.get_tmp_buffer()
         # AVG folds the scale into NCCL when it is exactly 1/nranks of this
         # group. Otherwise SUM; fp32 defers the scale to the reduced shard in
-        # finish_grads_sync, low-precision comm pre-scales the full buffer.
+        # finish_grads_sync, other dtypes pre-scale the full buffer.
         if self.grad_div * self.grad_accum_steps == self.fsdp_degree:
             op = paddle.distributed.ReduceOp.AVG
-        elif self.grad_comm_dtype is None:
+        elif (
+            self.grad_comm_dtype is None
+            and self.main_grad_dtype == paddle.float32
+        ):
             self.grad_scale_pending = self.grad_scale != 1.0
             op = paddle.distributed.ReduceOp.SUM
         else:
