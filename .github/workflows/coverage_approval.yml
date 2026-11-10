@@ -15,8 +15,7 @@ jobs:
       (github.event.review.user.login == 'swgu98' || github.event.review.user.login == 'sneaxiy') &&
       contains(github.event.review.body, 'lgtm') &&
       contains(github.event.review.body, 'coverage')
-    runs-on:
-      group: APPROVAL
+    runs-on: ubuntu-latest
     steps:
       - name: Record coverage approval
         env:

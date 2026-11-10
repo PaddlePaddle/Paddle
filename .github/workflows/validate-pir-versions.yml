@@ -6,8 +6,7 @@ on:
 
 jobs:
   check-version-and-create-issue:
-    runs-on:
-      group: APPROVAL
+    runs-on: ubuntu-latest
     if: github.ref_type == 'branch' && startsWith(github.ref, 'refs/heads/release/') && github.repository_owner == 'PaddlePaddle'
     steps:
       - name: Cleanup
