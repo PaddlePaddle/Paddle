@@ -375,13 +375,19 @@ class TestEmbeddingDeterministicAcrossSortThreshold(unittest.TestCase):
                 ids_shape, vocab_size, hidden_size, dtype, id_mode
             )
             for compatible in [False, True]:
-                if len(ids_np) > SORT_THRESHOLD:
+                # The sort path is only taken when the compat flag is on and
+                # K > threshold; otherwise the feature kernel runs for all K,
+                # and round_acc_first is on only when compat and K <= threshold.
+                if compatible and len(ids_np) > SORT_THRESHOLD:
                     expected = sort_kernel_reference(
                         ids_np, grad_np, vocab_size, dtype
                     )
                 else:
+                    round_acc_first = (
+                        compatible and len(ids_np) <= SORT_THRESHOLD
+                    )
                     expected = feature_kernel_reference(
-                        ids_np, grad_np, vocab_size, dtype, compatible
+                        ids_np, grad_np, vocab_size, dtype, round_acc_first
                     )
                 for ids_dtype in self.ids_dtypes:
                     ids = paddle.to_tensor(ids_np.reshape(ids_shape)).astype(

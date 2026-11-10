@@ -109,10 +109,14 @@ struct EmbeddingGradCUDAFunctor {
 
       if (FLAGS_embedding_deterministic == 1) {
         // Same dispatch as torch's embedding_dense_backward_cuda: the feature
-        // kernel for K <= 3072, otherwise sort + two pass accumulation.
+        // kernel for K <= 3072, otherwise sort + two pass accumulation. Both
+        // the sort path and the feature kernel's extra rounding change the
+        // default Paddle numerics, so they are gated behind
+        // FLAGS_use_accuracy_compatible_kernel; with the flag off the original
+        // feature kernel (zero extra memory) is used for all K.
         constexpr size_t kSortThreshold = 3072;
 #if defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
-        if (K > kSortThreshold) {
+        if (FLAGS_use_accuracy_compatible_kernel && K > kSortThreshold) {
           funcs::LaunchEmbeddingGradSortKernel<T, IdT>(
               dev_ctx_, ids, d_output, d_table, N, D, K);
         } else  // NOLINT
