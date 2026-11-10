@@ -20,14 +20,21 @@ jobs:
     name: Check
     needs: [check-bypass]
     if: ${{ needs.check-bypass.outputs.can-skip != 'true' }}
-    runs-on:
-      group: Template
+    runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
       contents: read
     steps:
       - name: Clone paddle
         uses: actions/checkout@v6
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.10"
+
+      - name: Install dependencies
+        run: |
+          pip install httpx requests
 
       - name: Check PR Template
         env:
