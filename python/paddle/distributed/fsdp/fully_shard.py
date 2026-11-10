@@ -126,9 +126,6 @@ def _fully_shard_manual_parallel(
     comm_unit_size=None,
     reshard_policy="after_forward",
     reshard_filter="all",
-    hsdp_degree=None,
-    hsdp_dense_outer=None,
-    hsdp_expert_outer=None,
 ):
     layers = module._layers if isinstance(module, MetaParallelBase) else module
     if optimizer is not None:
@@ -147,9 +144,6 @@ def _fully_shard_manual_parallel(
         comm_unit_size=comm_unit_size,
         reshard_policy=reshard_policy,
         reshard_filter=reshard_filter,
-        hsdp_degree=hsdp_degree,
-        hsdp_dense_outer=hsdp_dense_outer,
-        hsdp_expert_outer=hsdp_expert_outer,
     )
     layers._fsdp_context.set_grad_accum_steps(grad_accum_steps)
     if optimizer is not None:
@@ -199,9 +193,6 @@ def fully_shard(
     comm_unit_size: int | None = None,
     reshard_policy: str = "after_forward",
     reshard_filter: str | Callable[..., bool] = "all",
-    hsdp_degree: int | None = None,
-    hsdp_dense_outer: str | None = None,
-    hsdp_expert_outer: str | None = None,
 ) -> paddle.nn.Layer:
     """
     Apply fully sharded data parallel (FSDP) to the given module.
@@ -269,15 +260,6 @@ def fully_shard(
             ``"dense"``: non-expert parameters only. A callable for per-layer
             selection is reserved and not supported yet. Defaults to
             ``"all"``.
-        hsdp_degree (int | None, optional): Manual parallel mode only.
-            Number of HSDP groups the sharding group is split into, each
-            in one node. None or 1 disables HSDP. Defaults to None.
-        hsdp_dense_outer (str | None, optional): Manual parallel mode only.
-            Dense params across HSDP groups: ``"no_shard"`` (replicated,
-            default) or ``"optim_grads_params"`` (not HSDP). Defaults to None.
-        hsdp_expert_outer (str | None, optional): Manual parallel mode only.
-            Same for expert params; None follows ``hsdp_dense_outer``.
-            Defaults to None.
 
     Returns:
         module: A wrapper module that applies FSDP to the input module.
@@ -337,7 +319,4 @@ def fully_shard(
             *args,
             reshard_policy=reshard_policy,
             reshard_filter=reshard_filter,
-            hsdp_degree=hsdp_degree,
-            hsdp_dense_outer=hsdp_dense_outer,
-            hsdp_expert_outer=hsdp_expert_outer,
         )

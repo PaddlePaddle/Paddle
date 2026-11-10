@@ -44,11 +44,6 @@ from paddle.distributed.fsdp._fp8_utils import (
 from paddle.distributed.fsdp._fsdp_context import (
     register_fsdp_context,
 )
-from paddle.distributed.fsdp._hybrid_shard import (
-    OuterLayout,
-    build_hybrid_groups,
-    check_outer_strategy,
-)
 
 
 class StreamTask:
@@ -98,9 +93,7 @@ class BufferGroup:
     whole_owner_rank: int = None
     whole_shard_numel: int = None
     fsdp_group: object = None
-    outer: OuterLayout = None
-    # Params shared by several FSDP units get grads late; no early sync.
-    outer_eager: bool = True
+    outer_group: object = None  # HSDP replica group; None without HSDP
     params_buffer: 'TensorFusionBuffer' = None
     grads_buffer: 'TensorFusionBuffer' = None
     grads_use_sum: int = 0
@@ -177,7 +170,6 @@ class TensorFusionBuffer:
         self.param_offsets = {}
         self.tmp_data_buffer = None
         self.comm_task = None
-        self.outer_task = None
         self.fp8 = None  # set by init_fp8_buffer
         self.trainable = params[0].trainable
 
@@ -432,42 +424,19 @@ class FSDPBufferManager:
         main_grad_dtype=None,
         grad_comm_dtype=None,
         fp8_main_dtype=paddle.float32,
-        hsdp_degree=None,
-        hsdp_dense_outer=None,
-        hsdp_expert_outer=None,
     ):
         self.model = model
         self.grad_comm_dtype = grad_comm_dtype
         self._comm_streams = {}
         self.hcg = fleet.get_hybrid_communicate_group()
-        # The full DP group even with HSDP (grad_div, clip).
-        self._fsdp_group = self.hcg.get_sharding_parallel_group()
-        use_ep = (
-            hasattr(self.hcg, "get_expert_parallel_world_size")
-            and self.hcg.get_expert_parallel_world_size() > 1
-        )
-        self._ep_fsdp_group = (
-            self.hcg.get_moe_sharding_parallel_group()
-            if use_ep
-            else self._fsdp_group
-        )
-        dense_strategy = check_outer_strategy(
-            "hsdp_dense_outer",
-            hsdp_dense_outer,
-            hsdp_degree,
-            "no_shard",
-        )
-        expert_strategy = check_outer_strategy(
-            "hsdp_expert_outer",
-            hsdp_expert_outer,
-            hsdp_degree,
-            dense_strategy,
-        )
+        self._fsdp_group = self.hcg.get_fsdp_group()
+        self._ep_fsdp_group = self.hcg.get_fsdp_group(is_expert=True)
+
         self.main_grad_dtype = (
             main_grad_dtype if main_grad_dtype is not None else paddle.float32
         )
 
-        # Layer types to wrap as FSDP sharding layers
+        # Layer types to wrap as FSDP layers
         # Note: 'Qwen3VLTextDecoderLayer' is temporary; fleet models all use 'TransformerLayer'
         self.fsdp_unit_layers = fsdp_unit_layers or [
             'TransformerLayer',
@@ -484,46 +453,25 @@ class FSDPBufferManager:
                 self.tie_param_name = input_embeddings.weight.name
 
         param_to_unit_id = {}
-        unit_cnt = Counter()
         for unit_id, m in enumerate(self.model.modules()):
             if self.is_fsdp_unit(m):
                 for p in m.parameters():
                     param_to_unit_id[p.name] = unit_id
-                    unit_cnt[p.name] += 1
-
-        def group_of(param, default):
-            color = getattr(param, "color", None)
-            if isinstance(color, dict) and color.get("group") is not None:
-                return color["group"]
-            return default
-
-        def is_expert_param(param):
-            return getattr(param, "is_moe_param", False) or getattr(
-                param, "expert", False
-            )
-
-        expert_groups = {}
-        if expert_strategy == "no_shard":
-            for param in self.model.parameters():
-                if is_expert_param(param):
-                    group = group_of(param, self._ep_fsdp_group)
-                    expert_groups.setdefault(id(group), group)
-        dense_inner, outers, expert_inner = build_hybrid_groups(
-            self._fsdp_group,
-            list(expert_groups.values()),
-            hsdp_degree,
-            dense_strategy,
-            expert_strategy,
-        )
 
         keyed_params = OrderedDict()
         for param in self.model.parameters():
-            is_expert = is_expert_param(param)
-            fsdp_group = group_of(
-                param, self._ep_fsdp_group if is_expert else dense_inner
+            is_expert = getattr(param, "is_moe_param", False) or getattr(
+                param, "expert", False
             )
-            if is_expert:
-                fsdp_group = expert_inner.get(id(fsdp_group), fsdp_group)
+            color = getattr(param, "color", None)
+            if isinstance(color, dict) and color.get("group") is not None:
+                fsdp_group = color["group"]
+            elif is_expert:
+                fsdp_group = self._ep_fsdp_group
+            else:
+                fsdp_group = self.hcg.get_fsdp_inner_group()
+            if is_expert and self.hcg.get_fsdp_outer_group(is_expert=True):
+                fsdp_group = self.hcg.get_fsdp_inner_group(is_expert=True)
             key = (
                 param.dtype,
                 param.trainable,
@@ -644,13 +592,15 @@ class FSDPBufferManager:
                 shard_align_numel=shard_align,
                 comm_stream=self._comm_stream(group.fsdp_group),
             )
-            outer = group.outer = outers.get(id(group.fsdp_group))
-            group.outer_eager = all(unit_cnt[p.name] <= 1 for p in params)
-            if outer is not None:
+            # HSDP: buffers on the HCG inner group replicate over the outer.
+            is_expert = group.is_expert_param
+            if group.fsdp_group is self.hcg.get_fsdp_inner_group(is_expert):
+                group.outer_group = self.hcg.get_fsdp_outer_group(is_expert)
+            if group.outer_group is not None:
                 paddle.distributed.broadcast(
                     group.params_buffer.data_buffer,
-                    src=outer.group.ranks[0],
-                    group=outer.group,
+                    src=group.outer_group.ranks[0],
+                    group=group.outer_group,
                 )
             if fp8_numel:
                 init_fp8_buffer(group.params_buffer, params)
@@ -719,11 +669,10 @@ class FSDPBufferManager:
             for attr, value in group.clip_attrs:
                 setattr(data_buffer, attr, value)
             # Count outer replicas once; keep-whole groups clip the params.
-            if group.outer is not None and group.outer.is_replica:
+            if group.outer_group is not None and group.outer_group.rank != 0:
                 replicas = group.params if group.keep_whole else []
                 for t in [data_buffer, *replicas]:
                     t.is_firstly_shared = False
-                    t._outer_replica = True
             # A replicated grad buffer is counted in the global norm by rank 0.
             if (
                 group.grads_buffer is not None
@@ -1219,10 +1168,6 @@ class FSDPCommManager:
         grads_buffer = self.buffer_manager.buffer_groups[gid].grads_buffer
         if grads_buffer is None:
             return
-        if grads_buffer.outer_task is not None:
-            raise RuntimeError(
-                f"Grad of {param.name} arrived after its outer sync started."
-            )
         while grads_buffer in self.grad_reduce_queue:
             self._wait_for_grad_comm(
                 queue_limit=len(self.grad_reduce_queue) - 1
@@ -1291,10 +1236,6 @@ class FSDPCommManager:
                 continue
             if group.fsdp_unit_id > unit_id:
                 self._reduce_group_grads(group)
-                gb = group.grads_buffer
-                # 1-rank inner (replicated experts) has no RS: sync now.
-                if gb is not None and gb.fsdp_degree == 1:
-                    self._issue_outer_sync(gb, scale=True)
 
     def _release_params_after_unit(self, unit_id):
         if unit_id is None:
@@ -1343,32 +1284,6 @@ class FSDPCommManager:
         grads_buffer.comm_task = None
         grads_buffer.accumulate_reduced_grad()
         self._release_reduced_grad_views(grads_buffer)
-        self._issue_outer_sync(grads_buffer)
-
-    def _issue_outer_sync(self, grads_buffer, scale=False):
-        # Last micro-batch: overlap the outer sync with backward.
-        group = self.buffer_manager.buffer_groups[grads_buffer.unique_key]
-        if (
-            group.outer is None
-            or not group.outer_eager
-            or grads_buffer.outer_task is not None
-            or self._backward_cnt < self.grad_accum_steps
-        ):
-            return
-        # Scale before the outer sum, as finish_grads_sync does.
-        if (
-            scale
-            and grads_buffer.grad_scale != 1.0
-            and not grads_buffer.grad_scaled
-        ):
-            grads_buffer.data_buffer.scale_(grads_buffer.grad_scale)
-            grads_buffer.grad_scaled = True
-        buf = grads_buffer.data_buffer
-        grads_buffer.outer_task = run_on_stream(
-            self.buffer_manager._comm_stream(group.outer.group),
-            (buf,),
-            lambda: group.outer.sync_grad(buf),
-        )
 
     def _wait_for_grad_comm(self, queue_limit=None, next_numel=0):
         # Default bound: grad_queue_limit buffers by layer or
@@ -1424,35 +1339,19 @@ class FSDPCommManager:
                 ):
                     grads_buffer.data_buffer.scale_(grads_buffer.grad_scale)
                     grads_buffer.grad_scaled = True
-                continue
-            if grads_buffer.tmp_data_buffer is None:
-                continue
-            grads_buffer.do_reduce_scatter().wait()
-            grads_buffer.accumulate_reduced_grad()
-            self._release_reduced_grad_views(grads_buffer)
-
-        # Sync the scaled grads over the outer group.
-        for group in self.buffer_manager.buffer_groups:
-            grads_buffer = group.grads_buffer
-            if (
-                grads_buffer is None
-                or group.outer is None
-                or getattr(grads_buffer, "_data_released", False)
-            ):
-                continue
-            if grads_buffer.outer_task is not None:
-                grads_buffer.outer_task.wait()
-                grads_buffer.outer_task = None
-                continue
-            # Outer-sum sharded, 1-rank and keep-whole grads (Muon owners too).
-            if not (
+            elif grads_buffer.tmp_data_buffer is not None:
+                grads_buffer.do_reduce_scatter().wait()
+                grads_buffer.accumulate_reduced_grad()
+                self._release_reduced_grad_views(grads_buffer)
+            # HSDP: sum the inner-reduced grads over the outer group.
+            if group.outer_group is not None and (
                 grads_buffer.is_sharded
                 or grads_buffer.fsdp_degree == 1
-                or group.whole_shard_numel is not None
-                or group.whole_owner_rank is not None
+                or group.keep_whole
             ):
-                continue
-            group.outer.sync_grad(grads_buffer.data_buffer)
+                paddle.distributed.all_reduce(
+                    grads_buffer.data_buffer, group=group.outer_group
+                )
 
         for param in self.buffer_manager.model.parameters():
             buf = getattr(param, "_fusion_buffer", None)
@@ -1554,9 +1453,6 @@ class FullyShardFusion:
         comm_unit_size=None,
         reshard_policy="after_forward",
         reshard_filter="all",
-        hsdp_degree=None,
-        hsdp_dense_outer=None,
-        hsdp_expert_outer=None,
     ):
         self.model = model
         self.mp_policy = mp_policy
@@ -1568,9 +1464,6 @@ class FullyShardFusion:
             if mp_policy is None
             else mp_policy.grad_comm_dtype,
             fp8_main_dtype=fp8_main_dtype,
-            hsdp_degree=hsdp_degree,
-            hsdp_dense_outer=hsdp_dense_outer,
-            hsdp_expert_outer=hsdp_expert_outer,
         )
         self.comm_manager = FSDPCommManager(
             self.buffer_manager,
