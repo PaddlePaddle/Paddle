@@ -18,6 +18,7 @@
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/amp_type_traits.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/funcs/cub.h"
 #include "paddle/phi/kernels/funcs/radix_sort.h"
@@ -200,19 +201,20 @@ __global__ void EmbeddingGradSortInitKernel(const IdT* ids,
 static __global__ void EmbeddingGradPartialsPerSegmentKernel(
     const int64_t* segment_offsets,
     const int64_t* num_segments_ptr,
-    const int64_t max_segments,
+    const int64_t size_with_tail,
     const int64_t K,
     int64_t* partials_per_segment) {
   int64_t s = static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
-  if (s < max_segments) {
+  if (s < size_with_tail) {
     const int64_t num_segments = *num_segments_ptr;
     int64_t size = 0;
     if (s < num_segments) {
       int64_t end = s == num_segments - 1 ? K : segment_offsets[s + 1];
       size = end - segment_offsets[s];
     }
-    // Zero the tail so that the exclusive sum of partials_per_segment also
-    // gives the total number of partials at its last element.
+    // Zero the tail (at least one element) so that the exclusive sum of
+    // partials_per_segment gives the total number of partials at its last
+    // element.
     partials_per_segment[s] = (size + kEmbeddingGradRowsPerPartial - 1) /
                               kEmbeddingGradRowsPerPartial;
   }
@@ -226,26 +228,24 @@ static __global__ void EmbeddingGradPartialOffsetKernel(
     int64_t* partial_offsets) {
   int64_t s = static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
   if (s < *num_segments_ptr) {
-    int64_t p = partials_per_segment_offset[s];
-    for (int64_t i = 0; i < partials_per_segment[s]; ++i) {
-      partial_offsets[p + i] =
-          segment_offsets[s] + i * kEmbeddingGradRowsPerPartial;
+    // Load into registers, otherwise they are reloaded after every store to
+    // partial_offsets since the pointers may alias.
+    int64_t* out = partial_offsets + partials_per_segment_offset[s];
+    const int64_t num_partials = partials_per_segment[s];
+    const int64_t segment_offset = segment_offsets[s];
+    for (int64_t i = 0; i < num_partials; ++i) {
+      out[i] = segment_offset + i * kEmbeddingGradRowsPerPartial;
     }
   }
 }
 template <typename T, typename MT>
-__global__ void EmbeddingGradPartialSumKernel(
-    const T* output,
-    const int64_t* sorted_positions,
-    const int64_t K,
-    const int64_t D,
-    const int64_t* partial_offsets,
-    const int64_t* partials_per_segment,
-    const int64_t* partials_per_segment_offset,
-    const int64_t max_segments,
-    MT* partial_sums) {
-  const int64_t num_partials = partials_per_segment_offset[max_segments - 1] +
-                               partials_per_segment[max_segments - 1];
+__global__ void EmbeddingGradPartialSumKernel(const T* output,
+                                              const int64_t* sorted_positions,
+                                              const int64_t K,
+                                              const int64_t D,
+                                              const int64_t* partial_offsets,
+                                              const int64_t num_partials,
+                                              MT* partial_sums) {
   int64_t gid = static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
   int64_t p = gid / D;
   int64_t feature = gid % D;
@@ -272,16 +272,20 @@ __global__ void EmbeddingGradSumAndScatterKernel(
   int64_t s = gid / D;
   int64_t feature = gid % D;
   if (s >= *num_segments_ptr) return;
-  int64_t begin = partials_per_segment_offset[s];
-  int64_t end = begin + partials_per_segment[s];
+  const int64_t num_partials = partials_per_segment[s];
+  const MT* partial =
+      partial_sums + partials_per_segment_offset[s] * D + feature;
   MT sum = static_cast<MT>(0);
-  for (int64_t p = begin; p < end; ++p) {
-    sum += partial_sums[p * D + feature];
+  for (int64_t p = 0; p < num_partials; ++p, partial += D) {
+    sum += *partial;
   }
   table[unique_ids[s] * D + feature] = static_cast<T>(sum);
 }
 // d_table must be zero filled. Extra device memory is about
-// (K / kEmbeddingGradRowsPerPartial + min(K, N)) * D * sizeof(MT).
+// num_partials * D * sizeof(MT), where num_partials is the sum over unique ids
+// of ceil(count / kEmbeddingGradRowsPerPartial). It is read back to host with
+// one synchronization, instead of allocating for the upper bound
+// K / kEmbeddingGradRowsPerPartial + min(K, N).
 template <typename T, typename IdT>
 void LaunchEmbeddingGradSortKernel(const GPUContext& dev_ctx,
                                    const IdT* ids,
@@ -348,31 +352,40 @@ void LaunchEmbeddingGradSortKernel(const GPUContext& dev_ctx,
   // 3. Partials of at most kEmbeddingGradRowsPerPartial rows per segment.
   DenseTensor partials_per_segment_t, partials_per_segment_offset_t,
       scan_temp_t;
+  // One extra element so that the exclusive sum ends with num_partials.
+  const int64_t size_with_tail = max_segments + 1;
   int64_t* partials_per_segment =
-      alloc_int64(&partials_per_segment_t, max_segments);
+      alloc_int64(&partials_per_segment_t, size_with_tail);
   int64_t* partials_per_segment_offset =
-      alloc_int64(&partials_per_segment_offset_t, max_segments);
-  EmbeddingGradPartialsPerSegmentKernel<<<ceil_div(max_segments, kThreads),
+      alloc_int64(&partials_per_segment_offset_t, size_with_tail);
+  EmbeddingGradPartialsPerSegmentKernel<<<ceil_div(size_with_tail, kThreads),
                                           kThreads,
                                           0,
                                           stream>>>(
-      segment_offsets, num_segments, max_segments, K, partials_per_segment);
+      segment_offsets, num_segments, size_with_tail, K, partials_per_segment);
   temp_bytes = 0;
   cub::DeviceScan::ExclusiveSum(nullptr,
                                 temp_bytes,
                                 partials_per_segment,
                                 partials_per_segment_offset,
-                                max_segments,
+                                size_with_tail,
                                 stream);
   cub::DeviceScan::ExclusiveSum(alloc_temp(&scan_temp_t, temp_bytes),
                                 temp_bytes,
                                 partials_per_segment,
                                 partials_per_segment_offset,
-                                max_segments,
+                                size_with_tail,
                                 stream);
-  const int64_t max_partials = K / kEmbeddingGradRowsPerPartial + max_segments;
+  int64_t num_partials = 0;
+  memory_utils::Copy(phi::CPUPlace(),
+                     &num_partials,
+                     dev_ctx.GetPlace(),
+                     partials_per_segment_offset + max_segments,
+                     sizeof(int64_t),
+                     stream);
+  dev_ctx.Wait();
   DenseTensor partial_offsets_t;
-  int64_t* partial_offsets = alloc_int64(&partial_offsets_t, max_partials);
+  int64_t* partial_offsets = alloc_int64(&partial_offsets_t, num_partials);
   EmbeddingGradPartialOffsetKernel<<<ceil_div(max_segments, kThreads),
                                      kThreads,
                                      0,
@@ -384,19 +397,11 @@ void LaunchEmbeddingGradSortKernel(const GPUContext& dev_ctx,
 
   // 4. Sum every partial, then the partials of every segment, both in MT.
   DenseTensor partial_sums_t;
-  partial_sums_t.Resize({max_partials, D});
+  partial_sums_t.Resize({num_partials, D});
   MT* partial_sums = dev_ctx.template Alloc<MT>(&partial_sums_t);
   EmbeddingGradPartialSumKernel<T, MT>
-      <<<ceil_div(max_partials * D, kThreads), kThreads, 0, stream>>>(
-          d_out,
-          positions,
-          K,
-          D,
-          partial_offsets,
-          partials_per_segment,
-          partials_per_segment_offset,
-          max_segments,
-          partial_sums);
+      <<<ceil_div(num_partials * D, kThreads), kThreads, 0, stream>>>(
+          d_out, positions, K, D, partial_offsets, num_partials, partial_sums);
   EmbeddingGradSumAndScatterKernel<T, MT>
       <<<ceil_div(max_segments * D, kThreads), kThreads, 0, stream>>>(
           partial_sums,
