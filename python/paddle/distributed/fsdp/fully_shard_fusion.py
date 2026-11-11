@@ -165,7 +165,8 @@ class TensorFusionBuffer:
         self.grad_div = grad_div if grad_div is not None else fsdp_group.nranks
         self.grad_accum_steps = 1
         self.grad_scale = 1.0 / self.grad_div
-        self.grad_scaled = False
+        self.grad_scaled = False  # unsharded: already scaled this step
+        self.grad_scale_pending = False  # sharded: shard still needs scaling
         self.total_buffer_size = 0
         self.param_offsets = {}
         self.tmp_data_buffer = None
@@ -355,9 +356,16 @@ class TensorFusionBuffer:
     def do_reduce_scatter(self):
         tmp_buffer = self.get_tmp_buffer()
         # AVG folds the scale into NCCL when it is exactly 1/nranks of this
-        # group; otherwise (grad accumulation, EP groups) pre-scale and SUM.
+        # group. Otherwise SUM; fp32 defers the scale to the reduced shard in
+        # finish_grads_sync, other dtypes pre-scale the full buffer.
         if self.grad_div * self.grad_accum_steps == self.fsdp_degree:
             op = paddle.distributed.ReduceOp.AVG
+        elif (
+            self.grad_comm_dtype is None
+            and self.main_grad_dtype == paddle.float32
+        ):
+            self.grad_scale_pending = self.grad_scale != 1.0
+            op = paddle.distributed.ReduceOp.SUM
         else:
             tmp_buffer.scale_(self.grad_scale)
             op = paddle.distributed.ReduceOp.SUM
@@ -1165,6 +1173,7 @@ class FSDPCommManager:
                 group.grads_buffer.ensure_data_buffer()
                 group.grads_buffer.data_buffer.zero_()
                 group.grads_buffer.grad_scaled = False
+                group.grads_buffer.grad_scale_pending = False
 
     def _release_dense_grad_buffer(self, grads_buffer):
         for param in self.buffer_manager.model.parameters():
@@ -1393,6 +1402,14 @@ class FSDPCommManager:
             grads_buffer.comm_task = None
             grads_buffer.accumulate_reduced_grad()
             self._release_reduced_grad_views(grads_buffer)
+
+        # Apply the deferred SUM-path scaling once on the reduced shard.
+        for group in self.buffer_manager.buffer_groups:
+            grads_buffer = group.grads_buffer
+            if grads_buffer is None or not grads_buffer.grad_scale_pending:
+                continue
+            grads_buffer.data_buffer.scale_(grads_buffer.grad_scale)
+            grads_buffer.grad_scale_pending = False
 
         for param in self.buffer_manager.model.parameters():
             buf = getattr(param, "_fusion_buffer", None)
