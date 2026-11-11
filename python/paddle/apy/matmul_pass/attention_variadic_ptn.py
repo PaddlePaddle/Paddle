@@ -167,6 +167,10 @@ class AttentionEpilogueFusion(variadic_mixin.VariadicEpilogueFusionBase):
     def _get_bool_attr(self, attr):
         return attr.match(a_bool=lambda x: bool(x))
 
+    def _get_scale(self, o):
+        # mea has a `scale` attr; -1 means the backend default 1/sqrt(head_dim).
+        return self._get_float_attr(o.attention_op.scale)
+
     def code_gen(self, ctx, o, t):
         program_translator = self._get_program_translator(ctx, o, t)
         mut_kernel_arg_id_registry = kernel_arg_id_util.KernelArgIdNameRegistry(
@@ -198,24 +202,67 @@ class AttentionEpilogueFusion(variadic_mixin.VariadicEpilogueFusionBase):
             input0_shape_kargs=input0_shape_kargs,
             input1_shape_kargs=input1_shape_kargs,
             input2_shape_kargs=input2_shape_kargs,
-            # mea `scale` defaults to -1, which the backend reads as the default
+            # A non-positive scale tells the backend to use the default
             # 1/sqrt(head_dim).
-            scale=self._get_float_attr(o.attention_op.scale),
+            scale=self._get_scale(o),
             causal=self._get_bool_attr(o.attention_op.causal),
         )
 
 
+class FlashAttnEpilogueFusion(AttentionEpilogueFusion):
+    def source_pattern(self, o, t):
+        in_num = self.number_of_inputs()
+        out_num = self.number_of_outputs()
+        o.attention_op = o.ap_native_op("pd_op.flash_attn")
+        o.attention_op(
+            [t.input0, t.input1, t.input2],
+            [t.attn_out],
+        )
+        o.trivial_op = o.ap_trivial_fusion_op()
+        o.trivial_op(
+            [
+                t.attn_out,
+                *ap.map(
+                    lambda index: getattr(t, f"input{index + 3}"),
+                    range(in_num - 3),
+                ),
+            ],
+            ap.map(lambda index: getattr(t, f"output{index}"), range(out_num)),
+        )
+
+    def _has_no_optional_inputs(self, o):
+        # flash_attn operands: 0/1/2 = q/k/v, 3 = fixed_seed_offset,
+        # 4 = attn_mask. A non-null attn_mask would be silently dropped by the
+        # fused kernel, and a seed offset is only meaningful with dropout.
+        return self._is_null_operand(o, 3) and self._is_null_operand(o, 4)
+
+    def _has_no_dropout(self, o):
+        # flash_attn attr names: `dropout` (f32) instead of mea's `dropout_p`.
+        return self._get_bool_attr(o.attention_op.is_test) or (
+            self._get_float_attr(o.attention_op.dropout) == 0.0
+        )
+
+    def _get_scale(self, o):
+        # flash_attn has no `scale` attr: flash attention always uses the
+        # default 1/sqrt(head_dim), represented by a non-positive value.
+        return 0.0
+
+
 def register_attention_epilogue_class(
-    base_class, max_num_inputs, max_num_outputs
+    base_class,
+    max_num_inputs,
+    max_num_outputs,
+    pass_name_prefix,
+    class_name_prefix,
 ):
     def register_attention_drr_class(num_inputs, num_outputs):
         abstract_drr.register_drr_pass(
-            f"attention_epilogue_in{num_inputs}_out{num_outputs}_fusion",
+            f"{pass_name_prefix}_in{num_inputs}_out{num_outputs}_fusion",
             nice=0,
         )(
             variadic_mixin.get_mixin_class(
                 base_class,
-                "AttentionEpilogueFusion",
+                class_name_prefix,
                 num_inputs,
                 num_outputs,
             )
@@ -235,5 +282,17 @@ def register_attention_epilogue_class(
 
 
 register_attention_epilogue_class(
-    base_class=AttentionEpilogueFusion, max_num_inputs=10, max_num_outputs=10
+    base_class=AttentionEpilogueFusion,
+    max_num_inputs=10,
+    max_num_outputs=10,
+    pass_name_prefix="attention_epilogue",
+    class_name_prefix="AttentionEpilogueFusion",
+)
+
+register_attention_epilogue_class(
+    base_class=FlashAttnEpilogueFusion,
+    max_num_inputs=10,
+    max_num_outputs=10,
+    pass_name_prefix="flash_attn_epilogue",
+    class_name_prefix="FlashAttnEpilogueFusion",
 )

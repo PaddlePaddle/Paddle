@@ -23,6 +23,7 @@ import paddle.incubate.cc.typing as pct
 from paddle.incubate.nn.memory_efficient_attention import (
     memory_efficient_attention,
 )
+from paddle.nn.functional.flash_attention import flash_attention
 
 os.environ["AP_WORKSPACE_DIR"] = "/tmp/paddle_ap_workspace"
 
@@ -107,6 +108,75 @@ class TestAttentionEpilogue(unittest.TestCase):
             # The FMHA backend is compiled for sm_80 only, so any other device
             # (including ROCm, which has no attention backend at all) has to
             # keep the subgraph on the phi kernels.
+            self.assertNotIn('pd_op.ap_variadic', generated_pir_program)
+
+
+class TestFlashAttnEpilogue(unittest.TestCase):
+    """`flash_attn + (add bias) + relu` elementwise epilogue."""
+
+    def setUp(self):
+        self.origin_flags = paddle.get_flags(['FLAGS_deny_cinn_ops'])
+        paddle.set_flags({'FLAGS_deny_cinn_ops': ""})
+
+        dtype = 'float16'
+
+        # BSHD layout: [batch, seqlen, num_heads, head_dim], the same physical
+        # layout the flash_attn op and the fused kernel use.
+        self.B, self.M, self.N, self.H, self.D = 2, 128, 128, 8, 64
+        self.q = paddle.randn([self.B, self.M, self.H, self.D], dtype=dtype)
+        self.k = paddle.randn([self.B, self.N, self.H, self.D], dtype=dtype)
+        self.v = paddle.randn([self.B, self.N, self.H, self.D], dtype=dtype)
+        self.bias = paddle.randn([self.B, self.M, self.H, self.D], dtype=dtype)
+        for tensor in (self.q, self.k, self.v, self.bias):
+            tensor.stop_gradient = False
+
+    def tearDown(self):
+        paddle.set_flags(self.origin_flags)
+
+    def getSubGraph(self):
+        B = pct.DimVar(self.B)
+        M = pct.DimVar(self.M)
+        N = pct.DimVar(self.N)
+        H = pct.DimVar(self.H)
+        D = pct.DimVar(self.D)
+        DType = pct.DTypeVar("T", "float16")
+
+        def foo(
+            q: pct.Tensor([B, M, H, D], DType),
+            k: pct.Tensor([B, N, H, D], DType),
+            v: pct.Tensor([B, N, H, D], DType),
+            bias: pct.Tensor([B, M, H, D], DType),
+        ):
+            # training=False -> is_test, no dropout / seed / attn mask, so only
+            # the `out` result is consumed downstream.
+            o, _ = flash_attention(q, k, v, training=False)
+            return paddle.nn.functional.relu(o + bias)
+
+        return foo
+
+    def test_subgraph(self):
+        foo = self.getSubGraph()
+        backend_device = 'dcu' if paddle.is_compiled_with_rocm() else 'cuda'
+        fused_foo = pcc.compile(
+            foo,
+            ap_path=f"{os.path.dirname(paddle.__file__)}/apy/matmul_pass",
+            backend_device=backend_device,
+        )
+        generated_pir_program = GetPirProgram(
+            fused_foo, [self.q, self.k, self.v, self.bias]
+        )
+        if IsSupportDevice():
+            self.assertIn(
+                'pd_op.ap_variadic', generated_pir_program, "fusion failed"
+            )
+            ap_outs = fused_foo(self.q, self.k, self.v, self.bias)
+            dy_outs = foo(self.q, self.k, self.v, self.bias)
+            for dy_out, ap_out in zip(dy_outs, ap_outs):
+                np.testing.assert_allclose(dy_out, ap_out, atol=1e-1)
+        else:
+            # The attention backends are compiled for sm_80 only, and the DCU
+            # backend does not register `attention` at all, so in both cases
+            # the subgraph has to stay on the phi kernels.
             self.assertNotIn('pd_op.ap_variadic', generated_pir_program)
 
 
