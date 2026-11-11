@@ -945,6 +945,11 @@ void AnalysisPredictor::OptimizeInferencePirProgram() {
         };
 
         for (const auto &fused_op : FusedOpPasses) {
+          if (std::find(config_.deleted_passes_.begin(),
+                        config_.deleted_passes_.end(),
+                        fused_op) != config_.deleted_passes_.end()) {
+            continue;
+          }
           fused_op_pm.AddPass(pir::PassRegistry::Instance().Get(fused_op));
         }
 

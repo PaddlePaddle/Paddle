@@ -9,8 +9,19 @@ if(WITH_XPU_CADA)
   # the matching xtdk LLVM 15.0.7 dev headers, and at link/runtime bind the
   # single shared libLLVM-15.so from XTRANS_ROOT (NOT a second static copy).
   set(XPU_CADA_LLVM15_ROOT
-      "/ssd1/zhangxiao/zhangxiao/xtdk-llvm15-ubuntu2004_x86_64"
+      ""
       CACHE PATH "xtdk LLVM 15.0.7 dev package (headers + cmake config)")
+  if(NOT XPU_CADA_LLVM15_ROOT)
+    message(
+      FATAL_ERROR
+        "WITH_XPU_CADA=ON requires -DXPU_CADA_LLVM15_ROOT=<path to xtdk-llvm15-*> "
+        "(the xtdk LLVM 15.0.7 dev package providing lib/cmake/llvm).")
+  endif()
+  if(NOT EXISTS ${XPU_CADA_LLVM15_ROOT}/lib/cmake/llvm)
+    message(
+      FATAL_ERROR
+        "XPU_CADA_LLVM15_ROOT=${XPU_CADA_LLVM15_ROOT} does not contain lib/cmake/llvm.")
+  endif()
   set(LLVM_PATH ${XPU_CADA_LLVM15_ROOT})
   set(LLVM_DIR ${XPU_CADA_LLVM15_ROOT}/lib/cmake/llvm)
   # xtrans's cudnn-runtime libLLVM-15.so: the one and only instance in-process.
