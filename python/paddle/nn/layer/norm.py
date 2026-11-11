@@ -1800,6 +1800,11 @@ class SyncBatchNorm(_BatchNormBase):
         """
         Helper function to convert :class: `paddle.nn.BatchNorm*d` layers in the model to :class: `paddle.nn.SyncBatchNorm` layers.
 
+        Note:
+            A `BatchNorm*d` layer created with ``use_global_stats=True`` is kept unchanged. It always
+            normalizes with its stored mean and variance, so it has no batch statistics to synchronize,
+            and `SyncBatchNorm` does not support ``use_global_stats``.
+
         Parameters:
             layer(Layer): model containing one or more `BatchNorm*d` layers.
 
@@ -1822,7 +1827,11 @@ class SyncBatchNorm(_BatchNormBase):
 
         """
         layer_output = layer
-        if isinstance(layer, _BatchNormBase):
+        # A BatchNorm layer with use_global_stats=True always normalizes with
+        # its stored mean and variance and never updates them, so it has no
+        # batch statistics to synchronize. SyncBatchNorm does not support
+        # use_global_stats, so such a layer is kept as it is.
+        if isinstance(layer, _BatchNormBase) and not layer._use_global_stats:
             if (
                 layer._weight_attr is not None
                 and not isinstance(layer._weight_attr, bool)
