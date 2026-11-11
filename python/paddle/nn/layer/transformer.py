@@ -156,6 +156,8 @@ class MultiHeadAttention(Layer):
             Default: None, which means the default bias parameter property is used.
             If it is set to False, this layer will not have trainable bias parameter.
             See usage for details in :code:`ParamAttr` .
+        batch_first (bool, optional): Whether the first dimension of the input and
+            output is the batch dimension. Default False.
 
     Examples:
 
@@ -194,6 +196,7 @@ class MultiHeadAttention(Layer):
         need_weights: bool = False,
         weight_attr: ParamAttrLike | None = None,
         bias_attr: ParamAttrLike | None = None,
+        batch_first: bool = False,
     ) -> None:
         super().__init__()
 
@@ -210,6 +213,7 @@ class MultiHeadAttention(Layer):
         self.num_heads = num_heads
         self.dropout = dropout
         self.need_weights = need_weights
+        self.batch_first = batch_first
 
         self.head_dim = embed_dim // num_heads
         assert self.head_dim * num_heads == self.embed_dim, (
@@ -523,6 +527,21 @@ class MultiHeadAttention(Layer):
         """
         key = query if key is None else key
         value = query if value is None else value
+
+        is_batched = query.ndim == 3
+        if self.batch_first and is_batched:
+            # make sure that the transpose op does not affect the "is" property
+            if key is value:
+                if query is key:
+                    query = key = value = query.transpose([1, 0, 2])
+                else:
+                    query, key = (x.transpose([1, 0, 2]) for x in (query, key))
+                    value = key
+            else:
+                query, key, value = (
+                    x.transpose([1, 0, 2]) for x in (query, key, value)
+                )
+
         # compute q ,k ,v
         if cache is None:
             q, k, v = self._prepare_qkv(query, key, value, cache)
@@ -554,6 +573,8 @@ class MultiHeadAttention(Layer):
 
         # project to output
         out = self.out_proj(out)
+        if self.batch_first and is_batched:
+            out = out.transpose([1, 0, 2])
 
         outs = [out]
         if self.need_weights:

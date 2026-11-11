@@ -1086,5 +1086,27 @@ class TestPirMultiHeadAttention(unittest.TestCase):
         np.testing.assert_allclose(out1, out2)
 
 
+class TestMultiHeadAttention_batch_first(unittest.TestCase):
+
+    def test_batch_first(self):
+        query = paddle.rand((2, 4, 128))
+        key = paddle.rand((2, 4, 128))
+        value = paddle.rand((2, 4, 128))
+
+        multi_head_attn = paddle.nn.MultiHeadAttention(128, 2)
+        output1 = multi_head_attn(query, key, value)
+
+        multi_head_attn.batch_first = True
+        output2 = multi_head_attn(
+            query.transpose([1, 0, 2]),
+            key.transpose([1, 0, 2]),
+            value.transpose([1, 0, 2]),
+        )
+
+        np.testing.assert_allclose(
+            output1.numpy(), output2.transpose([1, 0, 2]).numpy()
+        )
+
+
 if __name__ == "__main__":
     unittest.main()
