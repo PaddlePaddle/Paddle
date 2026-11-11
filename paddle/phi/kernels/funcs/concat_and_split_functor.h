@@ -82,6 +82,9 @@ class SplitFunctor {
   macro(int16_t);            \
   macro(uint8_t);            \
   macro(int8_t);             \
+  macro(uint16_t);           \
+  macro(uint32_t);           \
+  macro(uint64_t);           \
   macro(phi::float16);       \
   macro(phi::bfloat16);      \
   macro(phi::complex64);     \
