@@ -1366,7 +1366,14 @@ if '${WITH_CINN}' == 'ON':
         package_data['paddle.libs']+=['float8e4m3.h']
 
     if '${CMAKE_BUILD_TYPE}' == 'Release' and os.name != 'nt':
-        if ('@WITH_GPU@' == 'ON' and tuple(map(int, '@CUDA_VERSION@'.split('.'))) >= (13, 0) and tuple(map(int, '@CUDA_VERSION@'.split('.'))) < (14, 0)):
+        if '@WITH_XPU@' == 'ON':
+            # XPU (Kunlun) build: libcinnapi.so needs the isolated-SONAME
+            # libxpujitc_xtdk.so, which only ships under XTDK_PATH/shlib (see
+            # cmake/xpu/isolate_xpujitc.py).
+            command = "patchelf --force-rpath --set-rpath '$ORIGIN/:@XTDK_PATH@/shlib:@XRE_PATH@/so' %s/${CINN_LIB_NAME}" % libs_path
+            if os.system(command) != 0:
+                raise Exception("patch %s/${CINN_LIB_NAME} failed, command: %s" % (libs_path, command))
+        elif ('@WITH_GPU@' == 'ON' and tuple(map(int, '@CUDA_VERSION@'.split('.'))) >= (13, 0) and tuple(map(int, '@CUDA_VERSION@'.split('.'))) < (14, 0)):
             command = "patchelf --force-rpath --set-rpath '$ORIGIN/../../nvidia/cu13/lib/:$ORIGIN/../../nvidia/cudnn/lib/:$ORIGIN/' %s/${CINN_LIB_NAME}" % libs_path
             if os.system(command) != 0:
                 raise Exception("patch %s/${CINN_LIB_NAME} failed, command: %s" % (libs_path, command))
@@ -1529,6 +1536,34 @@ if '${CMAKE_BUILD_TYPE}' == 'Release':
             if('${WITH_SHARED_IR}' == 'ON'):
                 # change rpath of pir.ext for loading 3rd party libb
                 commands.append("install_name_tool -add_rpath '@loader_path' ${PADDLE_BINARY_DIR}/python/paddle/libs/${IR_NAME}")
+        elif '@WITH_XPU@' == 'ON':
+            # XPU (Kunlun) build: XHPC's libxpujitc.so (needed by libxpu_dnn.so
+            # / libxpu_blas.so via their own $ORIGIN rpath) and XTDK's
+            # libxpujitc.so share the same SONAME but have incompatible ABIs
+            # (see cmake/xpu/isolate_xpujitc.py). CINN links against the
+            # isolated-SONAME libxpujitc_xtdk.so, which only ships under
+            # XTDK_PATH/shlib, so that path must stay on the rpath too.
+            # Put paddle.libs (XHPC jitc) first so the dynamic linker resolves
+            # libxpujitc.so there before ever searching XTDK_PATH/shlib.
+            commands = ["patchelf --force-rpath --set-rpath '$ORIGIN/../libs/:@XTDK_PATH@/shlib:@XRE_PATH@/so' ${PADDLE_BINARY_DIR}/python/paddle/base/${FLUID_CORE_NAME}" + '.so']
+            # libxpu_dnn.so / libxpu_blas.so need XHPC's libxpujitc.so, while
+            # libcinnapi.so needs the SONAME-isolated XTDK libxpujitc_xtdk.so
+            # (see cmake/xpu/isolate_xpujitc.py). libxpu_dnn.so sits one level
+            # deeper in the DT_NEEDED graph (libpaddle -> libphi_core ->
+            # libxpu_dnn), and by the time it is loaded its own $ORIGIN rpath
+            # no longer resolves libxpujitc.so, so it fails with
+            # "undefined symbol: xpurtc::JitcErrorString". Pulling XHPC's
+            # libxpujitc.so up to libpaddle's own DT_NEEDED list makes it load
+            # at the first level, before libxpu_dnn.so, which resolves the
+            # symbol correctly. (Equivalent to LD_PRELOAD-ing it, but baked in.)
+            commands.append("patchelf --add-needed ${XPU_XBLAS_JITC_LIB_NAME} ${PADDLE_BINARY_DIR}/python/paddle/base/${FLUID_CORE_NAME}" + '.so')
+            if('${WITH_SHARED_PHI}' == 'ON'):
+                # change rpath of phi.ext for loading 3rd party lib
+                commands.append("patchelf --force-rpath --set-rpath '$ORIGIN:$ORIGIN/../libs:@XTDK_PATH@/shlib:@XRE_PATH@/so' ${PADDLE_BINARY_DIR}/python/paddle/libs/${PHI_NAME}")
+                commands.append("patchelf --force-rpath --set-rpath '$ORIGIN:$ORIGIN/../libs:@XTDK_PATH@/shlib:@XRE_PATH@/so' ${PADDLE_BINARY_DIR}/python/paddle/libs/${PHI_CORE_NAME}")
+            if('${WITH_SHARED_IR}' == 'ON'):
+                # change rpath of pir.ext for loading 3rd party lib
+                commands.append("patchelf --force-rpath --set-rpath '$ORIGIN:$ORIGIN/../libs' ${PADDLE_BINARY_DIR}/python/paddle/libs/${IR_NAME}")
         else:
             if ('@WITH_GPU@' == 'ON' and tuple(map(int, '@CUDA_VERSION@'.split('.'))) >= (13, 0) and tuple(map(int, '@CUDA_VERSION@'.split('.'))) < (14, 0)):
                 commands = ["patchelf --force-rpath --set-rpath '$ORIGIN/../../nvidia/cu13/lib:$ORIGIN/../../nvidia/cudnn/lib:$ORIGIN/../../nvidia/nccl/lib:$ORIGIN/../../nvidia/cusparselt/lib:$ORIGIN/../libs/' ${PADDLE_BINARY_DIR}/python/paddle/base/${FLUID_CORE_NAME}" + '.so']

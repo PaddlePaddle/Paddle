@@ -50,6 +50,14 @@ class CodeGenGpuHost : public CodeGenHost {
             return CodeGenHost::Visit(op);
           }
         },
+        [&](common::XpuArch) {
+          if (op->name == runtime::intrinsic::call_cuda_kernel ||
+              op->name == runtime::intrinsic::call_cuda_cooperative_kernel) {
+            return LowerGPUKernelCall(op);
+          } else {
+            return CodeGenHost::Visit(op);
+          }
+        },
         [&](common::HygonDCUArchHIP) {
           if (op->name == runtime::intrinsic::call_hip_kernel) {
             return LowerGPUKernelCall(op);
