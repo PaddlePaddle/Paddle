@@ -34,7 +34,7 @@ from ...device import (
 from ...utils import convert_to_list
 from .. import functional as F
 from ..functional.conv import _update_padding_nd
-from ..initializer import Normal
+from ..initializer import Uniform
 from .layers import Layer
 
 if TYPE_CHECKING:
@@ -59,12 +59,6 @@ if TYPE_CHECKING:
     from ..functional.common import _PaddingSizeMode, _PaddingTensorMode
 
 __all__ = []
-
-
-def _get_default_param_initializer(num_channels, filter_size):
-    filter_elem_num = num_channels * np.prod(filter_size)
-    std = (2.0 / filter_elem_num) ** 0.5
-    return Normal(0.0, std)
 
 
 def _reverse_repeat_list(t, n):
@@ -185,9 +179,24 @@ class _ConvNd(Layer):
         def _get_default_param_initializer():
             if transposed:
                 return None
-            filter_elem_num = np.prod(self._kernel_size) * self._in_channels
-            std = (2.0 / filter_elem_num) ** 0.5
-            return Normal(0.0, std)
+            # Equivalent to PyTorch's default (kaiming_uniform_ with
+            # a=sqrt(5)), i.e. U(-1/sqrt(fan_in), 1/sqrt(fan_in)). The previous
+            # He-Normal default (std=sqrt(2/fan_in)) has a per-layer variance
+            # gain > 1 for non-ReLU activations and exponentially amplifies
+            # activations in deep or weight-shared stacks (see #79706).
+            # Note fan_in accounts for groups, matching the filter shape.
+            fan_in = (self._in_channels // self._groups) * np.prod(
+                self._kernel_size
+            )
+            # Note: keep numpy scalar semantics here (do NOT cast fan_in to
+            # Python float before the power). For invalid configs such as an
+            # unknown static channel dim (in_channels=-1) or kernel_size=0,
+            # fan_in <= 0 then yields nan/inf, so Uniform's bound assert (or a
+            # downstream shape check) raises the same AssertionError/ValueError
+            # as the previous He-Normal default, instead of a new TypeError
+            # from Python's complex-result negative-base power.
+            bound = float(fan_in**-0.5)
+            return Uniform(-bound, bound)
 
         self.weight = self.create_parameter(
             shape=filter_shape,
@@ -331,8 +340,9 @@ class Conv1D(_ConvNd):
         weight_attr (ParamAttr, optional): The parameter attribute for learnable weights(Parameter)
             of conv1d. If it is set to None or one attribute of ParamAttr, conv1d
             will create ParamAttr as param_attr. If the Initializer of the param_attr
-            is not set, the parameter is initialized with :math:`Normal(0.0, std)`,
-            and the :math:`std` is :math:`(\frac{2.0 }{filter\_elem\_num})^{0.5}`. Default: None.
+            is not set, the parameter is initialized with :math:`Uniform(-bound, bound)`,
+            and the :math:`bound` is :math:`(\frac{1}{fan\_in})^{0.5}`, where :math:`fan\_in`
+            is :math:`(\frac{in\_channels}{groups}) \times \prod(kernel\_size)`. Default: None.
         bias_attr (ParamAttr or bool, optional): The attribute for the bias of conv1d.
             If it is set to False, no bias will be added to the output units.
             If it is set to None or one attribute of ParamAttr, conv1d
@@ -772,8 +782,9 @@ class Conv2D(_ConvNd):
         weight_attr(ParamAttr, optional): The parameter attribute for learnable parameters/weights
             of conv2d. If it is set to None or one attribute of ParamAttr, conv2d
             will create ParamAttr as param_attr. If it is set to None, the parameter
-            is initialized with :math:`Normal(0.0, std)`, and the :math:`std` is
-            :math:`(\frac{2.0 }{filter\_elem\_num})^{0.5}`. The default value is None.
+            is initialized with :math:`Uniform(-bound, bound)`, and the :math:`bound` is
+            :math:`(\frac{1}{fan\_in})^{0.5}`, where :math:`fan\_in` is
+            :math:`(\frac{in\_channels}{groups}) \times \prod(kernel\_size)`. The default value is None.
         bias_attr(ParamAttr|bool, optional): The parameter attribute for the bias of conv2d.
             If it is set to False, no bias will be added to the output units.
             If it is set to None or one attribute of ParamAttr, conv2d
@@ -1215,8 +1226,9 @@ class Conv3D(_ConvNd):
         weight_attr(ParamAttr, optional): The parameter attribute for learnable parameters/weights
             of conv3d. If it is set to None or one attribute of ParamAttr, conv3d
             will create ParamAttr as param_attr. If it is set to None, the parameter
-            is initialized with :math:`Normal(0.0, std)`, and the :math:`std` is
-            :math:`(\frac{2.0 }{filter\_elem\_num})^{0.5}`. The default value is None.
+            is initialized with :math:`Uniform(-bound, bound)`, and the :math:`bound` is
+            :math:`(\frac{1}{fan\_in})^{0.5}`, where :math:`fan\_in` is
+            :math:`(\frac{in\_channels}{groups}) \times \prod(kernel\_size)`. The default value is None.
         bias_attr(ParamAttr|bool, optional): The parameter attribute for the bias of conv3d.
             If it is set to False, no bias will be added to the output units.
             If it is set to None or one attribute of ParamAttr, conv3d
