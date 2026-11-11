@@ -253,10 +253,16 @@ class AttentionVariadicTemplate:
     ):
         code_template = """
 // auto generated codes
-#include "kernels.h"
-#include <vector>
+// The epilogue functor is defined *before* including the backend headers: the
+// FlashAttention backend refers to its type via -DAP_ATTENTION_VARIADIC_FUNCTOR.
+#include <cuda_bf16.h>
+#include <cuda_fp16.h>
+#include "cutlass_patch/batched_matrix_coord.h"
 
 namespace ap {
+
+using bfloat16 = nv_bfloat16;
+using MatrixCoord = cutlass_patch::BatchedMatrixCoord;
 
 template <typename T>
 struct VariadicEpilogueFunctor {
@@ -283,6 +289,13 @@ struct VariadicEpilogueFunctor {
     return out;
   }
 };
+
+}  // namespace ap
+
+#include "kernels.h"
+#include <vector>
+
+namespace ap {
 
 template <int TuningConfigId>
 static void RunAttentionWithVariadicKernel(const AttentionEpilogueParams &params, ${AP_KERNEL_ARGS_DECLARE}) {
@@ -328,7 +341,7 @@ void ${kernel_name}(void* stream_ptr, ${AP_KERNEL_ARGS_DECLARE}) {
 #if AP_ENABLE_AUTOTUNE
   AP_AUTOTUNE_${output_dtype}(ap::RunAttentionWithVariadicKernel, stream_ptr, params, ${AP_KERNEL_ARGS_CALL});
 #else
-  ap::RunAttentionWithVariadicKernel<ap::DefaultConfig::kConfigId>(params, ${AP_KERNEL_ARGS_CALL});
+  ap::RunAttentionWithVariadicKernel<0>(params, ${AP_KERNEL_ARGS_CALL});
 #endif
 }
 }

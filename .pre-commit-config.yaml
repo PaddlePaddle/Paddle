@@ -106,7 +106,8 @@ repos:
             paddle/utils/array_ref\.h|
             paddle/fluid/distributed/collective/deep_ep/.*|
             paddle/fluid/fp8/deep_gemm/.*|
-            python/paddle/apy/matmul_pass/matmul/cutlass_patch/fmha/.*
+            python/paddle/apy/matmul_pass/matmul/cutlass_patch/fmha/.*|
+            python/paddle/apy/matmul_pass/matmul/flash_attn_patch/.*
           )$
   # For CMake files
   - repo: local
