@@ -82,3 +82,6 @@ def batch(
         )
 
     return batch_reader
+
+def __docformat__(**kwargs):
+    pass
