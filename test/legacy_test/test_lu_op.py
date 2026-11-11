@@ -384,7 +384,7 @@ class TestLUAPI_ZeroSize(unittest.TestCase):
         self.assertEqual(x.grad.shape, x.shape)
 
 
-class TestLUOp(OpTest):
+class TestLUOpZeroSize(OpTest):
     def config(self):
         self.x_shape = [2, 0, 12]
         self.pivot = True
