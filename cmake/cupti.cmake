@@ -10,10 +10,14 @@ if(WITH_ROCM)
   elseif(EXISTS "${ROCM_PATH}/cuda/cuda/extras/CUPTI")
     set(ROCM_CUDA_DIR "${ROCM_PATH}/cuda/cuda")
   else()
+    # ROCm >= 6 no longer ships the CUDA compatibility layer under
+    # ${ROCM_PATH}/cuda, so CUPTI cannot exist there. Disable GPU profiling
+    # instead of failing the whole configure step.
     message(
-      FATAL_ERROR
-        "CUPTI not found under ${ROCM_PATH}/cuda/extras/CUPTI or ${ROCM_PATH}/cuda/cuda/extras/CUPTI"
-    )
+      STATUS
+        "CUPTI not found under ${ROCM_PATH}/cuda - GPU profiling disabled")
+    set(CUPTI_FOUND OFF)
+    return()
   endif()
   set(CUPTI_ROOT
       "${ROCM_CUDA_DIR}/extras/CUPTI"
