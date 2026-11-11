@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import contextlib
 import os
 import tempfile
 import unittest
@@ -54,6 +55,29 @@ class TestGetCudaArchFlags(unittest.TestCase):
         # Hopper -> 9.0+PTX -> sm_90 + compute_90
         self.assertIn("-gencode=arch=compute_90,code=sm_90", flags)
         self.assertIn("-gencode=arch=compute_90,code=compute_90", flags)
+
+    def test_with_env_blackwell_cuda_too_old(self):
+        os.environ["PADDLE_CUDA_ARCH_LIST"] = "Blackwell"
+        with (
+            mock.patch.object(
+                extension_utils,
+                "_get_cuda_version_from_nvcc",
+                return_value=(12, 4),
+            ),
+            self.assertRaisesRegex(ValueError, "requires CUDA 12.8"),
+        ):
+            _get_cuda_arch_flags()
+
+    def test_with_env_blackwell_cuda128(self):
+        os.environ["PADDLE_CUDA_ARCH_LIST"] = "Blackwell"
+        with mock.patch.object(
+            extension_utils, "_get_cuda_version_from_nvcc", return_value=(12, 8)
+        ):
+            flags = _get_cuda_arch_flags()
+        # Blackwell -> 10.0;12.0+PTX -> sm_100 + sm_120 + compute_120
+        self.assertIn("-gencode=arch=compute_100,code=sm_100", flags)
+        self.assertIn("-gencode=arch=compute_120,code=sm_120", flags)
+        self.assertIn("-gencode=arch=compute_120,code=compute_120", flags)
 
     def test_with_env_multiple(self):
         os.environ["PADDLE_CUDA_ARCH_LIST"] = "8.6;9.0+PTX"
@@ -98,6 +122,114 @@ class TestGetCudaArchFlags(unittest.TestCase):
             extension_utils.core, "is_compiled_with_rocm", return_value=True
         ):
             self.assertEqual(_get_cuda_arch_flags(), [])
+
+
+class TestBlackwellCudaArchGuard(unittest.TestCase):
+    def setUp(self):
+        self._old_env = dict(os.environ)
+
+    def tearDown(self):
+        os.environ.clear()
+        os.environ.update(self._old_env)
+
+    def _get_flags_with_arch_list(self, arch_list, cuda_version):
+        os.environ["PADDLE_CUDA_ARCH_LIST"] = arch_list
+        with (
+            mock.patch.object(
+                extension_utils.core,
+                "is_compiled_with_rocm",
+                return_value=False,
+            ),
+            mock.patch.object(
+                extension_utils,
+                "_get_cuda_version_from_nvcc",
+                return_value=cuda_version,
+            ),
+        ):
+            return _get_cuda_arch_flags()
+
+    @contextlib.contextmanager
+    def _mock_auto_detected_cuda_arch(self, capability, cuda_version):
+        with (
+            mock.patch.object(
+                extension_utils.core,
+                "is_compiled_with_rocm",
+                return_value=False,
+            ),
+            mock.patch.object(
+                extension_utils.core,
+                "get_all_custom_device_type",
+                return_value=[],
+            ),
+            mock.patch.object(
+                extension_utils.core,
+                "is_compiled_with_cuda",
+                return_value=True,
+            ),
+            mock.patch.object(
+                extension_utils.paddle.device.cuda,
+                "device_count",
+                return_value=1,
+            ),
+            mock.patch.object(
+                extension_utils.paddle.device.cuda,
+                "get_device_capability",
+                return_value=capability,
+            ),
+            mock.patch.object(
+                extension_utils,
+                "_get_cuda_version_from_nvcc",
+                return_value=cuda_version,
+            ),
+            mock.patch.object(extension_utils.warnings, "warn"),
+        ):
+            yield
+
+    def test_named_and_numeric_blackwell_archs_require_cuda128(self):
+        blackwell_arch_lists = [
+            "Blackwell",
+            "Blackwell+Tegra",
+            "10.0",
+            "10.1",
+            "12.0+PTX",
+            "10.0;12.0+PTX",
+            "8.9;12.0+PTX",
+        ]
+        for arch_list in blackwell_arch_lists:
+            with (
+                self.subTest(arch_list=arch_list),
+                self.assertRaisesRegex(ValueError, "requires CUDA 12.8"),
+            ):
+                self._get_flags_with_arch_list(arch_list, (12, 4))
+
+    def test_numeric_blackwell_archs_accept_cuda128(self):
+        flags = self._get_flags_with_arch_list("10.0;12.0+PTX", (12, 8))
+        self.assertIn("-gencode=arch=compute_100,code=sm_100", flags)
+        self.assertIn("-gencode=arch=compute_120,code=sm_120", flags)
+        self.assertIn("-gencode=arch=compute_120,code=compute_120", flags)
+
+        tegra_flags = self._get_flags_with_arch_list("Blackwell+Tegra", (12, 8))
+        self.assertEqual(tegra_flags, ["-gencode=arch=compute_101,code=sm_101"])
+
+    def test_auto_detected_blackwell_arch_requires_cuda128(self):
+        os.environ.pop("PADDLE_CUDA_ARCH_LIST", None)
+        with (
+            self._mock_auto_detected_cuda_arch((12, 0), (12, 4)),
+            self.assertRaisesRegex(ValueError, "requires CUDA 12.8"),
+        ):
+            _get_cuda_arch_flags()
+
+    def test_auto_detected_blackwell_arch_accepts_cuda128(self):
+        os.environ.pop("PADDLE_CUDA_ARCH_LIST", None)
+        with self._mock_auto_detected_cuda_arch((12, 0), (12, 8)):
+            flags = _get_cuda_arch_flags()
+        self.assertEqual(
+            flags,
+            [
+                "-gencode=arch=compute_120,code=compute_120",
+                "-gencode=arch=compute_120,code=sm_120",
+            ],
+        )
 
 
 class TestGetRocmArchFlags(unittest.TestCase):
@@ -224,6 +356,33 @@ class TestCppExtensionUtils(unittest.TestCase):
         self.assertIsInstance(flags, list)
         for f in flags:
             self.assertIsInstance(f, str)
+
+    def test_get_cuda_version_from_nvcc_uses_windows_nvcc_exe(self):
+        cuda_home = os.path.join('C:\\', 'Program Files', 'NVIDIA GPU')
+        nvcc = os.path.join(cuda_home, 'bin', 'nvcc.exe')
+        nvcc_version_output = b'Cuda compilation tools, release 12.8, V12.8.93'
+
+        with (
+            mock.patch.object(extension_utils, 'IS_WINDOWS', True),
+            mock.patch.object(
+                extension_utils, 'find_cuda_home', return_value=cuda_home
+            ),
+            mock.patch.object(
+                extension_utils.os.path, 'exists', return_value=True
+            ),
+            mock.patch.object(
+                extension_utils.subprocess,
+                'check_output',
+                return_value=nvcc_version_output,
+            ) as check_output,
+        ):
+            self.assertEqual(
+                extension_utils._get_cuda_version_from_nvcc(), (12, 8)
+            )
+
+        check_output.assert_called_once_with(
+            [nvcc, '--version'], stderr=extension_utils.DEVNULL
+        )
 
     def test_get_num_workers_with_env_verbose_false(self):
         os.environ["MAX_JOBS"] = "8"

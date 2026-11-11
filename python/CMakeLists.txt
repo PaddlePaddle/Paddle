@@ -180,6 +180,7 @@ endif()
 
 add_custom_target(paddle_python ALL
                   DEPENDS ${PADDLE_PYTHON_BUILD_DIR}/.timestamp)
+add_dependencies(paddle_python op_map_codegen)
 
 if(BUILD_WHL_PACKAGE AND NOT WITH_SETUP_INSTALL)
   add_custom_target(paddle_copy ALL
