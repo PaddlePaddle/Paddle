@@ -652,6 +652,7 @@ def _recompute_without_reentrant(
                             inner_x.persistable,
                         )
                     inner_x._unsafe_share_buffer_to(tmp_tensor)
+                    tmp_tensor.stop_gradient = inner_x.stop_gradient
                     storage[holder_list[unpack_counter - 1]()] = tmp_tensor
                 return
 
