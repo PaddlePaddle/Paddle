@@ -18,7 +18,13 @@ limitations under the License. */
 #define NVTX_SUPPRESS_V2_DEPRECATION_WARNING
 #endif
 
-#if (CUDA_VERSION >= 13000) || defined(PADDLE_WITH_XPU)
+// PADDLE_CCCL_NVTX3 is defined in cmake/third_party.cmake over the same CUDA
+// range that enables CCCL 3.x. CCCL 3.x pulls nvtx3/nvToolsExt.h in through
+// thrust, so use the NVTX3 entry point here as well: including the legacy
+// <nvToolsExt.h> in the same TU would redeclare nvtxStringHandle_t,
+// nvtxEventAttributes_v2, nvtxColorType_t, ... (the two headers use different
+// include guards). Keep PADDLE_WITH_XPU on the NVTX3 path as before.
+#if defined(PADDLE_CCCL_NVTX3) || defined(PADDLE_WITH_XPU)
 #include <nvtx3/nvToolsExt.h>
 #else
 #include <nvToolsExt.h>

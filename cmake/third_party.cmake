@@ -491,6 +491,21 @@ if(WITH_GPU)
     include(external/cccl)
     add_definitions(-DPADDLE_WITH_CCCL)
   endif()
+
+  # NVTX entry point selection.
+  # CCCL 3.x pulls nvtx3/nvToolsExt.h in through thrust, so every NVTX include
+  # site must use the NVTX3 entry point over the same CUDA range that enables
+  # CCCL 3.x; otherwise the legacy <nvToolsExt.h> and nvtx3/nvToolsExt.h both
+  # become visible in one TU and redeclare nvtxEventAttributes_v2,
+  # nvtxStringHandle_t, nvtxColorType_t, ... (they use different include
+  # guards). CCCL 3.x is in use for CUDA >= 12.8 here (vendored 3.1.0 through
+  # cmake/external/cccl.cmake) and for CUDA >= 13.0 (the toolkit's own CCCL),
+  # so gate the whole range.
+  # NOTE: keep this threshold in sync with the CCCL tag gate in
+  # cmake/external/cccl.cmake.
+  if(${CMAKE_CUDA_COMPILER_VERSION} GREATER_EQUAL 12.8)
+    add_definitions(-DPADDLE_CCCL_NVTX3)
+  endif()
   set(URL
       "https://paddlepaddledeps.bj.bcebos.com/externalErrorMsg_20210928.tar.gz"
       CACHE STRING "" FORCE)
