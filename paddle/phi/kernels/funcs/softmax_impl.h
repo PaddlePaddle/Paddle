@@ -236,6 +236,7 @@ class SoftmaxFunctor<DeviceContext, T, enable_if_CPU<DeviceContext>> {
                   const int axis_dim,
                   const DenseTensor* X,
                   DenseTensor* Y) {
+#if defined(__AVX__) && !defined(__powerpc__) && !defined(__ppc__) && !defined(__PPC__)
     const auto& in_dims = X->dims();
     constexpr int64_t kBatchDim = 0;
     constexpr int64_t kClassDim = 1;
@@ -266,7 +267,9 @@ class SoftmaxFunctor<DeviceContext, T, enable_if_CPU<DeviceContext>> {
         in_data += num_classes;
         out_data += num_classes;
       }
-    } else {
+    } else
+#endif
+    {
       SoftmaxEigen<DeviceContext, T>()(dev_ctx, axis_dim, X, Y);
     }
   }
@@ -396,6 +399,7 @@ class SoftmaxGradFunctor<DeviceContext, T, enable_if_CPU<DeviceContext>> {
                   const DenseTensor* y,
                   const DenseTensor* y_grad,
                   DenseTensor* x_grad) {
+#if defined(__AVX__) && !defined(__powerpc__) && !defined(__ppc__) && !defined(__PPC__)
     const auto& out_dims = y->dims();
     constexpr int64_t kBatchDim = 0;
     constexpr int64_t kClassDim = 1;
@@ -421,7 +425,9 @@ class SoftmaxGradFunctor<DeviceContext, T, enable_if_CPU<DeviceContext>> {
         out_grad += num_classes;
         in_grad += num_classes;
       }
-    } else {
+    } else
+#endif
+    {
       SoftmaxGradEigen<DeviceContext, T>()(
           dev_ctx, axis_dim, y, y_grad, x_grad);
     }
