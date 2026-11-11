@@ -15,8 +15,7 @@ permissions:
 jobs:
   re-run:
     if: ${{ github.event_name == 'issue_comment' && github.event.issue.pull_request && contains(github.event.comment.body, '/re-run') && github.event.comment.user.login == github.event.issue.user.login }}
-    runs-on:
-      group: APPROVAL
+    runs-on: ubuntu-latest
     steps:
       - name: Cleanup
         run: |
@@ -184,36 +183,6 @@ jobs:
           REPO: ${{ github.event.repository.name }}
           JOB_NAME: 'Coverage test'
 
-      - name: Rerun XPU
-        if: ${{ contains(github.event.comment.body, 'xpu') && !contains(github.event.comment.body, 'build') && !contains(github.event.comment.body, 'test') }}
-        uses: ./.github/actions/rerun-workflow
-        with:
-          PR_ID: ${{ github.event.issue.number }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          OWNER: ${{ github.repository_owner }}
-          REPO: ${{ github.event.repository.name }}
-          JOB_NAME: 'Linux-XPU / Check bypass / Check bypass'
-
-      - name: Rerun XPU build
-        if: ${{ contains(github.event.comment.body, 'xpu') && contains(github.event.comment.body, 'build') }}
-        uses: ./.github/actions/rerun-workflow
-        with:
-          PR_ID: ${{ github.event.issue.number }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          OWNER: ${{ github.repository_owner }}
-          REPO: ${{ github.event.repository.name }}
-          JOB_NAME: 'Linux-XPU / Build'
-
-      - name: Rerun XPU test
-        if: ${{ contains(github.event.comment.body, 'xpu') && contains(github.event.comment.body, 'test') }}
-        uses: ./.github/actions/rerun-workflow
-        with:
-          PR_ID: ${{ github.event.issue.number }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          OWNER: ${{ github.repository_owner }}
-          REPO: ${{ github.event.repository.name }}
-          JOB_NAME: 'Linux-XPU / Test'
-
       - name: Rerun Distribute-stable build
         if: ${{ contains(github.event.comment.body, 'distribute') && !contains(github.event.comment.body, 'test') }}
         uses: ./.github/actions/rerun-workflow
@@ -326,8 +295,7 @@ jobs:
 
   rerun-on-approval:
     if: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_sha != '' }}
-    runs-on:
-      group: APPROVAL
+    runs-on: ubuntu-latest
     steps:
       - name: Cleanup
         run: |

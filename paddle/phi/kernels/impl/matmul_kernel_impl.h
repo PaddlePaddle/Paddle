@@ -2185,6 +2185,16 @@ void MatmulKernel(const Context& dev_ctx,
                   bool transpose_x,
                   bool transpose_y,
                   DenseTensor* out) {
+  // Checked before the empty-input early return so that 0-size inputs with
+  // mismatched dtypes raise like non-empty ones instead of returning zeros.
+  PADDLE_ENFORCE_EQ(
+      x.dtype(),
+      y.dtype(),
+      common::errors::InvalidArgument(
+          "The dtype of Input(X) and Input(Y) in matmul must be the same, "
+          "but received %s and %s.",
+          x.dtype(),
+          y.dtype()));
   if (x.numel() == 0 || y.numel() == 0) {
     // input shape [1, 1, 5, 0], [1, 1, 0, 5], result shape is [1, 1, 5, 5]
     Full<T, Context>(dev_ctx, out->dims(), 0, out);

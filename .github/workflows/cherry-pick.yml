@@ -23,8 +23,7 @@ jobs:
         github.event.action == 'labeled' ||
         contains(join(github.event.pull_request.labels.*.name, ' '), 'cherry-pick')
       )
-    runs-on:
-      group: APPROVAL
+    runs-on: ubuntu-latest
     steps:
       - name: Cleanup
         run: |

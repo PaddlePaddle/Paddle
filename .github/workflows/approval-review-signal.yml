@@ -9,8 +9,7 @@ permissions: {}
 jobs:
   signal:
     if: ${{ github.event.review.state == 'approved' }}
-    runs-on:
-      group: APPROVAL
+    runs-on: ubuntu-latest
     steps:
       - name: Record review update
         run: |

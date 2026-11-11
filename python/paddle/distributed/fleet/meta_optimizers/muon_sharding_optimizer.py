@@ -296,7 +296,7 @@ class MuonShardingOptimizer:
         self._parameter_list = list(optimizer._parameter_list)
         self._origin_parameter_list = list(optimizer._parameter_list)
 
-        # Build color -> group_info mapping dynamically from param.color attributes
+        # Build bucket key -> group_info mapping from param.color attributes
         sharding_group = hcg.get_sharding_parallel_group()
         self._color_to_group_info = self._build_color_to_group_info_from_params(
             self._parameter_list, sharding_group
@@ -310,15 +310,17 @@ class MuonShardingOptimizer:
 
         # ---- Step 1: Separate params into 2D (Muon) and 1D (AdamW) by color ----
         # Parameters are grouped by their `color` attribute:
-        # - color=None or -1: default sharding_group (key: None)
-        # - color={'color': <key>, 'group': <group>}: custom comm group
+        # - color=None or -1: default sharding_group
+        # - color={'color': <name>, 'group': <group>}: custom comm group
+        # 2D params are bucketed by (color name or None, group ranks), see
+        # _param_bucket_key, since one color name may span several groups.
         #
         # For each color group:
         # - 2D (Muon) params: whole tensor, assigned to ranks via tensor-wise partition
         # - non-2D (AdamW) params: element-wise split via FusedCommBuffer
         self._params_2d_by_color = defaultdict(
             list
-        )  # color_key -> list of 2D params
+        )  # bucket key -> list of 2D params
         self._params_1d = []  # all non-2D params
         self.clear_color = set()
         self._color_to_comm_buffer_list = {}
@@ -326,18 +328,7 @@ class MuonShardingOptimizer:
             if not _is_trainable(p):
                 continue
 
-            # Extract color value
-            color = getattr(p, 'color', -1)
-            if isinstance(color, dict):
-                color_val = color.get('color', -1)
-            else:
-                color_val = color
-
-            # Normalize color: treat None/-1 as default (None key)
-            if color_val == -1 or color_val is None:
-                color_key = None
-            else:
-                color_key = color_val
+            color_key = self._param_bucket_key(p, sharding_group)
 
             param_info = self._muon_param_info_map.get(p.name)
             assert param_info is not None, (
@@ -365,8 +356,8 @@ class MuonShardingOptimizer:
                 self._params_1d.append(p)
 
         # ---- Step 2: Partition 2D params for each color group ----
-        self._rank2params_2d_by_color = {}  # color -> {rank -> [params]}
-        self._param2rank_2d_by_color = {}  # color -> {param_name -> rank}
+        self._rank2params_2d_by_color = {}  # bucket key -> {rank -> [params]}
+        self._param2rank_2d_by_color = {}  # bucket key -> {param_name -> rank}
         if self.machine_balanced_2d_partition:
             # Owners are planned globally so that every rank agrees, then each
             # rank keeps the mapping of the groups it belongs to. Both gathers
@@ -380,15 +371,11 @@ class MuonShardingOptimizer:
                 )
             )
             for color_key, params_2d in self._params_2d_by_color.items():
-                group = self._color_to_group_info[color_key]['group']
-                group_ranks = (
-                    tuple(group.ranks) if group else (self._global_rank,)
-                )
                 param_by_name = {p.name: p for p in params_2d}
                 self._rank2params_2d_by_color[color_key] = {
                     local_rank: [param_by_name[n] for n in names]
                     for local_rank, names in color_group_to_ranks[
-                        (color_key, group_ranks)
+                        color_key
                     ].items()
                 }
                 self._param2rank_2d_by_color[color_key] = {
@@ -414,7 +401,7 @@ class MuonShardingOptimizer:
                     }
                 else:
                     # Greedy partition across ranks
-                    label = color_key if color_key else "default"
+                    label = color_key[0] or "default"
                     self._rank2params_2d_by_color[color_key] = (
                         self._partition_2d_parameters(
                             list(params_2d), world_size, label=label
@@ -652,15 +639,13 @@ class MuonShardingOptimizer:
         """
         Collect every color group's 2D params so all ranks partition alike.
 
-        Returns {(color_key, group_ranks): [(name, numel, dtype_str, itemsize)]}
+        Returns {(color_name, group_ranks): [(name, numel, dtype_str, itemsize)]}
         """
         local_color_group_info = {}
         for color_key, params_2d in self._params_2d_by_color.items():
-            group = self._color_to_group_info[color_key]['group']
-            group_ranks = tuple(group.ranks) if group else (self._global_rank,)
             # itemsize travels with the entry so remote colors need no dtype
             # object reconstruction.
-            local_color_group_info[(color_key, group_ranks)] = [
+            local_color_group_info[color_key] = [
                 (
                     p.name,
                     int(functools_reduce(lambda x, y: x * y, p.shape, 1)),
@@ -864,41 +849,79 @@ class MuonShardingOptimizer:
 
         return color_group_to_ranks
 
+    @classmethod
+    def _param_bucket_key(cls, param, default_group):
+        """Return the 2D bucket key ``(color name or None, group ranks)``.
+
+        The color name alone is ambiguous: params of one color may live on
+        different comm groups of the same rank (e.g. experts of two sub-models
+        with different expert-parallel sizes share the color 'moe_expert').
+        The ranks tuple, unlike the Group object, is picklable and identical
+        on every rank, so the key can also be all-gathered.
+        """
+        name, group = cls._param_color_and_group(param, default_group)
+        return name, cls._group_ranks(group)
+
     @staticmethod
-    def _build_color_to_group_info_from_params(parameter_list, default_group):
-        """Build color->group_info mapping dynamically from param.color attributes.
+    def _param_color_and_group(param, default_group):
+        """Return ``(color name or None, comm group)`` of a param.
+
+        The default color (None / -1) always uses ``default_group``. A named
+        color uses the 'group' of its dict (an explicit None is kept and means
+        a single-rank group), falling back to ``default_group``.
+        """
+        color = getattr(param, 'color', -1)
+        if isinstance(color, dict):
+            name = color.get('color', -1)
+            group = color.get('group', default_group)
+        else:
+            name, group = color, default_group
+        if name == -1 or name is None:
+            return None, default_group
+        return name, group
+
+    @staticmethod
+    def _group_ranks(group):
+        """Ranks of ``group``; a missing group means only this rank."""
+        return tuple(group.ranks) if group else (paddle.distributed.get_rank(),)
+
+    def _bucket_keys_of_color(self, color):
+        """Return the 2D bucket keys of color name ``color``."""
+        return [k for k in self._params_2d_by_color if k[0] == color]
+
+    @classmethod
+    def _build_color_to_group_info_from_params(
+        cls, parameter_list, default_group
+    ):
+        """Build bucket key -> group_info mapping from param.color attributes.
 
         When param.color is a dict containing 'group', the comm group is read
         directly from the param — no hcg-specific method registration required.
+        See ``_param_bucket_key`` for the key.
 
         Returns:
             dict: {
-                None: {'group': default_group, 'world_size': N, 'rank': r},
-                '<key>': {'group': group, 'world_size': M, 'rank': s},
-                # additional entries auto-populated from param.color dicts
+                (None, default_ranks): {'group': default_group, 'world_size': N, 'rank': r},
+                ('<name>', ranks): {'group': group, 'world_size': M, 'rank': s},
+                # additional entries auto-populated from param.color
             }
         """
-        color_to_info = {
-            None: {
-                'group': default_group,
-                'world_size': len(default_group.ranks) if default_group else 1,
-                'rank': default_group.rank if default_group else 0,
+
+        def _group_info(group):
+            return {
+                'group': group,
+                'world_size': len(group.ranks) if group else 1,
+                'rank': group.rank if group else 0,
             }
+
+        color_to_info = {
+            (None, cls._group_ranks(default_group)): _group_info(default_group)
         }
         for p in parameter_list:
-            color = getattr(p, 'color', -1)
-            if isinstance(color, dict):
-                color_key = color.get('color', -1)
-                if (
-                    color_key not in (-1, None)
-                    and color_key not in color_to_info
-                ):
-                    group = color.get('group', default_group)
-                    color_to_info[color_key] = {
-                        'group': group,
-                        'world_size': len(group.ranks) if group else 1,
-                        'rank': group.rank if group else 0,
-                    }
+            name, group = cls._param_color_and_group(p, default_group)
+            key = (name, cls._group_ranks(group))
+            if key not in color_to_info:
+                color_to_info[key] = _group_info(group)
         return color_to_info
 
     @staticmethod
@@ -1157,17 +1180,17 @@ class MuonShardingOptimizer:
 
                 if has_clear:
                     comm_buffer._clear_param_storage()
-        # 2D params
-        if color in self._params_2d_by_color.keys():
-            group_info = self._color_to_group_info[color]
+        # 2D params: every bucket of this color name (one per comm group)
+        for key in self._bucket_keys_of_color(color):
+            group_info = self._color_to_group_info[key]
             sharding_rank = max(group_info["rank"], 0)
-            rank2params_2d_by_color = self._rank2params_2d_by_color[color]
+            rank2params_2d_by_color = self._rank2params_2d_by_color[key]
             local_2d = rank2params_2d_by_color[sharding_rank]
             for param in local_2d:
                 if not g_shard_bypass_dygraph_optimizer:
                     self._create_master_weight(param)
 
-            for param in self._params_2d_by_color[color]:
+            for param in self._params_2d_by_color[key]:
                 param._clear_to_zero_allocation()
 
     def reset_param_storage(self):
@@ -1180,8 +1203,8 @@ class MuonShardingOptimizer:
                     if not comm_buffer.param_storage._is_initialized():
                         comm_buffer._reset_param_storage()
             # 2D params
-            if color in self._params_2d_by_color.keys():
-                for param in self._params_2d_by_color[color]:
+            for key in self._bucket_keys_of_color(color):
+                for param in self._params_2d_by_color[key]:
                     if not param._is_initialized():
                         new_param = paddle.empty_like(param)
                         new_param._share_buffer_to(param)

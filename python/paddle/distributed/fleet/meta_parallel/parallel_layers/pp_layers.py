@@ -562,15 +562,13 @@ class PipelineLayer(nn.Layer):
         if self._topo.get_dim("pipe") == 1:
             return shared_comm
 
-        # The first loop gets the pivot stage and all different shared_weight_attrs for one layer name.
+        # The first loop records, for each shared layer name, the stages holding
+        # it and the shared attrs present on each of those stages.
         # Maps stage idx to all shared attrs of each different layer names on that stage.
         stage_idx_to_layer_name_to_attrs = {}
         # Maps one layer name to all stage idx that contain that layer.
         # Have to use OrderedDict here to keep the insertion order otherwise hang might be encountered.
         layer_name_to_stage_idx = OrderedDict()
-        # Maps one layer name to the first stage idx (AKA the pivot) and the pivot attrs.
-        layer_name_to_pivot_stage_idx = {}
-        layer_name_to_pivot_attrs = {}
         for idx, layer in enumerate(self._layers_desc):
             # Get different shared attrs patterns for each layer name.
             if isinstance(layer, SharedLayerDesc):
@@ -585,25 +583,6 @@ class PipelineLayer(nn.Layer):
                 layer_name_to_stage_idx[layer.layer_name] = sorted(
                     set(all_stage_idx_contains_layer)
                 )
-                if layer.layer_name in layer_name_to_pivot_stage_idx:
-                    # We assume the first layer among all shared layers with the same layer name is the pivot,
-                    # which means the first layer shares the weight to others. All other shared layers should
-                    # share a subset of pivot layer's share attrs.
-                    pivot = layer_name_to_pivot_attrs[layer.layer_name]
-                    assert all(
-                        attr in pivot for attr in layer.shared_weight_attr
-                    ), (
-                        f"Current shared attrs ({layer.shared_weight_attr}) is not included by the shared attrs "
-                        f"({pivot}) of the first shared layer."
-                    )
-                else:
-                    # Record the pivot stage idx and the pivot attrs.
-                    layer_name_to_pivot_stage_idx[layer.layer_name] = (
-                        current_layer_idx_to_stage_idx
-                    )
-                    layer_name_to_pivot_attrs[layer.layer_name] = (
-                        layer.shared_weight_attr
-                    )
                 # Record the attrs for a specific layer on a specific stage.
                 layer_name_to_attrs_on_stage_idx = (
                     stage_idx_to_layer_name_to_attrs.get(
@@ -625,52 +604,58 @@ class PipelineLayer(nn.Layer):
                     current_layer_idx_to_stage_idx
                 ] = layer_name_to_attrs_on_stage_idx
 
-        # The second loop generates comm keys and assigns stages and attrs to the comm key.
-        # Record all unique comm keys, the comm key is generated from the layer name and the stage idx.
-        # Each comm key represents a comm group.
+        # The second loop generates comm keys. Grouping rule:
+        #   * attrs that live on the SAME set of stages are aggregated into a
+        #     single N-way comm group covering all those stages;
+        #   * attrs on different stage sets each get their own N-way group;
+        #   * an attr that lives on only one stage needs no cross-stage comm and
+        #     is skipped (with a warning, as it is usually a misconfiguration).
+        # Reducing the gradient over the full group is correct for any number
+        # (>=2) of sharing stages.
         comm_keys = []
         # Maps comm key to layer name.
         comm_key_to_layer_name = {}
-        # Maps comm key to two stage idx using the comm key.
+        # Maps comm key to the list of stage idx in the N-way comm group.
         comm_key_to_stage_idx = {}
-        # Maps comm key to all shared attrs that will be communicated by the comm group indicated by the comm key.
+        # Maps comm key to all shared attrs communicated by that comm group.
         comm_key_to_shared_attrs = {}
         for layer_name in layer_name_to_stage_idx.keys():
             all_stage_idx_contains_layer = layer_name_to_stage_idx[layer_name]
-            # For all stages contain a same layer name,
-            # generate a comm group between each stage and the pivot explicitly.
+            # attr -> the set of stages that actually hold it.
+            attr_to_stages = {}
             for stage_idx in all_stage_idx_contains_layer:
-                comm_key = f'LAYER_NAME:{layer_name},STAGE_IDX:{stage_idx}'
-                for idx, layer in enumerate(self._layers_desc):
-                    current_layer_idx_to_stage_idx = self.get_stage_from_index(
-                        idx
+                for attr in stage_idx_to_layer_name_to_attrs[stage_idx][
+                    layer_name
+                ]:
+                    attr_to_stages.setdefault(attr, set()).add(stage_idx)
+            # Aggregate attrs by their stage set: one N-way group per stage set.
+            stages_to_attrs = {}
+            for attr, stages in attr_to_stages.items():
+                stages_to_attrs.setdefault(tuple(sorted(stages)), []).append(
+                    attr
+                )
+            # Deterministic order so all ranks create groups identically.
+            for stages_tuple in sorted(stages_to_attrs.keys()):
+                if len(stages_tuple) < 2:
+                    # Only one stage holds these attrs, so no cross-stage sync
+                    # is possible. This is usually a misconfiguration (an attr
+                    # declared on a shared layer that no other stage shares);
+                    # warn with context instead of silently dropping it.
+                    warnings.warn(
+                        f"Shared layer '{layer_name}' declares attr(s) "
+                        f"{stages_to_attrs[stages_tuple]} only on stage "
+                        f"{stages_tuple[0]}; they will NOT be synchronized "
+                        f"across pipeline stages. Check the shared_weight_attr "
+                        f"declarations if this is unexpected."
                     )
-                    if not isinstance(layer, SharedLayerDesc):
-                        continue
-                    if (
-                        current_layer_idx_to_stage_idx
-                        == layer_name_to_pivot_stage_idx[layer_name]
-                    ):
-                        # Skip the pivot, the pivot stage will be added automatically when creating a new comm group.
-                        continue
-                    if (
-                        layer.layer_name == layer_name
-                        and current_layer_idx_to_stage_idx == stage_idx
-                    ):
-                        # Add comm key to comm_keys and add current stage idx to comm group.
-                        if comm_key not in comm_keys:
-                            comm_keys.append(comm_key)
-                            comm_key_to_layer_name[comm_key] = layer_name
-                            # The comm will only happen between pivot and current stage.
-                            comm_key_to_stage_idx[comm_key] = [
-                                layer_name_to_pivot_stage_idx[layer_name],
-                                current_layer_idx_to_stage_idx,
-                            ]
-                            comm_key_to_shared_attrs[comm_key] = (
-                                stage_idx_to_layer_name_to_attrs[stage_idx][
-                                    layer.layer_name
-                                ]
-                            )
+                    continue
+                attrs = sorted(stages_to_attrs[stages_tuple])
+                stages_tag = "_".join(str(s) for s in stages_tuple)
+                comm_key = f'LAYER_NAME:{layer_name},STAGES:{stages_tag}'
+                comm_keys.append(comm_key)
+                comm_key_to_layer_name[comm_key] = layer_name
+                comm_key_to_stage_idx[comm_key] = list(stages_tuple)
+                comm_key_to_shared_attrs[comm_key] = attrs
 
         if len(comm_keys) == 0:
             warnings.warn(

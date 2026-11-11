@@ -25,8 +25,7 @@ jobs:
     name: Check approval
     needs: [check-bypass]
     if: ${{ needs.check-bypass.outputs.can-skip != 'true' }}
-    runs-on:
-      group: APPROVAL
+    runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - name: Cleanup

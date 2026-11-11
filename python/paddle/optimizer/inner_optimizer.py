@@ -88,6 +88,8 @@ class InnerOptimizer(Optimizer, metaclass=ABCMeta):
           this optimizer's update math supports: whole tensor (V1), element-wise
           (V2), or either; the shell reads the resolved per-instance answer
           through :meth:`keep_whole_of`.
+        * :attr:`supports_sharded_hyperball` -- optional, default ``False``;
+          ``True`` lets FSDP step ``keep_whole`` 2D params on flat shards.
         * ``_param_info_map`` -- optional per-parameter metadata. The generic
           shell does not interpret it at all; optimizer-specific fields (e.g.
           Muon's ``use_muon`` / ``use_hyperball`` / ``split_concat_func``) are
@@ -145,6 +147,7 @@ class InnerOptimizer(Optimizer, metaclass=ABCMeta):
     # Aggregates holding a mix of both (``MixedInnerOptimizer``) declare ``None``
     # and override :meth:`keep_whole_of` to answer per parameter.
     keep_whole: bool | None | str = KEEP_WHOLE_UNDECLARED
+    supports_sharded_hyperball: bool = False
 
     def __init__(
         self,

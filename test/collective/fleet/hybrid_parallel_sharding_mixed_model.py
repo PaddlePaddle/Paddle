@@ -410,6 +410,7 @@ class TestDistShardingMixedTraining(unittest.TestCase):
         self.assertEqual(msopt.get_trainer_ranks(5, 4), (1, range(4, 8)))
 
         group = self.hcg.get_sharding_parallel_group()
+        ranks = tuple(group.ranks)
         plain = types.SimpleNamespace()
         colored = types.SimpleNamespace(color={"color": "c1", "group": group})
         info = (
@@ -417,7 +418,7 @@ class TestDistShardingMixedTraining(unittest.TestCase):
                 [plain, colored], group
             )
         )
-        self.assertEqual(set(info), {None, "c1"})
+        self.assertEqual(set(info), {(None, ranks), ("c1", ranks)})
 
         self.assertIsNone(
             msopt.MixedShardingOptimizer._buffer_color(
@@ -564,7 +565,10 @@ class TestDistShardingMixedTraining(unittest.TestCase):
         net.whole2_fc.weight.color = colored
         with _patched(hybrid, "enable_optimizer_timer", True):
             shell = MixedShardingOptimizer(_mixed_optimizer(net), self.hcg)
-        self.assertEqual(set(shell._params_2d_by_color), {"c1"})
+        self.assertEqual(
+            set(shell._params_2d_by_color),
+            {("c1", tuple(colored["group"].ranks))},
+        )
 
         # A color whose group is None degenerates to "everything on rank 0".
         net = _Net(self.weights)
@@ -574,7 +578,9 @@ class TestDistShardingMixedTraining(unittest.TestCase):
         with _patched(sharding_configs, "comm_buffer_size_MB", 0):
             shell = MixedShardingOptimizer(_mixed_optimizer(net), self.hcg)
         self.assertEqual(
-            shell._param2rank_2d_by_color["solo"],
+            shell._param2rank_2d_by_color[
+                ("solo", (paddle.distributed.get_rank(),))
+            ],
             {net.whole_fc.weight.name: 0, net.whole2_fc.weight.name: 0},
         )
 
@@ -599,8 +605,12 @@ class TestDistShardingMixedTraining(unittest.TestCase):
             _patched(sharding_configs, "machine_balanced_2d_partition", True),
         ):
             shell = MixedShardingOptimizer(_mixed_optimizer(net), self.hcg)
+        default_key = (
+            None,
+            tuple(self.hcg.get_sharding_parallel_group().ranks),
+        )
         self.assertEqual(
-            shell._param2rank_2d_by_color[None],
+            shell._param2rank_2d_by_color[default_key],
             {net.whole_fc.weight.name: 0, net.whole2_fc.weight.name: 0},
         )
 
@@ -616,6 +626,7 @@ class TestDistShardingMixedTraining(unittest.TestCase):
         net, model, optimizer = self._build_sharded(self.weights)
         shell = optimizer._inner_opt
         sharding_group = self.hcg.get_sharding_parallel_group()
+        default_key = (None, tuple(sharding_group.ranks))
 
         # Without gradient fusion the 2D params are reduced one by one, and a
         # parameter whose gradient was never produced gets a zero one.
@@ -628,8 +639,8 @@ class TestDistShardingMixedTraining(unittest.TestCase):
         plain_net = _Net(self.weights)
         plain = MixedShardingOptimizer(_mixed_optimizer(plain_net), self.hcg)
         plain._reduce_2d_grads(
-            plain._params_2d_by_color[None],
-            plain._param2rank_2d_by_color[None],
+            plain._params_2d_by_color[default_key],
+            plain._param2rank_2d_by_color[default_key],
             sharding_group,
         )
         plain_net.whole_fc.weight.trainable = False
@@ -653,8 +664,8 @@ class TestDistShardingMixedTraining(unittest.TestCase):
             ),
         ):
             shell._reduce_2d_grads(
-                shell._params_2d_by_color[None],
-                shell._param2rank_2d_by_color[None],
+                shell._params_2d_by_color[default_key],
+                shell._param2rank_2d_by_color[default_key],
                 sharding_group,
             )
         self.assertEqual(set(ops), {paddle.distributed.ReduceOp.SUM})

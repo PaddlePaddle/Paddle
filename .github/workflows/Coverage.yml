@@ -256,8 +256,7 @@ jobs:
     name: Check coverage approval
     needs: [build, build-docker, check-bypass]
     if: ${{ needs.check-bypass.outputs.can-skip != 'true' }}
-    runs-on:
-      group: APPROVAL
+    runs-on: ubuntu-latest
     permissions:
       contents: read
       pull-requests: read
