@@ -764,7 +764,7 @@ class HVCommGroupFullParamAssembler(BaseAssembler):
             )
         else:
             buffer = paddle.empty(read_item.slice_shape, dtype=read_item.dtype)
-        if buffer.place.is_cpu_place():
+        if buffer.place.is_cpu_place():  # NCCL needs GPU; outputs stay on GPU
             buffer = buffer.cuda()
 
         if op_type == OperationType.BROADCAST_ALLGATHER:

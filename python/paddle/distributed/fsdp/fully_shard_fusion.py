@@ -1670,38 +1670,72 @@ class FullyShardFusion:
             self._shard_descs[params_buffer.data_buffer.name] = param_slice_info
         return result
 
-    def full(self, aoa_config=None, **kwargs):
-        """Gather released params to CPU, then run the model's own full."""
-        released = []
-        for group in self.buffer_manager.buffer_groups:
-            params = [p for p in group.params if not p._is_initialized()]
-            if not params:
+    def _model_description(self, *args, **kwargs):
+        """The model's own description, with experts folded as in sharded_state_dict."""
+        result = self._model_sharded_state_dict(*args, **kwargs)
+        hcg = self.buffer_manager.hcg
+        if not hasattr(hcg, "get_expert_parallel_world_size"):
+            return result
+        ep_nranks = hcg.get_expert_parallel_world_size()
+        if ep_nranks <= 1:
+            return result
+        ep_rank = hcg.get_expert_parallel_rank()
+        experts = {
+            param.name
+            for group in self.buffer_manager.buffer_groups
+            if group.is_expert_param
+            for param in group.params
+        }
+        for sharded_weight in result.values():
+            local_shape = tuple(sharded_weight.local_shape)
+            if (
+                sharded_weight.local_tensor.name not in experts
+                or tuple(sharded_weight.global_shape) != local_shape
+            ):
                 continue
-            params_buffer = group.params_buffer
-            full = params_buffer.data_buffer
-            if params_buffer.fp8 is not None:
-                full = build_ckpt_weight(params_buffer, group.dtype)
-            if params_buffer.is_sharded:
-                shard = full
-                full = paddle.empty(
-                    [params_buffer.total_buffer_size], dtype=shard.dtype
-                )
-                paddle.distributed.stream.all_gather(
-                    full,
-                    shard,
-                    group=params_buffer.fsdp_group,
-                    sync_op=True,
-                    use_calc_stream=True,
-                )
-            for param in params:
-                offset = params_buffer.param_offsets[param.name]
-                value = full._slice(offset, offset + param._numel())
-                value = value.reshape(param.shape).cpu()
-                released.append((param, param.shape))
-                value._share_buffer_to(param)
-            del full
-        self.model.sharded_state_dict = self._model_sharded_state_dict
+            # Expert described as replicated: fold EP into axis 0 to keep keys distinct.
+            sharded_weight.global_shape = (
+                local_shape[0] * ep_nranks,
+                *local_shape[1:],
+            )
+            sharded_weight.global_offset = (
+                ep_rank * local_shape[0],
+                *(0 for _ in local_shape[1:]),
+            )
+        return result
+
+    def full(self, aoa_config=None, **kwargs):
+        """Gather released params to CPU and run the model's own full; iterate once to the end or close()."""
+        released = []
         try:
+            for group in self.buffer_manager.buffer_groups:
+                params = [p for p in group.params if not p._is_initialized()]
+                if not params:
+                    continue
+                params_buffer = group.params_buffer
+                weight = params_buffer.data_buffer
+                if params_buffer.fp8 is not None:
+                    weight = build_ckpt_weight(params_buffer, group.dtype)
+                gathered = weight
+                if params_buffer.is_sharded:
+                    gathered = paddle.empty(
+                        [params_buffer.total_buffer_size], dtype=weight.dtype
+                    )
+                    paddle.distributed.stream.all_gather(
+                        gathered,
+                        weight,
+                        group=params_buffer.fsdp_group,
+                        sync_op=True,
+                        use_calc_stream=True,
+                    )
+                for param in params:
+                    offset = params_buffer.param_offsets[param.name]
+                    value = gathered._slice(offset, offset + param._numel())
+                    value = value.reshape(param.shape).cpu()
+                    released.append((param, param.shape))
+                    value._share_buffer_to(param)
+                del gathered, weight
+            self.model.sharded_state_dict = self._model_description
             yield from self._model_full(aoa_config, **kwargs)
         finally:
             self.model.sharded_state_dict = self.sharded_state_dict
