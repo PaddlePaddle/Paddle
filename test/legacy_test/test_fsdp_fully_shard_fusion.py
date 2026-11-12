@@ -24,6 +24,7 @@ distributed launch:
   back untouched while routing the rest through the backward all_gather hook.
 * ``unshard_params`` -- the synchronous gather / reshard context manager and
   the double-buffer bookkeeping it restores on exit.
+* ``full`` -- export through CPU copies of the released params.
 """
 
 import types
@@ -450,6 +451,57 @@ def _fake_grads_buffer(numel, waited, i):
         is_sharded=False,
         accumulate_reduced_grad=lambda: None,
     )
+
+
+def _release(param):
+    shape = param.shape
+    param._clear_data()
+    param.get_tensor()._set_dims(shape)
+
+
+class TestFullToCpu(unittest.TestCase):
+    def test_model_full_sees_cpu_params_then_they_are_released(self):
+        w0 = paddle.create_parameter([2, 3], "float32")
+        w1 = paddle.create_parameter([4], "float32")
+        _release(w0)
+        _release(w1)
+        params_buffer = types.SimpleNamespace(
+            data_buffer=paddle.arange(10, dtype="float32"),
+            fp8=None,
+            is_sharded=False,
+            param_offsets={w0.name: 0, w1.name: 6},
+        )
+        group = types.SimpleNamespace(
+            params=[w0, w1], params_buffer=params_buffer
+        )
+        fsdp = object.__new__(fsf.FullyShardFusion)
+        fsdp.buffer_manager = types.SimpleNamespace(buffer_groups=[group])
+        fsdp.model = types.SimpleNamespace()
+        fsdp._model_sharded_state_dict = lambda: "model description"
+        seen = {}
+
+        def model_full(aoa_config=None, **kwargs):
+            seen["description"] = fsdp.model.sharded_state_dict()
+            seen["kwargs"] = kwargs
+            for p in (w0, w1):
+                yield p.name, (p.numpy().copy(), p.place.is_cpu_place())
+
+        fsdp._model_full = model_full
+        out = dict(fsdp.full(num_splits=2, shard_idx=1))
+
+        self.assertEqual(seen["description"], "model description")
+        self.assertEqual(seen["kwargs"], {"num_splits": 2, "shard_idx": 1})
+        np.testing.assert_array_equal(
+            out[w0.name][0], np.arange(6, dtype="float32").reshape(2, 3)
+        )
+        np.testing.assert_array_equal(
+            out[w1.name][0], np.arange(6, 10, dtype="float32")
+        )
+        self.assertTrue(out[w0.name][1] and out[w1.name][1])
+        self.assertEqual(fsdp.model.sharded_state_dict, fsdp.sharded_state_dict)
+        for p, shape in ((w0, [2, 3]), (w1, [4])):
+            self.assertFalse(p._is_initialized())
+            self.assertEqual(p.shape, shape)
 
 
 class TestPrefetchByLayer(unittest.TestCase):

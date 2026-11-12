@@ -764,6 +764,8 @@ class HVCommGroupFullParamAssembler(BaseAssembler):
             )
         else:
             buffer = paddle.empty(read_item.slice_shape, dtype=read_item.dtype)
+        if buffer.place.is_cpu_place():
+            buffer = buffer.cuda()
 
         if op_type == OperationType.BROADCAST_ALLGATHER:
             if not self.using_1d_comm_group:
