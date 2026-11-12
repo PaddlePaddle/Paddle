@@ -31,7 +31,7 @@ jobs:
       TASK: paddle-CI-dcu_build
     runs-on:
       group: HK-CPU
-    timeout-minutes: 180
+    timeout-minutes: 240
     steps:
       - name: Check docker image and run container
         env:
