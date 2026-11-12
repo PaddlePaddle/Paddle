@@ -1809,7 +1809,7 @@ class SyncBatchNorm(_BatchNormBase):
             layer(Layer): model containing one or more `BatchNorm*d` layers.
 
         Returns:
-            The original model with converted SyncBatchNorm layers. If BatchNorm*d layer in the model, use SyncBatchNorm layer instead.
+            The original model with `BatchNorm*d` layers converted to SyncBatchNorm layers, except layers created with ``use_global_stats=True``, which are returned unchanged.
 
         Examples:
             .. code-block:: pycon

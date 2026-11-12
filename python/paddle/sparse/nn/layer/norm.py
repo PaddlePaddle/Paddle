@@ -355,11 +355,16 @@ class SyncBatchNorm(paddle.nn.SyncBatchNorm):
         r"""
         Helper function to convert :class: `paddle.sparse.nn.BatchNorm` layers in the model to :class: `paddle.sparse.nn.SyncBatchNorm` layers.
 
+        Note:
+            A dense `paddle.nn.BatchNorm*d` layer created with ``use_global_stats=True`` is kept unchanged,
+            as in `paddle.nn.SyncBatchNorm.convert_sync_batchnorm`. `paddle.sparse.nn.BatchNorm` layers are
+            always converted.
+
         Parameters:
             layer(paddle.nn.Layer): model containing one or more `BatchNorm` layers.
 
         Returns:
-            The original model with converted SyncBatchNorm layers. If BatchNorm layer in the model, use SyncBatchNorm layer instead.
+            The original model with `BatchNorm` layers converted to SyncBatchNorm layers, except dense `BatchNorm*d` layers created with ``use_global_stats=True``, which are returned unchanged.
 
         Examples:
 
@@ -373,7 +378,14 @@ class SyncBatchNorm(paddle.nn.SyncBatchNorm):
         """
 
         layer_output = layer
-        if isinstance(layer, _BatchNormBase):
+        # A dense BatchNorm layer with use_global_stats=True is kept as it is,
+        # see paddle.nn.SyncBatchNorm.convert_sync_batchnorm. A sparse
+        # BatchNorm is always converted: its forward rewrites
+        # _use_global_stats on the first call, so the attribute does not tell
+        # whether the layer was created with use_global_stats=True.
+        if isinstance(layer, _BatchNormBase) and (
+            isinstance(layer, BatchNorm) or not layer._use_global_stats
+        ):
             if (
                 layer._weight_attr is not None
                 and not isinstance(layer._weight_attr, bool)
