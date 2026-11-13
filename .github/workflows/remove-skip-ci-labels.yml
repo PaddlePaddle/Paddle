@@ -11,8 +11,7 @@ jobs:
   remove-skip-ci-labels:
     name: Remove skip-ci labels on new commits
     if: ${{ github.repository_owner == 'PaddlePaddle' }}
-    runs-on:
-      group: APPROVAL
+    runs-on: ubuntu-latest
     steps:
       - name: Cleanup
         run: |

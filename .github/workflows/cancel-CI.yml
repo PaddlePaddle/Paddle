@@ -18,8 +18,7 @@ env:
 jobs:
   cancel:
     name: Cancel CI for ${{ github.event.pull_request.number }}
-    runs-on:
-      group: APPROVAL
+    runs-on: ubuntu-latest
     steps:
       - name: Cleanup
         run: |

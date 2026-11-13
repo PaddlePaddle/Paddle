@@ -18,8 +18,7 @@ jobs:
     name: Pre Commit
     if: ${{ github.repository_owner == 'PaddlePaddle' && needs.check-bypass.outputs.can-skip != 'true' }}
     needs: [check-bypass]
-    runs-on:
-      group: APPROVAL
+    runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
       PR_ID: ${{ github.event.pull_request.number }}
