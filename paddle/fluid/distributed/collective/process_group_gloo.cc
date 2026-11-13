@@ -266,10 +266,11 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupGloo::Send(
     std::vector<DenseTensor>& inputs, int dst_rank) {
   CheckTensorContiguous(inputs);
   std::unique_ptr<SendGlooTask> task;
-  auto tag = next_tag();
+  // Gloo matches point-to-point messages in FIFO order per peer and direction,
+  // using a separate slot prefix from collectives.
   auto comm_context = this->GetCommContext();
   task = std::make_unique<SendGlooTask>(
-      comm_context, &inputs, rank_, dst_rank, tag);
+      comm_context, &inputs, rank_, dst_rank, /*tag=*/0);
   task->Run();
 
   return task;
@@ -311,11 +312,10 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupGloo::Recv(DenseTensor* tensor,
 std::shared_ptr<ProcessGroup::Task> ProcessGroupGloo::Recv(
     std::vector<DenseTensor>& outputs, int src_rank) {
   std::unique_ptr<RecvGlooTask> task;
-  auto tag = next_tag();
   auto comm_context = this->GetCommContext();
 
   task = std::make_unique<RecvGlooTask>(
-      comm_context, &outputs, rank_, src_rank, tag);
+      comm_context, &outputs, rank_, src_rank, /*tag=*/0);
   task->Run();
   return task;
 }
