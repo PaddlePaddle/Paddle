@@ -101,6 +101,11 @@ class TestNewGroupAPI:
         paddle.distributed.barrier(group=dp_gp)
         print("test barrier api ok")
 
+        sharding_gp = self.hcg.get_sharding_parallel_group()
+        assert self.hcg.get_fsdp_inner_group() is sharding_gp
+        assert self.hcg.get_fsdp_outer_group() is None
+        print("test fsdp groups ok")
+
 
 class TestHybridEPGroup:
     def __init__(self):
@@ -139,6 +144,8 @@ class TestHybridEPGroup:
         assert moe_sharding_group.ranks == [global_rank]
         assert ep_group.ranks == [0, 1]
         assert mp_group.ranks == [0, 1]
+        assert self.hcg.get_fsdp_inner_group(True) is moe_sharding_group
+        assert self.hcg.get_fsdp_outer_group(True) is None
 
 
 if __name__ == "__main__":

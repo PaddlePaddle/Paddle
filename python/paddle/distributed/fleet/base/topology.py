@@ -20,6 +20,8 @@ from functools import reduce
 from itertools import product
 from typing import TYPE_CHECKING, Any, Literal
 
+import numpy as np
+
 import paddle
 from paddle.distributed.fleet.proto.distributed_strategy_pb2 import (
     NCCLConfig as NCCLConfig_Message,
@@ -270,6 +272,37 @@ class CommunicateTopology:
         return self.get_rank(**tf)
 
 
+def _split_fsdp_groups(groups, comm_lists, degree):
+    """Split each FSDP group into an [outer, inner] mesh and return this
+    rank's (inner, outer) groups. Every rank builds all rows and columns of
+    comm_lists in the same order.
+    """
+    meshes = {}
+    for s in sorted({tuple(s) for lists in comm_lists for s in lists}):
+        if len(s) % degree and degree % len(s):
+            raise ValueError(f"Can not split {len(s)} ranks by {degree}.")
+        # Fewer ranks than degree: unsharded inner, the group is outer.
+        meshes[s] = np.array(s).reshape(-1, max(len(s) // degree, 1))
+    own = {tuple(g.ranks): g for g in groups}
+    built = {
+        ranks: own.get(ranks)
+        if ranks in meshes
+        else paddle.distributed.new_group(list(ranks))
+        for ranks in sorted(
+            {tuple(r.tolist()) for m in meshes.values() for r in (*m, *m.T)}
+        )
+    }
+    me = paddle.distributed.get_rank()
+    result = []
+    for g in groups:
+        m = meshes[tuple(g.ranks)]
+        i, j = np.argwhere(m == me)[0]
+        result.append(
+            (built[tuple(m[i].tolist())], built[tuple(m[:, j].tolist())])
+        )
+    return result
+
+
 class HybridCommunicateGroup:
     def __init__(
         self,
@@ -453,6 +486,12 @@ class HybridCommunicateGroup:
         )
         debug_str += f", mp_group: {self._mp_group},  sharding_group: {self._sharding_group}, pp_group: {self._pp_group}, dp_group: {self._dp_group}, sep:group: {self._sep_group}, check/clip group: {self._check_group}"
         logger.info(debug_str)
+
+        self._build_fsdp_groups(
+            hybrid_configs["sharding_configs"].fsdp_outer_degree
+            if hybrid_configs is not None
+            else 1
+        )
 
         global _HYBRID_PARALLEL_GROUP
         _HYBRID_PARALLEL_GROUP = self
@@ -722,6 +761,45 @@ class HybridCommunicateGroup:
     def get_sharding_parallel_group_src_rank(self) -> int:
         # TODO should the src rank related to the shard rank for each parameter ?
         return self._sharding_comm_group.ranks[0]
+
+    # FSDP group = sharding (moe_sharding for EP experts); fsdp_outer_degree > 1 splits it into inner x outer.
+    def _build_fsdp_groups(self, fsdp_outer_degree: int) -> None:
+        self._fsdp_splits = {}
+        if fsdp_outer_degree == 1:
+            return
+        dense = self.get_fsdp_group()
+        n = dense.nranks
+        if (
+            fsdp_outer_degree < 1
+            or n % fsdp_outer_degree
+            or n < 2 * fsdp_outer_degree
+        ):
+            raise ValueError(f"Invalid fsdp_outer_degree={fsdp_outer_degree}.")
+        expert = self.get_fsdp_group(is_expert=True)
+        groups = {False: dense}
+        # An expert group of one rank has no replicas.
+        if expert is not dense and expert.nranks > 1:
+            groups[True] = expert
+        lists = [self._fsdp_comm_lists(e) for e in groups]
+        parts = _split_fsdp_groups([*groups.values()], lists, fsdp_outer_degree)
+        self._fsdp_splits = dict(zip(groups, parts))
+        if expert is dense:
+            self._fsdp_splits[True] = self._fsdp_splits[False]
+
+    def _fsdp_comm_lists(self, is_expert: bool = False) -> list[list[int]]:
+        # Every rank list of the FSDP group, as the group was built from.
+        return self._topo.get_comm_list("sharding")
+
+    def get_fsdp_group(self, is_expert: bool = False) -> Group:
+        return self.get_sharding_parallel_group()
+
+    def get_fsdp_inner_group(self, is_expert: bool = False) -> Group:
+        split = self._fsdp_splits.get(is_expert)
+        return self.get_fsdp_group(is_expert) if split is None else split[0]
+
+    def get_fsdp_outer_group(self, is_expert: bool = False) -> Group | None:
+        split = self._fsdp_splits.get(is_expert)
+        return None if split is None else split[1]
 
     # check parallel group
     def get_check_parallel_group(self, sharding: bool = False) -> Group:
@@ -1105,6 +1183,12 @@ class EPHybridCommunicateGroup(HybridCommunicateGroup):
         debug_str += f", mp_group: {self._mp_group},  sharding_group: {self._sharding_group}, pp_group: {self._pp_group}, dp_group: {self._dp_group}, sep_group: {self._sep_group}, cp_group: {self._cp_group}, cp_sharding_group: {self._cp_sharding_group}, cp_mp_group: {self._cp_mp_group}, check/clip group: {self._check_group}, ep_group: {self._ep_group}, moe_sharding_group: {self._moe_sharding_group}."
         logger.info(debug_str)
 
+        self._build_fsdp_groups(
+            hybrid_configs["sharding_configs"].fsdp_outer_degree
+            if hybrid_configs is not None
+            else 1
+        )
+
         global _HYBRID_PARALLEL_GROUP
         _HYBRID_PARALLEL_GROUP = self
 
@@ -1414,6 +1498,18 @@ class EPHybridCommunicateGroup(HybridCommunicateGroup):
 
     def get_moe_sharding_parallel_group_src_rank(self) -> int:
         return self._moe_sharding_comm_group.ranks[0]
+
+    def _fsdp_comm_lists(self, is_expert: bool = False) -> list[list[int]]:
+        if is_expert and self.get_expert_parallel_world_size() > 1:
+            return self._moe_topo.get_comm_list("moe_sharding")
+        return self.merge_inner_comm_list(
+            self._dense_topo, "moe_sharding", "dense_sharding"
+        )
+
+    def get_fsdp_group(self, is_expert: bool = False) -> Group:
+        if is_expert and self.get_expert_parallel_world_size() > 1:
+            return self.get_moe_sharding_parallel_group()
+        return self.get_sharding_parallel_group()
 
     def get_sharding_parallel_world_size(
         self, with_context_parallel=False
