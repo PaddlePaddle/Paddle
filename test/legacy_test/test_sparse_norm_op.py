@@ -128,6 +128,38 @@ class TestSparseBatchNorm(unittest.TestCase):
         # 3D
         self.check([2, 8, 8, 3, 4])
 
+    def test_use_global_stats_not_sticky(self):
+        paddle.seed(0)
+        channels = 3
+        shape = [2, 4, 4, 4, channels]
+        x = paddle.randn(shape).to_sparse_coo(4)
+
+        batch_norm = paddle.sparse.nn.BatchNorm(channels)
+
+        # training forward must not write the implicit decision back to the
+        # module attribute, otherwise the following eval forward silently
+        # keeps using batch statistics
+        batch_norm.train()
+        batch_norm(x)
+        self.assertIsNone(batch_norm._use_global_stats)
+
+        mean_before = batch_norm._mean.numpy().copy()
+        batch_norm.eval()
+        batch_norm(x)
+        self.assertIsNone(batch_norm._use_global_stats)
+        np.testing.assert_allclose(
+            batch_norm._mean.numpy(), mean_before, atol=1e-8, rtol=1e-8
+        )
+
+        # switching back to training must update the running statistics again
+        mean_before = batch_norm._mean.numpy().copy()
+        batch_norm.train()
+        batch_norm(x)
+        self.assertIsNone(batch_norm._use_global_stats)
+        self.assertFalse(
+            np.allclose(batch_norm._mean.numpy(), mean_before, atol=1e-8)
+        )
+
 
 class TestSyncBatchNorm(unittest.TestCase):
     def test_sync_batch_norm(self):

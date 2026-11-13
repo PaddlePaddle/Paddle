@@ -142,11 +142,12 @@ class BatchNorm(paddle.nn.BatchNorm1D):
                 "When training, we now always track global mean and variance."
             )
 
-        if self._use_global_stats is None:
-            self._use_global_stats = not self.training
+        use_global_stats = self._use_global_stats
+        if use_global_stats is None:
+            use_global_stats = not self.training
             trainable_statistics = False
         else:
-            trainable_statistics = not self._use_global_stats
+            trainable_statistics = not use_global_stats
 
         data_format = 'NCHW' if self._data_format[1] == 'C' else 'NHWC'
 
@@ -161,7 +162,7 @@ class BatchNorm(paddle.nn.BatchNorm1D):
                 self._momentum,
                 self._epsilon,
                 data_format,
-                self._use_global_stats,
+                use_global_stats,
                 trainable_statistics,
             )
             return batch_norm_out
@@ -178,7 +179,7 @@ class BatchNorm(paddle.nn.BatchNorm1D):
                 'epsilon': self._epsilon,
                 'data_layout': data_format,
                 'is_test': not self.training,
-                'use_global_stats': self._use_global_stats,
+                'use_global_stats': use_global_stats,
                 'trainable_statistics': trainable_statistics,
                 'fuse_with_relu': False,
             }
