@@ -415,5 +415,54 @@ class CELUOpInferSymbolicShapeTest(TestBase):
         return True
 
 
+class AddcmulNet(paddle.nn.Layer):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, x, y, z, w):
+        out1 = paddle.addcmul(x, y, z, value=0.5)
+        out2 = paddle.addcmul(z, x, y)
+        out3 = paddle.addcmul(w, x, w, value=-2)
+        out4 = paddle.addcmul_(out1 * 1.0, x, z, value=0.5)
+        return out1, out2, out3, out4
+
+
+class AddcmulOpInferSymbolicShapeTest(TestBase):
+    def prepare_data(self):
+        self.inputs = [
+            paddle.rand([4, 1, 3], 'float32'),
+            paddle.rand([5, 1], 'float32'),
+            paddle.rand([3], 'float32'),
+            paddle.rand([4, 1, 3], 'float32'),
+        ]
+        self.expected = [
+            'shape[S0, S1, 3], data[NULL]',
+            'shape[S0, S1, 3], data[NULL]',
+            'shape[Broadcast(S0, S2), S3, 3], data[NULL]',
+        ]
+        self.inplace_expected = ['shape[S0, S1, 3], data[NULL]']
+
+    def test_eval_symbolic(self):
+        net = AddcmulNet()
+        input_spec = [
+            InputSpec(shape=[None, 1, 3], dtype='float32'),
+            InputSpec(shape=[None, 1], dtype='float32'),
+            InputSpec(shape=[3], dtype='float32'),
+            InputSpec(shape=[None, None, 3], dtype='float32'),
+        ]
+        expected_outs = net(*self.inputs)
+        net = apply_to_static(net, True, input_spec)
+        net.eval()
+        check_infer_results(net, input_spec, 'pd_op.addcmul', self.expected)
+        check_infer_results(
+            net, input_spec, 'pd_op.addcmul_', self.inplace_expected
+        )
+        outs = net(*self.inputs)
+        for out, expected_out in zip(outs, expected_outs):
+            np.testing.assert_allclose(
+                out.numpy(), expected_out.numpy(), rtol=1e-6, atol=1e-6
+            )
+
+
 if __name__ == '__main__':
     unittest.main()

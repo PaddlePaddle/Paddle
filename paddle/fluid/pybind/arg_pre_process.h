@@ -97,5 +97,9 @@ void InplaceShapePreProcess(Tensor* x, Tensor* y);
 // Inplace API broadcast validation for static graph
 void InplaceShapePreProcess(pir::Value* x, pir::Value* y);
 
+// Inplace API broadcast validation with two other inputs, e.g. addcmul_
+void InplaceShapePreProcess(Tensor* x, Tensor* y, Tensor* z);
+void InplaceShapePreProcess(pir::Value* x, pir::Value* y, pir::Value* z);
+
 }  // namespace pybind
 }  // namespace paddle
