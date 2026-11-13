@@ -167,6 +167,21 @@ class TestSyncBatchNorm(unittest.TestCase):
             if isinstance(sublayer, nn.BatchNorm):
                 self.assertEqual(isinstance(model[idx], nn.SyncBatchNorm), True)
 
+    def test_convert_dense_bn_use_global_stats(self):
+        model = paddle.nn.Sequential(
+            paddle.nn.BatchNorm2D(4, use_global_stats=True),
+            paddle.nn.BatchNorm2D(4),
+            nn.BatchNorm(4),
+        )
+        frozen_bn = model[0]
+        model = nn.SyncBatchNorm.convert_sync_batchnorm(model)
+        # the dense layer with use_global_stats=True is kept, the other
+        # layers are converted
+        self.assertIs(model[0], frozen_bn)
+        self.assertIsInstance(model[1], paddle.nn.SyncBatchNorm)
+        self.assertNotIsInstance(model[1], nn.SyncBatchNorm)
+        self.assertIsInstance(model[2], nn.SyncBatchNorm)
+
 
 class TestStatic(unittest.TestCase):
     @compare_legacy_with_pt
