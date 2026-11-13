@@ -40,6 +40,16 @@ void ScatterGradKernel(const Context &dev_ctx,
     }
     return;
   }
+  // Nothing is scattered: Out == X, so dX = dOut and dUpdates is all zeros.
+  if (index.numel() == 0) {
+    if (x_grad) {
+      Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
+    }
+    if (updates_grad) {
+      Full<T, Context>(dev_ctx, updates_grad->dims(), 0, updates_grad);
+    }
+    return;
+  }
   auto index_type = index.dtype();
   bool index_type_match =
       index_type == DataType::INT32 || index_type == DataType::INT64;
