@@ -68,6 +68,12 @@ FSDP_CONFIGS = [
         "comm_unit_size": 1 << 20,
     },
 ]
+# Re-run with the buffer pool.
+POOL_CONFIGS = [
+    {"enable_tensor_fusion_and_overlap": True},
+    {"comm_unit_size": 512},
+    {"reshard_policy": "after_step", "reshard_filter": "expert"},
+]
 
 
 class EPAllGather(PyLayer):
@@ -326,8 +332,50 @@ def run_moe(ep_degree):
             f"stage1={stage1_loss_md5s}, fsdp={fsdp_loss_md5s}"
         )
 
+    for mode in ("params", "all"):
+        for fsdp_kwargs in POOL_CONFIGS:
+            md5s = train_moe_pooled(hcg, mode, fsdp_kwargs, data)
+            assert md5s == stage1_loss_md5s, (
+                f"pooled loss MD5 diverged ({mode=}, {fsdp_kwargs})"
+            )
+    # Old NCCL: fallback path; NCCL >= 2.30.7: windows.
+    zero_sm = {"zero_sm_all_gather": True, "zero_sm_min_bytes": 0}
+    for fsdp_kwargs in POOL_CONFIGS[:1]:
+        md5s = train_moe_pooled(hcg, "params", {**fsdp_kwargs, **zero_sm}, data)
+        assert md5s == stage1_loss_md5s, (
+            f"zero-SM loss MD5 diverged ({fsdp_kwargs})"
+        )
+
     check_clip_attrs(hcg)
     check_acc_sync(hcg)
+
+
+def train_moe_pooled(hcg, mode, fsdp_kwargs, data):
+    """Train with the persistent buffer pool; no new block after a step."""
+    _, model = build_moe_models(hcg)
+    model = fully_shard(model, buffer_pool=mode, **fsdp_kwargs)
+    bm = model._fsdp_context.buffer_manager
+    pools = [bm.buffer_pool, *bm.symm_pools.values()]
+    for group in bm.buffer_groups:
+        params_pool = bm.symm_pools.get(
+            group.params_buffer.fsdp_group.id, bm.buffer_pool
+        )
+        for buf, pool in (
+            (group.params_buffer, params_pool),
+            (group.grads_buffer, bm.buffer_pool if mode == "all" else None),
+        ):
+            if buf is not None:
+                assert buf.pool is (pool if buf.is_sharded else None)
+    model = mix_precision_utils.MixPrecisionLayer(model, dtype="float16")
+    optimizer = build_moe_optimizer(model)
+    md5s = train_moe(model, optimizer, data, accum_steps=ACCUM_STEPS)
+    sizes = [(p.num_blocks, p.nbytes) for p in pools]
+    assert sum(n for n, _ in sizes) > 0
+    train_moe(model, optimizer, data, accum_steps=ACCUM_STEPS)
+    assert [(p.num_blocks, p.nbytes) for p in pools] == sizes, (
+        f"pool grew after the first steps ({mode=}, {fsdp_kwargs})"
+    )
+    return md5s
 
 
 def check_clip_attrs(hcg):

@@ -15,6 +15,7 @@
 import contextlib
 import math
 import re
+import warnings
 from collections import Counter, OrderedDict
 from dataclasses import dataclass, field
 from enum import Enum
@@ -24,6 +25,10 @@ import numpy as np
 import paddle
 from paddle.autograd import PyLayer
 from paddle.distributed import fleet
+from paddle.distributed.collective import (
+    _nccl_symmetric_empty,
+    _register_comm_buffer,
+)
 from paddle.distributed.fleet.utils.tensor_fusion_helper import (
     align,
     alignment,
@@ -61,6 +66,76 @@ def run_on_stream(stream, tensors, collective):
         for t in tensors:
             t._record_stream()
     return StreamTask(stream)
+
+
+class FSDPBufferPool:
+    """Persistent full-size buffers, reused by exact (dtype, numel).
+
+    Blocks are never freed. No view of a block may outlive its release.
+    """
+
+    def __init__(self):
+        self._free = {}
+        self.num_blocks = 0
+        self.nbytes = 0
+
+    def acquire(self, numel, dtype):
+        free = self._free.get((dtype, numel))
+        if free:
+            return free.pop()
+        block = paddle.empty([numel], dtype=dtype)
+        self.num_blocks += 1
+        self.nbytes += numel * block.element_size()
+        return block
+
+    def release(self, block):
+        self._free.setdefault((block.dtype, block.shape[0]), []).append(block)
+
+
+class SymmBufferPool(FSDPBufferPool):
+    """FSDPBufferPool whose blocks are NCCL windows of one group.
+
+    With ``cta_policy=2``, a gather on registered buffers runs on the copy
+    engine. Registration is collective, so all ranks must acquire the same
+    sizes in the same order. One window per block (NCCL issue #2198).
+    Blocks below ``min_bytes`` stay unregistered.
+    """
+
+    def __init__(self, group, min_bytes):
+        super().__init__()
+        self.group = group
+        self.min_bytes = min_bytes
+        self.num_windows = 0
+        self.window_nbytes = 0
+        self._enabled = hasattr(paddle.base.core, "nccl_mem_alloc")
+        if not self._enabled:
+            warnings.warn(
+                "zero_sm_all_gather: this Paddle build has no nccl_mem_alloc "
+                "(needs NCCL >= 2.30.7 at build time); gathers stay on SM."
+            )
+
+    def acquire(self, numel, dtype):
+        if self._free.get((dtype, numel)):
+            return super().acquire(numel, dtype)
+        nbytes = numel * paddle.base.core.size_of_dtype(dtype)
+        if self._enabled and nbytes >= self.min_bytes:
+            block = _nccl_symmetric_empty([numel], dtype)
+            if _register_comm_buffer(block, group=self.group) != 0:
+                block._fsdp_symm_window = True
+                self.num_windows += 1
+                self.window_nbytes += nbytes
+            else:
+                # Same NCCL on all ranks, so all disable together.
+                self._enabled = False
+                warnings.warn(
+                    "zero_sm_all_gather: the loaded NCCL has no window API "
+                    "(needs NCCL >= 2.30.7); gathers stay on SM."
+                )
+        else:
+            block = paddle.empty([numel], dtype=dtype)
+        self.num_blocks += 1
+        self.nbytes += nbytes
+        return block
 
 
 class BufferState(Enum):
@@ -170,6 +245,7 @@ class TensorFusionBuffer:
         self.total_buffer_size = 0
         self.param_offsets = {}
         self.tmp_data_buffer = None
+        self.pool = None  # FSDPBufferPool, set by FSDPBufferManager
         self.comm_task = None
         self.fp8 = None  # set by init_fp8_buffer
         self.trainable = params[0].trainable
@@ -322,7 +398,14 @@ class TensorFusionBuffer:
             return self.data_buffer
         # Reuse tmp_buffer if exists, else create
         if self.tmp_data_buffer is None:
-            if self.is_params:
+            if self.pool is not None:
+                dtype = self.dtype if self.is_params else self.main_grad_dtype
+                self.tmp_data_buffer = self.pool.acquire(
+                    self.total_buffer_size, dtype
+                )
+                if not self.is_params:
+                    self.tmp_data_buffer.zero_()
+            elif self.is_params:
                 # Fully overwritten by all_gather.
                 self.tmp_data_buffer = paddle.empty(
                     shape=[self.total_buffer_size], dtype=self.dtype
@@ -342,6 +425,12 @@ class TensorFusionBuffer:
 
         def gather():
             for full, shard in pairs:
+                if getattr(full, "_fsdp_symm_window", False):
+                    # Input must be registered too: gather in place.
+                    n, rank = shard.shape[0], self.fsdp_group.rank
+                    staged = full._slice(rank * n, (rank + 1) * n)
+                    staged.copy_(shard, False)
+                    shard = staged
                 paddle.distributed.stream.all_gather(
                     full,
                     shard,
@@ -373,6 +462,8 @@ class TensorFusionBuffer:
             self._rs_comm_buffer = tmp_buffer
         else:
             self._rs_comm_buffer = paddle.cast(tmp_buffer, self.grad_comm_dtype)
+            if self.pool is not None:
+                self.pool.release(tmp_buffer)
             self.tmp_data_buffer = None
         full = self._rs_comm_buffer
         shard = full._slice(0, self.data_buffer.shape[0])
@@ -401,7 +492,10 @@ class TensorFusionBuffer:
         if self.fp8 is not None:
             clear_fp8_tmp_buffer(self)
         if self.tmp_data_buffer is not None:
-            self.tmp_data_buffer._clear_data()
+            if self.pool is not None:
+                self.pool.release(self.tmp_data_buffer)
+            else:
+                self.tmp_data_buffer._clear_data()
             self.tmp_data_buffer = None
 
     def release_data_buffer(self):
@@ -432,7 +526,18 @@ class FSDPBufferManager:
         main_grad_dtype=None,
         grad_comm_dtype=None,
         fp8_main_dtype=paddle.float32,
+        buffer_pool=None,
+        zero_sm_all_gather=False,
+        zero_sm_min_bytes=1 << 20,
     ):
+        if buffer_pool not in (None, "params", "all"):
+            raise ValueError(
+                f"buffer_pool={buffer_pool!r}: expected None, 'params' or 'all'"
+            )
+        if zero_sm_all_gather and buffer_pool is None:
+            raise ValueError(
+                "zero_sm_all_gather=True needs buffer_pool='params' or 'all'"
+            )
         self.model = model
         self.grad_comm_dtype = grad_comm_dtype
         self._comm_streams = {}
@@ -656,8 +761,35 @@ class FSDPBufferManager:
             for param in params:
                 self.param_to_buffer_id[param.name] = gid
 
+        self.buffer_pool = None if buffer_pool is None else FSDPBufferPool()
+        self.symm_pools = {}
+        if buffer_pool is not None:
+            for group in self.buffer_groups:
+                params_buf, grads_buf = group.params_buffer, group.grads_buffer
+                if params_buf.is_sharded:
+                    params_buf.pool = (
+                        self._symm_pool(
+                            params_buf.fsdp_group, zero_sm_min_bytes
+                        )
+                        if zero_sm_all_gather
+                        else self.buffer_pool
+                    )
+                if (
+                    buffer_pool == "all"
+                    and grads_buf is not None
+                    and grads_buf.is_sharded
+                ):
+                    grads_buf.pool = self.buffer_pool
+
         self._assign_whole_owners()
         self._set_clip_attrs()
+
+    def _symm_pool(self, group, min_bytes):
+        """Param gather buffers from per-group NCCL windows."""
+        pool = self.symm_pools.get(group.id)
+        if pool is None:
+            pool = self.symm_pools[group.id] = SymmBufferPool(group, min_bytes)
+        return pool
 
     def _comm_stream(self, group):
         if group.nranks <= 1:
@@ -1511,6 +1643,9 @@ class FullyShardFusion:
         comm_unit_size=None,
         reshard_policy="after_forward",
         reshard_filter="all",
+        buffer_pool=None,
+        zero_sm_all_gather=False,
+        zero_sm_min_bytes=1 << 20,
     ):
         self.model = model
         self.mp_policy = mp_policy
@@ -1522,6 +1657,9 @@ class FullyShardFusion:
             if mp_policy is None
             else mp_policy.grad_comm_dtype,
             fp8_main_dtype=fp8_main_dtype,
+            buffer_pool=buffer_pool,
+            zero_sm_all_gather=zero_sm_all_gather,
+            zero_sm_min_bytes=zero_sm_min_bytes,
         )
         self.comm_manager = FSDPCommManager(
             self.buffer_manager,
