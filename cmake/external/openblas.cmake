@@ -19,6 +19,16 @@ set(CBLAS_INSTALL_DIR ${THIRD_PARTY_PATH}/install/openblas)
 set(CBLAS_SOURCE_DIR ${PADDLE_SOURCE_DIR}/third_party/openblas)
 set(CBLAS_TAG v0.3.7)
 
+# On Windows ARM64, use the prebuilt OpenBLAS DLL passed in via
+# -DCBLAS_LIBRARIES / -DCBLAS_INC_DIR / -DOPENBLAS_SHARED_LIB.
+# OpenBLAS does not support compiling with MSVC on Windows ARM64.
+if(WIN32 AND WITH_ARM)
+  if(NOT TARGET extern_openblas)
+    add_custom_target(extern_openblas)
+  endif()
+  return()
+endif()
+
 if(UNIX
    AND NOT APPLE
    AND NOT WITH_ROCM

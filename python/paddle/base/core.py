@@ -104,6 +104,9 @@ def avx_supported():
             has_avx = True if pipe.returncode == 0 else False
         return has_avx
     elif sysstr == 'windows':
+        machine = platform.machine().lower()
+        if machine in ("arm", "arm64"):
+            return False
         import ctypes
 
         ONE_PAGE = ctypes.c_size_t(0x1000)
