@@ -227,5 +227,186 @@ class TestEmbeddingDeterministic(unittest.TestCase):
         self.hidden_size = 1024
 
 
+# Keep in sync with kSortThreshold in embedding_grad_kernel.cu and
+# kEmbeddingGradRowsPerPartial in embedding_grad.h.
+SORT_THRESHOLD = 3072
+ROWS_PER_PARTIAL = 10
+FEATURE_KERNEL_CHUNK = 32
+
+
+def round_bf16(x):
+    # Round float32 to the nearest bfloat16 (ties to even), kept in float32.
+    u = np.ascontiguousarray(x, dtype=np.float32).view(np.uint32)
+    u = (u + np.uint32(0x7FFF) + ((u >> np.uint32(16)) & np.uint32(1))) & (
+        np.uint32(0xFFFF0000)
+    )
+    return u.view(np.float32)
+
+
+def get_mt_and_round_fn(dtype):
+    # Returns the accumulation type MT (numpy) of dtype and a function that
+    # rounds an MT array to dtype while keeping it in MT.
+    if dtype == paddle.float16:
+        return np.float32, lambda x: x.astype(np.float16).astype(np.float32)
+    if dtype == paddle.bfloat16:
+        return np.float32, round_bf16
+    mt = {
+        paddle.float32: np.float32,
+        paddle.float64: np.float64,
+        paddle.complex64: np.complex64,
+        paddle.complex128: np.complex128,
+    }[dtype]
+    return mt, lambda x: x
+
+
+def feature_kernel_reference(ids, grad, n, dtype, round_acc_first):
+    # Emulates EmbeddingGradDeterministicKernel: rows are processed in chunks
+    # of 32, rows sharing one id in a chunk are summed in MT by row order, and
+    # the chunk sum is then added to the table.
+    mt, round_t = get_mt_and_round_fn(dtype)
+    table = np.zeros([n, grad.shape[1]], dtype=mt)
+    for start in range(0, len(ids), FEATURE_KERNEL_CHUNK):
+        chunk = ids[start : start + FEATURE_KERNEL_CHUNK]
+        for cur_id in dict.fromkeys(chunk.tolist()):
+            rows = start + np.nonzero(chunk == cur_id)[0]
+            acc = grad[rows[0]].copy()
+            for row in rows[1:]:
+                acc += grad[row]
+            if round_acc_first:
+                acc = round_t(acc)
+            table[cur_id] = round_t(table[cur_id] + acc)
+    return table
+
+
+def sort_kernel_reference(ids, grad, n, dtype):
+    # Emulates LaunchEmbeddingGradSortKernel: rows of one id are taken in
+    # stable sorted order, summed in MT every ROWS_PER_PARTIAL rows, and the
+    # partials are summed in MT and rounded once.
+    mt, round_t = get_mt_and_round_fn(dtype)
+    table = np.zeros([n, grad.shape[1]], dtype=mt)
+    order = np.argsort(ids, kind='stable')
+    sorted_ids = ids[order]
+    for cur_id in np.unique(sorted_ids):
+        rows = order[sorted_ids == cur_id]
+        total = np.zeros([grad.shape[1]], dtype=mt)
+        for start in range(0, len(rows), ROWS_PER_PARTIAL):
+            partial = np.zeros([grad.shape[1]], dtype=mt)
+            for row in rows[start : start + ROWS_PER_PARTIAL]:
+                partial += grad[row]
+            total += partial
+        table[cur_id] = round_t(total)
+    return table
+
+
+@contextlib.contextmanager
+def flags_guard(flags):
+    old_flags = paddle.get_flags(list(flags.keys()))
+    paddle.set_flags(flags)
+    try:
+        yield
+    finally:
+        paddle.set_flags(old_flags)
+
+
+@unittest.skipIf(
+    not paddle.is_compiled_with_cuda() or paddle.is_compiled_with_rocm(),
+    "The sort based embedding backward is only available on CUDA.",
+)
+class TestEmbeddingDeterministicAcrossSortThreshold(unittest.TestCase):
+    # Checks FLAGS_embedding_deterministic=1 bitwise against a numpy emulation
+    # of the expected accumulation order on both sides of SORT_THRESHOLD.
+    def setUp(self):
+        # (ids_shape, vocab_size, hidden_size)
+        self.cases = [
+            ([SORT_THRESHOLD], 64, 100),
+            ([SORT_THRESHOLD + 1], 64, 100),
+            ([SORT_THRESHOLD + 1], 8192, 64),
+            ([128, 128], 1000, 130),
+        ]
+        self.dtypes = [
+            paddle.float32,
+            paddle.float16,
+            paddle.complex64,
+            paddle.complex128,
+        ]
+        if paddle.amp.is_bfloat16_supported():
+            self.dtypes.append(paddle.bfloat16)
+        self.ids_dtypes = [paddle.int64, paddle.int32]
+        # hot: about half of the ids are one id, so that its segment is split
+        # into many partials.
+        self.id_modes = ['uniform', 'hot']
+
+    def generate(self, ids_shape, vocab_size, hidden_size, dtype, id_mode):
+        numel = int(np.prod(ids_shape))
+        ids = np.random.randint(0, vocab_size, size=[numel])
+        if id_mode == 'hot':
+            ids[np.random.rand(numel) < 0.5] = vocab_size // 2
+        grad_shape = [*ids_shape, hidden_size]
+        if dtype in [paddle.complex64, paddle.complex128]:
+            grad = np.random.randn(*grad_shape) + 1j * np.random.randn(
+                *grad_shape
+            )
+            out_grad = paddle.to_tensor(grad).astype(dtype)
+        else:
+            out_grad = paddle.randn(grad_shape).astype(dtype)
+        weight = paddle.randn([vocab_size, hidden_size]).astype(dtype)
+        weight.stop_gradient = False
+        # Use the values actually held by out_grad, already rounded to dtype.
+        grad_np = to_numpy(out_grad).reshape([numel, hidden_size])
+        return ids, weight, out_grad, grad_np
+
+    def run_embedding(self, ids, weight, out_grad, compatible):
+        weight = clone_weight(weight)
+        with flags_guard(
+            {
+                'FLAGS_embedding_deterministic': 1,
+                'FLAGS_use_accuracy_compatible_kernel': compatible,
+            }
+        ):
+            out = paddle.nn.functional.embedding(ids, weight)
+            out.backward(out_grad.clone())
+        return to_numpy(weight.grad)
+
+    def test_main(self):
+        for (ids_shape, vocab_size, hidden_size), dtype, id_mode in product(
+            self.cases, self.dtypes, self.id_modes
+        ):
+            ids_np, weight, out_grad, grad_np = self.generate(
+                ids_shape, vocab_size, hidden_size, dtype, id_mode
+            )
+            for compatible in [False, True]:
+                # The sort path is only taken when the compat flag is on and
+                # K > threshold; otherwise the feature kernel runs for all K,
+                # and round_acc_first is on only when compat and K <= threshold.
+                if compatible and len(ids_np) > SORT_THRESHOLD:
+                    expected = sort_kernel_reference(
+                        ids_np, grad_np, vocab_size, dtype
+                    )
+                else:
+                    round_acc_first = (
+                        compatible and len(ids_np) <= SORT_THRESHOLD
+                    )
+                    expected = feature_kernel_reference(
+                        ids_np, grad_np, vocab_size, dtype, round_acc_first
+                    )
+                for ids_dtype in self.ids_dtypes:
+                    ids = paddle.to_tensor(ids_np.reshape(ids_shape)).astype(
+                        ids_dtype
+                    )
+                    actual = self.run_embedding(
+                        ids, weight, out_grad, compatible
+                    )
+                    np.testing.assert_array_equal(
+                        actual,
+                        expected,
+                        err_msg=(
+                            f"ids_shape={ids_shape}, vocab_size={vocab_size}, "
+                            f"hidden_size={hidden_size}, dtype={dtype}, "
+                            f"id_mode={id_mode}, compatible={compatible}, "
+                            f"ids_dtype={ids_dtype}"
+                        ),
+                    )
+
+
 if __name__ == "__main__":
     unittest.main()
