@@ -519,7 +519,8 @@ class FSDPBufferManager:
                 ),
                 getattr(param, "_fsdp_fp8_quantizer", None),
                 # Grad is replicated (not partial) across cp ranks.
-                bool(
+                cp_degree > 1
+                and bool(
                     getattr(param, "expert_cp_replicated", False)
                     if is_expert
                     else getattr(
