@@ -24,11 +24,14 @@ distributed launch:
   back untouched while routing the rest through the backward all_gather hook.
 * ``unshard_params`` -- the synchronous gather / reshard context manager and
   the double-buffer bookkeeping it restores on exit.
+* the grads buffer ``grad_div`` under context parallel.
 * ``full`` -- export through CPU copies of the released params.
 """
 
+import contextlib
 import types
 import unittest
+from unittest import mock
 
 import numpy as np
 
@@ -971,6 +974,100 @@ class TestReshardPolicy(unittest.TestCase):
                 self.assertEqual(
                     groups[gid].params_buffer.status, fsf.BufferState.USING
                 )
+
+
+class _FakeGroup:
+    def __init__(self, nranks):
+        self.nranks = nranks
+        self.id = 0
+
+
+class _FakeHcg:
+    def __init__(self, sharding_nranks, cp_degree):
+        self._group = _FakeGroup(sharding_nranks)
+        self._cp_degree = cp_degree
+
+    def get_sharding_parallel_group(self):
+        return self._group
+
+    def get_expert_parallel_world_size(self):
+        return 1
+
+    def get_context_parallel_world_size(self):
+        return self._cp_degree
+
+
+class _RecordingFusionBuffer:
+    """Records grad_div instead of allocating buffers."""
+
+    def __init__(self, gid, params, fsdp_group, dtype, **kwargs):
+        self.grad_div = kwargs.get("grad_div", 1)
+        self.is_sharded = True
+        self.total_buffer_size = 0
+        self.shard_align_numel = None
+        self.data_buffer = types.SimpleNamespace()
+
+    def param_shard(self, param):
+        return True
+
+
+class TestCpGradDiv(unittest.TestCase):
+    """The grads buffer divisor must sum cp-partial grads over cp."""
+
+    def _build(self, cp_degree, sharding_nranks=4):
+        model = paddle.nn.Layer()
+        params = {}
+        for name in ("plain", "dense_rep", "expert", "expert_rep"):
+            params[name] = model.create_parameter([4, 4])
+            setattr(model, name, params[name])
+        params["dense_rep"].context_parallel_disable_scale_grad = True
+        params["expert"].is_moe_param = True
+        params["expert_rep"].is_moe_param = True
+        params["expert_rep"].expert_cp_replicated = True
+
+        hcg = _FakeHcg(sharding_nranks, cp_degree)
+        with contextlib.ExitStack() as stack:
+            stack.enter_context(
+                mock.patch.object(
+                    fsf.fleet, "get_hybrid_communicate_group", return_value=hcg
+                )
+            )
+            stack.enter_context(
+                mock.patch.object(
+                    fsf, "TensorFusionBuffer", _RecordingFusionBuffer
+                )
+            )
+            stack.enter_context(
+                mock.patch.object(
+                    fsf.FSDPBufferManager, "_comm_stream", return_value=None
+                )
+            )
+            manager = fsf.FSDPBufferManager(model)
+
+        def group_of(name):
+            gid = manager.param_to_buffer_id[params[name].name]
+            return manager.buffer_groups[gid]
+
+        return manager.buffer_groups, group_of
+
+    def test_cp_partial_grads_summed_over_cp(self):
+        groups, group_of = self._build(cp_degree=2)
+        # cp-partial grads: divide by sharding / cp.
+        self.assertEqual(group_of("plain").grads_buffer.grad_div, 2)
+        self.assertEqual(group_of("expert").grads_buffer.grad_div, 2)
+        # cp-replicated grads: average over the whole sharding group.
+        self.assertEqual(group_of("dense_rep").grads_buffer.grad_div, 4)
+        self.assertEqual(group_of("expert_rep").grads_buffer.grad_div, 4)
+        self.assertEqual(len(groups), 4)
+
+    def test_cp_one_keeps_grouping(self):
+        groups, group_of = self._build(cp_degree=1)
+        # cp marks must not split buffers when cp is disabled.
+        self.assertIs(group_of("plain"), group_of("dense_rep"))
+        self.assertIs(group_of("expert"), group_of("expert_rep"))
+        self.assertEqual(len(groups), 2)
+        for group in groups:
+            self.assertEqual(group.grads_buffer.grad_div, 4)
 
 
 if __name__ == "__main__":

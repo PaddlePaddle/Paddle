@@ -98,6 +98,7 @@ class BufferGroup:
     grads_use_sum: int = 0
     grads_use_cnt: int = 0
     grads_ready_cnt: int = 0
+    cp_replicated: bool = False
 
 
 def _whole_3d_shard_numel(params, fsdp_group):
@@ -447,6 +448,9 @@ class FSDPBufferManager:
             if use_ep
             else self._fsdp_group
         )
+        cp_degree = getattr(
+            self.hcg, "get_context_parallel_world_size", lambda: 1
+        )()
         self.main_grad_dtype = (
             main_grad_dtype if main_grad_dtype is not None else paddle.float32
         )
@@ -514,6 +518,15 @@ class FSDPBufferManager:
                     )
                 ),
                 getattr(param, "_fsdp_fp8_quantizer", None),
+                # Grad is replicated (not partial) across cp ranks.
+                cp_degree > 1
+                and bool(
+                    getattr(param, "expert_cp_replicated", False)
+                    if is_expert
+                    else getattr(
+                        param, "context_parallel_disable_scale_grad", False
+                    )
+                ),
             )
             keyed_params.setdefault(key, []).append(param)
 
@@ -527,6 +540,7 @@ class FSDPBufferManager:
                 is_tie,
                 _,
                 keep_whole,
+                _,
                 _,
                 _,
                 _,
@@ -552,6 +566,7 @@ class FSDPBufferManager:
                 keep_whole=keep_whole,
                 hyperball_sharded=hyperball_name is not None,
                 clip_attrs=clip_attrs,
+                cp_replicated=cp_replicated,
             )
             for (
                 dtype,
@@ -566,6 +581,7 @@ class FSDPBufferManager:
                 hyperball_name,
                 clip_attrs,
                 _,
+                cp_replicated,
             ), params in sorted(keyed_params.items(), key=sort_key)
         ]
 
@@ -621,7 +637,8 @@ class FSDPBufferManager:
                     main_grad_dtype=paddle.float32
                     if group.is_expert_param or group.dtype == paddle.float32
                     else self.main_grad_dtype,
-                    grad_div=self._fsdp_group.nranks,
+                    grad_div=self._fsdp_group.nranks
+                    // (1 if group.cp_replicated else cp_degree),
                     shard_buffer=grads_shard_buffer,
                     shard_align_numel=shard_align,
                     grad_comm_dtype=self.grad_comm_dtype,
