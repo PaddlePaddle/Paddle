@@ -2770,6 +2770,58 @@ class TestAnyCompatibility(unittest.TestCase):
                         )
 
 
+class TestLowPrecisionReduceToComplexCPU(unittest.TestCase):
+    def test_sum_and_mean(self):
+        values = np.array(
+            [[1.5, -2.0, 0.25, 4.0], [-0.5, 3.0, -1.25, 2.0]],
+            dtype=np.float32,
+        )
+        with base.dygraph.guard(paddle.CPUPlace()):
+            for input_dtype in ('float16', 'bfloat16'):
+                data = (
+                    values.astype(np.float16)
+                    if input_dtype == 'float16'
+                    else convert_float_to_uint16(values)
+                )
+                x = paddle.to_tensor(data, dtype=input_dtype)
+                self.assertEqual(x.dtype, getattr(paddle, input_dtype))
+                for output_dtype, real_dtype in (
+                    ('complex64', np.float32),
+                    ('complex128', np.float64),
+                ):
+                    for operation in ('sum', 'mean'):
+                        for axis in (None, 0, 1):
+                            for keepdim in (False, True):
+                                with self.subTest(
+                                    input_dtype=input_dtype,
+                                    output_dtype=output_dtype,
+                                    operation=operation,
+                                    axis=axis,
+                                    keepdim=keepdim,
+                                ):
+                                    result = getattr(paddle, operation)(
+                                        x,
+                                        axis=axis,
+                                        dtype=output_dtype,
+                                        keepdim=keepdim,
+                                    ).numpy()
+                                    expected = getattr(np, operation)(
+                                        values,
+                                        axis=axis,
+                                        dtype=real_dtype,
+                                        keepdims=keepdim,
+                                    )
+                                    self.assertEqual(
+                                        result.dtype, np.dtype(output_dtype)
+                                    )
+                                    np.testing.assert_array_equal(
+                                        result.real, expected
+                                    )
+                                    np.testing.assert_array_equal(
+                                        result.imag, np.zeros_like(expected)
+                                    )
+
+
 # Dimension exceeds int32 range.
 class TestSumOpIndexInt32OverflowCase0(unittest.TestCase):
     def setUp(self):
