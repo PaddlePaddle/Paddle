@@ -1463,8 +1463,62 @@ def run_grad_comm_dtype():
     np.testing.assert_allclose(new_losses, ref_losses, rtol=1e-2)
 
 
+def run_full_export():
+    """model.full() exports the trained params over the EP groups, then releases them."""
+    hcg = fleet.get_hybrid_communicate_group()
+    ep_group = hcg.get_expert_parallel_group()
+    _, model = build_moe_models(hcg)
+    expert_names = {
+        p.name for layer in model.layers for p in layer.moe.experts.parameters()
+    }
+    key_to_name = {k: v.name for k, v in model.state_dict().items()}
+    opt = paddle.optimizer.AdamW(
+        learning_rate=0.001, parameters=model.parameters(), weight_decay=0.0
+    )
+    model = fully_shard(model, optimizer=opt)
+    ctx = model._fsdp_context
+    paddle.seed(11)
+    x = paddle.randn([TOKENS, HIDDEN])
+
+    def step():
+        model(x).mean().backward()
+        opt.step()
+        opt.clear_grad()
+
+    step()
+    params = list(model.parameters())
+    with ctx.unshard_params(params):
+        expected = {p.name: p.numpy() for p in params}
+    released = [p for p in params if not p._is_initialized()]
+    assert released, "no released param to export"
+
+    out = dict(
+        model.full(
+            h_group=ep_group,
+            v_group=hcg.get_pipe_parallel_group(),
+            num_splits=1,
+            shard_idx=0,
+        )
+    )
+    for key, name in key_to_name.items():
+        value = expected[name]
+        if name in expert_names:
+            # Experts are described as replicated: EP folds into axis 0.
+            parts = []
+            paddle.distributed.all_gather(
+                parts, paddle.to_tensor(value), group=ep_group
+            )
+            value = np.concatenate([part.numpy() for part in parts], axis=0)
+        np.testing.assert_array_equal(out[key].numpy(), value, err_msg=key)
+
+    assert all(not p._is_initialized() for p in released)
+    assert model.sharded_state_dict == ctx.sharded_state_dict
+    step()
+
+
 if __name__ == '__main__':
     run_moe(2)
+    run_full_export()
     run_fused_linear()
     run_grad_comm_dtype()
     run_muon_shard()

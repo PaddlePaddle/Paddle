@@ -24,6 +24,7 @@ distributed launch:
   back untouched while routing the rest through the backward all_gather hook.
 * ``unshard_params`` -- the synchronous gather / reshard context manager and
   the double-buffer bookkeeping it restores on exit.
+* ``full`` -- export through CPU copies of the released params.
 """
 
 import types
@@ -450,6 +451,31 @@ def _fake_grads_buffer(numel, waited, i):
         is_sharded=False,
         accumulate_reduced_grad=lambda: None,
     )
+
+
+class TestFullToCpu(unittest.TestCase):
+    def test_model_full_sees_cpu_params_then_they_are_released(self):
+        w = paddle.create_parameter([2, 3], "float32")
+        w._clear_data()
+        w.get_tensor()._set_dims([2, 3])
+        fsdp = object.__new__(fsf.FullyShardFusion)
+        params_buffer = types.SimpleNamespace(
+            data_buffer=paddle.arange(6, dtype="float32"),
+            fp8=None,
+            is_sharded=False,
+            param_offsets={w.name: 0},
+        )
+        group = types.SimpleNamespace(params=[w], params_buffer=params_buffer)
+        fsdp.buffer_manager = types.SimpleNamespace(
+            buffer_groups=[group], hcg=None
+        )
+        fsdp.model = types.SimpleNamespace()
+        fsdp._model_sharded_state_dict = dict
+        fsdp._model_full = lambda aoa_config=None: iter([(w.name, w.numpy())])
+        ((name, value),) = fsdp.full()
+        np.testing.assert_array_equal(value, np.arange(6).reshape(2, 3))
+        self.assertFalse(w._is_initialized())
+        self.assertEqual(fsdp.model.sharded_state_dict, fsdp.sharded_state_dict)
 
 
 class TestPrefetchByLayer(unittest.TestCase):
