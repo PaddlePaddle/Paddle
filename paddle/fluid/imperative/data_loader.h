@@ -15,14 +15,22 @@
 #pragma once
 
 #ifndef _WIN32
-
 #include <unistd.h>
+#endif
 
 #include <cstdint>
 #include <set>
 
 namespace paddle {
 namespace imperative {
+
+#ifdef _WIN32
+// pid_t is not defined on Windows, `int` holds a DWORD process id well enough
+// and matches the type used by the Python side.
+using pid_t = int;
+#else
+using pid_t = ::pid_t;
+#endif
 
 extern void SetLoadProcessPIDs(int64_t key, std::set<pid_t> pids);
 extern void EraseLoadProcessPIDs(int64_t key);
@@ -31,5 +39,3 @@ extern void ThrowErrorIfLoadProcessFailed();
 
 }  // namespace imperative
 }  // namespace paddle
-
-#endif

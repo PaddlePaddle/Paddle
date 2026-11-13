@@ -75,25 +75,26 @@ class RangeIterableDataset(IterableDataset):
             yield np.array([i])
 
 
+def worker_splitter(worker_id):
+    worker_info = get_worker_info()
+
+    dataset = worker_info.dataset
+    start = dataset.start
+    end = dataset.end
+    num_per_worker = int(
+        math.ceil((end - start) / float(worker_info.num_workers))
+    )
+
+    worker_id = worker_info.id
+    dataset.start = start + worker_id * num_per_worker
+    dataset.end = min(dataset.start + num_per_worker, end)
+
+
 class TestDynamicDataLoaderIterInitFuncSplit(unittest.TestCase):
     def test_main(self):
         place = base.CPUPlace()
         with base.dygraph.guard(place):
             dataset = RangeIterableDataset(0, 10)
-
-            def worker_splitter(worker_id):
-                worker_info = get_worker_info()
-
-                dataset = worker_info.dataset
-                start = dataset.start
-                end = dataset.end
-                num_per_worker = int(
-                    math.ceil((end - start) / float(worker_info.num_workers))
-                )
-
-                worker_id = worker_info.id
-                dataset.start = start + worker_id * num_per_worker
-                dataset.end = min(dataset.start + num_per_worker, end)
 
             dataloader = DataLoader(
                 dataset,
