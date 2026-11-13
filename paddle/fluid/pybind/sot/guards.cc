@@ -23,7 +23,7 @@ limitations under the License. */
 #include <frameobject.h>
 #include <object.h>
 #include "pybind11/numpy.h"
-#if PY_3_14_PLUS
+#if PY_3_14_PLUS && !defined(_WIN32)
 #include <internal/pycore_interpframe.h>
 #endif
 
@@ -298,7 +298,8 @@ std::string LocalVarExprNode::stringify(int indent) {
 
 PyObject* GlobalVarExprNode::eval(FrameProxy* frame) {
 #if PY_3_11_PLUS
-  return PyDict_GetItemString(frame->frame->f_globals, var_name_.c_str());
+  return PyDict_GetItemString(SOT_FRAME_GET_GLOBALS(frame->frame),
+                              var_name_.c_str());
 #else
   return PyDict_GetItemString(frame->f_globals, var_name_.c_str());
 #endif
