@@ -873,6 +873,21 @@ class API_TestSplitZeroSizeInvalidSections(unittest.TestCase):
             self.assertEqual(list(out[0].shape), [0])
             self.assertEqual(list(out[1].shape), [0])
 
+    def test_many_sections_error_message(self):
+        # With >9 sections a failing check must still report the real reason;
+        # the old make_ddim(sections) formatting crashed on DDim's rank<=9.
+        with base.dygraph.guard():
+            x = paddle.zeros([5], dtype='float32')
+            with self.assertRaisesRegex(
+                ValueError, r"Sum of Attr\(num_or_sections\) must be equal"
+            ):
+                paddle.split(x, [1] * 10)
+            with self.assertRaisesRegex(
+                ValueError,
+                r"Only one dimension value of Attr\(num_or_sections\)",
+            ):
+                paddle.split(x, [-1, -1] + [1] * 8)
+
     def test_dynamic_unknown_axis_unchanged(self):
         # A *dynamic* unknown split-axis size (-1) still routes to the
         # degenerate (no-validation) branch, so behavior is unchanged.
