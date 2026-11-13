@@ -115,3 +115,10 @@ endif()
 if(WITH_XPU)
   paddle_test(data_type_transform_test_xpu SRCS data_type_transform_test_xpu.cc)
 endif()
+
+if(NOT WIN32)
+  cc_test(
+    phi_test_device_manager
+    SRCS test_device_manager.cc
+    DEPS phi common)
+endif()
