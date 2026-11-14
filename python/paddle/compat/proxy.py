@@ -285,48 +285,58 @@ class TorchProxyMetaFinder:
     def _find_spec_for_specific_module(
         self,
         fullname: str,
-        enable_proxy_when_exec_module: bool,
         patched_dunder_attr: str,
     ):
-        # Return a special loader that imports the blocked module without torch proxy
-        with use_compat_guard(enable=False):
-            # Suppress this finder for `fullname` only, so that the lookup
-            # below cannot re-enter it and restart the very same resolution.
-            resolving = self._resolving_names()
-            resolving.add(fullname)
-            try:
-                spec = importlib.util.find_spec(fullname)
-            finally:
-                resolving.discard(fullname)
-            if spec is None:
-                return None
-            original_loader = spec.loader
-            if original_loader is None:
-                return None
+        # Return a special loader that marks the module before running it.
+        # The real spec is looked up with this finder suppressed for
+        # `fullname` only, in this thread only, so that the lookup cannot
+        # re-enter it; switching the whole proxy off here instead would hand
+        # real torch to every other thread for the duration.
+        resolving = self._resolving_names()
+        resolving.add(fullname)
+        try:
+            spec = importlib.util.find_spec(fullname)
+        finally:
+            resolving.discard(fullname)
+        if spec is None:
+            return None
+        original_loader = spec.loader
+        if original_loader is None:
+            return None
 
-            class SpecificModuleLoader(importlib.abc.Loader):
-                def create_module(self, spec):
-                    mod = original_loader.create_module(spec)
-                    if mod is None:
-                        # If original loader returns None, create default module
-                        # and ensure it has necessary attributes from spec
-                        mod = types.ModuleType(spec.name)
-                        mod.__spec__ = spec
-                        mod.__loader__ = self
-                        if spec.origin is not None:
-                            mod.__file__ = spec.origin
-                        if spec.submodule_search_locations is not None:
-                            mod.__path__ = list(spec.submodule_search_locations)
-                    return mod
+        class SpecificModuleLoader(importlib.abc.Loader):
+            def create_module(self, spec):
+                mod = original_loader.create_module(spec)
+                if mod is None:
+                    # If original loader returns None, create default module
+                    # and ensure it has necessary attributes from spec
+                    mod = types.ModuleType(spec.name)
+                    mod.__spec__ = spec
+                    mod.__loader__ = self
+                    if spec.origin is not None:
+                        mod.__file__ = spec.origin
+                    if spec.submodule_search_locations is not None:
+                        mod.__path__ = list(spec.submodule_search_locations)
+                return mod
 
-                def exec_module(self, module):
-                    # Import the real module with torch proxy disabled
-                    with use_compat_guard(
-                        enable=enable_proxy_when_exec_module, silent=True
-                    ):
-                        original_loader.exec_module(module)
-                    # Mark module as torch proxy disabled/local enabled
-                    module.__dict__[patched_dunder_attr] = True
+            def exec_module(self, module):
+                # Mark the module before running it: imports made by its
+                # body then find the marker on their own call stack, so
+                # they are proxied (or blocked) in this thread only. A
+                # scope-less `use_compat_guard` here would switch the
+                # proxy for every thread while the module runs, and an
+                # unrelated thread importing `torch.*` meanwhile would
+                # get paddle (e.g. `paddle.jit._state`, which is missing).
+                module.__dict__[patched_dunder_attr] = True
+                # Imports resolve per caller only while `sys.modules` holds no
+                # torch module, as `import` looks there before asking this
+                # finder: take them out around the body, which leaves its own
+                # `import torch` result (real torch or the proxy) there too.
+                _swap_torch_modules_to_cache()
+                try:
+                    original_loader.exec_module(module)
+                finally:
+                    _swap_torch_modules_to_cache()
 
         spec.loader = SpecificModuleLoader()
         return spec
@@ -334,14 +344,12 @@ class TorchProxyMetaFinder:
     def _find_spec_for_torch_proxy_local_enabled_module(self, fullname: str):
         return self._find_spec_for_specific_module(
             fullname,
-            enable_proxy_when_exec_module=True,
             patched_dunder_attr=MAGIC_ENABLED_MODULE_ATTR,
         )
 
     def _find_spec_for_torch_proxy_blocked_module(self, fullname: str):
         return self._find_spec_for_specific_module(
             fullname,
-            enable_proxy_when_exec_module=False,
             patched_dunder_attr=MAGIC_DISABLED_MODULE_ATTR,
         )
 
