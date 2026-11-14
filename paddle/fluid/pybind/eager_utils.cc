@@ -3090,8 +3090,7 @@ PackHook::~PackHook() {  // NOLINT
 
 std::shared_ptr<egr::PyObjectHolderBase> PackHook::operator()(
     const Tensor& tensor) {
-  bool grad_tmp = egr::Controller::Instance().HasGrad();
-  egr::Controller::Instance().SetHasGrad(false);
+  egr::HasGradGuard has_grad_guard(false);
   ::pybind11::gil_scoped_acquire gil;
   PyObject* args = PyTuple_New(1);
   PADDLE_ENFORCE_NOT_NULL(
@@ -3101,13 +3100,11 @@ std::shared_ptr<egr::PyObjectHolderBase> PackHook::operator()(
   PADDLE_ENFORCE_NOT_NULL(
       ret, common::errors::External(pybind11::detail::error_string().c_str()));
   Py_XDECREF(args);
-  egr::Controller::Instance().SetHasGrad(grad_tmp);
   return std::make_shared<PyObjectHolder>(ret);
 }
 
 void* PackHook::operator()(void* py_tensor) {
-  bool grad_tmp = egr::Controller::Instance().HasGrad();
-  egr::Controller::Instance().SetHasGrad(false);
+  egr::HasGradGuard has_grad_guard(false);
   ::pybind11::gil_scoped_acquire gil;
   PyObject* args = PyTuple_New(1);
   PADDLE_ENFORCE_NOT_NULL(
@@ -3122,7 +3119,6 @@ void* PackHook::operator()(void* py_tensor) {
   PADDLE_ENFORCE_NOT_NULL(
       ret, common::errors::External(pybind11::detail::error_string().c_str()));
   Py_XDECREF(args);
-  egr::Controller::Instance().SetHasGrad(grad_tmp);
   return reinterpret_cast<void*>(ret);
 }
 
@@ -3135,8 +3131,7 @@ UnPackHook::~UnPackHook() {  // NOLINT
 
 Tensor UnPackHook::operator()(
     std::shared_ptr<egr::PyObjectHolderBase> packed_value) {
-  bool grad_tmp = egr::Controller::Instance().HasGrad();
-  egr::Controller::Instance().SetHasGrad(false);
+  egr::HasGradGuard has_grad_guard(false);
   ::pybind11::gil_scoped_acquire gil;
   PyObject* args = PyTuple_New(1);
   PADDLE_ENFORCE_NOT_NULL(
@@ -3151,7 +3146,6 @@ Tensor UnPackHook::operator()(
   // in it to be decremented by one, so no need to call
   // Py_XDECREF(py_packed_value)
   Py_XDECREF(args);
-  egr::Controller::Instance().SetHasGrad(grad_tmp);
 
   PADDLE_ENFORCE_EQ(paddle::pybind::PyCheckTensor(ret),
                     true,
@@ -3165,8 +3159,7 @@ Tensor UnPackHook::operator()(
 }
 
 void* UnPackHook::operator()(void* packed_value, void* other) {
-  bool grad_tmp = egr::Controller::Instance().HasGrad();
-  egr::Controller::Instance().SetHasGrad(false);
+  egr::HasGradGuard has_grad_guard(false);
   ::pybind11::gil_scoped_acquire gil;
   PyObject* args = PyTuple_New(1);
   PADDLE_ENFORCE_NOT_NULL(
@@ -3181,7 +3174,6 @@ void* UnPackHook::operator()(void* packed_value, void* other) {
   PADDLE_ENFORCE_NOT_NULL(
       ret, common::errors::External(pybind11::detail::error_string().c_str()));
   Py_XDECREF(args);
-  egr::Controller::Instance().SetHasGrad(grad_tmp);
 
   PADDLE_ENFORCE_EQ(paddle::pybind::PyCheckTensor(ret),
                     true,
@@ -3264,8 +3256,7 @@ NodePostHook::operator()(
         grad_outputs,
     const paddle::small_vector<std::vector<Tensor>, egr::kSlotSmallVectorSize>&
         grad_inputs) {
-  bool grad_tmp = egr::Controller::Instance().HasGrad();
-  egr::Controller::Instance().SetHasGrad(false);
+  egr::HasGradGuard has_grad_guard(false);
   ::pybind11::gil_scoped_acquire gil;
   PyObject* args = PyTuple_New(2);
   PADDLE_ENFORCE_NOT_NULL(
@@ -3276,7 +3267,6 @@ NodePostHook::operator()(
   PADDLE_ENFORCE_NOT_NULL(
       ret, common::errors::External(pybind11::detail::error_string().c_str()));
   Py_XDECREF(args);
-  egr::Controller::Instance().SetHasGrad(grad_tmp);
   return CastPyArg2SmallVectorOfVectorOfTensor(ret);
 }
 

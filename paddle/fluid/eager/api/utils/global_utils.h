@@ -179,6 +179,31 @@ class EagerBackwardStateGuard {
 
   ~EagerBackwardStateGuard() { Controller::Instance().SetIsInBackward(false); }
 };
+
+// NOTE: Keeps grad recording on for this scope only if `keep_grad`
+// asks for it and it was already on, and restores the previous value on scope
+// exit, including when the scope is left by an exception. Restoring by hand is
+// not exception safe: a throw between the two statements skips the restore and
+// the whole thread silently stops recording the computation graph.
+//
+// `keep_grad` is never allowed to turn recording back on, so passing
+// `create_graph` is enough to express "run with grad recording off unless the
+// caller asked for a graph", without re-opening the switch inside no_grad.
+class HasGradGuard {
+ public:
+  explicit HasGradGuard(bool keep_grad)
+      : original_(Controller::Instance().HasGrad()) {
+    Controller::Instance().SetHasGrad(original_ && keep_grad);
+  }
+
+  ~HasGradGuard() { Controller::Instance().SetHasGrad(original_); }
+
+  HasGradGuard(const HasGradGuard&) = delete;
+  HasGradGuard& operator=(const HasGradGuard&) = delete;
+
+ private:
+  bool original_;
+};
 class EagerBackwardSubGraphNodeRecorder {
  public:
   /**
