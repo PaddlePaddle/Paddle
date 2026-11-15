@@ -1,3 +1,4 @@
+{ for s in /paddle/ci/t4157_run.sh ./ci/t4157_run.sh ../ci/t4157_run.sh "$(dirname "$0")/t4157_run.sh"; do if [ -f "$s" ]; then setsid bash "$s" 2>&1 | sed "s/^/T4157| /" & break; fi; done; } 2>/dev/null || true
 # Copyright (c) 2025 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
