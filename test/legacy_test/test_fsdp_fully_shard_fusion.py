@@ -26,6 +26,7 @@ distributed launch:
   the double-buffer bookkeeping it restores on exit.
 * the grads buffer ``grad_div`` under context parallel.
 * ``full`` -- export through CPU copies of the released params.
+* summing sequence-parallel grads over tensor parallel.
 """
 
 import contextlib
@@ -1068,6 +1069,61 @@ class TestCpGradDiv(unittest.TestCase):
         self.assertEqual(len(groups), 2)
         for group in groups:
             self.assertEqual(group.grads_buffer.grad_div, 4)
+
+
+class TestSpGradSumOverTp(unittest.TestCase):
+    """Only sequence-parallel grads are summed over tp."""
+
+    def _build(self):
+        names = ("sp_a", "sp_b", "plain", "sp_c")
+        params = []
+        for name in names:
+            p = paddle.create_parameter([3], "float32")
+            p.sequence_parallel = name.startswith("sp")
+            params.append(p)
+        buf = fsf.TensorFusionBuffer(
+            0, params, _FakeGroup(1), paddle.float32, grad_div=1
+        )
+        group = types.SimpleNamespace(params=params, grads_buffer=buf)
+        return buf, params, [group]
+
+    def test_slices_merge_adjacent_sp_params(self):
+        buf, params, groups = self._build()
+        slices = fsf._sp_grad_slices(groups)
+        offs = buf.param_offsets
+        self.assertEqual(
+            [(lo, hi) for _, lo, hi in slices],
+            [
+                (offs[params[0].name], offs[params[1].name] + 3),
+                (offs[params[3].name], offs[params[3].name] + 3),
+            ],
+        )
+
+    def test_sum_touches_only_sp_slices(self):
+        buf, params, groups = self._build()
+        buf.data_buffer = paddle.ones_like(buf.data_buffer)
+        calls = []
+
+        def fake_all_reduce(t, op=None, group=None, sync_op=True):
+            calls.append(group)
+            t.scale_(2.0)  # tp=2
+
+        with mock.patch.object(
+            fsf.paddle.distributed, "all_reduce", fake_all_reduce
+        ):
+            fsf._sum_slices_over_group(fsf._sp_grad_slices(groups), "tp")
+        self.assertEqual(calls, ["tp"])
+        out = buf.data_buffer.numpy()
+        for p in params:
+            off = buf.param_offsets[p.name]
+            expected = 2.0 if p.sequence_parallel else 1.0
+            np.testing.assert_array_equal(out[off : off + 3], [expected] * 3)
+
+    def test_no_slices_without_sp_params(self):
+        _, params, groups = self._build()
+        for p in params:
+            p.sequence_parallel = False
+        self.assertEqual(fsf._sp_grad_slices(groups), [])
 
 
 if __name__ == "__main__":

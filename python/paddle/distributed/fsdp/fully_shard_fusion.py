@@ -425,6 +425,55 @@ class TensorFusionBuffer:
         self._data_released = False
 
 
+def _sp_grad_slices(buffer_groups):
+    """Local shard ranges of sequence-parallel grads; adjacent ones merge."""
+    slices = []
+    for group in buffer_groups:
+        grads_buffer = group.grads_buffer
+        if grads_buffer is None:
+            continue
+        prev_sp = False
+        for param in group.params:
+            shard = None
+            if param.trainable and getattr(param, "sequence_parallel", False):
+                shard = grads_buffer.param_shard(param)
+            if shard is None:
+                prev_sp = False
+                continue
+            lo, hi, _ = shard
+            if prev_sp:
+                slices[-1] = (grads_buffer, slices[-1][1], hi)
+            else:
+                slices.append((grads_buffer, lo, hi))
+            prev_sp = True
+    return slices
+
+
+def _sum_slices_over_group(slices, group):
+    """All-reduce the slices over ``group``, one call per dtype."""
+    by_dtype = {}
+    for grads_buffer, lo, hi in slices:
+        if getattr(grads_buffer, "_data_released", False):
+            continue
+        view = grads_buffer.data_buffer._slice(lo, hi)
+        by_dtype.setdefault(view.dtype, []).append(view)
+    for views in by_dtype.values():
+        flat = views[0] if len(views) == 1 else paddle.concat(views)
+        paddle.distributed.all_reduce(
+            flat,
+            op=paddle.distributed.ReduceOp.SUM,
+            group=group,
+            sync_op=True,
+        )
+        if len(views) == 1:
+            continue
+        offset = 0
+        for view in views:
+            numel = view.shape[0]
+            paddle.assign(flat._slice(offset, offset + numel), view)
+            offset += numel
+
+
 class FSDPBufferManager:
     def __init__(
         self,
@@ -675,6 +724,13 @@ class FSDPBufferManager:
 
         self._assign_whole_owners()
         self._set_clip_attrs()
+
+        # Sequence-parallel grads are partial over tp.
+        self.tp_group = None
+        self.sp_grad_slices = []
+        if getattr(self.hcg, "get_model_parallel_world_size", lambda: 1)() > 1:
+            self.tp_group = self.hcg.get_model_parallel_group()
+            self.sp_grad_slices = _sp_grad_slices(self.buffer_groups)
 
     def _comm_stream(self, group):
         if group.nranks <= 1:
@@ -1427,6 +1483,13 @@ class FSDPCommManager:
                 continue
             grads_buffer.data_buffer.scale_(grads_buffer.grad_scale)
             grads_buffer.grad_scale_pending = False
+
+        # Sum over tp on the reduced shards only.
+        if self.buffer_manager.sp_grad_slices:
+            _sum_slices_over_group(
+                self.buffer_manager.sp_grad_slices,
+                self.buffer_manager.tp_group,
+            )
 
         for param in self.buffer_manager.model.parameters():
             buf = getattr(param, "_fusion_buffer", None)
