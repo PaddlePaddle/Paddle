@@ -32,6 +32,7 @@ from paddle.framework.recall_error import check_naninf
 from paddle.utils import strtobool
 
 from ...utils import timer_helper as timer
+from .. import pipeline_event_hook as pp_ev
 from .utils import number_2_dtype, paddle_2_number
 
 _hcg = None
@@ -581,14 +582,54 @@ def _p2p_ops_tuple_or_tensor(tensors, p2p_func, pp_rank, pp_group):
     return reqs
 
 
+class P2PReqs(list):
+    """isend / irecv 的 handle 列表，额外记住每个 handle 是发还是收。
+
+    对调用方来说它就是个 list —— ``for req in reqs: req.wait()`` 完全不用改，顺序也没动。
+
+    为什么要记：一次 ``send_x_recv_x`` 返回的是**一个**列表，里面既有发给下游的 isend
+    也有从上游来的 irecv，两者属于相差 1 的两个 microbatch。一条 span 盖住两半时只能标
+    其中一个 micro，于是"梯度早就到了却还在等"这种现象在 trace 上无法解释 —— 真正卡住的
+    是另一半。分开之后 recv 那段是"数据什么时候到"，send 那段是"对端什么时候来接"。
+
+    为什么必须在产生端记、不能事后按下标切：下面 ``_p2p_ops`` 里 handle 的入队顺序按
+    stage 奇偶不同，而且一个 tensor tuple 会展开成多个 handle，下标和方向之间没有稳定
+    关系。
+    """
+
+    __slots__ = ("roles",)
+
+    def __init__(self, iterable=()):
+        super().__init__(iterable)
+        self.roles = []
+
+    def _add(self, role, reqs):
+        self.extend(reqs)
+        self.roles.extend([role] * len(reqs))
+
+    def add_sends(self, reqs):
+        self._add("send", reqs)
+
+    def add_recvs(self, reqs):
+        self._add("recv", reqs)
+
+    @property
+    def sends(self):
+        return [r for r, role in zip(self, self.roles) if role == "send"]
+
+    @property
+    def recvs(self):
+        return [r for r, role in zip(self, self.roles) if role == "recv"]
+
+
 def _p2p_ops(
     tensor_send_prev, tensor_recv_prev, tensor_send_next, tensor_recv_next, hcg
 ):
-    reqs = []
+    reqs = P2PReqs()
     group = hcg.get_pipe_parallel_group()
     if hcg.get_stage_id() % 2 == 0:
         if tensor_send_next is not None:
-            reqs.extend(
+            reqs.add_sends(
                 _p2p_ops_tuple_or_tensor(
                     tensor_send_next,
                     paddle.distributed.isend,
@@ -597,7 +638,7 @@ def _p2p_ops(
                 )
             )
         if tensor_recv_prev is not None:
-            reqs.extend(
+            reqs.add_recvs(
                 _p2p_ops_tuple_or_tensor(
                     tensor_recv_prev,
                     paddle.distributed.irecv,
@@ -607,7 +648,7 @@ def _p2p_ops(
             )
 
         if tensor_send_prev is not None:
-            reqs.extend(
+            reqs.add_sends(
                 _p2p_ops_tuple_or_tensor(
                     tensor_send_prev,
                     paddle.distributed.isend,
@@ -617,7 +658,7 @@ def _p2p_ops(
             )
 
         if tensor_recv_next is not None:
-            reqs.extend(
+            reqs.add_recvs(
                 _p2p_ops_tuple_or_tensor(
                     tensor_recv_next,
                     paddle.distributed.irecv,
@@ -627,7 +668,7 @@ def _p2p_ops(
             )
     else:
         if tensor_recv_prev is not None:
-            reqs.extend(
+            reqs.add_recvs(
                 _p2p_ops_tuple_or_tensor(
                     tensor_recv_prev,
                     paddle.distributed.irecv,
@@ -636,7 +677,7 @@ def _p2p_ops(
                 )
             )
         if tensor_send_next is not None:
-            reqs.extend(
+            reqs.add_sends(
                 _p2p_ops_tuple_or_tensor(
                     tensor_send_next,
                     paddle.distributed.isend,
@@ -645,7 +686,7 @@ def _p2p_ops(
                 )
             )
         if tensor_recv_next is not None:
-            reqs.extend(
+            reqs.add_recvs(
                 _p2p_ops_tuple_or_tensor(
                     tensor_recv_next,
                     paddle.distributed.irecv,
@@ -654,7 +695,7 @@ def _p2p_ops(
                 )
             )
         if tensor_send_prev is not None:
-            reqs.extend(
+            reqs.add_sends(
                 _p2p_ops_tuple_or_tensor(
                     tensor_send_prev,
                     paddle.distributed.isend,
@@ -751,6 +792,28 @@ def _p2p_helper(
         reqs = None
 
     return tensor_recv_prev, tensor_recv_next, reqs
+
+
+# ══════════════════════════════════════════════════════════════════════
+# 埋点：p2p 的 issue span 开在下面这些方法里，而不是 scheduler 的 33 个调用点上
+#
+# 每个方法对应唯一一个 op 名（recv_forward -> RF、send_forward_recv_forward -> SFRF …
+# 七个方法七个 op，一一对应），而"这次调用是不是异步"就是方法自己的 ``overlap_p2p_comm``
+# 参数。放在调用点意味着这两个值要靠人手和实参保持一致 —— 那正是错归属的来源：改写之前
+# ``VPPFhenBInBalancedMemory`` 里有两处 ``overlap_p2p_comm=True`` 却标着 ``is_async=False``，
+# 于是 3 us 的异步 post 被记进了 ``comm`` lane（"同步传输，真占 calc stream"）。挪进来之后
+# 它们是同一个值，这类不一致不可能再出现。
+#
+# ``micro_step_id`` 是唯一还需要调用点给的东西：microbatch 编号只有 scheduler 知道。
+# **不传就不开 span**，这不是静默降级：dualpipev 有自己的调度、拿不出这个身份，给它发一条
+# 没法归属的事件比不发更坏。
+# ══════════════════════════════════════════════════════════════════════
+def _p2p_span(op, micro_step_id, is_async=False):
+    if micro_step_id is None:
+        return pp_ev.NULL_SPAN
+    return pp_ev.get_pipeline_event_hook().p2p_issue(
+        op, micro=micro_step_id, is_async=is_async
+    )
 
 
 class P2pHelper:
@@ -850,73 +913,77 @@ class P2pHelper:
         sync_recv=True,
         batch_p2p_comm=True,
         overlap_p2p_comm=False,
+        micro_step_id=None,
     ):
         global _timers
-        if _timers is not None:
-            _timers("recv_forward").start()
-        if pp_first_stage:
-            input_tensor = None
-            wait_handles = None
-        else:
-            self._recv_meta()
+        with _p2p_span('RF', micro_step_id, overlap_p2p_comm):
+            if _timers is not None:
+                _timers("recv_forward").start()
+            if pp_first_stage:
+                input_tensor = None
+                wait_handles = None
+            else:
+                self._recv_meta()
 
-            input_tensor, _, wait_handles = _p2p_helper(
-                tensor_send_next=None,
-                tensor_send_prev=None,
-                recv_prev=True,
-                recv_next=False,
-                sync_recv=sync_recv,
-                send_recv_meta=self._send_recv_meta,
-                batch_p2p_comm=batch_p2p_comm,
-                dynamic_shape=self._dynamic_shape,
-                wait_on_reqs=(not overlap_p2p_comm),
-            )
-            if self._dynamic_shape:
-                self._dynamic_cnt += 1
+                input_tensor, _, wait_handles = _p2p_helper(
+                    tensor_send_next=None,
+                    tensor_send_prev=None,
+                    recv_prev=True,
+                    recv_next=False,
+                    sync_recv=sync_recv,
+                    send_recv_meta=self._send_recv_meta,
+                    batch_p2p_comm=batch_p2p_comm,
+                    dynamic_shape=self._dynamic_shape,
+                    wait_on_reqs=(not overlap_p2p_comm),
+                )
+                if self._dynamic_shape:
+                    self._dynamic_cnt += 1
 
-        if _timers is not None:
-            _timers("recv_forward").stop()
-        if overlap_p2p_comm:
-            return input_tensor, wait_handles
-        return input_tensor
+            if _timers is not None:
+                _timers("recv_forward").stop()
+            if overlap_p2p_comm:
+                return input_tensor, wait_handles
+            return input_tensor
 
     def recv_backward(
         self,
         pp_last_stage,
         sync_recv=True,
         batch_p2p_comm=True,
+        micro_step_id=None,
     ):
         global _timers
-        if _timers is not None:
-            _timers("recv_backward").start()
+        with _p2p_span('RB', micro_step_id, False):
+            if _timers is not None:
+                _timers("recv_backward").start()
 
-        need_increase_cnt = False
+            need_increase_cnt = False
 
-        if pp_last_stage:
-            output_tensor_grad = None
-        else:
-            if self._dynamic_shape:
-                self._recv_meta(reverse=True)
-                need_increase_cnt = True
+            if pp_last_stage:
+                output_tensor_grad = None
+            else:
+                if self._dynamic_shape:
+                    self._recv_meta(reverse=True)
+                    need_increase_cnt = True
 
-            _, output_tensor_grad, _ = _p2p_helper(
-                tensor_send_next=None,
-                tensor_send_prev=None,
-                recv_prev=False,
-                recv_next=True,
-                sync_recv=sync_recv,
-                send_recv_meta=self._send_recv_meta,
-                batch_p2p_comm=batch_p2p_comm,
-                dynamic_shape=self._dynamic_shape,
-            )
+                _, output_tensor_grad, _ = _p2p_helper(
+                    tensor_send_next=None,
+                    tensor_send_prev=None,
+                    recv_prev=False,
+                    recv_next=True,
+                    sync_recv=sync_recv,
+                    send_recv_meta=self._send_recv_meta,
+                    batch_p2p_comm=batch_p2p_comm,
+                    dynamic_shape=self._dynamic_shape,
+                )
 
-        if self._dynamic_shape and need_increase_cnt:
-            self._dynamic_cnt += 1
+            if self._dynamic_shape and need_increase_cnt:
+                self._dynamic_cnt += 1
 
-        if _timers is not None:
-            _timers("recv_backward").stop()
+            if _timers is not None:
+                _timers("recv_backward").stop()
 
-        return output_tensor_grad
+            return output_tensor_grad
 
     def send_forward(
         self,
@@ -926,36 +993,38 @@ class P2pHelper:
         skip_check_meta=False,
         block_cache_meta=None,
         overlap_p2p_comm=False,
+        micro_step_id=None,
     ):
         global _timers
-        if _timers is not None:
-            _timers("send_forward").start()
+        with _p2p_span('SF', micro_step_id, overlap_p2p_comm):
+            if _timers is not None:
+                _timers("send_forward").start()
 
-        wait_handles = None
-        if not pp_last_stage:
-            self._send_meta(
-                output_tensor,
-                skip_check_meta=skip_check_meta,
-                block_cache_meta=block_cache_meta,
-            )
-            _, _, wait_handles = _p2p_helper(
-                tensor_send_next=output_tensor,
-                tensor_send_prev=None,
-                recv_prev=False,
-                recv_next=False,
-                send_recv_meta=self._send_recv_meta,
-                batch_p2p_comm=batch_p2p_comm,
-                dynamic_shape=self._dynamic_shape,
-                wait_on_reqs=(not overlap_p2p_comm),
-            )
-            if self._dynamic_shape:
-                self._dynamic_cnt += 1
+            wait_handles = None
+            if not pp_last_stage:
+                self._send_meta(
+                    output_tensor,
+                    skip_check_meta=skip_check_meta,
+                    block_cache_meta=block_cache_meta,
+                )
+                _, _, wait_handles = _p2p_helper(
+                    tensor_send_next=output_tensor,
+                    tensor_send_prev=None,
+                    recv_prev=False,
+                    recv_next=False,
+                    send_recv_meta=self._send_recv_meta,
+                    batch_p2p_comm=batch_p2p_comm,
+                    dynamic_shape=self._dynamic_shape,
+                    wait_on_reqs=(not overlap_p2p_comm),
+                )
+                if self._dynamic_shape:
+                    self._dynamic_cnt += 1
 
-        if _timers is not None:
-            _timers("send_forward").stop()
+            if _timers is not None:
+                _timers("send_forward").stop()
 
-        if overlap_p2p_comm:
-            return wait_handles
+            if overlap_p2p_comm:
+                return wait_handles
 
     def send_backward(
         self,
@@ -963,33 +1032,35 @@ class P2pHelper:
         pp_first_stage,
         batch_p2p_comm=True,
         overlap_p2p_comm=False,
+        micro_step_id=None,
     ):
         global _timers
-        if _timers is not None:
-            _timers("send_backward").start()
+        with _p2p_span('SB', micro_step_id, overlap_p2p_comm):
+            if _timers is not None:
+                _timers("send_backward").start()
 
-        if not pp_first_stage:
-            if self._dynamic_shape:
-                self._send_meta(input_tensor_grad, reverse=True)
-            _, _, wait_handles = _p2p_helper(
-                tensor_send_next=None,
-                tensor_send_prev=input_tensor_grad,
-                recv_prev=False,
-                recv_next=False,
-                send_recv_meta=self._send_recv_meta,
-                batch_p2p_comm=batch_p2p_comm,
-                dynamic_shape=self._dynamic_shape,
-                wait_on_reqs=(not overlap_p2p_comm),
-            )
-            if self._dynamic_shape:
-                self._dynamic_cnt += 1
-        else:
-            wait_handles = None
-        if _timers is not None:
-            _timers("send_backward").stop()
+            if not pp_first_stage:
+                if self._dynamic_shape:
+                    self._send_meta(input_tensor_grad, reverse=True)
+                _, _, wait_handles = _p2p_helper(
+                    tensor_send_next=None,
+                    tensor_send_prev=input_tensor_grad,
+                    recv_prev=False,
+                    recv_next=False,
+                    send_recv_meta=self._send_recv_meta,
+                    batch_p2p_comm=batch_p2p_comm,
+                    dynamic_shape=self._dynamic_shape,
+                    wait_on_reqs=(not overlap_p2p_comm),
+                )
+                if self._dynamic_shape:
+                    self._dynamic_cnt += 1
+            else:
+                wait_handles = None
+            if _timers is not None:
+                _timers("send_backward").stop()
 
-        if overlap_p2p_comm:
-            return wait_handles
+            if overlap_p2p_comm:
+                return wait_handles
 
     def send_forward_recv_backward(
         self, output_tensor, pp_last_stage, batch_p2p_comm=True
@@ -1052,37 +1123,39 @@ class P2pHelper:
         batch_p2p_comm=True,
         skip_check_meta=False,
         block_cache_meta=None,
+        micro_step_id=None,
     ):
         # always have to send dtype info to downstream
         global _timers
-        if _timers is not None:
-            _timers("send_forward_backward_recv_forward_backward").start()
+        with _p2p_span('SFBRFB', micro_step_id, False):
+            if _timers is not None:
+                _timers("send_forward_backward_recv_forward_backward").start()
 
-        assert not self._dynamic_shape, (
-            "p2p_helper.send_forward_backward_recv_forward_backward function doesn't support dynamic_shape now"
-        )
-
-        if output_tensor is not None:
-            self._send_meta(
-                output_tensor,
-                skip_check_meta=skip_check_meta,
-                block_cache_meta=block_cache_meta,
+            assert not self._dynamic_shape, (
+                "p2p_helper.send_forward_backward_recv_forward_backward function doesn't support dynamic_shape now"
             )
-        if recv_prev:
-            self._recv_meta()
 
-        input_tensor, output_tensor_grad, _ = _p2p_helper(
-            tensor_send_next=output_tensor,
-            tensor_send_prev=input_tensor_grad,
-            recv_prev=recv_prev,
-            recv_next=recv_next,
-            sync_recv=False,
-            send_recv_meta=self._send_recv_meta,
-            batch_p2p_comm=batch_p2p_comm,
-        )
-        if _timers is not None:
-            _timers("send_forward_backward_recv_forward_backward").stop()
-        return input_tensor, output_tensor_grad
+            if output_tensor is not None:
+                self._send_meta(
+                    output_tensor,
+                    skip_check_meta=skip_check_meta,
+                    block_cache_meta=block_cache_meta,
+                )
+            if recv_prev:
+                self._recv_meta()
+
+            input_tensor, output_tensor_grad, _ = _p2p_helper(
+                tensor_send_next=output_tensor,
+                tensor_send_prev=input_tensor_grad,
+                recv_prev=recv_prev,
+                recv_next=recv_next,
+                sync_recv=False,
+                send_recv_meta=self._send_recv_meta,
+                batch_p2p_comm=batch_p2p_comm,
+            )
+            if _timers is not None:
+                _timers("send_forward_backward_recv_forward_backward").stop()
+            return input_tensor, output_tensor_grad
 
     def send_forward_recv_forward(
         self,
@@ -1092,58 +1165,60 @@ class P2pHelper:
         overlap_p2p_comm=False,
         skip_check_meta=False,
         block_cache_meta=None,
+        micro_step_id=None,
     ):
         # always have to send dtype info to downstream
         global _timers
-        if _timers is not None:
-            _timers("send_forward_recv_forward").start()
+        with _p2p_span('SFRF', micro_step_id, overlap_p2p_comm):
+            if _timers is not None:
+                _timers("send_forward_recv_forward").start()
 
-        need_increase_cnt = False
+            need_increase_cnt = False
 
-        if _hcg.get_stage_id() % 2 == 0 or not self._dynamic_shape:
-            if output_tensor is not None:
-                self._send_meta(
-                    output_tensor,
-                    skip_check_meta=skip_check_meta,
-                    block_cache_meta=block_cache_meta,
-                )
-                need_increase_cnt = True
+            if _hcg.get_stage_id() % 2 == 0 or not self._dynamic_shape:
+                if output_tensor is not None:
+                    self._send_meta(
+                        output_tensor,
+                        skip_check_meta=skip_check_meta,
+                        block_cache_meta=block_cache_meta,
+                    )
+                    need_increase_cnt = True
 
-            if recv_prev:
-                self._recv_meta()
-                need_increase_cnt = True
-        else:
-            if recv_prev:
-                self._recv_meta()
-                need_increase_cnt = True
+                if recv_prev:
+                    self._recv_meta()
+                    need_increase_cnt = True
+            else:
+                if recv_prev:
+                    self._recv_meta()
+                    need_increase_cnt = True
 
-            if output_tensor is not None:
-                self._send_meta(
-                    output_tensor,
-                    skip_check_meta=skip_check_meta,
-                    block_cache_meta=block_cache_meta,
-                )
-                need_increase_cnt = True
+                if output_tensor is not None:
+                    self._send_meta(
+                        output_tensor,
+                        skip_check_meta=skip_check_meta,
+                        block_cache_meta=block_cache_meta,
+                    )
+                    need_increase_cnt = True
 
-        input_tensor, _, wait_handles = _p2p_helper(
-            tensor_send_next=output_tensor,
-            tensor_send_prev=None,
-            recv_prev=recv_prev,
-            recv_next=False,
-            sync_recv=False,
-            send_recv_meta=self._send_recv_meta,
-            batch_p2p_comm=batch_p2p_comm,
-            wait_on_reqs=(not overlap_p2p_comm),
-        )
-        if _timers is not None:
-            _timers("send_forward_recv_forward").stop()
+            input_tensor, _, wait_handles = _p2p_helper(
+                tensor_send_next=output_tensor,
+                tensor_send_prev=None,
+                recv_prev=recv_prev,
+                recv_next=False,
+                sync_recv=False,
+                send_recv_meta=self._send_recv_meta,
+                batch_p2p_comm=batch_p2p_comm,
+                wait_on_reqs=(not overlap_p2p_comm),
+            )
+            if _timers is not None:
+                _timers("send_forward_recv_forward").stop()
 
-        if self._dynamic_shape and need_increase_cnt:
-            self._dynamic_cnt += 1
+            if self._dynamic_shape and need_increase_cnt:
+                self._dynamic_cnt += 1
 
-        if overlap_p2p_comm:
-            return input_tensor, wait_handles
-        return input_tensor
+            if overlap_p2p_comm:
+                return input_tensor, wait_handles
+            return input_tensor
 
     def send_backward_recv_backward(
         self,
@@ -1151,50 +1226,52 @@ class P2pHelper:
         recv_next,
         batch_p2p_comm=True,
         overlap_p2p_comm=False,
+        micro_step_id=None,
     ):
         global _timers
-        if _timers is not None:
-            _timers("send_backward_recv_backward").start()
+        with _p2p_span('SBRB', micro_step_id, overlap_p2p_comm):
+            if _timers is not None:
+                _timers("send_backward_recv_backward").start()
 
-        if self._dynamic_shape:
-            need_increase_cnt = False
-            if _hcg.get_stage_id() % 2 == 0:
-                if input_tensor_grad is not None:
-                    self._send_meta(input_tensor_grad, reverse=True)
-                    need_increase_cnt = True
+            if self._dynamic_shape:
+                need_increase_cnt = False
+                if _hcg.get_stage_id() % 2 == 0:
+                    if input_tensor_grad is not None:
+                        self._send_meta(input_tensor_grad, reverse=True)
+                        need_increase_cnt = True
 
-                if recv_next:
-                    self._recv_meta(reverse=True)
-                    need_increase_cnt = True
-            else:
-                if recv_next:
-                    self._recv_meta(reverse=True)
-                    need_increase_cnt = True
+                    if recv_next:
+                        self._recv_meta(reverse=True)
+                        need_increase_cnt = True
+                else:
+                    if recv_next:
+                        self._recv_meta(reverse=True)
+                        need_increase_cnt = True
 
-                if input_tensor_grad is not None:
-                    self._send_meta(input_tensor_grad, reverse=True)
-                    need_increase_cnt = True
+                    if input_tensor_grad is not None:
+                        self._send_meta(input_tensor_grad, reverse=True)
+                        need_increase_cnt = True
 
-        _, output_tensor_grad, wait_handles = _p2p_helper(
-            tensor_send_next=None,
-            tensor_send_prev=input_tensor_grad,
-            recv_prev=False,
-            recv_next=recv_next,
-            sync_recv=False,
-            send_recv_meta=self._send_recv_meta,
-            batch_p2p_comm=batch_p2p_comm,
-            wait_on_reqs=(not overlap_p2p_comm),
-            dynamic_shape=self._dynamic_shape,
-        )
-        if _timers is not None:
-            _timers("send_backward_recv_backward").stop()
+            _, output_tensor_grad, wait_handles = _p2p_helper(
+                tensor_send_next=None,
+                tensor_send_prev=input_tensor_grad,
+                recv_prev=False,
+                recv_next=recv_next,
+                sync_recv=False,
+                send_recv_meta=self._send_recv_meta,
+                batch_p2p_comm=batch_p2p_comm,
+                wait_on_reqs=(not overlap_p2p_comm),
+                dynamic_shape=self._dynamic_shape,
+            )
+            if _timers is not None:
+                _timers("send_backward_recv_backward").stop()
 
-        if self._dynamic_shape and need_increase_cnt:
-            self._dynamic_cnt += 1
+            if self._dynamic_shape and need_increase_cnt:
+                self._dynamic_cnt += 1
 
-        if overlap_p2p_comm:
-            return output_tensor_grad, wait_handles
-        return output_tensor_grad
+            if overlap_p2p_comm:
+                return output_tensor_grad, wait_handles
+            return output_tensor_grad
 
     def __repr__(self):
         debug_str = f"using cache: {self._use_cache} \n"
