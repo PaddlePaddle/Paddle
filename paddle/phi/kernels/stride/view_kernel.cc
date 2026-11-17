@@ -126,7 +126,8 @@ void ViewDtypeKernel(const Context& dev_ctx,
     meta.dtype = dtype;
     meta.dims = output_dims;
     meta.strides = output_stride;
-    meta.offset = input.offset() * times;
+    // meta.offset is in bytes, so it does not change with the dtype.
+    meta.offset = input.offset();
     out->set_meta(meta);
     out->ResetHolder(input.Holder());
     out->ShareInplaceVersionCounterWith(input);
@@ -152,12 +153,12 @@ void ViewDtypeKernel(const Context& dev_ctx,
             input.dtype(),
             dtype));
     PADDLE_ENFORCE_EQ(
-        input.offset() % times,
+        input.offset() % output_dtype_size,
         0,
         common::errors::InvalidArgument(
-            "input.offset(%d) must be multiple of %d to view %s as %s",
+            "input.offset(%d bytes) must be multiple of %d to view %s as %s",
             input.offset(),
-            times,
+            output_dtype_size,
             input.dtype(),
             dtype));
 
@@ -185,7 +186,8 @@ void ViewDtypeKernel(const Context& dev_ctx,
     meta.dtype = dtype;
     meta.dims = output_dims;
     meta.strides = output_stride;
-    meta.offset = input.offset() / times;
+    // meta.offset is in bytes, so it does not change with the dtype.
+    meta.offset = input.offset();
     out->set_meta(meta);
     out->ResetHolder(input.Holder());
     out->ShareInplaceVersionCounterWith(input);
