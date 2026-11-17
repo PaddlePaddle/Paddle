@@ -2273,7 +2273,7 @@ class FullyShardFusion:
         full = param._whole_full_shape
         if group.params_buffer.fp8 is not None:
             share_scratch(param, group.dtype)
-            param._clear_data()
+        param._clear_data()
         param.get_tensor()._set_dims(full)
         param.original_shape = list(full)
 
