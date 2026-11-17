@@ -1155,7 +1155,7 @@ def load_state_dict(
         unique_id(int): The unique id of checkpoint, used to distinguish between different checkpoint versions. Default is None, in which case the id the max id of given path, and the newest version checkpoint is loaded.
         offload(bool): Whether to offload the checkpoint data from GPU to CPU.
         mw_name_compatibility(bool): Enable name compatibility between dynamic and static graph semi-automatic parallel. Default is True.
-        aoa_config(dict[str, list[str]]): AOA config to change parameters. Default is None.
+        aoa_config(dict): AOA config to change parameters. Default is None. Recognized keys: ``aoa_statements`` (list[str], the AOA statements to run), ``aoa_config_reverse`` (bool, run the statements in reverse; default False), ``enable_traceback`` (bool, build an AOA traceback for debugging; default True), and ``max_reshape_pieces`` (int, the most pieces one region may be cut into by a reshape before it is refused; default 1024).
         safetensors(bool): Whether to use safetensors format. Default is False.
         worker_groups (list[paddle.distributed.collective.Group]): Communication groups used for tensor communications; if multiple are provided, an appropriate group is chosen; if None, the process_group group is used.
         comm_method (str): Communication method for resharding. Choices are "send_recv", "broadcast", "multi_group_broadcast", and "grouped_send_recv". Default is "broadcast".
@@ -1909,7 +1909,7 @@ def load_merged_state_dict(
         prefix(str): The flat_mapping prefix of state_dict key. e.g., 'model', Default None.
         unique_id(int): The unique id of checkpoint, used to distinguish between different checkpoint versions. Default is None, in which case the id the max id of given path, and the newest version checkpoint is loaded.
         offload(bool): Whether to offload the checkpoint data from GPU to CPU, set to True if GPU memory is not enough.
-        aoa_config(dict[str, list[str]]): AOA config to change parameters. Default is None.
+        aoa_config(dict): AOA config to change parameters. Default is None. Recognized keys: ``aoa_statements`` (list[str], the AOA statements to run), ``aoa_config_reverse`` (bool, run the statements in reverse; default False), ``enable_traceback`` (bool, build an AOA traceback for debugging; default True), and ``max_reshape_pieces`` (int, the most pieces one region may be cut into by a reshape before it is refused; default 1024).
         safetensors(bool): Whether to use safetensors format. Default is False.
     Returns:
         dict: Merged state_dict.
@@ -2062,7 +2062,7 @@ def merge_sharded_state_dict(
         process_group(paddle.distributed.collective.Group): ProcessGroup to be used for cross-rank synchronization. Use the default process group which contains all cards.
         unique_id(int): The unique id of checkpoint, used to distinguish between different checkpoint versions. Default is None, in which case the id the max id of given path, and the newest version checkpoint is loaded.
         offload(bool): Whether to offload the checkpoint data from GPU to CPU, set to True if GPU memory is not enough.
-        aoa_config(dict[str, list[str]]): AOA config to change parameters. Default is None.
+        aoa_config(dict): AOA config to change parameters. Default is None. Recognized keys: ``aoa_statements`` (list[str], the AOA statements to run), ``aoa_config_reverse`` (bool, run the statements in reverse; default False), ``enable_traceback`` (bool, build an AOA traceback for debugging; default True), and ``max_reshape_pieces`` (int, the most pieces one region may be cut into by a reshape before it is refused; default 1024).
         safetensors(bool): Whether to use safetensors format. Default is False.
     Returns:
         None.

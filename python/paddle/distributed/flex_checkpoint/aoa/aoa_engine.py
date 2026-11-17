@@ -14,17 +14,25 @@
 from __future__ import annotations
 
 import ast
+import functools
 import logging
 import re
 from dataclasses import dataclass
-
-import numpy as np
 
 logger = logging.getLogger(__name__)
 
 from ..dcp.sharded_weight import ShardedWeightDesc
 from .lexer import Lexer
-from .parser import Parser
+from .parser import Parser, Statement
+from .postprocess import invert_permutation, transpose_list
+from .reshape import (
+    MAX_RESHAPE_PIECES,
+    Box,
+    ReshapeMapping,
+    reshape_slice_refs,
+    resolve_reshape_target,
+    restrict_slice_ref,
+)
 from .traceback import AOATraceback
 
 _ShardInfo = dict[str, list[ShardedWeightDesc]]
@@ -32,6 +40,8 @@ _ShardInfo = dict[str, list[ShardedWeightDesc]]
 # SliceRef := (key, src_slice, dst_slice, postprocess_list)
 SliceRef = tuple[str, tuple[slice, ...], tuple[slice, ...], list[str] | None]
 SUPPORTED_DTYPES = ['float16', 'float32', 'bfloat16']
+# Optimizer states that are scalars rather than shaped like their parameter.
+_SCALAR_OPTIMIZER_STATES = (".beta1_pow_acc_0", ".beta2_pow_acc_0")
 
 
 class TensorDesc:
@@ -42,12 +52,15 @@ class TensorDesc:
         in_degree: int = 0,
         out_degree: int = 0,
         dtype: str | None = None,
+        reshaped_from: TensorDesc | None = None,
     ):
         self.slices = slices
         self.shape = shape
         self.in_degree = in_degree
         self.out_degree = out_degree
         self.dtype = dtype
+        # The tensor a reshape statement made this one from, if any.
+        self.reshaped_from = reshaped_from
 
     def __repr__(self):
         s = []
@@ -288,6 +301,9 @@ class AOAEngine:
         self.aoa_config_reverse = self.aoa_config.get(
             "aoa_config_reverse", False
         )
+        self.max_reshape_pieces = self.aoa_config.get(
+            "max_reshape_pieces", MAX_RESHAPE_PIECES
+        )
         enable_traceback = self.aoa_config.get("enable_traceback", True)
         self.traceback = AOATraceback() if enable_traceback else None
         self.context = AOAShardInfoContext(
@@ -340,10 +356,10 @@ class AOAEngine:
             model_state_key, opt_state_name = split_optimizer_state_key(key)
             if opt_state_name is None:
                 dtype = shards[0].dtype
-            if model_state_key in input_vars.keys() or opt_state_name in [
-                ".beta1_pow_acc_0",
-                ".beta2_pow_acc_0",
-            ]:
+            if (
+                model_state_key in input_vars.keys()
+                or opt_state_name in _SCALAR_OPTIMIZER_STATES
+            ):
                 continue
             input_vars[model_state_key] = self.make_input_tensor(
                 model_state_key, global_shape, dtype
@@ -358,56 +374,31 @@ class AOAEngine:
         tensor.out_degree += len(sizes)
         dtype = tensor.dtype
         for sz in sizes:
-            sub_dst_slice = [slice(None)] * len(tensor.shape)
-            sub_dst_slice[axis] = slice(0, sz)
             sub_slices = []
-            for aidx, src_sl, dst_sl, pp_list in tensor.slices:
-                if pp_list is not None:
-                    src_sl = postprocess_transpose(list(src_sl), pp_list)
-
-                dst_start = (
-                    dst_sl[axis].start if dst_sl[axis].start is not None else 0
-                )
-                dst_stop = (
-                    dst_sl[axis].stop
-                    if dst_sl[axis].stop is not None
-                    else tensor.shape[axis]
-                )
-                inter_begin = max(start, dst_start)
-                inter_end = min(start + sz, dst_stop)
-                if inter_begin < inter_end:
-                    src_axis_start = (
-                        src_sl[axis].start
-                        if src_sl[axis].start is not None
-                        else 0
-                    )
-                    sub_src_sl = list(src_sl)
-                    sub_dst_sl = list(dst_sl)
-                    offset = inter_begin - dst_start
-                    length = inter_end - inter_begin
-                    sub_src_sl[axis] = slice(
-                        src_axis_start + offset,
-                        src_axis_start + offset + length,
-                    )
+            for slice_ref in tensor.slices:
+                dst_sl = slice_ref[2]
+                inter_begin = max(start, dst_sl[axis].start)
+                inter_end = min(start + sz, dst_sl[axis].stop)
+                if inter_begin >= inter_end:
+                    continue
+                region = list(dst_sl)
+                region[axis] = slice(inter_begin, inter_end, 1)
+                for aidx, sub_src_sl, sub_dst_sl, pp_list in restrict_slice_ref(
+                    slice_ref,
+                    Box.from_slices(region),
+                    max_pieces=self.max_reshape_pieces,
+                    split_of=tensor.shape,
+                    axis=axis,
+                ):
+                    sub_dst_sl = list(sub_dst_sl)
                     sub_dst_sl[axis] = slice(
-                        inter_begin - start, inter_begin - start + length
+                        sub_dst_sl[axis].start - start,
+                        sub_dst_sl[axis].stop - start,
+                        1,
                     )
-                    if pp_list is not None:
-                        sub_src_sl = postprocess_transpose(
-                            list(sub_src_sl), pp_list, reverse=True
-                        )
-                        sub_slices.append(
-                            (
-                                aidx,
-                                tuple(sub_src_sl),
-                                tuple(sub_dst_sl),
-                                pp_list.copy(),
-                            )
-                        )
-                    else:
-                        sub_slices.append(
-                            (aidx, tuple(sub_src_sl), tuple(sub_dst_sl), None)
-                        )
+                    sub_slices.append(
+                        (aidx, sub_src_sl, tuple(sub_dst_sl), pp_list)
+                    )
             new_shape = list(tensor.shape)
             new_shape[axis] = sz
             results.append(
@@ -511,15 +502,20 @@ class AOAEngine:
             return None
         if key in self.destination_state_shard_info:
             return tuple(self.destination_state_shard_info[key][0].global_shape)
-        shapes = {
-            tuple(shards[0].global_shape)
-            for destination_key, shards in self.destination_state_shard_info.items()
-            if split_optimizer_state_key(destination_key)[0] == key
-        }
+        # The parameter's own shape; scalar optimizer states do not have it.
+        shapes = set()
+        for (
+            destination_key,
+            shards,
+        ) in self.destination_state_shard_info.items():
+            name, state = split_optimizer_state_key(destination_key)
+            if name == key and state not in _SCALAR_OPTIMIZER_STATES:
+                shapes.add(tuple(shards[0].global_shape))
         if len(shapes) == 0:
             # An intermediate variable (e.g. the ``tmp`` produced by a reshape
-            # that is later permuted) has no destination metadata; let the
-            # caller fall back to the canonical shape.
+            # that is later permuted) has no destination metadata; a reshape
+            # into it takes the shape from ``reshape=``, or under reverse from
+            # the statements run as written.
             return None
         if len(shapes) != 1:
             raise ValueError(
@@ -528,104 +524,116 @@ class AOAEngine:
             )
         return shapes.pop()
 
+    @functools.cached_property
+    def _written_input_shapes(self) -> dict[int, list[tuple[int, ...] | None]]:
+        """The shapes of every statement's left-hand side when the statements
+        run as written (``id(statement)`` -> one shape per variable).
+
+        Only shapes are tracked. The written inputs take their destination
+        shard info (with ``aoa_config_reverse`` they are the destination), a
+        reshape produces the shape it names, and the other statements derive
+        theirs from their inputs. A shape that cannot be derived stays None;
+        a statement that is wrong is reported by ``shape_propagation``.
+        """
+        shapes = {}
+        inputs = {}
+        for stmt in reversed(self.statements):  # back to the written order
+            ins = []
+            for var in stmt.left_vars:
+                if var.name not in shapes:
+                    shapes[var.name] = (
+                        None
+                        if var.name == "_"
+                        else self.get_destination_global_shape(var.name)
+                    )
+                ins.append(shapes[var.name])
+            inputs[id(stmt)] = ins
+            outs = [var.name for var in stmt.right_vars]
+            for name, shape in zip(
+                outs, self._written_output_shapes(stmt, ins)
+            ):
+                shapes[name] = shape
+        return inputs
+
+    @staticmethod
+    def _written_output_shapes(
+        stmt: Statement, ins: list[tuple[int, ...] | None]
+    ) -> list[tuple[int, ...] | None]:
+        attrs = {attr.key: attr.value for attr in stmt.attrs}
+        count = len(stmt.right_vars)
+        if "reshape" in attrs:
+            return [tuple(ast.literal_eval(attrs["reshape"]))]
+        if not ins or any(shape is None for shape in ins):
+            return [None] * count
+        try:
+            if len(ins) > 1:  # concat
+                shape = list(ins[0])
+                shape[attrs["axis"]] = sum(s[attrs["axis"]] for s in ins)
+                return [tuple(shape)]
+            if count > 1:  # split into equal parts, as split() does
+                shape = list(ins[0])
+                shape[attrs["axis"]] //= count
+                return [tuple(shape)] * count
+            if "permute" in attrs:
+                permutation = ast.literal_eval(attrs["permute"])
+                permutation = permutation or list(range(len(ins[0])))[::-1]
+                return [tuple(transpose_list(ins[0], permutation))]
+        except (KeyError, IndexError, TypeError, ValueError, SyntaxError):
+            return [None] * count
+        return [ins[0]] * count  # rename, cast
+
+    def _written_shape(self, stmt: Statement) -> tuple[int, ...] | None:
+        """Under ``aoa_config_reverse``: the shape a reshape statement's
+        written input has when the statements run as written."""
+        if not self.aoa_config_reverse:
+            return None
+        (written,) = self._written_input_shapes[id(stmt)]
+        return written
+
     def reshape(
         self,
         tensor: TensorDesc,
-        canonical_shape: str,
-        destination_shape: tuple[int] | None,
+        shape_attr: str,
+        destination_shape: tuple[int, ...] | None,
+        written_shape: tuple[int, ...] | None = None,
     ) -> TensorDesc:
-        """Reshape shards between a canonical N-D layout and its flattened 2-D form.
+        """Reshape the tensor into the shape named by ``reshape=``.
 
-        The supported transformation merges/splits the leading two dimensions:
-        canonical ``[d0, d1, *rest]`` <-> flattened ``[d0 * d1, prod(rest)]``.
-        Element order is preserved (a pure ``reshape``); shards must therefore be
-        aligned on the ``d1`` block boundary and keep the trailing dimensions
-        whole. ``reshape:`` markers map flattened -> canonical, ``flatten:`` the
-        reverse.
+        Element order is preserved, so every slice is cut into pieces that are
+        boxes of both shapes; see ``reshape.py`` for the geometry and for the
+        meaning of the attribute under ``aoa_config_reverse``. A tensor that a
+        reshape made is reshaped from the tensor it was made from instead: the
+        two reshapes compose into one, so the shape in between does not cut
+        the pieces. ``written_shape`` is what ``resolve_reshape_target``
+        takes for a destination without shard info under reverse.
         """
-        canonical = tuple(ast.literal_eval(canonical_shape))
         source = tuple(tensor.shape)
-        destination = (
-            canonical if destination_shape is None else tuple(destination_shape)
-        )
-        if len(canonical) < 3:
-            raise ValueError(
-                "reshape expects a canonical shape with at least 3 dimensions "
-                f"(leading block + trailing dims), but got {canonical}."
-            )
-        block_width = canonical[1]
-        flattened = (
-            canonical[0] * block_width,
-            int(np.prod(canonical[2:])),
+        destination = resolve_reshape_target(
+            tuple(ast.literal_eval(shape_attr)),
+            source,
+            None if destination_shape is None else tuple(destination_shape),
+            self.aoa_config_reverse,
+            written_shape,
         )
         if source == destination:
             return self.identity(tensor)
-        if {source, destination} != {flattened, canonical}:
-            raise ValueError(
-                "reshape only supports conversion between "
-                f"flattened={flattened} and canonical={canonical}, but got "
-                f"source={source}, destination={destination}."
-            )
-
-        forward = source == flattened
-        marker_name = "reshape" if forward else "flatten"
-        marker = f"{marker_name}:{list(canonical)}"
-        slices = []
-        for src_key, src_sl, dst_sl, pp_list in tensor.slices:
-            new_pp_list = [] if pp_list is None else pp_list.copy()
-            new_pp_list.append(marker)
-            if forward:
-                row_start = dst_sl[0].start or 0
-                row_stop = dst_sl[0].stop or source[0]
-                col_start = dst_sl[1].start or 0
-                col_stop = dst_sl[1].stop or source[1]
-                if (
-                    row_start % block_width != 0
-                    or row_stop % block_width != 0
-                    or col_start != 0
-                    or col_stop != source[1]
-                ):
-                    raise ValueError(
-                        "reshape requires block-aligned full-row source "
-                        f"slices, but got destination slice={dst_sl}."
-                    )
-                converted_dst = (
-                    slice(
-                        row_start // block_width,
-                        row_stop // block_width,
-                        1,
-                    ),
-                    *tuple(slice(0, dim, 1) for dim in canonical[1:]),
-                )
-            else:
-                block_start = dst_sl[0].start or 0
-                block_stop = dst_sl[0].stop or canonical[0]
-                if any(
-                    (sl.start or 0) != 0
-                    or (sl.stop or canonical[i]) != canonical[i]
-                    for i, sl in enumerate(dst_sl[1:], start=1)
-                ):
-                    raise ValueError(
-                        "reshape (flatten) requires complete trailing-dim "
-                        f"slices, but got source slice={dst_sl}."
-                    )
-                converted_dst = (
-                    slice(
-                        block_start * block_width,
-                        block_stop * block_width,
-                        1,
-                    ),
-                    slice(0, flattened[1], 1),
-                )
-            slices.append((src_key, src_sl, converted_dst, new_pp_list))
-
         tensor.out_degree += 1
+        origin = tensor.reshaped_from or tensor
+        if tuple(origin.shape) == destination:
+            slices = origin.slices
+        else:
+            slices = reshape_slice_refs(
+                origin.slices,
+                ReshapeMapping.of(tuple(origin.shape), destination),
+                max_pieces=self.max_reshape_pieces,
+            )
         return TensorDesc(
             slices,
             destination,
             in_degree=1,
             out_degree=0,
             dtype=tensor.dtype,
+            reshaped_from=origin,
         )
 
     def identity(self, tensor: TensorDesc) -> TensorDesc:
@@ -765,6 +773,7 @@ class AOAEngine:
                                     self.get_destination_global_shape(
                                         rvar.name
                                     ),
+                                    self._written_shape(stmt),
                                 )
                             elif attr.key == "axis":
                                 result = in_ref
@@ -853,139 +862,19 @@ class AOAEngine:
             f"For the key {key}, the target_tensor has {len(local_slice)} dimensions, "
             f"but the tensor in output_vars has {len(tensor.shape)} dimensions (shape={tensor.shape}). "
         )
-        ndim = len(tensor.shape)
-
-        def slice_intersect(a: slice, b: slice):
-            start = max(a.start, b.start)
-            stop = min(a.stop, b.stop)
-            if start >= stop:
-                return None
-            return slice(start, stop, 1)
-
-        for src_key, sl_src, sl_dst, pp_list in tensor.slices:
-            reshape_marker = next(
-                (
-                    item
-                    for item in (pp_list or [])
-                    if isinstance(item, str)
-                    and (
-                        item.startswith("reshape:")
-                        or item.startswith("flatten:")
+        shard = Box.from_slices(local_slice)
+        for slice_ref in tensor.slices:
+            region = shard.intersect(Box.from_slices(slice_ref[2]))
+            if region is not None:
+                results.extend(
+                    restrict_slice_ref(
+                        slice_ref,
+                        region,
+                        max_pieces=self.max_reshape_pieces,
+                        key=key,
+                        destination_shard=local_slice,
                     )
-                ),
-                None,
-            )
-            if reshape_marker is not None:
-                intersection = []
-                for i in range(ndim):
-                    inter = slice_intersect(local_slice[i], sl_dst[i])
-                    if inter is None:
-                        break
-                    intersection.append(inter)
-                else:
-                    canonical_shape = tuple(
-                        ast.literal_eval(reshape_marker.split(":", 1)[1])
-                    )
-                    block_width = canonical_shape[1]
-                    # Transposes that follow the reshape/flatten marker express
-                    # the destination in a permuted layout, so ``intersection``
-                    # (and ``sl_dst``) are no longer in the reshape-output axis
-                    # order. Undo those transposes first, then map the leading
-                    # block axis back onto the flattened source rows.
-                    marker_index = pp_list.index(reshape_marker)
-                    remaining_pp = pp_list[marker_index + 1 :]
-                    pre_pp_intersection = postprocess_transpose(
-                        list(intersection), remaining_pp, reverse=True
-                    )
-                    pre_pp_sl_dst = postprocess_transpose(
-                        list(sl_dst), remaining_pp, reverse=True
-                    )
-                    if reshape_marker.startswith("reshape:"):
-                        block_base = pre_pp_sl_dst[0].start or 0
-                        block_start = pre_pp_intersection[0].start - block_base
-                        block_stop = pre_pp_intersection[0].stop - block_base
-                        source_row_start = sl_src[0].start or 0
-                        src_slice = list(sl_src)
-                        src_slice[0] = slice(
-                            source_row_start + block_start * block_width,
-                            source_row_start + block_stop * block_width,
-                            1,
-                        )
-                    else:
-                        row_base = pre_pp_sl_dst[0].start or 0
-                        row_start = pre_pp_intersection[0].start - row_base
-                        row_stop = pre_pp_intersection[0].stop - row_base
-                        if (
-                            row_start % block_width != 0
-                            or row_stop % block_width != 0
-                        ):
-                            raise ValueError(
-                                "reshape (flatten) requires block-aligned "
-                                f"destination shards, but got slice={intersection}."
-                            )
-                        source_block_start = sl_src[0].start or 0
-                        src_slice = (
-                            slice(
-                                source_block_start + row_start // block_width,
-                                source_block_start + row_stop // block_width,
-                                1,
-                            ),
-                            *tuple(
-                                slice(0, dim, 1) for dim in canonical_shape[1:]
-                            ),
-                        )
-                    results.append(
-                        (
-                            src_key,
-                            tuple(src_slice),
-                            tuple(intersection),
-                            pp_list.copy(),
-                        )
-                    )
-                continue
-
-            intersection = []
-            for i in range(ndim):
-                inter = slice_intersect(local_slice[i], sl_dst[i])
-                if inter is None:
-                    break
-                intersection.append(inter)
-            else:
-                # Compute corresponding src_slice for the intersection
-                if pp_list is not None:
-                    sl_src = postprocess_transpose(list(sl_src), pp_list)
-                src_slice = []
-                for i in range(ndim):
-                    dst = sl_dst[i]
-                    src = sl_src[i]
-                    dst_start = dst.start
-                    src_start = src.start
-                    inter_start, inter_stop = (
-                        intersection[i].start,
-                        intersection[i].stop,
-                    )
-                    offset = inter_start - dst_start
-                    src_inter_start = src_start + offset
-                    src_inter_stop = src_inter_start + (
-                        inter_stop - inter_start
-                    )
-                    src_slice.append(slice(src_inter_start, src_inter_stop, 1))
-                if pp_list is not None:
-                    src_slice = postprocess_transpose(
-                        list(src_slice), pp_list, reverse=True
-                    )
-                    results.append(
-                        (
-                            src_key,
-                            tuple(src_slice),
-                            tuple(intersection),
-                            pp_list.copy(),
-                        ),
-                    )
-                else:
-                    results.append(
-                        (src_key, tuple(src_slice), tuple(intersection), None)
-                    )
+                )
         return results
 
     def find_shard_sources(
@@ -1116,41 +1005,3 @@ class AOAEngine:
             )
 
         return shard_mappings
-
-
-def postprocess_transpose(
-    li: list[tuple[slice, ...]] | tuple[tuple[slice, ...]],
-    postprocess_list: list[str],
-    reverse: bool = False,
-) -> list[tuple[slice, ...]] | tuple[tuple[slice, ...]]:
-    result = li
-    if reverse:
-        for pp in list(reversed(postprocess_list)):
-            if pp.startswith("["):
-                reversed_transpose = np.argsort(ast.literal_eval(pp)).tolist()
-                result = transpose_list(result, reversed_transpose)
-    else:
-        for pp in postprocess_list:
-            if pp.startswith("["):
-                result = transpose_list(result, ast.literal_eval(pp))
-    return result
-
-
-def transpose_list(
-    li: list[tuple[slice, ...]] | tuple[tuple[slice, ...]],
-    permutation: list[int],
-) -> list[tuple[slice, ...]] | tuple[tuple[slice, ...]]:
-    trans_list = []
-    for idx in permutation:
-        trans_list.append(li[idx])
-    if isinstance(li, tuple):
-        return tuple(trans_list)
-    else:
-        return trans_list
-
-
-def invert_permutation(p: list[int]) -> list[int]:
-    q = [0] * len(p)
-    for i, pi in enumerate(p):
-        q[pi] = i
-    return q
