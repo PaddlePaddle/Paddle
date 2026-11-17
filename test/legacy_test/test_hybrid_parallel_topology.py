@@ -614,7 +614,9 @@ class TestFSDPGroups(unittest.TestCase):
 
     def test_invalid_degree(self):
         for degree in (3, 8):
-            with self.assertRaisesRegex(ValueError, "Usable values"):
+            with self.assertRaisesRegex(
+                ValueError, "Invalid fsdp_outer_degree"
+            ):
                 self.build(self.dense_hcg, 8, degree)
 
 
