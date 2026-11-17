@@ -149,9 +149,11 @@ class TestAssignShardedSliceWriteMethod(unittest.TestCase):
 
     A strided slice of a CPU target (load_state_dict stages a pinned optimizer
     state in a CPU copy) is written with ``target[index] = value``, which is
-    several times faster there than ``paddle.assign`` into the slice; a
-    reshape mapping on XPU keeps that write too. Everything else, and anything
-    whose value sits on another place than the target, goes through assign.
+    several times faster there than ``paddle.assign`` into the slice. A region
+    that does not share the target's buffer -- what paddle.slice returns with
+    FLAGS_use_stride_kernel off -- has to be written that way, since assign
+    would only fill the copy; anything whose value sits on another place than
+    the target goes through assign.
     """
 
     class _Place:
@@ -165,35 +167,45 @@ class TestAssignShardedSliceWriteMethod(unittest.TestCase):
             return self.xpu
 
     class _Tensor:
-        def __init__(self, place, contiguous=True):
+        def __init__(self, place, contiguous=True, shared=True):
             self.place, self.contiguous = place, contiguous
+            self.shared = shared
 
         def is_contiguous(self):
             return self.contiguous
 
-    def _decide(self, place, contiguous, postprocess_list=None):
+        def _is_shared_buffer_with(self, other):
+            return self.shared
+
+    def _decide(self, place, contiguous, shared=True):
         from paddle.distributed.flex_checkpoint.dcp.utils import (
             _write_by_setitem,
         )
 
         target = self._Tensor(place)
-        region = self._Tensor(place, contiguous)
-        return _write_by_setitem(target, region, target, postprocess_list)
+        region = self._Tensor(place, contiguous, shared)
+        return _write_by_setitem(target, region, target)
 
     def test_cpu_strided_region_uses_setitem(self):
         place = self._Place(cpu=True)
         self.assertTrue(self._decide(place, contiguous=False))
         self.assertFalse(self._decide(place, contiguous=True))
 
-    def test_xpu_uses_setitem_for_reshape_mappings_only(self):
-        place = self._Place(xpu=True)
-        self.assertTrue(self._decide(place, True, [WHOLE_RESHAPE]))
-        self.assertFalse(self._decide(place, False, ["[1, 0, 2, 3]"]))
-        self.assertFalse(self._decide(place, False, None))
+    def test_a_region_that_is_a_copy_uses_setitem(self):
+        # paddle.slice copies rather than views the target with
+        # FLAGS_use_stride_kernel off (the XPU CI runs with it off), and
+        # assign into that copy would leave the target unchanged.
+        for place in (
+            self._Place(cpu=True),
+            self._Place(xpu=True),
+            self._Place(),
+        ):
+            for contiguous in (True, False):
+                self.assertTrue(self._decide(place, contiguous, shared=False))
 
     def test_other_devices_use_assign(self):
         place = self._Place()
-        self.assertFalse(self._decide(place, False, [WHOLE_RESHAPE]))
+        self.assertFalse(self._decide(place, contiguous=False))
 
     @unittest.skipUnless(
         paddle.is_compiled_with_cuda()
@@ -208,7 +220,7 @@ class TestAssignShardedSliceWriteMethod(unittest.TestCase):
         target = paddle.zeros([2, 3, 2, 2]).cpu()
         region = paddle.slice(target, axes=[2], starts=[0], ends=[1])
         value = paddle.ones([2, 3, 1, 2]).cuda()
-        self.assertFalse(_write_by_setitem(target, region, value, None))
+        self.assertFalse(_write_by_setitem(target, region, value))
 
     def _write_half(self, postprocess_list, source_shape, target=None):
         """Fill the gate half (axis 2, index 0) of a CPU (2, 3, 2, 2) target."""

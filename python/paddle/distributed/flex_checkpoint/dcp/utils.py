@@ -362,10 +362,7 @@ def assign_sharded_slice(
     )
     src_tensor_slice = apply_postprocess(src_tensor_slice, postprocess_list)
     if _write_by_setitem(
-        dst_shard.local_tensor,
-        dst_tensor_slice,
-        src_tensor_slice,
-        postprocess_list,
+        dst_shard.local_tensor, dst_tensor_slice, src_tensor_slice
     ):
         dst_index = tuple(
             slice(s, s + o) for s, o in zip(dst_shard_starts, overlap_shape2)
@@ -378,11 +375,17 @@ def assign_sharded_slice(
         paddle.assign(src_tensor_slice, dst_tensor_slice)
 
 
-def _write_by_setitem(target, region, value, postprocess_list):
+def _write_by_setitem(target, region, value):
     """Whether to write ``value`` into ``region`` of ``target`` with
     ``target[index] = value`` (an in-place ``set_value`` on the whole target)
     rather than ``paddle.assign`` into the ``region`` slice."""
     place = target.place
+    if not region._is_shared_buffer_with(target):
+        # With FLAGS_use_stride_kernel off -- the XPU CI runs with it off, and
+        # layout autotune turns it off -- paddle.slice returns a copy instead
+        # of a view of the target, so assign would fill that copy and leave
+        # the target unchanged; set_value writes the target itself.
+        return True
     # load_state_dict moves the receive buffer to the target's place first;
     # should the two still differ, keep assign, since __setitem__ would move
     # the whole target to the value's place.
@@ -393,10 +396,6 @@ def _write_by_setitem(target, region, value, postprocess_list):
         # load_state_dict stages a pinned optimizer state in) element by
         # element; set_value writes it several times faster.
         return not region.is_contiguous()
-    if place.is_xpu_place():
-        # Reshape mappings on XPU keep __setitem__, the write they are
-        # verified with there.
-        return any(is_reshape(op) for op in postprocess_list or [])
     return False
 
 
