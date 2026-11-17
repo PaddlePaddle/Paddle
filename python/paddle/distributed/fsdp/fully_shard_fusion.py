@@ -98,6 +98,7 @@ class BufferGroup:
     grads_use_sum: int = 0
     grads_use_cnt: int = 0
     grads_ready_cnt: int = 0
+    cp_replicated: bool = False
 
 
 def _whole_3d_shard_numel(params, fsdp_group):
@@ -444,7 +445,9 @@ class FSDPBufferManager:
             )
         self._fsdp_group = self.hcg.get_fsdp_group()
         self._ep_fsdp_group = self.hcg.get_fsdp_group(is_expert=True)
-
+        cp_degree = getattr(
+            self.hcg, "get_context_parallel_world_size", lambda: 1
+        )()
         self.main_grad_dtype = (
             main_grad_dtype if main_grad_dtype is not None else paddle.float32
         )
@@ -512,6 +515,15 @@ class FSDPBufferManager:
                     )
                 ),
                 getattr(param, "_fsdp_fp8_quantizer", None),
+                # Grad is replicated (not partial) across cp ranks.
+                cp_degree > 1
+                and bool(
+                    getattr(param, "expert_cp_replicated", False)
+                    if is_expert
+                    else getattr(
+                        param, "context_parallel_disable_scale_grad", False
+                    )
+                ),
             )
             keyed_params.setdefault(key, []).append(param)
 
@@ -525,6 +537,7 @@ class FSDPBufferManager:
                 is_tie,
                 _,
                 keep_whole,
+                _,
                 _,
                 _,
                 _,
@@ -550,6 +563,7 @@ class FSDPBufferManager:
                 keep_whole=keep_whole,
                 hyperball_sharded=hyperball_name is not None,
                 clip_attrs=clip_attrs,
+                cp_replicated=cp_replicated,
             )
             for (
                 dtype,
@@ -564,6 +578,7 @@ class FSDPBufferManager:
                 hyperball_name,
                 clip_attrs,
                 _,
+                cp_replicated,
             ), params in sorted(keyed_params.items(), key=sort_key)
         ]
 
@@ -619,7 +634,8 @@ class FSDPBufferManager:
                     main_grad_dtype=paddle.float32
                     if group.is_expert_param or group.dtype == paddle.float32
                     else self.main_grad_dtype,
-                    grad_div=self._fsdp_group.nranks,
+                    grad_div=self._fsdp_group.nranks
+                    // (1 if group.cp_replicated else cp_degree),
                     shard_buffer=grads_shard_buffer,
                     shard_align_numel=shard_align,
                     grad_comm_dtype=self.grad_comm_dtype,
@@ -1538,6 +1554,8 @@ class FullyShardFusion:
         # Redirect the model's own API; the original stays as our description base.
         self._model_sharded_state_dict = self.model.sharded_state_dict
         self.model.sharded_state_dict = self.sharded_state_dict
+        self._model_full = self.model.full
+        self.model.full = self.full
 
     def _base_sharded_state_dict(self, structured_name_prefix):
         """Model descriptions of every param; fused params get a scratch view since their storage is cleared."""
@@ -1665,6 +1683,81 @@ class FullyShardFusion:
                     )
             self._shard_descs[params_buffer.data_buffer.name] = param_slice_info
         return result
+
+    def _model_description(self, *args, **kwargs):
+        """The model's own description, with experts folded as in sharded_state_dict."""
+        result = self._model_sharded_state_dict(*args, **kwargs)
+        hcg = self.buffer_manager.hcg
+        if not hasattr(hcg, "get_expert_parallel_world_size"):
+            return result
+        ep_nranks = hcg.get_expert_parallel_world_size()
+        if ep_nranks <= 1:
+            return result
+        ep_rank = hcg.get_expert_parallel_rank()
+        experts = {
+            param.name
+            for group in self.buffer_manager.buffer_groups
+            if group.is_expert_param
+            for param in group.params
+        }
+        for sharded_weight in result.values():
+            local_shape = tuple(sharded_weight.local_shape)
+            if (
+                sharded_weight.local_tensor.name not in experts
+                or tuple(sharded_weight.global_shape) != local_shape
+            ):
+                continue
+            # Expert described as replicated: fold EP into axis 0 to keep keys distinct.
+            sharded_weight.global_shape = (
+                local_shape[0] * ep_nranks,
+                *local_shape[1:],
+            )
+            sharded_weight.global_offset = (
+                ep_rank * local_shape[0],
+                *(0 for _ in local_shape[1:]),
+            )
+        return result
+
+    def full(self, aoa_config=None, **kwargs):
+        """Gather released params to CPU and run the model's own full; iterate once to the end or close()."""
+        released = []
+        try:
+            for group in self.buffer_manager.buffer_groups:
+                params = [p for p in group.params if not p._is_initialized()]
+                if not params:
+                    continue
+                params_buffer = group.params_buffer
+                weight = params_buffer.data_buffer
+                if params_buffer.fp8 is not None:
+                    weight = build_ckpt_weight(params_buffer, group.dtype)
+                gathered = weight
+                if params_buffer.is_sharded:
+                    gathered = paddle.empty(
+                        [params_buffer.total_buffer_size], dtype=weight.dtype
+                    )
+                    paddle.distributed.stream.all_gather(
+                        gathered,
+                        weight,
+                        group=params_buffer.fsdp_group,
+                        sync_op=True,
+                        use_calc_stream=True,
+                    )
+                for param in params:
+                    offset = params_buffer.param_offsets[param.name]
+                    value = gathered._slice(offset, offset + param._numel())
+                    value = value.reshape(param.shape).cpu()
+                    released.append((param, param.shape))
+                    value._share_buffer_to(param)
+                del gathered, weight
+            self.model.sharded_state_dict = self._model_description
+            yield from self._model_full(aoa_config, **kwargs)
+        finally:
+            self.model.sharded_state_dict = self.sharded_state_dict
+            for param, shape in released:
+                stop_gradient = param.stop_gradient
+                param._clear_data()
+                param.stop_gradient = stop_gradient
+                param.get_tensor()._set_dims(shape)
 
     def bind_decay_param_fun(self, optimizer, buffer_groups=None):
         """Answer ``apply_decay_param_fun`` for the fused buffers.
@@ -2177,7 +2270,7 @@ class FullyShardFusion:
         full = param._whole_full_shape
         if group.params_buffer.fp8 is not None:
             share_scratch(param, group.dtype)
-            param._clear_data()
+        param._clear_data()
         param.get_tensor()._set_dims(full)
         param.original_shape = list(full)
 
