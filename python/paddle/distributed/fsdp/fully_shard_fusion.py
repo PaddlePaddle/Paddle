@@ -24,6 +24,9 @@ import numpy as np
 import paddle
 from paddle.autograd import PyLayer
 from paddle.distributed import fleet
+from paddle.distributed.fleet.utils.sequence_parallel_utils import (
+    is_sequence_parallel_parameter,
+)
 from paddle.distributed.fleet.utils.tensor_fusion_helper import (
     align,
     alignment,
@@ -435,7 +438,7 @@ def _sp_grad_slices(buffer_groups):
         prev_sp = False
         for param in group.params:
             shard = None
-            if param.trainable and getattr(param, "sequence_parallel", False):
+            if param.trainable and is_sequence_parallel_parameter(param):
                 shard = grads_buffer.param_shard(param)
             if shard is None:
                 prev_sp = False

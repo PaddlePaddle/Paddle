@@ -36,6 +36,10 @@ class TestDygraphGroupSharded(TestMultipleAccelerators):
     def test_dygraph_group_fsdp_fp8(self):
         self.run_mnist_2accelerators('dygraph_group_fsdp_fp8.py')
 
+    # check dygraph fsdp sums sequence-parallel grads over tp=2.
+    def test_dygraph_group_fsdp_sp(self):
+        self.run_mnist_2accelerators('dygraph_group_fsdp_sp.py')
+
 
 if __name__ == "__main__":
     unittest.main()
