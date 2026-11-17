@@ -575,9 +575,46 @@ class TestFSDPGroups(unittest.TestCase):
                 h.get_moe_sharding_parallel_group(),
             )
 
+    def test_dense_pipe(self):
+        # pp outside sharding: inner/outer stay within a stage.
+        def hcg():
+            return tp.HybridCommunicateGroup(
+                tp.CommunicateTopology(
+                    ["data", "pipe", "sharding", "sep", "model"],
+                    [1, 2, 4, 1, 2],
+                )
+            )
+
+        hcgs = self.build(hcg, 16, 2)
+        for r, h in enumerate(hcgs):
+            inner, outer = self.splits([h])[0]
+            stage = set(h.get_pipe_parallel_group().ranks)
+            self.assertEqual(set(inner) & stage, {r})
+            self.assertEqual(set(outer) & stage, {r})
+            self.assertEqual(len(inner), 2)
+            self.assertEqual(len(outer), 2)
+        self.assertEqual(self.splits(hcgs[:1]), [([0, 2], [0, 4])])
+
+    def test_mesh(self):
+        hcgs = self.build(self.dense_hcg, 8, 2)
+        for r, h in enumerate(hcgs):
+            mesh = h.get_fsdp_mesh()
+            self.assertEqual(mesh, [[0, 1, 2, 3], [4, 5, 6, 7]])
+            # Row = inner group, column = outer group.
+            self.assertEqual(mesh[r // 4], list(h.get_fsdp_inner_group().ranks))
+            self.assertEqual(
+                [row[r % 4] for row in mesh],
+                list(h.get_fsdp_outer_group().ranks),
+            )
+
+    def test_mesh_without_hsdp(self):
+        # Outer degree 1: a single row.
+        for h in self.build(self.dense_hcg, 8, 1):
+            self.assertEqual(h.get_fsdp_mesh(), [list(range(8))])
+
     def test_invalid_degree(self):
         for degree in (3, 8):
-            with self.assertRaises(ValueError):
+            with self.assertRaisesRegex(ValueError, "Usable values"):
                 self.build(self.dense_hcg, 8, degree)
 
 

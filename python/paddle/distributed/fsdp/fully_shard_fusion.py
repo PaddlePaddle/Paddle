@@ -437,6 +437,11 @@ class FSDPBufferManager:
         self.grad_comm_dtype = grad_comm_dtype
         self._comm_streams = {}
         self.hcg = fleet.get_hybrid_communicate_group()
+        dp_degree = self.hcg.get_data_parallel_world_size()
+        if dp_degree > 1:
+            raise ValueError(
+                f"FSDP with DP is not supported yet, got dp_degree={dp_degree}."
+            )
         self._fsdp_group = self.hcg.get_fsdp_group()
         self._ep_fsdp_group = self.hcg.get_fsdp_group(is_expert=True)
 

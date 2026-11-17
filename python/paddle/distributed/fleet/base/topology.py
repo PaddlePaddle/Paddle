@@ -273,9 +273,8 @@ class CommunicateTopology:
 
 
 def _split_fsdp_groups(groups, comm_lists, degree):
-    """Split each FSDP group into an [outer, inner] mesh and return this
-    rank's (inner, outer) groups. Every rank builds all rows and columns of
-    comm_lists in the same order.
+    """Split each FSDP group into an [outer, inner] mesh; return this rank's
+    (inner, outer, mesh). All ranks build every row/column in the same order.
     """
     meshes = {}
     for s in sorted({tuple(s) for lists in comm_lists for s in lists}):
@@ -296,10 +295,11 @@ def _split_fsdp_groups(groups, comm_lists, degree):
     result = []
     for g in groups:
         m = meshes[tuple(g.ranks)]
-        i, j = np.argwhere(m == me)[0]
-        result.append(
-            (built[tuple(m[i].tolist())], built[tuple(m[:, j].tolist())])
-        )
+        outer_rank, inner_rank = np.argwhere(m == me)[0]
+        inner = built[tuple(m[outer_rank].tolist())]
+        outer = built[tuple(m[:, inner_rank].tolist())]
+        assert inner is not None and outer is not None
+        result.append((inner, outer, m.tolist()))
     return result
 
 
@@ -800,6 +800,12 @@ class HybridCommunicateGroup:
     def get_fsdp_outer_group(self, is_expert: bool = False) -> Group | None:
         split = self._fsdp_splits.get(is_expert)
         return None if split is None else split[1]
+
+    def get_fsdp_mesh(self, is_expert: bool = False) -> list[list[int]]:
+        split = self._fsdp_splits.get(is_expert)
+        if split is not None:
+            return split[2]
+        return [list(self.get_fsdp_group(is_expert).ranks)]
 
     # check parallel group
     def get_check_parallel_group(self, sharding: bool = False) -> Group:
