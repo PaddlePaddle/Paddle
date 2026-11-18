@@ -47,7 +47,7 @@ jobs:
     needs: [check-bypass]
     if: ${{ needs.check-bypass.outputs.can-skip != 'true' && inputs.clone-can-skip != 'true' }}
     runs-on:
-      group: GZ_BD-CPU
+      group: cpu-test
     timeout-minutes: 120
 
     steps:
