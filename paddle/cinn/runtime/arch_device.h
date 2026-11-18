@@ -61,6 +61,15 @@ inline std::optional<int> GetArchDevice(const common::Target& target) {
         int device_id =
             BackendAPI::get_backend(common::HygonDCUArchSYCL{})->get_device();
         return std::optional<int>{device_id};
+      },
+      [&](common::XpuArch) -> std::optional<int> {
+#ifdef CINN_WITH_XPU
+        int device_id =
+            BackendAPI::get_backend(common::XpuArch{})->get_device();
+        return std::optional<int>{device_id};
+#else
+        return std::nullopt;
+#endif
       });
 }
 
@@ -108,6 +117,17 @@ inline void SetArchDevice(const common::Target& target,
                               "received std::nullopt."));
         BackendAPI::get_backend(common::HygonDCUArchSYCL{})
             ->set_device(device_id.value());
+      },
+      [&](common::XpuArch) -> void {
+#ifdef CINN_WITH_XPU
+        PADDLE_ENFORCE_EQ(device_id.has_value(),
+                          true,
+                          ::common::errors::InvalidArgument(
+                              "Required device_id should have value, but "
+                              "received std::nullopt."));
+        BackendAPI::get_backend(common::XpuArch{})
+            ->set_device(device_id.value());
+#endif
       });
 }
 

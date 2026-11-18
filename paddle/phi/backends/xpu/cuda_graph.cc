@@ -210,8 +210,12 @@ void CUDAGraph::EndSegmentCapture() {
       CUDAGraphNodeLauncher::Instance().GetParameterSettersForExecGraph(graph));
 
   cudaGraphExec_t exec_graph;
+#if defined(CUDART_VERSION) && CUDART_VERSION >= 12000
+  PADDLE_ENFORCE_XPU_SUCCESS(cudaGraphInstantiate(&exec_graph, graph, 0));
+#else
   PADDLE_ENFORCE_XPU_SUCCESS(
       cudaGraphInstantiate(&exec_graph, graph, nullptr, nullptr, 0));
+#endif
   capturing_graph_->graphs_.emplace_back(graph);
   capturing_graph_->exec_graphs_.emplace_back(exec_graph);
 }
