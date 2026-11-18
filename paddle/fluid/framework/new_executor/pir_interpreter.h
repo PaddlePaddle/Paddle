@@ -274,10 +274,6 @@ class PirInterpreter : public InterpreterBaseImpl {
 
   std::vector<std::unique_ptr<InstructionBase>> vec_instruction_base_;
 
-  // Side-stream events kept alive until the next custom-device Run boundary.
-  std::vector<std::shared_ptr<platform::DeviceEvent>>
-      custom_run_boundary_events_;
-
   // value execution info
   std::shared_ptr<ValueExecutionInfo> value_exe_info_;
 
