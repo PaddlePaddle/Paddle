@@ -1021,15 +1021,6 @@ class DygraphShardingOptimizerV2:
         return parameter_list
 
     def reduce_gradients(self, parameter_list, hcg):
-        # A gradient communication backend handles its buckets (and everything
-        # else this call does) when it returns True.
-        if (
-            self._grad_comm_backend is not None
-            and self._grad_comm_backend.reduce_gradients(
-                self, parameter_list, hcg
-            )
-        ):
-            return
         # TODO merge grad / nrank with dp
         logger.debug("sharding start gradients sync")
         # sync here to guarantee cdnn_cluster parallel correct.
@@ -1051,11 +1042,24 @@ class DygraphShardingOptimizerV2:
 
             if self._enable_timer:
                 self.timers("reduce-gradients").start()
-            for comm_buffer in self._comm_buffer_list:
-                if not self.comm_overlap:
-                    comm_buffer._comm_grads()
+            if self._grad_comm_backend is not None:
+                # Same two steps, but a backend needs them separated: it is
+                # told once every bucket has been handed to it (so that it can
+                # finish whatever it issues across buckets) and once every
+                # bucket has been waited on.
+                for comm_buffer in self._comm_buffer_list:
+                    if not self.comm_overlap:
+                        comm_buffer._comm_grads()
+                self._grad_comm_backend.on_all_grads_posted(self)
+                for comm_buffer in self._comm_buffer_list:
+                    comm_buffer.scale_grads()
+                self._grad_comm_backend.on_grads_reduced(self)
+            else:
+                for comm_buffer in self._comm_buffer_list:
+                    if not self.comm_overlap:
+                        comm_buffer._comm_grads()
 
-                comm_buffer.scale_grads()
+                    comm_buffer.scale_grads()
 
             if self._enable_timer:
                 self.timers("reduce-gradients").stop()
@@ -1164,13 +1168,6 @@ class DygraphShardingOptimizerV2:
         """
         sync parameter across sharding group
         """
-        # A gradient communication backend may also own the parameter sync
-        # (e.g. to fuse the per-bucket all_gathers); True = already done.
-        if (
-            self._grad_comm_backend is not None
-            and self._grad_comm_backend.sync_parameters(self)
-        ):
-            return
         if self._enable_timer:
             self.timers("sync-parameters").start()
 
@@ -1195,8 +1192,18 @@ class DygraphShardingOptimizerV2:
                             )
                         )
             else:
-                for comm_buffer in self._comm_buffer_list:
-                    comm_buffer.sync_params()
+                # A gradient communication backend may send this whole batch
+                # itself (e.g. to fuse the per-bucket all_gathers); True = it
+                # did, so the per-bucket sync below is skipped. The overlapped
+                # branch above is not offered: the two optimizations conflict.
+                if (
+                    self._grad_comm_backend is None
+                    or not self._grad_comm_backend.sync_params_fused(
+                        self._comm_buffer_list
+                    )
+                ):
+                    for comm_buffer in self._comm_buffer_list:
+                        comm_buffer.sync_params()
 
         if self._enable_timer:
             self.timers("sync-parameters").stop()

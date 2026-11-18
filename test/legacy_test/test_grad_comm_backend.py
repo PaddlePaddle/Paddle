@@ -16,17 +16,22 @@
 
 ``tensor_fusion_helper.register_grad_comm_backend`` registers a factory that the
 sharding optimizers query once through ``install_grad_comm_backend``, at the end
-of their ``__init__``. The backend it returns may take over the gradient
-communication of the optimizer's ``FusedCommBuffer`` buckets, the gradient
-reduction and the parameter sync.
+of their ``__init__``. The backend it returns may replace single steps of the
+gradient communication of the optimizer's ``FusedCommBuffer`` buckets: the
+collective of a bucket, and the batched parameter sync. It never takes a whole
+method over, so the rest of ``reduce_gradients`` and
+``_sharding_sync_parameters`` runs either way.
 
 Both directions are checked: with no factory registered nothing changes (the
-bucket keeps its defaults and the original collective is still issued), and with
-one the backend is installed and the built-in code path is skipped exactly when
-the backend reports that it handled the call. A backend that does take a bucket
-over is given the reduce op the collective would have used (align mode
-included), its task is waited on, and the one bucket kind it may not take over
-is rejected.
+bucket keeps its defaults, the original collective is still issued and the
+buckets are reduced one after another), and with one the backend is installed,
+the two reduction phases are separated and announced, the per-bucket parameter
+sync is skipped exactly when the backend reports it sent the batch, and the
+steps that are not offered to a backend (the overlapped all_gather, Muon's 2D
+broadcast) run as they do without one. A backend that does take a bucket over
+is given the reduce op the collective would have used (align mode included),
+its task is waited on, and the one bucket kind it may not take over is
+rejected.
 
 Comm groups, collectives and the fleet strategy are stubbed with local
 stand-ins, so neither a launcher nor an accelerator is needed (same style as
@@ -75,16 +80,19 @@ class _Task:
 class _Backend:
     """A fake gradient communication backend that records its calls.
 
-    ``handled`` is what ``reduce_gradients`` / ``sync_parameters`` return, i.e.
-    whether the backend claims to have fully handled the call; ``setup_result``
-    is whether it takes the optimizer over at all.
+    ``handled`` is what ``sync_params_fused`` returns, i.e. whether the backend
+    claims to have sent the batch of buckets it was given; ``setup_result`` is
+    whether it takes the optimizer over at all. ``log`` is shared with the
+    bucket spies of a test, so that the order of the calls across both can be
+    asserted.
     """
 
-    def __init__(self, handled=True, setup_result=True):
+    def __init__(self, handled=True, setup_result=True, log=None):
         self.handled = handled
         self.setup_result = setup_result
         self.task = _Task()
         self.calls = []
+        self.log = [] if log is None else log
         self.rebuild_buffers = None
 
     def setup(self, optimizer):
@@ -95,12 +103,17 @@ class _Backend:
         self.calls.append(("comm_grads", bucket, reduce_op))
         return self.task
 
-    def reduce_gradients(self, optimizer, parameter_list, hcg):
-        self.calls.append(("reduce_gradients", optimizer, parameter_list, hcg))
-        return self.handled
+    def on_all_grads_posted(self, optimizer):
+        self.calls.append(("on_all_grads_posted", optimizer))
+        self.log.append(("on_all_grads_posted", None))
 
-    def sync_parameters(self, optimizer):
-        self.calls.append(("sync_parameters", optimizer))
+    def on_grads_reduced(self, optimizer):
+        self.calls.append(("on_grads_reduced", optimizer))
+        self.log.append(("on_grads_reduced", None))
+
+    def sync_params_fused(self, buckets):
+        self.calls.append(("sync_params_fused", buckets))
+        self.log.append(("sync_params_fused", None))
         return self.handled
 
     def rebuild(self, optimizer):
@@ -126,24 +139,37 @@ class _Factory:
 
 
 class _CommBufferSpy:
-    """Stands in for a FusedCommBuffer in the optimizer level tests."""
+    """Stands in for a FusedCommBuffer in the optimizer level tests.
 
-    def __init__(self):
+    ``log`` is shared with the other spies and the backend of a test, so that
+    the order of the calls across all of them can be asserted; ``calls`` is
+    this bucket's own order.
+    """
+
+    def __init__(self, name="bucket", log=None):
+        self.name = name
+        self.log = [] if log is None else log
         self.calls = []
+        self.sync_params_kwargs = []
         self.grad_storage = None
         self._dst = 0
+
+    def _record(self, what):
+        self.calls.append(what)
+        self.log.append((what, self.name))
 
     def need_reduce_scale_sync(self):
         return True
 
     def _comm_grads(self):
-        self.calls.append("_comm_grads")
+        self._record("_comm_grads")
 
     def scale_grads(self):
-        self.calls.append("scale_grads")
+        self._record("scale_grads")
 
-    def sync_params(self):
-        self.calls.append("sync_params")
+    def sync_params(self, sync=True, param2task=None):
+        self.sync_params_kwargs.append((sync, param2task))
+        self._record("sync_params")
 
 
 def _group(nranks=2, rank=0, group_id=0):
@@ -247,11 +273,11 @@ def _bare(cls, **attrs):
     return opt
 
 
-def _dispatch_optimizer(module, backend, buffer):
-    """A shell optimizer carrying only what the dispatched methods read."""
+def _dispatch_optimizer(module, backend, buffers, **extra):
+    """A shell optimizer carrying only what the two methods read."""
     attrs = {
         "_grad_comm_backend": backend,
-        "_comm_buffer_list": [buffer],
+        "_comm_buffer_list": list(buffers),
         "sd_release_grads": False,
         "comm_overlap": False,
         "_enable_timer": False,
@@ -260,6 +286,7 @@ def _dispatch_optimizer(module, backend, buffer):
     if module is muon_sharding_optimizer:
         attrs.update(
             _use_fuse_gradients=False,
+            comm_buffer_2d=[],
             _params_2d_by_color={},
             _rank2params_2d_by_color={},
             _color_to_group_info={},
@@ -267,7 +294,12 @@ def _dispatch_optimizer(module, backend, buffer):
             use_group_call_opt=False,
         )
     else:
-        attrs.update(_all_gather_overlap_forward=False)
+        attrs.update(
+            _all_gather_overlap_forward=False,
+            _layers=types.SimpleNamespace(sublayers=lambda: []),
+            _forward_pre_hook_remove_helper=[],
+        )
+    attrs.update(extra)
     return _bare(_optimizer_cls(module), **attrs)
 
 
@@ -505,6 +537,21 @@ class TestFusedCommBufferBackend(unittest.TestCase):
             bucket._comm_grads()
         self.assertEqual(backend.names(), [])
 
+    def test_comm_grads_hands_the_bucket_over_on_every_call(self):
+        """reduce_gradients calls _comm_grads for every bucket, including the
+        ones a backend already took in a backward hook of its own, so a backend
+        is handed the same bucket more than once within a step and has to be
+        idempotent."""
+        backend = _Backend()
+        bucket = self._bucket()
+        bucket._grad_comm_backend = backend
+
+        bucket._comm_grads()
+        bucket._comm_grads()
+
+        self.assertEqual(backend.names(), ["comm_grads", "comm_grads"])
+        self.assertIs(bucket._task, backend.task)
+
     def test_scale_grads_waits_for_the_backend_task(self):
         backend = _Backend()
         bucket = self._bucket()
@@ -576,7 +623,10 @@ class TestOptimizerBackendInstall(unittest.TestCase):
                 self.assertIsNone(opt._grad_comm_backend)
 
 
-class TestReduceGradientsDispatch(unittest.TestCase):
+class TestReduceGradients(unittest.TestCase):
+    """reduce_gradients: with a backend the loop is split in two phases and
+    each is announced; without one it is exactly what it was."""
+
     def setUp(self):
         # Checking the bucket padding needs the reduce-scatter views of real
         # buckets; it is off by default.
@@ -586,66 +636,180 @@ class TestReduceGradientsDispatch(unittest.TestCase):
         patcher.start()
         self.addCleanup(patcher.stop)
 
-    def test_skipped_when_the_backend_handles_it(self):
+    def test_every_bucket_is_posted_before_the_first_wait(self):
+        for module in MODULES:
+            with self.subTest(module=module.__name__):
+                log = []
+                backend = _Backend(log=log)
+                buffers = [_CommBufferSpy(name, log) for name in ("a", "b")]
+                opt = _dispatch_optimizer(module, backend, buffers)
+
+                opt.reduce_gradients([], _hcg())
+
+                # on_all_grads_posted after the last _comm_grads and before
+                # the first scale_grads (the wait), on_grads_reduced last.
+                self.assertEqual(
+                    log,
+                    [
+                        ("_comm_grads", "a"),
+                        ("_comm_grads", "b"),
+                        ("on_all_grads_posted", None),
+                        ("scale_grads", "a"),
+                        ("scale_grads", "b"),
+                        ("on_grads_reduced", None),
+                    ],
+                )
+                # Both callbacks are given the optimizer, and the backend is
+                # told nothing else: no method of it owns this call.
+                self.assertEqual(
+                    backend.names(),
+                    ["on_all_grads_posted", "on_grads_reduced"],
+                )
+                for call in backend.calls:
+                    self.assertIs(call[1], opt)
+
+    def test_the_loop_is_unchanged_without_a_backend(self):
+        # DygraphShardingOptimizerV2 posts a bucket and waits on it before it
+        # moves to the next one; MuonShardingOptimizer has always posted every
+        # bucket before it waits on any.
+        expected = {
+            dygraph_sharding_optimizer: [
+                ("_comm_grads", "a"),
+                ("scale_grads", "a"),
+                ("_comm_grads", "b"),
+                ("scale_grads", "b"),
+            ],
+            muon_sharding_optimizer: [
+                ("_comm_grads", "a"),
+                ("_comm_grads", "b"),
+                ("scale_grads", "a"),
+                ("scale_grads", "b"),
+            ],
+        }
+        for module in MODULES:
+            with self.subTest(module=module.__name__):
+                log = []
+                buffers = [_CommBufferSpy(name, log) for name in ("a", "b")]
+                opt = _dispatch_optimizer(module, None, buffers)
+
+                opt.reduce_gradients([], _hcg())
+
+                self.assertEqual(log, expected[module])
+
+    def test_muon_still_reduces_its_2d_buckets_with_a_backend(self):
+        log = []
+        backend = _Backend(log=log)
+        bucket_1d = _CommBufferSpy("1d", log)
+        bucket_2d = _CommBufferSpy("2d", log)
+        opt = _dispatch_optimizer(
+            muon_sharding_optimizer,
+            backend,
+            [bucket_1d],
+            _use_fuse_gradients=True,
+            comm_buffer_2d=[bucket_2d],
+        )
+
+        opt.reduce_gradients([], _hcg())
+
+        # The 2D reduce is not offered to a backend, and it still runs: posted
+        # before on_all_grads_posted, waited on before on_grads_reduced.
+        self.assertEqual(
+            log,
+            [
+                ("_comm_grads", "2d"),
+                ("_comm_grads", "1d"),
+                ("on_all_grads_posted", None),
+                ("scale_grads", "2d"),
+                ("scale_grads", "1d"),
+                ("on_grads_reduced", None),
+            ],
+        )
+
+
+class TestSyncParameters(unittest.TestCase):
+    """_sharding_sync_parameters: a backend replaces the per-bucket
+    sync_params of the batch it is offered, and nothing else."""
+
+    def test_the_per_bucket_sync_is_skipped_when_the_backend_sent_the_batch(
+        self,
+    ):
         for module in MODULES:
             with self.subTest(module=module.__name__):
                 backend = _Backend(handled=True)
-                buffer = _CommBufferSpy()
-                opt = _dispatch_optimizer(module, backend, buffer)
-                parameter_list = [_frozen_param()]
-                hcg = _hcg()
-
-                opt.reduce_gradients(parameter_list, hcg)
-
-                self.assertEqual(buffer.calls, [])
-                self.assertEqual(backend.names(), ["reduce_gradients"])
-                _, opt_arg, params_arg, hcg_arg = backend.calls[0]
-                self.assertIs(opt_arg, opt)
-                self.assertIs(params_arg, parameter_list)
-                self.assertIs(hcg_arg, hcg)
-
-    def test_runs_without_a_backend_takeover(self):
-        for module in MODULES:
-            for backend in (None, _Backend(handled=False)):
-                with self.subTest(module=module.__name__, backend=backend):
-                    buffer = _CommBufferSpy()
-                    opt = _dispatch_optimizer(module, backend, buffer)
-
-                    opt.reduce_gradients([], _hcg())
-
-                    self.assertEqual(
-                        buffer.calls, ["_comm_grads", "scale_grads"]
-                    )
-                    if backend is not None:
-                        self.assertEqual(backend.names(), ["reduce_gradients"])
-
-
-class TestSyncParametersDispatch(unittest.TestCase):
-    def test_skipped_when_the_backend_handles_it(self):
-        for module in MODULES:
-            with self.subTest(module=module.__name__):
-                backend = _Backend(handled=True)
-                buffer = _CommBufferSpy()
-                opt = _dispatch_optimizer(module, backend, buffer)
+                buffers = [_CommBufferSpy("a"), _CommBufferSpy("b")]
+                opt = _dispatch_optimizer(module, backend, buffers)
 
                 opt._sharding_sync_parameters()
 
-                self.assertEqual(buffer.calls, [])
-                self.assertEqual(backend.names(), ["sync_parameters"])
-                self.assertIs(backend.calls[0][1], opt)
+                self.assertEqual([b.calls for b in buffers], [[], []])
+                # One call for the whole batch, not one per bucket.
+                self.assertEqual(backend.names(), ["sync_params_fused"])
+                self.assertIs(backend.calls[0][1], opt._comm_buffer_list)
 
-    def test_runs_without_a_backend_takeover(self):
+    def test_the_buckets_are_synced_one_by_one_otherwise(self):
         for module in MODULES:
             for backend in (None, _Backend(handled=False)):
                 with self.subTest(module=module.__name__, backend=backend):
-                    buffer = _CommBufferSpy()
-                    opt = _dispatch_optimizer(module, backend, buffer)
+                    buffers = [_CommBufferSpy("a"), _CommBufferSpy("b")]
+                    opt = _dispatch_optimizer(module, backend, buffers)
 
                     opt._sharding_sync_parameters()
 
-                    self.assertEqual(buffer.calls, ["sync_params"])
+                    self.assertEqual(
+                        [b.calls for b in buffers],
+                        [["sync_params"], ["sync_params"]],
+                    )
                     if backend is not None:
-                        self.assertEqual(backend.names(), ["sync_parameters"])
+                        self.assertEqual(backend.names(), ["sync_params_fused"])
+
+    def test_the_overlapped_all_gather_is_not_offered_to_a_backend(self):
+        backend = _Backend(handled=True)
+        buffer = _CommBufferSpy("a")
+        opt = _dispatch_optimizer(
+            dygraph_sharding_optimizer,
+            backend,
+            [buffer],
+            _all_gather_overlap_forward=True,
+        )
+
+        opt._sharding_sync_parameters()
+
+        # Overlapping the all_gathers with the forward pass and fusing them are
+        # two optimizations of the same step, so this branch is not offered;
+        # the buckets are still synced, asynchronously, as they were.
+        self.assertEqual(backend.names(), [])
+        self.assertEqual(buffer.calls, ["sync_params"])
+        self.assertEqual(buffer.sync_params_kwargs, [(False, {})])
+
+    def test_muon_still_broadcasts_its_2d_params_with_a_backend(self):
+        backend = _Backend(handled=True)
+        buffer = _CommBufferSpy("1d")
+        group = _group(nranks=2)
+        rank2params = {0: ["param"]}
+        opt = _dispatch_optimizer(
+            muon_sharding_optimizer,
+            backend,
+            [buffer],
+            _rank2params_2d_by_color={"color": rank2params},
+            _color_to_group_info={"color": {"group": group, "world_size": 2}},
+        )
+        task = _Task()
+        broadcasts = []
+
+        def broadcast_2d(params, comm_group):
+            broadcasts.append((params, comm_group))
+            return [task]
+
+        opt._broadcast_2d_params = broadcast_2d
+
+        opt._sharding_sync_parameters()
+
+        # The 2D broadcast is not offered to a backend either: it is issued and
+        # waited on with one installed, and only the 1D batch goes to it.
+        self.assertEqual(broadcasts, [(rank2params, group)])
+        self.assertEqual(task.waited, 1)
+        self.assertEqual(backend.names(), ["sync_params_fused"])
+        self.assertEqual(buffer.calls, [])
 
 
 class TestRebuildDispatch(unittest.TestCase):

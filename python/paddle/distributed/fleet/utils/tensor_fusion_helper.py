@@ -50,12 +50,18 @@ class HOOK_ACTION:
 
 
 # Gradient communication backend: an optional extension point that lets an
-# out-of-tree implementation take over the gradient communication of the
-# ``FusedCommBuffer`` buckets of a sharding optimizer, for example to replace
-# the per-bucket ``reduce_scatter`` with one-sided writes issued while the
-# backward pass is still running. Without such an extension point the only way
-# to do this is to patch ``FusedCommBuffer`` and the sharding optimizers at
-# runtime, which silently breaks whenever their internals change.
+# out-of-tree implementation replace single steps of the gradient
+# communication of the ``FusedCommBuffer`` buckets of a sharding optimizer, for
+# example to replace the per-bucket ``reduce_scatter`` with one-sided writes
+# issued while the backward pass is still running. Without such an extension
+# point the only way to do this is to patch ``FusedCommBuffer`` and the
+# sharding optimizers at runtime, which silently breaks whenever their
+# internals change.
+#
+# A backend never takes a whole method over: the bodies of ``reduce_gradients``
+# and ``_sharding_sync_parameters`` run as they do without one, so logic added
+# to them later applies to a backend too. Only the collective of a step is
+# replaced, and the backend is told when the steps around it have finished.
 #
 # The backend cannot be passed through the optimizer constructor: the sharding
 # optimizers are built by ``fleet.distributed_optimizer``, so the user code that
@@ -69,25 +75,47 @@ class HOOK_ACTION:
 #     backend.setup(optimizer) -> bool        # pick buckets, build resources,
 #                                             # set bucket._grad_comm_backend
 #     backend.comm_grads(bucket, reduce_op)   # -> task, waited on by scale_grads
-#     backend.reduce_gradients(optimizer, parameter_list, hcg) -> bool
-#     backend.sync_parameters(optimizer) -> bool
+#     backend.on_all_grads_posted(optimizer)  # -> None
+#     backend.on_grads_reduced(optimizer)     # -> None
+#     backend.sync_params_fused(buckets)      # -> bool
 #     backend.rebuild(optimizer)              # called at the end of rebuild(),
 #                                             # take the new buckets over again
 #
-# ``setup`` returns whether the backend takes this optimizer over, and
-# ``reduce_gradients`` / ``sync_parameters`` return True when they have fully
-# handled the call so that the original code path is skipped. ``rebuild`` is
-# called after the optimizer has thrown its comm buffers away and built new
+# ``setup`` returns whether the backend takes this optimizer over. ``rebuild``
+# is called after the optimizer has thrown its comm buffers away and built new
 # ones, so the backend has to release what it held for the old buckets and take
 # the new ones over there, exactly as in ``setup``.
 #
-# ``comm_grads`` is given the reduce op the replaced collective would have
-# used, so the backend has to apply the scaling that op implies (AVG divides by
+# ``comm_grads`` replaces the collective in ``_comm_grads``, and only that: the
+# stop_gradient check, the reduce op, the pre-communication scaling and the
+# nan/inf check still run, and ``scale_grads`` still waits on the task it
+# returns and still applies the post-communication scaling. It is given the
+# reduce op the replaced collective would have used, so the backend has to
+# apply the scaling that op implies (AVG divides by
 # ``bucket._comm_group.nranks``, SUM does not scale). The backend must not take
 # over a bucket created with ``free_grads_in_comm=True``: the reduced result of
 # such a bucket has to land in a freshly allocated shard buffer that then
 # replaces the bucket grad storage, which this interface does not express;
 # ``_comm_grads`` raises instead of silently dropping that step.
+#
+# ``on_all_grads_posted`` and ``on_grads_reduced`` bracket the waiting in
+# ``reduce_gradients``: the first is called once every bucket has been handed
+# to ``comm_grads`` and nothing has been waited on yet, the second once every
+# bucket has been waited on through ``scale_grads``. A backend that spreads one
+# bucket over several asynchronous steps can finish them in the first and clean
+# the step up in the second. Note that ``reduce_gradients`` hands every bucket
+# to ``comm_grads``, including the ones a backend already took in a backward
+# hook of its own, so ``comm_grads`` has to be idempotent within a step (return
+# the task of the posted bucket again).
+#
+# ``sync_params_fused`` replaces the per-bucket parameter ``sync_params`` of
+# ``_sharding_sync_parameters`` with one call for the whole batch, for example
+# to fuse the per-bucket all_gathers; it is given the buckets of that batch and
+# returns whether it sent them, False leaving the per-bucket path to run. It is
+# only offered the batch that the optimizer would send bucket by bucket right
+# there: not the buckets whose all_gather overlaps the forward pass (the two
+# optimizations conflict) and not the 2D broadcast of
+# ``MuonShardingOptimizer``.
 #
 # Nothing changes when no factory is registered.
 _grad_comm_backend_factory = None

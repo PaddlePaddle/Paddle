@@ -1298,15 +1298,6 @@ class MuonShardingOptimizer:
 
     def reduce_gradients(self, parameter_list, hcg):
         """Reduce gradients: reduce for 2D params, reduce-scatter for 1D params."""
-        # A gradient communication backend handles its buckets (and everything
-        # else this call does) when it returns True.
-        if (
-            self._grad_comm_backend is not None
-            and self._grad_comm_backend.reduce_gradients(
-                self, parameter_list, hcg
-            )
-        ):
-            return
         if (
             paddle.is_compiled_with_xpu()
             and os.getenv("XPU_CDNN_CLUSTER_PARALLEL") is not None
@@ -1467,6 +1458,12 @@ class MuonShardingOptimizer:
                 ):
                     comm_buffer._comm_grads()
 
+            # Every bucket (2D above, 1D here) has been handed to the backend,
+            # and nothing has been waited on yet: the scale_grads below are the
+            # waits.
+            if self._grad_comm_backend is not None:
+                self._grad_comm_backend.on_all_grads_posted(self)
+
             # wait for all comm_buffer tasks to finish
             if self._use_fuse_gradients:
                 if not self.use_group_call_opt or self.comm_overlap:
@@ -1475,6 +1472,9 @@ class MuonShardingOptimizer:
 
             for comm_buffer in self._comm_buffer_list:
                 comm_buffer.scale_grads()
+
+            if self._grad_comm_backend is not None:
+                self._grad_comm_backend.on_grads_reduced(self)
 
     def filter_parameters(self, parameter_list, hcg):
         """Filter parameters: return local 2D params + initialized 1D slices."""
@@ -1615,13 +1615,6 @@ class MuonShardingOptimizer:
 
     def _sharding_sync_parameters(self):
         """Sync parameters: broadcast 2D, all-gather 1D."""
-        # A gradient communication backend may also own the parameter sync
-        # (e.g. to fuse the per-bucket 1D all_gathers); True = already done.
-        if (
-            self._grad_comm_backend is not None
-            and self._grad_comm_backend.sync_parameters(self)
-        ):
-            return
         comm_group = self._hcg.get_sharding_parallel_group()
 
         with framework.no_grad():
@@ -1740,8 +1733,18 @@ class MuonShardingOptimizer:
                     task.wait()
 
             # --- 1D params: all-gather via comm buffers ---
-            for comm_buffer in self._comm_buffer_list:
-                comm_buffer.sync_params()
+            # A gradient communication backend may send this whole batch
+            # itself (e.g. to fuse the per-bucket all_gathers); True = it did,
+            # so the per-bucket sync below is skipped. The 2D broadcast above
+            # is not offered, it stays with this method.
+            if (
+                self._grad_comm_backend is None
+                or not self._grad_comm_backend.sync_params_fused(
+                    self._comm_buffer_list
+                )
+            ):
+                for comm_buffer in self._comm_buffer_list:
+                    comm_buffer.sync_params()
 
     # ------------------------------------------------------------------
     # Clear gradients
