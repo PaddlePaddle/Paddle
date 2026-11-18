@@ -103,6 +103,67 @@ class TestI0Float64OverEightCase(TestI0API):
     DATA = [9, 10, 11, 12]
 
 
+class TestI0Float64LargeInputCase(unittest.TestCase):
+    DTYPE = "float64"
+    X = np.array([713.0, 713.0], dtype=DTYPE)
+    OUT_GRAD = np.array([1.0, 0.0], dtype=DTYPE)
+    EXPECTED = np.array(
+        [6.705128263670996e307, 6.705128263670996e307], dtype=DTYPE
+    )
+    EXPECTED_GRAD = np.array(
+        [6.7004245591864025e307, 0.0], dtype=DTYPE
+    )
+
+    def setUp(self):
+        self.place = get_places()
+
+    def _check_result(self, out, x_grad):
+        self.assertTrue(np.isfinite(out).all())
+        self.assertTrue(np.isfinite(x_grad).all())
+        np.testing.assert_allclose(
+            out, self.EXPECTED, rtol=1e-13, atol=0.0
+        )
+        np.testing.assert_allclose(
+            x_grad, self.EXPECTED_GRAD, rtol=1e-13, atol=0.0
+        )
+
+    def test_api_static(self):
+        for place in self.place:
+            paddle.enable_static()
+            with paddle.static.program_guard(paddle.static.Program()):
+                x = paddle.static.data(
+                    name="x", shape=self.X.shape, dtype=self.DTYPE
+                )
+                x.stop_gradient = False
+                out_grad = paddle.static.data(
+                    name="out_grad",
+                    shape=self.OUT_GRAD.shape,
+                    dtype=self.DTYPE,
+                )
+                out = paddle.i0(x)
+                x_grad = paddle.static.gradients(out, x, out_grad)[0]
+                exe = paddle.static.Executor(place)
+                out_result, grad_result = exe.run(
+                    paddle.static.default_main_program(),
+                    feed={"x": self.X, "out_grad": self.OUT_GRAD},
+                    fetch_list=[out, x_grad],
+                )
+            paddle.disable_static()
+            self._check_result(out_result, grad_result)
+
+    def test_api_dygraph(self):
+        for place in self.place:
+            paddle.disable_static(place)
+            x = paddle.to_tensor(self.X, stop_gradient=False)
+            out_grad = paddle.to_tensor(self.OUT_GRAD)
+            out = paddle.i0(x)
+            x_grad = paddle.grad(out, x, grad_outputs=out_grad)[0]
+            out_result = out.numpy()
+            grad_result = x_grad.numpy()
+            paddle.enable_static()
+            self._check_result(out_result, grad_result)
+
+
 class TestI0Op(OpTest):
     def setUp(self) -> None:
         self.op_type = "i0"

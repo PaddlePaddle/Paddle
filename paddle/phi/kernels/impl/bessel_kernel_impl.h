@@ -136,8 +136,9 @@ struct I0Functor {
       auto len = std::get<1>(coeff_pair_B);
       T y = (T{32.0} / x) - T{2.0};
 
-      output_[idx] =
-          static_cast<T>(std::exp(x) * Chbevl<T>(y, B, len) / std::sqrt(x));
+      const T half_exp = std::exp(x / T{2.0});
+      output_[idx] = static_cast<T>(
+          half_exp * (Chbevl<T>(y, B, len) / std::sqrt(x)) * half_exp);
     }
   }
 
