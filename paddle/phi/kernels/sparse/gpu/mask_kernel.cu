@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include <thrust/execution_policy.h>
 
+#include "paddle/phi/backends/gpu/gpu_thrust_policy.h"
 #include "paddle/phi/kernels/sparse/mask_kernel.h"
 #include "paddle/phi/kernels/sparse/sparse_utils_kernel.h"
 
@@ -188,9 +189,11 @@ void MaskCsr2DGPUKernel(const GPUContext& dev_ctx,
 
   auto config = backends::gpu::GetGpuLaunchConfig1D(dev_ctx, rows, 1);
   config.block_per_grid.y = batches;
-  ConvertCsrCrowsToCooRows<IntT>
-      <<<config.block_per_grid, config.thread_per_block.x>>>(
-          csr_crows_data, offsets_ptr, coo_rows_data, batch_ptr, rows);
+  ConvertCsrCrowsToCooRows<IntT><<<config.block_per_grid,
+                                   config.thread_per_block.x,
+                                   0,
+                                   dev_ctx.stream()>>>(
+      csr_crows_data, offsets_ptr, coo_rows_data, batch_ptr, rows);
   backends::gpu::GpuMemcpyAsync(coo_cols_data,
                                 csr_cols_data,
                                 sizeof(IntT) * non_zero_num,
@@ -274,7 +277,7 @@ void MaskCsr3DGPUKernel(const GPUContext& dev_ctx,
 #ifdef PADDLE_WITH_HIP
   thrust::exclusive_scan(thrust::hip::par.on(dev_ctx.stream()),
 #else
-  thrust::exclusive_scan(thrust::cuda::par_nosync.on(dev_ctx.stream()),
+  thrust::exclusive_scan(PADDLE_THRUST_CUDA_PAR.on(dev_ctx.stream()),
 #endif
                          offsets_ptr,
                          offsets_ptr + batches,

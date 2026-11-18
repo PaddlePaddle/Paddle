@@ -21,6 +21,7 @@
 #include <thrust/sort.h>
 #include "paddle/common/enforce.h"
 #include "paddle/common/exception.h"
+#include "paddle/phi/backends/gpu/gpu_thrust_policy.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
@@ -513,7 +514,7 @@ void compute_global_expert_offset(
   auto ptr = thrust::device_pointer_cast(expert_id);
   auto outptr = thrust::device_pointer_cast(sort_buffer);
   auto offsetptr = thrust::device_pointer_cast(expert_offset);
-  const auto& exec_policy = thrust::cuda::par_nosync(allocator).on(stream);
+  const auto& exec_policy = PADDLE_THRUST_CUDA_PAR(allocator).on(stream);
   thrust::copy(exec_policy, ptr, ptr + len, outptr);
   thrust::sort(exec_policy, outptr, outptr + len);
   const int threads =
@@ -606,7 +607,7 @@ void compute_local_expert_offset(
     const phi::memory_utils::ThrustAllocator<cudaStream_t>& allocator) {
   auto offset_ptr = thrust::device_pointer_cast(expert_offset);
   auto expert_num_ptr = thrust::device_pointer_cast(expert_num);
-  const auto& exec_policy = thrust::cuda::par_nosync(allocator).on(stream);
+  const auto& exec_policy = PADDLE_THRUST_CUDA_PAR(allocator).on(stream);
   thrust::fill(
       exec_policy, offset_ptr, offset_ptr + num_experts, static_cast<T>(0));
 

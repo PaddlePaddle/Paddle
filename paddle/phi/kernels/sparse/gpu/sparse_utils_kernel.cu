@@ -22,6 +22,7 @@ limitations under the License. */
 #endif
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
+#include "paddle/phi/backends/gpu/gpu_thrust_policy.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_meta.h"
@@ -235,7 +236,7 @@ void DenseToCooKernel(const Context& dev_ctx,
 #ifdef PADDLE_WITH_HIP
   thrust::remove(thrust::hip::par.on(dev_ctx.stream()),
 #else
-  thrust::remove(thrust::cuda::par_nosync.on(dev_ctx.stream()),
+  thrust::remove(PADDLE_THRUST_CUDA_PAR.on(dev_ctx.stream()),
 #endif
                  temp_indices_ptr,
                  temp_indices_ptr + rows,
@@ -388,7 +389,7 @@ void CsrToCooGPUKernel(const GPUContext& dev_ctx,
            0,
            dev_ctx.stream()>>>(csr_crows_data, rows, batches, offsets_ptr);
 
-    thrust::exclusive_scan(thrust::cuda::par_nosync.on(dev_ctx.stream()),
+    thrust::exclusive_scan(PADDLE_THRUST_CUDA_PAR.on(dev_ctx.stream()),
                            offsets_ptr,
                            offsets_ptr + batches,
                            offsets_ptr);

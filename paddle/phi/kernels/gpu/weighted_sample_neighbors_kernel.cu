@@ -28,6 +28,7 @@
 #include "math.h"  // NOLINT
 #include "paddle/common/hostdevice.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/backends/gpu/gpu_thrust_policy.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/block_radix_topk.cuh"
@@ -379,7 +380,7 @@ void WeightedSampleNeighborsKernel(const Context& dev_ctx,
   int* sample_offset_ptr = reinterpret_cast<int*>(sample_offset->ptr());
 
 #ifdef PADDLE_WITH_CUDA
-  const auto& exec_policy = thrust::cuda::par_nosync.on(dev_ctx.stream());
+  const auto& exec_policy = PADDLE_THRUST_CUDA_PAR.on(dev_ctx.stream());
 #else
   const auto& exec_policy = thrust::hip::par.on(dev_ctx.stream());
 #endif

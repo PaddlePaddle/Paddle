@@ -24,6 +24,7 @@ limitations under the License. */
 #include <thrust/transform.h>
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/backends/gpu/gpu_thrust_policy.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/visit_type.h"
 #include "paddle/phi/kernels/empty_kernel.h"
@@ -217,9 +218,9 @@ void SoftmaxCooGradGPUKernel(const Context& dev_ctx,
   const auto& policy = thrust::hip::par.on(dev_ctx.stream());
   bool is_same_offset = thrust::equal(thrust::hip::par.on(dev_ctx.stream()),
 #else
-  const auto& policy = thrust::cuda::par_nosync.on(dev_ctx.stream());
+  const auto& policy = PADDLE_THRUST_CUDA_PAR.on(dev_ctx.stream());
   bool is_same_offset =
-      thrust::equal(thrust::cuda::par_nosync.on(dev_ctx.stream()),
+      thrust::equal(PADDLE_THRUST_CUDA_PAR.on(dev_ctx.stream()),
 #endif
                                       out_offsets_ptr,
                                       out_offsets_ptr + out_offsets.numel(),

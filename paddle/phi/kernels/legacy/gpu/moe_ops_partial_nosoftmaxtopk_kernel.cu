@@ -20,6 +20,7 @@
 
 #include "paddle/phi/kernels/legacy/gpu/moe_ops_partial_nosoftmaxtopk_kernel.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/backends/gpu/gpu_thrust_policy.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
@@ -208,7 +209,7 @@ void apply_moe_dispatch_fwd(
   // before_topk"));
 #endif
 
-  thrust::transform(thrust::cuda::par_nosync.on(stream),
+  thrust::transform(PADDLE_THRUST_CUDA_PAR.on(stream),
                     thrust::device_pointer_cast(source_rows_),
                     thrust::device_pointer_cast(source_rows_) + num_rows * k,
                     thrust::counting_iterator<int>(0),
@@ -363,7 +364,7 @@ void apply_moe_dispatch_fwd(
   }
 
   thrust::fill(
-      thrust::cuda::par_nosync.on(stream),
+      PADDLE_THRUST_CUDA_PAR.on(stream),
       thrust::device_ptr<int>(scatter_index_rev),
       thrust::device_ptr<int>(scatter_index_rev) + num_experts * capacity,
       num_rows);
@@ -419,7 +420,7 @@ void apply_moe_dispatch_fwd(
         thrust::device_pointer_cast(permuted_experts_),  // key1
         thrust::device_pointer_cast(scatter_index_rev),  // key2
         thrust::device_pointer_cast(source_rows_for_seqsort_)));
-    thrust::stable_sort(thrust::cuda::par_nosync.on(stream),
+    thrust::stable_sort(PADDLE_THRUST_CUDA_PAR.on(stream),
                         sort_iter,
                         sort_iter + expert_offset_host.back(),
                         [] __device__(auto lhs, auto rhs) {

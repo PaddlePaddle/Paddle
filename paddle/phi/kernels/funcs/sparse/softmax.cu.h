@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/phi/backends/gpu/cuda/cuda_graph_with_memory_pool.h"
+#include "paddle/phi/backends/gpu/gpu_thrust_policy.h"
 
 namespace phi {
 namespace funcs {
@@ -30,7 +31,7 @@ inline DenseTensor GetOffsets(const Context& dev_ctx,
 #ifdef __HIPCC__
   const auto& policy = thrust::hip::par.on(dev_ctx.stream());
 #else
-  const auto& policy = thrust::cuda::par_nosync.on(dev_ctx.stream());
+  const auto& policy = PADDLE_THRUST_CUDA_PAR.on(dev_ctx.stream());
 #endif
 
   auto ndim = indices.dims()[0];
@@ -97,7 +98,7 @@ std::tuple<DenseTensor, DenseTensor, DenseTensor, DenseTensor> ComputePoolMax(
 #ifdef __HIPCC__
   const auto& policy = thrust::hip::par.on(dev_ctx.stream());
 #else
-  const auto& policy = thrust::cuda::par_nosync.on(dev_ctx.stream());
+  const auto& policy = PADDLE_THRUST_CUDA_PAR.on(dev_ctx.stream());
 #endif
   using thrust_ptr = thrust::device_ptr<IntT>;
   auto nnz = indices.dims()[1];

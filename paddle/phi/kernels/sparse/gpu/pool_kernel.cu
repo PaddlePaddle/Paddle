@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/phi/kernels/sparse/pool_kernel.h"
 
+#include "paddle/phi/backends/gpu/gpu_thrust_policy.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_meta.h"
 #include "paddle/phi/core/visit_type.h"
@@ -104,7 +105,7 @@ void MaxPoolCooGPUKernel(const GPUContext& dev_ctx,
 #ifdef PADDLE_WITH_HIP
   thrust::fill(thrust::hip::par.on(dev_ctx.stream()),
 #else
-  thrust::fill(thrust::cuda::par_nosync.on(dev_ctx.stream()),
+  thrust::fill(PADDLE_THRUST_CUDA_PAR.on(dev_ctx.stream()),
 #endif
                out_features_ptr,
                out_features_ptr + out->values().numel(),
