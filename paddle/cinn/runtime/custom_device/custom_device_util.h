@@ -37,6 +37,21 @@ void cinn_call_custom_device_kernel(void *kernel_fn,
                                     void *stream);
 
 /**
+ * @brief Cooperative kernel launch for custom devices (grid-level sync).
+ */
+void cinn_call_custom_device_cooperative_kernel(void *kernel_fn,
+                                                void *v_args,
+                                                int num_args,
+                                                int grid_x,
+                                                int grid_y,
+                                                int grid_z,
+                                                int block_x,
+                                                int block_y,
+                                                int block_z,
+                                                int shared_memory_bytes,
+                                                void *stream);
+
+/**
  * @brief A host-side helper function used for dynamic shape inference.
  */
 void infer_shape_set_value(int row, int col, int64_t value, int64_t **v);
