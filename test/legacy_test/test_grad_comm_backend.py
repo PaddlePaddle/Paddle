@@ -15,14 +15,18 @@
 """Single-process tests for the gradient communication backend extension point.
 
 ``tensor_fusion_helper.register_grad_comm_backend`` registers a factory that the
-sharding optimizers query once, at the end of their ``__init__``. The backend it
-returns may take over the gradient communication of the optimizer's
-``FusedCommBuffer`` buckets, the gradient reduction and the parameter sync.
+sharding optimizers query once through ``install_grad_comm_backend``, at the end
+of their ``__init__``. The backend it returns may take over the gradient
+communication of the optimizer's ``FusedCommBuffer`` buckets, the gradient
+reduction and the parameter sync.
 
 Both directions are checked: with no factory registered nothing changes (the
 bucket keeps its defaults and the original collective is still issued), and with
 one the backend is installed and the built-in code path is skipped exactly when
-the backend reports that it handled the call.
+the backend reports that it handled the call. A backend that does take a bucket
+over is given the reduce op the collective would have used (align mode
+included), its task is waited on, and the one bucket kind it may not take over
+is rejected.
 
 Comm groups, collectives and the fleet strategy are stubbed with local
 stand-ins, so neither a launcher nor an accelerator is needed (same style as
@@ -45,6 +49,7 @@ from paddle.distributed.fleet.utils.tensor_fusion_helper import (
     HOOK_ACTION,
     FusedCommBuffer,
     get_grad_comm_backend_factory,
+    install_grad_comm_backend,
     register_grad_comm_backend,
 )
 
@@ -55,6 +60,16 @@ def _optimizer_cls(module):
     if module is muon_sharding_optimizer:
         return module.MuonShardingOptimizer
     return module.DygraphShardingOptimizerV2
+
+
+class _Task:
+    """What a backend returns from comm_grads, like a collective task."""
+
+    def __init__(self):
+        self.waited = 0
+
+    def wait(self):
+        self.waited += 1
 
 
 class _Backend:
@@ -68,8 +83,9 @@ class _Backend:
     def __init__(self, handled=True, setup_result=True):
         self.handled = handled
         self.setup_result = setup_result
-        self.task = types.SimpleNamespace(name="backend_task")
+        self.task = _Task()
         self.calls = []
+        self.rebuild_buffers = None
 
     def setup(self, optimizer):
         self.calls.append(("setup", optimizer))
@@ -89,6 +105,9 @@ class _Backend:
 
     def rebuild(self, optimizer):
         self.calls.append(("rebuild", optimizer))
+        # rebuild() replaces the bucket list, so this records which generation
+        # of buckets the backend is given a chance to take over.
+        self.rebuild_buffers = optimizer._comm_buffer_list
 
     def names(self):
         return [call[0] for call in self.calls]
@@ -267,6 +286,42 @@ class TestGradCommBackendRegistry(unittest.TestCase):
         self.assertIsNone(get_grad_comm_backend_factory())
 
 
+class TestInstallGradCommBackend(unittest.TestCase):
+    """install_grad_comm_backend: query the factory, honour both refusals."""
+
+    def setUp(self):
+        self.addCleanup(register_grad_comm_backend, None)
+        # The helper only passes the optimizer through, so a stand-in is enough.
+        self.optimizer = types.SimpleNamespace(name="optimizer")
+
+    def test_nothing_is_installed_without_a_factory(self):
+        self.assertIsNone(install_grad_comm_backend(self.optimizer))
+
+    def test_the_backend_is_installed_when_setup_accepts(self):
+        backend = _Backend()
+        factory = _Factory(backend)
+        register_grad_comm_backend(factory)
+
+        self.assertIs(install_grad_comm_backend(self.optimizer), backend)
+        self.assertEqual(factory.optimizers, [self.optimizer])
+        self.assertEqual(backend.names(), ["setup"])
+        self.assertIs(backend.calls[0][1], self.optimizer)
+
+    def test_a_factory_returning_none_installs_nothing(self):
+        factory = _Factory(None)
+        register_grad_comm_backend(factory)
+
+        self.assertIsNone(install_grad_comm_backend(self.optimizer))
+        self.assertEqual(factory.optimizers, [self.optimizer])
+
+    def test_a_backend_declining_setup_installs_nothing(self):
+        backend = _Backend(setup_result=False)
+        register_grad_comm_backend(_Factory(backend))
+
+        self.assertIsNone(install_grad_comm_backend(self.optimizer))
+        self.assertEqual(backend.names(), ["setup"])
+
+
 class TestFusedCommBufferBackend(unittest.TestCase):
     def setUp(self):
         # Tensor fusion is implemented for the accelerators only, and the
@@ -294,10 +349,20 @@ class TestFusedCommBufferBackend(unittest.TestCase):
             use_reduce_avg=use_reduce_avg,
         )
 
+    def _reduce_scatter_bucket(self, use_reduce_avg=False):
+        """A bucket on the sharding code path.
+
+        A REDUCE_SCATTER FusedCommBuffer builds its views from the real
+        parameter storage, so flip the action of an ALL_REDUCE bucket and give
+        it a storage to slice instead.
+        """
+        bucket = self._bucket(use_reduce_avg=use_reduce_avg)
+        bucket._act = HOOK_ACTION.REDUCE_SCATTER
+        bucket.grad_storage = paddle.zeros([8], dtype="float32")
+        return bucket
+
     def test_bucket_defaults_to_no_backend(self):
-        bucket = self._bucket()
-        self.assertIsNone(bucket._grad_comm_backend)
-        self.assertEqual(bucket._post_reduce_scale, 1.0)
+        self.assertIsNone(self._bucket()._grad_comm_backend)
 
     def test_comm_grads_without_backend_still_all_reduces(self):
         bucket = self._bucket()
@@ -321,11 +386,7 @@ class TestFusedCommBufferBackend(unittest.TestCase):
         self.assertIs(bucket._task, task)
 
     def test_comm_grads_without_backend_still_reduce_scatters(self):
-        """The sharding buckets use REDUCE_SCATTER, which slices the storage,
-        so give this bucket a real one."""
-        bucket = self._bucket()
-        bucket._act = HOOK_ACTION.REDUCE_SCATTER
-        bucket.grad_storage = paddle.zeros([8], dtype="float32")
+        bucket = self._reduce_scatter_bucket()
         task = types.SimpleNamespace(name="reduce_scatter_task")
         with (
             mock.patch.object(
@@ -369,6 +430,95 @@ class TestFusedCommBufferBackend(unittest.TestCase):
                 self.assertIs(backend.calls[0][1], bucket)
                 self.assertEqual(backend.calls[0][2], expected_op)
                 self.assertIs(bucket._task, backend.task)
+
+    def test_align_mode_hands_the_backend_a_sum_op(self):
+        """In align mode the reduce_scatter path switches from AVG to SUM.
+
+        The gradients are already scaled when it does, so the backend has to be
+        given the op the collective would really have used, not the AVG the
+        bucket was built with.
+        """
+        for align_mode, expected_op in (
+            (True, paddle.distributed.ReduceOp.SUM),
+            (False, paddle.distributed.ReduceOp.AVG),
+        ):
+            with self.subTest(align_mode=align_mode):
+                backend = _Backend()
+                bucket = self._reduce_scatter_bucket(use_reduce_avg=True)
+                bucket._grad_comm_backend = backend
+                with mock.patch.object(
+                    paddle.distributed,
+                    "in_auto_parallel_align_mode",
+                    return_value=align_mode,
+                ):
+                    bucket._comm_grads()
+
+                self.assertEqual(backend.names(), ["comm_grads"])
+                self.assertEqual(backend.calls[0][2], expected_op)
+
+    def test_align_mode_still_sums_without_a_backend(self):
+        bucket = self._reduce_scatter_bucket(use_reduce_avg=True)
+        with (
+            mock.patch.object(
+                paddle.distributed, "reduce_scatter"
+            ) as reduce_scatter,
+            mock.patch.object(
+                paddle.distributed,
+                "in_auto_parallel_align_mode",
+                return_value=True,
+            ),
+        ):
+            bucket._comm_grads()
+
+        self.assertEqual(
+            reduce_scatter.call_args.kwargs["op"],
+            paddle.distributed.ReduceOp.SUM,
+        )
+
+    def test_align_mode_leaves_a_non_sharding_bucket_alone(self):
+        """Only the reduce_scatter path scales the gradients in advance, so an
+        all_reduce bucket keeps its AVG op in align mode."""
+        backend = _Backend()
+        bucket = self._bucket(use_reduce_avg=True)
+        bucket._grad_comm_backend = backend
+        with mock.patch.object(
+            paddle.distributed,
+            "in_auto_parallel_align_mode",
+            return_value=True,
+        ):
+            bucket._comm_grads()
+
+        self.assertEqual(backend.calls[0][2], paddle.distributed.ReduceOp.AVG)
+
+    def test_a_free_grads_in_comm_bucket_is_not_handed_over(self):
+        """Such a bucket needs its reduced result in a fresh shard buffer that
+        replaces the grad storage, which the backend interface cannot say, so
+        taking it over is rejected instead of silently dropping that step."""
+        backend = _Backend()
+        bucket = self._reduce_scatter_bucket()
+        # __init__ asserts free_grads_in_comm against the sharding views this
+        # stand-in bucket does not build, so set the flag afterwards.
+        bucket._free_grads_in_comm = True
+        bucket._grad_comm_backend = backend
+
+        with self.assertRaisesRegex(ValueError, "free_grads_in_comm"):
+            bucket._comm_grads()
+        self.assertEqual(backend.names(), [])
+
+    def test_scale_grads_waits_for_the_backend_task(self):
+        backend = _Backend()
+        bucket = self._bucket()
+        bucket.grad_storage = paddle.full([8], 4.0, dtype="float32")
+        bucket._grad_comm_backend = backend
+
+        bucket._comm_grads()
+        self.assertEqual(backend.task.waited, 0)
+        bucket.scale_grads()
+
+        # The task the backend returned is waited on exactly like a collective
+        # task, and the post-communication scaling still applies.
+        self.assertEqual(backend.task.waited, 1)
+        self.assertEqual(bucket.grad_storage.tolist(), [2.0] * 8)
 
 
 class TestOptimizerBackendInstall(unittest.TestCase):
@@ -512,6 +662,7 @@ class TestRebuildDispatch(unittest.TestCase):
             opt = dygraph_sharding_optimizer.DygraphShardingOptimizerV2(
                 _inner_optimizer(_frozen_param()), hcg
             )
+            self.old_buffers = opt._comm_buffer_list
             opt.rebuild()
         return opt
 
@@ -521,6 +672,11 @@ class TestRebuildDispatch(unittest.TestCase):
 
         self.assertEqual(backend.names(), ["setup", "rebuild"])
         self.assertIs(backend.calls[1][1], opt)
+        # Notified at the end of rebuild(): the buckets it is asked to take
+        # over are the new ones the optimizer will dispatch to, not the
+        # replaced ones (whose _grad_comm_backend nothing would ever set).
+        self.assertIs(backend.rebuild_buffers, opt._comm_buffer_list)
+        self.assertIsNot(backend.rebuild_buffers, self.old_buffers)
 
     def test_rebuild_without_a_backend(self):
         opt = self._rebuild(None)

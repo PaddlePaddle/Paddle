@@ -61,7 +61,7 @@ from paddle.distributed.fleet.utils.tensor_fusion_helper import (
     HOOK_ACTION,
     FusedCommBuffer,
     assign_group_by_size,
-    get_grad_comm_backend_factory,
+    install_grad_comm_backend,
 )
 
 
@@ -206,9 +206,6 @@ class MuonShardingOptimizer:
         self._sharding_world_size = self._hcg.get_sharding_parallel_world_size()
         self._sharding_rank = self._hcg.get_sharding_parallel_rank()
         self._global_rank = paddle.distributed.get_rank()
-        # Gradient communication backend (tensor_fusion_helper.register_grad_comm_backend),
-        # installed at the end of __init__ once the comm buffers exist.
-        self._grad_comm_backend = None
 
         # Temporarily: TP is not supported in MuonShardingOptimizer
         _tp_world_size = self._hcg.get_model_parallel_world_size()
@@ -627,15 +624,12 @@ class MuonShardingOptimizer:
                     group = paddle.distributed.new_group(ranks)
                     self.trainer_same_card_comms[pp_idx][card_idx] = group
 
-        # Gradient communication backend: the comm buffers (1D and 2D) are
-        # built, so the backend can pick its buckets, build its communication
-        # resources, register its own backward hooks and set
-        # bucket._grad_comm_backend.
-        factory = get_grad_comm_backend_factory()
-        if factory is not None:
-            backend = factory(self)
-            if backend is not None and backend.setup(self):
-                self._grad_comm_backend = backend
+        # Gradient communication backend (see register_grad_comm_backend): the
+        # comm buffers (1D and 2D) are built, so a backend can pick its
+        # buckets, build its communication resources, register its own backward
+        # hooks and set bucket._grad_comm_backend. None when nothing takes this
+        # optimizer over, which leaves every path below unchanged.
+        self._grad_comm_backend = install_grad_comm_backend(self)
 
     # ------------------------------------------------------------------
     # 2D partition (V1-style greedy)

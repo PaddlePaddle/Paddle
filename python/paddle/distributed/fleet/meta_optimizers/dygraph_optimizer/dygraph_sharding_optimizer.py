@@ -44,8 +44,8 @@ from ...utils.tensor_fusion_helper import (
     FusedCommBuffer,
     assign_group_by_size,
     fused_parameters,
-    get_grad_comm_backend_factory,
     get_group_size,
+    install_grad_comm_backend,
 )
 
 g_sharding_v2_check_zero_padding = int(
@@ -636,9 +636,6 @@ class DygraphShardingOptimizerV2:
         self._sharding_rank = self._hcg.get_sharding_parallel_rank()
         self.clear_color = set()
         self._parameter_list = optimizer._parameter_list
-        # Gradient communication backend (tensor_fusion_helper.register_grad_comm_backend),
-        # installed at the end of __init__ once the comm buffers exist.
-        self._grad_comm_backend = None
 
         # param name -> slice_param
         self._slice_params = {}
@@ -744,19 +741,15 @@ class DygraphShardingOptimizerV2:
         self._forward_pre_hook_remove_helper = []
         self.has_register_forward_hook = False
 
-        # Gradient communication backend: the comm buffers are built, so the
-        # backend can pick its buckets, build its communication resources,
-        # register its own backward hooks and set bucket._grad_comm_backend.
-        factory = get_grad_comm_backend_factory()
-        if factory is not None:
-            backend = factory(self)
-            if backend is not None and backend.setup(self):
-                self._grad_comm_backend = backend
+        # Gradient communication backend (see register_grad_comm_backend): the
+        # comm buffers are built, so a backend can pick its buckets, build its
+        # communication resources, register its own backward hooks and set
+        # bucket._grad_comm_backend. None when nothing takes this optimizer
+        # over, which leaves every path below unchanged.
+        self._grad_comm_backend = install_grad_comm_backend(self)
 
     def rebuild(self):
         """rebuild DygraphShardingOptimizerV2."""
-        if self._grad_comm_backend is not None:
-            self._grad_comm_backend.rebuild(self)
 
         self._sharding_world_size = self._hcg.get_sharding_parallel_world_size()
         self._sharding_rank = self._hcg.get_sharding_parallel_rank()
@@ -835,6 +828,14 @@ class DygraphShardingOptimizerV2:
         self._all_gather_overlap_forward = False
         self._forward_pre_hook_remove_helper = []
         self.has_register_forward_hook = False
+
+        # The comm buffers this optimizer dispatches to are new ones, so an
+        # installed gradient communication backend is notified last: it has to
+        # release whatever it held for the old buckets and take the new ones
+        # over again (set bucket._grad_comm_backend, re-register its backward
+        # hooks), as it did in its setup().
+        if self._grad_comm_backend is not None:
+            self._grad_comm_backend.rebuild(self)
 
     def _set_all_gather_overlap_forward(
         self, all_gather_overlap_forward, layers
