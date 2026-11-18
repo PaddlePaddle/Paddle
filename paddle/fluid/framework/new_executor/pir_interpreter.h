@@ -242,6 +242,9 @@ class PirInterpreter : public InterpreterBaseImpl {
   void MultiThreadRunInstructionList(
       const std::vector<std::unique_ptr<InstructionBase>>& vec_instr);
 
+  // Order the custom-device Run boundary (see PR description).
+  void WaitCustomDeviceRunBoundary();
+
   void RunInstructionBaseAsync(size_t instr_id);
 
   void RunNextInstructions(InstructionBase* instr,
@@ -270,6 +273,10 @@ class PirInterpreter : public InterpreterBaseImpl {
   std::unordered_map<pir::Block*, PirInterpreter*> sub_blocks_;  // Not owned
 
   std::vector<std::unique_ptr<InstructionBase>> vec_instruction_base_;
+
+  // Side-stream events kept alive until the next custom-device Run boundary.
+  std::vector<std::shared_ptr<platform::DeviceEvent>>
+      custom_run_boundary_events_;
 
   // value execution info
   std::shared_ptr<ValueExecutionInfo> value_exe_info_;

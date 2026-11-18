@@ -95,6 +95,11 @@ COMMON_DECLARE_int32(low_precision_op_list);
 COMMON_DECLARE_bool(pir_interpreter_record_stream_for_gc_cache);
 COMMON_DECLARE_bool(async_fast_eager_deletion_mode);
 
+PHI_DEFINE_EXPORTED_bool(custom_device_force_run_sync,
+                         false,
+                         "Force a blocking full-device synchronize after every "
+                         "custom-device interpreter Run (legacy behavior).");
+
 #define CREATE_INSTR(instr_name)                                   \
   vec_instruction_base_.emplace_back(std::make_unique<instr_name>( \
       op_idx++, place_, &op, value_exe_info_.get()));
@@ -1661,6 +1666,40 @@ FetchList PirInterpreter::Run(const std::vector<std::string>& feed_names,
   return fetch_res;
 }
 
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+// Order the custom-device Run boundary without a blocking full-device Wait.
+void PirInterpreter::WaitCustomDeviceRunBoundary() {
+  if (!phi::is_custom_place(place_)) {
+    return;
+  }
+  auto* default_ctx = phi::DeviceContextPool::Instance().Get(place_);
+  if (FLAGS_custom_device_force_run_sync) {
+    default_ctx->Wait();
+    return;
+  }
+  // Same default stream as eager -> stream FIFO already orders the handoff.
+  std::unordered_set<const phi::DeviceContext*> side_ctxs;
+  for (auto& instr : vec_instruction_base_) {
+    const auto* ctx = &instr->DeviceContext();
+    if (ctx != default_ctx && phi::is_custom_place(ctx->GetPlace())) {
+      side_ctxs.insert(ctx);
+    }
+  }
+  if (side_ctxs.empty()) {
+    return;
+  }
+  // Side streams: make the default stream wait on their events asynchronously.
+  custom_run_boundary_events_.clear();
+  for (const auto* ctx : side_ctxs) {
+    auto ev = std::make_shared<platform::DeviceEvent>(
+        ctx->GetPlace(), platform::GenerateDeviceEventFlag());
+    ev->Record(ctx);
+    ev->Wait(platform::kCUSTOM_DEVICE, default_ctx);
+    custom_run_boundary_events_.push_back(ev);
+  }
+}
+#endif
+
 void PirInterpreter::TraceRunImpl() {
   // lazy initialization of gc, do not create gc is the program only run once
   if (!gc_) {
@@ -1682,9 +1721,7 @@ void PirInterpreter::TraceRunImpl() {
   TraceRunInstructionList(vec_instruction_base_);
   VLOG(4) << "Done TraceRunInstructionList";
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-  if (phi::is_custom_place(place_)) {
-    phi::DeviceContextPool::Instance().Get(place_)->Wait();
-  }
+  WaitCustomDeviceRunBoundary();
 #endif
 }
 
@@ -1701,9 +1738,7 @@ void PirInterpreter::MultiThreadRunImpl() {
   MultiThreadRunInstructionList(vec_instruction_base_);
   VLOG(4) << "Done MultiThreadRunInstructionList";
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-  if (phi::is_custom_place(place_)) {
-    phi::DeviceContextPool::Instance().Get(place_)->Wait();
-  }
+  WaitCustomDeviceRunBoundary();
 #endif
 }
 
