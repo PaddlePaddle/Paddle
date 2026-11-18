@@ -20,14 +20,30 @@
 
 #include "ATen/ATen.h"
 #include "gtest/gtest.h"
+#include "paddle/common/macros.h"
 #include "test/cpp/prim/init_env_utils.h"
 #include "torch/all.h"
+
+COMMON_DECLARE_bool(use_stride_kernel);
 
 namespace {
 
 class TensorExpandTest : public ::testing::Test {
  protected:
   static void SetUpTestSuite() { paddle::prim::InitTensorOperants(); }
+};
+
+class UseStrideKernelGuard {
+ public:
+  explicit UseStrideKernelGuard(bool value)
+      : previous_(FLAGS_use_stride_kernel) {
+    FLAGS_use_stride_kernel = value;
+  }
+
+  ~UseStrideKernelGuard() { FLAGS_use_stride_kernel = previous_; }
+
+ private:
+  bool previous_;
 };
 
 }  // namespace
@@ -66,6 +82,72 @@ TEST_F(TensorExpandTest, ExpandPreservesValue) {
   ASSERT_THROW(t.expand({3, 4}), std::exception);
 }
 
+// Test scalar expand (tensor_dim == 0 in compute_expand_strides)
+TEST_F(TensorExpandTest, ExpandScalar) {
+  at::Tensor t = at::full({}, 5.0f, at::kFloat);
+
+  at::Tensor result = t.expand({2, 3});
+
+  ASSERT_EQ(result.sizes()[0], 2);
+  ASSERT_EQ(result.sizes()[1], 3);
+}
+
+// Test target_size == -1 (keep original size)
+TEST_F(TensorExpandTest, ExpandNegativeOne) {
+  at::Tensor t = at::full({3}, 7.0f, at::kFloat);
+
+  at::Tensor result = t.expand({-1});
+
+  ASSERT_EQ(result.sizes()[0], 3);
+}
+
+// Test target_size == -1 in leading non-existing dimension (error)
+TEST_F(TensorExpandTest, ExpandNegativeOneLeadingError) {
+  at::Tensor t = at::full({3}, 7.0f, at::kFloat);
+
+  ASSERT_THROW(t.expand({-1, 4}), std::exception);
+}
+
+TEST_F(TensorExpandTest, ExpandMaterializedWhenStrideKernelDisabled) {
+  UseStrideKernelGuard guard(false);
+  at::Tensor t = at::empty({1, 2}, at::kFloat);
+  float* input_data = t.data_ptr<float>();
+  input_data[0] = 3.0f;
+  input_data[1] = 7.0f;
+
+  at::Tensor result = t.expand({3, 2});
+
+  ASSERT_EQ(result.sizes()[0], 3);
+  ASSERT_EQ(result.sizes()[1], 2);
+  ASSERT_NE(result.strides()[0], 0);
+  float* data = result.data_ptr<float>();
+  ASSERT_FLOAT_EQ(data[0], 3.0f);
+  ASSERT_FLOAT_EQ(data[1], 7.0f);
+  ASSERT_FLOAT_EQ(data[2], 3.0f);
+  ASSERT_FLOAT_EQ(data[5], 7.0f);
+}
+
+TEST_F(TensorExpandTest, ExpandLowRankMaterializedWhenStrideKernelDisabled) {
+  UseStrideKernelGuard guard(false);
+  at::Tensor t = at::full({1}, 5.0f, at::kFloat);
+
+  at::Tensor result = t.expand({2, 3});
+
+  ASSERT_EQ(result.sizes()[0], 2);
+  ASSERT_EQ(result.sizes()[1], 3);
+  ASSERT_NE(result.strides()[0], 0);
+  float* data = result.data_ptr<float>();
+  ASSERT_FLOAT_EQ(data[0], 5.0f);
+  ASSERT_FLOAT_EQ(data[5], 5.0f);
+}
+
+TEST_F(TensorExpandTest, ExpandInvalidStillThrowsWhenStrideKernelDisabled) {
+  UseStrideKernelGuard guard(false);
+  at::Tensor t = at::full({2, 3}, 1.0f, at::kFloat);
+
+  ASSERT_THROW(t.expand({2, 4}), std::exception);
+}
+
 // ======================== expand_as tests ========================
 
 TEST_F(TensorExpandTest, ExpandAsBasic) {
@@ -89,6 +171,9 @@ TEST_F(TensorExpandTest, ExpandAsMatchSize) {
 }
 
 TEST_F(TensorExpandTest, ExpandAsPreservesValue) {
+  if (!FLAGS_use_stride_kernel) {
+    return;
+  }
   at::Tensor t = at::full({2, 1}, 5.0f, at::kFloat);
   at::Tensor other = at::zeros({2, 3}, at::kFloat);
 
@@ -141,20 +226,41 @@ TEST_F(TensorExpandTest, ExpandAsTileFallback) {
   ASSERT_THROW(t.expand_as(other), std::exception);
 }
 
+// Helper: compute linear offset from logical index using strides
+static inline int64_t compute_offset(int64_t flat_idx,
+                                     const at::Tensor& tensor) {
+  int64_t offset = 0;
+  int64_t remainder = flat_idx;
+  for (int64_t d = tensor.dim() - 1; d >= 0; --d) {
+    int64_t coord = remainder % tensor.sizes()[d];
+    remainder /= tensor.sizes()[d];
+    offset += coord * tensor.strides()[d];
+  }
+  return offset;
+}
+
 // Test preserve non-singleton dimension (matching dimension)
 TEST_F(TensorExpandTest, ExpandPreserveNonSingleton) {
+  if (!FLAGS_use_stride_kernel) {
+    return;
+  }
   // {3,1}.expand({3,4}) - dim 0 matches (3), dim 1 expands (1->4)
   at::Tensor t = at::full({3, 1}, 5.0f, at::kFloat);
   at::Tensor result = t.expand({3, 4});
 
   ASSERT_EQ(result.sizes()[0], 3);
   ASSERT_EQ(result.sizes()[1], 4);
-  ASSERT_FLOAT_EQ(result.data_ptr<float>()[0], 5.0f);
-  ASSERT_FLOAT_EQ(result.data_ptr<float>()[3], 5.0f);
+  // Use strides-aware access because expand returns a view with stride=0
+  float* data = result.data_ptr<float>();
+  ASSERT_FLOAT_EQ(data[compute_offset(0, result)], 5.0f);  // [0,0]
+  ASSERT_FLOAT_EQ(data[compute_offset(3, result)], 5.0f);  // [0,3]
 }
 
 // Test expand function (not member function)
 TEST_F(TensorExpandTest, ExpandFunction) {
+  if (!FLAGS_use_stride_kernel) {
+    return;
+  }
   at::Tensor t = at::full({1}, 7.0f, at::kFloat);
 
   at::Tensor result = at::expand(t, {3, 4});
@@ -165,6 +271,9 @@ TEST_F(TensorExpandTest, ExpandFunction) {
 }
 
 TEST_F(TensorExpandTest, ExpandAsMemberFunction) {
+  if (!FLAGS_use_stride_kernel) {
+    return;
+  }
   at::Tensor t = at::full({1, 2}, 4.0f, at::kFloat);
   at::Tensor other = at::zeros({3, 2}, at::kFloat);
 
