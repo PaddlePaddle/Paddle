@@ -17,8 +17,8 @@
 #pragma once
 
 #include <cublas_v2.h>
-#include <cub/cub.cuh>
 #include "paddle/phi/core/platform/device_context.h"
+#include "paddle/phi/kernels/funcs/cub.h"
 
 using kv_float = cub::KeyValuePair<float, float>;
 using kv_half = cub::KeyValuePair<half, half>;

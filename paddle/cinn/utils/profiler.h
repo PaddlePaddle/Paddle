@@ -18,7 +18,15 @@
 #include <string>
 
 #ifdef CINN_WITH_NVTX
+// PADDLE_CCCL_NVTX3 is defined in cmake/third_party.cmake wherever CCCL 3.x is
+// in use. CCCL 3.x pulls nvtx3/nvToolsExt.h in through thrust, so use the NVTX3
+// entry point here too; mixing in the legacy <nvToolsExt.h> in the same TU
+// redeclares nvtxEventAttributes_v2 and friends.
+#if defined(PADDLE_CCCL_NVTX3)
+#include <nvtx3/nvToolsExt.h>
+#else
 #include <nvToolsExt.h>
+#endif
 #endif
 
 #include "glog/logging.h"
