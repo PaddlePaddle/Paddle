@@ -15,6 +15,7 @@
  */
 
 #include <thrust/detail/config.h>
+#include <thrust/detail/config/exec_check_disable.h>
 #include <thrust/detail/temporary_array.h>
 #include <thrust/iterator/discard_iterator.h>
 #include <thrust/iterator/transform_iterator.h>
@@ -26,8 +27,6 @@
 #include <cstdint>
 
 namespace thrust {
-template <typename Iterator>
-using iterator_value_t = typename iterator_value<Iterator>::type;
 
 namespace system {
 namespace detail {
