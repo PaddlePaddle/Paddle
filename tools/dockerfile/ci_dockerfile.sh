@@ -79,10 +79,13 @@ function make_ce_framework_dockerfile(){
 }
 
 
-function make_ubuntu20_cu12_dockerfile(){
+function make_ubuntu24_cu132_dockerfile(){
   dockerfile_name="Dockerfile.cuda117_cudnn8_gcc82_ubuntu18_coverage"
-  sed "s#<baseimg>#nvidia/cuda:12.0.1-cudnn8-devel-ubuntu22.04#g" ./Dockerfile.ubuntu22 >${dockerfile_name}
-  sed -i "s#<setcuda>#ENV LD_LIBRARY_PATH=/usr/local/cuda-12.0/targets/x86_64-linux/lib:\$LD_LIBRARY_PATH #g" ${dockerfile_name}
+  sed "s#<baseimg>#nvcr.io/nvidia/cuda:13.2.0-cudnn-devel-ubuntu24.04#g" ./Dockerfile.ubuntu24 >${dockerfile_name}
+  sed -i "s#<setcuda>#ENV LD_LIBRARY_PATH=/usr/local/cuda-13.2/compat:/usr/local/cuda-13.2/targets/x86_64-linux/lib:\$LD_LIBRARY_PATH #g" ${dockerfile_name}
+  sed -i '/RUN mv \/etc\/apt\/sources.list.d\/cuda.list \/etc\/apt\/sources.list.d\/cuda.list.bak/d' ${dockerfile_name}
+  sed -i '/RUN mv \/etc\/apt\/sources.list.d\/cuda.list.bak \/etc\/apt\/sources.list.d\/cuda.list/d' ${dockerfile_name}
+  sed -i '/RUN sed -i .*\/etc\/apt\/sources.list.d\/cuda.list/d' ${dockerfile_name}
   sed -i 's#<install_cpu_package>##g' ${dockerfile_name}
   sed -i "7i ENV TZ=Asia/Beijing" ${dockerfile_name}
   sed -i "8i RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone" ${dockerfile_name}
@@ -90,15 +93,14 @@ function make_ubuntu20_cu12_dockerfile(){
   dockerfile_line=$(wc -l ${dockerfile_name}|awk '{print $1}')
   sed -i "${dockerfile_line}i RUN wget --no-check-certificate -q https://paddle-edl.bj.bcebos.com/hadoop-2.7.7.tar.gz \&\& \
      tar -xzf  hadoop-2.7.7.tar.gz && mv hadoop-2.7.7 /usr/local/" ${dockerfile_name}
+  sed -i "${dockerfile_line}i RUN apt-get update \&\& apt-get install -y libnccl2=2.29.7-1+cuda13.2 libnccl-dev=2.29.7-1+cuda13.2" ${dockerfile_name}
   sed -i "${dockerfile_line}i RUN apt remove git -y \&\& apt update \&\& apt install -y libcurl4-openssl-dev gettext pigz zstd ninja-build  \&\& wget -q https://paddle-ci.gz.bcebos.com/git-2.17.1.tar.gz \&\& \
     tar -xvf git-2.17.1.tar.gz \&\& \
     cd git-2.17.1 \&\& \
     ./configure --with-openssl --with-curl --prefix=/usr/local \&\& \
     make -j8 \&\& make install " ${dockerfile_name}
   sed -i "${dockerfile_line}i RUN pip install wheel \&\& pip3.12 install PyGithub wheel distro jinja2" ${dockerfile_name}
-  sed -i 's# && rm /etc/apt/sources.list.d/nvidia-ml.list##g' ${dockerfile_name}
   sed -i 's#RUN bash /build_scripts/install_trt.sh##g' ${dockerfile_name}
-  sed -i 's#<install_cudnn>#RUN bash /build_scripts/install_cudnn.sh cudnn896 #g' ${dockerfile_name}
 }
 
 
@@ -135,7 +137,7 @@ function main() {
   make_cpu_dockerfile
   make_sot_dockerfile
   make_ce_framework_dockerfile
-  make_ubuntu20_cu12_dockerfile
+  make_ubuntu24_cu132_dockerfile
   make_ubuntu20_cu123_dockerfile
 }
 
