@@ -40,6 +40,13 @@ static __global__ void repeat_param(const T *input,
   }
 }
 
+template <typename InT, typename OutT>
+static __global__ void convert_data_type(const InT *input,
+                                         OutT *output,
+                                         const int size) {
+  CUDA_KERNEL_LOOP(i, size) { output[i] = static_cast<OutT>(input[i]); }
+}
+
 template <typename T, int BlockDim, bool AVG>
 static __global__ void add_param(const T *input,
                                  T *output,
