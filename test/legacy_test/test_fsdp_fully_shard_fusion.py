@@ -990,6 +990,12 @@ class _FakeHcg:
     def get_sharding_parallel_group(self):
         return self._group
 
+    def get_fsdp_group(self, is_expert=False):
+        return self._group
+
+    def get_data_parallel_world_size(self):
+        return 1
+
     def get_expert_parallel_world_size(self):
         return 1
 
