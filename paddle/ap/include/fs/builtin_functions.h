@@ -25,6 +25,11 @@ adt::Result<axpr::Value> DirName(const axpr::Value&,
 adt::Result<axpr::Value> BaseName(const axpr::Value&,
                                   const std::vector<axpr::Value>& args);
 
+// Reads the host process environment. Returns `Nothing` when the variable is
+// not set, so apy code can fall back with `getenv("AP_X") or "default"`.
+adt::Result<axpr::Value> GetEnv(const axpr::Value&,
+                                const std::vector<axpr::Value>& args);
+
 void ForceLink();
 
 }  // namespace ap::fs

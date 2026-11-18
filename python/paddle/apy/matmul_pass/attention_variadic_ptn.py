@@ -1,0 +1,298 @@
+# Copyright (c) 2026 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import abstract_drr
+import access_topo_drr  # noqa: F401
+import ap
+import attention_variadic_tpl
+import compile_command_util
+import epilogue_access_topo_simplify
+import ir_tools
+import kernel_arg_id_util
+import kernel_arg_translator_util  # noqa: F401
+import low_level_ir_code_gen_ctx_util  # noqa: F401
+import op_conversion_drr_pass  # noqa: F401
+import pir  # noqa: F401
+import umprime  # noqa: F401
+import variadic_mixin
+
+
+class AttentionEpilogueFusion(variadic_mixin.VariadicEpilogueFusionBase):
+    def source_pattern(self, o, t):
+        in_num = self.number_of_inputs()
+        out_num = self.number_of_outputs()
+        o.attention_op = o.ap_native_op("pd_op.memory_efficient_attention")
+        o.attention_op(
+            [t.input0, t.input1, t.input2],
+            [t.attn_out],
+        )
+        o.trivial_op = o.ap_trivial_fusion_op()
+        o.trivial_op(
+            [
+                t.attn_out,
+                *ap.map(
+                    lambda index: getattr(t, f"input{index + 3}"),
+                    range(in_num - 3),
+                ),
+            ],
+            ap.map(lambda index: getattr(t, f"output{index}"), range(out_num)),
+        )
+
+    def result_pattern(self, o, t):
+        in_num = self.number_of_inputs()
+        out_num = self.number_of_outputs()
+        o.fustion_op = o.ap_pattern_fusion_op(self.code_gen)
+        o.fustion_op(
+            ap.map(lambda index: getattr(t, f"input{index}"), range(in_num)),
+            ap.map(lambda index: getattr(t, f"output{index}"), range(out_num)),
+        )
+
+    def constraint(self, o, t):
+        return self._is_supported_by_device() and (
+            self._is_supported_by_backend(o, t)
+            and (
+                self._has_no_optional_inputs(o)
+                and (self._has_no_dropout(o) and self._epilogue_can_fuse(o, t))
+            )
+        )
+
+    def _is_supported_by_device(self):
+        compile_command_generator = (
+            compile_command_util.CompileCommandGenerator()
+        )
+        return compile_command_generator.supports("attention")
+
+    def _is_supported_by_backend(self, o, t):
+        # Limitations of the cutlass FMHA backend (first version):
+        # - BMHK layout: query [B, M, H, Dh], key [B, N, H, Dh],
+        #   value [B, N, H, Dv], output [B, M, H, Dv].
+        # - Q/K/V share the same number of heads (no GQA / MQA) and
+        #   head_dim (Dh == Dv), and the head dim must be a compile-time
+        #   constant the generated kernel supports, see
+        #   `_has_supported_head_dim`.
+        # - no optional bias / variable seqlen in the first version.
+        return self._is_bmhk_layout(t) and self._has_supported_head_dim(t)
+
+    def _is_bmhk_layout(self, t):
+        query_shape = t.input0.symbolic_shape_to_list()
+        key_shape = t.input1.symbolic_shape_to_list()
+        value_shape = t.input2.symbolic_shape_to_list()
+        # All operands are 4-D [B, seqlen, H, head_dim]. The AP python dialect
+        # only accepts binary `and`, so the conditions are nested in pairs.
+        is_4d = (len(query_shape) == 4) and (
+            (len(key_shape) == 4) and (len(value_shape) == 4)
+        )
+        # Same number of heads on Q / K / V (no GQA / MQA), and Dh == Dv.
+        same_heads = (query_shape[2] == key_shape[2]) and (
+            key_shape[2] == value_shape[2]
+        )
+        same_head_dim = query_shape[3] == value_shape[3]
+        return is_4d and (same_heads and same_head_dim)
+
+    def _has_supported_head_dim(self, t):
+        query_shape = t.input0.symbolic_shape_to_list()
+        value_shape = t.input2.symbolic_shape_to_list()
+        is_supported_dh = query_shape[3].match(
+            int64=lambda head_dim: (head_dim <= 128) and (head_dim % 8 == 0),
+            _=lambda: False,
+        )
+        is_supported_dv = value_shape[3].match(
+            int64=lambda head_dim: (head_dim <= 128) and (head_dim % 8 == 0),
+            _=lambda: False,
+        )
+        return is_supported_dh and is_supported_dv
+
+    def _has_no_optional_inputs(self, o):
+        return self._is_null_operand(o, 3) and (
+            self._is_null_operand(o, 4)
+            and (
+                self._is_null_operand(o, 5)
+                and (
+                    self._is_null_operand(o, 6) and self._is_null_operand(o, 7)
+                )
+            )
+        )
+
+    def _is_null_operand(self, o, index):
+        return o.attention_op.operand_source(index).type.match(
+            t_null=lambda: True, _=lambda: False
+        )
+
+    def _has_no_dropout(self, o):
+        return self._get_bool_attr(o.attention_op.is_test) or (
+            self._get_f64_attr(o.attention_op.dropout_p) == 0.0
+        )
+
+    def _epilogue_can_fuse(self, o, t):
+        program = ir_tools.copy_fused_ops_to_program(
+            o.trivial_op, tensor_match_ctx=t
+        )
+        program = epilogue_access_topo_simplify.simplify_epilogue_program(
+            program,
+            anchor_data_op_name="attn_out",
+            number_of_inputs=self.number_of_inputs(),
+            number_of_outputs=self.number_of_outputs(),
+        )
+        return program.empty()
+
+    def _anchor_data_op_name(self):
+        return "attn_out"
+
+    def _anchor_input_count(self):
+        return 3
+
+    def _anchor_iter_var_names(self):
+        return attention_variadic_tpl.get_anchor_iter_var_names()
+
+    def _make_kernel_arg_translator(self):
+        return attention_variadic_tpl.make_kernel_arg_translator()
+
+    def _get_float_attr(self, attr):
+        return attr.match(a_f32=lambda x: float(x))
+
+    def _get_f64_attr(self, attr):
+        return attr.match(a_f64=lambda x: float(x))
+
+    def _get_bool_attr(self, attr):
+        return attr.match(a_bool=lambda x: bool(x))
+
+    def _get_scale(self, o):
+        # mea has a `scale` attr; -1 means the backend default 1/sqrt(head_dim).
+        return self._get_float_attr(o.attention_op.scale)
+
+    def code_gen(self, ctx, o, t):
+        program_translator = self._get_program_translator(ctx, o, t)
+        mut_kernel_arg_id_registry = kernel_arg_id_util.KernelArgIdNameRegistry(
+            code_gen_ctx=ctx, tensor_match_ctx=t, name_prefix=""
+        )
+
+        template_module = attention_variadic_tpl.AttentionVariadicTemplate(
+            program_translator=program_translator,
+            mut_kernel_arg_id_registry=mut_kernel_arg_id_registry,
+        )
+
+        def get_symbolic_shape_args_list(sym_dim):
+            return ctx.dim_expr_kernel_arg_id(sym_dim)
+
+        input0_shape_kargs = ap.map(
+            get_symbolic_shape_args_list, t.input0.symbolic_shape_to_list()
+        )
+        input1_shape_kargs = ap.map(
+            get_symbolic_shape_args_list, t.input1.symbolic_shape_to_list()
+        )
+        input2_shape_kargs = ap.map(
+            get_symbolic_shape_args_list, t.input2.symbolic_shape_to_list()
+        )
+        return template_module.compile(
+            input0_karg=ctx.in_tensor_data_ptr_kernel_arg_id(t.input0),
+            input1_karg=ctx.in_tensor_data_ptr_kernel_arg_id(t.input1),
+            input2_karg=ctx.in_tensor_data_ptr_kernel_arg_id(t.input2),
+            output_karg=ctx.out_tensor_data_ptr_kernel_arg_id(t.output0),
+            input0_shape_kargs=input0_shape_kargs,
+            input1_shape_kargs=input1_shape_kargs,
+            input2_shape_kargs=input2_shape_kargs,
+            # A non-positive scale tells the backend to use the default
+            # 1/sqrt(head_dim).
+            scale=self._get_scale(o),
+            causal=self._get_bool_attr(o.attention_op.causal),
+        )
+
+
+class FlashAttnEpilogueFusion(AttentionEpilogueFusion):
+    def source_pattern(self, o, t):
+        in_num = self.number_of_inputs()
+        out_num = self.number_of_outputs()
+        o.attention_op = o.ap_native_op("pd_op.flash_attn")
+        o.attention_op(
+            [t.input0, t.input1, t.input2],
+            [t.attn_out],
+        )
+        o.trivial_op = o.ap_trivial_fusion_op()
+        o.trivial_op(
+            [
+                t.attn_out,
+                *ap.map(
+                    lambda index: getattr(t, f"input{index + 3}"),
+                    range(in_num - 3),
+                ),
+            ],
+            ap.map(lambda index: getattr(t, f"output{index}"), range(out_num)),
+        )
+
+    def _has_no_optional_inputs(self, o):
+        # flash_attn operands: 0/1/2 = q/k/v, 3 = fixed_seed_offset,
+        # 4 = attn_mask. A non-null attn_mask would be silently dropped by the
+        # fused kernel, and a seed offset is only meaningful with dropout.
+        return self._is_null_operand(o, 3) and self._is_null_operand(o, 4)
+
+    def _has_no_dropout(self, o):
+        # flash_attn attr names: `dropout` (f32) instead of mea's `dropout_p`.
+        return self._get_bool_attr(o.attention_op.is_test) or (
+            self._get_float_attr(o.attention_op.dropout) == 0.0
+        )
+
+    def _get_scale(self, o):
+        # flash_attn has no `scale` attr: flash attention always uses the
+        # default 1/sqrt(head_dim), represented by a non-positive value.
+        return 0.0
+
+
+def register_attention_epilogue_class(
+    base_class,
+    max_num_inputs,
+    max_num_outputs,
+    pass_name_prefix,
+    class_name_prefix,
+):
+    def register_attention_drr_class(num_inputs, num_outputs):
+        abstract_drr.register_drr_pass(
+            f"{pass_name_prefix}_in{num_inputs}_out{num_outputs}_fusion",
+            nice=0,
+        )(
+            variadic_mixin.get_mixin_class(
+                base_class,
+                class_name_prefix,
+                num_inputs,
+                num_outputs,
+            )
+        )
+
+    def register_attention_num_inputs_drr_classes(num_inputs):
+        def register_attention_num_outputs_drr_classes(num_outputs):
+            # +3 for the query / key / value anchor inputs, +1 for the single
+            # attention output the epilogue is fused onto.
+            return register_attention_drr_class(num_inputs + 3, num_outputs + 1)
+
+        ap.map(
+            register_attention_num_outputs_drr_classes, range(max_num_outputs)
+        )
+
+    ap.map(register_attention_num_inputs_drr_classes, range(max_num_inputs))
+
+
+register_attention_epilogue_class(
+    base_class=AttentionEpilogueFusion,
+    max_num_inputs=10,
+    max_num_outputs=10,
+    pass_name_prefix="attention_epilogue",
+    class_name_prefix="AttentionEpilogueFusion",
+)
+
+register_attention_epilogue_class(
+    base_class=FlashAttnEpilogueFusion,
+    max_num_inputs=10,
+    max_num_outputs=10,
+    pass_name_prefix="flash_attn_epilogue",
+    class_name_prefix="FlashAttnEpilogueFusion",
+)

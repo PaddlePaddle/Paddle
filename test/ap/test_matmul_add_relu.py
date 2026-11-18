@@ -21,7 +21,7 @@ import paddle
 import paddle.incubate.cc as pcc
 import paddle.incubate.cc.typing as pct
 
-os.environ["AP_WORKSPACE_DIR"] = "/tmp/paddle/ap"
+os.environ["AP_WORKSPACE_DIR"] = "/tmp/paddle_ap_workspace"
 
 
 def GetPirProgram(fused_func, tensor_args):
@@ -31,15 +31,15 @@ def GetPirProgram(fused_func, tensor_args):
 
 
 def IsSupportDevice():
-    if paddle.is_compiled_with_cuda():
-        prop = paddle.device.cuda.get_device_properties()
-        cc = prop.major * 10 + prop.minor
-        return cc == 80
-
+    # Keep this in sync with `CompileCommandGenerator.supports("matmul")`:
+    # on CUDA the matmul backend is compiled with `-arch=sm_80`, so only
+    # compute capability 8.0 can run it; on DCU the hytlass backend is used
+    # and every device is supported.
     if paddle.is_compiled_with_rocm():
         return True
-
-    return False
+    if not paddle.is_compiled_with_cuda():
+        return False
+    return paddle.device.cuda.get_device_capability() == (8, 0)
 
 
 class TestMatmulEpilogue(unittest.TestCase):
@@ -87,14 +87,18 @@ class TestMatmulEpilogue(unittest.TestCase):
         generated_pir_program = GetPirProgram(
             fused_foo, [self.x, self.y, self.b]
         )
-        self.assertTrue(
-            'pd_op.ap_variadic' in generated_pir_program, "fusion failed"
-        )
         if IsSupportDevice():
+            self.assertIn(
+                'pd_op.ap_variadic', generated_pir_program, "fusion failed"
+            )
             ap_outs = fused_foo(self.x, self.y, self.b)
             dy_outs = foo(self.x, self.y, self.b)
             for dy_out, ap_out in zip(dy_outs, ap_outs):
                 np.testing.assert_allclose(dy_out, ap_out, atol=1e-1)
+        else:
+            # The matmul backend is compiled for sm_80 only, so any other
+            # device has to keep the subgraph on the phi kernels.
+            self.assertNotIn('pd_op.ap_variadic', generated_pir_program)
 
 
 if __name__ == "__main__":
