@@ -361,7 +361,7 @@ def assign_sharded_slice(
         ends=[s + o for s, o in zip(dst_shard_starts, overlap_shape2)],
     )
     src_tensor_slice = apply_postprocess(src_tensor_slice, postprocess_list)
-    if _write_by_setitem(
+    if _should_write_by_setitem(
         dst_shard.local_tensor, dst_tensor_slice, src_tensor_slice
     ):
         dst_index = tuple(
@@ -375,7 +375,7 @@ def assign_sharded_slice(
         paddle.assign(src_tensor_slice, dst_tensor_slice)
 
 
-def _write_by_setitem(target, region, value):
+def _should_write_by_setitem(target, region, value):
     """Whether to write ``value`` into ``region`` of ``target`` with
     ``target[index] = value`` (an in-place ``set_value`` on the whole target)
     rather than ``paddle.assign`` into the ``region`` slice."""

@@ -25,7 +25,7 @@ import time
 from collections import defaultdict
 from copy import deepcopy
 from dataclasses import replace
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
@@ -1136,7 +1136,7 @@ def load_state_dict(
     unique_id: int | None = None,
     offload: bool = False,
     mw_name_compatibility: bool = True,
-    aoa_config: dict[str, list[str]] | None = None,
+    aoa_config: dict[str, Any] | None = None,
     safetensors: bool = False,
     worker_groups: list[Group] | None = None,
     comm_method: str = "broadcast",
@@ -1898,7 +1898,7 @@ def load_merged_state_dict(
     prefix: str | None = None,
     unique_id: int | None = None,
     offload: bool = False,
-    aoa_config: dict[str, list[str]] | None = None,
+    aoa_config: dict[str, Any] | None = None,
     safetensors: bool = False,
 ) -> dict[str, paddle.Tensor]:
     """
@@ -2038,7 +2038,7 @@ def merge_sharded_state_dict(
     process_group: Group | None = None,
     unique_id: int | None = None,
     offload: bool = False,
-    aoa_config: dict[str, list[str]] | None = None,
+    aoa_config: dict[str, Any] | None = None,
     safetensors: bool = False,
 ) -> None:
     """

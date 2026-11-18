@@ -179,12 +179,12 @@ class TestAssignShardedSliceWriteMethod(unittest.TestCase):
 
     def _decide(self, place, contiguous, shared=True):
         from paddle.distributed.flex_checkpoint.dcp.utils import (
-            _write_by_setitem,
+            _should_write_by_setitem,
         )
 
         target = self._Tensor(place)
         region = self._Tensor(place, contiguous, shared)
-        return _write_by_setitem(target, region, target)
+        return _should_write_by_setitem(target, region, target)
 
     def test_cpu_strided_region_uses_setitem(self):
         place = self._Place(cpu=True)
@@ -214,13 +214,13 @@ class TestAssignShardedSliceWriteMethod(unittest.TestCase):
     )
     def test_value_on_another_place_uses_assign(self):
         from paddle.distributed.flex_checkpoint.dcp.utils import (
-            _write_by_setitem,
+            _should_write_by_setitem,
         )
 
         target = paddle.zeros([2, 3, 2, 2]).cpu()
         region = paddle.slice(target, axes=[2], starts=[0], ends=[1])
         value = paddle.ones([2, 3, 1, 2]).cuda()
-        self.assertFalse(_write_by_setitem(target, region, value))
+        self.assertFalse(_should_write_by_setitem(target, region, value))
 
     def _write_half(self, postprocess_list, source_shape, target=None):
         """Fill the gate half (axis 2, index 0) of a CPU (2, 3, 2, 2) target."""

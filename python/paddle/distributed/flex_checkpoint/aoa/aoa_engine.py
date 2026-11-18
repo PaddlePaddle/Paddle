@@ -18,6 +18,7 @@ import functools
 import logging
 import re
 from dataclasses import dataclass
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -42,6 +43,20 @@ SliceRef = tuple[str, tuple[slice, ...], tuple[slice, ...], list[str] | None]
 SUPPORTED_DTYPES = ['float16', 'float32', 'bfloat16']
 # Optimizer states that are scalars rather than shaped like their parameter.
 _SCALAR_OPTIMIZER_STATES = (".beta1_pow_acc_0", ".beta2_pow_acc_0")
+
+
+def _literal_int_list(value: str) -> list[int] | None:
+    """``"[2, 3]"`` -> ``[2, 3]``; None when the attribute is not a list of
+    integers, which ``shape_propagation`` reports on the statement itself."""
+    try:
+        parsed = ast.literal_eval(value)
+    except (ValueError, SyntaxError):
+        return None
+    if not isinstance(parsed, (list, tuple)) or not all(
+        isinstance(item, int) for item in parsed
+    ):
+        return None
+    return list(parsed)
 
 
 class TensorDesc:
@@ -291,7 +306,7 @@ class AOAShardInfoContext:
 class AOAEngine:
     def __init__(
         self,
-        aoa_config: dict[str, list[str]],
+        aoa_config: dict[str, Any],
         source_state_shard_info: _ShardInfo,
         destination_state_shard_info: _ShardInfo,
     ):
@@ -561,25 +576,33 @@ class AOAEngine:
     ) -> list[tuple[int, ...] | None]:
         attrs = {attr.key: attr.value for attr in stmt.attrs}
         count = len(stmt.right_vars)
+        unknown: list[tuple[int, ...] | None] = [None] * count
         if "reshape" in attrs:
-            return [tuple(ast.literal_eval(attrs["reshape"]))]
+            named = _literal_int_list(attrs["reshape"])
+            return unknown if named is None else [tuple(named)]
         if not ins or any(shape is None for shape in ins):
-            return [None] * count
-        try:
+            return unknown
+        shape = list(ins[0])
+        if len(ins) > 1 or count > 1:  # concat or split
+            axis = attrs.get("axis")
+            if not isinstance(axis, int) or not 0 <= axis < len(shape):
+                return unknown
             if len(ins) > 1:  # concat
-                shape = list(ins[0])
-                shape[attrs["axis"]] = sum(s[attrs["axis"]] for s in ins)
-                return [tuple(shape)]
-            if count > 1:  # split into equal parts, as split() does
-                shape = list(ins[0])
-                shape[attrs["axis"]] //= count
-                return [tuple(shape)] * count
-            if "permute" in attrs:
-                permutation = ast.literal_eval(attrs["permute"])
-                permutation = permutation or list(range(len(ins[0])))[::-1]
-                return [tuple(transpose_list(ins[0], permutation))]
-        except (KeyError, IndexError, TypeError, ValueError, SyntaxError):
-            return [None] * count
+                if any(len(other) != len(shape) for other in ins):
+                    return unknown
+                shape[axis] = sum(other[axis] for other in ins)
+            else:  # split into equal parts, as split() does
+                shape[axis] //= count
+            return [tuple(shape)] * count
+        if "permute" in attrs:
+            permutation = _literal_int_list(attrs["permute"])
+            if permutation == []:  # "[]" reverses the axes
+                permutation = list(range(len(shape)))[::-1]
+            if permutation is None or sorted(permutation) != list(
+                range(len(shape))
+            ):
+                return unknown
+            return [tuple(transpose_list(shape, permutation))]
         return [ins[0]] * count  # rename, cast
 
     def _written_shape(self, stmt: Statement) -> tuple[int, ...] | None:
@@ -886,7 +909,7 @@ class AOAEngine:
         target_global_offset = target.global_offset
         target_global_shape = target.global_shape
 
-        if opt_state_name in [".beta1_pow_acc_0", ".beta2_pow_acc_0"]:
+        if opt_state_name in _SCALAR_OPTIMIZER_STATES:
             assert target_key in self.output_vars, (
                 f"The key {target_key} is not in the output_vars (which is built during load_state_dict)."
             )
@@ -915,7 +938,7 @@ class AOAEngine:
             for result in results
             if result[0] not in self.need_remove_input_vars
         }
-        if opt_state_name in [".beta1_pow_acc_0", ".beta2_pow_acc_0"]:
+        if opt_state_name in _SCALAR_OPTIMIZER_STATES:
             if len(src_keys) == 0:
                 return shard_mappings
             elif len(src_keys) > 1:
