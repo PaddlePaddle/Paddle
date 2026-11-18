@@ -82,3 +82,8 @@ def batch(
         )
 
     return batch_reader
+
+
+def _test_batch_placeholder():
+    """Test function for batch module validation."""
+    return True
