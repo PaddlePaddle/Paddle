@@ -49,6 +49,53 @@ class HOOK_ACTION:
     REDUCE_SCATTER = 2
 
 
+# Gradient communication backend: an optional extension point that lets an
+# out-of-tree implementation take over the gradient communication of the
+# ``FusedCommBuffer`` buckets of a sharding optimizer, for example to replace
+# the per-bucket ``reduce_scatter`` with one-sided writes issued while the
+# backward pass is still running. Without such an extension point the only way
+# to do this is to patch ``FusedCommBuffer`` and the sharding optimizers at
+# runtime, which silently breaks whenever their internals change.
+#
+# The backend cannot be passed through the optimizer constructor: the sharding
+# optimizers are built by ``fleet.distributed_optimizer``, so the user code that
+# knows about the backend usually has no access to them (the same reason
+# ``register_global_pipeline_parallel_hook`` is global). There is one sharding
+# optimizer per process, so the factory is registered globally and queried once
+# per optimizer, at the end of its ``__init__``:
+#
+#     backend = factory(optimizer)            # None: do not take over
+#     backend.setup(optimizer) -> bool        # pick buckets, build resources,
+#                                             # set bucket._grad_comm_backend
+#     backend.comm_grads(bucket, reduce_op)   # -> task, waited on by scale_grads
+#     backend.reduce_gradients(optimizer, parameter_list, hcg) -> bool
+#     backend.sync_parameters(optimizer) -> bool
+#     backend.rebuild(optimizer)
+#
+# ``setup`` returns whether the backend takes this optimizer over, and
+# ``reduce_gradients`` / ``sync_parameters`` return True when they have fully
+# handled the call so that the original code path is skipped. Nothing changes
+# when no factory is registered.
+_grad_comm_backend_factory = None
+
+
+def register_grad_comm_backend(factory):
+    """
+    Register the global gradient communication backend factory, or pass None to
+    unregister it. See the comment above for the expected backend interface.
+    """
+    global _grad_comm_backend_factory
+    _grad_comm_backend_factory = factory
+
+
+def get_grad_comm_backend_factory():
+    """
+    Return the factory registered by ``register_grad_comm_backend``, or None
+    when no gradient communication backend is registered.
+    """
+    return _grad_comm_backend_factory
+
+
 alignment = {
     "gpu": 256,
     "npu": 256,
@@ -588,6 +635,17 @@ class FusedCommBuffer:
         if not self._release_grads:
             self._record_addr()
 
+        # Gradient communication backend of this bucket, see
+        # register_grad_comm_backend. It stays None unless a backend takes the
+        # bucket over in its setup(), in which case _comm_grads hands the bucket
+        # to the backend instead of calling a collective. _post_reduce_scale is
+        # the factor the backend has to apply to the reduced result, i.e. what
+        # the reduce_op it was given would have applied (1 / nranks for AVG,
+        # 1.0 for SUM); it is written by the backend, Paddle only declares and
+        # initializes it so that the bucket carries its own scale.
+        self._grad_comm_backend = None
+        self._post_reduce_scale = 1.0
+
     def _refresh_param_buffer_ipc_meta(self):
         meta_tensor = self._param_buffer_meta_tensor
         if meta_tensor is None:
@@ -811,6 +869,14 @@ class FusedCommBuffer:
                 raise ValueError(
                     f"{err_msg}. Tensor contains inf or nan values at rank {paddle.distributed.get_rank()} before gradient communication"
                 )
+
+        # A backend took this bucket over: everything above (the stop_gradient
+        # check, the pre-communication scaling and the nan/inf check) still
+        # applies, only the collective is replaced. The backend returns a task
+        # that scale_grads() waits on, just like the collectives below.
+        if self._grad_comm_backend is not None:
+            self._task = self._grad_comm_backend.comm_grads(self, reduce_op)
+            return
 
         if self._act == HOOK_ACTION.ALL_REDUCE:
             task = paddle.distributed.all_reduce(

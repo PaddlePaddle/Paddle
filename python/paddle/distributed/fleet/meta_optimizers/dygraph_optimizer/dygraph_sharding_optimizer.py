@@ -44,6 +44,7 @@ from ...utils.tensor_fusion_helper import (
     FusedCommBuffer,
     assign_group_by_size,
     fused_parameters,
+    get_grad_comm_backend_factory,
     get_group_size,
 )
 
@@ -635,6 +636,9 @@ class DygraphShardingOptimizerV2:
         self._sharding_rank = self._hcg.get_sharding_parallel_rank()
         self.clear_color = set()
         self._parameter_list = optimizer._parameter_list
+        # Gradient communication backend (tensor_fusion_helper.register_grad_comm_backend),
+        # installed at the end of __init__ once the comm buffers exist.
+        self._grad_comm_backend = None
 
         # param name -> slice_param
         self._slice_params = {}
@@ -740,8 +744,19 @@ class DygraphShardingOptimizerV2:
         self._forward_pre_hook_remove_helper = []
         self.has_register_forward_hook = False
 
+        # Gradient communication backend: the comm buffers are built, so the
+        # backend can pick its buckets, build its communication resources,
+        # register its own backward hooks and set bucket._grad_comm_backend.
+        factory = get_grad_comm_backend_factory()
+        if factory is not None:
+            backend = factory(self)
+            if backend is not None and backend.setup(self):
+                self._grad_comm_backend = backend
+
     def rebuild(self):
         """rebuild DygraphShardingOptimizerV2."""
+        if self._grad_comm_backend is not None:
+            self._grad_comm_backend.rebuild(self)
 
         self._sharding_world_size = self._hcg.get_sharding_parallel_world_size()
         self._sharding_rank = self._hcg.get_sharding_parallel_rank()
@@ -1005,6 +1020,15 @@ class DygraphShardingOptimizerV2:
         return parameter_list
 
     def reduce_gradients(self, parameter_list, hcg):
+        # A gradient communication backend handles its buckets (and everything
+        # else this call does) when it returns True.
+        if (
+            self._grad_comm_backend is not None
+            and self._grad_comm_backend.reduce_gradients(
+                self, parameter_list, hcg
+            )
+        ):
+            return
         # TODO merge grad / nrank with dp
         logger.debug("sharding start gradients sync")
         # sync here to guarantee cdnn_cluster parallel correct.
@@ -1139,6 +1163,13 @@ class DygraphShardingOptimizerV2:
         """
         sync parameter across sharding group
         """
+        # A gradient communication backend may also own the parameter sync
+        # (e.g. to fuse the per-bucket all_gathers); True = already done.
+        if (
+            self._grad_comm_backend is not None
+            and self._grad_comm_backend.sync_parameters(self)
+        ):
+            return
         if self._enable_timer:
             self.timers("sync-parameters").start()
 

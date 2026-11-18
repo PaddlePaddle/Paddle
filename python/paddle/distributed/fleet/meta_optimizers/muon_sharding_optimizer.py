@@ -61,6 +61,7 @@ from paddle.distributed.fleet.utils.tensor_fusion_helper import (
     HOOK_ACTION,
     FusedCommBuffer,
     assign_group_by_size,
+    get_grad_comm_backend_factory,
 )
 
 
@@ -205,6 +206,9 @@ class MuonShardingOptimizer:
         self._sharding_world_size = self._hcg.get_sharding_parallel_world_size()
         self._sharding_rank = self._hcg.get_sharding_parallel_rank()
         self._global_rank = paddle.distributed.get_rank()
+        # Gradient communication backend (tensor_fusion_helper.register_grad_comm_backend),
+        # installed at the end of __init__ once the comm buffers exist.
+        self._grad_comm_backend = None
 
         # Temporarily: TP is not supported in MuonShardingOptimizer
         _tp_world_size = self._hcg.get_model_parallel_world_size()
@@ -622,6 +626,16 @@ class MuonShardingOptimizer:
                     )
                     group = paddle.distributed.new_group(ranks)
                     self.trainer_same_card_comms[pp_idx][card_idx] = group
+
+        # Gradient communication backend: the comm buffers (1D and 2D) are
+        # built, so the backend can pick its buckets, build its communication
+        # resources, register its own backward hooks and set
+        # bucket._grad_comm_backend.
+        factory = get_grad_comm_backend_factory()
+        if factory is not None:
+            backend = factory(self)
+            if backend is not None and backend.setup(self):
+                self._grad_comm_backend = backend
 
     # ------------------------------------------------------------------
     # 2D partition (V1-style greedy)
@@ -1290,6 +1304,15 @@ class MuonShardingOptimizer:
 
     def reduce_gradients(self, parameter_list, hcg):
         """Reduce gradients: reduce for 2D params, reduce-scatter for 1D params."""
+        # A gradient communication backend handles its buckets (and everything
+        # else this call does) when it returns True.
+        if (
+            self._grad_comm_backend is not None
+            and self._grad_comm_backend.reduce_gradients(
+                self, parameter_list, hcg
+            )
+        ):
+            return
         if (
             paddle.is_compiled_with_xpu()
             and os.getenv("XPU_CDNN_CLUSTER_PARALLEL") is not None
@@ -1598,6 +1621,13 @@ class MuonShardingOptimizer:
 
     def _sharding_sync_parameters(self):
         """Sync parameters: broadcast 2D, all-gather 1D."""
+        # A gradient communication backend may also own the parameter sync
+        # (e.g. to fuse the per-bucket 1D all_gathers); True = already done.
+        if (
+            self._grad_comm_backend is not None
+            and self._grad_comm_backend.sync_parameters(self)
+        ):
+            return
         comm_group = self._hcg.get_sharding_parallel_group()
 
         with framework.no_grad():
