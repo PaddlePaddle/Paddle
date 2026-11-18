@@ -90,7 +90,7 @@ void CoalesceCooGPUKernel(const GPUContext& dev_ctx,
 #ifdef PADDLE_WITH_HIP
   thrust::sort_by_key(thrust::hip::par.on(dev_ctx.stream()),
 #else
-  thrust::sort_by_key(thrust::cuda::par.on(dev_ctx.stream()),
+  thrust::sort_by_key(thrust::cuda::par_nosync.on(dev_ctx.stream()),
 #endif
                       indices_ptr,
                       indices_ptr + nnz,
@@ -101,7 +101,7 @@ void CoalesceCooGPUKernel(const GPUContext& dev_ctx,
 #ifdef PADDLE_WITH_HIP
       thrust::unique_by_key(thrust::hip::par.on(dev_ctx.stream()),
 #else
-      thrust::unique_by_key(thrust::cuda::par.on(dev_ctx.stream()),
+      thrust::unique_by_key(thrust::cuda::par_nosync.on(dev_ctx.stream()),
 #endif
                             indices_ptr,
                             indices_ptr + nnz,

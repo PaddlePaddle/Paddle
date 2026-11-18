@@ -131,7 +131,8 @@ UniqueFlattenedCUDATensor(const Context& dev_ctx,
 #ifdef PADDLE_WITH_CUDA
   memory_utils::ThrustAllocator<cudaStream_t> allocator(dev_ctx.GetPlace(),
                                                         dev_ctx.stream());
-  const auto& exec_policy = thrust::cuda::par(allocator).on(dev_ctx.stream());
+  const auto& exec_policy =
+      thrust::cuda::par_nosync(allocator).on(dev_ctx.stream());
 #else
   const auto& exec_policy = thrust::hip::par.on(dev_ctx.stream());
 #endif
@@ -170,8 +171,9 @@ UniqueFlattenedCUDATensor(const Context& dev_ctx,
 #ifdef PADDLE_WITH_HIP
     hipMemset(inv_loc_data_ptr, 0, sizeof(IndexT));
 #else
-    thrust::device_ptr<IndexT> inv_loc_data_dev(inv_loc_data_ptr);
-    inv_loc_data_dev[0] = 0;  // without device_ptr, segmentation fault
+    // Set inv_loc[0] = 0 on dev_ctx.stream() so it is ordered after the
+    // adjacent_difference above, which no longer synchronizes the stream.
+    thrust::fill(exec_policy, inv_loc_data_ptr, inv_loc_data_ptr + 1, 0);
 #endif
 
 #ifdef PADDLE_WITH_HIP
@@ -268,7 +270,8 @@ UniqueFlattenedCUDATensor(const Context& dev_ctx,
 #ifdef PADDLE_WITH_CUDA
   memory_utils::ThrustAllocator<cudaStream_t> allocator(dev_ctx.GetPlace(),
                                                         dev_ctx.stream());
-  const auto& exec_policy = thrust::cuda::par(allocator).on(dev_ctx.stream());
+  const auto& exec_policy =
+      thrust::cuda::par_nosync(allocator).on(dev_ctx.stream());
 #else
   const auto& exec_policy = thrust::hip::par.on(dev_ctx.stream());
 #endif
@@ -290,8 +293,8 @@ UniqueFlattenedCUDATensor(const Context& dev_ctx,
                                 indices_data + num_input,
                                 inv_loc_data_ptr,
                                 not_equal);
-    thrust::device_ptr<IndexT> inv_loc_data_dev(inv_loc_data_ptr);
-    inv_loc_data_dev[0] = 0;  // without device_ptr, segmentation fault
+    // Set inv_loc[0] = 0 on the same stream as the adjacent_difference above.
+    thrust::fill(exec_policy, inv_loc_data_ptr, inv_loc_data_ptr + 1, 0);
     thrust::inclusive_scan(exec_policy,
                            inv_loc_data_ptr,
                            inv_loc_data_ptr + num_input,
@@ -358,7 +361,8 @@ static void ComputeUniqueDims(const Context& dev_ctx,
 #ifdef PADDLE_WITH_CUDA
   memory_utils::ThrustAllocator<cudaStream_t> allocator(dev_ctx.GetPlace(),
                                                         dev_ctx.stream());
-  const auto& exec_policy = thrust::cuda::par(allocator).on(dev_ctx.stream());
+  const auto& exec_policy =
+      thrust::cuda::par_nosync(allocator).on(dev_ctx.stream());
 #else
   const auto& exec_policy = thrust::hip::par.on(dev_ctx.stream());
 #endif
@@ -373,8 +377,8 @@ static void ComputeUniqueDims(const Context& dev_ctx,
                               sorted_indices_data + row,
                               inv_loc_data_ptr,
                               not_equal);
-  thrust::device_ptr<IndexT> inv_loc_data_dev(inv_loc_data_ptr);
-  inv_loc_data_dev[0] = 0;
+  // Set inv_loc[0] = 0 on the same stream as the adjacent_difference above.
+  thrust::fill(exec_policy, inv_loc_data_ptr, inv_loc_data_ptr + 1, 0);
   thrust::inclusive_scan(
       exec_policy, inv_loc_data_ptr, inv_loc_data_ptr + row, inv_loc_data_ptr);
   thrust::scatter(exec_policy,
@@ -470,7 +474,8 @@ static void UniqueDimsCUDATensor(const Context& dev_ctx,
 #ifdef PADDLE_WITH_CUDA
   memory_utils::ThrustAllocator<cudaStream_t> allocator(dev_ctx.GetPlace(),
                                                         dev_ctx.stream());
-  const auto& exec_policy = thrust::cuda::par(allocator).on(dev_ctx.stream());
+  const auto& exec_policy =
+      thrust::cuda::par_nosync(allocator).on(dev_ctx.stream());
 #else
   const auto& exec_policy = thrust::hip::par.on(dev_ctx.stream());
 #endif

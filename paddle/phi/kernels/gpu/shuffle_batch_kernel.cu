@@ -80,7 +80,8 @@ void ShuffleBatchKernel(const Context& dev_ctx,
   // CacheAllocator allocator(dev_ctx.GetPlace());
   memory_utils::ThrustAllocator<cudaStream_t> allocator(dev_ctx.GetPlace(),
                                                         dev_ctx.stream());
-  const auto& exec_policy = thrust::cuda::par(allocator).on(dev_ctx.stream());
+  const auto& exec_policy =
+      thrust::cuda::par_nosync(allocator).on(dev_ctx.stream());
 #else
   const auto& exec_policy = thrust::hip::par.on(dev_ctx.stream());
 #endif

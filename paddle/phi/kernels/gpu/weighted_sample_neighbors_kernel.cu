@@ -379,7 +379,7 @@ void WeightedSampleNeighborsKernel(const Context& dev_ctx,
   int* sample_offset_ptr = reinterpret_cast<int*>(sample_offset->ptr());
 
 #ifdef PADDLE_WITH_CUDA
-  const auto& exec_policy = thrust::cuda::par.on(dev_ctx.stream());
+  const auto& exec_policy = thrust::cuda::par_nosync.on(dev_ctx.stream());
 #else
   const auto& exec_policy = thrust::hip::par.on(dev_ctx.stream());
 #endif

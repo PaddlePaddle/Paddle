@@ -30,7 +30,7 @@ void expand_modality_expert_id(const T* expert_id,
                                bool is_group_expert,
                                cudaStream_t stream) {
   thrust::transform(
-      thrust::cuda::par.on(stream),
+      thrust::cuda::par_nosync.on(stream),
       thrust::device_pointer_cast(expert_id),
       thrust::device_pointer_cast(expert_id) + seqlen * k,
       thrust::counting_iterator<T>(0),

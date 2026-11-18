@@ -217,8 +217,9 @@ void SoftmaxCooGradGPUKernel(const Context& dev_ctx,
   const auto& policy = thrust::hip::par.on(dev_ctx.stream());
   bool is_same_offset = thrust::equal(thrust::hip::par.on(dev_ctx.stream()),
 #else
-  const auto& policy = thrust::cuda::par.on(dev_ctx.stream());
-  bool is_same_offset = thrust::equal(thrust::cuda::par.on(dev_ctx.stream()),
+  const auto& policy = thrust::cuda::par_nosync.on(dev_ctx.stream());
+  bool is_same_offset =
+      thrust::equal(thrust::cuda::par_nosync.on(dev_ctx.stream()),
 #endif
                                       out_offsets_ptr,
                                       out_offsets_ptr + out_offsets.numel(),

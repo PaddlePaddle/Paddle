@@ -104,7 +104,7 @@ void MaxPoolCooGPUKernel(const GPUContext& dev_ctx,
 #ifdef PADDLE_WITH_HIP
   thrust::fill(thrust::hip::par.on(dev_ctx.stream()),
 #else
-  thrust::fill(thrust::cuda::par.on(dev_ctx.stream()),
+  thrust::fill(thrust::cuda::par_nosync.on(dev_ctx.stream()),
 #endif
                out_features_ptr,
                out_features_ptr + out->values().numel(),

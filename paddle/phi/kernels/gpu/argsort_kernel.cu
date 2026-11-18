@@ -306,7 +306,8 @@ void PerSort(const GPUContext& dev_ctx,
 #ifdef PADDLE_WITH_CUDA
   phi::memory_utils::ThrustAllocator<cudaStream_t> allocator(dev_ctx.GetPlace(),
                                                              dev_ctx.stream());
-  const auto& exec_policy = thrust::cuda::par(allocator).on(dev_ctx.stream());
+  const auto& exec_policy =
+      thrust::cuda::par_nosync(allocator).on(dev_ctx.stream());
 #else
   phi::memory_utils::ThrustAllocator<hipStream_t> allocator(dev_ctx.GetPlace(),
                                                             dev_ctx.stream());
@@ -376,7 +377,8 @@ void ArgsortKernel(const Context& dev_ctx,
 #ifdef PADDLE_WITH_CUDA
     phi::memory_utils::ThrustAllocator<cudaStream_t> allocator(
         dev_ctx.GetPlace(), dev_ctx.stream());
-    const auto& exec_policy = thrust::cuda::par(allocator).on(dev_ctx.stream());
+    const auto& exec_policy =
+        thrust::cuda::par_nosync(allocator).on(dev_ctx.stream());
 #else
     phi::memory_utils::ThrustAllocator<hipStream_t> allocator(
         dev_ctx.GetPlace(), dev_ctx.stream());

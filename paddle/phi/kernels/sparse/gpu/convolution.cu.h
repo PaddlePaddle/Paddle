@@ -87,7 +87,7 @@ inline IntT* SortedAndUniqueIndex(const Context& dev_ctx,
 #ifdef PADDLE_WITH_HIP
   thrust::sort_by_key(thrust::hip::par.on(dev_ctx.stream()),
 #else
-  thrust::sort_by_key(thrust::cuda::par.on(dev_ctx.stream()),
+  thrust::sort_by_key(thrust::cuda::par_nosync.on(dev_ctx.stream()),
 #endif
                       unique_key->data<IntT>(),
                       unique_key->data<IntT>() + len,
@@ -98,7 +98,7 @@ inline IntT* SortedAndUniqueIndex(const Context& dev_ctx,
 #ifdef PADDLE_WITH_HIP
       thrust::unique_by_key(thrust::hip::par.on(dev_ctx.stream()),
 #else
-      thrust::unique_by_key(thrust::cuda::par.on(dev_ctx.stream()),
+      thrust::unique_by_key(thrust::cuda::par_nosync.on(dev_ctx.stream()),
 #endif
                             unique_key->data<IntT>(),
                             unique_key->data<IntT>() + len,
@@ -347,7 +347,7 @@ int ProductRuleBook(const Context& dev_ctx,
 #ifdef PADDLE_WITH_HIP
   IntT* last = thrust::remove(thrust::hip::par.on(dev_ctx.stream()),
 #else
-  IntT* last = thrust::remove(thrust::cuda::par.on(dev_ctx.stream()),
+  IntT* last = thrust::remove(thrust::cuda::par_nosync.on(dev_ctx.stream()),
 #endif
                               rulebook_ptr,
                               rulebook_ptr + rulebook_rows * rulebook_cols,
@@ -387,7 +387,7 @@ int ProductRuleBook(const Context& dev_ctx,
 #ifdef PADDLE_WITH_HIP
     thrust::lower_bound(thrust::hip::par.on(dev_ctx.stream()),
 #else
-    thrust::lower_bound(thrust::cuda::par.on(dev_ctx.stream()),
+    thrust::lower_bound(thrust::cuda::par_nosync.on(dev_ctx.stream()),
 #endif
                         in_indices_ptr,
                         in_indices_ptr + in_indices.numel(),
@@ -414,7 +414,7 @@ int ProductRuleBook(const Context& dev_ctx,
 #ifdef PADDLE_WITH_HIP
     IntT* last = thrust::remove(thrust::hip::par.on(dev_ctx.stream()),
 #else
-    IntT* last = thrust::remove(thrust::cuda::par.on(dev_ctx.stream()),
+    IntT* last = thrust::remove(thrust::cuda::par_nosync.on(dev_ctx.stream()),
 #endif
                                 rulebook_ptr,
                                 rulebook_ptr + 3 * rulebook_len,
@@ -437,7 +437,7 @@ int ProductRuleBook(const Context& dev_ctx,
 #ifdef PADDLE_WITH_HIP
   thrust::exclusive_scan(thrust::hip::par.on(dev_ctx.stream()),
 #else
-  thrust::exclusive_scan(thrust::cuda::par.on(dev_ctx.stream()),
+  thrust::exclusive_scan(thrust::cuda::par_nosync.on(dev_ctx.stream()),
 #endif
                          counter_ptr,
                          counter_ptr + kernel_size,

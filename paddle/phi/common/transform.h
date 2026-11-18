@@ -161,7 +161,7 @@ struct Transform<GPUContext> {
                       CastToCUDATransformIterator(result),
                       op);
 #else
-    thrust::transform(thrust::cuda::par.on(dev_ctx.stream()),
+    thrust::transform(thrust::cuda::par_nosync.on(dev_ctx.stream()),
                       CastToCUDATransformIterator(first),
                       CastToCUDATransformIterator(last),
                       CastToCUDATransformIterator(result),
@@ -199,7 +199,7 @@ struct Transform<GPUContext> {
                       CastToCUDATransformIterator(result),
                       op);
 #else
-    thrust::transform(thrust::cuda::par.on(dev_ctx.stream()),
+    thrust::transform(thrust::cuda::par_nosync.on(dev_ctx.stream()),
                       CastToCUDATransformIterator(first1),
                       CastToCUDATransformIterator(last1),
                       CastToCUDATransformIterator(first2),

@@ -51,7 +51,7 @@ void apply_moe_dispatch_bwd(const T* y_grad,
   auto out_grad_ptr = thrust::device_pointer_cast(combine_weights_out_grad);
   auto in_grad_ptr = thrust::device_pointer_cast(combine_weights_in_grad);
   auto combine_weight_ptr = thrust::device_pointer_cast(combine_weights);
-  thrust::transform(thrust::cuda::par.on(stream),
+  thrust::transform(thrust::cuda::par_nosync.on(stream),
                     out_grad_ptr,
                     out_grad_ptr + num_rows * k,
                     combine_weight_ptr,
