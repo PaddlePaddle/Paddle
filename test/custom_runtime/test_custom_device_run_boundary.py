@@ -20,11 +20,12 @@
 # records an event on the default stream and makes each side stream wait on it
 # asynchronously, so side-stream ops run after all prior default-stream work.
 #
-# These tests build the custom_cpu plugin (via PLUGIN_URL / PLUGIN_TAG, as the
-# sibling custom_runtime tests do) so they actually exercise the custom-device
-# path on CI, and verify the compiled result matches an eager reference.
+# The custom_cpu plugin is built once (via PLUGIN_URL / PLUGIN_TAG, as the
+# sibling custom_runtime tests do) so these tests actually exercise the
+# custom-device path on CI; a build failure is surfaced, not silently skipped.
 
 import os
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -32,36 +33,33 @@ import unittest
 import numpy as np
 
 
-def _build_custom_cpu(temp_dir):
-    cmd = 'cd {} \
-        && git clone --depth 1 {} \
-        && cd PaddleCustomDevice \
-        && git fetch origin \
-        && git checkout {} -b dev \
-        && cd backends/custom_cpu \
-        && mkdir build && cd build && cmake .. -DPython_EXECUTABLE={} \
-           -DWITH_TESTING=OFF && make -j8'.format(
-        temp_dir,
-        os.getenv('PLUGIN_URL'),
-        os.getenv('PLUGIN_TAG'),
-        sys.executable,
-    )
-    os.system(cmd)
-    os.environ['CUSTOM_DEVICE_ROOT'] = os.path.join(
-        temp_dir, 'PaddleCustomDevice/backends/custom_cpu/build'
-    )
-
-
 class TestCustomDeviceRunBoundary(unittest.TestCase):
-    def setUp(self):
-        self.temp_dir = tempfile.TemporaryDirectory()
-        _build_custom_cpu(self.temp_dir.name)
+    @classmethod
+    def setUpClass(cls):
+        cls.temp_dir = tempfile.TemporaryDirectory()
+        cmd = (
+            f"cd {cls.temp_dir.name} "
+            f"&& git clone --depth 1 {os.getenv('PLUGIN_URL')} "
+            "&& cd PaddleCustomDevice && git fetch origin "
+            f"&& git checkout {os.getenv('PLUGIN_TAG')} -b dev "
+            "&& cd backends/custom_cpu && mkdir build && cd build "
+            f"&& cmake .. -DPython_EXECUTABLE={sys.executable} -DWITH_TESTING=OFF "
+            "&& make -j8"
+        )
+        # Fail loudly on clone/build errors instead of leaving CUSTOM_DEVICE_ROOT
+        # pointing at a missing dir (which would make the tests silently skip).
+        subprocess.run(cmd, shell=True, check=True)
+        os.environ["CUSTOM_DEVICE_ROOT"] = os.path.join(
+            cls.temp_dir.name, "PaddleCustomDevice/backends/custom_cpu/build"
+        )
 
-    def tearDown(self):
-        self.temp_dir.cleanup()
-        os.environ.pop('CUSTOM_DEVICE_ROOT', None)
+    @classmethod
+    def tearDownClass(cls):
+        cls.temp_dir.cleanup()
+        os.environ.pop("CUSTOM_DEVICE_ROOT", None)
 
-    def _net(self, paddle):
+    @staticmethod
+    def _net(paddle):
         class Net(paddle.nn.Layer):
             def __init__(self):
                 super().__init__()
@@ -74,7 +72,10 @@ class TestCustomDeviceRunBoundary(unittest.TestCase):
 
         return Net()
 
-    def _train(self, paddle, net, x, steps):
+    @staticmethod
+    def _train(net, x, steps):
+        import paddle
+
         opt = paddle.optimizer.SGD(
             learning_rate=0.01, parameters=net.parameters()
         )
@@ -90,17 +91,12 @@ class TestCustomDeviceRunBoundary(unittest.TestCase):
     def test_compiled_matches_eager(self):
         import paddle
 
-        if "custom_cpu" not in (
-            paddle.device.get_all_custom_device_type() or []
-        ):
-            self.skipTest("custom_cpu plugin not available")
-
         x_np = np.random.RandomState(0).randn(4, 64).astype("float32")
 
         paddle.set_device("custom_cpu")
         paddle.seed(2026)
         loss_eager = self._train(
-            paddle, self._net(paddle), paddle.to_tensor(x_np), 50
+            self._net(paddle), paddle.to_tensor(x_np), 50
         )
 
         paddle.seed(2026)
@@ -109,7 +105,7 @@ class TestCustomDeviceRunBoundary(unittest.TestCase):
             full_graph=True,
             input_spec=[paddle.static.InputSpec([4, 64], "float32")],
         )
-        loss_static = self._train(paddle, net, paddle.to_tensor(x_np), 50)
+        loss_static = self._train(net, paddle.to_tensor(x_np), 50)
 
         np.testing.assert_allclose(
             loss_static, loss_eager, rtol=1e-5, atol=1e-5
@@ -118,10 +114,6 @@ class TestCustomDeviceRunBoundary(unittest.TestCase):
     def test_cpu_readback_no_race(self):
         import paddle
 
-        if "custom_cpu" not in (
-            paddle.device.get_all_custom_device_type() or []
-        ):
-            self.skipTest("custom_cpu plugin not available")
         paddle.set_device("custom_cpu")
 
         class CpuNet(paddle.nn.Layer):
