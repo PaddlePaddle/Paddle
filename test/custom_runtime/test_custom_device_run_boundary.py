@@ -95,9 +95,7 @@ class TestCustomDeviceRunBoundary(unittest.TestCase):
 
         paddle.set_device("custom_cpu")
         paddle.seed(2026)
-        loss_eager = self._train(
-            self._net(paddle), paddle.to_tensor(x_np), 50
-        )
+        loss_eager = self._train(self._net(paddle), paddle.to_tensor(x_np), 50)
 
         paddle.seed(2026)
         net = paddle.jit.to_static(
