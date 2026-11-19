@@ -132,6 +132,47 @@ class TestCustomDeviceRunBoundary(unittest.TestCase):
             expect = np.maximum((base + i) * 2.0 - 1.0, 0.0) + 3.0
             np.testing.assert_allclose(out, expect, rtol=0, atol=0)
 
+    def test_side_stream_ordering(self):
+        # Put a compute op on a named execution stream so the Run contains a
+        # side-stream instruction; this exercises the Record/Wait branch of
+        # OrderCustomDeviceSideStreamsBeforeRun. The result must match the
+        # default-stream baseline.
+        import paddle
+
+        paddle.enable_static()
+        try:
+
+            def build():
+                main = paddle.static.Program()
+                startup = paddle.static.Program()
+                with paddle.static.program_guard(main, startup):
+                    x = paddle.static.data("x", [4, 8], "float32")
+                    y = paddle.nn.functional.relu(x)
+                    out = paddle.matmul(y, paddle.ones([8, 8], "float32")) + 1.0
+                return main, startup, out
+
+            feed = {"x": np.random.RandomState(0).randn(4, 8).astype("float32")}
+            exe = paddle.static.Executor("custom_cpu")
+
+            main, startup, out = build()
+            exe.run(startup)
+            base = exe.run(main, feed=feed, fetch_list=[out])[0]
+
+            main2, startup2, out2 = build()
+            placed = False
+            for op in main2.global_block().ops:
+                if "matmul" in op.name():
+                    op.set_execution_stream("s1")
+                    placed = True
+                    break
+            self.assertTrue(placed, "no matmul op to place on a side stream")
+            exe.run(startup2)
+            side = exe.run(main2, feed=feed, fetch_list=[out2])[0]
+
+            np.testing.assert_array_equal(side, base)
+        finally:
+            paddle.disable_static()
+
 
 if __name__ == "__main__":
     if os.name == "nt" or sys.platform.startswith("darwin"):
