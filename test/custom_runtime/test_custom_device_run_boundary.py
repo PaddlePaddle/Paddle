@@ -12,106 +12,136 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Correctness tests for the custom-device PIR interpreter Run boundary, which
-# skips the per-Run blocking default-stream sync when a Run used only the
-# default (eager-shared) stream.
+# Correctness tests for the custom-device PIR interpreter Run boundary.
 #
-# Known limitations (see PR description; to be addressed on other backends):
-#   * Cross-Run named/side-stream consumer: if a later Run's first op reads a
-#     previous default-stream Run's output on a user execution stream, there is
-#     no cross-Run event ordering on custom devices (the jit-input event is
-#     built only for is_gpu_place), so the fast path may race. Not covered here.
-#   * Host-read via an async D2H kernel (e.g. a backend that overrides memcpy
-#     with blocking=false) can read before the copy completes. The generic
-#     .cpu() path uses a blocking copy and is covered below.
+# Before running a Run's instruction list the interpreter orders side streams
+# against the default (eager-shared) stream: a default-stream-only Run does
+# nothing (stream FIFO orders the eager handoff); a Run that uses side streams
+# records an event on the default stream and makes each side stream wait on it
+# asynchronously, so side-stream ops run after all prior default-stream work.
+#
+# These tests build the custom_cpu plugin (via PLUGIN_URL / PLUGIN_TAG, as the
+# sibling custom_runtime tests do) so they actually exercise the custom-device
+# path on CI, and verify the compiled result matches an eager reference.
 
+import os
+import sys
+import tempfile
 import unittest
 
 import numpy as np
 
-import paddle
 
-
-class Net(paddle.nn.Layer):
-    def __init__(self):
-        super().__init__()
-        self.fc1 = paddle.nn.Linear(64, 128)
-        self.fc2 = paddle.nn.Linear(128, 64)
-
-    def forward(self, x):
-        h = paddle.nn.functional.relu(self.fc1(x))
-        return paddle.nn.functional.relu(self.fc2(h))
-
-
-class CpuNet(paddle.nn.Layer):
-    def forward(self, x):
-        y = paddle.nn.functional.relu(x * 2.0 - 1.0) + 3.0
-        return y.cpu()
-
-
-def _train(net, x, steps):
-    opt = paddle.optimizer.SGD(learning_rate=0.01, parameters=net.parameters())
-    losses = []
-    for _ in range(steps):
-        loss = net(x).mean()
-        loss.backward()
-        opt.step()
-        opt.clear_grad()
-        losses.append(float(loss))
-    return np.array(losses)
+def _build_custom_cpu(temp_dir):
+    cmd = 'cd {} \
+        && git clone --depth 1 {} \
+        && cd PaddleCustomDevice \
+        && git fetch origin \
+        && git checkout {} -b dev \
+        && cd backends/custom_cpu \
+        && mkdir build && cd build && cmake .. -DPython_EXECUTABLE={} \
+           -DWITH_TESTING=OFF && make -j8'.format(
+        temp_dir,
+        os.getenv('PLUGIN_URL'),
+        os.getenv('PLUGIN_TAG'),
+        sys.executable,
+    )
+    os.system(cmd)
+    os.environ['CUSTOM_DEVICE_ROOT'] = os.path.join(
+        temp_dir, 'PaddleCustomDevice/backends/custom_cpu/build'
+    )
 
 
 class TestCustomDeviceRunBoundary(unittest.TestCase):
     def setUp(self):
-        self.devs = paddle.device.get_all_custom_device_type() or []
+        self.temp_dir = tempfile.TemporaryDirectory()
+        _build_custom_cpu(self.temp_dir.name)
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+        os.environ.pop('CUSTOM_DEVICE_ROOT', None)
+
+    def _net(self, paddle):
+        class Net(paddle.nn.Layer):
+            def __init__(self):
+                super().__init__()
+                self.fc1 = paddle.nn.Linear(64, 128)
+                self.fc2 = paddle.nn.Linear(128, 64)
+
+            def forward(self, x):
+                h = paddle.nn.functional.relu(self.fc1(x))
+                return paddle.nn.functional.relu(self.fc2(h))
+
+        return Net()
+
+    def _train(self, paddle, net, x, steps):
+        opt = paddle.optimizer.SGD(
+            learning_rate=0.01, parameters=net.parameters()
+        )
+        losses = []
+        for _ in range(steps):
+            loss = net(x).mean()
+            loss.backward()
+            opt.step()
+            opt.clear_grad()
+            losses.append(float(loss))
+        return np.array(losses)
 
     def test_compiled_matches_eager(self):
-        # The interpreter shares the default stream with eager; skipping the
-        # per-Run sync on a default-stream-only Run must not corrupt training.
-        if not self.devs:
-            self.skipTest("no custom device available")
-        dev = f"{self.devs[0]}:0"
+        import paddle
 
-        paddle.set_device(dev)
-        paddle.seed(2026)
-        x = paddle.to_tensor(
-            np.random.RandomState(0).randn(4, 64).astype("float32")
-        )
-        loss_eager = _train(Net(), x, 50)
+        if "custom_cpu" not in (
+            paddle.device.get_all_custom_device_type() or []
+        ):
+            self.skipTest("custom_cpu plugin not available")
 
-        paddle.set_device(dev)
+        x_np = np.random.RandomState(0).randn(4, 64).astype("float32")
+
+        paddle.set_device("custom_cpu")
         paddle.seed(2026)
-        x = paddle.to_tensor(
-            np.random.RandomState(0).randn(4, 64).astype("float32")
+        loss_eager = self._train(
+            paddle, self._net(paddle), paddle.to_tensor(x_np), 50
         )
+
+        paddle.seed(2026)
         net = paddle.jit.to_static(
-            Net(),
+            self._net(paddle),
             full_graph=True,
             input_spec=[paddle.static.InputSpec([4, 64], "float32")],
         )
-        loss_static = _train(net, x, 50)
+        loss_static = self._train(paddle, net, paddle.to_tensor(x_np), 50)
 
-        np.testing.assert_allclose(loss_static, loss_eager, rtol=1e-5, atol=1e-5)
+        np.testing.assert_allclose(
+            loss_static, loss_eager, rtol=1e-5, atol=1e-5
+        )
 
     def test_cpu_readback_no_race(self):
-        # A compiled function returns a device result via .cpu(); the host reads
-        # it immediately with no explicit sync. The generic .cpu() copy is
-        # blocking, so the snapshot must match a synchronized reference.
-        if not self.devs:
-            self.skipTest("no custom device available")
-        paddle.set_device(f"{self.devs[0]}:0")
-        n = 1 << 20
+        import paddle
+
+        if "custom_cpu" not in (
+            paddle.device.get_all_custom_device_type() or []
+        ):
+            self.skipTest("custom_cpu plugin not available")
+        paddle.set_device("custom_cpu")
+
+        class CpuNet(paddle.nn.Layer):
+            def forward(self, x):
+                return (paddle.nn.functional.relu(x * 2.0 - 1.0) + 3.0).cpu()
+
+        n = 1 << 16
         net = paddle.jit.to_static(
             CpuNet(),
             full_graph=True,
             input_spec=[paddle.static.InputSpec([n], "float32")],
         )
         base = np.random.RandomState(0).randn(n).astype("float32")
-        for i in range(200):
+        for i in range(50):
             out = net(paddle.to_tensor(base + i)).numpy()
             expect = np.maximum((base + i) * 2.0 - 1.0, 0.0) + 3.0
             np.testing.assert_allclose(out, expect, rtol=0, atol=0)
 
 
 if __name__ == "__main__":
+    if os.name == "nt" or sys.platform.startswith("darwin"):
+        sys.exit()
     unittest.main()

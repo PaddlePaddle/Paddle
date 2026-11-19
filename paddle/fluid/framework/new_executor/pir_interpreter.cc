@@ -775,6 +775,12 @@ void PirInterpreter::AnalyzeForceSyncOps() {
 void PirInterpreter::BuildInstruction() {
   VLOG(6) << "Build Instructions for pir ... ";
   vec_instruction_base_.clear();
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  // The side-stream cache below is derived from vec_instruction_base_; drop it
+  // so it is recomputed for the rebuilt instruction list.
+  custom_side_ctxs_inited_ = false;
+  custom_side_ctxs_.clear();
+#endif
   size_t op_idx = 0;
   for (auto& op : *ir_block_) {
     VLOG(6) << "Build Instruction for op: " << op_idx;
@@ -1696,8 +1702,7 @@ void PirInterpreter::OrderCustomDeviceSideStreamsBeforeRun() {
   }
   custom_run_boundary_event_->Record(default_ctx);
   for (const auto* ctx : custom_side_ctxs_) {
-    custom_run_boundary_event_->Wait(platform::kCUSTOM_DEVICE,
-                                     const_cast<phi::DeviceContext*>(ctx));
+    custom_run_boundary_event_->Wait(platform::kCUSTOM_DEVICE, ctx);
   }
 }
 #endif

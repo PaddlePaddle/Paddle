@@ -283,7 +283,8 @@ class PirInterpreter : public InterpreterBaseImpl {
 
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   // Distinct non-default (side) stream contexts used by this program, scanned
-  // once; and a reusable event used to order them against the default stream.
+  // once and reset by BuildInstruction() when the instruction list is rebuilt;
+  // plus a reusable event used to order them against the default stream.
   bool custom_side_ctxs_inited_{false};
   std::vector<const phi::DeviceContext*> custom_side_ctxs_;
   std::shared_ptr<platform::DeviceEvent> custom_run_boundary_event_;
