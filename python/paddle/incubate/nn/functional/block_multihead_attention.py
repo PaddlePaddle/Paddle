@@ -16,6 +16,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Literal, TypeAlias
 
+import paddle
 from paddle import _C_ops
 from paddle.framework import (
     LayerHelper,
@@ -26,6 +27,137 @@ if TYPE_CHECKING:
     from paddle import Tensor
 
     _QuantRoundType: TypeAlias = Literal[0, 1]
+
+
+def _round_ties_to_even(x):
+    lower = paddle.floor(x)
+    upper = paddle.ceil(x)
+    lower_diff = x - lower
+    upper_diff = upper - x
+    nearest = paddle.where(lower_diff < upper_diff, lower, upper)
+    lower_is_even = lower * 0.5 == paddle.floor(lower * 0.5)
+    return paddle.where(
+        lower_diff == upper_diff,
+        paddle.where(lower_is_even, lower, upper),
+        nearest,
+    )
+
+
+def _block_multihead_attention_xpu_fallback(
+    qkv,
+    key_cache,
+    value_cache,
+    pre_key_cache,
+    pre_value_cache,
+    block_tables,
+    qkv_out_scale,
+    qkv_bias,
+    mask,
+    tgt_mask,
+    max_seq_len,
+    out_scale,
+    quant_round_type,
+    quant_max_bound,
+    quant_min_bound,
+    compute_dtype,
+):
+    qkv_compute = qkv
+    if qkv_out_scale is not None:
+        qkv_compute = qkv.astype("float32") * qkv_out_scale.reshape([1, -1])
+        qkv_compute = qkv_compute.astype(
+            "float16" if compute_dtype in ("default", "fp16") else compute_dtype
+        )
+    if qkv_bias is not None:
+        qkv_compute = qkv_compute + qkv_bias.reshape([1, -1])
+
+    token_num = qkv_compute.shape[0]
+    kv_num_head = key_cache.shape[1]
+    dim_head = key_cache.shape[3]
+    total_num_head = qkv_compute.shape[1] // dim_head
+    q_num_head = total_num_head - 2 * kv_num_head
+    batch_size = token_num // max_seq_len
+
+    qkv_4d = qkv_compute.reshape(
+        [batch_size, max_seq_len, total_num_head, dim_head]
+    )
+    q = qkv_4d[:, :, :q_num_head, :].transpose([0, 2, 1, 3])
+    k = qkv_4d[:, :, q_num_head : q_num_head + kv_num_head, :].transpose(
+        [0, 2, 1, 3]
+    )
+    v = qkv_4d[:, :, q_num_head + kv_num_head :, :].transpose([0, 2, 1, 3])
+    attn_mask = tgt_mask if tgt_mask is not None else mask
+    if pre_key_cache is not None and pre_value_cache is not None:
+        k = paddle.concat([pre_key_cache.astype(k.dtype), k], axis=2)
+        v = paddle.concat([pre_value_cache.astype(v.dtype), v], axis=2)
+    elif attn_mask is not None and attn_mask.shape[-1] > k.shape[2]:
+        cache_len = attn_mask.shape[-1] - k.shape[2]
+        cache_blocks = block_tables[
+            :, : (cache_len + key_cache.shape[2] - 1) // key_cache.shape[2]
+        ]
+        gathered_k = paddle.gather(
+            key_cache, cache_blocks.reshape([-1]), axis=0
+        )
+        gathered_v = paddle.gather(
+            value_cache, cache_blocks.reshape([-1]), axis=0
+        )
+        gathered_k = gathered_k.reshape(
+            [batch_size, -1, kv_num_head, key_cache.shape[2], dim_head]
+        )
+        gathered_v = gathered_v.reshape(
+            [batch_size, -1, kv_num_head, value_cache.shape[2], dim_head]
+        )
+        gathered_k = gathered_k.transpose([0, 2, 1, 3, 4]).reshape(
+            [batch_size, kv_num_head, -1, dim_head]
+        )[:, :, :cache_len, :]
+        gathered_v = gathered_v.transpose([0, 2, 1, 3, 4]).reshape(
+            [batch_size, kv_num_head, -1, dim_head]
+        )[:, :, :cache_len, :]
+        k = paddle.concat([gathered_k.astype(k.dtype), k], axis=2)
+        v = paddle.concat([gathered_v.astype(v.dtype), v], axis=2)
+    if q_num_head != kv_num_head:
+        repeat_times = q_num_head // kv_num_head
+        k = k.repeat_interleave(repeat_times, axis=1)
+        v = v.repeat_interleave(repeat_times, axis=1)
+
+    scores = paddle.matmul(
+        q.astype("float32"), k.astype("float32"), transpose_y=True
+    )
+    scores = scores * (dim_head**-0.5)
+    if attn_mask is not None:
+        attn_mask = attn_mask.astype("float32")
+        if attn_mask.shape[-1] != scores.shape[-1]:
+            attn_mask = attn_mask[..., -scores.shape[-1] :]
+        if attn_mask.shape[-2] != scores.shape[-2]:
+            attn_mask = attn_mask[..., -scores.shape[-2] :, :]
+        scores = scores + attn_mask
+    else:
+        key_len = k.shape[2]
+        causal_mask = paddle.triu(
+            paddle.ones([max_seq_len, key_len], dtype="float32"),
+            key_len - max_seq_len + 1,
+        )
+        scores = (
+            scores
+            + causal_mask.reshape([1, 1, max_seq_len, key_len]) * -10000.0
+        )
+    probs = paddle.nn.functional.softmax(scores, axis=-1)
+    out = paddle.matmul(probs, v.astype("float32"))
+    out = out.transpose([0, 2, 1, 3]).reshape(
+        [token_num, q_num_head * dim_head]
+    )
+    out = out.astype(
+        "float16" if compute_dtype in ("default", "fp16") else compute_dtype
+    )
+    if out_scale > 0:
+        quant = out.astype("float32") * (quant_max_bound * out_scale)
+        if quant_round_type == 0:
+            quant = _round_ties_to_even(quant)
+        else:
+            quant = paddle.round(quant)
+        out = paddle.clip(quant, quant_min_bound, quant_max_bound).astype(
+            "int8"
+        )
+    return out, qkv, key_cache, value_cache
 
 
 def block_multihead_attention(
@@ -316,6 +448,91 @@ def block_multihead_attention(
     """
 
     if in_dynamic_or_pir_mode():
+        is_xpu_tensor = (
+            paddle.is_compiled_with_xpu()
+            and hasattr(qkv, "place")
+            and qkv.place.is_xpu_place()
+        )
+        if is_xpu_tensor:
+            kv_num_head = key_cache.shape[1]
+            dim_head = key_cache.shape[3]
+            total_num_head = qkv.shape[-1] // dim_head
+            q_num_head = total_num_head - 2 * kv_num_head
+            use_fallback = (
+                qkv.dtype == paddle.int32
+                or key_cache.dtype == paddle.uint8
+                or pre_key_cache is not None
+                or use_dynamic_cachekv_quant
+                or out_scale > 0
+                or qkv_bias is not None
+                or q_num_head != kv_num_head
+            )
+            if use_fallback:
+                return _block_multihead_attention_xpu_fallback(
+                    qkv,
+                    key_cache,
+                    value_cache,
+                    pre_key_cache,
+                    pre_value_cache,
+                    block_tables,
+                    qkv_out_scale,
+                    qkv_bias,
+                    mask,
+                    tgt_mask,
+                    max_seq_len,
+                    out_scale,
+                    quant_round_type,
+                    quant_max_bound,
+                    quant_min_bound,
+                    compute_dtype,
+                )
+            max_ptr_size = 12
+            cache_k_per_batch_maxs = paddle.zeros(
+                [cum_offsets.shape[0], max_ptr_size], dtype="float32"
+            )
+            cache_v_per_batch_maxs = paddle.zeros(
+                [cum_offsets.shape[0], max_ptr_size], dtype="float32"
+            )
+            return block_multihead_attention_xpu(
+                qkv,
+                key_cache,
+                value_cache,
+                seq_lens_encoder,
+                seq_lens_decoder,
+                seq_lens_this_time,
+                padding_offsets,
+                cum_offsets,
+                cu_seqlens_q,
+                cu_seqlens_k,
+                block_tables,
+                cache_k_per_batch_maxs,
+                cache_v_per_batch_maxs,
+                pre_key_cache,
+                pre_value_cache,
+                cache_k_quant_scales,
+                cache_v_quant_scales,
+                cache_k_dequant_scales,
+                cache_v_dequant_scales,
+                qkv_out_scale,
+                qkv_bias,
+                out_shift,
+                out_smooth,
+                max_enc_len_this_time,
+                max_dec_len_this_time,
+                rope_emb,
+                mask,
+                tgt_mask,
+                max_seq_len,
+                block_size,
+                use_neox_style,
+                use_dynamic_cachekv_quant,
+                quant_round_type,
+                quant_max_bound,
+                quant_min_bound,
+                out_scale,
+                compute_dtype,
+                rope_theta,
+            )
         return _C_ops.block_multihead_attention_(
             qkv,
             key_cache,
@@ -468,7 +685,7 @@ def block_multihead_attention_xpu(
     rope_theta: float = 10000.0,
 ) -> tuple[Tensor, Tensor, Tensor, Tensor]:
     if in_dynamic_or_pir_mode():
-        return _C_ops.block_multihead_attention_xpu(
+        return _C_ops.block_multihead_attention_xpu_(
             qkv,
             key_cache,
             value_cache,
