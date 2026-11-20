@@ -27,9 +27,13 @@ foreach(TEST_OP ${TEST_OPS})
 endforeach()
 
 set(GPU_ONLY_DISTRIBUTED_TESTS
-    test_sharded_state_dict test_strategy_conversion
-    test_load_state_dict_transpose test_model_full_param test_load_transform
-    test_load_transform_dist)
+    test_sharded_state_dict
+    test_strategy_conversion
+    test_load_state_dict_transpose
+    test_model_full_param
+    test_load_transform
+    test_load_transform_dist
+    test_load_state_dict_reshape)
 
 if(TEST test_sharded_state_dict)
   set_tests_properties(test_sharded_state_dict PROPERTIES TIMEOUT 480)
@@ -41,6 +45,10 @@ endif()
 
 if(TEST test_load_transform_dist)
   set_tests_properties(test_load_transform_dist PROPERTIES TIMEOUT 240)
+endif()
+
+if(TEST test_load_state_dict_reshape)
+  set_tests_properties(test_load_state_dict_reshape PROPERTIES TIMEOUT 240)
 endif()
 
 if(NOT (WITH_DISTRIBUTE AND WITH_GPU))
