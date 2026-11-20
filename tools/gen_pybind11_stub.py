@@ -303,21 +303,32 @@ def gen_stub(
         invalid_expr_as_ellipses=not args.print_invalid_expressions_as_is
     )
 
-    out_dir, sub_dir = to_output_and_subdir(
-        output_dir=args.output_dir,
-        module_name=args.module_name,
-        root_suffix=args.root_suffix,
-    )
+    if 'module_names' in inspect.signature(run).parameters:
+        run(
+            parser,
+            printer,
+            [args.module_name],
+            args.output_dir,
+            root_suffix=args.root_suffix,
+            dry_run=args.dry_run,
+            writer=Writer(stub_ext=args.stub_extension),
+        )
+    else:
+        out_dir, sub_dir = to_output_and_subdir(
+            output_dir=args.output_dir,
+            module_name=args.module_name,
+            root_suffix=args.root_suffix,
+        )
 
-    run(
-        parser,
-        printer,
-        args.module_name,
-        out_dir,
-        sub_dir=sub_dir,
-        dry_run=args.dry_run,
-        writer=Writer(stub_ext=args.stub_extension),
-    )
+        run(
+            parser,
+            printer,
+            args.module_name,
+            out_dir,
+            sub_dir=sub_dir,
+            dry_run=args.dry_run,
+            writer=Writer(stub_ext=args.stub_extension),
+        )
 
 
 def replace_bad_attr(filename: str):
