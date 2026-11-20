@@ -17,6 +17,49 @@ if(WITH_DISTRIBUTE
   set(DEEPEP_LIB deep_ep_xpu)
 endif()
 
+# gin_overlap: the sharding-stage1 gradient communication built on NCCL GIN
+# one-sided puts. Gated on the two things it cannot do without:
+#   * a GPU arch it is supported on. It only pays off next to DeepEP, so it
+#     targets the same GPUs: 9.0 / 10.0, plus 10.3 which runs the sm_100
+#     cubin. The flag is computed from NVCC_ARCH_BIN the way
+#     paddle/phi/kernels/CMakeLists.txt computes has_arch_ge80.
+#   * NCCL 2.30.7 or newer, with nccl_device.h next to nccl.h: the device
+#     (LSA/GIN) API the kernels are written against. Below that the feature is
+#     refused rather than silently degraded, same floor as the zero-SM paths
+#     (see phi/backends/dynload/nccl.h).
+#   * CUDA 12.8 or newer: the intra-node copies go through the batch memcpy
+#     API (cudaMemcpyBatchAsync), which appeared in that toolkit.
+# The result is cached so that paddle/fluid/pybind/CMakeLists.txt links the
+# library and defines PADDLE_WITH_GIN_OVERLAP on exactly the builds that have
+# the target, without restating the condition.
+set(has_arch_ge90 FALSE)
+foreach(arch ${NVCC_ARCH_BIN})
+  if(${arch} GREATER_EQUAL 90)
+    set(has_arch_ge90 TRUE)
+    break()
+  endif()
+endforeach()
+
+set(gin_overlap_supported FALSE)
+if(WITH_DISTRIBUTE
+   AND WITH_GPU
+   AND WITH_NCCL
+   AND has_arch_ge90
+   AND (CUDA_VERSION VERSION_GREATER_EQUAL 12.8)
+   AND DEFINED NCCL_VERSION)
+  if(NCCL_VERSION GREATER_EQUAL 23007 AND EXISTS
+                                          "${NCCL_INCLUDE_DIR}/nccl_device.h")
+    set(gin_overlap_supported TRUE)
+  endif()
+endif()
+set(WITH_GIN_OVERLAP
+    ${gin_overlap_supported}
+    CACHE INTERNAL "gin_overlap gradient communication is built")
+if(WITH_GIN_OVERLAP)
+  message(STATUS "Enable gin_overlap sharding-stage1 gradient communication.")
+  add_subdirectory(gin_overlap)
+endif()
+
 cc_library(
   process_group
   SRCS process_group.cc
