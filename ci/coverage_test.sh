@@ -88,6 +88,39 @@ echo "::endgroup::"
 cp ${PADDLE_ROOT}/build/test/legacy_test/testsuite.py ${PADDLE_ROOT}/build/python
 cp -r ${PADDLE_ROOT}/build/test/white_list ${PADDLE_ROOT}/build/python
 
+# Shard the unit-test list across machines. When NUM_SHARDS > 1, build/ut_list
+# is written with only this shard's tests; group_case_for_parallel.py reads
+# build/ut_list with the highest priority, so all grouping and the parallel
+# batches below only contain this shard's subset. The split is a stable md5
+# hash on the test name: disjoint, exhaustive, and order-independent.
+NUM_SHARDS=${NUM_SHARDS:-1}
+SHARD_INDEX=${SHARD_INDEX:-0}
+if [ "${NUM_SHARDS}" -gt 1 ]; then
+    echo "::group::Generate shard ${SHARD_INDEX}/${NUM_SHARDS} ut_list"
+    ctest -N | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d' > all_ut_list
+    python - "${SHARD_INDEX}" "${NUM_SHARDS}" <<'PYEOF' || exit 1
+import hashlib
+import sys
+
+shard_index = int(sys.argv[1])
+num_shards = int(sys.argv[2])
+with open('all_ut_list') as f:
+    tests = [line.strip() for line in f if line.strip()]
+shard_tests = [
+    t
+    for t in tests
+    if int(hashlib.md5(t.encode('utf-8')).hexdigest(), 16) % num_shards
+    == shard_index
+]
+if not shard_tests:
+    sys.exit(f"shard {shard_index} has 0 tests out of {len(tests)}")
+with open('ut_list', 'w') as f:
+    f.write('\n'.join(shard_tests) + '\n')
+print(f"shard {shard_index}/{num_shards}: {len(shard_tests)}/{len(tests)} tests")
+PYEOF
+    echo "::endgroup::"
+fi
+
 ut_total_startTime_s=`date +%s`
 
 parallel_test_base_gpu_test
