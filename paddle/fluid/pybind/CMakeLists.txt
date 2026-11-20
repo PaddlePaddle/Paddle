@@ -168,10 +168,10 @@ if(WITH_DISTRIBUTE)
       set(PYBIND_DEPS ${PYBIND_DEPS} nvshmem)
     endif()
   endif()
-  # gin_overlap: WITH_GIN_OVERLAP is set by
-  # paddle/fluid/distributed/collective/CMakeLists.txt (added before this
-  # directory), so the gate lives in one place. gin_overlap_api.cc is always
-  # compiled; without the definition it registers nothing.
+  # gin_overlap: WITH_GIN_OVERLAP is set in
+  # paddle/fluid/distributed/collective/CMakeLists.txt, which must be processed
+  # before this directory. gin_overlap_api.cc is always compiled; without
+  # PADDLE_WITH_GIN_OVERLAP it registers nothing.
   set(PYBIND_SRCS ${PYBIND_SRCS} gin_overlap_api.cc)
   if(WITH_GIN_OVERLAP)
     set(PYBIND_DEPS ${PYBIND_DEPS} gin_overlap)

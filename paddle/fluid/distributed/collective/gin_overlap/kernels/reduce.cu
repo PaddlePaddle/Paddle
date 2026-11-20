@@ -12,36 +12,29 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// reduce.cu —— 三个求和
-// kernel：机内求和（把同节点其余卡推来的那几行和本卡的加起来）、dense 最终求和
-//   （把各节点的部分和加起来）、专家最终求和（把专家组各 peer
-//   的那一份加起来）。
+// reduce.cu —— 三个求和 kernel：
+//   - 机内求和：同节点其余卡推来的行加上本卡的块。
+//   - dense 分片求和：各节点的部分和相加，再乘 scale。
+//   - 专家分片求和：专家组各卡的那一份相加，再乘 scale。
 //
-// 数值上必须一字不差地保持：求和顺序（都按 ring 序，从本卡序号 +1
-// 开始绕一圈）、以及每个元素先 __fmul_rn 再
-//   __fadd_rn 的次序。改动其中任何一项，各卡算出的梯度就不再逐位相同，
-//   多机训练会慢慢发散（这套代码是按「和 reduce_scatter 逐位一致」验收的）。
-//   block / thread 数不在这张清单里：它只影响每个 block 处理哪些下标，每个
-//   元素的来源顺序和运算次序都不变 —— 放行层在同一次运行里就按窗口换求和
-//   kernel 的 block 数（scheduler 的 REDUCE_BLOCKS / FINALIZE_BLOCKS），而
-//   逐位一致的验收一直是过的。
+// 约束
+//   - 求和顺序不能改：都按 ring 序，从本卡序号 +1 开始绕一圈。
+//   - 每个元素必须先 __fmul_rn 再 __fadd_rn，次序不能改。
+//   - 改了上面任何一条，结果就不再和 reduce_scatter 逐位一致。
+//   - block / thread 数不影响结果：它只决定每个线程处理哪些下标，不改变每个
+//     元素的求和顺序。
 #include "paddle/fluid/distributed/collective/gin_overlap/kernels/kernels.h"
 
 namespace gin_overlap {
 namespace {
 
-// 下面两个最终求和 kernel 的 float4 主体：元素数是 4 的倍数、指针又 16B
-// 对齐时，每个线程一次处理 4 个元素，
-//   而且每 8 个来源一批：先把这一批的 load 全部发出（先选指针再
-//   load），再按原来的来源顺序依次
-//   __fmul_rn →
-//   __fadd_rn。所以每个元素的结果和逐元素写法逐位相同，只是同一个线程能有多条
-//   load 同时在路上。 为什么要这样：原来每个线程每轮只有 1 个 4B
-//   访存在途，block 少（32 / 64 个）时实测带宽只有 ~200–400 GB/s。
-//   不满足条件时走下面的标量循环（结果一样）。
-// fma_rn4 = 一次 4 个 float（float4）的乘加，_rn 是
-// round-to-nearest-even：逐元素 __fmul_rn 再 __fadd_rn，
-//   次序和标量路径里的 __fadd_rn(acc, __fmul_rn(value, scale)) 完全一样。
+// 两个分片求和 kernel 都有两条路径，结果逐位相同：
+//   - float4 路径（元素数是 4 的倍数且两个指针都 16 字节对齐）：每个线程一次
+//     处理 4 个元素；来源每 8 个一批，先发出这一批的全部 load，再按来源顺序
+//     依次乘加。
+//   - 标量路径：其余情况。
+// fma_rn4：对 float4 的 4 个分量各做一次 __fadd_rn(acc, __fmul_rn(value,
+// scale))，和标量路径的运算次序相同。
 __device__ __forceinline__ void fma_rn4(float4& acc,
                                         const float4& value,
                                         float scale) {
@@ -50,8 +43,7 @@ __device__ __forceinline__ void fma_rn4(float4& acc,
   acc.z = __fadd_rn(acc.z, __fmul_rn(value.z, scale));
   acc.w = __fadd_rn(acc.w, __fmul_rn(value.w, scale));
 }
-// 能不能走上面 float4 的那条路：元素数是 4 的倍数、而且两个指针都 16B
-// 对齐。两条路的结果逐位相同，只差快慢。
+// 能否走 float4 路径：元素数是 4 的倍数，且两个指针都 16 字节对齐
 __device__ __forceinline__ bool can_use_float4(const void* dst,
                                                const void* src,
                                                size_t numel) {
@@ -60,16 +52,13 @@ __device__ __forceinline__ bool can_use_float4(const void* dst,
                               15) == 0;
 }
 
-// 机内求和（接收池）：dense 机内段里一个桶 =
-// intra_recv[ranks_per_node-1][num_nodes][numel]，
-//   只放另外 ranks_per_node-1 张卡推来的行：发送卡 l 在接收卡 rank_in_node
-//   上占第 (l < rank_in_node ? l : l-1) 行。 grad 本列块 node = Σ_l（l ==
-//   rank_in_node ? grad 本列块 node : intra_recv[行(l)][node]）， ring 序从
-//   rank_in_node+1 起。float4。 行号映射写成无分支的 l - (l >
-//   rank_in_node)，并且每 8 个来源一批：先把这一批的 load 全部发出（先选指针再
-//   load）， 再按原顺序依次相加，所以结果和「每次 load
-//   之间隔着一个分支」的写法逐位相同，但同一个线程能有多条 LDG.128
-//   同时在路上（带分支的写法实测慢约 1.6 倍，看 SASS 得到的）。
+// 机内求和。dense 机内段里一个桶的布局是
+// intra_recv[ranks_per_node-1][num_nodes][numel4]，只放同节点其余卡推来的行：
+// 发送卡 l 在本卡上占第 (l < rank_in_node ? l : l-1) 行。
+//   grad 本列第 node 块 = Σ_l（l == rank_in_node ? grad 本列第 node 块
+//                              : intra_recv[行(l)][node]）
+// l 按 ring 序从 rank_in_node+1 起。来源每 8 个一批，先发出这一批的全部 load，
+// 再按来源顺序依次相加。
 __global__ void k_reduce_intra_node(float4* grad,
                                     const float4* __restrict__ intra_recv,
                                     size_t numel4,
@@ -113,8 +102,8 @@ __global__ void k_reduce_intra_node(float4* grad,
   }
 }
 
-// dense 最终求和：shard（= 本节点部分和，原地）= Σ_节点（本节点 shard :
-// inter_recv[node]）× scale，ring 序从 node_index+1 起
+// dense 分片求和（原地）：shard = Σ_node（node == node_index ? shard
+// : inter_recv[node]）× scale，node 按 ring 序从 node_index+1 起
 __global__ void k_reduce_dense_shard(float* shard,
                                      const float* __restrict__ inter_recv,
                                      size_t numel,
@@ -163,8 +152,8 @@ __global__ void k_reduce_dense_shard(float* shard,
   }
 }
 
-// 专家最终求和：本 rank 块 = Σ_k（k == expert_group_rank ? 本块 : recv[k]）×
-// scale，ring 序
+// 专家分片求和（原地）：shard = Σ_k（k == expert_group_rank ? shard
+// : recv[k]）× scale，k 按 ring 序从 expert_group_rank+1 起
 __global__ void k_reduce_moe_shard(float* shard,
                                    const float* __restrict__ recv,
                                    size_t numel,
@@ -254,8 +243,7 @@ int launch_reduce_moe_shard(float* shard,
   return (int)cudaGetLastError();
 }
 
-// 预加载（CUDA_MODULE_LOADING=LAZY 下首次 launch 才加载模块，首次 launch
-// 和别的流上的 memop 等待可能互相等死）
+// 预加载本文件的 kernel 模块（原因见 kernels.h 文件头）
 int preload_reduce_kernels() {
   cudaFuncAttributes fa;
   cudaError_t err;

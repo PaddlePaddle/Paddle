@@ -12,9 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// scale.cu —— 把 send window 里一段连续的 float
-// 整体乘一个系数（梯度系数：trainer 算好、引擎负责乘）。
-// 在计算流上做，所以不占侧流、也不和通信抢。
+// scale.cu —— 把 send window 里一段连续的 float 逐个乘 scale（__fmul_rn）。
+// 由 GradCommEngine::scale_range 在计算流上发射。
 #include "paddle/fluid/distributed/collective/gin_overlap/kernels/kernels.h"
 
 namespace gin_overlap {

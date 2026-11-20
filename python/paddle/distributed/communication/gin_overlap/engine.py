@@ -12,26 +12,66 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""gin_overlap 的通信原语：NCCL GIN 单边通信代替 sharding stage1 梯度的 reduce_scatter。
+"""gin_overlap 的通信原语：用 NCCL GIN 单边写分阶段完成 sharding stage1 每个梯度桶的 reduce_scatter。
 
-  专家桶（moe_sharding 组 expert_group_size 个 rank）：反向里桶满 → 在 DeepEP 不跑的窗口里 GIN put 给其余 peer（组内序号）
-  dense 桶（sharding 组 = num_nodes 节点 × ranks_per_node 卡，要求组内 rank 升序、每节点成员数一致）：
-      机内 CE 推列（窗口 A/B） → 机内求和（pre 窗口） → 同卡号机间 put（窗口 A/B） → 本卡分片最终求和（pre 窗口）
+这个文件负责：window / 接收池 / host window 的布局，两个通信组的建立和校验，交给 C++ 侧放行层的每桶参数表，
+2D 桶 gather 的表，以及初始化日志。这里是 Python 侧的完整说明，其它文件只引用这里。
+主要接口：device_engine()（C++ 引擎对象）、GinOverlapPrimitive（调用方继承它）、check_cuda、log。
+什么时候推进哪个阶段（放行时机）不在这一层，由调用方决定。
 
-两个通信组各一套资源：comm（都从 Paddle 已有的 ProcessGroup 取，
-paddle/fluid/distributed/collective/gin_overlap/paddle_comm.cc）、devcomm、send / recv / signal
-显存 window 和一块 host window；组内寻址一律用组内序号。
-接收池（dense 组的 recv window 分机内 / 机间两段、专家组的 recv window 一段，每段是一个环，所以多个桶能同时在途）、
-远端条件由 CPU 直接读 host window 判断后再交给 GPU（判断在 C++ 侧的放行层
-paddle/fluid/distributed/collective/gin_overlap/kernels/release.cu）。
-各桶 grad_storage 换成本组 send window 的切片（零打包）：切片由 C++ 侧 paddle::from_blob 包成张量
-（lib.send_window_tensor，见 gin_overlap/paddle_tensor.cc）。
+术语
+  - 桶（bucket）：一块连续显存，装着若干参数的梯度；通信以桶为单位。
+  - 分片（shard）：桶按通信组切开后，本卡负责的那一片。
+  - GIN：NCCL 的 GPU-Initiated Networking。这里只用它的单边写 put：把本卡一段数据写进对端的 window，
+    对端 GPU 不参与。
+  - LSA：NCCL 设备 API 里「同一节点、能用指针直接访问」的那组卡；lsaRank / lsaSize = 节点内序号 / 节点内卡数。
+  - devcomm：ncclDevComm，kernel 里调用 GIN / LSA 用的通信器句柄。
+  - CE：拷贝引擎（copy engine），机内拷贝走它，不占 SM。
+  - window：注册给 NCCL 的对称内存，对端能单边读写。每个通信组一套 send / recv / signal 显存 window，
+    外加一块 host window（CPU 内存，放计数）。各桶的 grad_storage 就是本组 send window 的一段。
+  - 窗口（时间上的）：反向里 DeepEP 不占网卡或不占 SM 的一段时间。
+  - mark：计算流上记的 cudaEvent，提交到 GPU 的工作先等它。
+  - 放行：判断某个桶的某个阶段现在可以做，并把它提交到 GPU（C++ 侧放行层，release.cu）。
+  - credit：接收方用完接收池里的一个槽后，给发送方的计数 +1（发 credit）；发送方看到计数达标才能写那个槽。
+  - owner：Muon 2D 桶最终归哪张卡，那张卡就是它的 owner。
+  - 组内序号：通信组内部的 rank 编号，不是 world rank。
+  - 尾部线程：C++ 放行层的后台线程，本步最后一个窗口之后由它放行。
+  - 分片求和：dense 桶把各节点的部分和加起来、专家桶把专家组各卡的那一份加起来，得到本卡分片的最终结果。
+    代码里叫 inter_node_reduce（dense）/ moe_reduce（专家），两者合称 shard_reduce。
 
-这个文件只有「布局 + 怎么交给 C++ 侧」这一半：窗口 / 接收池 / host window 的布局、两个通信组的建立和
-校验、交给放行层的每桶参数表、2D 桶 gather 的表，以及初始化日志。**什么时候**推进哪个阶段（哪个窗口试哪些
-阶段、尾部交接、桶队列）不在这里 —— 那是训练框架的事，在 PaddleFleet 的
-paddlefleet/distributed/gin_overlap/{scheduler,backend}.py；和 Paddle 优化器对象打交道的那部分
-（桶的 grad_storage 别名、梯度系数怎么乘）也在那边（它的 engine.py，继承这里的 GinOverlapPrimitive）。
+通信组
+  - dense 桶走 sharding 组（GROUP_DENSE），专家桶走 moe_sharding 组（GROUP_MOE），各自一套 comm / devcomm /
+    window。comm 取自 Paddle 已有的 ProcessGroup。
+  - 两个组都必须 rank 列表升序、每个节点成员数相同：rank_in_node = 组内序号 % ranks_per_node，
+    node_index = 组内序号 // ranks_per_node。
+
+阶段
+  - dense 桶：机内拷贝（CE）→ 机内求和 → 同卡号机间 put → 分片求和。
+  - 专家桶：put 给专家组其余各卡 → 分片求和。
+  - Muon 2D 桶：分片求和之后，把本卡分片 gather 到 owner（跨节点 GIN put，同节点 CE）。
+
+接收池（recv window，_layout_recv_pool）
+  - 三段：dense 机内段、dense 机间段（都在 dense 组的 recv window），专家段（专家组的 recv window）。
+  - 每段是一个环：桶按固定放行顺序依次占一个槽，放不下就绕回段首，所以多个桶可以同时在途。
+  - 前任距离 d：本桶的槽上一个占用者在放行序号上比本桶小多少（1..n，n = 前任是本桶自己上一步那份）。
+    放行层按它算 credit 目标。
+  - 布局必须所有 rank 一致（dense 两段全 world 一致，专家段组内一致），初始化时 crc 校验。
+
+host window 布局（_layout_host_windows，每格一个 u64）
+  - dense 组：
+    - signal：每个 dense 桶 16 B，第一格是机间 put 带的 GIN signal。
+    - credit[0] 机内：16 格，同节点卡 l 发来的 credit 记在第 l 格。
+    - credit[1] 机间：num_nodes 格，节点 n 同卡号的卡发来的 credit 记在第 n 格。
+    - intra_arrive 机内到达格：每个 dense 桶 16 格，格偏移 = intra_arrive + (桶号*16 + l)*8，同节点发送卡 l
+      写入本桶已提交的机内拷贝次数。
+    - gather_dense：dense 2D 桶 gather 的 (arrive, intra, credit) 三块，见 _layout_host_windows。
+  - 专家组：每个专家桶 16 B signal；credit[2] 专家，专家组大小格；gather_moe 三块。
+
+约束
+  - 计数跨步累加、只增不减；CPU 不能写这些格子，也不能清零（_hw 只读）。
+  - 每张发送卡只写自己那一个机内到达格，同一格不能有多个写者。
+  - 每个阶段必须按固定放行顺序提交到 GPU，所有 rank 的顺序必须相同。
+  - 每个桶每步都必须走完全部阶段，否则后面的 credit 永远等不到。
 """
 
 import ctypes
@@ -42,28 +82,23 @@ from collections import Counter
 import paddle
 import paddle.distributed as dist
 
-# 这一层的 C++ 实现（paddle.base.core.gin_overlap，源码在
-# paddle/fluid/distributed/collective/gin_overlap/）只在满足条件的构建里才编进去：
-# WITH_GPU + WITH_NCCL + NCCL >= 2.30.7（要它的设备 LSA/GIN API）+ CUDA arch 含 9.0 / 10.0，
-# 见 paddle/fluid/distributed/collective/CMakeLists.txt 的门控。不满足时
-# paddle.base.core 上就没有 gin_overlap 这个属性（而不是一个半截模块），报错提示里用这一行。
+# C++ 实现（paddle.base.core.gin_overlap，源码在 paddle/fluid/distributed/collective/gin_overlap/）
+# 只在满足构建条件时才有，否则 paddle.base.core 上没有 gin_overlap 属性。下面是报错时给出的条件说明。
 _BUILD_HINT = (
     "这个 paddlepaddle 没有编 gin_overlap：要 WITH_GPU + WITH_NCCL、NCCL >= 2.30.7 "
     "（带 nccl_device.h）、CUDA arch 含 9.0 或 10.0"
 )
 
-# 固定参数（都影响不到数值）
-# put kernel 的 block 数（只在这里定义一份，release_setup 交给放行层）
-PUT_BLOCKS = 64
-GIN_CONTEXTS = 8  # GIN context 数 hint
-TIMEOUT_S = 300.0  # 等对端超时就报错，不挂住作业
-NUM_WINDOW_MARKS = 1024  # 窗口 mark 池大小（每步约 130 个）
-# 尾部 mark 环（lib.tail_mark，和窗口 mark 池分开）：每步最多 = 1（交接）+ 尾部之后 ready 的桶数（≤ 桶数）
-#   + 尾部里又过的 combine 数，环大小 = 桶数 + 这个余量；一步内用完就报错，不绕回 —— 绕回会覆盖掉尾部线程正在等的 event
+# 固定参数（都不影响数值结果）
+PUT_BLOCKS = 64  # put kernel 的 block 数，由 release_setup 传给放行层
+GIN_CONTEXTS = 8  # 请求的 GIN context 数（实际数以 devcomm 返回为准）
+TIMEOUT_S = 300.0  # 等对端的超时（秒），超时报错
+NUM_WINDOW_MARKS = 1024  # 窗口 mark 环的大小
+# 尾部 mark 环的大小 = 桶数 + TAIL_EXTRA_MARKS。每步要用 1（交接）+ 交接后 ready 的桶数 + 交接后经过的 combine 数
+#   个槽；一步内用完时报错，不能绕回
 TAIL_EXTRA_MARKS = 1024
-LOG_EVERY = 100  # 每多少步打一行累计流量 / 调度汇总（只是日志，不影响数值）
-# 通信组编号（和 C++ 侧 gin_overlap/gin_engine.h 的 GROUP_DENSE / GROUP_MOE 一致，device_engine() 里核对）：
-#   dense 桶走 sharding 组、专家桶走 moe_sharding 组，各自一套 comm / devcomm / send / recv / signal / host window
+LOG_EVERY = 100  # 每多少步输出一行累计流量 / 调度汇总日志
+# 通信组编号，必须和 C++ 侧的 GROUP_DENSE / GROUP_MOE 一致（device_engine() 里核对）
 GROUP_DENSE, GROUP_MOE = 0, 1
 GROUP_NAME = {GROUP_DENSE: "sharding", GROUP_MOE: "moe_sharding"}
 
@@ -71,10 +106,8 @@ _DEVICE_ENGINE = None
 
 
 def device_engine():
-    """设备侧那个引擎对象：paddle.base.core.gin_overlap.GradCommEngine，进程内只有一个
-    （所有 window / 侧流 / event / 放行层和它的尾部线程都挂在它上面；Python 侧只管布局和编排）。
-    第一次用到才取、才建对象：这个子模块只在满足条件的构建里才有（见 _BUILD_HINT），拿不到时要给
-    说明，而不是在 import 这个文件时就炸；顺带核对通信组编号和 NCCL 版本（编译期 vs 运行时）。"""
+    """返回进程内唯一的 paddle.base.core.gin_overlap.GradCommEngine 对象，第一次调用时创建。
+    没有 paddle.base.core.gin_overlap、通信组编号和 C++ 侧不一致、或编译期和运行时的 NCCL 版本不一致时报错。"""
     global _DEVICE_ENGINE
     if _DEVICE_ENGINE is None:
         from paddle.base import core
@@ -121,9 +154,7 @@ def _gib(x):
 
 
 def local_size():
-    """每台机器的卡数：PADDLE_LOCAL_SIZE，取不到退回可见设备数（做法同
-    python/paddle/distributed/fleet/meta_optimizers/muon_sharding_optimizer.py:97-118
-    的 get_gpus_per_node）。"""
+    """每台机器的卡数：PADDLE_LOCAL_SIZE；没设或不是正整数时用可见设备数。"""
     v = os.getenv("PADDLE_LOCAL_SIZE", "").strip()
     if v:
         try:
@@ -146,14 +177,14 @@ class GinOverlapPrimitive:
         dense_recv_pool_gb,
         moe_recv_pool_gb,
     ):
-        """集合操作：world（dense 的 sharding 组）内所有 rank 同时调用；有专家桶时专家组（moe_sharding）内所有 rank
-        也同时调用。release_order：(dense 桶固定放行顺序, 专家桶固定放行顺序)，调用方给（PaddleFleet 的
-        backend._release_order）。dense_recv_pool_gb / moe_recv_pool_gb：两个接收池的大小（GiB），
-        调用方的配置里来（PaddleFleet 的 gin_overlap/config.py）。
-        dense 桶走 sharding 组、专家桶走 moe_sharding 组：两个 comm、两个 devcomm，每组自己的 send / recv / signal /
-        host window（recv window 的分段见 _layout_recv_pool，host window 里几块计数区的位置见 _layout_host_windows）；
-        组内寻址一律用组内序号。"""
-        device_engine()  # 第一次用到 C++ 侧：这里就取 + 核对通信组编号 / NCCL 版本，别等到后面
+        """建两个通信组的 window、devcomm 和接收池布局，并交给 C++ 侧（configure）。
+        集合操作：world（sharding 组）内所有 rank 必须同时调用；有专家桶时专家组（moe_sharding）内所有 rank 也必须同时调用。
+          - world / moe_group：sharding 组 / 专家组对象（没有专家桶时 moe_group 可以是 None）。
+          - moe_numels / dense_numels：各桶的元素数，必须能被各自的组大小整除。
+          - release_order：(dense 桶固定放行顺序, 专家桶固定放行顺序)，都是桶号的排列，所有 rank 必须一致。
+          - dense_recv_pool_gb / moe_recv_pool_gb：dense 接收池（机内段 + 机间段）和专家段的大小（GiB）。
+        布局见模块 docstring；之后调用方还要调 release_setup。"""
+        device_engine()  # 尽早创建引擎对象并做版本核对
         self.dense_recv_pool_gb = dense_recv_pool_gb
         self.moe_recv_pool_gb = moe_recv_pool_gb
         self.world = world
@@ -179,9 +210,7 @@ class GinOverlapPrimitive:
                 f"dense 桶大小 {n} 不能被组大小 {self.group_size} 整除"
             )
 
-        # 拓扑要求：两个组各自要求「rank 列表升序 + 每节点成员数一致」⇒ 组内序号按机器分块，
-        #   rank_in_node = 组内序号 % ranks_per_node、node_index = 组内序号 // ranks_per_node。
-        #   各自 devcomm 的 lsaRank / lsaSize 在下面和这里推算的值核对，不一致报错（不静默算错）。
+        # 组内节点分块（要求见模块 docstring）；之后在 _check_devcomm 里和 devcomm 的 lsaRank / lsaSize 核对
         self.ranks_per_node, self._local_size = self._topology(
             world, "sharding"
         )
@@ -204,7 +233,7 @@ class GinOverlapPrimitive:
                 self.expert_group_rank // self.moe_ranks_per_node
             )
 
-        # 每组自己的 send / recv / signal window，组内桶之间用字节偏移（两组各自从 0 排）
+        # 每组自己的 send window，桶按字节偏移排（两组各自从 0 开始）
         self.moe_send_offsets, moe_send_bytes = self._send_layout(
             self.moe_bucket_numels
         )
@@ -215,7 +244,7 @@ class GinOverlapPrimitive:
             len(self.moe_bucket_numels),
             len(self.dense_bucket_numels),
         )
-        # 每桶两格：[0] 机间 / 专家 GIN signal，[1] 不再使用
+        # 每桶 16 B：[0] 机间 / 专家 GIN signal，[1] 未使用
         self.moe_signal_offsets = [16 * i for i in range(num_moe)]
         self.dense_signal_offsets = [16 * i for i in range(num_dense)]
         recv_bytes = self._layout_recv_pool(
@@ -229,7 +258,7 @@ class GinOverlapPrimitive:
             self._layout_host_windows()
         )  # 两组的 signal / host window 布局（返回各组 signal window 字节）
         p = self.recv_pool
-        # 各 rank 按自己的大小注册（NCCL 允许 window 大小不同，只要求对端访问不越界）
+        # 各 rank 按自己的大小注册 window；对端访问不能越界
         self._win = {}
         self._hw = {}
         self._setup_group(
@@ -268,17 +297,8 @@ class GinOverlapPrimitive:
         return offsets, total
 
     def _set_comms(self, dev, world, moe_group):
-        """复用 Paddle 已经建好的 ncclComm（不自己 ncclCommInitRank）：把两个组的 ring id 交给 C++ 侧，它照 DeepEP 的做法
-        从 paddle::distributed::ProcessGroupMapFromGid 取 ProcessGroup → ProcessGroupNCCL::GetOrCreateCommContext
-        → NCCLCommContext::GetNcclComm（paddle/fluid/distributed/collective/gin_overlap/paddle_comm.cc）。
-
-        ring id 用 Paddle 通信组对象的 `.id`（同目录 `../group.py:78` 的 `Group.id` 属性，
-        就是 C++ 侧注册进 ProcessGroupMapFromGid 的 gid；DeepEP 也是把 `group.id` 传给 C++，见
-        `../deep_ep/buffer.py:109`）。C++ 侧会把回读的组大小 / 组内序号和这里传的核对，填错 ring id 会报错。
-        拿不到（符号缺失 / 不是 ProcessGroupNCCL / Paddle 太旧）就报错，**不**回退到自己建 comm。
-
-        时机：`GetOrCreateCommContext` 在这个组还没建 NCCL comm 时会现建，我们在建引擎（构建 sharding 优化器）时调它，
-        可能比 Paddle 自己首次用这个组更早。"""
+        """让 C++ 侧按 ring id（通信组对象的 `.id`）取两个组在 Paddle 里已有的 ncclComm。
+        C++ 侧会核对组大小和组内序号；取不到或对不上时报错。组还没有 NCCL comm 时会在这里创建。"""
         rc, err = device_engine().set_comms(
             int(world.id),
             int(moe_group.id)
@@ -297,8 +317,8 @@ class GinOverlapPrimitive:
 
     def _setup_group(self, gid, what, send_bytes, recv_bytes, signal_bytes, host_bytes, size, rank, rpn, ml, nn, mn,
                      group):  # fmt: skip
-        """一个组的 window：alloc_windows → host window（集合注册，必须在 create_dev_comm 之前）→ create_dev_comm
-        → 校验 devcomm 的 lsaRank / lsaSize（组内一起判）→ 把组内机器分块交给 C++。"""
+        """建一个组的全部 window（集合操作，组内所有 rank 都要调）：alloc_windows → alloc_host_counters（必须在
+        create_dev_comm 之前）→ create_dev_comm → _check_devcomm → set_group_topology。"""
         lib = device_engine()
         self._win[gid] = [
             max(send_bytes, 4096),
@@ -311,13 +331,12 @@ class GinOverlapPrimitive:
         )
         rc, ptr, nbytes = lib.alloc_host_counters(gid, host_bytes)
         check_cuda(rc, f"alloc_host_counters({what})")
-        if nbytes < host_bytes:  # C++ 侧按粒度向上取整，正常不会触发
+        if nbytes < host_bytes:  # C++ 侧按粒度向上取整，正常不会小于
             raise RuntimeError(
                 f"gin_overlap: {what} 组的 host window {nbytes} B 小于需要的 {host_bytes} B"
             )
         self.recv_pool["host_window_bytes"][gid] = nbytes
-        # host window 的 u64 视图（ctypes 数组，每次下标访问都是一次 8 字节对齐的内存读，不缓存）。只读：
-        #   CPU 不能写正在被网卡 atomic 的计数
+        # host window 的 u64 视图（ctypes 数组，每次下标访问都读一次内存）。只能读，不能写
         self._hw[gid] = (ctypes.c_ulonglong * (nbytes // 8)).from_address(ptr)
         rc, nctx, lsa_rank, lsa_size = lib.create_dev_comm(gid, GIN_CONTEXTS)
         check_cuda(rc, f"ncclDevCommCreate({what})")
@@ -331,9 +350,8 @@ class GinOverlapPrimitive:
 
     # ------------------------------------------------------------------ 拓扑
     def _topology(self, group, what):
-        """返回 (组内每节点成员数 ranks_per_node, 每机卡数 local_size)。要求组内 rank 升序、每个节点的成员数一致
-        （tp / pp > 1 时组是全局 rank 的子集，成员数 < 每机卡数，所以不要求两者相等）。不满足直接报错。
-        dense（sharding）组和专家（moe_sharding）组各判一次。"""
+        """返回 (每节点组内成员数 ranks_per_node, 每机卡数 local_size)。组的 rank 列表必须升序、每个节点的成员数
+        必须相同（可以小于每机卡数），否则报错。"""
         ranks = list(group.ranks)
         size = group.nranks
         ls = local_size()
@@ -358,7 +376,7 @@ class GinOverlapPrimitive:
     def _check_devcomm(
         self, what, group, size, rank, rpn, ml, nn, mn, nctx, lsa_rank, lsa_size
     ):
-        """devcomm 的 lsaRank / lsaSize 要和 _topology 推算的一致（组内一起判，组里任一 rank 不满足都报错）。"""
+        """核对 devcomm 的 lsaRank / lsaSize 和 _topology 推算的一致（集合操作；组内任一 rank 不满足，全组报错）。"""
         ok = int(
             nctx >= 1
             and lsa_size == rpn
@@ -378,12 +396,13 @@ class GinOverlapPrimitive:
 
     # ------------------------------------------------------------------ 接收池（环形映射、多桶同时在途）
     def _layout_recv_pool(self, order, moe_group):
-        """三段布局：每段是一个环，桶按固定顺序（机内段 / 机间段按 dense 顺序，专家段按专家顺序）依次排，放不下就绕回 0
-        （_recv_pool_ring）；每个桶在段里的偏移和「前任距离」d 在这里算好。各 rank 必须一致：dense 两段全 world、专家段组内 crc 校验。
-        每段下限 = 本段最大桶的槽大小（256B 对齐后向上取整到 4KB），dense 两段全 world 取 MAX、专家段组内取 MAX。
-        大小：dense_recv_pool_gb = 机内段 + 机间段（按两段下限的比例分，各自 4KB 向下对齐，仍须 ≥ 各自下限），
-        moe_recv_pool_gb = 专家段（4KB 向下对齐）。机内段 / 机间段在 dense 组的 recv window（依次排），专家段单独在
-        专家组的 recv window（从 0 开始）。返回 (dense recv window 字节数, 专家 recv window 字节数)。"""
+        """接收池三段的布局（集合操作）：算每段大小、每个桶在段里的偏移和前任距离，并校验各 rank 一致。
+          - 每段的下限 = 本段最大桶的槽大小（256 B 对齐后向上取整到 4 KB）；dense 两段在全 world 取最大，专家段在
+            专家组内取最大。
+          - dense_recv_pool_gb 按两段下限的比例分给机内段和机间段（各自向下对齐到 4 KB，必须 ≥ 下限）；
+            moe_recv_pool_gb 是专家段（向下对齐到 4 KB）。
+          - 机内段、机间段依次放在 dense 组的 recv window，专家段放在专家组的 recv window，都从 0 开始。
+        结果存进 self.recv_pool，返回 (dense recv window 字节数, 专家 recv window 字节数)。"""
         import statistics
         import zlib
 
@@ -443,7 +462,7 @@ class GinOverlapPrimitive:
             dist.all_reduce(v, op=dist.ReduceOp.MAX, group=group)
             return int(v[0]) == -int(v[1])
 
-        # CE 写对端机内段、dense put 写对端机间段、专家 put 写对端专家段，偏移都取自本卡的表 ⇒ 表必须和对端一致
+        # 发送方按本卡的表算对端的写入偏移，所以表必须所有 rank 一致
         ok = same(
             (
                 P[0],
@@ -472,7 +491,7 @@ class GinOverlapPrimitive:
 
         def fit(
             i,
-        ):  # 按本段桶槽大小的中位数，这一段能同时放几个桶（只用于日志）
+        ):  # 按槽大小中位数估算这一段能同时放几个桶（只用于日志）
             s = [x for x in seg[i] if x > 0]
             if not s or not P[i]:
                 return 0.0, 0
@@ -485,9 +504,9 @@ class GinOverlapPrimitive:
             # 三段的起点：机内段 / 机间段在 dense 组的 recv window，专家段在专家组的 recv window（各自从 0 排）
             "base": [0, P[0], 0],
             "offsets": (off_i, off_n, off_m),  # 每段 {桶号: 段内字节偏移}（槽大小为 0 的桶不在表里）
-            "distance": (d_i, d_n, d_m),  # 每段 {桶号: 前任距离 d}（1..n；n = 前任是自己上一步那份）
-            "dense_order": d_order, "moe_order": m_order,  # 固定放行顺序（交给放行层，位置就是在这里面的下标）
-            "buckets": None,  # bind_buckets：(专家桶, dense 桶)，最终求和时读各桶的 _gin_post_reduce_scale
+            "distance": (d_i, d_n, d_m),  # 每段 {桶号: 前任距离 d}（1..n；n = 前任是本桶上一步那份）
+            "dense_order": d_order, "moe_order": m_order,  # 固定放行顺序（放行层的「位置」是这里的下标）
+            "buckets": None,  # 调用方填 (专家桶, dense 桶) 的桶对象
             "host_bytes": [0, 0],  # _layout_host_windows 填：两组 host window 各需要多少字节
             "host_window_bytes": {},  # _setup_group 填：实际大小（按 HOST_NUMA 粒度取整）
             "nctx": {},  # _setup_group 填：两组各自的 GIN ctx 数
@@ -495,7 +514,7 @@ class GinOverlapPrimitive:
         return P[0] + P[1], P[2]
 
     def _recv_pool_sizes(self, lb, descs):
-        """三段的实际大小（字节，4KB 的倍数）。lb = 三段下限（4KB 的倍数），descs = 报错 / 日志用的下限说明。"""
+        """三段的实际大小（字节，4 KB 的倍数）。lb = 三段下限，descs = 报错用的下限说明。"""
         gd, gm = self.dense_recv_pool_gb, self.moe_recv_pool_gb
         P = list(lb)
         Sd = lb[0] + lb[1]
@@ -509,9 +528,7 @@ class GinOverlapPrimitive:
             P[0] = (lb[0] * Td // Sd) // 4096 * 4096  # 按两段下限的比例分
             P[1] = (lb[1] * Td // Sd) // 4096 * 4096
             for i in (0, 1):
-                if (
-                    P[i] < lb[i]
-                ):  # lb 是 4KB 的倍数且 Td ≥ Sd 时不会发生，留着防算错
+                if P[i] < lb[i]:  # lb 是 4 KB 的倍数且 Td ≥ Sd 时不会发生
                     raise RuntimeError(
                         f"dense_recv_pool_gb={gd:g}：按比例分后{descs[i]}不满足（分到 {_gib(P[i])} GiB）"
                     )
@@ -524,11 +541,10 @@ class GinOverlapPrimitive:
 
     @staticmethod
     def _recv_pool_ring(order, seg, P):
-        """环形映射：每个桶整块占一段，按 order 依次排，cur + size > P 就绕回 0（尾部留空）。每步从 0 开始排，所以每步布局相同。
-        前任 = 新槽覆盖的区间里、上一个占用者中序号最大的（序号 = 步 × n + 位置；接收方按固定顺序腾空，序号小的先腾空）。
-        维护「每段区间当前占用者」精确算重叠，模拟两步、记第 2 步的结果 d = 本桶序号 - 前任序号（1..n；n = 前任是自己上一步那份）。
-        第 0 步里前任若落在「上一步」，运行时目标 ≤ 0，不等（_credit_target 取 max(0, ·)）。
-        返回 ({桶: 偏移}, {桶: d})；槽大小为 0 的桶不在表里（这一段不用，credit 也不等）。"""
+        """一段的环形映射：桶按 order 依次占一块连续空间，放不下（cur + size > P）就绕回 0，段尾留空。每步布局相同。
+        前任 = 本桶的槽覆盖的区间里，之前的占用者中序号最大的那个（序号 = 步 × n + 在 order 里的位置）。
+        前任距离 d = 本桶序号 - 前任序号，取第 2 步的结果（1..n；n = 前任是本桶上一步那份）。
+        返回 ({桶: 偏移}, {桶: d})；槽大小为 0 的桶不在表里（这一段不用，也不等 credit）。"""
         n, off, cur = len(order), {}, 0
         for b in order:
             sz = seg[b]
@@ -569,24 +585,22 @@ class GinOverlapPrimitive:
         return off, d
 
     def _layout_host_windows(self):
-        """两个组的 signal window / host window 布局（偏移和原来逐项相同，只是按组拆成两块、各自从 0 开始排）。
-        返回 (dense 组 signal window 字节, 专家组 signal window 字节)，并填 recv_pool 的 credit / intra_arrive /
-        gather / host_bytes。
+        """两个组的 signal window / host window 布局，各自从 0 开始。返回 (dense 组 signal window 字节,
+        专家组 signal window 字节)，并填 recv_pool 的 credit / intra_arrive / gather_* / host_bytes。
 
-        **dense 组（sharding 组）**：每个 dense 桶 16B signal（signal_offsets），之后
-          credit[0] 机内（16 格，本机卡 l 打第 l 格）、credit[1] 机间（num_nodes 格），各自 256B 对齐；
-          再接「机内到达」区 intra_arrive（只在 host window 里）：每个 dense 桶 16 格 u64，发送卡 l（本机卡号）写第 l 格
-          （单写者，k_signal_intra_arrive），格偏移 = intra_arrive + (idx*16 + l)*8。固定 16 格（ranks_per_node ≤ 16），
-          这样偏移不依赖它。取代原来每桶 [sigoff+8] 的共享计数（多卡对同一个 u64 atomicAdd_system，
-          HOST_NATIVE_ATOMIC=0 下实测丢过加 1，所以改成每个发送方一格、单写者）；
-          最后接 dense 2D 桶 gather 到 owner 的三块计数（按 dense 桶数留格，AdamW 下没人读写）：
-            arrive + 8*idx           owner：跨节点发送方 put 带的 signal（网卡 atomic）
-            intra  + (idx*16 + l)*8  owner：同节点发送方（组内本机卡 l）CE 拷完后写的序号（单写者 GPU store）
-            credit + 8*idx           保留位（本路径不用 credit，没人写、没人读）
-        **专家组（moe_sharding 组）**：每个专家桶 16B signal，之后 credit[2] 专家（专家组大小格，256B 对齐），
-          再接专家 2D 桶 gather 的同样三块（按专家桶数留格，下标用专家桶号）。
-        这些计数实际放在各组 host window 的同一偏移，signal window 里对应的这段只是占位、不再读写。
-        所有 rank 按同样的算法算（算法不依赖 rank），gather_setup 里再 crc 校验。"""
+        dense 组（sharding 组），各块 256 B 对齐，依次是：
+          - signal：每个 dense 桶 16 B（signal_offsets），第一格是机间 GIN signal。
+          - credit[0] 机内：16 格，同节点卡 l 发来的 credit 记在第 l 格。
+          - credit[1] 机间：num_nodes 格。
+          - intra_arrive 机内到达格（只在 host window 里有意义）：每个 dense 桶固定 16 格（ranks_per_node 必须 ≤ 16），
+            格偏移 = intra_arrive + (idx*16 + l)*8，只有同节点发送卡 l 写第 l 格，写的是本桶已提交的机内拷贝次数。
+          - gather_dense = (arrive, intra, credit)，dense 2D 桶 gather 到 owner 用，按 dense 桶数留格：
+            - arrive + 8*idx：owner 上的跨节点到达计数，每个跨节点发送方的 put 让它 +1。
+            - intra + (idx*16 + l)*8：owner 上的同节点到达格，同节点发送方 l 在 CE 之后写入序号。
+            - credit + 8*idx：保留位，不读不写。
+        专家组（moe_sharding 组）：每个专家桶 16 B signal；credit[2] 专家（专家组大小格）；gather_moe 三块，
+          格式同 gather_dense，按专家桶号留格。
+        计数实际写在 host window 的同一偏移，signal window 只占位。布局只取决于桶数和组大小，所有 rank 相同。"""
         nd, nm = len(self.dense_bucket_numels), len(self.moe_bucket_numels)
         p = self.recv_pool
         # dense 组
@@ -613,10 +627,8 @@ class GinOverlapPrimitive:
         return dense_signal_end, moe_signal_end
 
     def _configure(self, num_dense, num_moe):
-        """侧流 / 每桶 event / 窗口 mark 环 + host window 里三块 credit 的字节偏移，一次交给 C++ 侧。
-        桶数**只在这里**交给 C++ 侧一次（原来 configure 和 setup_buckets 各传一遍、release_setup 再传一遍，
-        三处必须一致却没有核对）：放行层的 release_setup 不再带桶数，它从引擎按桶数开的那些 event 的长度读，
-        传过去的固定放行顺序 / 每桶参数表的长度和它对不上就报错。"""
+        """调 C++ 侧 configure：传入桶数、窗口 mark 环大小和三块 credit 区的偏移，然后输出接收池的初始化日志。
+        桶数只在这里传给 C++ 侧。"""
         c0, c1, c2 = self.recv_pool["credit"]
         check_cuda(
             device_engine().configure(
@@ -626,22 +638,19 @@ class GinOverlapPrimitive:
         )
         self._log_recv_pool()
 
-    # ------------------------------------------------------------------ 交给 GPU（放行层在 C++ 侧，见 release.cu）
+    # ------------------------------------------------------------------ 放行层的参数表（放行层在 C++ 侧 release.cu）
     def _recv_offset(self, seg, idx):
-        """桶 idx 在第 seg 段（0 机内 / 1 机间 = dense 组的 recv window；2 专家 = 专家组的 recv window）里的字节偏移
-        = 段起点 + 环形映射表里的偏移（各 rank 一致，CE / put 写对端同一偏移）。"""
+        """桶 idx 在第 seg 段的 recv window 字节偏移（0 机内 / 1 机间：dense 组的 recv window；2 专家：专家组的）
+        = 段起点 + 段内偏移。"""
         p = self.recv_pool
         return p["base"][seg] + p["offsets"][seg].get(idx, 0)
 
     def release_setup(self):
-        """放行层（调用方的放行时机层建起来时调一次，PaddleFleet 的 scheduler.__init__）：把它要的每桶参数
-        一次传进 C++ 侧，并起尾部线程。
-        每项都取自 release.cu 里 submit_* / blocked_* 要用的那些值（放行层不回调 Python）：
-        dense 每桶 7 个 [send 偏移, signal 偏移, 本卡分片 numel, 机内段偏移, 机间段偏移, 机内前任距离, 机间前任距离]，
-        专家每桶 5 个 [send 偏移, signal 偏移, 本卡分片 numel, 专家段偏移, 前任距离]（距离 None → -1 = 这一段没有槽）。
-        桶数不传：放行层从引擎按桶数开的那些 event 的长度读（configure 是唯一交桶数的地方），这里传过去的
-        固定顺序 / 每桶参数表长度和它对不上就报错。credit 三块偏移（configure 交过）、专家组大小 / 本卡组内序号
-        （set_comms 交过）同理都不再传一遍。"""
+        """把固定放行顺序和每桶参数表交给 C++ 放行层，并启动尾部线程。在 __init__ 之后调一次。
+        - dense 每桶 7 个数：[send 偏移, signal 偏移, 本卡分片 numel, 机内段偏移, 机间段偏移, 机内前任距离,
+          机间前任距离]。
+        - 专家每桶 5 个数：[send 偏移, signal 偏移, 本卡分片 numel, 专家段偏移, 前任距离]。
+        - 前任距离为 -1 表示这一段没有槽。"""
         p, lib = self.recv_pool, device_engine()
         nd, nm = len(self.dense_bucket_numels), len(self.moe_bucket_numels)
         dtab = []
@@ -650,7 +659,7 @@ class GinOverlapPrimitive:
             di, dn = (
                 p["distance"][0].get(i),
                 p["distance"][1].get(i),
-            )  # credit 目标里的前任距离，None → -1
+            )  # 前任距离，None → -1
             dtab += [so, sg, self.dense_bucket_numels[i] // self.group_size, self._recv_offset(0, i),
                      self._recv_offset(1, i), -1 if di is None else di, -1 if dn is None else dn]  # fmt: skip
         mtab = []
@@ -668,19 +677,18 @@ class GinOverlapPrimitive:
         )  # fmt: skip
 
     # ------------------------------------------------------------------ Muon 2D 桶 gather 到 owner
-    # 只有 optim=muon 走到这一段（PaddleFleet 的 backend._setup_muon 经它的 gather_setup 调到这里）；
-    # AdamW 下没有 2D 桶，这几个方法一次都不会被调。
+    # 只有 Muon（有 2D 桶）才用到这一段。
     def gather_table_setup(self, moe_2d, dense_2d, moe_group):
-        """建 2D 桶表（集合操作：world 内所有 rank 同时调用；调用方在 bind_buckets 之后调）。
-        moe_2d / dense_2d = 2D 桶对象（有 _gin_owner_bucket、_gin_bucket_id）。建每个 2D 桶的表 → crc 校验（dense 全 world、
-        专家组内：桶号 / send 偏移 / 每段大小 / owner 一致，因为发送方按本卡的偏移写 owner 的 send window 和 host window）
-        → C++ 侧 gather_setup。什么时候发这些 put（放行逻辑）在调用方那边（PaddleFleet 的
-        scheduler.GatherToOwner）。
-        表项（key = (kind, 桶号)）：group（GROUP_DENSE / GROUP_MOE，选 comm / window）、slot（C++ 侧 event 下标，
-        dense 用桶号、专家用 dense 桶数 + 桶号）、off（本卡分片 seg(组内序号) 在本组 send window 的字节偏移）、m、
-        组大小 S、本卡组内序号 me、owner 组内序号 o；owner 另有 n_inter（跨节点发送方数）、intra（同节点发送方在组内的
-        本机序号）；host window 偏移 aoff / ioff / gi0（在本组的 host window 里）。
-        其中 off / ioff / o 只用来建 C++ 侧那张表（tail_gather_setup），每次发 put 不再逐个传过去。"""
+        """建 2D 桶表，校验各 rank 一致，再调 C++ 侧 gather_setup。集合操作：world 内所有 rank 必须同时调用。
+        moe_2d / dense_2d = 2D 桶对象（必须有 _gin_owner_bucket、_gin_bucket_id）。dense 表在全 world、专家表在专家组内
+        必须一致（桶号 / send 偏移 / 每段大小 / owner），否则报错。
+        结果存进 self.gather_table，key = (kind, 桶号)，每项：
+          - group：GROUP_DENSE / GROUP_MOE；slot：C++ 侧 event 下标（dense 用桶号，专家用 dense 桶数 + 桶号）。
+          - send_offset：桶在本组 send window 的偏移；off：本卡分片的偏移；m：每片元素数；S：组大小；
+            me：本卡组内序号；o：owner 组内序号；owner：本卡是不是 owner。
+          - aoff / ioff / gi0：本组 host window 里的跨节点到达格 / 本卡的同节点到达格 / 本桶同节点到达格的起点。
+          - owner 另有 n_inter（跨节点发送方数）、intra（同节点发送方的节点内序号列表）；发送方另有 intra_owner
+            （owner 是否在同一节点）。"""
         import zlib
 
         p = self.recv_pool
@@ -784,11 +792,9 @@ class GinOverlapPrimitive:
         )
 
     def tail_gather_setup(self):
-        """init（gather 表建好之后；放行层已经起好、尾部线程在 IDLE）：把 2D 桶表交给放行层。
-        每项 [kind(0 dense / 1 专家，同时决定用哪个组的 comm / window), 桶号, slot, 本卡是不是 owner,
-        owner 组内序号, off, m, 1（保留位）, aoff, ioff]，取自 gather_table。
-        这是这些 put 参数**唯一一次**过到 C++ 侧：之后主线程发 put 也只给表项下标（gather_put_entry），
-        和尾部线程查的是同一张表。self.gather_keys = 表项顺序，gather_entry_index = (kind, 桶号) → 表项下标。"""
+        """把 2D 桶表交给 C++ 放行层（release_setup 和 gather_table_setup 之后调，尾部线程必须在 IDLE）。
+        每项 [kind（0 dense / 1 专家）, 桶号, slot, 本卡是不是 owner, owner 组内序号, off, m, 1（保留位）, aoff, ioff]。
+        之后发 gather put 只传表项下标。self.gather_keys = 表项顺序；self.gather_entry_index = (kind, 桶号) → 表项下标。"""
         keys = sorted(self.gather_table)
         self.gather_keys = keys
         self.gather_entry_index = {key: i for i, key in enumerate(keys)}
@@ -802,7 +808,7 @@ class GinOverlapPrimitive:
         check_cuda(device_engine().tail_gather_setup(rows), "tail_gather_setup")
 
     def tail_gather_set(self, seqs):
-        """交接前（尾部线程在 IDLE）：本步每个表项的 put 序号（0 = 本步不归它发）。表为空时不调。"""
+        """把本步每个表项的 put 序号（0 = 本步不由尾部线程发）交给 C++ 侧。必须在交给尾部线程之前调。"""
         if not self.gather_keys:
             return
         check_cuda(
@@ -811,7 +817,7 @@ class GinOverlapPrimitive:
         )
 
     def tail_gather_collect(self):
-        """尾部线程已离开 RUN：本步它发的 gather put，[((kind, 桶号), 序号)]，按发出顺序。"""
+        """本步尾部线程发出的 gather put，[((kind, 桶号), 序号)]，按发出顺序。尾部线程必须已离开 RUN。"""
         if not self.gather_keys:
             return []
         rc, flat = device_engine().tail_gather_get_sent()
@@ -826,7 +832,7 @@ class GinOverlapPrimitive:
 
     # ------------------------------------------------------------------ 初始化日志
     def _log_recv_pool(self):
-        """接收池的 init 日志（rank 0）：三段大小、下限、本卡最大桶、按本段桶槽中位数能同时放几个桶，以及前任在本步内的桶数。"""
+        """接收池的初始化日志（rank 0）：三段大小、下限、本卡最大桶、按槽大小中位数估算能同时放几个桶，以及前任在本步内的桶数。"""
         p = self.recv_pool
         names = ("dense 机内段", "dense 机间段", "专家段")
         segs = []
@@ -842,7 +848,7 @@ class GinOverlapPrimitive:
         inner = [
             sum(1 for v in p["distance"][i].values() if v < n[i])
             for i in range(3)
-        ]  # d < n：要等同一步前面的桶腾空
+        ]  # d < n：要等同一步里前面的桶空出槽
         hw = p["host_window_bytes"]
         hw_txt = "、".join(
             f"{GROUP_NAME[g]} 组 {format(hw[g] / 2**20, '.1f')} MiB（需要 {p['host_bytes'][g]} B）"
@@ -858,7 +864,7 @@ class GinOverlapPrimitive:
         )
 
     def _log_init(self, t, extra=""):
-        """每个 rank 一行初始化各阶段耗时（千卡上建连可能明显变慢）；rank 0 再打拓扑 / 桶 / 流量 / 环境。"""
+        """每个 rank 输出一行初始化各阶段耗时；rank 0 再输出拓扑、桶、流量和环境变量。extra 插在环境变量前面。"""
         ms = [format((b - a) * 1e3, ".0f") for a, b in zip(t, t[1:])]
         print(
             f"[gin_overlap init] rank {dist.get_rank()} 节点 {self.node_index} 卡 {self.rank_in_node}："
@@ -913,6 +919,4 @@ class GinOverlapPrimitive:
         log(
             f"init: 每步每卡机间 {format(net / 1e9, '.2f')} GB / {nput} 次 put，机内 CE {format(ce / 1e9, '.2f')} GB"
         )
-        # 调用方自己那点东西（PaddleFleet 的 gin_overlap 配置）跟在环境变量前面，
-        # 原来这一行就是 log(f"init: {cfg}；{envs}")，位置和内容都没变
         log(f"init: {extra}{envs}")

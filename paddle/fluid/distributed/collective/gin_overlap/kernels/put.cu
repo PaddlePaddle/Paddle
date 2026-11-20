@@ -12,25 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// put.cu —— 用 NCCL 的 GIN 单边写（put：把本卡一段数据直接写进对端的
-// window，对端 GPU 不参与）。
-//
-// 这里有四个 kernel：dense 的机间 put、专家 put、2D 桶 gather 给 owner 的
-// put，以及一步结束时的 flush。 每笔 put 都带一个
-// VASignalInc：数据写对端显存，同时让对端 host window 里那个计数格
-// +1（网卡做的原子加），
-//   对端 CPU 看到计数涨了就知道这份数据到了。
-// 一个 peer 一笔 put（不切片）。block / thread 数是定好的，不许改（见 kernels.h
-// 开头）。
+// put.cu —— GIN 单边写（put）的四个 kernel：dense 机间 put、专家 put、
+// 2D 桶 gather 给 owner 的 put，以及每步末尾的 flush。
+//   - 每笔 put 带一个 ncclGin_VASignalInc：数据写进对端 recv / send window，
+//     同时对端 host window 里的 signal 计数 +1（网卡原子加）。对端 CPU 看到
+//     计数达标，就知道数据已经到了。
+//   - 每个 peer 一笔 put，不切片。
 #include "paddle/fluid/distributed/collective/gin_overlap/kernels/kernels.h"
 
 namespace gin_overlap {
 namespace {
 
-// dense 机间 put：我本列第 peer_node 块的部分和 → 节点 peer_node 上卡号
-// rank_in_node 那张卡的机间段第 node_index 行，
-//   每笔带一次 VASignalInc。一个 block 一个 peer（grid-stride：block
-//   数由调用方给，少于 peer 数时一个 block 发多笔）。
+// dense 机间 put：本列第 peer_node 块的部分和 → 节点 peer_node 上同卡号那张
+// 卡的机间段第 node_index 行。一个 block 负责一个 peer；block 数少于 peer 数时
+// 一个 block 依次发多笔。
 __global__ void k_put_to_node_peers(ncclDevComm dev_comm,
                                     ncclWindow_t recv_window,
                                     ncclWindow_t send_window,
@@ -63,8 +58,8 @@ __global__ void k_put_to_node_peers(ncclDevComm dev_comm,
   }
 }
 
-// 专家 put：peer 就是它在专家组（本 devcomm）里的序号；我发它的块 peer → 它
-// recv 的第 expert_group_rank 格
+// 专家 put：本卡第 peer 块 → 专家组里组内序号为 peer 的卡的专家段第
+// expert_group_rank 行。block 分配同 k_put_to_node_peers
 __global__ void k_put_to_expert_peers(ncclDevComm dev_comm,
                                       ncclWindow_t recv_window,
                                       ncclWindow_t send_window,
@@ -94,8 +89,8 @@ __global__ void k_put_to_expert_peers(ncclDevComm dev_comm,
   }
 }
 
-// 2D 桶 gather（Muon）：本卡分片整段一笔 put 给 owner，signal 落 owner host
-// window 的到达格。1 个 block
+// 2D 桶 gather（Muon）：本卡分片整段一笔 put 给 owner，同时 owner host window
+// 的到达格 +1。1 个 block
 __global__ void k_put_to_owner(ncclDevComm dev_comm,
                                ncclWindow_t dst_window,
                                size_t dst_offset,
@@ -120,7 +115,7 @@ __global__ void k_put_to_owner(ncclDevComm dev_comm,
           ncclCoopCta());
 }
 
-// send window 下一步才能复用：flush 是 per-ctx 的，一个 block 刷一个 ctx
+// flush：一个 block 处理一个 GIN context。下一步复用 send window 之前必须调
 __global__ void k_gin_flush(ncclDevComm dev_comm, int num_gin_contexts) {
   if (blockIdx.x >= (unsigned)num_gin_contexts) return;
   ncclGin gin(dev_comm, (int)blockIdx.x);

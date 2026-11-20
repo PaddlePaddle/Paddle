@@ -12,29 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// paddle_comm.cc —— 从 Paddle 已经建好的 ProcessGroup（按 ring id）直接取
-// ncclComm_t，不再自己 ncclCommInitRank。 做法和 DeepEP
-// 一样（paddle/fluid/distributed/collective/deep_ep/deep_ep.cpp 里取 comm
-// 的那几行）：
+// paddle_comm.cc —— paddle_nccl_comm：按 ring id 取 Paddle ProcessGroup 已有的
+// ncclComm_t，路径是
 //   ProcessGroupMapFromGid::getInstance()->get(ring_id)
-//   （phi/core/distributed/collective/process_group.h:555-580，经
-//                                                          fluid 的
-//                                                          process_group.h:51
-//                                                          re-export；
-//                                                          在树外是靠这个
-//                                                          静态局部变量的
-//                                                          weak / unique
-//                                                          符号和 libpaddle.so
-//                                                          里共用同一份，搬进
-//                                                          树里之后本来就是
-//                                                          同一个库）
 //   → ProcessGroupNCCL::GetOrCreateCommContext(place, CommType::ALLTOALL)
-//   （process_group_nccl.h:193） → NCCLCommContext::GetNcclComm()
-//   （nccl_comm_context.h:55）
-// 在 PaddleFleet 的扩展里这是唯一包含 Paddle 头文件的 TU（里面有 thrust，外部
-// 构建必须交给 nvcc），所以那边后缀是 .cu；搬进 Paddle 之后这些就是自己的头
-// 文件，普通 .cc 即可。 拿不到就带上原因返回非
-// 0（上层报错，不静默回退到自己建 comm）。
+//   → NCCLCommContext::GetNcclComm()
+// 这个组还没有 NCCL comm 时，GetOrCreateCommContext 会当场创建。
+// 取不到时返回非 0，*out_err 是原因。
 #include <exception>
 #include <string>
 

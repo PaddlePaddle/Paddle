@@ -12,52 +12,95 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// gin_engine.h —— 这个扩展模块的总声明：全局状态（window / 流 / event /
-// 各种偏移）、错误检查宏、
-//   各阶段的 host 函数、放行层（主线程 + 尾部线程）的接口，以及导出给 Python 的
-//   GradCommEngine 类。
+// gin_engine.h —— gin_overlap 的总声明：全局状态（window、侧流、event、
+// 偏移）、错误检查宏、各阶段的提交函数、放行层接口，以及导出给 Python 的
+// GradCommEngine 类。
 //
-// 这套代码干的事：sharding stage1 里每个梯度桶本来要做一次 NCCL
-// reduce_scatter，这里改成用 NCCL 的 GIN
-//   单边写（put）自己分几步做，好处是每一步都能塞进反向里 DeepEP 不占网 / 不占
-//   SM 的空档里。
-// 读之前需要知道的几个词（和 Python 侧同名）：
-//   桶 bucket    一块连续显存，若干参数的梯度拼在里面；通信以桶为单位。
-//   分片 shard   一个桶按 sharding 组切开后本卡负责的那一片。
-//   window       注册给 NCCL 的对称内存，对端能单边读写；每个通信组一套 send /
-//   recv / signal / host window。 mark         计算流上记的 event，侧流先等它 ⇒
-//   不早于窗口开始、而且梯度已经写完。 credit       接收方腾空一个槽后给发送方
-//   +1 的计数；发送方看到才敢往那个槽写。
+// gin_overlap 把 sharding stage1 每个梯度桶的 reduce_scatter 拆成几个
+// 阶段，用 NCCL 的 GIN 单边写分步完成，每个阶段在反向里单独提交到 GPU。
+// 这里是 C++ 侧的完整说明，其它文件只引用这里。
 //
-// dense 桶（卡 (node_index, rank_in_node) 负责「卡号 rank_in_node 那一列」的
-// num_nodes 个块
-//   {node * ranks_per_node + rank_in_node}）：
-//   ① CE 推列   cudaMemcpyBatchAsync 把同机 ranks_per_node-1
-//   张卡各自那一列推进它们机内段里本卡那一行
-//               （拷贝引擎 + NVLink，不占 SM）
-//               → k_signal_intra_arrive 把本桶的 seq 写进它们 host window
-//               里「本桶 × 本卡」那一格
-//   ② 机内求和  k_reduce_intra_node：grad 本列块 = 本节点 ranks_per_node
-//   卡之和（原地，作为 GIN put 源） ③ 机间 put  本列第 peer_node 块的部分和 →
-//   节点 peer_node 同卡号 rank 的机间段第 node_index 行
-//               （GIN VASignalInc 打对端 host window）
-//   ④ 最终求和  本 rank shard = Σ_节点 部分和 × scale → 给 num_nodes-1
-//   个发送卡回 credit
-// 专家桶：同卡号 moe_sharding 组 expert_group_size 个 rank，直接 GIN put 给
-// expert_group_size-1 个 peer
-//   → 最终求和按 ring 序求和 → 回 credit。
-// Muon 2D 桶：各卡算完自己分片后 gather 到 owner —— 跨节点 GIN
-// put（k_put_to_owner），同节点 CE + release store。
+// 术语
+//   - 桶（bucket）：一块连续显存，装着若干参数的梯度；通信以桶为单位。
+//   - 分片（shard）：桶按通信组切开后，本卡负责的那一片。
+//   - GIN：NCCL 的 GPU-Initiated Networking。这里只用它的单边写 put：
+//     把本卡一段数据写进对端的 window，对端 GPU 不参与。
+//   - LSA：NCCL 设备 API 里「同一节点、能用指针直接访问」的那组卡
+//     （Load/Store Accessible）。lsaRank / lsaSize = 本卡在节点内的
+//     序号 / 节点内的卡数。
+//   - devcomm：ncclDevComm，kernel 里调用 GIN / LSA 用的通信器句柄。
+//   - CE：拷贝引擎（copy engine）。cudaMemcpyBatchAsync 走它，不占 SM。
+//   - window：注册给 NCCL 的对称内存，对端能单边读写。每个通信组一套
+//     send / recv / signal 三块显存 window，外加一块 host window（CPU
+//     内存，放计数）。signal window 只占位，计数实际写在 host window 的
+//     同一偏移上。send window 里各桶那一段就是该桶的 grad_storage
+//     （send_window_tensor 包成张量，零拷贝）。
+//   - 窗口（时间上的）：反向里 DeepEP 不占网卡或不占 SM 的一段时间。
+//   - mark：计算流上记的 cudaEvent。提交到 GPU 的工作先等 mark，所以
+//     不会早于这个时刻开始，梯度也已经写完。
+//   - 放行：判断某个桶的某个阶段现在可以做，并把它提交到 GPU。
+//   - credit：接收方用完接收池里的一个槽后，给发送方的计数 +1，叫「发
+//     credit」。发送方看到计数达标，才能往那个槽里写。
+//   - owner：Muon 2D 桶最终归哪张卡，那张卡就是这个桶的 owner。
+//   - 组内序号：通信组内部的 rank 编号，不是 world rank。
+//   - 尾部线程：放行层的后台线程，本步最后一个窗口之后由它放行。
 //
-// 缓冲：**每个通信组一套** send / recv / signal 各一块 ncclMemAlloc，注册成
-// NCCL_WIN_COLL_SYMMETRIC window，组内桶间按字节偏移
-//   （dense 桶在 sharding 组那套里从 0 排，专家桶在 moe_sharding 组那套里从 0
-//   排）。 send window 的切片就是各桶的 grad_storage（零拷贝）：切片在 C++ 侧用
-//   paddle::from_blob 包成 paddle::Tensor 还给 Python（send_window_tensor，见
-//   paddle_tensor.cc）。 远端计数（credit / 机内到达 / GIN
-//   signal）落在各组自己的一块 HOST_NUMA host window 上，CPU 直接读； GPU
-//   上只等「本卡已交出的东西」（计算流上的 mark、本卡侧流的
-//   event），不等任何远端计数。
+// 通信组
+//   - dense 桶走 sharding 组（GROUP_DENSE），专家桶走 moe_sharding 组
+//     （GROUP_MOE）。两组各有自己的 ncclComm、devcomm 和 window。
+//   - 组内必须按节点分块：rank_in_node = rank % ranks_per_node，
+//     node_index = rank / ranks_per_node。
+//
+// dense 桶的四个阶段。卡 (node_index, rank_in_node) 负责第 rank_in_node
+// 列，即块 {n * ranks_per_node + rank_in_node | n = 0..num_nodes-1}：
+//   1. 机内拷贝：CE 把本卡在第 l 列的各块推进同节点卡 l 的 recv window
+//      机内段里本卡那一行，再写卡 l 的 host window 里的机内到达格。
+//   2. 机内求和：本列各块 = 本节点各卡对应块之和，原地写回 grad，作为
+//      put 的源；之后给同节点其余卡发机内 credit。
+//   3. 机间 put：本列第 n 块发给节点 n 上同卡号的卡，写进它机间段的第
+//      node_index 行，同时它 host window 里本桶的 signal 计数 +1。
+//   4. 分片求和：本卡分片 = 各节点部分和之和 × scale；之后给其余节点
+//      同卡号的卡发机间 credit。
+// 专家桶两个阶段：put 给专家组其余各卡，再做分片求和、发专家 credit。
+// Muon 2D 桶：分片求和之后，再把本卡分片 gather 到 owner（跨节点用 GIN
+// put，同节点用 CE + release store）。
+//
+// 「分片求和」在代码里叫 inter_node_reduce（dense）、moe_reduce（专家），
+// 两者合称 shard_reduce（如 g_stream_shard_reduce、ADVANCE_SHARD_REDUCE）。
+//
+// 接收池（recv window）
+//   - dense 组的 recv window = [机内段][机间段]，专家组的 = [专家段]。
+//   - 每段是一个环：桶按固定放行顺序依次占一个槽，放不下就绕回段首，
+//     所以同一段里可以有多个桶同时在途。
+//   - 一个槽被新桶复用之前，接收方必须已经用完占着它的那个桶，并发了
+//     credit。
+//
+// host window 布局（每组一块 HOST_NUMA 内存，每格一个 u64，偏移由
+// Python 侧算好传进来）
+//   - dense 组：
+//     - [signal_offset]：每个 dense 桶一格，机间 put 带的 GIN signal。
+//     - [intra_arrive + (bucket*16 + l)*8]：机内到达格，同节点发送卡 l
+//       写入本桶已提交的机内拷贝次数。
+//     - [credit_intra + 8*l]：同节点卡 l 做完一次机内求和后 +1。
+//     - [credit_inter + 8*n]：节点 n 同卡号的卡做完一次分片求和后 +1。
+//     - 2D 桶 gather 的到达格。
+//   - 专家组：
+//     - [signal_offset]：每个专家桶一格，专家 put 带的 GIN signal。
+//     - [credit_moe + 8*k]：组内序号 k 做完一次分片求和后 +1。
+//     - 2D 桶 gather 的到达格。
+//
+// 约束
+//   - 计数跨步累加、只增不减；CPU 不能写这些格子，也不能清零。
+//   - 同一个 u64 不能既有网卡原子写又有 GPU 写：signal 格和机间 / 专家
+//     credit 只由网卡写，机内到达格和机内 credit 只由 GPU 写。
+//   - 每张发送卡只写自己那一个机内到达格，同一格不能有多个写者。
+//   - 每个阶段必须按固定放行顺序提交到 GPU，所有 rank 的顺序必须相同；
+//     credit 的目标值是按这个顺序算的。
+//   - 提交到 GPU 的工作只等本卡的 event（计算流上的 mark、本卡侧流的
+//     event），不能等远端计数。远端计数由放行层（release.cu）在 CPU 上
+//     读 host window 判断。
+//   - 每个桶每步都必须走完全部阶段，否则后面的 credit 永远等不到。
+//   - 放行状态任何时刻只能有一个写者：主线程（advance）或尾部线程。
 #pragma once
 
 #include <cstddef>
@@ -87,8 +130,8 @@ namespace gin_overlap {
     ncclResult_t _res = (x);                           \
     if (_res != ncclSuccess) return 10000 + (int)_res; \
   } while (0)
-// 驱动 API 出错：打印 CUresult 再返回 cudaErrorUnknown（CUresult 和 cudaError_t
-// 的编号不完全一致，不直接混用）
+// 驱动 API 出错：打印 CUresult，再返回 cudaErrorUnknown（CUresult 和
+// cudaError_t 的编号不通用）
 #define CUDA_DRIVER_CHECK(x)                    \
   do {                                          \
     CUresult _res = (x);                        \
@@ -105,36 +148,29 @@ namespace gin_overlap {
   } while (0)
 
 // ----------------------------------------------------------------
-// 通信组（dense / 专家各一套 comm + window） dense 桶走 sharding 组、专家桶走
-// moe_sharding 组：两个 ncclComm、两个 devcomm，每组自己的 send / recv / signal
-// /
-//   host window。组内寻址一律用「组内序号」（专家 peer
-//   就是它在专家组里的序号），不再在一个 comm 里按 base + k*stride 换算。
-// 组内机器分块：rank_in_node = rank % ranks_per_node、node_index = rank /
-// ranks_per_node（要求组的 rank 列表升序、
-//   每节点成员数一致，Python 侧校验，并和 devcomm 的 lsaRank / lsaSize 核对）。
+// 通信组：每组一套 ncclComm、devcomm 和 window（分组方式见文件头）。
+// 组内寻址一律用组内序号。
 enum { GROUP_DENSE = 0, GROUP_MOE = 1, NUM_GROUPS = 2 };
 
 struct CommGroup {
   ncclComm_t comm = nullptr;
   ncclDevComm_t dev_comm{};
   int num_gin_contexts =
-      0;  // 实际回读的 GIN ctx 数（put kernel 按 blockIdx % 它轮转）
+      0;  // devcomm 实际给的 GIN context 数（put kernel 按 blockIdx 轮转）
   int size = 0, rank = 0;  // 组大小、本卡组内序号
   int ranks_per_node = 1;  // 一个节点上的组内成员数（= dev_comm.lsaSize）
   int rank_in_node = 0;  // 本卡在节点内的序号（= dev_comm.lsaRank）
   int num_nodes = 1;     // 组内节点数
   int node_index = 0;    // 本卡所在节点的序号
   ncclWindow_t win_send{}, win_recv{}, win_signal{}, win_host{};
-  char* send = nullptr;  // 本组各桶的 grad_storage（Python 用 DLPack 换过去）
+  char* send = nullptr;  // send window：本组各桶的 grad_storage
   char* recv = nullptr;  // dense 组 = [机内段][机间段]；专家组 = [专家段]
-  char* signal = nullptr;  // 占位（计数实际落在 host window 的同一偏移）
-  char* host = nullptr;  // host window 的 CPU 地址（本进程 cuMemMap 的
-                         // VA，Python 直接读）
+  char* signal = nullptr;  // 只占位：计数写在 host window 的同一偏移
+  char* host = nullptr;  // host window 的 CPU 地址（放行层从这里读计数）
   size_t send_bytes = 0, host_bytes = 0;
   CUmemGenericAllocationHandle host_handle = 0;
   char* lsa_recv[16] =
-      {};  // 本组内同机 lsa rank l 的 recv / signal / host / send window 起点
+      {};  // 同节点卡 l 的 recv / signal / host / send window 起点
   char* lsa_signal[16] = {};
   char* lsa_host[16] = {};
   char* lsa_send[16] = {};
@@ -154,44 +190,38 @@ inline const char* group_name(int group) {
 
 // ----------------------------------------------------------------
 // 全局状态（gin_engine.cc 里定义）
-extern int g_device_id;  // 本进程用的卡（set_comms 收下，之后取当前计算流 /
-                         // 包窗口张量都用它）
-extern cudaStream_t g_stream_intra_node_copy;    // CE 推列
+extern int g_device_id;  // 本进程用的卡（set_comms 里设）
+extern cudaStream_t g_stream_intra_node_copy;    // 机内拷贝
 extern cudaStream_t g_stream_intra_node_reduce;  // 机内求和
 extern cudaStream_t g_stream_put;                // dense put + 专家 put
-extern cudaStream_t g_stream_shard_reduce;       // dense + 专家最终求和
+extern cudaStream_t g_stream_shard_reduce;       // dense + 专家分片求和
 extern std::vector<cudaEvent_t> g_event_intra_node_copy,
     g_event_intra_node_reduce, g_event_dense_put, g_event_moe_put;
 extern std::vector<cudaEvent_t> g_event_dense_inter_node_reduce,
     g_event_moe_reduce;
-extern std::vector<cudaEvent_t> g_window_marks;  // 窗口 mark 池（循环复用）
+extern std::vector<cudaEvent_t> g_window_marks;  // 窗口 mark 环（循环复用）
 extern int g_window_mark_index;
 extern unsigned long long g_inter_node_bytes, g_intra_node_bytes;
-// credit 槽的 host window 字节偏移：机内 / 机间在 dense 组的 host
+// credit 区在 host window 里的字节偏移：机内 / 机间在 dense 组的 host
 // window，专家在专家组的 host window
 extern size_t g_credit_intra_offset, g_credit_inter_offset, g_credit_moe_offset;
 extern int g_buckets_ready;
-extern cudaStream_t g_stream_gather_put;  // 2D 桶 gather：发送方 put / CE
-// 2D 桶 gather 的门流（gather_setup 里建）：只放 cudaStreamWaitEvent /
-// cudaEventRecord，不放 kernel。
-//   原来这条流是 Python 用 paddle.device.Stream() 建的（同样是
-//   cudaStreamNonBlocking），句柄靠私有属性
-//   _as_parameter_ 传进来；现在引擎自己持有，Python 只说「在门流上等这个 mark /
-//   记这个 event」。
+extern cudaStream_t g_stream_gather_put;  // 2D 桶 gather：发送方的 put / CE
+// 2D 桶 gather 的门流（gather_setup 里建）：只放 cudaStreamWaitEvent 和
+// cudaEventRecord，不放 kernel
 extern cudaStream_t g_stream_gather_gate;
 extern std::vector<cudaEvent_t>
-    g_event_gather_source;  // 每 slot：本卡最终求和之后（计算流）
+    g_event_gather_source;  // 每 slot 一个：本卡分片求和之后
 extern std::vector<cudaEvent_t>
-    g_event_gather_put;  // 每 slot：本卡 put 或 CE 交出之后
+    g_event_gather_put;  // 每 slot 一个：本卡的 gather put / CE 之后
 extern int g_gather_ready;
 
-// ---------------------------------------------------------------- Paddle 的
-// 当前计算流（paddle_tensor.cc，那边才能包含 Paddle 的头文件）：
-//   paddle::GetCurrentCUDAStream(GPUPlace(g_device_id))->raw_stream()，和
-//   Python 的 paddle.device.current_stream()._as_parameter_.value
-//   是同一条路、同一个流。 拿不到就打印原因并返回错误码（不回退到默认流）。
+// ----------------------------------------------------------------
+// Paddle 当前计算流（实现在 paddle_tensor.cc），和 Python 的
+// paddle.device.current_stream() 是同一条流。取不到时打印原因并返回错误码，
+// 不退回默认流。
 int paddle_compute_stream(cudaStream_t* out);
-// 当前计算流，拿不到就让调用方的方法带着错误码返回
+// 取当前计算流；取不到时让所在的方法带着错误码返回
 #define GIN_COMPUTE_STREAM(var)                         \
   cudaStream_t var = nullptr;                           \
   do {                                                  \
@@ -199,12 +229,11 @@ int paddle_compute_stream(cudaStream_t* out);
     if (_stream_rc) return _stream_rc;                  \
   } while (0)
 
-// ---------------------------------------------------------------- 各阶段的
-// host 函数（放行层直接调这几个） 把一个桶的某个阶段交给它那条侧流（launch
-// kernel / 发 CE 拷贝 / 记 event）。只有 release.cu 里的
-// release_next_*（主线程的 advance 和尾部线程共用的那一份）调它们，「等哪个
-// mark」是传进来的 event：主线程放行时传窗口 mark 环
-// g_window_marks[mark]，尾部线程传它自己的 mark 环。
+// ----------------------------------------------------------------
+// 各阶段的提交函数：把一个桶的某个阶段提交到 GPU（发 kernel 或 CE 拷贝，
+// 记 event）。只由 release.cu 的 release_next_* 调用；调用前远端条件已经
+// 满足。mark_event = 这次工作要先等的 mark（主线程传窗口 mark，尾部线程
+// 传尾部 mark）。
 int submit_dense_intra_node_copy(int bucket,
                                  size_t recv_offset,
                                  size_t send_offset,
@@ -226,8 +255,7 @@ int submit_dense_inter_node_put(int bucket,
                                 int num_blocks,
                                 cudaEvent_t mark_event,
                                 int* num_signals);
-// 专家桶那两个阶段的组大小 / 本卡组内序号不从调用方传：直接读
-// expert_group()（set_comms 时和 Python 侧核对过）
+// 专家桶的两个阶段：组大小和本卡组内序号取自 expert_group()
 int submit_moe_put(int bucket,
                    size_t recv_offset,
                    size_t send_offset,
@@ -250,9 +278,9 @@ int submit_moe_reduce(int bucket,
                       float scale,
                       int num_blocks,
                       cudaEvent_t mark_event);
-// 2D 桶 gather 的发送：跨节点 k_put_to_owner / 同节点 CE +
-// k_store_release。group = GROUP_DENSE / GROUP_MOE（owner 是
-//   这个组里的组内序号），wait_event = g_stream_gather_put 先等的本卡 event
+// 2D 桶 gather 的发送：跨节点用 k_put_to_owner，同节点用 CE +
+// k_store_release。group = GROUP_DENSE / GROUP_MOE；owner 是该组的组内序号；
+// wait_event = g_stream_gather_put 先等的本卡 event
 int gather_put_to_owner(int group,
                         int slot,
                         size_t send_offset,
@@ -264,11 +292,10 @@ int gather_put_to_owner(int group,
                         int* num_signals,
                         cudaEvent_t wait_event);
 
-// ---------------------------------------------------------------- 放行层
-// （release.cu）：「这个桶的这个阶段现在能不能交给
-// GPU」只在那里判断一次，主线程（advance）和
-//   尾部线程用的是同一份判断和同一份状态。
-// 阶段编号（Python 侧 RELEASE_STAGE 要解，数值不许变）
+// ----------------------------------------------------------------
+// 放行层（release.cu）：判断某个桶的某个阶段能不能提交到 GPU，并提交。
+// 主线程（advance）和尾部线程用同一份判断和同一份状态。
+// 阶段编号。Python 侧按名字取（constants），数值不能改
 namespace release {
 enum {
   STAGE_DENSE_INTRA_NODE_COPY = 1,
@@ -282,9 +309,8 @@ enum {
   STAGE_GATHER_DENSE = 10,
   STAGE_GATHER_MOE = 11
 };  // 2D 桶 gather put（Muon）
-// advance 的阶段集合（Python 侧按窗口选，数值不许变）：窗口 A / B（DeepEP
-// 刚结束，网卡空）交
-//   机内拷贝 + put，pre 窗口（计算流在等 DeepEP，SM 空）交机内求和 + 最终求和。
+// advance 的阶段集合，按位或。窗口 A / B（DeepEP 刚结束，网卡空）用机内拷贝
+// + put；pre 窗口（计算流在等 DeepEP，SM 空）用机内求和 + 分片求和。
 enum {
   ADVANCE_INTRA_NODE_COPY = 1,
   ADVANCE_INTRA_NODE_REDUCE = 2,
@@ -323,7 +349,7 @@ int stuck_report(std::vector<long long>& flat);
 int get_last_error(int* out3);
 int get_current_activity();
 // 导出给 Python 的常量表（名字 → 数值）：ADVANCE_* / STAGE_* / COUNTER_* /
-// TAIL_*。数值只在 release.cu 里定义一份，Python 侧按名字取，不许自己再写数值
+// TAIL_*。数值只在 release.cu 里定义；Python 侧必须按名字取，不能自己写数值
 int constants(std::vector<std::string>& names, std::vector<int>& values);
 int setup_gather_table(const std::vector<long long>& table);
 int gather_put_entry(int entry_index, unsigned long long seq, int* num_signals);
@@ -331,10 +357,10 @@ int set_gather_sequences(const std::vector<unsigned long long>& seqs);
 int get_gather_sent(std::vector<long long>& flat);
 }  // namespace release
 
-// ---------------------------------------------------------------- Paddle 的
-// ncclComm（paddle_comm.cc） 从 Paddle 的 ProcessGroup（ring id = Python
-// 侧通信组对象的 .id）取已经建好的 ncclComm_t；同时回读这个组的 大小 /
-// 本卡序号。返回非 0 时 *out_err 是原因（上层报错，不回退到自己建 comm）。
+// ----------------------------------------------------------------
+// 按 ring id（Python 侧通信组对象的 .id）取 Paddle ProcessGroup 已有的
+// ncclComm_t，同时返回组大小和本卡序号（实现在 paddle_comm.cc）。
+// 返回非 0 时 *out_err 是原因。
 int paddle_nccl_comm(int ring_id,
                      int device_id,
                      ncclComm_t* out_comm,
@@ -342,42 +368,30 @@ int paddle_nccl_comm(int ring_id,
                      int* out_rank,
                      std::string* out_err);
 
-// ---------------------------------------------------------------- 导出给
-// Python（paddle/fluid/pybind/gin_overlap_api.cc）
-// Python 侧 paddle.distributed.communication.gin_overlap.engine
-// 的 device_engine() 持有这个对象、按名字调这些方法，所以方法名和
-// gin_overlap_api.cc 里的
-//   py::arg 名字不能随便改（改一边要改另一边）；PaddleFleet 的放行时机层
-//   （gin_overlap/scheduler.py、backend.py）也按名字调其中一部分。
-// 约定：所有方法返回一个 int 返回码（0 成功，<10000 = cudaError_t，>=10000 =
-// 10000 + ncclResult_t）；要多返回
-//   几个值就走出参，gin_overlap_api.cc 再包成 tuple。指针按 uintptr_t 传。
-//   group 参数 = GROUP_DENSE(0) / GROUP_MOE(1)；offset 一律是对应 window
-//   里的字节偏移；shard_numel 是元素数。
-// 流不从 Python 传：要排在 Paddle 当前计算流上的方法自己调
-// paddle_compute_stream（和 Python 的
-//   paddle.device.current_stream() 同一个流），要排在 2D gather 门流上的是
-//   gather_gate / gather_wait_bucket / gather_mark_ready 这三个（流归引擎，见
-//   g_stream_gather_gate）。
-// 另有两个方法收 / 还 paddle::Tensor（实现在 paddle_tensor.cc，注册和别的
-// 方法一起在 gin_overlap_api.cc）：
-//   send_window_tensor(group, send_offset, numel) → 本组 send window
-//   切片的 fp32 paddle::Tensor（零拷贝）； copy_2d(dst, dst_offset, dst_pitch,
-//   src, src_offset, src_pitch, width, height) → 计算流上一次 pitched 拷贝。
-//   这两个按 Python 的习惯直接抛异常（不是返回码）。
-// 调用顺序（Python 侧 GinOverlapEngine.__init__ 里按这个顺序走一遍）：
-//   set_comms → alloc_windows → alloc_host_counters → create_dev_comm →
-//   set_group_topology → configure →（Muon 才有）gather_setup →
-//   release_setup。
-// 之后每步反向：record_window_mark 划窗口 → advance 在窗口里放行 →
-// 尾部交给 tail_*（tail_mark / tail_start / bucket_ready / tail_all_posted /
-//   tail_wait / tail_finish）→ join_bucket_streams + end_step →
-//   release_step_reset 进下一步。 放行到哪儿了、卡在哪，用 release_status /
-//   release_stuck_report 查（见 release.cu）。
-// 专家桶那两个阶段（submit_moe_put / submit_moe_reduce）不带 intra_node /
-// inter_node：专家桶没有机内那一步
-//   （直接 put 给组内每个 peer），而且 peer 不保证跨机（专家组的两个 rank
-//   可能在同一台机器上， 那笔 put 走机内），写成 inter_node 会不准。
+// ----------------------------------------------------------------
+// GradCommEngine：导出成 paddle.base.core.gin_overlap.GradCommEngine
+// （注册在 paddle/fluid/pybind/gin_overlap_api.cc），进程内只有一个对象。
+// Python 侧按名字调用这些方法，方法名和 py::arg 名字不能改。
+// 约定：
+//   - 返回 int 返回码：0 成功，<10000 = cudaError_t，>=10000 = 10000 +
+//     ncclResult_t。多个返回值走出参，gin_overlap_api.cc 包成 tuple。
+//   - 指针按 uintptr_t 传；group = GROUP_DENSE(0) / GROUP_MOE(1)；
+//     offset 是对应 window 里的字节偏移；numel / shard_numel 是元素数。
+//   - 流不从 Python 传。排在计算流上的方法自己取 paddle_compute_stream；
+//     gather_gate / gather_wait_bucket / gather_mark_ready 排在
+//     g_stream_gather_gate 上。
+//   - send_window_tensor / copy_2d（实现在 paddle_tensor.cc）出错时抛异常，
+//     不返回错误码。
+// 调用顺序：
+//   - 初始化：set_comms → alloc_windows → alloc_host_counters →
+//     create_dev_comm → set_group_topology → configure →（Muon）
+//     gather_setup → release_setup。
+//   - 每步反向：record_window_mark → advance（窗口里放行）→ tail_mark /
+//     tail_start / bucket_ready / tail_all_posted / tail_wait / tail_finish
+//     （尾部线程）→ join_bucket_streams → end_step → release_step_reset。
+//   - 查放行进度：release_status / release_stuck_report。
+// 专家桶的阶段名（submit_moe_put / submit_moe_reduce）不带 intra_node /
+// inter_node：专家桶没有机内阶段，而且专家组的 peer 可能在同一节点上。
 class GradCommEngine {
  public:
   GradCommEngine() = default;
@@ -386,8 +400,8 @@ class GradCommEngine {
   static int nccl_runtime_version();
   static int nccl_build_version();
 
-  // 复用 Paddle 已有的 comm：ring id < 0 = 这个组不用（没有专家桶）。拿不到 /
-  // 组大小或序号和 Python 侧不一致都报错
+  // 取 Paddle 已有的 comm。ring id < 0 = 不用这个组（没有专家桶）。
+  // 取不到，或组大小 / 序号和传入的不一致时返回错误，err 是原因
   int set_comms(int dense_ring_id,
                 int expert_ring_id,
                 int device_id,
@@ -406,9 +420,9 @@ class GradCommEngine {
                       int* lsa_rank,
                       int* lsa_size);
   int set_group_topology(int group, int num_nodes, int node_index);
-  // 桶数只在这里收一次：侧流 / 每桶 event / 窗口 mark 环 + host window 里三块
-  // credit 的字节偏移（dense 组的 credit_intra / credit_inter、专家组的
-  // credit_moe）。之后 release_setup 不再带桶数（它从 g_event_* 的长度读）
+  // 桶数只在这里传入：建侧流、每桶 event、窗口 mark 环，并收下 host window
+  // 里三块 credit 区的字节偏移（dense 组的 credit_intra / credit_inter，
+  // 专家组的 credit_moe）
   int configure(int num_dense_buckets,
                 int num_moe_buckets,
                 int num_window_marks,
@@ -466,9 +480,8 @@ class GradCommEngine {
   int gather_gate(int mark);
   int gather_wait_bucket(int is_dense, int bucket);
   int gather_mark_ready(int slot);
-  // 主线程发一个 2D 桶的 gather put：只给表项下标和本步序号，别的参数（slot /
-  // 偏移 / owner）由放行层按表查（和尾部线程用的是同一张表，见
-  // release::setup_gather_table）
+  // 主线程发一个 2D 桶的 gather put：只给表项下标和本步序号，slot / 偏移 /
+  // owner 从 release::setup_gather_table 建的表里查
   int gather_put_entry(int entry_index,
                        unsigned long long seq,
                        int* num_signals);

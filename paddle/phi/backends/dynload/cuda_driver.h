@@ -61,14 +61,11 @@ extern bool HasCUDADriver();
   __macro(cuDeviceGetAttribute);                        \
   __macro(cuDeviceGet)
 
-// cuMemcpy2DAsync, spelled with the version suffix libcuda actually exports.
-// cuda.h turns the plain name into a macro (`#define cuMemcpy2DAsync
-// __CUDA_API_PTSZ(cuMemcpy2DAsync_v2)`), while libcuda exports both the v1
-// entry point, whose parameter is the old CUDA_MEMCPY2D_v1 layout, and the
-// v2 one. The wrapper dlsym()s the name it is given but types itself from
-// `decltype(&::name)`, which the macro resolves to the v2 declaration, so
-// passing the plain name here would call v1 through a v2 signature. Call
-// sites keep writing cuMemcpy2DAsync; cuda.h's macro rewrites it.
+// cuMemcpy2DAsync, wrapped under its versioned name cuMemcpy2DAsync_v2.
+// cuda.h defines cuMemcpy2DAsync as a macro that expands to the _v2 name, and
+// libcuda also exports a v1 entry point with a different parameter layout, so
+// the wrapper must dlsym() the _v2 name. Call sites keep writing
+// cuMemcpy2DAsync.
 #define CUDA_ROUTINE_EACH_MEMCPY(__macro) __macro(cuMemcpy2DAsync_v2)
 
 #define CUDA_ROUTINE_EACH_VVM(__macro)             \

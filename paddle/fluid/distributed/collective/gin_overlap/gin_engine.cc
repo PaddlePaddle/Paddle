@@ -12,34 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// gin_engine.cc —— host 侧的编排：建 window / devcomm / 侧流 /
-// event，把一个桶的某个阶段交给 GPU，以及 2D 桶 gather。 纯 host
-// 代码：这里不出现 <<<>>>，kernel 一律经 kernels/kernels.h 的 launch_* 发射。
-// 规则：交给 GPU 的工作只等「本卡已交出的东西」—— 计算流上的 mark、本卡侧流的
-// event。不等任何远端计数，
-//   也不等 busy。远端计数（credit / 机内到达计数 / signal）由对端直接写进本卡的
-//   host window，host（Python 侧） 直接读这块内存，看到条件满足才调下面的
-//   submit_* 把对应阶段交出去。
-// host window（**每个通信组**一块 HOST_NUMA 内存，注册成本组的 NCCL
-// window，偏移和本组 signal window 相同）：
-//   dense 组（sharding 组）：
-//     [signal_offset + 0]   每个 dense 桶：机间 GIN signal（对端 put 带的
-//     VASignalInc，网卡 atomic 写） [intra_arrive + (bucket*16 + l)*8]：dense
-//     桶 bucket 的机内到达，发送卡 l 一格、单写者
-//                                        （l 的 submit_dense_intra_node_copy 写
-//                                        seq）
-//     [credit_intra + 8l]：本机卡 l 做完一个 dense
-//     桶的机内求和后打（k_signal_intra_node，LSA 指针） [credit_inter +
-//     8n]：节点 n 同卡号 rank 做完一个 dense
-//     桶的最终求和后打（k_signal_credit，GIN signal）
-//   专家组（moe_sharding 组）：
-//     [signal_offset + 0]   每个专家桶：专家 GIN signal
-//     [credit_moe + 8k] ：专家组第 k 个 rank
-//     做完一个专家桶的最终求和后打（k_signal_credit，GIN signal）
-//   每格 8B，跨步累计只增不减（CPU 不写、不清零：网卡 atomic 只和网卡 atomic
-//   互相原子）。 网卡 atomic 和 GPU 写不落同一个 u64（[0]
-//   只有网卡写；机内到达区、credit 机内块只有 GPU 写，机间 /
-//   专家块只有网卡写）。
+// gin_engine.cc —— host 侧编排：建 window、devcomm、侧流和 event，把一个
+// 桶的某个阶段提交到 GPU（submit_*），以及 2D 桶 gather。
+// 这里只有 host 代码，kernel 一律经 kernels/kernels.h 的 launch_* 发射。
+// 术语、host window 布局和约束见 gin_engine.h 文件头。
 #include "paddle/fluid/distributed/collective/gin_overlap/gin_engine.h"
 
 #include <cstring>
@@ -65,7 +41,7 @@ cudaStream_t g_stream_gather_gate = nullptr;
 std::vector<cudaEvent_t> g_event_gather_source, g_event_gather_put;
 int g_gather_ready = 0;
 
-// 集合操作：组内所有 rank 同大小同顺序调用
+// 集合操作：组内所有 rank 必须以相同的大小、相同的顺序调用
 static int alloc_symmetric_window(ncclComm_t comm,
                                   size_t bytes,
                                   char** out_ptr,
@@ -90,15 +66,13 @@ int GradCommEngine::nccl_runtime_version() {
   return version;
 }
 
-// 编译时用的 NCCL 头文件版本（GIN device API 内联在头文件里，必须和运行时加载的
-// libnccl 同版本）
+// 编译时用的 NCCL 头文件版本。GIN 设备 API 内联在头文件里，所以它必须和运行时
+// 加载的 libnccl 同版本
 int GradCommEngine::nccl_build_version() { return NCCL_VERSION_CODE; }
 
-// 两个组的 comm 都复用 Paddle
-// 已经建好的那个（paddle_comm.cc：ProcessGroupMapFromGid → ProcessGroupNCCL
-//   → NCCLCommContext::GetNcclComm）。expert_ring_id < 0 =
-//   没有专家桶，不取专家组。 回读的组大小 / 组内序号要和 Python
-//   侧传来的一致（ring id 填错能在这里报出来），不一致报错。
+// 两个组都取 Paddle 已有的 ncclComm（paddle_nccl_comm）。expert_ring_id < 0
+// = 没有专家桶，不取专家组。取回的组大小 / 组内序号必须和传入的一致，否则
+// 报错（ring id 填错时在这里报出）。set_comms 只能调一次。
 int GradCommEngine::set_comms(int dense_ring_id,
                               int expert_ring_id,
                               int device_id,
@@ -109,7 +83,7 @@ int GradCommEngine::set_comms(int dense_ring_id,
                               std::string& err) {
   err.clear();
   CUDA_CHECK(cudaSetDevice(device_id));
-  g_device_id = device_id;  // 之后取当前计算流 / 包 send window 张量都用它
+  g_device_id = device_id;
   const int ring_ids[NUM_GROUPS] = {dense_ring_id, expert_ring_id};
   const int want_size[NUM_GROUPS] = {dense_size, expert_size};
   const int want_rank[NUM_GROUPS] = {dense_rank, expert_rank};
@@ -187,7 +161,8 @@ int GradCommEngine::alloc_windows(int group,
   return 0;
 }
 
-// out: [GIN ctx 数, lsaRank, lsaSize]
+// 建本组的 devcomm（集合操作）。必须在本组所有 window（含 host window）都注册
+// 之后调。出参：GIN context 数、lsaRank、lsaSize（lsaSize 必须在 1..16）
 int GradCommEngine::create_dev_comm(int group,
                                     int num_gin_contexts_hint,
                                     int* num_contexts,
@@ -199,8 +174,8 @@ int GradCommEngine::create_dev_comm(int group,
     return (int)cudaErrorNotReady;
   ncclDevCommRequirements_t req = NCCL_DEV_COMM_REQUIREMENTS_INITIALIZER;
   req.ginConnectionType =
-      NCCL_GIN_CONNECTION_FULL;  // 专家组和 dense 机外都要打任意 peer
-  req.ginContextCount = num_gin_contexts_hint;  // 只是 hint，按实际回读值轮转
+      NCCL_GIN_CONNECTION_FULL;  // 专家 put 和 dense 机间 put 都要发给任意 peer
+  req.ginContextCount = num_gin_contexts_hint;  // 只是建议值，以实际值为准
   req.ginSignalCount = 1;                       // 用 VA signal
   req.ginCounterCount = 0;
   NCCL_CHECK(ncclDevCommCreate(comm_group.comm, &req, &comm_group.dev_comm));
@@ -222,8 +197,8 @@ int GradCommEngine::create_dev_comm(int group,
   return 0;
 }
 
-// 组内机器分块（Python 侧按组的 rank 列表算好、并和上面回读的 lsaRank / lsaSize
-// 核对过）
+// 设置组内节点分块：num_nodes 个节点，本卡在第 node_index 个。必须满足
+// num_nodes * ranks_per_node == 组大小，且 node_index == rank / ranks_per_node
 int GradCommEngine::set_group_topology(int group,
                                        int num_nodes,
                                        int node_index) {
@@ -242,15 +217,13 @@ int GradCommEngine::set_group_topology(int group,
   return 0;
 }
 
-// 建四条侧流 / 窗口 mark 环 / 每桶 event，收下 host window 里三块 credit 的字节
-// 偏移，取本机同组各卡 host window 的 LSA 指针，并预加载全部
-// kernel（CUDA_MODULE_LOADING=LAZY 下，首次 launch 和别的流上的 memop
-// 等待可能互相等死）。组内机器分块在 create_dev_comm / set_group_topology
-// 里就定好了。
-//   桶数只在这里收一次（放行层的 release_setup 不再带桶数，它从 g_event_* 的
-//   长度读），所以「Python 侧桶数」和「引擎里按桶数开的那些
-//   event」不可能对不上。 credit_intra / credit_inter 是 dense 组 host window
-//   的偏移，credit_moe 是专家组的。
+// 建四条侧流、窗口 mark 环和每桶 event，收下 host window 里三块 credit 区的
+// 字节偏移（credit_intra / credit_inter 在 dense 组，credit_moe 在专家组），
+// 取同节点各卡 host window 的 LSA 指针，并预加载全部 kernel。
+// 预加载让模块提前加载，免得第一次 launch 落在反向的关键路径上。同一进程里有
+// 在 GPU 上自旋等待的 kernel（DeepEP / NCCL）时，第一次加载模块会怎样没有
+// 验证过。
+// 桶数只在这里传入，release_setup 从 g_event_* 的长度读桶数。
 int GradCommEngine::configure(int num_dense_buckets,
                               int num_moe_buckets,
                               int num_window_marks,
@@ -290,10 +263,9 @@ int GradCommEngine::configure(int num_dense_buckets,
                        &g_window_marks})
     for (auto& ev : *events)
       CUDA_CHECK(cudaEventCreateWithFlags(&ev, cudaEventDisableTiming));
-  // 取本节点同组各卡 host window 的 LSA 指针：本卡 GPU 用它直接写对端的 host
-  // 计数格。
-  //   dense 组给机内到达 / 机内 credit / 2D gather 的同节点 CE 用；专家组只给
-  //   2D gather 用（专家组内同机成员通常只有本卡）
+  // 取同节点各卡 host window 的 LSA 指针，本卡 GPU 用它直接写对端的计数格。
+  // dense 组用于机内到达格、机内 credit 和 2D gather 的同节点 CE；专家组只用于
+  // 2D gather
   void** lsa_pointers_device = nullptr;
   CUDA_CHECK(cudaMalloc((void**)&lsa_pointers_device, 16 * sizeof(void*)));
   for (int group_index = 0; group_index < NUM_GROUPS; ++group_index) {
@@ -337,7 +309,7 @@ int GradCommEngine::configure(int num_dense_buckets,
   return 0;
 }
 
-// 在 Paddle 当前计算流的当前位置记一个 mark，返回槽号（<0 = 出错）
+// 在 Paddle 当前计算流的当前位置记一个窗口 mark，返回槽号（<0 = 出错）
 int GradCommEngine::record_window_mark() {
   if (g_window_marks.empty()) return -1;
   cudaStream_t compute_stream = nullptr;
@@ -349,18 +321,15 @@ int GradCommEngine::record_window_mark() {
   return i;
 }
 
-// ---------------------------------------------------------------- 放计数的
-// host window 集合操作（**组内**所有 rank 都要调，而且要在本组 alloc_windows
-// 之后、本组 create_dev_comm 之前：
-//   必须先把本组所有 window 都注册完，再 ncclDevCommCreate，否则 devcomm
-//   里没有这块 window）。 每组一块 HOST_NUMA 内存并注册成
-//   window：cuMemCreate（location = HOST_NUMA，numa id 取
-//   CU_DEVICE_ATTRIBUTE_HOST_NUMA_ID）→ 按 granularity 向上取整 → cuMemMap →
-//   给本卡和 HOST_NUMA 都设 READWRITE → CPU memset 清零 →
-//   ncclCommWindowRegister。 注册时带
-//   NCCL_WIN_STRICT_ORDERING：实测不带（默认）时对端网卡写的计数读出来会是
-//   0，带上才对。 *cpu_ptr = CPU 读计数用的地址；*nbytes = 实际大小（≥
-//   want_bytes，按粒度取整，实测粒度 2 MB）。
+// ----------------------------------------------------------------
+// 分配本组的 host window（集合操作，组内所有 rank 都要调）：一块 HOST_NUMA
+// 内存，本卡 GPU 和 CPU 都可读写，注册成本组的 NCCL window。
+//   - 必须在本组 alloc_windows 之后、create_dev_comm 之前调，否则 devcomm
+//     里没有这块 window。
+//   - 注册时必须带 NCCL_WIN_STRICT_ORDERING，否则 CPU 读不到对端网卡写入的
+//     计数。
+//   - *cpu_ptr = CPU 读计数用的地址；*nbytes = 实际大小（≥ want_bytes，按
+//     分配粒度向上取整）。
 int GradCommEngine::alloc_host_counters(int group,
                                         size_t want_bytes,
                                         uintptr_t* cpu_ptr,
@@ -387,8 +356,8 @@ int GradCommEngine::alloc_host_counters(int group,
   alloc_prop.location.type = CU_MEM_LOCATION_TYPE_HOST_NUMA;
   alloc_prop.location.id = numa_id;
   alloc_prop.requestedHandleTypes =
-      CU_MEM_HANDLE_TYPE_POSIX_FILE_DESCRIPTOR;  // 同节点的卡要把这块内存映射进来，必须用这种
-                                                 // handle
+      CU_MEM_HANDLE_TYPE_POSIX_FILE_DESCRIPTOR;  // 同节点的卡要映射这块内存，
+                                                 // 必须用这种 handle
   size_t granularity = 0;
   CUDA_DRIVER_CHECK(cuMemGetAllocationGranularity(
       &granularity, &alloc_prop, CU_MEM_ALLOC_GRANULARITY_MINIMUM));
@@ -411,8 +380,7 @@ int GradCommEngine::alloc_host_counters(int group,
   access_desc.location.id = numa_id;
   CUDA_DRIVER_CHECK(cuMemSetAccess(base_ptr, bytes, &access_desc, 1));
   comm_group.host = (char*)base_ptr;
-  memset(
-      comm_group.host, 0, bytes);  // 初值清零（注册前，此时还没有任何对端能写）
+  memset(comm_group.host, 0, bytes);  // 必须在注册之前清零
   NCCL_CHECK(ncclCommWindowRegister(
       comm_group.comm,
       comm_group.host,
@@ -426,15 +394,13 @@ int GradCommEngine::alloc_host_counters(int group,
 }
 
 // ----------------------------------------------------------------
-// 一个桶的四个阶段 ① CE（g_stream_intra_node_copy）：等 mark → 推进本机
-// ranks_per_node-1 张接收卡机内段 recv_offset 的第 row 行
-//    （row = l > rank_in_node ? rank_in_node : rank_in_node-1）
-//    → 同流 k_signal_intra_arrive：把 seq 写进接收卡 l 的 host window 偏移
-//    intra_arrive_offset
-//      （= intra_arrive + (bucket*16 +
-//      rank_in_node)*8，本卡那一格，所有接收卡偏移相同）→ event。
-//    接收卡机内段腾空（机内 credit 达标）由 host 读本卡 host window
-//    判断后才调本函数，GPU 上不等。
+// dense 桶的四个阶段（含义见 gin_engine.h 文件头）。调用前放行层已经确认
+// 远端条件满足；这里提交到 GPU 的工作只等 mark_event 和本卡的 event。
+
+// 1. 机内拷贝（g_stream_intra_node_copy）：等 mark → CE 把本卡在第 l 列的
+//    各块写进同节点卡 l 的机内段（recv_offset）第 row 行 → 把 seq 写进卡 l
+//    host window 的 intra_arrive_offset（本卡那一格，各接收卡上偏移相同）
+//    → 记 event。seq 必须 > 0，intra_arrive_offset 必须 8 字节对齐。
 int submit_dense_intra_node_copy(int bucket,
                                  size_t recv_offset,
                                  size_t send_offset,
@@ -499,10 +465,10 @@ int submit_dense_intra_node_copy(int bucket,
   return 0;
 }
 
-// ② 机内求和（g_stream_intra_node_reduce）：等 mark → k_reduce_intra_node →
-// 给本机 ranks_per_node-1 张发送卡 host window 的
-//    credit 槽 [credit_intra + 8*rank_in_node] +1（LSA 指针）→ event。
-//    本桶机内到达计数达标（ranks_per_node-1 张卡的 CE 都已落地）由 host 判断。
+// 2. 机内求和（g_stream_intra_node_reduce）：等 mark → k_reduce_intra_node
+//    → 给同节点其余卡发机内 credit（它们 host window 的
+//    [credit_intra + 8*rank_in_node] +1）→ 记 event。shard_numel 必须是 4 的
+//    倍数。
 int submit_dense_intra_node_reduce(int bucket,
                                    size_t recv_offset,
                                    size_t send_offset,
@@ -546,12 +512,10 @@ int submit_dense_intra_node_reduce(int bucket,
   return 0;
 }
 
-// ③ dense put（g_stream_put）：等本桶机内求和 event（本卡已交出的工作）→ 等
-// mark → put 到对端机间段 recv_offset 的
-//    第 node_index 行（数据写对端显存 recv window），每个 put 带的 signal
-//    打到对端 host window 的 [signal_offset] → event。num_nodes-1
-//    个接收卡机间段腾空（机间 credit 达标）由 host 判断。*num_signals = 对端
-//    signal 增量
+// 3. dense put（g_stream_put）：等本桶机内求和的 event → 等 mark → 发给其余
+//    节点同卡号的卡，写进它们机间段（recv_offset）第 node_index 行，同时它们
+//    host window 的 [signal_offset] +1 → 记 event。
+//    *num_signals = 对端 signal 计数这次增加多少。
 int submit_dense_inter_node_put(int bucket,
                                 size_t recv_offset,
                                 size_t send_offset,
@@ -568,7 +532,7 @@ int submit_dense_inter_node_put(int bucket,
       cudaStreamWaitEvent(g_stream_put, g_event_intra_node_reduce[bucket], 0));
   CUDA_CHECK(cudaStreamWaitEvent(g_stream_put, mark_event, 0));
   if (comm_group.num_nodes > 1) {
-    // signal_window 参数传 host window：对端收 signal 的是它的 host window
+    // 对端在 host window 上收 signal，所以 signal_window 传 host window
     const int rc = launch_put_to_node_peers(comm_group.dev_comm,
                                             comm_group.win_recv,
                                             comm_group.win_send,
@@ -593,13 +557,10 @@ int submit_dense_inter_node_put(int bucket,
   return 0;
 }
 
-// ③' 专家 put（g_stream_put，和 dense put 同一条流）：等 mark → put
-// 到专家组其余 size-1 个 peer
-//     （组内序号 k）专家段 recv_offset 的第 rank
-//     行（数据写对端显存），signal 打到对端 host window 的 [signal_offset] →
-//     event。专家 credit 达标由 host 判断。
-//     组大小 / 本卡组内序号取自 expert_group()（set_comms 时和 Python
-//     侧核对过的那一份），调用方不再传。
+// 专家 put（g_stream_put，和 dense put 同一条流）：等 mark → 发给专家组其余
+// 各卡（组内序号 k），写进它们专家段（recv_offset）第 rank 行，同时它们
+// host window 的 [signal_offset] +1 → 记 event。组大小 / 本卡组内序号取自
+// expert_group()。
 int submit_moe_put(int bucket,
                    size_t recv_offset,
                    size_t send_offset,
@@ -638,11 +599,10 @@ int submit_moe_put(int bucket,
   return 0;
 }
 
-// ④ dense 最终求和（g_stream_shard_reduce）：等本桶机内求和 event → 等 mark →
-// 本卡 shard = Σ_节点 × scale
-//    → 给 num_nodes-1 个远端发送卡 host window 的 credit 槽 [credit_inter +
-//    8*node_index] +1 → event。 机间 signal 达标由 host 判断。num_blocks <= 0 =
-//    按 numel 取
+// 4. dense 分片求和（g_stream_shard_reduce）：等本桶机内求和的 event → 等
+//    mark → 本卡分片 = Σ_节点 部分和 × scale → 给其余节点同卡号的卡发机间
+//    credit（它们 host window 的 [credit_inter + 8*node_index] +1）→ 记
+//    event。num_blocks <= 0 表示按 numel 自动取。
 int submit_dense_inter_node_reduce(int bucket,
                                    size_t recv_offset,
                                    size_t send_offset,
@@ -691,12 +651,10 @@ int submit_dense_inter_node_reduce(int bucket,
   return 0;
 }
 
-// ④' 专家最终求和（g_stream_shard_reduce，和 dense 最终求和同一条流）：等 mark
-// → 本卡块 = Σ_k × scale
-//     → 给专家组其余 size-1 个 peer（组内序号 k）host window 的
-//     credit 槽 [credit_moe + 8*rank] +1 → event。专家 signal
-//     达标由 host 判断。组大小 / 本卡组内序号同 submit_moe_put，取自
-//     expert_group()
+// 专家分片求和（g_stream_shard_reduce，和 dense 分片求和同一条流）：等 mark
+// → 本卡分片 = Σ_k × scale → 给专家组其余各卡发专家 credit（它们 host window
+// 的 [credit_moe + 8*rank] +1）→ 记 event。组大小 / 本卡组内序号取自
+// expert_group()。
 int submit_moe_reduce(int bucket,
                       size_t recv_offset,
                       size_t send_offset,
@@ -744,14 +702,13 @@ int submit_moe_reduce(int bucket,
 }
 
 // ----------------------------------------------------------------
-// 窗口 mark 环里第 mark 个 event（放行层的 advance 用；桶号 /
-// 其它参数的范围检查在 release.cu 里）
+// 窗口 mark 环里的槽号是否有效
 static inline bool is_valid_mark(int mark) {
   return mark >= 0 && mark < (int)g_window_marks.size();
 }
 
-// 一个桶的 CE / put / 最终求和三条侧流的 event（都是本卡已交出的工作）排到
-// stream 上
+// 让 stream 等一个桶各阶段侧流的 event：dense 等机内拷贝 / put / 分片求和，
+// 专家等 put / 分片求和
 static int join_bucket_streams_on(int is_dense,
                                   int bucket,
                                   cudaStream_t stream) {
@@ -776,13 +733,13 @@ static int join_bucket_streams_on(int is_dense,
   return 0;
 }
 
-// reduce_gradients（计算流）：等本桶 CE / put / 最终求和三条侧流的 event
+// 计算流等本桶各阶段的 event（reduce_gradients 里逐桶调）
 int GradCommEngine::join_bucket_streams(int is_dense, int bucket) {
   GIN_COMPUTE_STREAM(compute_stream);
   return join_bucket_streams_on(is_dense, bucket, compute_stream);
 }
 
-// 2D gather 的门流等本桶那三个 event（同上，只是流不同）
+// 2D gather 的门流等本桶各阶段的 event
 int GradCommEngine::gather_wait_bucket(int is_dense, int bucket) {
   if (!g_gather_ready || !g_stream_gather_gate) return (int)cudaErrorNotReady;
   return join_bucket_streams_on(is_dense, bucket, g_stream_gather_gate);
@@ -807,7 +764,8 @@ int GradCommEngine::scale_range(int group,
                             compute_stream);
 }
 
-// 两个组各自 flush 自己的 GIN ctx（send window 下一步才能复用）
+// 每步末尾在计算流上 flush 两个组的全部 GIN context。下一步复用 send window
+// 之前必须 flush
 int GradCommEngine::end_step() {
   GIN_COMPUTE_STREAM(compute_stream);
   for (int group_index = 0; group_index < NUM_GROUPS; ++group_index) {
@@ -827,26 +785,22 @@ void GradCommEngine::stats(unsigned long long* out3) {
   out3[2] = 0;
 }
 
-// ---------------------------------------------------------------- Muon 2D 桶
-// gather 到 owner（GIN put / 同节点 CE） 2D 桶（Muon
-// act=REDUCE）每卡先得到本卡分片 seg(k) 的最终和，本节把它直接写进 owner send
-// window 里同一个桶的 seg(k)
-//   （同一偏移：Python 侧校验 send_offset 在组内一致），owner 拼成整桶：
-//   发送方（g_stream_gather_put）：等本卡本桶最终求和之后记的 event → 跨节点
-//   GIN put（k_put_to_owner，send→send，
-//     signal 落 owner host window 的到达格，网卡 atomic）/ 同节点 CE（LSA send
-//     指针）+ k_store_release 写 owner host window 里本卡那一格 →
-//     g_event_gather_put。
-//   远端条件（其余分片到没到）由 host 读 host window 判断；GPU
-//   上只等本卡计算流上记的 event。
-// slot = 2D 桶在本表里的序号（dense 用 dense 桶号，专家用 dense 桶数 +
-// 专家桶号），只用来选 event。
+// ----------------------------------------------------------------
+// Muon 2D 桶 gather 到 owner。每张卡做完本卡分片 seg(k) 的分片求和后，把它写进
+// owner send window 里同一个桶的同一偏移，owner 拼出整桶。各卡的 send_offset
+// 必须一致。
+//   - 发送方在 g_stream_gather_put 上：等本卡 event → 跨节点用 GIN put
+//     （k_put_to_owner，signal 写 owner host window 的到达格）/ 同节点用 CE
+//     （LSA send 指针）+ k_store_release 写 owner host window 里本卡那一格
+//     → 记 g_event_gather_put。
+//   - owner 端的「收齐了没有」由 CPU 读 host window 判断。
+// slot = 2D 桶的 event 下标：dense 桶用 dense 桶号，专家桶用 dense 桶数 +
+// 专家桶号。
 int GradCommEngine::gather_setup(int num_slots) {
   if (!g_buckets_ready || g_gather_ready || num_slots < 0)
     return (int)cudaErrorNotReady;
   CUDA_CHECK(
       cudaStreamCreateWithFlags(&g_stream_gather_put, cudaStreamNonBlocking));
-  // 门流：Python 侧原来是 paddle.device.Stream()，同样是 cudaStreamNonBlocking
   CUDA_CHECK(
       cudaStreamCreateWithFlags(&g_stream_gather_gate, cudaStreamNonBlocking));
   g_event_gather_source.assign(num_slots, nullptr);
@@ -875,8 +829,7 @@ int GradCommEngine::gather_setup(int num_slots) {
   return 0;
 }
 
-// 2D gather 的门流等这个 mark：之后排在门流上的工作，GPU 一定走到了记 mark
-// 的那一刻之后
+// 2D gather 的门流等窗口 mark：之后排在门流上的工作不会早于 GPU 走到这个 mark
 int GradCommEngine::gather_gate(int mark) {
   if (!g_gather_ready || !g_stream_gather_gate) return (int)cudaErrorNotReady;
   if (mark < 0 || mark >= (int)g_window_marks.size())
@@ -886,8 +839,8 @@ int GradCommEngine::gather_gate(int mark) {
   return 0;
 }
 
-// 2D gather 的门流当前位置（它已经等过窗口 mark 和本卡本桶那三个 event）记
-// g_event_gather_source[slot]
+// 在 2D gather 门流的当前位置记 g_event_gather_source[slot]。调用前门流必须
+// 已经等过窗口 mark（gather_gate）和本桶的 event（gather_wait_bucket）
 int GradCommEngine::gather_mark_ready(int slot) {
   if (!g_gather_ready || !g_stream_gather_gate) return (int)cudaErrorNotReady;
   if (slot < 0 || slot >= (int)g_event_gather_source.size())
@@ -897,16 +850,15 @@ int GradCommEngine::gather_mark_ready(int slot) {
 }
 
 // 发送方：等 wait_event → 本卡 send window [send_offset, send_offset +
-// 4*numel)（本卡分片 seg(k)）
-//   → owner（world rank）send window 同一偏移。
-//   跨节点：k_put_to_owner 一笔，VASignalInc 打 owner host window 的
-//   arrive_offset（*num_signals = 1）； 同节点：cudaMemcpyBatchAsync（LSA send
-//   指针）→ k_store_release 把 seq 写 owner host window 的
-//           intra_arrive_offset（*num_signals = 0）。
-//   → g_event_gather_put[slot]。
+// 4*numel)（本卡分片）写到 owner（组内序号）send window 的同一偏移 → 记
+// g_event_gather_put[slot]。
+//   - 跨节点：k_put_to_owner 一笔，owner host window 的 arrive_offset +1
+//     （*num_signals = 1）。
+//   - 同节点：cudaMemcpyBatchAsync（LSA send 指针）→ k_store_release 把 seq
+//     写进 owner host window 的 intra_arrive_offset（*num_signals = 0）。
 // wait_event：主线程（release::gather_put_entry）传
-// g_event_gather_source[slot]；尾部 proxy 传本桶最终求和之后记的
-//   g_event_dense_inter_node_reduce / g_event_moe_reduce[bucket]。
+// g_event_gather_source[slot]；尾部线程传本桶分片求和之后记的
+// g_event_dense_inter_node_reduce / g_event_moe_reduce[bucket]。
 int gather_put_to_owner(int group,
                         int slot,
                         size_t send_offset,
@@ -974,8 +926,8 @@ int gather_put_to_owner(int group,
   return 0;
 }
 
-// 主线程那条路：表项下标 → 放行层查表（gather_entries）→ gather_put_to_owner，
-//   等的 event 是 g_event_gather_source[slot]（实现在 release.cu，表在那边）
+// 主线程发 2D gather put：按表项下标查表后调 gather_put_to_owner，等的 event
+// 是 g_event_gather_source[slot]（实现在 release.cu）
 int GradCommEngine::gather_put_entry(int entry_index,
                                      unsigned long long seq,
                                      int* num_signals) {
@@ -984,8 +936,8 @@ int GradCommEngine::gather_put_entry(int entry_index,
   return release::gather_put_entry(entry_index, seq, num_signals);
 }
 
-// 计算流等本卡 g_event_gather_put[slot]
-//   （本卡交出的 put / CE；end_step 的 flush 之前调，flush 才覆盖到这些 put）
+// 计算流等本卡的 g_event_gather_put[slot]。必须在 end_step 的 flush 之前调，
+// flush 才覆盖到这些 put
 int GradCommEngine::gather_join(int slot) {
   if (!g_gather_ready) return (int)cudaErrorNotReady;
   if (slot < 0 || slot >= (int)g_event_gather_put.size())
@@ -994,8 +946,8 @@ int GradCommEngine::gather_join(int slot) {
   return (int)cudaStreamWaitEvent(compute_stream, g_event_gather_put[slot], 0);
 }
 
-// ---------------------------------------------------------------- 放行层
-// （实现在 kernels/release.cu）
+// ----------------------------------------------------------------
+// 放行层的入口（实现在 kernels/release.cu）
 int GradCommEngine::release_setup(const std::vector<int>& dense_order,
                                   const std::vector<int>& moe_order,
                                   const std::vector<long long>& dense_table,

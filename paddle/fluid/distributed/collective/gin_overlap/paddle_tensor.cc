@@ -12,42 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// paddle_tensor.cc —— 所有要碰 paddle::Tensor 和 Paddle 当前计算流的代码都在这
-// 一个 TU 里。
-//
-// 在 PaddleFleet 的扩展里这个文件后缀是 .cu：那边 Paddle 的头文件里有 thrust，
-//   外部构建的 host 编译器解析不了，所以凡是包含它们的翻译单元都得交给 nvcc，
-//   连收 / 还 paddle::Tensor 的 pybind 注册都只好挪到这边来。搬进 Paddle 之后
-//   这两件事都不成立了：这些头文件本来就是 Paddle 自己的（.cc 直接包），pybind
-//   的 type_caster<paddle::Tensor>（paddle/utils/pybind.h）在 pybind 目录里也
-//   直接能用 ⇒ 这个文件变成普通 .cc，那两个方法的注册并回 pybind 那一份
-//   （paddle/fluid/pybind/gin_overlap_api.cc），这边只留实现。
-//
-// 这里三件事：
-//   send_window_tensor  本组 send window 里一段 fp32 包成
-//   paddle::Tensor（各桶的 grad_storage 就是它）。
-//     零拷贝、而且 Paddle 不接管释放：paddle::from_blob 的 deleter 传 nullptr ⇒
-//     phi::Allocation 的 deleter_ 是空指针、张量析构时什么都不做（phi/api/lib/
-//     tensor_utils.cc:137-143 的 FromBlobImpl 里 alloc_deleter 只在 deleter
-//     非空时才建， phi/core/allocator.h:52-56 的 ~Allocation 只在 deleter_
-//     非空时调它）；内存一直归 NCCL window。原来 Python 侧手搓 DLPack
-//     胶囊（PaddleFleet 的 engine.py 里的 _wrap）干的就是这件事。 先例：
-//     deep_ep_xpu/deep_ep.cpp:1063-1069 也是这样把一块不归 Paddle 释放的缓冲
-//     （recv_count_ptr）包成 paddle::Tensor 交出去。
-//   copy_2d  计算流上一次 pitched 拷贝（驱动 API
-//   cuMemcpy2DAsync，和 Python 侧原来用 ctypes
-//     调 libcuda.so.1 的 cuMemcpy2DAsync_v2
-//     是同一个调用，拷贝引擎；Paddle 不链 libcuda，这一调用经 phi::dynload
-//     的包装过去，见 gin_dynload.h），参数从裸指针改成 张量 +
-//     字节偏移，边界在这里查。
-//   paddle_compute_stream  Paddle 的当前计算流，等价于 Python 的
-//     paddle.device.current_stream()._as_parameter_.value：
-//     paddle::GetCurrentCUDAStream(GPUPlace)（phi/api/include/context_pool.h:114）
-//     → phi::CUDAStream::raw_stream()。Python 那条路是 pybind 的
-//     _get_current_stream → platform::get_current_stream →
-//     DeviceContextPool::Get(GPUPlace) → GPUContext::cuda_stream() →
-//     raw_stream()，取的是同一个流，所以 paddle.device.stream_guard
-//     换流时这边也跟着换。
+// paddle_tensor.cc —— 用到 paddle::Tensor 和 Paddle 当前计算流的实现：
+//   - send_window_tensor：把本组 send window 里一段 fp32 包成 paddle::Tensor
+//     （各桶的 grad_storage 就是它）。零拷贝，paddle::from_blob 的 deleter 传
+//     nullptr，张量析构时不释放内存；内存归 NCCL window 所有。
+//   - copy_2d：在计算流上做一次 pitched 拷贝（驱动 API cuMemcpy2DAsync，经
+//     phi::dynload，见 gin_dynload.h）。参数是张量 + 字节偏移，越界在这里检查。
+//   - paddle_compute_stream：Paddle 的当前计算流
+//     （paddle::GetCurrentCUDAStream(GPUPlace)->raw_stream()），和 Python 的
+//     paddle.device.current_stream() 是同一条流，paddle.device.stream_guard
+//     换流时也跟着变。
 #include "paddle/fluid/distributed/collective/gin_overlap/paddle_tensor.h"
 
 #include <cstdint>
@@ -81,9 +55,9 @@ std::string describe(const paddle::Tensor& t) {
          t.place().DebugString();
 }
 
-// 2D 拷贝的源 / 目的都要求：dense、已初始化、在 GPU 上，而且
-// [offset, offset + (height-1)*pitch + width) 落在这块张量里（最后一行只算
-// width，和 cuMemcpy2DAsync 真正会碰到的范围一致）
+// 检查 2D 拷贝的源或目的：必须是 GPU 上已初始化的 dense 张量，而且
+// [offset, offset + (height-1)*pitch + width) 落在张量内（最后一行只算
+// width）。返回张量的数据指针；不满足时抛异常
 void* checked_block(const paddle::Tensor& t,
                     size_t offset,
                     size_t pitch,
@@ -114,9 +88,7 @@ void* checked_block(const paddle::Tensor& t,
 
 }  // namespace
 
-// Paddle 的当前计算流（Python 原来读 current_stream()._as_parameter_.value
-// 的那一个）。
-// 拿不到就打印原因并返回错误码：上层的方法一律按返回码报错，不静默往默认流上排工作。
+// Paddle 的当前计算流。取不到时打印原因并返回错误码，不退回默认流
 int paddle_compute_stream(cudaStream_t* out) {
   *out = nullptr;
   try {
@@ -141,10 +113,9 @@ int paddle_compute_stream(cudaStream_t* out) {
   return 0;
 }
 
-// 本组 send window 的 [send_offset, send_offset + 4*numel) 包成一个 1-D fp32
-// paddle::Tensor。 零拷贝（deleter = nullptr，见文件头），dtype / numel /
-// data_ptr 和原来 Python 侧 DLPack 那版一致； 包完当场自检，对不上就抛（原来是
-// _wrap 末尾的 assert）。
+// 把本组 send window 的 [send_offset, send_offset + 4*numel) 包成一个 1-D fp32
+// paddle::Tensor（零拷贝，见文件头）。send_offset 必须 4 字节对齐且不越界；包完
+// 检查张量的指针、numel、dtype 和 place，对不上就抛异常。
 paddle::Tensor send_window_tensor(int group,
                                   size_t send_offset,
                                   long long numel) {
@@ -186,10 +157,9 @@ paddle::Tensor send_window_tensor(int group,
   return t;
 }
 
-// 计算流上一次 2D 拷贝（驱动 API cuMemcpy2DAsync，拷贝引擎）：height
-// 行，每行 width 字节， 源行距 src_pitch、目的行距
-// dst_pitch，起点各自是张量里的字节偏移。 backend._fused_all_gather
-// 把一次合批 all_gather 的结果按列拆回各桶的 param_storage 用这个。
+// 在计算流上做一次 2D 拷贝（cuMemcpy2DAsync）：height 行，每行 width 字节，源
+// 行距 src_pitch、目的行距 dst_pitch，起点分别是两个张量里的字节偏移。出错时
+// 抛异常。
 void copy_2d(const paddle::Tensor& dst,
              size_t dst_offset,
              size_t dst_pitch,

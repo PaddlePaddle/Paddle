@@ -19,10 +19,9 @@
 namespace paddle {
 namespace pybind {
 
-// paddle.base.core.gin_overlap: the sharding-stage1 gradient communication
-// backend built on NCCL GIN one-sided puts. A no-op unless the build enabled
-// it (PADDLE_WITH_GIN_OVERLAP), so that the Python layer's "is it there"
-// probe gets a missing attribute rather than a broken module.
+// Registers paddle.base.core.gin_overlap, the sharding-stage1 gradient
+// communication backend built on NCCL GIN one-sided puts. Registers nothing
+// unless PADDLE_WITH_GIN_OVERLAP is defined, so the attribute is then absent.
 void BindGinOverlapApi(pybind11::module *m);
 
 }  // namespace pybind

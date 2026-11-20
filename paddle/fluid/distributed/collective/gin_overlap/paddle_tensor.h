@@ -12,17 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// paddle_tensor.h —— 碰 paddle::Tensor 的那两个入口（实现在
-// paddle_tensor.cc）：
-//   send_window_tensor  本组 send window 的一段包成 1-D fp32 paddle::Tensor
-//     （零拷贝，Paddle 不接管释放；各桶的 grad_storage 就是它）。
-//   copy_2d  Paddle 当前计算流上一次 pitched 拷贝。
-// 这两个按 Python 的习惯直接抛异常（不是像引擎的其它方法那样返回返回码），
-// 导出给 Python 的 def 写在 paddle/fluid/pybind/gin_overlap_api.cc 里。
-//
-// PaddleFleet 的扩展里这个头文件故意不出现 paddle::Tensor（那边的 pybind 入口由
-// 外部 host 编译器编，碰不了带 thrust 的 Paddle 头文件），所以只声明了一个
-// 「去 .cu 里注册」的函数。搬进 Paddle 之后没有这个限制，直接声明真签名。
+// paddle_tensor.h —— 收发 paddle::Tensor 的两个接口（实现在 paddle_tensor.cc，
+// Python 绑定在 paddle/fluid/pybind/gin_overlap_api.cc）：
+//   - send_window_tensor：把本组 send window 的一段包成 1-D fp32
+//     paddle::Tensor。零拷贝，Paddle 不负责释放；各桶的 grad_storage 就是它。
+//   - copy_2d：在 Paddle 当前计算流上做一次 pitched 拷贝。
+// 两者出错时抛异常，不返回错误码。
 #pragma once
 
 #include <cstddef>
