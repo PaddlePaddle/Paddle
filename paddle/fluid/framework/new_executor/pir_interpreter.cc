@@ -775,6 +775,12 @@ void PirInterpreter::AnalyzeForceSyncOps() {
 void PirInterpreter::BuildInstruction() {
   VLOG(6) << "Build Instructions for pir ... ";
   vec_instruction_base_.clear();
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  // The side-stream cache below is derived from vec_instruction_base_; drop it
+  // so it is recomputed for the rebuilt instruction list.
+  custom_side_ctxs_inited_ = false;
+  custom_side_ctxs_.clear();
+#endif
   size_t op_idx = 0;
   for (auto& op : *ir_block_) {
     VLOG(6) << "Build Instruction for op: " << op_idx;
@@ -1661,6 +1667,46 @@ FetchList PirInterpreter::Run(const std::vector<std::string>& feed_names,
   return fetch_res;
 }
 
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+// Order side streams against the default stream at the start of a Run, instead
+// of blocking the host at the end of every Run. The interpreter shares the
+// default compute stream with eager, so a default-stream-only Run needs no
+// ordering (stream FIFO handles the handoff). When a Run uses side streams
+// (D2H/H2D/exec), we record an event on the default stream and let each side
+// stream wait on it asynchronously: this does not block the host and orders the
+// side streams after all prior default-stream work, including a previous Run's
+// default-stream outputs (the cross-Run dependency the old blocking Wait used
+// to cover).
+void PirInterpreter::OrderCustomDeviceSideStreamsBeforeRun() {
+  if (!phi::is_custom_place(place_)) {
+    return;
+  }
+  auto* default_ctx = phi::DeviceContextPool::Instance().Get(place_);
+  if (!custom_side_ctxs_inited_) {  // scan the fixed instruction list once
+    std::unordered_set<const phi::DeviceContext*> seen;
+    for (auto& instr : vec_instruction_base_) {
+      const auto* ctx = &instr->DeviceContext();
+      if (ctx != default_ctx && phi::is_custom_place(ctx->GetPlace()) &&
+          seen.insert(ctx).second) {
+        custom_side_ctxs_.push_back(ctx);
+      }
+    }
+    custom_side_ctxs_inited_ = true;
+  }
+  if (custom_side_ctxs_.empty()) {
+    return;
+  }
+  if (!custom_run_boundary_event_) {
+    custom_run_boundary_event_ = std::make_shared<platform::DeviceEvent>(
+        place_, platform::GenerateDeviceEventFlag());
+  }
+  custom_run_boundary_event_->Record(default_ctx);
+  for (const auto* ctx : custom_side_ctxs_) {
+    custom_run_boundary_event_->Wait(platform::kCUSTOM_DEVICE, ctx);
+  }
+}
+#endif
+
 void PirInterpreter::TraceRunImpl() {
   // lazy initialization of gc, do not create gc is the program only run once
   if (!gc_) {
@@ -1679,13 +1725,11 @@ void PirInterpreter::TraceRunImpl() {
   interpreter::ResetAtomicGuard guard(&deps_, &refs_);
   VLOG(4) << "Tracing Instruction List";
 
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  OrderCustomDeviceSideStreamsBeforeRun();
+#endif
   TraceRunInstructionList(vec_instruction_base_);
   VLOG(4) << "Done TraceRunInstructionList";
-#ifdef PADDLE_WITH_CUSTOM_DEVICE
-  if (phi::is_custom_place(place_)) {
-    phi::DeviceContextPool::Instance().Get(place_)->Wait();
-  }
-#endif
 }
 
 void PirInterpreter::MultiThreadRunImpl() {
@@ -1698,13 +1742,11 @@ void PirInterpreter::MultiThreadRunImpl() {
   VLOG(4) << "Multi Thread Run Instruction List";
 
   async_work_queue_ = GetWorkQueue();
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  OrderCustomDeviceSideStreamsBeforeRun();
+#endif
   MultiThreadRunInstructionList(vec_instruction_base_);
   VLOG(4) << "Done MultiThreadRunInstructionList";
-#ifdef PADDLE_WITH_CUSTOM_DEVICE
-  if (phi::is_custom_place(place_)) {
-    phi::DeviceContextPool::Instance().Get(place_)->Wait();
-  }
-#endif
 }
 
 void PirInterpreter::TraceRunInstructionList(
