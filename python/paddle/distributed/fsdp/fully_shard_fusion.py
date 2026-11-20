@@ -1005,8 +1005,11 @@ class FSDPCommManager:
         params_buffer.comm_task = params_buffer.do_all_gather()
         self._count_gathered(params_buffer)
 
-    def _static_advance(self, floor_gid):
+    def _static_advance(self, req_gids):
         groups = self.buffer_manager.buffer_groups
+        floor_gid, keep = min(req_gids), set(req_gids)
+        if self.prefetch_by_size:
+            _, keep, limit = self._prefetch_plan(req_gids, True)
         units, numel = set(), 0
         while self._bwd_cursor >= 0:
             gid = self._bwd_cursor
@@ -1025,6 +1028,13 @@ class FSDPCommManager:
                         break
                     units.add(group.fsdp_unit_id)
             if eligible and params_buffer.status == BufferState.FREED:
+                # Same gather bound as forward.
+                if self.prefetch_by_size:
+                    self._release_ready_buffers(
+                        params_buffer.total_buffer_size, limit, keep
+                    )
+                else:
+                    self._release_one_buffer_if_needed(keep)
                 self._issue_async_gather(gid)
             self._bwd_cursor -= 1
 
@@ -1086,7 +1096,7 @@ class FSDPCommManager:
         bwd_phase = self._in_bwd
 
         if bwd_phase:
-            self._static_advance(min(req_gids))
+            self._static_advance(req_gids)
         elif self.enable_overlap:
             if self.prefetch_by_size:
                 targets, keep, limit = self._prefetch_plan(
