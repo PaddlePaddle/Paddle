@@ -52,6 +52,30 @@ ncclMemOptConfig_t* ncclCommGenMemOptConfig(const char* commName,
                                             const char* protoStr);
 
 ncclResult_t ncclCommFreeMemOptConfig(ncclMemOptConfig_t* config);
+
+// The two host entry points of NCCL's device (LSA/GIN) API are declared in
+// nccl_device.h rather than in nccl.h. That header also carries the
+// device-side inline implementations of the whole device API, so it is not
+// included here, where it would land in every translation unit that reaches
+// for any NCCL symbol; the declarations it needs are repeated instead, the
+// way the internal entry points above are. A translation unit that does
+// include nccl_device.h keeps that header's own declarations (its include
+// guard switches this block off), so there is one source of truth per
+// translation unit either way.
+#if NCCL_VERSION_CODE >= 23007 && !defined(_NCCL_DEVICE_CORE_H_)
+struct ncclDevComm;
+typedef struct ncclDevComm ncclDevComm_t;
+struct ncclDevCommRequirements;
+typedef struct ncclDevCommRequirements ncclDevCommRequirements_t;
+
+ncclResult_t ncclDevCommCreate(ncclComm_t comm,
+                               ncclDevCommRequirements_t const* reqs,
+                               ncclDevComm_t* outDevComm);
+ncclResult_t ncclGetLsaDevicePointer(ncclWindow_t window,
+                                     size_t offset,
+                                     int lsaRank,
+                                     void** outPtr);
+#endif
 #ifdef __cplusplus
 }
 #endif
@@ -148,6 +172,19 @@ NCCL_RAND_ROUTINE_EACH_AFTER_21100(DECLARE_DYNAMIC_LOAD_NCCL_WRAP)
   __macro(ncclCommWindowDeregister);                \
   __macro(ncclAlltoAll);
 NCCL_RAND_ROUTINE_EACH_AFTER_23007(DECLARE_DYNAMIC_LOAD_NCCL_WRAP)
+#endif
+
+// Host entry points of the device (LSA/GIN) API, used by the gin_overlap
+// gradient communication backend (paddle/fluid/distributed/collective/
+// gin_overlap): ncclDevCommCreate builds the ncclDevComm the kernels take,
+// ncclGetLsaDevicePointer maps a peer's window into this rank's address
+// space. Same 2.30.7 floor as the group above, and declared next to it for
+// the same reason: below that version the feature is refused, not degraded.
+#if NCCL_VERSION_CODE >= 23007
+#define NCCL_RAND_ROUTINE_EACH_DEVICE_API(__macro) \
+  __macro(ncclDevCommCreate);                      \
+  __macro(ncclGetLsaDevicePointer);
+NCCL_RAND_ROUTINE_EACH_DEVICE_API(DECLARE_DYNAMIC_LOAD_NCCL_WRAP)
 #endif
 
 }  // namespace dynload
