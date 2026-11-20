@@ -789,6 +789,11 @@ int submit_moe_reduce(int bucket,
 }
 
 // ----------------------------------------------------------------
+// 窗口 mark 环里的槽号是否有效
+static inline bool is_valid_mark(int mark) {
+  return mark >= 0 && mark < (int)g_window_marks.size();
+}
+
 // Makes `stream` wait on the side-stream events of one bucket: intra-node
 // copy / put / shard reduce for a dense bucket, put / shard reduce for an
 // expert bucket
@@ -1025,6 +1030,16 @@ int gather_put_to_owner(int group,
   return 0;
 }
 
+// 主线程发 2D gather put：按表项下标查表后调 gather_put_to_owner，等的 event
+// 是 g_event_gather_source[slot]（实现在 release.cu）
+int GradCommEngine::gather_put_entry(int entry_index,
+                                     unsigned long long seq,
+                                     int* num_signals) {
+  *num_signals = 0;
+  if (!g_gather_ready) return (int)cudaErrorNotReady;
+  return release::gather_put_entry(entry_index, seq, num_signals);
+}
+
 // The compute stream waits on this rank's g_event_gather_put[slot]. Call it
 // before the flush in end_step so that the flush covers these puts
 int GradCommEngine::gather_join(int slot) {
@@ -1034,6 +1049,93 @@ int GradCommEngine::gather_join(int slot) {
   GIN_COMPUTE_STREAM(compute_stream);
   return static_cast<int>(
       cudaStreamWaitEvent(compute_stream, g_event_gather_put[slot], 0));
+}
+
+// ----------------------------------------------------------------
+// 放行层的入口（实现在 kernels/release.cu）
+int GradCommEngine::release_setup(const std::vector<int>& dense_order,
+                                  const std::vector<int>& moe_order,
+                                  const std::vector<long long>& dense_table,
+                                  const std::vector<long long>& moe_table,
+                                  int put_blocks,
+                                  size_t intra_arrive_offset,
+                                  int num_marks) {
+  return release::setup(dense_order,
+                        moe_order,
+                        dense_table,
+                        moe_table,
+                        put_blocks,
+                        intra_arrive_offset,
+                        num_marks);
+}
+int GradCommEngine::release_step_reset(long long step) {
+  return release::step_reset(step);
+}
+int GradCommEngine::advance(int mark,
+                            int stages,
+                            int intra_node_reduce_blocks,
+                            int shard_reduce_blocks,
+                            std::vector<int>& released_shard_reduce) {
+  released_shard_reduce.clear();
+  if (!is_valid_mark(mark)) return (int)cudaErrorInvalidValue;
+  return release::advance(g_window_marks[mark],
+                          stages,
+                          intra_node_reduce_blocks,
+                          shard_reduce_blocks,
+                          released_shard_reduce);
+}
+int GradCommEngine::bucket_ready(int kind, int bucket, float scale, int mark) {
+  return release::bucket_ready(kind, bucket, scale, mark);
+}
+int GradCommEngine::release_status(std::vector<int>& positions,
+                                   std::vector<int>& counts,
+                                   std::vector<int>& posted,
+                                   int* done) {
+  return release::status(positions, counts, posted, done);
+}
+int GradCommEngine::release_stuck_report(std::vector<long long>& flat) {
+  return release::stuck_report(flat);
+}
+int GradCommEngine::release_error(int* code, int* stage, int* bucket) {
+  int out3[3] = {0, 0, -1};
+  const int rc = release::get_last_error(out3);
+  *code = out3[0];
+  *stage = out3[1];
+  *bucket = out3[2];
+  return rc;
+}
+int GradCommEngine::release_activity() {
+  return release::get_current_activity();
+}
+int GradCommEngine::tail_mark() {
+  cudaStream_t compute_stream = nullptr;
+  if (paddle_compute_stream(&compute_stream)) return -1;
+  return release::record_tail_mark(compute_stream);
+}
+int GradCommEngine::tail_start(int intra_node_reduce_blocks,
+                               int shard_reduce_blocks,
+                               int mark,
+                               int all_posted) {
+  return release::tail_start(
+      intra_node_reduce_blocks, shard_reduce_blocks, mark, all_posted);
+}
+int GradCommEngine::tail_all_posted() { return release::set_all_posted(); }
+int GradCommEngine::tail_wait(double timeout_s) {
+  return release::wait_for_step_end(timeout_s);
+}
+int GradCommEngine::tail_abort(double wait_s) {
+  return release::abort_step(wait_s);
+}
+int GradCommEngine::tail_finish() { return release::tail_finish(); }
+int GradCommEngine::tail_gather_setup(const std::vector<long long>& table) {
+  return release::setup_gather_table(table);
+}
+int GradCommEngine::tail_gather_set_sequences(
+    const std::vector<unsigned long long>& seqs) {
+  return release::set_gather_sequences(seqs);
+}
+int GradCommEngine::tail_gather_get_sent(std::vector<long long>& flat) {
+  return release::get_gather_sent(flat);
 }
 
 }  // namespace gin_overlap
