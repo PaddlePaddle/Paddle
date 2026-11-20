@@ -446,6 +446,7 @@ class FSDPBufferManager:
         cp_degree = getattr(
             self.hcg, "get_context_parallel_world_size", lambda: 1
         )()
+        self.cp_degree = cp_degree
         self.main_grad_dtype = (
             main_grad_dtype if main_grad_dtype is not None else paddle.float32
         )
@@ -788,6 +789,8 @@ class FSDPCommManager:
         # Next gid the backward cursor visits, reset when a backward starts.
         self._bwd_cursor = -1
         self._bwd_fresh = True
+        # Set by FullyShardFusion.set_grad_sum_scale, consumed by finish_grads_sync.
+        self.grad_sum_scale = None
 
         # By size: gathered param elements and queued grad elements.
         self.gathered_numel = 0
@@ -1427,6 +1430,24 @@ class FSDPCommManager:
                 continue
             grads_buffer.data_buffer.scale_(grads_buffer.grad_scale)
             grads_buffer.grad_scale_pending = False
+
+        # set_grad_sum_scale: every path above applied grad_scale exactly once
+        # (AVG only when it equals 1/nranks), so dividing it out gives the sum.
+        sum_scale, self.grad_sum_scale = self.grad_sum_scale, None
+        if sum_scale is not None:
+            for group in self.buffer_manager.buffer_groups:
+                grads_buffer = group.grads_buffer
+                if (
+                    grads_buffer is None
+                    or grads_buffer.data_buffer is None
+                    or getattr(grads_buffer, "_data_released", False)
+                ):
+                    continue
+                factor = sum_scale / grads_buffer.grad_scale
+                # The cp ranks hold the same copy of a cp-replicated grad.
+                if group.cp_replicated:
+                    factor /= self.buffer_manager.cp_degree
+                grads_buffer.data_buffer.scale_(factor)
 
         for param in self.buffer_manager.model.parameters():
             buf = getattr(param, "_fusion_buffer", None)
@@ -2130,6 +2151,16 @@ class FullyShardFusion:
             grads_buffer.grad_accum_steps = steps
             grads_buffer.grad_scale = 1.0 / (grads_buffer.grad_div * steps)
 
+    def set_grad_sum_scale(self, scale):
+        """Normalize the next grads sync by ``scale`` instead of the mean.
+
+        Each reduced grad becomes its sum over the reduce group and the
+        accumulation steps (a cp-replicated grad counted once) times
+        ``scale``, e.g. ``1 / num_tokens`` for a per-token loss whose token
+        count is known only after backward. Applies to one step only.
+        """
+        self.comm_manager.grad_sum_scale = float(scale)
+
     def comm_sync_and_reset_status(self):
         self.comm_manager.finish_grads_sync()
         self.comm_manager.reset_params_buffer_status()
@@ -2499,18 +2530,31 @@ class FullyShardFusion:
             exposed = _find_exposed_param_names(outputs, own_param_names)
 
             if isinstance(outputs, dict):
-                for key, value in outputs.items():
-                    if (
-                        isinstance(value, paddle.Tensor)
-                        and not value.stop_gradient
-                        and value.name not in exposed
-                    ):
-                        outputs[key] = FusionBackwardHook.apply(
-                            value,
-                            layer=layer,
-                            comm_manager=self.comm_manager,
-                            recursive=recursive,
-                        )
+                # Route every hookable value through ONE identity PyLayer, as
+                # the tuple branch does. With a PyLayer per value, the first
+                # value whose gradient arrives (e.g. an entry a later layer
+                # passes through untouched) all-gathers this unit early, and
+                # _release_params_after_unit then frees later units whose
+                # recompute backward has not run yet.
+                keys = [
+                    key
+                    for key, value in outputs.items()
+                    if isinstance(value, paddle.Tensor)
+                    and not value.stop_gradient
+                    and value.name not in exposed
+                ]
+                if not keys:
+                    return outputs
+                hooked = FusionBackwardHook.apply(
+                    *[outputs[key] for key in keys],
+                    layer=layer,
+                    comm_manager=self.comm_manager,
+                    recursive=recursive,
+                )
+                if not isinstance(hooked, (tuple, list)):
+                    hooked = (hooked,)
+                for key, value in zip(keys, hooked):
+                    outputs[key] = value
                 return outputs
             elif isinstance(outputs, tuple):
                 # Exposed parameters are leaf vars that require grad, which the
