@@ -35,12 +35,9 @@ extern "C" {
 #define SOT_NOT_SUPPORTED_VERSION PY_3_15_0_HEX
 #define SOT_IS_SUPPORTED (PY_VERSION_HEX < SOT_NOT_SUPPORTED_VERSION)
 
-#if PY_3_14_PLUS && !defined(_WIN32)
+#if PY_3_14_PLUS
 #define PyFrame_GET_CODE(frame) \
   ((PyCodeObject*)PyStackRef_AsPyObjectBorrow((frame)->f_executable))  // NOLINT
-#elif PY_3_14_PLUS && defined(_WIN32)
-#define PyFrame_GET_CODE(frame) \
-  ((PyCodeObject*)((frame)->f_executable.bits))  // NOLINT
 #elif PY_3_13_PLUS
 #define PyFrame_GET_CODE(frame) _PyFrame_GetCode(frame)
 #else
