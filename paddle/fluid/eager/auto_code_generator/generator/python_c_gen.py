@@ -812,6 +812,20 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
                 dygraph_function_call_str = (
                     dygraph_function_call_str + ", predefined_out"
                 )
+        if forward_api_name == "addcmul" and get_predefined_out_str:
+            # Check autograd before anything is written to out
+            get_predefined_out_str += """
+    if (predefined_out && egr::EagerUtils::ComputeRequireGrad(
+            egr::Controller::Instance().HasGrad(),
+            egr::EagerUtils::nullable_autograd_meta(input),
+            egr::EagerUtils::nullable_autograd_meta(tensor1),
+            egr::EagerUtils::nullable_autograd_meta(tensor2),
+            egr::EagerUtils::nullable_autograd_meta(**predefined_out))) {
+      PADDLE_THROW(common::errors::PreconditionNotMet(
+          "addcmul(): functions with out=... arguments don't support "
+          "automatic differentiation, but one of the arguments requires "
+          "grad."));
+    }"""
 
         # Generate Python-C Function Definitions
         fwd_function_name = FUNCTION_NAME_TEMPLATE.format(
@@ -860,6 +874,17 @@ class PythonCSingleFunctionGenerator(FunctionGeneratorBase):
             return_str += "    return ToPyObject(ad_func_out, args, kwargs, inplace_var_idx_map, inplace_var_name_map);"
         else:
             return_str = "    return ToPyObject(ad_func_out);"
+            if forward_api_name == "addcmul" and get_predefined_out_str:
+                # Return the out object passed in by the user
+                return_str = (
+                    """    if (predefined_out) {
+      PyObject* out = PyDict_GetItemString(kwargs, "out");
+      Py_INCREF(out);
+      return out;
+    }
+"""
+                    + return_str
+                )
 
         # Generate Record Event for performance profiling
         pythonc_record_event_str = RECORD_EVENT_TEMPLATE.format(
