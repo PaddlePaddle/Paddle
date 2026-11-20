@@ -110,6 +110,19 @@ class TestTorchProxyMixRealTorch(unittest.TestCase):
             self.check_is_not_proxy()
         self.check_is_not_proxy()
 
+    def test_local_enabled_module_import_stays_scoped(self):
+        self.check_is_not_proxy()
+        with paddle.use_compat_guard(
+            enable=True, scope={"torch_proxy_records_state_module"}
+        ):
+            import torch_proxy_records_state_module as module
+
+            self.assertTrue(module.TORCH_IS_PROXY)
+            self.assertFalse(module.GLOBALLY_ENABLED)
+            self.assertTrue(module.FINDER_INSTALLED)
+            self.check_is_not_proxy()
+        self.check_is_not_proxy()
+
 
 if __name__ == "__main__":
     unittest.main()
