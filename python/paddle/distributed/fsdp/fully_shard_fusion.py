@@ -1012,11 +1012,7 @@ class FSDPCommManager:
             gid = self._bwd_cursor
             group = groups[gid]
             params_buffer = group.params_buffer
-            eligible = (
-                params_buffer.is_sharded
-                and params_buffer.trainable
-                and params_buffer.fp8 is None
-            )
+            eligible = params_buffer.is_sharded and params_buffer.trainable
             if gid < floor_gid and eligible:
                 if not self.enable_overlap:
                     break
