@@ -260,16 +260,97 @@ extern std::vector<cudaEvent_t> g_event_intra_node_copy,
 extern std::vector<cudaEvent_t> g_event_dense_inter_node_reduce,
     g_event_moe_reduce;
 extern std::vector<cudaEvent_t> g_window_marks;  // window mark ring (reused)
+extern int g_window_mark_index;
+extern unsigned long long g_inter_node_bytes, g_intra_node_bytes;
 // Byte offsets of the credit areas in the host windows: intra-node /
 // inter-node in the dense group's host window, expert in the expert group's
 extern size_t g_credit_intra_offset, g_credit_inter_offset, g_credit_moe_offset;
 extern int g_buckets_ready;
+extern cudaStream_t g_stream_gather_put;  // 2D 桶 gather：发送方的 put / CE
+// 2D 桶 gather 的门流（gather_setup 里建）：只放 cudaStreamWaitEvent 和
+// cudaEventRecord，不放 kernel
+extern cudaStream_t g_stream_gather_gate;
+extern std::vector<cudaEvent_t>
+    g_event_gather_source;  // 每 slot 一个：本卡分片求和之后
+extern std::vector<cudaEvent_t>
+    g_event_gather_put;  // 每 slot 一个：本卡的 gather put / CE 之后
+extern int g_gather_ready;
 
 // ----------------------------------------------------------------
 // Paddle's current compute stream (implemented in paddle_tensor.cc), the same
 // stream as Python's paddle.device.current_stream(). On failure it prints the
 // reason and returns an error code; it never falls back to the default stream.
 int paddle_compute_stream(cudaStream_t* out);
+// 取当前计算流；取不到时让所在的方法带着错误码返回
+#define GIN_COMPUTE_STREAM(var)                         \
+  cudaStream_t var = nullptr;                           \
+  do {                                                  \
+    const int _stream_rc = paddle_compute_stream(&var); \
+    if (_stream_rc) return _stream_rc;                  \
+  } while (0)
+
+// ----------------------------------------------------------------
+// 各阶段的提交函数：把一个桶的某个阶段提交到 GPU（发 kernel 或 CE 拷贝，
+// 记 event）。只由 release.cu 的 release_next_* 调用；调用前远端条件已经
+// 满足。mark_event = 这次工作要先等的 mark（主线程传窗口 mark，尾部线程
+// 传尾部 mark）。
+int submit_dense_intra_node_copy(int bucket,
+                                 size_t recv_offset,
+                                 size_t send_offset,
+                                 long long shard_numel,
+                                 cudaEvent_t mark_event,
+                                 size_t intra_arrive_offset,
+                                 unsigned long long seq);
+int submit_dense_intra_node_reduce(int bucket,
+                                   size_t recv_offset,
+                                   size_t send_offset,
+                                   long long shard_numel,
+                                   int num_blocks,
+                                   cudaEvent_t mark_event);
+int submit_dense_inter_node_put(int bucket,
+                                size_t recv_offset,
+                                size_t send_offset,
+                                size_t signal_offset,
+                                long long shard_numel,
+                                int num_blocks,
+                                cudaEvent_t mark_event,
+                                int* num_signals);
+// 专家桶的两个阶段：组大小和本卡组内序号取自 expert_group()
+int submit_moe_put(int bucket,
+                   size_t recv_offset,
+                   size_t send_offset,
+                   size_t signal_offset,
+                   long long shard_numel,
+                   int num_blocks,
+                   cudaEvent_t mark_event,
+                   int* num_signals);
+int submit_dense_inter_node_reduce(int bucket,
+                                   size_t recv_offset,
+                                   size_t send_offset,
+                                   long long shard_numel,
+                                   float scale,
+                                   int num_blocks,
+                                   cudaEvent_t mark_event);
+int submit_moe_reduce(int bucket,
+                      size_t recv_offset,
+                      size_t send_offset,
+                      long long shard_numel,
+                      float scale,
+                      int num_blocks,
+                      cudaEvent_t mark_event);
+// 2D 桶 gather 的发送：跨节点用 k_put_to_owner，同节点用 CE +
+// k_store_release。group = GROUP_DENSE / GROUP_MOE；owner 是该组的组内序号；
+// wait_event = g_stream_gather_put 先等的本卡 event
+int gather_put_to_owner(int group,
+                        int slot,
+                        size_t send_offset,
+                        long long shard_numel,
+                        int owner,
+                        size_t arrive_offset,
+                        size_t intra_arrive_offset,
+                        unsigned long long seq,
+                        int* num_signals,
+                        cudaEvent_t wait_event);
 
 // ----------------------------------------------------------------
 // Gets the ncclComm_t that Paddle's ProcessGroup already holds for a ring id
@@ -284,6 +365,11 @@ int paddle_nccl_comm(int ring_id,
                      std::string* out_err);
 
 // ----------------------------------------------------------------
+//   - 流不从 Python 传。排在计算流上的方法自己取 paddle_compute_stream；
+//     gather_gate / gather_wait_bucket / gather_mark_ready 排在
+//     g_stream_gather_gate 上。
+// 专家桶的阶段名（submit_moe_put / submit_moe_reduce）不带 intra_node /
+// inter_node：专家桶没有机内阶段，而且专家组的 peer 可能在同一节点上。
 // GradCommEngine: exported as paddle.base.core.gin_overlap.GradCommEngine
 // (registered in paddle/fluid/pybind/gin_overlap_api.cc); one object per
 // process. Python calls these methods by name, so method names and py::arg
@@ -339,10 +425,22 @@ class GradCommEngine {
                 size_t credit_intra_offset,
                 size_t credit_inter_offset,
                 size_t credit_moe_offset);
+  int record_window_mark();
 
   int alloc_host_counters(int group,
                           size_t want_bytes,
                           uintptr_t* cpu_ptr,
                           size_t* nbytes);
+  int join_bucket_streams(int is_dense, int bucket);
+  int scale_range(int group, size_t send_offset, long long numel, float scale);
+  int end_step();
+  void stats(unsigned long long* out3);
+
+  int gather_setup(int num_slots);
+  // 下面三个排在 2D gather 的门流上（g_stream_gather_gate）
+  int gather_gate(int mark);
+  int gather_wait_bucket(int is_dense, int bucket);
+  int gather_mark_ready(int slot);
+  int gather_join(int slot);
 };
 }  // namespace gin_overlap
