@@ -576,7 +576,7 @@ cc_library(
   type_info
   SRCS type_info.cc type_defs.cc
   DEPS common)
-target_link_libraries(type_info pir op_dialect)
+target_link_libraries(type_info pir)
 add_dependencies(type_info framework_proto auto_parallel_proto xxhash)
 if(WITH_ONEDNN)
   add_dependencies(type_info onednn)
