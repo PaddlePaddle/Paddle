@@ -20,6 +20,7 @@
 #include <thrust/scan.h>
 #include "paddle/common/hostdevice.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/backends/gpu/gpu_thrust_policy.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -270,7 +271,7 @@ void ThrustCumsumKernel(const Context& dev_ctx,
 #else
   memory_utils::ThrustAllocator<cudaStream_t> allocator(dev_ctx.GetPlace(),
                                                         dev_ctx.stream());
-  const auto& policy = thrust::cuda::par(allocator).on(dev_ctx.stream());
+  const auto& policy = PADDLE_THRUST_CUDA_PAR(allocator).on(dev_ctx.stream());
 #endif
 
   if constexpr (std::is_same_v<T, MT>) {

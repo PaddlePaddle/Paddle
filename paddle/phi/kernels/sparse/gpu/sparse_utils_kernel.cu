@@ -22,6 +22,7 @@ limitations under the License. */
 #endif
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
+#include "paddle/phi/backends/gpu/gpu_thrust_policy.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_meta.h"
@@ -235,7 +236,7 @@ void DenseToCooKernel(const Context& dev_ctx,
 #ifdef PADDLE_WITH_HIP
   thrust::remove(thrust::hip::par.on(dev_ctx.stream()),
 #else
-  thrust::remove(thrust::cuda::par.on(dev_ctx.stream()),
+  thrust::remove(PADDLE_THRUST_CUDA_PAR.on(dev_ctx.stream()),
 #endif
                  temp_indices_ptr,
                  temp_indices_ptr + rows,
@@ -382,10 +383,13 @@ void CsrToCooGPUKernel(const GPUContext& dev_ctx,
         "with a value of 1 currently."));
 #else
     auto config = backends::gpu::GetGpuLaunchConfig1D(dev_ctx, batches, 1);
-    GetBatchSizes<IntT><<<config.block_per_grid.x, config.thread_per_block.x>>>(
-        csr_crows_data, rows, batches, offsets_ptr);
+    GetBatchSizes<IntT>
+        <<<config.block_per_grid.x,
+           config.thread_per_block.x,
+           0,
+           dev_ctx.stream()>>>(csr_crows_data, rows, batches, offsets_ptr);
 
-    thrust::exclusive_scan(thrust::cuda::par.on(dev_ctx.stream()),
+    thrust::exclusive_scan(PADDLE_THRUST_CUDA_PAR.on(dev_ctx.stream()),
                            offsets_ptr,
                            offsets_ptr + batches,
                            offsets_ptr);
@@ -404,9 +408,11 @@ void CsrToCooGPUKernel(const GPUContext& dev_ctx,
 #else
   auto config = backends::gpu::GetGpuLaunchConfig1D(dev_ctx, rows, 1);
   config.block_per_grid.y = batches;
-  ConvertCsrCrowsToCooRows<IntT>
-      <<<config.block_per_grid, config.thread_per_block.x>>>(
-          csr_crows_data, offsets_ptr, coo_rows_data, batch_ptr, rows);
+  ConvertCsrCrowsToCooRows<IntT><<<config.block_per_grid,
+                                   config.thread_per_block.x,
+                                   0,
+                                   dev_ctx.stream()>>>(
+      csr_crows_data, offsets_ptr, coo_rows_data, batch_ptr, rows);
 #endif
   backends::gpu::GpuMemcpyAsync(coo_cols_data,
                                 csr_cols_data,

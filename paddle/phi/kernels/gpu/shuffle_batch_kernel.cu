@@ -22,6 +22,7 @@
 #endif
 
 #include "paddle/common/errors.h"
+#include "paddle/phi/backends/gpu/gpu_thrust_policy.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -80,7 +81,8 @@ void ShuffleBatchKernel(const Context& dev_ctx,
   // CacheAllocator allocator(dev_ctx.GetPlace());
   memory_utils::ThrustAllocator<cudaStream_t> allocator(dev_ctx.GetPlace(),
                                                         dev_ctx.stream());
-  const auto& exec_policy = thrust::cuda::par(allocator).on(dev_ctx.stream());
+  const auto& exec_policy =
+      PADDLE_THRUST_CUDA_PAR(allocator).on(dev_ctx.stream());
 #else
   const auto& exec_policy = thrust::hip::par.on(dev_ctx.stream());
 #endif

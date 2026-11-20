@@ -19,6 +19,7 @@ limitations under the License. */
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
+#include "paddle/phi/backends/gpu/gpu_thrust_policy.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
@@ -386,7 +387,7 @@ inline void CallThrustScan(const GPUContext& dev_ctx,
 #ifdef PADDLE_WITH_HIP
   thrust::exclusive_scan(thrust::hip::par.on(dev_ctx.stream()),
 #else
-  thrust::exclusive_scan(thrust::cuda::par.on(dev_ctx.stream()),
+  thrust::exclusive_scan(PADDLE_THRUST_CUDA_PAR.on(dev_ctx.stream()),
 #endif
                          counter_ptr,
                          counter_ptr + kernel_size,
@@ -646,7 +647,7 @@ int ProductRuleBook(const Context& dev_ctx,
 #ifdef PADDLE_WITH_HIP
     IntT* last = thrust::remove(thrust::hip::par.on(dev_ctx.stream()),
 #else
-    IntT* last = thrust::remove(thrust::cuda::par.on(dev_ctx.stream()),
+    IntT* last = thrust::remove(PADDLE_THRUST_CUDA_PAR.on(dev_ctx.stream()),
 #endif
                                 rulebook_ptr,
                                 rulebook_ptr + rulebook_rows * rulebook_cols,
@@ -694,7 +695,7 @@ int ProductRuleBook(const Context& dev_ctx,
 #ifdef PADDLE_WITH_HIP
     thrust::exclusive_scan(thrust::hip::par.on(dev_ctx.stream()),
 #else
-    thrust::exclusive_scan(thrust::cuda::par.on(dev_ctx.stream()),
+    thrust::exclusive_scan(PADDLE_THRUST_CUDA_PAR.on(dev_ctx.stream()),
 #endif
                            out_index_table_ptr,
                            out_index_table_ptr + blocks,

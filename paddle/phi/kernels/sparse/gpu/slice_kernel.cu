@@ -15,6 +15,7 @@
 #include <thrust/device_vector.h>
 #include <thrust/sort.h>
 
+#include "paddle/phi/backends/gpu/gpu_thrust_policy.h"
 #include "paddle/phi/kernels/sparse/unary_kernel.h"
 
 #include "paddle/common/ddim.h"
@@ -178,7 +179,7 @@ void SliceCooGPUCompute(const Context& dev_ctx,
 #ifdef PADDLE_WITH_HIP
   thrust::sort(thrust::hip::par.on(dev_ctx.stream()),
 #else
-  thrust::sort(thrust::cuda::par.on(dev_ctx.stream()),
+  thrust::sort(PADDLE_THRUST_CUDA_PAR.on(dev_ctx.stream()),
 #endif
                d_out_nnz_indices_ptr,
                d_out_nnz_indices_ptr + out_nnz);
@@ -321,7 +322,7 @@ void SliceCsrTensor2D(const Context& dev_ctx,
 #ifdef PADDLE_WITH_HIP
   thrust::inclusive_scan(thrust::hip::par.on(dev_ctx.stream()),
 #else
-  thrust::inclusive_scan(thrust::cuda::par.on(dev_ctx.stream()),
+  thrust::inclusive_scan(PADDLE_THRUST_CUDA_PAR.on(dev_ctx.stream()),
 #endif
                          out_crows_data,
                          out_crows_data + out_n_rows + 1,
@@ -469,7 +470,7 @@ void SliceCsrTensor3D(const Context& dev_ctx,
 #ifdef PADDLE_WITH_HIP
   thrust::inclusive_scan(thrust::hip::par.on(dev_ctx.stream()),
 #else
-  thrust::inclusive_scan(thrust::cuda::par.on(dev_ctx.stream()),
+  thrust::inclusive_scan(PADDLE_THRUST_CUDA_PAR.on(dev_ctx.stream()),
 #endif
                          x_cols_offsets_data,
                          x_cols_offsets_data + x_dim0 + 1,
@@ -533,7 +534,7 @@ void SliceCsrTensor3D(const Context& dev_ctx,
 #ifdef PADDLE_WITH_HIP
       thrust::reduce(thrust::hip::par.on(dev_ctx.stream()),
 #else
-      thrust::reduce(thrust::cuda::par.on(dev_ctx.stream()),
+      thrust::reduce(PADDLE_THRUST_CUDA_PAR.on(dev_ctx.stream()),
 #endif
                      out_crows_data,
                      out_crows_data + out_dim0 * (out_n_rows + 1));
@@ -542,7 +543,7 @@ void SliceCsrTensor3D(const Context& dev_ctx,
 #ifdef PADDLE_WITH_HIP
     thrust::inclusive_scan(thrust::hip::par.on(dev_ctx.stream()),
 #else
-    thrust::inclusive_scan(thrust::cuda::par.on(dev_ctx.stream()),
+    thrust::inclusive_scan(PADDLE_THRUST_CUDA_PAR.on(dev_ctx.stream()),
 #endif
                            out_crows_data + st,
                            out_crows_data + st + out_n_rows + 1,
@@ -551,7 +552,7 @@ void SliceCsrTensor3D(const Context& dev_ctx,
 #ifdef PADDLE_WITH_HIP
   thrust::inclusive_scan(thrust::hip::par.on(dev_ctx.stream()),
 #else
-  thrust::inclusive_scan(thrust::cuda::par.on(dev_ctx.stream()),
+  thrust::inclusive_scan(PADDLE_THRUST_CUDA_PAR.on(dev_ctx.stream()),
 #endif
                          out_cols_offsets_data,
                          out_cols_offsets_data + out_dim0 * (out_n_rows + 1),
