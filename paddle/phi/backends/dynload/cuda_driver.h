@@ -61,6 +61,13 @@ extern bool HasCUDADriver();
   __macro(cuDeviceGetAttribute);                        \
   __macro(cuDeviceGet)
 
+// cuMemcpy2DAsync, wrapped under its versioned name cuMemcpy2DAsync_v2.
+// cuda.h defines cuMemcpy2DAsync as a macro that expands to the _v2 name, and
+// libcuda also exports a v1 entry point with a different parameter layout, so
+// the wrapper must dlsym() the _v2 name. Call sites keep writing
+// cuMemcpy2DAsync.
+#define CUDA_ROUTINE_EACH_MEMCPY(__macro) __macro(cuMemcpy2DAsync_v2)
+
 #define CUDA_ROUTINE_EACH_VVM(__macro)             \
   __macro(cuMemGetAllocationGranularity);          \
   __macro(cuMemAddressReserve);                    \
@@ -89,6 +96,7 @@ CUDA_ROUTINE_EACH_VVM(DECLARE_DYNAMIC_LOAD_CUDA_WRAP);
 CUDA_ROUTINE_EACH_CUDA_GRAPH(DECLARE_DYNAMIC_LOAD_CUDA_WRAP);
 CUDA_ROUTINE_EACH_CUDA_GRAPH_12(DECLARE_DYNAMIC_LOAD_CUDA_WRAP);
 CUDA_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_CUDA_WRAP);
+CUDA_ROUTINE_EACH_MEMCPY(DECLARE_DYNAMIC_LOAD_CUDA_WRAP);
 
 #undef DECLARE_DYNAMIC_LOAD_CUDA_WRAP
 

@@ -52,6 +52,25 @@ ncclMemOptConfig_t* ncclCommGenMemOptConfig(const char* commName,
                                             const char* protoStr);
 
 ncclResult_t ncclCommFreeMemOptConfig(ncclMemOptConfig_t* config);
+
+// Declarations of the two host entry points of NCCL's device (LSA/GIN) API,
+// which live in nccl_device.h. nccl_device.h must not be included here. In a
+// translation unit that includes nccl_device.h, its include guard turns this
+// block off and that header's own declarations are used.
+#if NCCL_VERSION_CODE >= 23007 && !defined(_NCCL_DEVICE_CORE_H_)
+struct ncclDevComm;
+typedef struct ncclDevComm ncclDevComm_t;
+struct ncclDevCommRequirements;
+typedef struct ncclDevCommRequirements ncclDevCommRequirements_t;
+
+ncclResult_t ncclDevCommCreate(ncclComm_t comm,
+                               ncclDevCommRequirements_t const* reqs,
+                               ncclDevComm_t* outDevComm);
+ncclResult_t ncclGetLsaDevicePointer(ncclWindow_t window,
+                                     size_t offset,
+                                     int lsaRank,
+                                     void** outPtr);
+#endif
 #ifdef __cplusplus
 }
 #endif
@@ -148,6 +167,17 @@ NCCL_RAND_ROUTINE_EACH_AFTER_21100(DECLARE_DYNAMIC_LOAD_NCCL_WRAP)
   __macro(ncclCommWindowDeregister);                \
   __macro(ncclAlltoAll);
 NCCL_RAND_ROUTINE_EACH_AFTER_23007(DECLARE_DYNAMIC_LOAD_NCCL_WRAP)
+#endif
+
+// Host entry points of the device (LSA/GIN) API, used by
+// paddle/fluid/distributed/collective/gin_overlap: ncclDevCommCreate builds
+// the ncclDevComm that kernels take; ncclGetLsaDevicePointer returns a peer's
+// window address in this rank's address space. Requires NCCL >= 2.30.7.
+#if NCCL_VERSION_CODE >= 23007
+#define NCCL_RAND_ROUTINE_EACH_DEVICE_API(__macro) \
+  __macro(ncclDevCommCreate);                      \
+  __macro(ncclGetLsaDevicePointer);
+NCCL_RAND_ROUTINE_EACH_DEVICE_API(DECLARE_DYNAMIC_LOAD_NCCL_WRAP)
 #endif
 
 }  // namespace dynload
