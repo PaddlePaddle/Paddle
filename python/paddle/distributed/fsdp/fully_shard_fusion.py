@@ -24,6 +24,7 @@ import numpy as np
 import paddle
 from paddle.autograd import PyLayer
 from paddle.distributed import fleet
+from paddle.distributed.fleet.recompute.recompute import is_in_recompute
 from paddle.distributed.fleet.utils.tensor_fusion_helper import (
     align,
     alignment,
@@ -95,9 +96,6 @@ class BufferGroup:
     fsdp_group: object = None
     params_buffer: 'TensorFusionBuffer' = None
     grads_buffer: 'TensorFusionBuffer' = None
-    grads_use_sum: int = 0
-    grads_use_cnt: int = 0
-    grads_ready_cnt: int = 0
     cp_replicated: bool = False
 
 
@@ -667,7 +665,6 @@ class FSDPBufferManager:
                     param._whole_full_shape = list(full)
                     param._whole_full_numel = int(np.prod(full))
                     param._whole_matrix_shape = (full[-2], full[-1])
-            group.grads_use_sum = len(params)
             for param in params:
                 self.param_to_buffer_id[param.name] = gid
 
@@ -789,6 +786,10 @@ class FSDPCommManager:
         self.sync_grads_each_microbatch = True
         self.grad_accum_steps = 1
         self._backward_cnt = 0
+        # Next gid the backward cursor visits, reset when a backward starts.
+        self._bwd_cursor = -1
+        self._in_bwd = False
+        self._fwd_first_gid = None
         # Set by FullyShardFusion.set_grad_sum_scale, consumed by finish_grads_sync.
         self.grad_sum_scale = None
 
@@ -1004,7 +1005,42 @@ class FSDPCommManager:
         params_buffer.comm_task = params_buffer.do_all_gather()
         self._count_gathered(params_buffer)
 
-    def all_gather_params(self, params, is_backward=False):
+    def _static_advance(self, req_gids):
+        groups = self.buffer_manager.buffer_groups
+        floor_gid, keep = min(req_gids), set(req_gids)
+        if self.prefetch_by_size:
+            _, keep, limit = self._prefetch_plan(req_gids, True)
+        units, numel = set(), 0
+        while self._bwd_cursor >= 0:
+            gid = self._bwd_cursor
+            group = groups[gid]
+            params_buffer = group.params_buffer
+            eligible = params_buffer.is_sharded and params_buffer.trainable
+            if gid < floor_gid and eligible:
+                if not self.enable_overlap:
+                    break
+                if self.prefetch_by_size:
+                    if numel >= self.gather_prefetch_size:
+                        break
+                    numel += params_buffer.total_buffer_size
+                elif group.fsdp_unit_id not in units:
+                    if len(units) >= self.prefetch_units:
+                        break
+                    units.add(group.fsdp_unit_id)
+            if eligible and params_buffer.status == BufferState.FREED:
+                # Same gather bound as forward.
+                if self.prefetch_by_size:
+                    self._release_ready_buffers(
+                        params_buffer.total_buffer_size, limit, keep
+                    )
+                else:
+                    self._release_one_buffer_if_needed(keep)
+                self._issue_async_gather(gid)
+            self._bwd_cursor -= 1
+
+    def all_gather_params(
+        self, params, is_backward=False, fwd_hook_replay=None
+    ):
         if len(params) == 0:
             return
 
@@ -1048,7 +1084,20 @@ class FSDPCommManager:
                 queue_limit=len(self.grad_reduce_queue) - 1
             )
 
-        if self.enable_overlap:
+        if is_backward or fwd_hook_replay:
+            if not self._in_bwd:
+                self._in_bwd = True
+                self._bwd_cursor = len(self.buffer_manager.buffer_groups) - 1
+        elif fwd_hook_replay is not None:
+            if self._fwd_first_gid is None:
+                self._fwd_first_gid = req_gids[0]
+            elif req_gids[0] == self._fwd_first_gid:
+                self._in_bwd = False
+        bwd_phase = self._in_bwd
+
+        if bwd_phase:
+            self._static_advance(req_gids)
+        elif self.enable_overlap:
             if self.prefetch_by_size:
                 targets, keep, limit = self._prefetch_plan(
                     req_gids, is_backward
@@ -1108,6 +1157,8 @@ class FSDPCommManager:
             tmp_param.get_tensor()._set_dims(param.shape)
             param.get_tensor()._share_data_with(tmp_param.get_tensor())
 
+        if bwd_phase:
+            return  # _static_advance already prefetched
         # Prefetch after waiting on this unit's gathers, or compute stalls on it.
         if self.enable_overlap and self.prefetch_by_size:
             for next_gid in targets:
@@ -1155,6 +1206,8 @@ class FSDPCommManager:
 
     def reset_params_buffer_status(self):
         self._last_backward_unit_id = None
+        self._in_bwd = False
+        self._fwd_first_gid = None
         for group in self.buffer_manager.buffer_groups:
             params_buffer = group.params_buffer
             if params_buffer.fp8 is not None:
@@ -1231,41 +1284,10 @@ class FSDPCommManager:
 
     def reduce_scatter_grads(self, param):
         self._maybe_zero_grads()
-        gid = self.buffer_manager.param_to_buffer_id.get(param.name)
-        group = self.buffer_manager.buffer_groups[gid]
-        group.grads_use_cnt += 1
         param.main_grad = None
-
-        # Dense groups outside the FSDP units (lm_head, final norm, embedding)
-        # and of the first unit have no later unit change to flush them.
-        # Reduce one as soon as every param's grad hook of the last
-        # micro-batch has fired, so it overlaps the rest of backward. A
-        # param's hook fires once per backward, after all its uses; a
-        # unit-change signal is not enough, as a weight's grad can land after
-        # backward has moved on.
-        grads_buffer = group.grads_buffer
-        if (
-            grads_buffer is None
-            or not grads_buffer.is_sharded
-            or group.is_expert_param
-        ):
-            return
-        if group.fsdp_unit_id not in (None, self._first_unit_id):
-            return
-        if group.grads_use_cnt < group.grads_use_sum:
-            return
-        group.grads_use_cnt = 0
-        group.grads_ready_cnt += 1
-        if (
-            group.grads_ready_cnt >= self.grad_accum_steps
-            and grads_buffer.tmp_data_buffer is not None
-            and grads_buffer not in self.grad_reduce_queue
-        ):
-            self._issue_reduce_scatter(grads_buffer)
 
     def _reduce_group_grads(self, group):
         # Reduce-scatter one group's fused grad buffer over its own fsdp_group.
-        group.grads_use_cnt = 0
         grads_buffer = group.grads_buffer
         if (
             grads_buffer is None
@@ -1376,8 +1398,6 @@ class FSDPCommManager:
             grads_buffer = group.grads_buffer
             if grads_buffer is None:
                 continue
-            group.grads_use_cnt = 0
-            group.grads_ready_cnt = 0
             if not grads_buffer.is_sharded:
                 if group.whole_shard_numel is not None:
                     paddle.distributed.all_reduce(
@@ -1409,7 +1429,11 @@ class FSDPCommManager:
                     grads_buffer.data_buffer.scale_(grads_buffer.grad_scale)
                     grads_buffer.grad_scaled = True
                 continue
-            if grads_buffer.tmp_data_buffer is None:
+            if grads_buffer.tmp_data_buffer is None and not (
+                group.fsdp_unit_id in (None, self._first_unit_id)
+                and not group.is_expert_param
+                and group.params_buffer.trainable
+            ):
                 continue
             grads_buffer.comm_task = grads_buffer.do_reduce_scatter()
             pending.append(grads_buffer)
@@ -2441,8 +2465,12 @@ class FullyShardFusion:
         def _pre_forward_hook(sublayers, recursive=False):
             comm_manager = self.comm_manager
 
-            @paddle.autograd.no_grad()
             def all_gather_comm(*_):
+                # Before no_grad: a reentrant replay runs with grad enabled.
+                _all_gather_comm(is_in_recompute() and paddle.is_grad_enabled())
+
+            @paddle.autograd.no_grad()
+            def _all_gather_comm(replay):
                 for group in self.buffer_manager.buffer_groups:
                     if group.params_buffer.fp8 is not None:
                         sync_ckpt_weight_to_main(group.params_buffer)
@@ -2451,7 +2479,9 @@ class FullyShardFusion:
                 # Leave the user's auto_cast once per unit, so _view_slice
                 # skips its per-param guard on this hot path.
                 with paddle.amp.auto_cast(enable=False):
-                    comm_manager.all_gather_params(params)
+                    comm_manager.all_gather_params(
+                        params, fwd_hook_replay=replay
+                    )
                     self._bind_expert_main_grads(params)
 
             return all_gather_comm
