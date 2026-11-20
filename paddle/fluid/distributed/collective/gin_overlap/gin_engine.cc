@@ -32,9 +32,15 @@ std::vector<cudaEvent_t> g_event_intra_node_copy, g_event_intra_node_reduce,
     g_event_dense_put, g_event_moe_put;
 std::vector<cudaEvent_t> g_event_dense_inter_node_reduce, g_event_moe_reduce;
 std::vector<cudaEvent_t> g_window_marks;
+int g_window_mark_index = 0;
+unsigned long long g_inter_node_bytes = 0, g_intra_node_bytes = 0;
 size_t g_credit_intra_offset = 0, g_credit_inter_offset = 0,
        g_credit_moe_offset = 0;
 int g_buckets_ready = 0;
+cudaStream_t g_stream_gather_put = nullptr;
+cudaStream_t g_stream_gather_gate = nullptr;
+std::vector<cudaEvent_t> g_event_gather_source, g_event_gather_put;
+int g_gather_ready = 0;
 
 // Collective: every rank of the group must call it with the same size, in the
 // same order. Allocates at least 4096 bytes; *out_bytes = the size actually
@@ -385,6 +391,18 @@ int GradCommEngine::configure(int num_dense_buckets,
   return 0;
 }
 
+// 在 Paddle 当前计算流的当前位置记一个窗口 mark，返回槽号（<0 = 出错）
+int GradCommEngine::record_window_mark() {
+  if (g_window_marks.empty()) return -1;
+  cudaStream_t compute_stream = nullptr;
+  if (paddle_compute_stream(&compute_stream)) return -1;
+  const int i = g_window_mark_index;
+  g_window_mark_index = (g_window_mark_index + 1) % (int)g_window_marks.size();
+  if (cudaEventRecord(g_window_marks[i], compute_stream) != cudaSuccess)
+    return -1;
+  return i;
+}
+
 // ----------------------------------------------------------------
 // Allocates the group's host window (collective, every rank of the group must
 // call it): a HOST_NUMA allocation that both this GPU and the CPU can read and
@@ -457,6 +475,544 @@ int GradCommEngine::alloc_host_counters(int group,
   *cpu_ptr = reinterpret_cast<uintptr_t>(comm_group.host);
   *nbytes = bytes;
   return 0;
+}
+
+// ----------------------------------------------------------------
+// dense 桶的四个阶段（含义见 gin_engine.h 文件头）。调用前放行层已经确认
+// 远端条件满足；这里提交到 GPU 的工作只等 mark_event 和本卡的 event。
+
+// 1. 机内拷贝（g_stream_intra_node_copy）：等 mark → CE 把本卡在第 l 列的
+//    各块写进同节点卡 l 的机内段（recv_offset）第 row 行 → 把 seq 写进卡 l
+//    host window 的 intra_arrive_offset（本卡那一格，各接收卡上偏移相同）
+//    → 记 event。seq 必须 > 0，intra_arrive_offset 必须 8 字节对齐。
+int submit_dense_intra_node_copy(int bucket,
+                                 size_t recv_offset,
+                                 size_t send_offset,
+                                 long long shard_numel,
+                                 cudaEvent_t mark_event,
+                                 size_t intra_arrive_offset,
+                                 unsigned long long seq) {
+  const size_t numel = (size_t)shard_numel;
+  CommGroup& comm_group = dense_group();
+  const int ranks_per_node = comm_group.ranks_per_node,
+            num_nodes = comm_group.num_nodes,
+            rank_in_node = comm_group.rank_in_node;
+  if (!g_buckets_ready) return (int)cudaErrorNotReady;
+  if (ranks_per_node < 2) return 0;
+  if (seq == 0 || (intra_arrive_offset & 7)) return (int)cudaErrorInvalidValue;
+  const float* grad = (const float*)(comm_group.send + send_offset);
+  CUDA_CHECK(cudaStreamWaitEvent(g_stream_intra_node_copy, mark_event, 0));
+  std::vector<void*> dst_pointers;
+  std::vector<const void*> src_pointers;
+  std::vector<size_t> sizes;
+  LsaSlotPointers arrive_slots;
+  memset(&arrive_slots, 0, sizeof(arrive_slots));
+  for (int l = 0; l < ranks_per_node; ++l) {
+    if (l == rank_in_node) continue;
+    const int row = l > rank_in_node
+                        ? rank_in_node
+                        : rank_in_node - 1;  // 本卡在接收卡 l 上的行号
+    for (int n = 0; n < num_nodes; ++n) {
+      dst_pointers.push_back(comm_group.lsa_recv[l] + recv_offset +
+                             ((size_t)row * num_nodes + n) * numel * 4);
+      src_pointers.push_back(grad + ((size_t)n * ranks_per_node + l) * numel);
+      sizes.push_back(numel * 4);
+    }
+    // 对端 host window 里本卡那一格
+    arrive_slots.per_rank[l] =
+        (unsigned long long*)(comm_group.lsa_host[l] + intra_arrive_offset);
+  }
+  cudaMemcpyAttributes copy_attrs;
+  memset(&copy_attrs, 0, sizeof(copy_attrs));
+  copy_attrs.srcAccessOrder = cudaMemcpySrcAccessOrderStream;
+  size_t fail_index = 0;
+  CUDA_CHECK(cudaMemcpyBatchAsync(dst_pointers.data(),
+                                  src_pointers.data(),
+                                  sizes.data(),
+                                  dst_pointers.size(),
+                                  &copy_attrs,
+                                  &fail_index,
+                                  1,
+                                  g_stream_intra_node_copy));
+  {
+    const int rc = launch_signal_intra_arrive(arrive_slots,
+                                              ranks_per_node,
+                                              rank_in_node,
+                                              seq,
+                                              g_stream_intra_node_copy);
+    if (rc) return rc;
+  }
+  CUDA_CHECK(cudaEventRecord(g_event_intra_node_copy[bucket],
+                             g_stream_intra_node_copy));
+  g_intra_node_bytes +=
+      (unsigned long long)(ranks_per_node - 1) * num_nodes * numel * 4;
+  return 0;
+}
+
+// 2. 机内求和（g_stream_intra_node_reduce）：等 mark → k_reduce_intra_node
+//    → 给同节点其余卡发机内 credit（它们 host window 的
+//    [credit_intra + 8*rank_in_node] +1）→ 记 event。shard_numel 必须是 4 的
+//    倍数。
+int submit_dense_intra_node_reduce(int bucket,
+                                   size_t recv_offset,
+                                   size_t send_offset,
+                                   long long shard_numel,
+                                   int num_blocks,
+                                   cudaEvent_t mark_event) {
+  const size_t numel = (size_t)shard_numel;
+  if (!g_buckets_ready) return (int)cudaErrorNotReady;
+  if (numel & 3) return (int)cudaErrorInvalidValue;
+  CommGroup& comm_group = dense_group();
+  const int ranks_per_node = comm_group.ranks_per_node,
+            rank_in_node = comm_group.rank_in_node;
+  CUDA_CHECK(cudaStreamWaitEvent(g_stream_intra_node_reduce, mark_event, 0));
+  {
+    const int rc =
+        launch_reduce_intra_node((float4*)(comm_group.send + send_offset),
+                                 (const float4*)(comm_group.recv + recv_offset),
+                                 numel / 4,
+                                 ranks_per_node,
+                                 comm_group.num_nodes,
+                                 rank_in_node,
+                                 num_blocks,
+                                 g_stream_intra_node_reduce);
+    if (rc) return rc;
+  }
+  if (ranks_per_node > 1) {
+    LsaSlotPointers credit_slots;
+    memset(&credit_slots, 0, sizeof(credit_slots));
+    for (int l = 0; l < ranks_per_node; ++l)
+      if (l != rank_in_node)
+        credit_slots.per_rank[l] =
+            (unsigned long long*)(comm_group.lsa_host[l] +
+                                  g_credit_intra_offset +
+                                  8 * (size_t)rank_in_node);
+    const int rc = launch_signal_intra_node(
+        credit_slots, ranks_per_node, rank_in_node, g_stream_intra_node_reduce);
+    if (rc) return rc;
+  }
+  CUDA_CHECK(cudaEventRecord(g_event_intra_node_reduce[bucket],
+                             g_stream_intra_node_reduce));
+  return 0;
+}
+
+// 3. dense put（g_stream_put）：等本桶机内求和的 event → 等 mark → 发给其余
+//    节点同卡号的卡，写进它们机间段（recv_offset）第 node_index 行，同时它们
+//    host window 的 [signal_offset] +1 → 记 event。
+//    *num_signals = 对端 signal 计数这次增加多少。
+int submit_dense_inter_node_put(int bucket,
+                                size_t recv_offset,
+                                size_t send_offset,
+                                size_t signal_offset,
+                                long long shard_numel,
+                                int num_blocks,
+                                cudaEvent_t mark_event,
+                                int* num_signals) {
+  const size_t numel = (size_t)shard_numel;
+  *num_signals = 0;
+  if (!g_buckets_ready) return (int)cudaErrorNotReady;
+  CommGroup& comm_group = dense_group();
+  CUDA_CHECK(
+      cudaStreamWaitEvent(g_stream_put, g_event_intra_node_reduce[bucket], 0));
+  CUDA_CHECK(cudaStreamWaitEvent(g_stream_put, mark_event, 0));
+  if (comm_group.num_nodes > 1) {
+    // 对端在 host window 上收 signal，所以 signal_window 传 host window
+    const int rc = launch_put_to_node_peers(comm_group.dev_comm,
+                                            comm_group.win_recv,
+                                            comm_group.win_send,
+                                            comm_group.win_host,
+                                            send_offset,
+                                            recv_offset,
+                                            signal_offset,
+                                            numel,
+                                            comm_group.ranks_per_node,
+                                            comm_group.num_nodes,
+                                            comm_group.node_index,
+                                            comm_group.rank_in_node,
+                                            comm_group.num_gin_contexts,
+                                            num_blocks,
+                                            g_stream_put);
+    if (rc) return rc;
+    *num_signals = comm_group.num_nodes - 1;
+    g_inter_node_bytes +=
+        (unsigned long long)(comm_group.num_nodes - 1) * numel * 4;
+  }
+  CUDA_CHECK(cudaEventRecord(g_event_dense_put[bucket], g_stream_put));
+  return 0;
+}
+
+// 专家 put（g_stream_put，和 dense put 同一条流）：等 mark → 发给专家组其余
+// 各卡（组内序号 k），写进它们专家段（recv_offset）第 rank 行，同时它们
+// host window 的 [signal_offset] +1 → 记 event。组大小 / 本卡组内序号取自
+// expert_group()。
+int submit_moe_put(int bucket,
+                   size_t recv_offset,
+                   size_t send_offset,
+                   size_t signal_offset,
+                   long long shard_numel,
+                   int num_blocks,
+                   cudaEvent_t mark_event,
+                   int* num_signals) {
+  const size_t numel = (size_t)shard_numel;
+  *num_signals = 0;
+  if (!g_buckets_ready) return (int)cudaErrorNotReady;
+  CommGroup& comm_group = expert_group();
+  const int expert_group_size = comm_group.size,
+            expert_group_rank = comm_group.rank;
+  CUDA_CHECK(cudaStreamWaitEvent(g_stream_put, mark_event, 0));
+  if (expert_group_size > 1) {
+    const int rc = launch_put_to_expert_peers(comm_group.dev_comm,
+                                              comm_group.win_recv,
+                                              comm_group.win_send,
+                                              comm_group.win_host,
+                                              recv_offset,
+                                              send_offset,
+                                              signal_offset,
+                                              numel,
+                                              expert_group_size,
+                                              expert_group_rank,
+                                              comm_group.num_gin_contexts,
+                                              num_blocks,
+                                              g_stream_put);
+    if (rc) return rc;
+    *num_signals = expert_group_size - 1;
+    g_inter_node_bytes +=
+        (unsigned long long)(expert_group_size - 1) * numel * 4;
+  }
+  CUDA_CHECK(cudaEventRecord(g_event_moe_put[bucket], g_stream_put));
+  return 0;
+}
+
+// 4. dense 分片求和（g_stream_shard_reduce）：等本桶机内求和的 event → 等
+//    mark → 本卡分片 = Σ_节点 部分和 × scale → 给其余节点同卡号的卡发机间
+//    credit（它们 host window 的 [credit_inter + 8*node_index] +1）→ 记
+//    event。num_blocks <= 0 表示按 numel 自动取。
+int submit_dense_inter_node_reduce(int bucket,
+                                   size_t recv_offset,
+                                   size_t send_offset,
+                                   long long shard_numel,
+                                   float scale,
+                                   int num_blocks,
+                                   cudaEvent_t mark_event) {
+  const size_t numel = (size_t)shard_numel;
+  if (!g_buckets_ready) return (int)cudaErrorNotReady;
+  CommGroup& comm_group = dense_group();
+  CUDA_CHECK(cudaStreamWaitEvent(
+      g_stream_shard_reduce, g_event_intra_node_reduce[bucket], 0));
+  CUDA_CHECK(cudaStreamWaitEvent(g_stream_shard_reduce, mark_event, 0));
+  float* shard = (float*)(comm_group.send + send_offset) +
+                 (size_t)(comm_group.node_index * comm_group.ranks_per_node +
+                          comm_group.rank_in_node) *
+                     numel;
+  {
+    const int rc = launch_reduce_dense_shard(
+        shard,
+        (const float*)(comm_group.recv + recv_offset),
+        numel,
+        comm_group.num_nodes,
+        comm_group.node_index,
+        scale,
+        num_blocks > 0 ? num_blocks : blocks_for_numel(numel),
+        g_stream_shard_reduce);
+    if (rc) return rc;
+  }
+  if (comm_group.num_nodes > 1) {
+    const int rc = launch_signal_credit(
+        comm_group.dev_comm,
+        comm_group.win_host,
+        g_credit_inter_offset + 8 * (size_t)comm_group.node_index,
+        comm_group.num_nodes,
+        comm_group.node_index,
+        comm_group.rank_in_node,
+        comm_group.ranks_per_node,
+        comm_group.num_gin_contexts,
+        (comm_group.num_nodes + 127) / 128,
+        g_stream_shard_reduce);
+    if (rc) return rc;
+  }
+  CUDA_CHECK(cudaEventRecord(g_event_dense_inter_node_reduce[bucket],
+                             g_stream_shard_reduce));
+  return 0;
+}
+
+// 专家分片求和（g_stream_shard_reduce，和 dense 分片求和同一条流）：等 mark
+// → 本卡分片 = Σ_k × scale → 给专家组其余各卡发专家 credit（它们 host window
+// 的 [credit_moe + 8*rank] +1）→ 记 event。组大小 / 本卡组内序号取自
+// expert_group()。
+int submit_moe_reduce(int bucket,
+                      size_t recv_offset,
+                      size_t send_offset,
+                      long long shard_numel,
+                      float scale,
+                      int num_blocks,
+                      cudaEvent_t mark_event) {
+  const size_t numel = (size_t)shard_numel;
+  if (!g_buckets_ready) return (int)cudaErrorNotReady;
+  CommGroup& comm_group = expert_group();
+  const int expert_group_size = comm_group.size,
+            expert_group_rank = comm_group.rank;
+  CUDA_CHECK(cudaStreamWaitEvent(g_stream_shard_reduce, mark_event, 0));
+  float* shard = (float*)(comm_group.send + send_offset) +
+                 (size_t)expert_group_rank * numel;
+  {
+    const int rc = launch_reduce_moe_shard(
+        shard,
+        (const float*)(comm_group.recv + recv_offset),
+        numel,
+        expert_group_size,
+        expert_group_rank,
+        scale,
+        num_blocks > 0 ? num_blocks : blocks_for_numel(numel),
+        g_stream_shard_reduce);
+    if (rc) return rc;
+  }
+  if (expert_group_size > 1) {
+    const int rc = launch_signal_credit(
+        comm_group.dev_comm,
+        comm_group.win_host,
+        g_credit_moe_offset + 8 * (size_t)expert_group_rank,
+        expert_group_size,
+        expert_group_rank,
+        0,
+        1,
+        comm_group.num_gin_contexts,
+        (expert_group_size + 127) / 128,
+        g_stream_shard_reduce);
+    if (rc) return rc;
+  }
+  CUDA_CHECK(
+      cudaEventRecord(g_event_moe_reduce[bucket], g_stream_shard_reduce));
+  return 0;
+}
+
+// ----------------------------------------------------------------
+// 让 stream 等一个桶各阶段侧流的 event：dense 等机内拷贝 / put / 分片求和，
+// 专家等 put / 分片求和
+static int join_bucket_streams_on(int is_dense,
+                                  int bucket,
+                                  cudaStream_t stream) {
+  if (!g_buckets_ready) return (int)cudaErrorNotReady;
+  if (bucket < 0) return (int)cudaErrorInvalidValue;
+  if (is_dense) {
+    if (bucket >= (int)g_event_intra_node_copy.size() ||
+        bucket >= (int)g_event_dense_put.size() ||
+        bucket >= (int)g_event_dense_inter_node_reduce.size())
+      return (int)cudaErrorInvalidValue;
+    CUDA_CHECK(cudaStreamWaitEvent(stream, g_event_intra_node_copy[bucket], 0));
+    CUDA_CHECK(cudaStreamWaitEvent(stream, g_event_dense_put[bucket], 0));
+    CUDA_CHECK(cudaStreamWaitEvent(
+        stream, g_event_dense_inter_node_reduce[bucket], 0));
+  } else {
+    if (bucket >= (int)g_event_moe_put.size() ||
+        bucket >= (int)g_event_moe_reduce.size())
+      return (int)cudaErrorInvalidValue;
+    CUDA_CHECK(cudaStreamWaitEvent(stream, g_event_moe_put[bucket], 0));
+    CUDA_CHECK(cudaStreamWaitEvent(stream, g_event_moe_reduce[bucket], 0));
+  }
+  return 0;
+}
+
+// 计算流等本桶各阶段的 event（reduce_gradients 里逐桶调）
+int GradCommEngine::join_bucket_streams(int is_dense, int bucket) {
+  GIN_COMPUTE_STREAM(compute_stream);
+  return join_bucket_streams_on(is_dense, bucket, compute_stream);
+}
+
+// 2D gather 的门流等本桶各阶段的 event
+int GradCommEngine::gather_wait_bucket(int is_dense, int bucket) {
+  if (!g_gather_ready || !g_stream_gather_gate) return (int)cudaErrorNotReady;
+  return join_bucket_streams_on(is_dense, bucket, g_stream_gather_gate);
+}
+
+// 本组 send window [send_offset, send_offset + 4*numel) *= scale（计算流）
+int GradCommEngine::scale_range(int group,
+                                size_t send_offset,
+                                long long numel,
+                                float scale) {
+  if (!is_valid_group(group)) return (int)cudaErrorInvalidValue;
+  CommGroup& comm_group = group_at(group);
+  if (!comm_group.send ||
+      send_offset + (size_t)numel * 4 > comm_group.send_bytes) {
+    return (int)cudaErrorInvalidValue;
+  }
+  GIN_COMPUTE_STREAM(compute_stream);
+  return launch_scale_range((float*)(comm_group.send + send_offset),
+                            (size_t)numel,
+                            scale,
+                            blocks_for_numel((size_t)numel),
+                            compute_stream);
+}
+
+// 每步末尾在计算流上 flush 两个组的全部 GIN context。下一步复用 send window
+// 之前必须 flush
+int GradCommEngine::end_step() {
+  GIN_COMPUTE_STREAM(compute_stream);
+  for (int group_index = 0; group_index < NUM_GROUPS; ++group_index) {
+    CommGroup& comm_group = group_at(group_index);
+    if (!comm_group.dev_comm_ready || comm_group.num_gin_contexts < 1) continue;
+    const int rc = launch_gin_flush(
+        comm_group.dev_comm, comm_group.num_gin_contexts, compute_stream);
+    if (rc) return rc;
+  }
+  return 0;
+}
+
+// [机间 put 的字节数, 机内拷贝的字节数, 保留位]
+void GradCommEngine::stats(unsigned long long* out3) {
+  out3[0] = g_inter_node_bytes;
+  out3[1] = g_intra_node_bytes;
+  out3[2] = 0;
+}
+
+// ----------------------------------------------------------------
+// Muon 2D 桶 gather 到 owner。每张卡做完本卡分片 seg(k) 的分片求和后，把它写进
+// owner send window 里同一个桶的同一偏移，owner 拼出整桶。各卡的 send_offset
+// 必须一致。
+//   - 发送方在 g_stream_gather_put 上：等本卡 event → 跨节点用 GIN put
+//     （k_put_to_owner，signal 写 owner host window 的到达格）/ 同节点用 CE
+//     （LSA send 指针）+ k_store_release 写 owner host window 里本卡那一格
+//     → 记 g_event_gather_put。
+//   - owner 端的「收齐了没有」由 CPU 读 host window 判断。
+// slot = 2D 桶的 event 下标：dense 桶用 dense 桶号，专家桶用 dense 桶数 +
+// 专家桶号。
+int GradCommEngine::gather_setup(int num_slots) {
+  if (!g_buckets_ready || g_gather_ready || num_slots < 0)
+    return (int)cudaErrorNotReady;
+  CUDA_CHECK(
+      cudaStreamCreateWithFlags(&g_stream_gather_put, cudaStreamNonBlocking));
+  CUDA_CHECK(
+      cudaStreamCreateWithFlags(&g_stream_gather_gate, cudaStreamNonBlocking));
+  g_event_gather_source.assign(num_slots, nullptr);
+  g_event_gather_put.assign(num_slots, nullptr);
+  for (auto* events : {&g_event_gather_source, &g_event_gather_put})
+    for (auto& ev : *events)
+      CUDA_CHECK(cudaEventCreateWithFlags(&ev, cudaEventDisableTiming));
+  // 同节点 CE 要写 owner 的 send window（两个组各自的 LSA 指针）
+  for (int group_index = 0; group_index < NUM_GROUPS; ++group_index) {
+    CommGroup& comm_group = group_at(group_index);
+    if (!comm_group.dev_comm_ready) continue;
+    for (int l = 0; l < comm_group.ranks_per_node; ++l)
+      NCCL_CHECK(ncclGetLsaDevicePointer(
+          comm_group.win_send, 0, l, (void**)&comm_group.lsa_send[l]));
+  }
+  {
+    const int rc = preload_put_kernels();
+    if (rc) return rc;
+  }
+  {
+    const int rc = preload_signal_kernels();
+    if (rc) return rc;
+  }
+  CUDA_CHECK(cudaDeviceSynchronize());
+  g_gather_ready = 1;
+  return 0;
+}
+
+// 2D gather 的门流等窗口 mark：之后排在门流上的工作不会早于 GPU 走到这个 mark
+int GradCommEngine::gather_gate(int mark) {
+  if (!g_gather_ready || !g_stream_gather_gate) return (int)cudaErrorNotReady;
+  if (mark < 0 || mark >= (int)g_window_marks.size())
+    return (int)cudaErrorInvalidValue;
+  CUDA_CHECK(
+      cudaStreamWaitEvent(g_stream_gather_gate, g_window_marks[mark], 0));
+  return 0;
+}
+
+// 在 2D gather 门流的当前位置记 g_event_gather_source[slot]。调用前门流必须
+// 已经等过窗口 mark（gather_gate）和本桶的 event（gather_wait_bucket）
+int GradCommEngine::gather_mark_ready(int slot) {
+  if (!g_gather_ready || !g_stream_gather_gate) return (int)cudaErrorNotReady;
+  if (slot < 0 || slot >= (int)g_event_gather_source.size())
+    return (int)cudaErrorInvalidValue;
+  return (int)cudaEventRecord(g_event_gather_source[slot],
+                              g_stream_gather_gate);
+}
+
+// 发送方：等 wait_event → 本卡 send window [send_offset, send_offset +
+// 4*numel)（本卡分片）写到 owner（组内序号）send window 的同一偏移 → 记
+// g_event_gather_put[slot]。
+//   - 跨节点：k_put_to_owner 一笔，owner host window 的 arrive_offset +1
+//     （*num_signals = 1）。
+//   - 同节点：cudaMemcpyBatchAsync（LSA send 指针）→ k_store_release 把 seq
+//     写进 owner host window 的 intra_arrive_offset（*num_signals = 0）。
+// wait_event：主线程（release::gather_put_entry）传
+// g_event_gather_source[slot]；尾部线程传本桶分片求和之后记的
+// g_event_dense_inter_node_reduce / g_event_moe_reduce[bucket]。
+int gather_put_to_owner(int group,
+                        int slot,
+                        size_t send_offset,
+                        long long shard_numel,
+                        int owner,
+                        size_t arrive_offset,
+                        size_t intra_arrive_offset,
+                        unsigned long long seq,
+                        int* num_signals,
+                        cudaEvent_t wait_event) {
+  const size_t numel = (size_t)shard_numel;
+  *num_signals = 0;
+  if (!g_gather_ready || !is_valid_group(group)) return (int)cudaErrorNotReady;
+  CommGroup& comm_group = group_at(group);
+  if (slot < 0 || slot >= (int)g_event_gather_put.size() || owner < 0 ||
+      owner >= comm_group.size || owner == comm_group.rank ||
+      (send_offset & 3) || send_offset + numel * 4 > comm_group.send_bytes)
+    return (int)cudaErrorInvalidValue;
+  CUDA_CHECK(cudaStreamWaitEvent(g_stream_gather_put, wait_event, 0));
+  if (owner / comm_group.ranks_per_node == comm_group.node_index) {
+    const int l = owner % comm_group.ranks_per_node;
+    if (!comm_group.lsa_send[l] || !comm_group.lsa_host[l] || seq == 0 ||
+        (intra_arrive_offset & 7)) {
+      return (int)cudaErrorInvalidValue;
+    }
+    void* dst = comm_group.lsa_send[l] + send_offset;
+    const void* src = comm_group.send + send_offset;
+    size_t bytes = numel * 4;
+    cudaMemcpyAttributes copy_attrs;
+    memset(&copy_attrs, 0, sizeof(copy_attrs));
+    copy_attrs.srcAccessOrder = cudaMemcpySrcAccessOrderStream;
+    size_t fail_index = 0;
+    CUDA_CHECK(cudaMemcpyBatchAsync(&dst,
+                                    &src,
+                                    &bytes,
+                                    1,
+                                    &copy_attrs,
+                                    &fail_index,
+                                    1,
+                                    g_stream_gather_put));
+    const int rc = launch_store_release(
+        (unsigned long long*)(comm_group.lsa_host[l] + intra_arrive_offset),
+        seq,
+        g_stream_gather_put);
+    if (rc) return rc;
+    g_intra_node_bytes += bytes;
+  } else {
+    if (arrive_offset & 7) return (int)cudaErrorInvalidValue;
+    const int rc = launch_put_to_owner(comm_group.dev_comm,
+                                       comm_group.win_send,
+                                       send_offset,
+                                       comm_group.win_send,
+                                       send_offset,
+                                       comm_group.win_host,
+                                       arrive_offset,
+                                       numel,
+                                       owner,
+                                       comm_group.num_gin_contexts,
+                                       g_stream_gather_put);
+    if (rc) return rc;
+    *num_signals = 1;
+    g_inter_node_bytes += (unsigned long long)numel * 4;
+  }
+  CUDA_CHECK(cudaEventRecord(g_event_gather_put[slot], g_stream_gather_put));
+  return 0;
+}
+
+// 计算流等本卡的 g_event_gather_put[slot]。必须在 end_step 的 flush 之前调，
+// flush 才覆盖到这些 put
+int GradCommEngine::gather_join(int slot) {
+  if (!g_gather_ready) return (int)cudaErrorNotReady;
+  if (slot < 0 || slot >= (int)g_event_gather_put.size())
+    return (int)cudaErrorInvalidValue;
+  GIN_COMPUTE_STREAM(compute_stream);
+  return (int)cudaStreamWaitEvent(compute_stream, g_event_gather_put[slot], 0);
 }
 
 }  // namespace gin_overlap
