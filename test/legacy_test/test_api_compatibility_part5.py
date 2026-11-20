@@ -4407,5 +4407,74 @@ class TestQrAPICompatibility(unittest.TestCase):
         paddle.disable_static()
 
 
+# Test nn.Unflatten compatibility (torch-style dim / unflattened_size aliases)
+class TestUnflattenCompatibility(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2025)
+        self.np_x = np.random.rand(2, 3, 4).astype("float32")
+
+    def test_dygraph_Compatibility(self):
+        paddle.disable_static()
+        x = paddle.to_tensor(self.np_x)
+
+        # 1. Paddle positional arguments
+        out1 = paddle.nn.Unflatten(1, [3, 1])(x)
+        # 2. Paddle keyword arguments
+        out2 = paddle.nn.Unflatten(axis=1, shape=[3, 1])(x)
+        # 3. PyTorch positional arguments, same order as Paddle
+        out3 = paddle.nn.Unflatten(1, (3, 1))(x)
+        # 4. PyTorch keyword arguments
+        out4 = paddle.nn.Unflatten(dim=1, unflattened_size=(3, 1))(x)
+        # 5. Mixed keyword arguments
+        out5 = paddle.nn.Unflatten(dim=1, shape=[3, 1])(x)
+        out6 = paddle.nn.Unflatten(axis=1, unflattened_size=(3, 1))(x)
+        # 6. name keeps working together with the aliases
+        out7 = paddle.nn.Unflatten(dim=1, unflattened_size=(3, 1), name="u")(x)
+
+        # 7. Reference from the functional API
+        expected = paddle.unflatten(x, axis=1, shape=[3, 1]).numpy()
+        self.assertEqual(out1.shape, [2, 3, 1, 4])
+        for out in (out1, out2, out3, out4, out5, out6, out7):
+            np.testing.assert_allclose(out.numpy(), expected)
+
+        # 8. The -1 form of shape is forwarded unchanged through the alias
+        out8 = paddle.nn.Unflatten(dim=1, unflattened_size=(-1, 1))(x)
+        np.testing.assert_allclose(out8.numpy(), expected)
+
+    def test_dygraph_alias_conflict(self):
+        paddle.disable_static()
+
+        # Specifying a parameter and its alias at the same time is rejected
+        with self.assertRaises(ValueError):
+            paddle.nn.Unflatten(axis=1, dim=1, shape=[3, 1])
+        with self.assertRaises(ValueError):
+            paddle.nn.Unflatten(axis=1, shape=[3, 1], unflattened_size=[3, 1])
+
+    def test_static_Compatibility(self):
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            x = paddle.static.data(name="x", shape=[2, 3, 4], dtype="float32")
+
+            out1 = paddle.nn.Unflatten(1, [3, 1])(x)
+            out2 = paddle.nn.Unflatten(axis=1, shape=[3, 1])(x)
+            out3 = paddle.nn.Unflatten(dim=1, unflattened_size=(3, 1))(x)
+            out4 = paddle.nn.Unflatten(dim=1, shape=[3, 1])(x)
+
+            exe = paddle.static.Executor()
+            fetches = exe.run(
+                main,
+                feed={"x": self.np_x},
+                fetch_list=[out1, out2, out3, out4],
+            )
+            expected = fetches[0]
+            self.assertEqual(expected.shape, (2, 3, 1, 4))
+            for out in fetches:
+                np.testing.assert_allclose(out, expected)
+
+        paddle.disable_static()
+
+
 if __name__ == "__main__":
     unittest.main()
