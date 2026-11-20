@@ -42,7 +42,9 @@ def init_fp8_buffer(params_buffer, params):
     quantizer = params[0]._fsdp_fp8_quantizer
     k, full = len(quantizer.attrs), params_buffer.total_buffer_size
     numels = [full] * k + [full // quantizer.block**2] * k
-    dtypes = [paddle.float8_e4m3fn] * k + [paddle.float32] * k
+    # Optional quantizer.scale_dtype (default fp32), e.g. uint8 exponents.
+    scale_dtype = getattr(quantizer, "scale_dtype", paddle.float32)
+    dtypes = [paddle.float8_e4m3fn] * k + [scale_dtype] * k
     params_buffer.fp8 = types.SimpleNamespace(
         params=params,
         quantizer=quantizer,
@@ -126,12 +128,20 @@ def bind_fp8_param(params_buffer, param):
     end = begin + math.prod(shape)
     num, kn, nn = shape
     view = paddle._C_ops.view_shape
+    # Optional quantizer.keep_expert_dim: [num, rows, cols] views, not 2D.
+    keep_expert_dim = getattr(fp8.quantizer, "keep_expert_dim", False)
     for i, (d, s, transpose) in enumerate(attrs):
         rows, cols = (nn, kn) if transpose else (kn, nn)
         data = fp8.fulls[i]._slice(begin, end)
         scale = fp8.fulls[k + i]._slice(begin // bn, end // bn)
-        setattr(param, d, view(data, [num * rows, cols]))
-        setattr(param, s, view(scale, [num * rows // block, cols // block]))
+        if keep_expert_dim:
+            data_shape = [num, rows, cols]
+            scale_shape = [num, rows // block, cols // block]
+        else:
+            data_shape = [num * rows, cols]
+            scale_shape = [num * rows // block, cols // block]
+        setattr(param, d, view(data, data_shape))
+        setattr(param, s, view(scale, scale_shape))
     # Zero-byte storage: read only through the fp8 caches.
     dims = param.shape
     share_scratch(param, param.dtype)
