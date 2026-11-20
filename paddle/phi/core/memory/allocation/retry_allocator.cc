@@ -27,6 +27,11 @@ void RegisterOOMCallback(std::function<size_t(Place, size_t)> callback) {
   g_oom_callback = std::move(callback);
 }
 
+size_t RunOOMCallback(const phi::Place& place, size_t size) {
+  if (g_oom_callback == nullptr) return 0;
+  return g_oom_callback(place, size);
+}
+
 class WaitedAllocateSizeGuard {
  public:
   WaitedAllocateSizeGuard(std::atomic<size_t>* waited_size,
