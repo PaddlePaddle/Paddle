@@ -2496,18 +2496,31 @@ class FullyShardFusion:
             exposed = _find_exposed_param_names(outputs, own_param_names)
 
             if isinstance(outputs, dict):
-                for key, value in outputs.items():
-                    if (
-                        isinstance(value, paddle.Tensor)
-                        and not value.stop_gradient
-                        and value.name not in exposed
-                    ):
-                        outputs[key] = FusionBackwardHook.apply(
-                            value,
-                            layer=layer,
-                            comm_manager=self.comm_manager,
-                            recursive=recursive,
-                        )
+                # Route every hookable value through ONE identity PyLayer, as
+                # the tuple branch does. With a PyLayer per value, the first
+                # value whose gradient arrives (e.g. an entry a later layer
+                # passes through untouched) all-gathers this unit early, and
+                # _release_params_after_unit then frees later units whose
+                # recompute backward has not run yet.
+                keys = [
+                    key
+                    for key, value in outputs.items()
+                    if isinstance(value, paddle.Tensor)
+                    and not value.stop_gradient
+                    and value.name not in exposed
+                ]
+                if not keys:
+                    return outputs
+                hooked = FusionBackwardHook.apply(
+                    *[outputs[key] for key in keys],
+                    layer=layer,
+                    comm_manager=self.comm_manager,
+                    recursive=recursive,
+                )
+                if not isinstance(hooked, (tuple, list)):
+                    hooked = (hooked,)
+                for key, value in zip(keys, hooked):
+                    outputs[key] = value
                 return outputs
             elif isinstance(outputs, tuple):
                 # Exposed parameters are leaf vars that require grad, which the
