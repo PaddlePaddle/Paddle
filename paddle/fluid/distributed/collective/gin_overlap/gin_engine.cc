@@ -33,7 +33,7 @@ std::vector<cudaEvent_t> g_event_intra_node_copy, g_event_intra_node_reduce,
 std::vector<cudaEvent_t> g_event_dense_inter_node_reduce, g_event_moe_reduce;
 std::vector<cudaEvent_t> g_window_marks;
 int g_window_mark_index = 0;
-unsigned long long g_inter_node_bytes = 0, g_intra_node_bytes = 0;
+uint64_t g_inter_node_bytes = 0, g_intra_node_bytes = 0;
 size_t g_credit_intra_offset = 0, g_credit_inter_offset = 0,
        g_credit_moe_offset = 0;
 int g_buckets_ready = 0;
@@ -51,7 +51,7 @@ static int alloc_symmetric_window(ncclComm_t comm,
                                   ncclWindow_t* out_window,
                                   size_t* out_bytes) {
   if (bytes < 4096) bytes = 4096;
-  NCCL_CHECK(ncclMemAlloc((void**)out_ptr, bytes));
+  NCCL_CHECK(ncclMemAlloc(reinterpret_cast<void**>(out_ptr), bytes));
   CUDA_CHECK(cudaMemset(*out_ptr, 0, bytes));
   NCCL_CHECK(ncclCommWindowRegister(
       comm, *out_ptr, bytes, out_window, NCCL_WIN_COLL_SYMMETRIC));
@@ -61,8 +61,9 @@ static int alloc_symmetric_window(ncclComm_t comm,
 
 // ---------------------------------------------------------------- init
 const char* GradCommEngine::error_string(int code) {
-  if (code >= 10000) return ncclGetErrorString((ncclResult_t)(code - 10000));
-  return cudaGetErrorString((cudaError_t)code);
+  if (code >= 10000)
+    return ncclGetErrorString(static_cast<ncclResult_t>(code - 10000));
+  return cudaGetErrorString(static_cast<cudaError_t>(code));
 }
 
 int GradCommEngine::nccl_runtime_version() {
@@ -87,8 +88,8 @@ int GradCommEngine::set_comms(int dense_ring_id,
                               int dense_rank,
                               int expert_size,
                               int expert_rank,
-                              std::string& err) {
-  err.clear();
+                              std::string* err) {
+  err->clear();
   CUDA_CHECK(cudaSetDevice(device_id));
   g_device_id = device_id;
   const int ring_ids[NUM_GROUPS] = {dense_ring_id, expert_ring_id};
@@ -111,38 +112,38 @@ int GradCommEngine::set_comms(int dense_ring_id,
     if (ring_ids[group_index] < 0) continue;
     CommGroup& comm_group = group_at(group_index);
     if (comm_group.comm) {
-      err = std::string(group_names[group_index]) +
-            " group: comm is already set (set_comms may be called only once)";
-      return fail((int)cudaErrorNotReady);
+      *err = std::string(group_names[group_index]) +
+             " group: comm is already set (set_comms may be called only once)";
+      return fail(static_cast<int>(cudaErrorNotReady));
     }
     ncclComm_t comm = nullptr;
     int size = 0, rank = 0;
     std::string reason;
     if (paddle_nccl_comm(
             ring_ids[group_index], device_id, &comm, &size, &rank, &reason)) {
-      err = std::string(group_names[group_index]) + " group (ring id " +
-            std::to_string(ring_ids[group_index]) + "): " + reason;
-      return fail((int)cudaErrorInvalidValue);
+      *err = std::string(group_names[group_index]) + " group (ring id " +
+             std::to_string(ring_ids[group_index]) + "): " + reason;
+      return fail(static_cast<int>(cudaErrorInvalidValue));
     }
     int comm_rank = -1, comm_size = -1;
     if (ncclCommUserRank(comm, &comm_rank) != ncclSuccess ||
         ncclCommCount(comm, &comm_size) != ncclSuccess) {
-      err = std::string(group_names[group_index]) +
-            " group: ncclCommUserRank / ncclCommCount failed";
-      return fail((int)cudaErrorInvalidValue);
+      *err = std::string(group_names[group_index]) +
+             " group: ncclCommUserRank / ncclCommCount failed";
+      return fail(static_cast<int>(cudaErrorInvalidValue));
     }
     if (size != want_size[group_index] || rank != want_rank[group_index] ||
         comm_size != want_size[group_index] ||
         comm_rank != want_rank[group_index]) {
-      err = std::string(group_names[group_index]) + " group (ring id " +
-            std::to_string(ring_ids[group_index]) +
-            "): size / rank mismatch: Python side " +
-            std::to_string(want_rank[group_index]) + "/" +
-            std::to_string(want_size[group_index]) + ", Paddle ProcessGroup " +
-            std::to_string(rank) + "/" + std::to_string(size) + ", ncclComm " +
-            std::to_string(comm_rank) + "/" + std::to_string(comm_size) +
-            " (is the ring id that of another group?)";
-      return fail((int)cudaErrorInvalidValue);
+      *err = std::string(group_names[group_index]) + " group (ring id " +
+             std::to_string(ring_ids[group_index]) +
+             "): size / rank mismatch: Python side " +
+             std::to_string(want_rank[group_index]) + "/" +
+             std::to_string(want_size[group_index]) + ", Paddle ProcessGroup " +
+             std::to_string(rank) + "/" + std::to_string(size) + ", ncclComm " +
+             std::to_string(comm_rank) + "/" + std::to_string(comm_size) +
+             " (is the ring id that of another group?)";
+      return fail(static_cast<int>(cudaErrorInvalidValue));
     }
     comm_group.comm = comm;
     comm_group.size = want_size[group_index];
@@ -159,9 +160,10 @@ int GradCommEngine::alloc_windows(int group,
                                   size_t send_bytes,
                                   size_t recv_bytes,
                                   size_t signal_bytes) {
-  if (!is_valid_group(group)) return (int)cudaErrorInvalidValue;
+  if (!is_valid_group(group)) return static_cast<int>(cudaErrorInvalidValue);
   CommGroup& comm_group = group_at(group);
-  if (!comm_group.comm || comm_group.send) return (int)cudaErrorNotReady;
+  if (!comm_group.comm || comm_group.send)
+    return static_cast<int>(cudaErrorNotReady);
   size_t send_actual = 0, recv_actual = 0, signal_actual = 0;
   GIN_CHECK(alloc_symmetric_window(comm_group.comm,
                                    send_bytes,
@@ -193,10 +195,10 @@ int GradCommEngine::create_dev_comm(int group,
                                     int* num_contexts,
                                     int* lsa_rank,
                                     int* lsa_size) {
-  if (!is_valid_group(group)) return (int)cudaErrorInvalidValue;
+  if (!is_valid_group(group)) return static_cast<int>(cudaErrorInvalidValue);
   CommGroup& comm_group = group_at(group);
   if (!comm_group.comm || comm_group.dev_comm_ready)
-    return (int)cudaErrorNotReady;
+    return static_cast<int>(cudaErrorNotReady);
   ncclDevCommRequirements_t req = NCCL_DEV_COMM_REQUIREMENTS_INITIALIZER;
   // the expert put and the dense inter-node put both go to arbitrary peers
   req.ginConnectionType = NCCL_GIN_CONNECTION_FULL;
@@ -204,20 +206,27 @@ int GradCommEngine::create_dev_comm(int group,
   req.ginSignalCount = 1;                       // VA signals
   req.ginCounterCount = 0;
   NCCL_CHECK(ncclDevCommCreate(comm_group.comm, &req, &comm_group.dev_comm));
-  comm_group.num_gin_contexts = (int)comm_group.dev_comm.ginContextCount;
+  comm_group.num_gin_contexts =
+      static_cast<int>(comm_group.dev_comm.ginContextCount);
   *num_contexts = comm_group.num_gin_contexts;
   *lsa_rank = comm_group.dev_comm.lsaRank;
   *lsa_size = comm_group.dev_comm.lsaSize;
   if (comm_group.dev_comm.lsaSize > 16 || comm_group.dev_comm.lsaSize < 1)
-    return (int)cudaErrorInvalidValue;
+    return static_cast<int>(cudaErrorInvalidValue);
   for (int l = 0; l < comm_group.dev_comm.lsaSize; ++l) {
     NCCL_CHECK(ncclGetLsaDevicePointer(
-        comm_group.win_recv, 0, l, (void**)&comm_group.lsa_recv[l]));
+        comm_group.win_recv,
+        0,
+        l,
+        reinterpret_cast<void**>(&comm_group.lsa_recv[l])));
     NCCL_CHECK(ncclGetLsaDevicePointer(
-        comm_group.win_signal, 0, l, (void**)&comm_group.lsa_signal[l]));
+        comm_group.win_signal,
+        0,
+        l,
+        reinterpret_cast<void**>(&comm_group.lsa_signal[l])));
   }
-  comm_group.ranks_per_node = (int)comm_group.dev_comm.lsaSize;
-  comm_group.rank_in_node = (int)comm_group.dev_comm.lsaRank;
+  comm_group.ranks_per_node = static_cast<int>(comm_group.dev_comm.lsaSize);
+  comm_group.rank_in_node = static_cast<int>(comm_group.dev_comm.lsaRank);
   comm_group.dev_comm_ready = 1;
   return 0;
 }
@@ -228,15 +237,15 @@ int GradCommEngine::create_dev_comm(int group,
 int GradCommEngine::set_group_topology(int group,
                                        int num_nodes,
                                        int node_index) {
-  if (!is_valid_group(group)) return (int)cudaErrorInvalidValue;
+  if (!is_valid_group(group)) return static_cast<int>(cudaErrorInvalidValue);
   CommGroup& comm_group = group_at(group);
   if (!comm_group.dev_comm_ready || num_nodes < 1 || node_index < 0 ||
       node_index >= num_nodes) {
-    return (int)cudaErrorInvalidValue;
+    return static_cast<int>(cudaErrorInvalidValue);
   }
   if (num_nodes * comm_group.ranks_per_node != comm_group.size ||
       node_index != comm_group.rank / comm_group.ranks_per_node) {
-    return (int)cudaErrorInvalidValue;
+    return static_cast<int>(cudaErrorInvalidValue);
   }
   comm_group.num_nodes = num_nodes;
   comm_group.node_index = node_index;
@@ -283,21 +292,23 @@ static int configure_resources(int num_dense_buckets,
   // arrival counters, intra-node credits and the intra-node CE of the 2D
   // gather; the expert group only for the 2D gather
   void**& lsa_pointers_device = *lsa_pointers_out;
-  CUDA_CHECK(cudaMalloc((void**)&lsa_pointers_device, 16 * sizeof(void*)));
+  CUDA_CHECK(cudaMalloc(reinterpret_cast<void**>(&lsa_pointers_device),
+                        16 * sizeof(void*)));
   for (int group_index = 0; group_index < NUM_GROUPS; ++group_index) {
     CommGroup& comm_group = group_at(group_index);
     if (!comm_group.host) continue;
     GIN_CHECK(launch_host_window_lsa_pointers(
         comm_group.win_host, comm_group.ranks_per_node, lsa_pointers_device));
     void* lsa_pointers_host[16] = {};
-    CUDA_CHECK(cudaMemcpy(lsa_pointers_host,
-                          lsa_pointers_device,
-                          (size_t)comm_group.ranks_per_node * sizeof(void*),
-                          cudaMemcpyDeviceToHost));
+    CUDA_CHECK(cudaMemcpy(
+        lsa_pointers_host,
+        lsa_pointers_device,
+        static_cast<size_t>(comm_group.ranks_per_node) * sizeof(void*),
+        cudaMemcpyDeviceToHost));
     for (int l = 0; l < comm_group.ranks_per_node; ++l) {
-      comm_group.lsa_host[l] = (char*)lsa_pointers_host[l];
+      comm_group.lsa_host[l] = reinterpret_cast<char*>(lsa_pointers_host[l]);
       if (l != comm_group.rank_in_node && !comm_group.lsa_host[l])
-        return (int)cudaErrorInvalidValue;
+        return static_cast<int>(cudaErrorInvalidValue);
     }
   }
   CUDA_CHECK(cudaFree(lsa_pointers_device));
@@ -358,12 +369,12 @@ int GradCommEngine::configure(int num_dense_buckets,
                               size_t credit_inter_offset,
                               size_t credit_moe_offset) {
   if (!dense_group().dev_comm_ready || g_buckets_ready || !dense_group().host)
-    return (int)cudaErrorNotReady;
+    return static_cast<int>(cudaErrorNotReady);
   if (num_window_marks <= 0 || num_moe_buckets < 0 || num_dense_buckets < 0)
-    return (int)cudaErrorInvalidValue;
+    return static_cast<int>(cudaErrorInvalidValue);
   if (num_moe_buckets > 0 &&
       (!expert_group().dev_comm_ready || !expert_group().host))
-    return (int)cudaErrorNotReady;
+    return static_cast<int>(cudaErrorNotReady);
   void** lsa_pointers_device = nullptr;
   const int rc = configure_resources(num_dense_buckets,
                                      num_moe_buckets,
@@ -387,7 +398,8 @@ int GradCommEngine::record_window_mark() {
   cudaStream_t compute_stream = nullptr;
   if (paddle_compute_stream(&compute_stream)) return -1;
   const int i = g_window_mark_index;
-  g_window_mark_index = (g_window_mark_index + 1) % (int)g_window_marks.size();
+  g_window_mark_index =
+      (g_window_mark_index + 1) % static_cast<int>(g_window_marks.size());
   if (cudaEventRecord(g_window_marks[i], compute_stream) != cudaSuccess)
     return -1;
   return i;
@@ -410,9 +422,10 @@ int GradCommEngine::alloc_host_counters(int group,
                                         size_t* nbytes) {
   *cpu_ptr = 0;
   *nbytes = 0;
-  if (!is_valid_group(group)) return (int)cudaErrorInvalidValue;
+  if (!is_valid_group(group)) return static_cast<int>(cudaErrorInvalidValue);
   CommGroup& comm_group = group_at(group);
-  if (!comm_group.comm || comm_group.host) return (int)cudaErrorNotReady;
+  if (!comm_group.comm || comm_group.host)
+    return static_cast<int>(cudaErrorNotReady);
   int device_id = 0;
   CUDA_CHECK(cudaGetDevice(&device_id));
   CUdevice cu_device;
@@ -434,9 +447,9 @@ int GradCommEngine::alloc_host_counters(int group,
   size_t granularity = 0;
   CUDA_DRIVER_CHECK(cuMemGetAllocationGranularity(
       &granularity, &alloc_prop, CU_MEM_ALLOC_GRANULARITY_MINIMUM));
-  size_t bytes = want_bytes > (size_t)NCCL_WIN_REQUIRED_ALIGNMENT
+  size_t bytes = want_bytes > static_cast<size_t>(NCCL_WIN_REQUIRED_ALIGNMENT)
                      ? want_bytes
-                     : (size_t)NCCL_WIN_REQUIRED_ALIGNMENT;
+                     : static_cast<size_t>(NCCL_WIN_REQUIRED_ALIGNMENT);
   bytes = (bytes + granularity - 1) / granularity * granularity;
   CUDA_DRIVER_CHECK(
       cuMemCreate(&comm_group.host_handle, bytes, &alloc_prop, 0));
@@ -452,7 +465,7 @@ int GradCommEngine::alloc_host_counters(int group,
   access_desc.location.type = CU_MEM_LOCATION_TYPE_HOST_NUMA;
   access_desc.location.id = numa_id;
   CUDA_DRIVER_CHECK(cuMemSetAccess(base_ptr, bytes, &access_desc, 1));
-  comm_group.host = (char*)base_ptr;
+  comm_group.host = reinterpret_cast<char*>(base_ptr);
   memset(comm_group.host, 0, bytes);  // must be cleared before registration
   NCCL_CHECK(ncclCommWindowRegister(
       comm_group.comm,
@@ -461,7 +474,7 @@ int GradCommEngine::alloc_host_counters(int group,
       &comm_group.win_host,
       NCCL_WIN_COLL_SYMMETRIC | NCCL_WIN_STRICT_ORDERING));
   comm_group.host_bytes = bytes;
-  *cpu_ptr = (uintptr_t)comm_group.host;
+  *cpu_ptr = reinterpret_cast<uintptr_t>(comm_group.host);
   *nbytes = bytes;
   return 0;
 }
@@ -480,19 +493,21 @@ int GradCommEngine::alloc_host_counters(int group,
 int submit_dense_intra_node_copy(int bucket,
                                  size_t recv_offset,
                                  size_t send_offset,
-                                 long long shard_numel,
+                                 int64_t shard_numel,
                                  cudaEvent_t mark_event,
                                  size_t intra_arrive_offset,
-                                 unsigned long long seq) {
-  const size_t numel = (size_t)shard_numel;
+                                 uint64_t seq) {
+  const size_t numel = static_cast<size_t>(shard_numel);
   CommGroup& comm_group = dense_group();
   const int ranks_per_node = comm_group.ranks_per_node,
             num_nodes = comm_group.num_nodes,
             rank_in_node = comm_group.rank_in_node;
-  if (!g_buckets_ready) return (int)cudaErrorNotReady;
+  if (!g_buckets_ready) return static_cast<int>(cudaErrorNotReady);
   if (ranks_per_node < 2) return 0;
-  if (seq == 0 || (intra_arrive_offset & 7)) return (int)cudaErrorInvalidValue;
-  const float* grad = (const float*)(comm_group.send + send_offset);
+  if (seq == 0 || (intra_arrive_offset & 7))
+    return static_cast<int>(cudaErrorInvalidValue);
+  const float* grad =
+      reinterpret_cast<const float*>(comm_group.send + send_offset);
   CUDA_CHECK(cudaStreamWaitEvent(g_stream_intra_node_copy, mark_event, 0));
   std::vector<void*> dst_pointers;
   std::vector<const void*> src_pointers;
@@ -505,13 +520,15 @@ int submit_dense_intra_node_copy(int bucket,
     const int row = l > rank_in_node ? rank_in_node : rank_in_node - 1;
     for (int n = 0; n < num_nodes; ++n) {
       dst_pointers.push_back(comm_group.lsa_recv[l] + recv_offset +
-                             ((size_t)row * num_nodes + n) * numel * 4);
-      src_pointers.push_back(grad + ((size_t)n * ranks_per_node + l) * numel);
+                             (static_cast<size_t>(row) * num_nodes + n) *
+                                 numel * 4);
+      src_pointers.push_back(
+          grad + (static_cast<size_t>(n) * ranks_per_node + l) * numel);
       sizes.push_back(numel * 4);
     }
     // this rank's counter in the peer's host window
-    arrive_slots.per_rank[l] =
-        (unsigned long long*)(comm_group.lsa_host[l] + intra_arrive_offset);
+    arrive_slots.per_rank[l] = reinterpret_cast<uint64_t*>(
+        comm_group.lsa_host[l] + intra_arrive_offset);
   }
   cudaMemcpyAttributes copy_attrs;
   memset(&copy_attrs, 0, sizeof(copy_attrs));
@@ -536,7 +553,7 @@ int submit_dense_intra_node_copy(int bucket,
   CUDA_CHECK(cudaEventRecord(g_event_intra_node_copy[bucket],
                              g_stream_intra_node_copy));
   g_intra_node_bytes +=
-      (unsigned long long)(ranks_per_node - 1) * num_nodes * numel * 4;
+      static_cast<uint64_t>(ranks_per_node - 1) * num_nodes * numel * 4;
   return 0;
 }
 
@@ -547,34 +564,33 @@ int submit_dense_intra_node_copy(int bucket,
 int submit_dense_intra_node_reduce(int bucket,
                                    size_t recv_offset,
                                    size_t send_offset,
-                                   long long shard_numel,
+                                   int64_t shard_numel,
                                    int num_blocks,
                                    cudaEvent_t mark_event) {
-  const size_t numel = (size_t)shard_numel;
-  if (!g_buckets_ready) return (int)cudaErrorNotReady;
-  if (numel & 3) return (int)cudaErrorInvalidValue;
+  const size_t numel = static_cast<size_t>(shard_numel);
+  if (!g_buckets_ready) return static_cast<int>(cudaErrorNotReady);
+  if (numel & 3) return static_cast<int>(cudaErrorInvalidValue);
   CommGroup& comm_group = dense_group();
   const int ranks_per_node = comm_group.ranks_per_node,
             rank_in_node = comm_group.rank_in_node;
   CUDA_CHECK(cudaStreamWaitEvent(g_stream_intra_node_reduce, mark_event, 0));
-  GIN_CHECK(
-      launch_reduce_intra_node((float4*)(comm_group.send + send_offset),
-                               (const float4*)(comm_group.recv + recv_offset),
-                               numel / 4,
-                               ranks_per_node,
-                               comm_group.num_nodes,
-                               rank_in_node,
-                               num_blocks,
-                               g_stream_intra_node_reduce));
+  GIN_CHECK(launch_reduce_intra_node(
+      reinterpret_cast<float4*>(comm_group.send + send_offset),
+      reinterpret_cast<const float4*>(comm_group.recv + recv_offset),
+      numel / 4,
+      ranks_per_node,
+      comm_group.num_nodes,
+      rank_in_node,
+      num_blocks,
+      g_stream_intra_node_reduce));
   if (ranks_per_node > 1) {
     LsaSlotPointers credit_slots;
     memset(&credit_slots, 0, sizeof(credit_slots));
     for (int l = 0; l < ranks_per_node; ++l)
       if (l != rank_in_node)
-        credit_slots.per_rank[l] =
-            (unsigned long long*)(comm_group.lsa_host[l] +
-                                  g_credit_intra_offset +
-                                  8 * (size_t)rank_in_node);
+        credit_slots.per_rank[l] = reinterpret_cast<uint64_t*>(
+            comm_group.lsa_host[l] + g_credit_intra_offset +
+            8 * static_cast<size_t>(rank_in_node));
     GIN_CHECK(launch_signal_intra_node(credit_slots,
                                        ranks_per_node,
                                        rank_in_node,
@@ -594,13 +610,13 @@ int submit_dense_inter_node_put(int bucket,
                                 size_t recv_offset,
                                 size_t send_offset,
                                 size_t signal_offset,
-                                long long shard_numel,
+                                int64_t shard_numel,
                                 int num_blocks,
                                 cudaEvent_t mark_event,
                                 int* num_signals) {
-  const size_t numel = (size_t)shard_numel;
+  const size_t numel = static_cast<size_t>(shard_numel);
   *num_signals = 0;
-  if (!g_buckets_ready) return (int)cudaErrorNotReady;
+  if (!g_buckets_ready) return static_cast<int>(cudaErrorNotReady);
   CommGroup& comm_group = dense_group();
   CUDA_CHECK(
       cudaStreamWaitEvent(g_stream_put, g_event_intra_node_reduce[bucket], 0));
@@ -625,7 +641,7 @@ int submit_dense_inter_node_put(int bucket,
                                        g_stream_put));
     *num_signals = comm_group.num_nodes - 1;
     g_inter_node_bytes +=
-        (unsigned long long)(comm_group.num_nodes - 1) * numel * 4;
+        static_cast<uint64_t>(comm_group.num_nodes - 1) * numel * 4;
   }
   CUDA_CHECK(cudaEventRecord(g_event_dense_put[bucket], g_stream_put));
   return 0;
@@ -640,13 +656,13 @@ int submit_moe_put(int bucket,
                    size_t recv_offset,
                    size_t send_offset,
                    size_t signal_offset,
-                   long long shard_numel,
+                   int64_t shard_numel,
                    int num_blocks,
                    cudaEvent_t mark_event,
                    int* num_signals) {
-  const size_t numel = (size_t)shard_numel;
+  const size_t numel = static_cast<size_t>(shard_numel);
   *num_signals = 0;
-  if (!g_buckets_ready) return (int)cudaErrorNotReady;
+  if (!g_buckets_ready) return static_cast<int>(cudaErrorNotReady);
   CommGroup& comm_group = expert_group();
   const int expert_group_size = comm_group.size,
             expert_group_rank = comm_group.rank;
@@ -667,7 +683,7 @@ int submit_moe_put(int bucket,
                                          g_stream_put));
     *num_signals = expert_group_size - 1;
     g_inter_node_bytes +=
-        (unsigned long long)(expert_group_size - 1) * numel * 4;
+        static_cast<uint64_t>(expert_group_size - 1) * numel * 4;
   }
   CUDA_CHECK(cudaEventRecord(g_event_moe_put[bucket], g_stream_put));
   return 0;
@@ -682,23 +698,24 @@ int submit_moe_put(int bucket,
 int submit_dense_inter_node_reduce(int bucket,
                                    size_t recv_offset,
                                    size_t send_offset,
-                                   long long shard_numel,
+                                   int64_t shard_numel,
                                    float scale,
                                    int num_blocks,
                                    cudaEvent_t mark_event) {
-  const size_t numel = (size_t)shard_numel;
-  if (!g_buckets_ready) return (int)cudaErrorNotReady;
+  const size_t numel = static_cast<size_t>(shard_numel);
+  if (!g_buckets_ready) return static_cast<int>(cudaErrorNotReady);
   CommGroup& comm_group = dense_group();
   CUDA_CHECK(cudaStreamWaitEvent(
       g_stream_shard_reduce, g_event_intra_node_reduce[bucket], 0));
   CUDA_CHECK(cudaStreamWaitEvent(g_stream_shard_reduce, mark_event, 0));
-  float* shard = (float*)(comm_group.send + send_offset) +
-                 (size_t)(comm_group.node_index * comm_group.ranks_per_node +
+  float* shard =
+      reinterpret_cast<float*>(comm_group.send + send_offset) +
+      static_cast<size_t>(comm_group.node_index * comm_group.ranks_per_node +
                           comm_group.rank_in_node) *
-                     numel;
+          numel;
   GIN_CHECK(launch_reduce_dense_shard(
       shard,
-      (const float*)(comm_group.recv + recv_offset),
+      reinterpret_cast<const float*>(comm_group.recv + recv_offset),
       numel,
       comm_group.num_nodes,
       comm_group.node_index,
@@ -709,7 +726,7 @@ int submit_dense_inter_node_reduce(int bucket,
     GIN_CHECK(launch_signal_credit(
         comm_group.dev_comm,
         comm_group.win_host,
-        g_credit_inter_offset + 8 * (size_t)comm_group.node_index,
+        g_credit_inter_offset + 8 * static_cast<size_t>(comm_group.node_index),
         comm_group.num_nodes,
         comm_group.node_index,
         comm_group.rank_in_node,
@@ -731,21 +748,21 @@ int submit_dense_inter_node_reduce(int bucket,
 int submit_moe_reduce(int bucket,
                       size_t recv_offset,
                       size_t send_offset,
-                      long long shard_numel,
+                      int64_t shard_numel,
                       float scale,
                       int num_blocks,
                       cudaEvent_t mark_event) {
-  const size_t numel = (size_t)shard_numel;
-  if (!g_buckets_ready) return (int)cudaErrorNotReady;
+  const size_t numel = static_cast<size_t>(shard_numel);
+  if (!g_buckets_ready) return static_cast<int>(cudaErrorNotReady);
   CommGroup& comm_group = expert_group();
   const int expert_group_size = comm_group.size,
             expert_group_rank = comm_group.rank;
   CUDA_CHECK(cudaStreamWaitEvent(g_stream_shard_reduce, mark_event, 0));
-  float* shard = (float*)(comm_group.send + send_offset) +
-                 (size_t)expert_group_rank * numel;
+  float* shard = reinterpret_cast<float*>(comm_group.send + send_offset) +
+                 static_cast<size_t>(expert_group_rank) * numel;
   GIN_CHECK(launch_reduce_moe_shard(
       shard,
-      (const float*)(comm_group.recv + recv_offset),
+      reinterpret_cast<const float*>(comm_group.recv + recv_offset),
       numel,
       expert_group_size,
       expert_group_rank,
@@ -756,7 +773,7 @@ int submit_moe_reduce(int bucket,
     GIN_CHECK(launch_signal_credit(
         comm_group.dev_comm,
         comm_group.win_host,
-        g_credit_moe_offset + 8 * (size_t)expert_group_rank,
+        g_credit_moe_offset + 8 * static_cast<size_t>(expert_group_rank),
         expert_group_size,
         expert_group_rank,
         0,
@@ -773,28 +790,29 @@ int submit_moe_reduce(int bucket,
 // ----------------------------------------------------------------
 // Whether a slot of the window mark ring is valid
 static inline bool is_valid_mark(int mark) {
-  return mark >= 0 && mark < (int)g_window_marks.size();
+  return mark >= 0 && mark < static_cast<int>(g_window_marks.size());
 }
 
 // Makes `stream` wait on the side-stream events of one bucket: intra-node
 // copy / put / shard reduce for a dense bucket, put / shard reduce for an
 // expert bucket
 static int join_bucket_streams_on(int kind, int bucket, cudaStream_t stream) {
-  if (!g_buckets_ready) return (int)cudaErrorNotReady;
-  if ((kind != 0 && kind != 1) || bucket < 0) return (int)cudaErrorInvalidValue;
+  if (!g_buckets_ready) return static_cast<int>(cudaErrorNotReady);
+  if ((kind != 0 && kind != 1) || bucket < 0)
+    return static_cast<int>(cudaErrorInvalidValue);
   if (kind == 0) {
-    if (bucket >= (int)g_event_intra_node_copy.size() ||
-        bucket >= (int)g_event_dense_put.size() ||
-        bucket >= (int)g_event_dense_inter_node_reduce.size())
-      return (int)cudaErrorInvalidValue;
+    if (bucket >= static_cast<int>(g_event_intra_node_copy.size()) ||
+        bucket >= static_cast<int>(g_event_dense_put.size()) ||
+        bucket >= static_cast<int>(g_event_dense_inter_node_reduce.size()))
+      return static_cast<int>(cudaErrorInvalidValue);
     CUDA_CHECK(cudaStreamWaitEvent(stream, g_event_intra_node_copy[bucket], 0));
     CUDA_CHECK(cudaStreamWaitEvent(stream, g_event_dense_put[bucket], 0));
     CUDA_CHECK(cudaStreamWaitEvent(
         stream, g_event_dense_inter_node_reduce[bucket], 0));
   } else {
-    if (bucket >= (int)g_event_moe_put.size() ||
-        bucket >= (int)g_event_moe_reduce.size())
-      return (int)cudaErrorInvalidValue;
+    if (bucket >= static_cast<int>(g_event_moe_put.size()) ||
+        bucket >= static_cast<int>(g_event_moe_reduce.size()))
+      return static_cast<int>(cudaErrorInvalidValue);
     CUDA_CHECK(cudaStreamWaitEvent(stream, g_event_moe_put[bucket], 0));
     CUDA_CHECK(cudaStreamWaitEvent(stream, g_event_moe_reduce[bucket], 0));
   }
@@ -810,7 +828,8 @@ int GradCommEngine::join_bucket_streams(int kind, int bucket) {
 
 // The gate stream of the 2D gather waits on this bucket's stage events
 int GradCommEngine::gather_wait_bucket(int kind, int bucket) {
-  if (!g_gather_ready || !g_stream_gather_gate) return (int)cudaErrorNotReady;
+  if (!g_gather_ready || !g_stream_gather_gate)
+    return static_cast<int>(cudaErrorNotReady);
   return join_bucket_streams_on(kind, bucket, g_stream_gather_gate);
 }
 
@@ -818,23 +837,24 @@ int GradCommEngine::gather_wait_bucket(int kind, int bucket) {
 // the compute stream)
 int GradCommEngine::scale_range(int group,
                                 size_t send_offset,
-                                long long numel,
+                                int64_t numel,
                                 float scale) {
-  if (!is_valid_group(group)) return (int)cudaErrorInvalidValue;
+  if (!is_valid_group(group)) return static_cast<int>(cudaErrorInvalidValue);
   CommGroup& comm_group = group_at(group);
-  if (!comm_group.send) return (int)cudaErrorNotReady;
+  if (!comm_group.send) return static_cast<int>(cudaErrorNotReady);
   // written so that nothing can wrap around: numel < 0 and offsets past the
   // window are rejected before the subtraction
   if (numel < 0 || send_offset > comm_group.send_bytes ||
-      (size_t)numel > (comm_group.send_bytes - send_offset) / 4) {
-    return (int)cudaErrorInvalidValue;
+      static_cast<size_t>(numel) > (comm_group.send_bytes - send_offset) / 4) {
+    return static_cast<int>(cudaErrorInvalidValue);
   }
   GIN_COMPUTE_STREAM(compute_stream);
-  return launch_scale_range((float*)(comm_group.send + send_offset),
-                            (size_t)numel,
-                            scale,
-                            blocks_for_numel((size_t)numel),
-                            compute_stream);
+  return launch_scale_range(
+      reinterpret_cast<float*>(comm_group.send + send_offset),
+      static_cast<size_t>(numel),
+      scale,
+      blocks_for_numel(static_cast<size_t>(numel)),
+      compute_stream);
 }
 
 // At the end of each step, flushes every GIN context of both groups on the
@@ -852,7 +872,7 @@ int GradCommEngine::end_step() {
 }
 
 // [inter-node put bytes, intra-node copy bytes, reserved]
-void GradCommEngine::stats(unsigned long long* out3) {
+void GradCommEngine::stats(uint64_t* out3) {
   out3[0] = g_inter_node_bytes;
   out3[1] = g_intra_node_bytes;
   out3[2] = 0;
@@ -872,8 +892,9 @@ void GradCommEngine::stats(unsigned long long* out3) {
 // slot = the event index of the 2D bucket: the bucket id for a dense bucket,
 // number of dense buckets + bucket id for an expert bucket.
 int GradCommEngine::gather_setup(int num_slots) {
-  if (!g_buckets_ready || g_gather_ready) return (int)cudaErrorNotReady;
-  if (num_slots < 0) return (int)cudaErrorInvalidValue;
+  if (!g_buckets_ready || g_gather_ready)
+    return static_cast<int>(cudaErrorNotReady);
+  if (num_slots < 0) return static_cast<int>(cudaErrorInvalidValue);
   CUDA_CHECK(
       cudaStreamCreateWithFlags(&g_stream_gather_put, cudaStreamNonBlocking));
   CUDA_CHECK(
@@ -890,7 +911,10 @@ int GradCommEngine::gather_setup(int num_slots) {
     if (!comm_group.dev_comm_ready) continue;
     for (int l = 0; l < comm_group.ranks_per_node; ++l)
       NCCL_CHECK(ncclGetLsaDevicePointer(
-          comm_group.win_send, 0, l, (void**)&comm_group.lsa_send[l]));
+          comm_group.win_send,
+          0,
+          l,
+          reinterpret_cast<void**>(&comm_group.lsa_send[l])));
   }
   GIN_CHECK(preload_put_kernels());
   GIN_CHECK(preload_signal_kernels());
@@ -902,9 +926,10 @@ int GradCommEngine::gather_setup(int num_slots) {
 // The gate stream of the 2D gather waits on a window mark: work queued on it
 // afterwards does not start before the GPU reaches that mark
 int GradCommEngine::gather_gate(int mark) {
-  if (!g_gather_ready || !g_stream_gather_gate) return (int)cudaErrorNotReady;
-  if (mark < 0 || mark >= (int)g_window_marks.size())
-    return (int)cudaErrorInvalidValue;
+  if (!g_gather_ready || !g_stream_gather_gate)
+    return static_cast<int>(cudaErrorNotReady);
+  if (mark < 0 || mark >= static_cast<int>(g_window_marks.size()))
+    return static_cast<int>(cudaErrorInvalidValue);
   CUDA_CHECK(
       cudaStreamWaitEvent(g_stream_gather_gate, g_window_marks[mark], 0));
   return 0;
@@ -914,11 +939,12 @@ int GradCommEngine::gather_gate(int mark) {
 // gate stream. The gate stream must already have waited on the window mark
 // (gather_gate) and on this bucket's events (gather_wait_bucket)
 int GradCommEngine::gather_mark_ready(int slot) {
-  if (!g_gather_ready || !g_stream_gather_gate) return (int)cudaErrorNotReady;
-  if (slot < 0 || slot >= (int)g_event_gather_source.size())
-    return (int)cudaErrorInvalidValue;
-  return (int)cudaEventRecord(g_event_gather_source[slot],
-                              g_stream_gather_gate);
+  if (!g_gather_ready || !g_stream_gather_gate)
+    return static_cast<int>(cudaErrorNotReady);
+  if (slot < 0 || slot >= static_cast<int>(g_event_gather_source.size()))
+    return static_cast<int>(cudaErrorInvalidValue);
+  return static_cast<int>(
+      cudaEventRecord(g_event_gather_source[slot], g_stream_gather_gate));
 }
 
 // Sender: wait on wait_event -> write [send_offset, send_offset + 4*numel) of
@@ -936,31 +962,31 @@ int GradCommEngine::gather_mark_ready(int slot) {
 int gather_put_to_owner(int group,
                         int slot,
                         size_t send_offset,
-                        long long shard_numel,
+                        int64_t shard_numel,
                         int owner,
                         size_t arrive_offset,
                         size_t intra_arrive_offset,
-                        unsigned long long seq,
+                        uint64_t seq,
                         int* num_signals,
                         cudaEvent_t wait_event) {
   *num_signals = 0;
-  if (!g_gather_ready) return (int)cudaErrorNotReady;
+  if (!g_gather_ready) return static_cast<int>(cudaErrorNotReady);
   if (!is_valid_group(group) || shard_numel < 0)
-    return (int)cudaErrorInvalidValue;
-  const size_t numel = (size_t)shard_numel;
+    return static_cast<int>(cudaErrorInvalidValue);
+  const size_t numel = static_cast<size_t>(shard_numel);
   CommGroup& comm_group = group_at(group);
   // bounds written so that nothing can wrap around
-  if (slot < 0 || slot >= (int)g_event_gather_put.size() || owner < 0 ||
-      owner >= comm_group.size || owner == comm_group.rank ||
+  if (slot < 0 || slot >= static_cast<int>(g_event_gather_put.size()) ||
+      owner < 0 || owner >= comm_group.size || owner == comm_group.rank ||
       (send_offset & 3) || send_offset > comm_group.send_bytes ||
       numel > (comm_group.send_bytes - send_offset) / 4)
-    return (int)cudaErrorInvalidValue;
+    return static_cast<int>(cudaErrorInvalidValue);
   CUDA_CHECK(cudaStreamWaitEvent(g_stream_gather_put, wait_event, 0));
   if (owner / comm_group.ranks_per_node == comm_group.node_index) {
     const int l = owner % comm_group.ranks_per_node;
     if (!comm_group.lsa_send[l] || !comm_group.lsa_host[l] || seq == 0 ||
         (intra_arrive_offset & 7)) {
-      return (int)cudaErrorInvalidValue;
+      return static_cast<int>(cudaErrorInvalidValue);
     }
     void* dst = comm_group.lsa_send[l] + send_offset;
     const void* src = comm_group.send + send_offset;
@@ -978,12 +1004,13 @@ int gather_put_to_owner(int group,
                                     1,
                                     g_stream_gather_put));
     GIN_CHECK(launch_store_release(
-        (unsigned long long*)(comm_group.lsa_host[l] + intra_arrive_offset),
+        reinterpret_cast<uint64_t*>(comm_group.lsa_host[l] +
+                                    intra_arrive_offset),
         seq,
         g_stream_gather_put));
     g_intra_node_bytes += bytes;
   } else {
-    if (arrive_offset & 7) return (int)cudaErrorInvalidValue;
+    if (arrive_offset & 7) return static_cast<int>(cudaErrorInvalidValue);
     GIN_CHECK(launch_put_to_owner(comm_group.dev_comm,
                                   comm_group.win_send,
                                   send_offset,
@@ -996,7 +1023,7 @@ int gather_put_to_owner(int group,
                                   comm_group.num_gin_contexts,
                                   g_stream_gather_put));
     *num_signals = 1;
-    g_inter_node_bytes += (unsigned long long)numel * 4;
+    g_inter_node_bytes += static_cast<uint64_t>(numel) * 4;
   }
   CUDA_CHECK(cudaEventRecord(g_event_gather_put[slot], g_stream_gather_put));
   return 0;
@@ -1006,29 +1033,30 @@ int gather_put_to_owner(int group,
 // gather_put_to_owner, waiting on g_event_gather_source[slot] (implemented in
 // release.cc)
 int GradCommEngine::gather_put_entry(int entry_index,
-                                     unsigned long long seq,
+                                     uint64_t seq,
                                      int* num_signals) {
   *num_signals = 0;
-  if (!g_gather_ready) return (int)cudaErrorNotReady;
+  if (!g_gather_ready) return static_cast<int>(cudaErrorNotReady);
   return release::gather_put_entry(entry_index, seq, num_signals);
 }
 
 // The compute stream waits on this rank's g_event_gather_put[slot]. Call it
 // before the flush in end_step so that the flush covers these puts
 int GradCommEngine::gather_join(int slot) {
-  if (!g_gather_ready) return (int)cudaErrorNotReady;
-  if (slot < 0 || slot >= (int)g_event_gather_put.size())
-    return (int)cudaErrorInvalidValue;
+  if (!g_gather_ready) return static_cast<int>(cudaErrorNotReady);
+  if (slot < 0 || slot >= static_cast<int>(g_event_gather_put.size()))
+    return static_cast<int>(cudaErrorInvalidValue);
   GIN_COMPUTE_STREAM(compute_stream);
-  return (int)cudaStreamWaitEvent(compute_stream, g_event_gather_put[slot], 0);
+  return static_cast<int>(
+      cudaStreamWaitEvent(compute_stream, g_event_gather_put[slot], 0));
 }
 
 // ----------------------------------------------------------------
 // Entry points of the release layer (implemented in release.cc)
 int GradCommEngine::release_setup(const std::vector<int>& dense_order,
                                   const std::vector<int>& moe_order,
-                                  const std::vector<long long>& dense_table,
-                                  const std::vector<long long>& moe_table,
+                                  const std::vector<int64_t>& dense_table,
+                                  const std::vector<int64_t>& moe_table,
                                   int put_blocks,
                                   size_t intra_arrive_offset,
                                   int num_marks) {
@@ -1040,16 +1068,16 @@ int GradCommEngine::release_setup(const std::vector<int>& dense_order,
                         intra_arrive_offset,
                         num_marks);
 }
-int GradCommEngine::release_step_reset(long long step) {
+int GradCommEngine::release_step_reset(int64_t step) {
   return release::step_reset(step);
 }
 int GradCommEngine::advance(int mark,
                             int stages,
                             int intra_node_reduce_blocks,
                             int shard_reduce_blocks,
-                            std::vector<int>& released_shard_reduce) {
-  released_shard_reduce.clear();
-  if (!is_valid_mark(mark)) return (int)cudaErrorInvalidValue;
+                            std::vector<int>* released_shard_reduce) {
+  released_shard_reduce->clear();
+  if (!is_valid_mark(mark)) return static_cast<int>(cudaErrorInvalidValue);
   return release::advance(g_window_marks[mark],
                           stages,
                           intra_node_reduce_blocks,
@@ -1059,13 +1087,13 @@ int GradCommEngine::advance(int mark,
 int GradCommEngine::bucket_ready(int kind, int bucket, float scale, int mark) {
   return release::bucket_ready(kind, bucket, scale, mark);
 }
-int GradCommEngine::release_status(std::vector<int>& positions,
-                                   std::vector<int>& counts,
-                                   std::vector<int>& posted,
+int GradCommEngine::release_status(std::vector<int>* positions,
+                                   std::vector<int>* counts,
+                                   std::vector<int>* posted,
                                    int* done) {
   return release::status(positions, counts, posted, done);
 }
-int GradCommEngine::release_stuck_report(std::vector<long long>& flat) {
+int GradCommEngine::release_stuck_report(std::vector<int64_t>* flat) {
   return release::stuck_report(flat);
 }
 int GradCommEngine::release_error(int* code, int* stage, int* bucket) {
@@ -1099,14 +1127,14 @@ int GradCommEngine::tail_abort(double wait_s) {
   return release::abort_step(wait_s);
 }
 int GradCommEngine::tail_finish() { return release::tail_finish(); }
-int GradCommEngine::tail_gather_setup(const std::vector<long long>& table) {
+int GradCommEngine::tail_gather_setup(const std::vector<int64_t>& table) {
   return release::setup_gather_table(table);
 }
 int GradCommEngine::tail_gather_set_sequences(
-    const std::vector<unsigned long long>& seqs) {
+    const std::vector<uint64_t>& seqs) {
   return release::set_gather_sequences(seqs);
 }
-int GradCommEngine::tail_gather_get_sent(std::vector<long long>& flat) {
+int GradCommEngine::tail_gather_get_sent(std::vector<int64_t>* flat) {
   return release::get_gather_sent(flat);
 }
 

@@ -28,9 +28,7 @@
 
 namespace gin_overlap {
 
-paddle::Tensor send_window_tensor(int group,
-                                  size_t send_offset,
-                                  long long numel);  // NOLINT
+paddle::Tensor send_window_tensor(int group, size_t send_offset, int64_t numel);
 
 void copy_2d(const paddle::Tensor& dst,
              size_t dst_offset,

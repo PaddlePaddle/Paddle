@@ -105,7 +105,6 @@ repos:
             paddle/utils/variant\.h|
             paddle/utils/array_ref\.h|
             paddle/fluid/distributed/collective/deep_ep/.*|
-            paddle/fluid/distributed/collective/gin_overlap/.*|
             paddle/fluid/fp8/deep_gemm/.*
           )$
   # For CMake files

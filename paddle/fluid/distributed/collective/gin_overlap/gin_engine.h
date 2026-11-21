@@ -151,16 +151,16 @@
 //     process.
 #pragma once
 
+#include <cuda.h>
+#include <cuda_runtime.h>
+#include <nccl.h>
+#include <nccl_device.h>
+
 #include <cstddef>
 #include <cstdint>
 #include <cstdio>
 #include <string>
 #include <vector>
-
-#include <cuda.h>
-#include <cuda_runtime.h>
-#include <nccl.h>
-#include <nccl_device.h>
 
 #include "paddle/fluid/distributed/collective/gin_overlap/gin_dynload.h"
 #include "paddle/fluid/distributed/collective/gin_overlap/kernels/kernels.h"
@@ -169,22 +169,22 @@ namespace gin_overlap {
 
 // Return codes: 0 = success; < 10000 = cudaError_t; >= 10000 = 10000 +
 // ncclResult_t.
-#define CUDA_CHECK(x)                          \
-  do {                                         \
-    cudaError_t _err = (x);                    \
-    if (_err != cudaSuccess) return (int)_err; \
+#define CUDA_CHECK(x)                                       \
+  do {                                                      \
+    cudaError_t _err = (x);                                 \
+    if (_err != cudaSuccess) return static_cast<int>(_err); \
   } while (0)
-#define NCCL_CHECK(x)                                  \
-  do {                                                 \
-    ncclResult_t _res = (x);                           \
-    if (_res != ncclSuccess) return 10000 + (int)_res; \
+#define NCCL_CHECK(x)                                               \
+  do {                                                              \
+    ncclResult_t _res = (x);                                        \
+    if (_res != ncclSuccess) return 10000 + static_cast<int>(_res); \
   } while (0)
 // Calls something that already returns a code in this convention (a launch_*
 // wrapper, a submit_* function, ...) and returns that code on failure.
-#define GIN_CHECK(x)          \
-  do {                        \
-    const int _rc = (int)(x); \
-    if (_rc) return _rc;      \
+#define GIN_CHECK(x)                     \
+  do {                                   \
+    const int _rc = static_cast<int>(x); \
+    if (_rc) return _rc;                 \
   } while (0)
 // Driver API failure: prints the CUresult, then returns cudaErrorUnknown
 // (CUresult and cudaError_t use different numbering).
@@ -197,9 +197,9 @@ namespace gin_overlap {
       fprintf(stderr,                             \
               "[gin_overlap] %s failed: %d %s\n", \
               #x,                                 \
-              (int)_res,                          \
+              static_cast<int>(_res),             \
               _msg ? _msg : "?");                 \
-      return (int)cudaErrorUnknown;               \
+      return static_cast<int>(cudaErrorUnknown);  \
     }                                             \
   } while (0)
 
@@ -261,7 +261,7 @@ extern std::vector<cudaEvent_t> g_event_dense_inter_node_reduce,
     g_event_moe_reduce;
 extern std::vector<cudaEvent_t> g_window_marks;  // window mark ring (reused)
 extern int g_window_mark_index;
-extern unsigned long long g_inter_node_bytes, g_intra_node_bytes;
+extern uint64_t g_inter_node_bytes, g_intra_node_bytes;
 // Byte offsets of the credit areas in the host windows: intra-node /
 // inter-node in the dense group's host window, expert in the expert group's
 extern size_t g_credit_intra_offset, g_credit_inter_offset, g_credit_moe_offset;
@@ -300,21 +300,21 @@ int paddle_compute_stream(cudaStream_t* out);
 int submit_dense_intra_node_copy(int bucket,
                                  size_t recv_offset,
                                  size_t send_offset,
-                                 long long shard_numel,
+                                 int64_t shard_numel,
                                  cudaEvent_t mark_event,
                                  size_t intra_arrive_offset,
-                                 unsigned long long seq);
+                                 uint64_t seq);
 int submit_dense_intra_node_reduce(int bucket,
                                    size_t recv_offset,
                                    size_t send_offset,
-                                   long long shard_numel,
+                                   int64_t shard_numel,
                                    int num_blocks,
                                    cudaEvent_t mark_event);
 int submit_dense_inter_node_put(int bucket,
                                 size_t recv_offset,
                                 size_t send_offset,
                                 size_t signal_offset,
-                                long long shard_numel,
+                                int64_t shard_numel,
                                 int num_blocks,
                                 cudaEvent_t mark_event,
                                 int* num_signals);
@@ -324,21 +324,21 @@ int submit_moe_put(int bucket,
                    size_t recv_offset,
                    size_t send_offset,
                    size_t signal_offset,
-                   long long shard_numel,
+                   int64_t shard_numel,
                    int num_blocks,
                    cudaEvent_t mark_event,
                    int* num_signals);
 int submit_dense_inter_node_reduce(int bucket,
                                    size_t recv_offset,
                                    size_t send_offset,
-                                   long long shard_numel,
+                                   int64_t shard_numel,
                                    float scale,
                                    int num_blocks,
                                    cudaEvent_t mark_event);
 int submit_moe_reduce(int bucket,
                       size_t recv_offset,
                       size_t send_offset,
-                      long long shard_numel,
+                      int64_t shard_numel,
                       float scale,
                       int num_blocks,
                       cudaEvent_t mark_event);
@@ -349,11 +349,11 @@ int submit_moe_reduce(int bucket,
 int gather_put_to_owner(int group,
                         int slot,
                         size_t send_offset,
-                        long long shard_numel,
+                        int64_t shard_numel,
                         int owner,
                         size_t arrive_offset,
                         size_t intra_arrive_offset,
-                        unsigned long long seq,
+                        uint64_t seq,
                         int* num_signals,
                         cudaEvent_t wait_event);
 
@@ -388,17 +388,17 @@ enum {
 
 int setup(const std::vector<int>& dense_order,
           const std::vector<int>& moe_order,
-          const std::vector<long long>& dense_table,
-          const std::vector<long long>& moe_table,
+          const std::vector<int64_t>& dense_table,
+          const std::vector<int64_t>& moe_table,
           int put_blocks,
           size_t intra_arrive_offset,
           int num_marks);
-int step_reset(long long step);
+int step_reset(int64_t step);
 int advance(cudaEvent_t mark_event,
             int stages,
             int intra_node_reduce_blocks,
             int shard_reduce_blocks,
-            std::vector<int>& released_shard_reduce);
+            std::vector<int>* released_shard_reduce);
 int bucket_ready(int kind, int bucket, float scale, int mark);
 int record_tail_mark(cudaStream_t stream);
 int tail_start(int intra_node_reduce_blocks,
@@ -409,21 +409,21 @@ int set_all_posted();
 int wait_for_step_end(double timeout_s);
 int abort_step(double wait_s);
 int tail_finish();
-int status(std::vector<int>& positions6,
-           std::vector<int>& counts4,
-           std::vector<int>& posted4,
+int status(std::vector<int>* positions6,
+           std::vector<int>* counts4,
+           std::vector<int>* posted4,
            int* done);
-int stuck_report(std::vector<long long>& flat);
+int stuck_report(std::vector<int64_t>* flat);
 int get_last_error(int* out3);
 int get_current_activity();
 // Constant table exported to Python (name -> value): ADVANCE_* / STAGE_* /
 // COUNTER_* / TAIL_*. The values are defined only in release.cc; Python must
 // read them by name and never hard-code them
-int constants(std::vector<std::string>& names, std::vector<int>& values);
-int setup_gather_table(const std::vector<long long>& table);
-int gather_put_entry(int entry_index, unsigned long long seq, int* num_signals);
-int set_gather_sequences(const std::vector<unsigned long long>& seqs);
-int get_gather_sent(std::vector<long long>& flat);
+int constants(std::vector<std::string>* names, std::vector<int>* values);
+int setup_gather_table(const std::vector<int64_t>& table);
+int gather_put_entry(int entry_index, uint64_t seq, int* num_signals);
+int set_gather_sequences(const std::vector<uint64_t>& seqs);
+int get_gather_sent(std::vector<int64_t>* flat);
 }  // namespace release
 
 // ----------------------------------------------------------------
@@ -488,7 +488,7 @@ class GradCommEngine {
                 int dense_rank,
                 int expert_size,
                 int expert_rank,
-                std::string& err);
+                std::string* err);
   int alloc_windows(int group,
                     size_t send_bytes,
                     size_t recv_bytes,
@@ -519,32 +519,32 @@ class GradCommEngine {
                           size_t* nbytes);
   // kind: 0 = dense bucket, 1 = expert bucket (as in bucket_ready)
   int join_bucket_streams(int kind, int bucket);
-  int scale_range(int group, size_t send_offset, long long numel, float scale);
+  int scale_range(int group, size_t send_offset, int64_t numel, float scale);
   int end_step();
-  void stats(unsigned long long* out3);
+  void stats(uint64_t* out3);
 
   // ---- Python entry points of the release layer (release.cc)
   int release_setup(const std::vector<int>& dense_order,
                     const std::vector<int>& moe_order,
-                    const std::vector<long long>& dense_table,
-                    const std::vector<long long>& moe_table,
+                    const std::vector<int64_t>& dense_table,
+                    const std::vector<int64_t>& moe_table,
                     int put_blocks,
                     size_t intra_arrive_offset,
                     int num_marks);
-  int release_step_reset(long long step);
+  int release_step_reset(int64_t step);
   int advance(int mark,
               int stages,
               int intra_node_reduce_blocks,
               int shard_reduce_blocks,
-              std::vector<int>& released_shard_reduce);
+              std::vector<int>* released_shard_reduce);
   // bucket_ready / tail_all_posted return 0 = accepted, 1 = the tail thread
   // stopped on an error (see release_error), 2 = wrong usage
   int bucket_ready(int kind, int bucket, float scale, int mark);
-  int release_status(std::vector<int>& positions,
-                     std::vector<int>& counts,
-                     std::vector<int>& posted,
+  int release_status(std::vector<int>* positions,
+                     std::vector<int>* counts,
+                     std::vector<int>* posted,
                      int* done);
-  int release_stuck_report(std::vector<long long>& flat);
+  int release_stuck_report(std::vector<int64_t>* flat);
   int release_error(int* code, int* stage, int* bucket);
   // What the release layer is submitting right now: stage *
   // ACTIVITY_STAGE_SCALE + bucket + 1; 0 = not inside a CUDA call
@@ -563,9 +563,9 @@ class GradCommEngine {
   int tail_wait(double timeout_s);
   int tail_abort(double wait_s);
   int tail_finish();
-  int tail_gather_setup(const std::vector<long long>& table);
-  int tail_gather_set_sequences(const std::vector<unsigned long long>& seqs);
-  int tail_gather_get_sent(std::vector<long long>& flat);
+  int tail_gather_setup(const std::vector<int64_t>& table);
+  int tail_gather_set_sequences(const std::vector<uint64_t>& seqs);
+  int tail_gather_get_sent(std::vector<int64_t>* flat);
 
   int gather_setup(int num_slots);
   // The next three run on the gate stream of the 2D gather
@@ -576,9 +576,7 @@ class GradCommEngine {
   // Main thread sends the gather put of one 2D bucket: only the table index
   // and this step's sequence number are passed; slot / offsets / owner come
   // from the table built by release::setup_gather_table
-  int gather_put_entry(int entry_index,
-                       unsigned long long seq,
-                       int* num_signals);
+  int gather_put_entry(int entry_index, uint64_t seq, int* num_signals);
   int gather_join(int slot);
 };
 }  // namespace gin_overlap

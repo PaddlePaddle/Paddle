@@ -27,13 +27,13 @@
 //     paddle.device.stream_guard.
 #include "paddle/fluid/distributed/collective/gin_overlap/paddle_tensor.h"
 
+#include <cuda.h>
+#include <cuda_runtime.h>
+
 #include <cstdint>
 #include <cstring>
 #include <stdexcept>
 #include <string>
-
-#include <cuda.h>
-#include <cuda_runtime.h>
 
 #include "paddle/phi/api/include/context_pool.h"
 #include "paddle/phi/api/include/tensor.h"
@@ -84,7 +84,7 @@ void* checked_block(const paddle::Tensor& t,
          " B / height " + std::to_string(height) + " / pitch " +
          std::to_string(pitch) + " B is invalid");
   }
-  const size_t nbytes = (size_t)t.numel() * phi::SizeOf(t.dtype());
+  const size_t nbytes = static_cast<size_t>(t.numel()) * phi::SizeOf(t.dtype());
   // written so that nothing wraps around: width <= pitch was checked above,
   // so the division is safe
   if (offset > nbytes || width > nbytes - offset ||
@@ -112,7 +112,7 @@ int paddle_compute_stream(cudaStream_t* out) {
               "[gin_overlap] paddle::GetCurrentCUDAStream(GPUPlace(%d)) "
               "returned null\n",
               g_device_id);
-      return (int)cudaErrorInvalidValue;
+      return static_cast<int>(cudaErrorInvalidValue);
     }
     *out = stream->raw_stream();
   } catch (const std::exception& ex) {
@@ -121,7 +121,7 @@ int paddle_compute_stream(cudaStream_t* out) {
             "threw: %s\n",
             g_device_id,
             ex.what());
-    return (int)cudaErrorInvalidValue;
+    return static_cast<int>(cudaErrorInvalidValue);
   }
   return 0;
 }
@@ -132,7 +132,7 @@ int paddle_compute_stream(cudaStream_t* out) {
 // dtype and place are checked, and a mismatch throws.
 paddle::Tensor send_window_tensor(int group,
                                   size_t send_offset,
-                                  long long numel) {
+                                  int64_t numel) {
   if (!is_valid_group(group)) {
     fail("send_window_tensor: group id must be 0 / 1, got " +
          std::to_string(group));
@@ -144,7 +144,7 @@ paddle::Tensor send_window_tensor(int group,
          " group is not allocated yet (called before alloc_windows)");
   }
   if (numel <= 0 || (send_offset & 3) || send_offset > comm_group.send_bytes ||
-      (size_t)numel > (comm_group.send_bytes - send_offset) / 4) {
+      static_cast<size_t>(numel) > (comm_group.send_bytes - send_offset) / 4) {
     fail("send_window_tensor: slice of the send window of the " +
          std::string(group_name(group)) +
          " group is out of bounds or not 4-byte aligned (offset " +
@@ -159,15 +159,15 @@ paddle::Tensor send_window_tensor(int group,
                                        phi::GPUPlace(g_device_id),
                                        /*deleter=*/nullptr);
   if (!t.defined() || !t.initialized() || !t.is_dense_tensor() ||
-      t.data() != (const void*)data || t.numel() != numel ||
+      t.data() != reinterpret_cast<const void*>(data) || t.numel() != numel ||
       t.dtype() != phi::DataType::FLOAT32 ||
       t.place() != phi::Place(phi::GPUPlace(g_device_id))) {
     fail(
         "send_window_tensor: the wrapped tensor does not match the send "
         "window slice (want data_ptr " +
-        std::to_string((uintptr_t)data) + ", " + std::to_string(numel) +
-        " fp32, GPUPlace(" + std::to_string(g_device_id) + "), got " +
-        describe(t) + ")");
+        std::to_string(reinterpret_cast<uintptr_t>(data)) + ", " +
+        std::to_string(numel) + " fp32, GPUPlace(" +
+        std::to_string(g_device_id) + "), got " + describe(t) + ")");
   }
   return t;
 }
@@ -194,22 +194,25 @@ void copy_2d(const paddle::Tensor& dst,
   CUDA_MEMCPY2D params;
   memset(&params, 0, sizeof(params));
   params.srcMemoryType = CU_MEMORYTYPE_DEVICE;
-  params.srcDevice = (CUdeviceptr)((char*)src_data + src_offset);
+  params.srcDevice = reinterpret_cast<CUdeviceptr>(
+      reinterpret_cast<char*>(src_data) + src_offset);
   params.srcPitch = src_pitch;
   params.dstMemoryType = CU_MEMORYTYPE_DEVICE;
-  params.dstDevice = (CUdeviceptr)((char*)dst_data + dst_offset);
+  params.dstDevice = reinterpret_cast<CUdeviceptr>(
+      reinterpret_cast<char*>(dst_data) + dst_offset);
   params.dstPitch = dst_pitch;
   params.WidthInBytes = width;
   params.Height = height;
-  const CUresult res = cuMemcpy2DAsync(&params, (CUstream)stream);
+  const CUresult res = cuMemcpy2DAsync(&params, static_cast<CUstream>(stream));
   if (res != CUDA_SUCCESS) {
     const char* msg = nullptr;
     cuGetErrorString(res, &msg);
     fail("copy_2d: cuMemcpy2DAsync failed, CUresult=" +
-         std::to_string((int)res) + " (" + (msg ? msg : "?") + "): width " +
-         std::to_string(width) + " B, height " + std::to_string(height) +
-         ", source pitch " + std::to_string(src_pitch) +
-         " B, destination pitch " + std::to_string(dst_pitch) + " B");
+         std::to_string(static_cast<int>(res)) + " (" + (msg ? msg : "?") +
+         "): width " + std::to_string(width) + " B, height " +
+         std::to_string(height) + ", source pitch " +
+         std::to_string(src_pitch) + " B, destination pitch " +
+         std::to_string(dst_pitch) + " B");
   }
 }
 
