@@ -54,9 +54,12 @@ ncclMemOptConfig_t* ncclCommGenMemOptConfig(const char* commName,
 ncclResult_t ncclCommFreeMemOptConfig(ncclMemOptConfig_t* config);
 
 // Declarations of the two host entry points of NCCL's device (LSA/GIN) API,
-// which live in nccl_device.h. nccl_device.h must not be included here. In a
-// translation unit that includes nccl_device.h, its include guard turns this
-// block off and that header's own declarations are used.
+// which live in nccl_device.h (nccl_device/core.h in 2.30.x,
+// nccl_device/host.h from 2.32). nccl_device.h must not be included here.
+// These prototypes must match the ones in nccl_device.h exactly: this header
+// is often included first, and the two declarations then coexist. The guard
+// only drops the duplicate when nccl_device.h was included before this header.
+// The wrappers are part of NCCL_RAND_ROUTINE_EACH_AFTER_23007 below.
 #if NCCL_VERSION_CODE >= 23007 && !defined(_NCCL_DEVICE_CORE_H_)
 struct ncclDevComm;
 typedef struct ncclDevComm ncclDevComm_t;
@@ -165,19 +168,10 @@ NCCL_RAND_ROUTINE_EACH_AFTER_21100(DECLARE_DYNAMIC_LOAD_NCCL_WRAP)
   __macro(ncclCommDeregister);                      \
   __macro(ncclCommWindowRegister);                  \
   __macro(ncclCommWindowDeregister);                \
-  __macro(ncclAlltoAll);
-NCCL_RAND_ROUTINE_EACH_AFTER_23007(DECLARE_DYNAMIC_LOAD_NCCL_WRAP)
-#endif
-
-// Host entry points of the device (LSA/GIN) API, used by
-// paddle/fluid/distributed/collective/gin_overlap: ncclDevCommCreate builds
-// the ncclDevComm that kernels take; ncclGetLsaDevicePointer returns a peer's
-// window address in this rank's address space. Requires NCCL >= 2.30.7.
-#if NCCL_VERSION_CODE >= 23007
-#define NCCL_RAND_ROUTINE_EACH_DEVICE_API(__macro) \
-  __macro(ncclDevCommCreate);                      \
+  __macro(ncclAlltoAll);                            \
+  __macro(ncclDevCommCreate);                       \
   __macro(ncclGetLsaDevicePointer);
-NCCL_RAND_ROUTINE_EACH_DEVICE_API(DECLARE_DYNAMIC_LOAD_NCCL_WRAP)
+NCCL_RAND_ROUTINE_EACH_AFTER_23007(DECLARE_DYNAMIC_LOAD_NCCL_WRAP)
 #endif
 
 }  // namespace dynload
