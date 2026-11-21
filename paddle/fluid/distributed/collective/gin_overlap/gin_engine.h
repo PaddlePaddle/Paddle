@@ -431,9 +431,9 @@ class GradCommEngine {
                 size_t credit_intra_offset,
                 size_t credit_inter_offset,
                 size_t credit_moe_offset);
-  // Returns the window mark slot (>= 0); -1 = no configure, the compute stream
-  // cannot be read, or cudaEventRecord failed
-  int record_window_mark();
+  // Records a window mark on the compute stream and writes its slot to *slot.
+  // cudaErrorNotReady without configure.
+  int record_window_mark(int* slot);
 
   int alloc_host_counters(int group,
                           size_t want_bytes,
