@@ -2849,6 +2849,8 @@ def get_setup_parameters():
         and env_dict.get("WITH_XPU_XRE5") == 'ON'
     ):
         packages.extend(['paddle.distributed.communication.deep_ep'])
+    if (env_dict.get("WITH_GIN_OVERLAP") or '').upper() in ('ON', 'TRUE'):
+        packages.extend(['paddle.distributed.communication.gin_overlap'])
     if (
         env_dict.get("WITH_GPU") == 'ON'
         and tuple(map(int, env_dict.get("CUDA_VERSION").split('.'))) >= (12, 9)

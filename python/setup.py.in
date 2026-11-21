@@ -1129,6 +1129,9 @@ if (
 ):
     packages.extend(['paddle.distributed.communication.deep_ep'])
 
+if '@WITH_GIN_OVERLAP@'.upper() in ('ON', 'TRUE'):
+    packages.extend(['paddle.distributed.communication.gin_overlap'])
+
 if (
     '@WITH_GPU@' == 'ON'
     and tuple(map(int, '@CUDA_VERSION@'.split('.'))) >= (12, 9)

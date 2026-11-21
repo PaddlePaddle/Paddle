@@ -471,5 +471,11 @@ if((WITH_GPU) AND (LINUX))
     "PADDLE_DIST_UT_PORT=22304;http_proxy=;https_proxy=")
   set_tests_properties(test_comm_group_num PROPERTIES TIMEOUT "120")
 endif()
+if(LOCAL_ALL_ARCH AND (LINUX))
+  py_test_modules(
+    test_gin_overlap_layout MODULES test_gin_overlap_layout ENVS
+    "http_proxy=;https_proxy=;PYTHONPATH=..:${PADDLE_BINARY_DIR}/python")
+  set_tests_properties(test_gin_overlap_layout PROPERTIES TIMEOUT "60")
+endif()
 add_subdirectory(fleet)
 add_subdirectory(multinode)
