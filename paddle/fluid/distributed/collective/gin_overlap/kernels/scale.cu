@@ -12,8 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// scale.cu —— 把 send window 里一段连续的 float 逐个乘 scale（__fmul_rn）。
-// 由 GradCommEngine::scale_range 在计算流上发射。
+// scale.cu: multiplies a contiguous range of floats of the send window by
+// scale, element by element (__fmul_rn). Launched on the compute stream by
+// GradCommEngine::scale_range.
 #include "paddle/fluid/distributed/collective/gin_overlap/kernels/kernels.h"
 
 namespace gin_overlap {
