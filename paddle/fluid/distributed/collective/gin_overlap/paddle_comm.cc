@@ -19,11 +19,11 @@
 //   -> NCCLCommContext::GetNcclComm()
 // If the group has no NCCL comm yet, GetOrCreateCommContext creates it.
 // On failure it returns non-zero and *out_err holds the reason.
-#include <exception>
-#include <string>
-
 #include <cuda_runtime.h>
 #include <nccl.h>
+
+#include <exception>
+#include <string>
 
 #include "paddle/fluid/distributed/collective/process_group_nccl.h"
 #include "paddle/phi/core/distributed/nccl_comm_context.h"

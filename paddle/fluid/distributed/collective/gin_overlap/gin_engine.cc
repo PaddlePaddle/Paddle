@@ -45,7 +45,7 @@ static int alloc_symmetric_window(ncclComm_t comm,
                                   ncclWindow_t* out_window,
                                   size_t* out_bytes) {
   if (bytes < 4096) bytes = 4096;
-  NCCL_CHECK(ncclMemAlloc((void**)out_ptr, bytes));
+  NCCL_CHECK(ncclMemAlloc(reinterpret_cast<void**>(out_ptr), bytes));
   CUDA_CHECK(cudaMemset(*out_ptr, 0, bytes));
   NCCL_CHECK(ncclCommWindowRegister(
       comm, *out_ptr, bytes, out_window, NCCL_WIN_COLL_SYMMETRIC));
@@ -55,8 +55,9 @@ static int alloc_symmetric_window(ncclComm_t comm,
 
 // ---------------------------------------------------------------- init
 const char* GradCommEngine::error_string(int code) {
-  if (code >= 10000) return ncclGetErrorString((ncclResult_t)(code - 10000));
-  return cudaGetErrorString((cudaError_t)code);
+  if (code >= 10000)
+    return ncclGetErrorString(static_cast<ncclResult_t>(code - 10000));
+  return cudaGetErrorString(static_cast<cudaError_t>(code));
 }
 
 int GradCommEngine::nccl_runtime_version() {
@@ -81,8 +82,8 @@ int GradCommEngine::set_comms(int dense_ring_id,
                               int dense_rank,
                               int expert_size,
                               int expert_rank,
-                              std::string& err) {
-  err.clear();
+                              std::string* err) {
+  err->clear();
   CUDA_CHECK(cudaSetDevice(device_id));
   g_device_id = device_id;
   const int ring_ids[NUM_GROUPS] = {dense_ring_id, expert_ring_id};
@@ -105,38 +106,38 @@ int GradCommEngine::set_comms(int dense_ring_id,
     if (ring_ids[group_index] < 0) continue;
     CommGroup& comm_group = group_at(group_index);
     if (comm_group.comm) {
-      err = std::string(group_names[group_index]) +
-            " group: comm is already set (set_comms may be called only once)";
-      return fail((int)cudaErrorNotReady);
+      *err = std::string(group_names[group_index]) +
+             " group: comm is already set (set_comms may be called only once)";
+      return fail(static_cast<int>(cudaErrorNotReady));
     }
     ncclComm_t comm = nullptr;
     int size = 0, rank = 0;
     std::string reason;
     if (paddle_nccl_comm(
             ring_ids[group_index], device_id, &comm, &size, &rank, &reason)) {
-      err = std::string(group_names[group_index]) + " group (ring id " +
-            std::to_string(ring_ids[group_index]) + "): " + reason;
-      return fail((int)cudaErrorInvalidValue);
+      *err = std::string(group_names[group_index]) + " group (ring id " +
+             std::to_string(ring_ids[group_index]) + "): " + reason;
+      return fail(static_cast<int>(cudaErrorInvalidValue));
     }
     int comm_rank = -1, comm_size = -1;
     if (ncclCommUserRank(comm, &comm_rank) != ncclSuccess ||
         ncclCommCount(comm, &comm_size) != ncclSuccess) {
-      err = std::string(group_names[group_index]) +
-            " group: ncclCommUserRank / ncclCommCount failed";
-      return fail((int)cudaErrorInvalidValue);
+      *err = std::string(group_names[group_index]) +
+             " group: ncclCommUserRank / ncclCommCount failed";
+      return fail(static_cast<int>(cudaErrorInvalidValue));
     }
     if (size != want_size[group_index] || rank != want_rank[group_index] ||
         comm_size != want_size[group_index] ||
         comm_rank != want_rank[group_index]) {
-      err = std::string(group_names[group_index]) + " group (ring id " +
-            std::to_string(ring_ids[group_index]) +
-            "): size / rank mismatch: Python side " +
-            std::to_string(want_rank[group_index]) + "/" +
-            std::to_string(want_size[group_index]) + ", Paddle ProcessGroup " +
-            std::to_string(rank) + "/" + std::to_string(size) + ", ncclComm " +
-            std::to_string(comm_rank) + "/" + std::to_string(comm_size) +
-            " (is the ring id that of another group?)";
-      return fail((int)cudaErrorInvalidValue);
+      *err = std::string(group_names[group_index]) + " group (ring id " +
+             std::to_string(ring_ids[group_index]) +
+             "): size / rank mismatch: Python side " +
+             std::to_string(want_rank[group_index]) + "/" +
+             std::to_string(want_size[group_index]) + ", Paddle ProcessGroup " +
+             std::to_string(rank) + "/" + std::to_string(size) + ", ncclComm " +
+             std::to_string(comm_rank) + "/" + std::to_string(comm_size) +
+             " (is the ring id that of another group?)";
+      return fail(static_cast<int>(cudaErrorInvalidValue));
     }
     comm_group.comm = comm;
     comm_group.size = want_size[group_index];
@@ -153,9 +154,10 @@ int GradCommEngine::alloc_windows(int group,
                                   size_t send_bytes,
                                   size_t recv_bytes,
                                   size_t signal_bytes) {
-  if (!is_valid_group(group)) return (int)cudaErrorInvalidValue;
+  if (!is_valid_group(group)) return static_cast<int>(cudaErrorInvalidValue);
   CommGroup& comm_group = group_at(group);
-  if (!comm_group.comm || comm_group.send) return (int)cudaErrorNotReady;
+  if (!comm_group.comm || comm_group.send)
+    return static_cast<int>(cudaErrorNotReady);
   size_t send_actual = 0, recv_actual = 0, signal_actual = 0;
   GIN_CHECK(alloc_symmetric_window(comm_group.comm,
                                    send_bytes,
@@ -187,10 +189,10 @@ int GradCommEngine::create_dev_comm(int group,
                                     int* num_contexts,
                                     int* lsa_rank,
                                     int* lsa_size) {
-  if (!is_valid_group(group)) return (int)cudaErrorInvalidValue;
+  if (!is_valid_group(group)) return static_cast<int>(cudaErrorInvalidValue);
   CommGroup& comm_group = group_at(group);
   if (!comm_group.comm || comm_group.dev_comm_ready)
-    return (int)cudaErrorNotReady;
+    return static_cast<int>(cudaErrorNotReady);
   ncclDevCommRequirements_t req = NCCL_DEV_COMM_REQUIREMENTS_INITIALIZER;
   // the expert put and the dense inter-node put both go to arbitrary peers
   req.ginConnectionType = NCCL_GIN_CONNECTION_FULL;
@@ -198,20 +200,27 @@ int GradCommEngine::create_dev_comm(int group,
   req.ginSignalCount = 1;                       // VA signals
   req.ginCounterCount = 0;
   NCCL_CHECK(ncclDevCommCreate(comm_group.comm, &req, &comm_group.dev_comm));
-  comm_group.num_gin_contexts = (int)comm_group.dev_comm.ginContextCount;
+  comm_group.num_gin_contexts =
+      static_cast<int>(comm_group.dev_comm.ginContextCount);
   *num_contexts = comm_group.num_gin_contexts;
   *lsa_rank = comm_group.dev_comm.lsaRank;
   *lsa_size = comm_group.dev_comm.lsaSize;
   if (comm_group.dev_comm.lsaSize > 16 || comm_group.dev_comm.lsaSize < 1)
-    return (int)cudaErrorInvalidValue;
+    return static_cast<int>(cudaErrorInvalidValue);
   for (int l = 0; l < comm_group.dev_comm.lsaSize; ++l) {
     NCCL_CHECK(ncclGetLsaDevicePointer(
-        comm_group.win_recv, 0, l, (void**)&comm_group.lsa_recv[l]));
+        comm_group.win_recv,
+        0,
+        l,
+        reinterpret_cast<void**>(&comm_group.lsa_recv[l])));
     NCCL_CHECK(ncclGetLsaDevicePointer(
-        comm_group.win_signal, 0, l, (void**)&comm_group.lsa_signal[l]));
+        comm_group.win_signal,
+        0,
+        l,
+        reinterpret_cast<void**>(&comm_group.lsa_signal[l])));
   }
-  comm_group.ranks_per_node = (int)comm_group.dev_comm.lsaSize;
-  comm_group.rank_in_node = (int)comm_group.dev_comm.lsaRank;
+  comm_group.ranks_per_node = static_cast<int>(comm_group.dev_comm.lsaSize);
+  comm_group.rank_in_node = static_cast<int>(comm_group.dev_comm.lsaRank);
   comm_group.dev_comm_ready = 1;
   return 0;
 }
@@ -222,15 +231,15 @@ int GradCommEngine::create_dev_comm(int group,
 int GradCommEngine::set_group_topology(int group,
                                        int num_nodes,
                                        int node_index) {
-  if (!is_valid_group(group)) return (int)cudaErrorInvalidValue;
+  if (!is_valid_group(group)) return static_cast<int>(cudaErrorInvalidValue);
   CommGroup& comm_group = group_at(group);
   if (!comm_group.dev_comm_ready || num_nodes < 1 || node_index < 0 ||
       node_index >= num_nodes) {
-    return (int)cudaErrorInvalidValue;
+    return static_cast<int>(cudaErrorInvalidValue);
   }
   if (num_nodes * comm_group.ranks_per_node != comm_group.size ||
       node_index != comm_group.rank / comm_group.ranks_per_node) {
-    return (int)cudaErrorInvalidValue;
+    return static_cast<int>(cudaErrorInvalidValue);
   }
   comm_group.num_nodes = num_nodes;
   comm_group.node_index = node_index;
@@ -277,21 +286,23 @@ static int configure_resources(int num_dense_buckets,
   // arrival counters, intra-node credits and the intra-node CE of the 2D
   // gather; the expert group only for the 2D gather
   void**& lsa_pointers_device = *lsa_pointers_out;
-  CUDA_CHECK(cudaMalloc((void**)&lsa_pointers_device, 16 * sizeof(void*)));
+  CUDA_CHECK(cudaMalloc(reinterpret_cast<void**>(&lsa_pointers_device),
+                        16 * sizeof(void*)));
   for (int group_index = 0; group_index < NUM_GROUPS; ++group_index) {
     CommGroup& comm_group = group_at(group_index);
     if (!comm_group.host) continue;
     GIN_CHECK(launch_host_window_lsa_pointers(
         comm_group.win_host, comm_group.ranks_per_node, lsa_pointers_device));
     void* lsa_pointers_host[16] = {};
-    CUDA_CHECK(cudaMemcpy(lsa_pointers_host,
-                          lsa_pointers_device,
-                          (size_t)comm_group.ranks_per_node * sizeof(void*),
-                          cudaMemcpyDeviceToHost));
+    CUDA_CHECK(cudaMemcpy(
+        lsa_pointers_host,
+        lsa_pointers_device,
+        static_cast<size_t>(comm_group.ranks_per_node) * sizeof(void*),
+        cudaMemcpyDeviceToHost));
     for (int l = 0; l < comm_group.ranks_per_node; ++l) {
-      comm_group.lsa_host[l] = (char*)lsa_pointers_host[l];
+      comm_group.lsa_host[l] = reinterpret_cast<char*>(lsa_pointers_host[l]);
       if (l != comm_group.rank_in_node && !comm_group.lsa_host[l])
-        return (int)cudaErrorInvalidValue;
+        return static_cast<int>(cudaErrorInvalidValue);
     }
   }
   CUDA_CHECK(cudaFree(lsa_pointers_device));
@@ -352,12 +363,12 @@ int GradCommEngine::configure(int num_dense_buckets,
                               size_t credit_inter_offset,
                               size_t credit_moe_offset) {
   if (!dense_group().dev_comm_ready || g_buckets_ready || !dense_group().host)
-    return (int)cudaErrorNotReady;
+    return static_cast<int>(cudaErrorNotReady);
   if (num_window_marks <= 0 || num_moe_buckets < 0 || num_dense_buckets < 0)
-    return (int)cudaErrorInvalidValue;
+    return static_cast<int>(cudaErrorInvalidValue);
   if (num_moe_buckets > 0 &&
       (!expert_group().dev_comm_ready || !expert_group().host))
-    return (int)cudaErrorNotReady;
+    return static_cast<int>(cudaErrorNotReady);
   void** lsa_pointers_device = nullptr;
   const int rc = configure_resources(num_dense_buckets,
                                      num_moe_buckets,
@@ -391,9 +402,10 @@ int GradCommEngine::alloc_host_counters(int group,
                                         size_t* nbytes) {
   *cpu_ptr = 0;
   *nbytes = 0;
-  if (!is_valid_group(group)) return (int)cudaErrorInvalidValue;
+  if (!is_valid_group(group)) return static_cast<int>(cudaErrorInvalidValue);
   CommGroup& comm_group = group_at(group);
-  if (!comm_group.comm || comm_group.host) return (int)cudaErrorNotReady;
+  if (!comm_group.comm || comm_group.host)
+    return static_cast<int>(cudaErrorNotReady);
   int device_id = 0;
   CUDA_CHECK(cudaGetDevice(&device_id));
   CUdevice cu_device;
@@ -415,9 +427,9 @@ int GradCommEngine::alloc_host_counters(int group,
   size_t granularity = 0;
   CUDA_DRIVER_CHECK(cuMemGetAllocationGranularity(
       &granularity, &alloc_prop, CU_MEM_ALLOC_GRANULARITY_MINIMUM));
-  size_t bytes = want_bytes > (size_t)NCCL_WIN_REQUIRED_ALIGNMENT
+  size_t bytes = want_bytes > static_cast<size_t>(NCCL_WIN_REQUIRED_ALIGNMENT)
                      ? want_bytes
-                     : (size_t)NCCL_WIN_REQUIRED_ALIGNMENT;
+                     : static_cast<size_t>(NCCL_WIN_REQUIRED_ALIGNMENT);
   bytes = (bytes + granularity - 1) / granularity * granularity;
   CUDA_DRIVER_CHECK(
       cuMemCreate(&comm_group.host_handle, bytes, &alloc_prop, 0));
@@ -433,7 +445,7 @@ int GradCommEngine::alloc_host_counters(int group,
   access_desc.location.type = CU_MEM_LOCATION_TYPE_HOST_NUMA;
   access_desc.location.id = numa_id;
   CUDA_DRIVER_CHECK(cuMemSetAccess(base_ptr, bytes, &access_desc, 1));
-  comm_group.host = (char*)base_ptr;
+  comm_group.host = reinterpret_cast<char*>(base_ptr);
   memset(comm_group.host, 0, bytes);  // must be cleared before registration
   NCCL_CHECK(ncclCommWindowRegister(
       comm_group.comm,
@@ -442,7 +454,7 @@ int GradCommEngine::alloc_host_counters(int group,
       &comm_group.win_host,
       NCCL_WIN_COLL_SYMMETRIC | NCCL_WIN_STRICT_ORDERING));
   comm_group.host_bytes = bytes;
-  *cpu_ptr = (uintptr_t)comm_group.host;
+  *cpu_ptr = reinterpret_cast<uintptr_t>(comm_group.host);
   *nbytes = bytes;
   return 0;
 }

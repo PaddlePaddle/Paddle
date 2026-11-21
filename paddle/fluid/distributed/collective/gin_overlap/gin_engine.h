@@ -151,16 +151,16 @@
 //     process.
 #pragma once
 
+#include <cuda.h>
+#include <cuda_runtime.h>
+#include <nccl.h>
+#include <nccl_device.h>
+
 #include <cstddef>
 #include <cstdint>
 #include <cstdio>
 #include <string>
 #include <vector>
-
-#include <cuda.h>
-#include <cuda_runtime.h>
-#include <nccl.h>
-#include <nccl_device.h>
 
 #include "paddle/fluid/distributed/collective/gin_overlap/gin_dynload.h"
 #include "paddle/fluid/distributed/collective/gin_overlap/kernels/kernels.h"
@@ -169,22 +169,22 @@ namespace gin_overlap {
 
 // Return codes: 0 = success; < 10000 = cudaError_t; >= 10000 = 10000 +
 // ncclResult_t.
-#define CUDA_CHECK(x)                          \
-  do {                                         \
-    cudaError_t _err = (x);                    \
-    if (_err != cudaSuccess) return (int)_err; \
+#define CUDA_CHECK(x)                                       \
+  do {                                                      \
+    cudaError_t _err = (x);                                 \
+    if (_err != cudaSuccess) return static_cast<int>(_err); \
   } while (0)
-#define NCCL_CHECK(x)                                  \
-  do {                                                 \
-    ncclResult_t _res = (x);                           \
-    if (_res != ncclSuccess) return 10000 + (int)_res; \
+#define NCCL_CHECK(x)                                               \
+  do {                                                              \
+    ncclResult_t _res = (x);                                        \
+    if (_res != ncclSuccess) return 10000 + static_cast<int>(_res); \
   } while (0)
 // Calls something that already returns a code in this convention (a launch_*
 // wrapper, a submit_* function, ...) and returns that code on failure.
-#define GIN_CHECK(x)          \
-  do {                        \
-    const int _rc = (int)(x); \
-    if (_rc) return _rc;      \
+#define GIN_CHECK(x)                     \
+  do {                                   \
+    const int _rc = static_cast<int>(x); \
+    if (_rc) return _rc;                 \
   } while (0)
 // Driver API failure: prints the CUresult, then returns cudaErrorUnknown
 // (CUresult and cudaError_t use different numbering).
@@ -197,9 +197,9 @@ namespace gin_overlap {
       fprintf(stderr,                             \
               "[gin_overlap] %s failed: %d %s\n", \
               #x,                                 \
-              (int)_res,                          \
+              static_cast<int>(_res),             \
               _msg ? _msg : "?");                 \
-      return (int)cudaErrorUnknown;               \
+      return static_cast<int>(cudaErrorUnknown);  \
     }                                             \
   } while (0)
 
@@ -318,7 +318,7 @@ class GradCommEngine {
                 int dense_rank,
                 int expert_size,
                 int expert_rank,
-                std::string& err);
+                std::string* err);
   int alloc_windows(int group,
                     size_t send_bytes,
                     size_t recv_bytes,
