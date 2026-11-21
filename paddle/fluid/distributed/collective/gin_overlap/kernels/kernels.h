@@ -164,6 +164,8 @@ cudaError_t launch_signal_intra_node(LsaSlotPointers counter_slots,
 // to the ranks with the same rank_in_node on the other nodes, with
 // peer_base = rank_in_node and peer_stride = ranks_per_node; for the expert
 // group peer_base = 0 and peer_stride = 1. k == skip_rank is skipped.
+// Precondition: num_blocks * 128 >= num_peers (one thread per peer, no
+// grid-stride loop; peers beyond the grid get no credit and their wait hangs).
 cudaError_t launch_signal_credit(ncclDevComm dev_comm,
                                  ncclWindow_t signal_window,
                                  size_t signal_offset,
