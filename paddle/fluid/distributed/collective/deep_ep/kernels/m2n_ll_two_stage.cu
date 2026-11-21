@@ -1289,7 +1289,7 @@ __global__ __launch_bounds__(
               reinterpret_cast<int*>(dst_rdma_flag),
               1,
               deal_rdma_rank * NUM_MAX_NVL_PEERS + nvl_rank,
-              qp_id);
+              thread_id);
         }
       }
     }
