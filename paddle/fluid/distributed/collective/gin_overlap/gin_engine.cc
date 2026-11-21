@@ -528,13 +528,16 @@ int submit_dense_intra_node_copy(int bucket,
   cudaMemcpyAttributes copy_attrs;
   memset(&copy_attrs, 0, sizeof(copy_attrs));
   copy_attrs.srcAccessOrder = cudaMemcpySrcAccessOrderStream;
-  size_t fail_index = 0;
+  // CUDA 13 signature: (dsts, srcs, sizes, count, attrs, attrsIdxs, numAttrs,
+  // stream). One attribute set, applied from copy attrs_idx = 0 on, covers
+  // every copy.
+  size_t attrs_idx = 0;
   CUDA_CHECK(cudaMemcpyBatchAsync(dst_pointers.data(),
                                   src_pointers.data(),
                                   sizes.data(),
                                   dst_pointers.size(),
                                   &copy_attrs,
-                                  &fail_index,
+                                  &attrs_idx,
                                   1,
                                   g_stream_intra_node_copy));
   {
@@ -989,13 +992,13 @@ int gather_put_to_owner(int group,
     cudaMemcpyAttributes copy_attrs;
     memset(&copy_attrs, 0, sizeof(copy_attrs));
     copy_attrs.srcAccessOrder = cudaMemcpySrcAccessOrderStream;
-    size_t fail_index = 0;
+    size_t attrs_idx = 0;
     CUDA_CHECK(cudaMemcpyBatchAsync(&dst,
                                     &src,
                                     &bytes,
                                     1,
                                     &copy_attrs,
-                                    &fail_index,
+                                    &attrs_idx,
                                     1,
                                     g_stream_gather_put));
     const int rc = launch_store_release(
