@@ -65,7 +65,7 @@ void BindGinOverlapApi(py::module* m) {
   {
     std::vector<std::string> names;
     std::vector<int> values;
-    gin_overlap::release::constants(names, values);
+    gin_overlap::release::constants(&names, &values);
     for (size_t i = 0; i < names.size(); ++i) {
       gin.attr(names[i].c_str()) = values[i];
       release_constants[py::str(names[i])] = values[i];
@@ -106,7 +106,7 @@ void BindGinOverlapApi(py::module* m) {
                                           dense_rank,
                                           expert_size,
                                           expert_rank,
-                                          err);
+                                          &err);
             return py::make_tuple(rc, err);
           },
           py::arg("dense_ring_id"),
@@ -157,7 +157,8 @@ void BindGinOverlapApi(py::module* m) {
             size_t nbytes = 0;
             const int rc =
                 self.alloc_host_counters(group, want_bytes, &cpu, &nbytes);
-            return py::make_tuple(rc, (uint64_t)cpu, (uint64_t)nbytes);
+            return py::make_tuple(
+                rc, static_cast<uint64_t>(cpu), static_cast<uint64_t>(nbytes));
           },
           py::arg("group"),
           py::arg("want_bytes"))
@@ -178,7 +179,7 @@ void BindGinOverlapApi(py::module* m) {
       .def("end_step", &GradCommEngine::end_step)
       .def("stats",
            [](GradCommEngine& self) {
-             unsigned long long out[3] = {0, 0, 0};  // NOLINT
+             uint64_t out[3] = {0, 0, 0};
              self.stats(out);
              return py::make_tuple(out[0], out[1], out[2]);
            })
@@ -211,7 +212,7 @@ void BindGinOverlapApi(py::module* m) {
                                         stages,
                                         intra_node_reduce_blocks,
                                         shard_reduce_blocks,
-                                        released);
+                                        &released);
             return py::make_tuple(rc, released);
           },
           py::arg("mark"),
@@ -232,13 +233,13 @@ void BindGinOverlapApi(py::module* m) {
              std::vector<int> positions, counts, posted;
              int done = 0;
              const int rc =
-                 self.release_status(positions, counts, posted, &done);
+                 self.release_status(&positions, &counts, &posted, &done);
              return py::make_tuple(rc, positions, counts, posted, done);
            })
       .def("release_stuck_report",
            [](GradCommEngine& self) {
-             std::vector<long long> flat;  // NOLINT
-             const int rc = self.release_stuck_report(flat);
+             std::vector<int64_t> flat;
+             const int rc = self.release_stuck_report(&flat);
              return py::make_tuple(rc, flat);
            })
       .def("release_error",
@@ -278,9 +279,7 @@ void BindGinOverlapApi(py::module* m) {
       // number are passed. Returns (return code, number of signals)
       .def(
           "gather_put_entry",
-          [](GradCommEngine& self,
-             int entry_index,
-             unsigned long long seq) {  // NOLINT
+          [](GradCommEngine& self, int entry_index, uint64_t seq) {
             int n = 0;
             const int rc = self.gather_put_entry(entry_index, seq, &n);
             return py::make_tuple(rc, n);
@@ -295,8 +294,8 @@ void BindGinOverlapApi(py::module* m) {
            &GradCommEngine::tail_gather_set_sequences,
            py::arg("seqs"))
       .def("tail_gather_get_sent", [](GradCommEngine& self) {
-        std::vector<long long> flat;  // NOLINT
-        const int rc = self.tail_gather_get_sent(flat);
+        std::vector<int64_t> flat;
+        const int rc = self.tail_gather_get_sent(&flat);
         return py::make_tuple(rc, flat);
       });
 
@@ -305,10 +304,7 @@ void BindGinOverlapApi(py::module* m) {
   // returning a code.
   engine.def(
       "send_window_tensor",
-      [](GradCommEngine&,
-         int group,
-         size_t send_offset,
-         long long numel) {  // NOLINT
+      [](GradCommEngine&, int group, size_t send_offset, int64_t numel) {
         return gin_overlap::send_window_tensor(group, send_offset, numel);
       },
       py::arg("group"),
