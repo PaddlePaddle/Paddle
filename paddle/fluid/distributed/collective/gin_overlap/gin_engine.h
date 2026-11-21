@@ -294,7 +294,7 @@ int paddle_compute_stream(cudaStream_t* out);
 // ----------------------------------------------------------------
 // Per-stage submit functions: submit one stage of one bucket to the GPU
 // (launch a kernel or a CE copy, record an event). Only release_next_* in
-// release.cu calls them, after the remote conditions are met. mark_event is
+// release.cc calls them, after the remote conditions are met. mark_event is
 // the mark this work waits on first (the main thread passes a window mark,
 // the tail thread a tail mark).
 int submit_dense_intra_node_copy(int bucket,
