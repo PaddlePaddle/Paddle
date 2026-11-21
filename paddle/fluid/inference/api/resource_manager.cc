@@ -51,10 +51,9 @@ class EigenGpuStreamDevice : public Eigen::StreamInterface {
       : stream_(nullptr),
         allocator_(nullptr),
         device_prop_(nullptr),
+        scratch_(nullptr),
         semaphore_(nullptr),
-        allocations_() {
-    Eigen::initializeDeviceProp();
-  }
+        allocations_() {}
   ~EigenGpuStreamDevice() override = default;
 
   void Reinitialize(gpuStream_t cuda_stream,
@@ -62,7 +61,7 @@ class EigenGpuStreamDevice : public Eigen::StreamInterface {
                     GPUPlace place) {
     stream_ = cuda_stream;
     allocator_ = allocator;
-    device_prop_ = &Eigen::m_deviceProperties[place.device];
+    device_prop_ = &Eigen::GetGpuDeviceProperties(place.device);
   }
 
   const gpuStream_t& stream() const override { return stream_; }
