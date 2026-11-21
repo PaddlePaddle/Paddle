@@ -537,6 +537,8 @@ class GradCommEngine {
               int intra_node_reduce_blocks,
               int shard_reduce_blocks,
               std::vector<int>& released_shard_reduce);
+  // bucket_ready / tail_all_posted return 0 = accepted, 1 = the tail thread
+  // stopped on an error (see release_error), 2 = wrong usage
   int bucket_ready(int kind, int bucket, float scale, int mark);
   int release_status(std::vector<int>& positions,
                      std::vector<int>& counts,
@@ -544,13 +546,20 @@ class GradCommEngine {
                      int* done);
   int release_stuck_report(std::vector<long long>& flat);
   int release_error(int* code, int* stage, int* bucket);
+  // What the release layer is submitting right now: stage *
+  // ACTIVITY_STAGE_SCALE + bucket + 1; 0 = not inside a CUDA call
   int release_activity();
+  // Returns the tail mark slot (>= 0); -1 = no release_setup or
+  // cudaEventRecord failed, -2 = this step's tail mark slots are used up
   int tail_mark();
   int tail_start(int intra_node_reduce_blocks,
                  int shard_reduce_blocks,
                  int mark,
                  int all_posted);
   int tail_all_posted();
+  // tail_wait / tail_abort return the tail thread's state (TAIL_*; TAIL_RUN =
+  // still running after the timeout), or -1 without release_setup. They block
+  // for up to timeout_s / wait_s seconds.
   int tail_wait(double timeout_s);
   int tail_abort(double wait_s);
   int tail_finish();

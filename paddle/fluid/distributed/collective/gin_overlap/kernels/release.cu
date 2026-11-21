@@ -147,17 +147,23 @@ int tail_mark_index = 0;  // slots used in this step; only the main thread
 // ---- per-step release state (changed by the main thread in IDLE, by the
 // tail thread in RUN)
 long long step = 0;  // step number used by credit targets; set by step_reset
-// Position in the fixed release order each stage has been released up to:
-//   - pos_dense_copy: dense intra-node copy.
-//   - stage_positions[0..2]: dense intra-node reduce / put / shard reduce.
-//   - pos_moe_put: expert put.
-//   - stage_positions[3]: expert shard reduce.
-// A stage's pending queue = the buckets between its position and the
-// position of the previous stage.
-int pos_dense_copy = 0, stage_positions[4] = {0, 0, 0, 0}, pos_moe_put = 0;
+// Position in the fixed release order each stage has been released up to, one
+// variable per stage (STAGE_*). A stage's pending queue = the buckets between
+// its position and the position of the previous stage.
+int pos_dense_copy = 0;               // dense intra-node copy
+int pos_dense_intra_node_reduce = 0;  // dense intra-node reduce
+int pos_dense_inter_node_put = 0;     // dense inter-node put
+int pos_dense_inter_node_reduce = 0;  // dense shard reduce
+int pos_moe_put = 0;                  // expert put
+int pos_moe_reduce = 0;               // expert shard reduce
 // Which buckets of this step have complete gradients (bucket_ready was
 // called). Cleared only in step_reset.
 std::vector<unsigned char> ready_dense, ready_moe;
+// Which buckets the main thread has reported through bucket_ready in this
+// step. Only the main thread uses it (ready_* belongs to the tail thread
+// during RUN), so a bucket reported twice is caught in both states. Cleared in
+// step_reset.
+std::vector<unsigned char> reported_dense, reported_moe;
 // These three accumulate across steps; step_reset does not clear them:
 //   - dense_copy_seq[bucket]: intra-node copies of this bucket submitted so
 //     far; written into the receivers' intra-node arrival counters.
@@ -345,6 +351,75 @@ bool blocked_moe_reduce(int bucket, Blocker* out) {
   return true;
 }
 
+// Whether [offset, offset + count * unit) lies inside a window of `bytes`
+// bytes and offset is a multiple of align. Written so that nothing wraps
+// around (offset and count come from Python).
+inline bool in_window(long long offset,
+                      long long count,
+                      size_t unit,
+                      size_t align,
+                      size_t bytes) {
+  if (offset < 0 || count < 0 || (size_t)offset % align) return false;
+  if ((size_t)offset > bytes) return false;
+  return (size_t)count <= (bytes - (size_t)offset) / unit;
+}
+
+// Checks the per-bucket tables and the host window offsets setup receives:
+// every offset is non-negative, aligned (counters 8 bytes, data 4 bytes) and
+// inside its window, so that the CPU reads of the host window and the GPU
+// writes stay in bounds. A recv offset is checked only when the bucket has a
+// slot in that segment (depth >= 0).
+bool tables_in_bounds(const std::vector<long long>& dense_table,
+                      const std::vector<long long>& moe_table,
+                      size_t intra_arrive) {
+  const CommGroup& dense = dense_group();
+  const CommGroup& expert = expert_group();
+  const int num_dense = (int)(dense_table.size() / 7);
+  const int num_moe = (int)(moe_table.size() / 5);
+  const long long L = dense.ranks_per_node, Nn = dense.num_nodes;
+  if (!in_window((long long)intra_arrive,
+                 (long long)num_dense * 16,
+                 8,
+                 8,
+                 dense.host_bytes) ||
+      !in_window(
+          (long long)g_credit_intra_offset, 16, 8, 8, dense.host_bytes) ||
+      !in_window((long long)g_credit_inter_offset, Nn, 8, 8, dense.host_bytes))
+    return false;
+  for (int i = 0; i < num_dense; ++i) {
+    const long long* row = dense_table.data() + 7 * (size_t)i;
+    const long long m = row[2];
+    if (m < 0 || (dense.size > 0 && m > (long long)(SIZE_MAX / 4) / dense.size))
+      return false;
+    if (!in_window(row[0], m * dense.size, 4, 4, dense.send_bytes) ||
+        !in_window(row[1], 1, 8, 8, dense.host_bytes))
+      return false;
+    if (row[5] >= 0 &&
+        !in_window(row[3], (L - 1) * Nn * m, 4, 4, dense.recv_bytes))
+      return false;
+    if (row[6] >= 0 && !in_window(row[4], Nn * m, 4, 4, dense.recv_bytes))
+      return false;
+  }
+  if (num_moe > 0 &&
+      !in_window(
+          (long long)g_credit_moe_offset, expert.size, 8, 8, expert.host_bytes))
+    return false;
+  for (int i = 0; i < num_moe; ++i) {
+    const long long* row = moe_table.data() + 5 * (size_t)i;
+    const long long m = row[2];
+    if (m < 0 ||
+        (expert.size > 0 && m > (long long)(SIZE_MAX / 4) / expert.size))
+      return false;
+    if (!in_window(row[0], m * expert.size, 4, 4, expert.send_bytes) ||
+        !in_window(row[1], 1, 8, 8, expert.host_bytes))
+      return false;
+    if (row[4] >= 0 &&
+        !in_window(row[3], expert.size * m, 4, 4, expert.recv_bytes))
+      return false;
+  }
+  return true;
+}
+
 // Records where a failure happened and returns -1; the caller then stops
 // releasing for this step
 int record_failure(int rc, int stage, int bucket) {
@@ -469,11 +544,11 @@ int release_next_intra_node_copy() {
 }
 int release_next_intra_node_reduce() {
   int moved = 0;
-  while (stage_positions[0] < num_dense_buckets) {
-    const int bucket = dense_release_order[stage_positions[0]];
+  while (pos_dense_intra_node_reduce < num_dense_buckets) {
+    const int bucket = dense_release_order[pos_dense_intra_node_reduce];
     // requires this bucket's intra-node copy to be released and the rows
     // pushed by the other ranks to have arrived
-    if (stage_positions[0] >= pos_dense_copy ||
+    if (pos_dense_intra_node_reduce >= pos_dense_copy ||
         blocked_intra_node_reduce(bucket, nullptr))
       break;
     const DenseBucket& bucket_params = dense_buckets[bucket];
@@ -488,18 +563,18 @@ int release_next_intra_node_reduce() {
                                        current_mark);
     current_activity = 0;
     if (rc) return record_failure(rc, STAGE_DENSE_INTRA_NODE_REDUCE, bucket);
-    ++stage_positions[0];
+    ++pos_dense_intra_node_reduce;
     moved = 1;
   }
   return moved;
 }
 int release_next_put() {
   int moved = 0, num_signals = 0;
-  while (stage_positions[1] < num_dense_buckets) {
-    const int bucket = dense_release_order[stage_positions[1]];
+  while (pos_dense_inter_node_put < num_dense_buckets) {
+    const int bucket = dense_release_order[pos_dense_inter_node_put];
     // requires this bucket's intra-node reduce to be released and the slot in
     // the peers' inter-node segment to be free
-    if (stage_positions[1] >= stage_positions[0] ||
+    if (pos_dense_inter_node_put >= pos_dense_intra_node_reduce ||
         blocked_dense_inter_node_put(bucket, nullptr))
       break;
     const DenseBucket& bucket_params = dense_buckets[bucket];
@@ -517,7 +592,7 @@ int release_next_put() {
     current_activity = 0;
     if (rc) return record_failure(rc, STAGE_DENSE_INTER_NODE_PUT, bucket);
     dense_targets[bucket] += (unsigned long long)num_signals;
-    ++stage_positions[1];
+    ++pos_dense_inter_node_put;
     moved = 1;
   }
   while (pos_moe_put < num_moe_buckets) {
@@ -551,11 +626,11 @@ int release_next_put() {
 //     [kind, bucket id].
 int release_next_shard_reduce(int in_tail, std::vector<int>* released) {
   int moved = 0;
-  while (stage_positions[2] < num_dense_buckets) {
-    const int bucket = dense_release_order[stage_positions[2]];
+  while (pos_dense_inter_node_reduce < num_dense_buckets) {
+    const int bucket = dense_release_order[pos_dense_inter_node_reduce];
     // requires this bucket's put to be released and the puts of all other
     // ranks to have arrived
-    if (stage_positions[2] >= stage_positions[1] ||
+    if (pos_dense_inter_node_reduce >= pos_dense_inter_node_put ||
         blocked_dense_inter_node_reduce(bucket, nullptr))
       break;
     const DenseBucket& bucket_params = dense_buckets[bucket];
@@ -571,7 +646,7 @@ int release_next_shard_reduce(int in_tail, std::vector<int>* released) {
                                        current_mark);
     current_activity = 0;
     if (rc) return record_failure(rc, STAGE_DENSE_INTER_NODE_REDUCE, bucket);
-    ++stage_positions[2];
+    ++pos_dense_inter_node_reduce;
     if (released) {
       released->push_back(0);  // kind 0 = dense
       released->push_back(bucket);
@@ -585,10 +660,9 @@ int release_next_shard_reduce(int in_tail, std::vector<int>* released) {
     }
     moved = 1;
   }
-  while (stage_positions[3] < num_moe_buckets) {
-    const int bucket = moe_release_order[stage_positions[3]];
-    if (stage_positions[3] >= pos_moe_put ||
-        blocked_moe_reduce(bucket, nullptr))
+  while (pos_moe_reduce < num_moe_buckets) {
+    const int bucket = moe_release_order[pos_moe_reduce];
+    if (pos_moe_reduce >= pos_moe_put || blocked_moe_reduce(bucket, nullptr))
       break;
     const MoeBucket& bucket_params = moe_buckets[bucket];
     current_activity = STAGE_MOE_REDUCE * ACTIVITY_STAGE_SCALE + bucket + 1;
@@ -601,7 +675,7 @@ int release_next_shard_reduce(int in_tail, std::vector<int>* released) {
                                      current_mark);
     current_activity = 0;
     if (rc) return record_failure(rc, STAGE_MOE_REDUCE, bucket);
-    ++stage_positions[3];
+    ++pos_moe_reduce;
     if (released) {
       released->push_back(1);  // kind 1 = expert
       released->push_back(bucket);
@@ -642,19 +716,19 @@ void pending_counts(int* out4) {
   for (int k = pos_moe_put; k < num_moe_buckets; ++k)
     if (ready_moe[moe_release_order[k]]) ++ready_moe_put;
   out4[0] = ready_copy;
-  out4[1] = pos_dense_copy - stage_positions[0];
-  out4[2] = stage_positions[0] - stage_positions[1] + ready_moe_put;
-  out4[3] = stage_positions[1] - stage_positions[2] + pos_moe_put -
-            stage_positions[3];
+  out4[1] = pos_dense_copy - pos_dense_intra_node_reduce;
+  out4[2] =
+      pos_dense_intra_node_reduce - pos_dense_inter_node_put + ready_moe_put;
+  out4[3] = pos_dense_inter_node_put - pos_dense_inter_node_reduce +
+            pos_moe_put - pos_moe_reduce;
 }
 // Whether the whole step is released: all six positions are at the end
 bool is_step_done() {
   return pos_dense_copy >= num_dense_buckets &&
-         stage_positions[0] >= num_dense_buckets &&
-         stage_positions[1] >= num_dense_buckets &&
-         stage_positions[2] >= num_dense_buckets &&
-         pos_moe_put >= num_moe_buckets &&
-         stage_positions[3] >= num_moe_buckets;
+         pos_dense_intra_node_reduce >= num_dense_buckets &&
+         pos_dense_inter_node_put >= num_dense_buckets &&
+         pos_dense_inter_node_reduce >= num_dense_buckets &&
+         pos_moe_put >= num_moe_buckets && pos_moe_reduce >= num_moe_buckets;
 }
 
 // Main loop of one tail-thread step (in RUN only this thread changes the
@@ -692,11 +766,11 @@ int run_step() {
       // record the six positions and pending counts at the moment all_posted
       // is set and the queue is empty (for logs)
       const int snapshot[6] = {pos_dense_copy,
-                               stage_positions[0],
-                               stage_positions[1],
-                               stage_positions[2],
+                               pos_dense_intra_node_reduce,
+                               pos_dense_inter_node_put,
+                               pos_dense_inter_node_reduce,
                                pos_moe_put,
-                               stage_positions[3]};
+                               pos_moe_reduce};
       memcpy(posted_snapshot, snapshot, sizeof(snapshot));
       pending_counts(posted_counts);
     }
@@ -771,6 +845,8 @@ int setup(const std::vector<int>& dense_order,
       dense_table.size() != 7u * (size_t)num_dense ||
       moe_table.size() != 5u * (size_t)num_moe)
     return (int)cudaErrorInvalidValue;
+  if (!tables_in_bounds(dense_table, moe_table, intra_arrive_offset_))
+    return (int)cudaErrorInvalidValue;
   CUDA_CHECK(cudaGetDevice(&device_id));
   num_dense_buckets = num_dense;
   num_moe_buckets = num_moe;
@@ -811,6 +887,8 @@ int setup(const std::vector<int>& dense_order,
   }
   ready_dense.assign(num_dense_buckets, 0);
   ready_moe.assign(num_moe_buckets, 0);
+  reported_dense.assign(num_dense_buckets, 0);
+  reported_moe.assign(num_moe_buckets, 0);
   dense_copy_seq.assign(num_dense_buckets, 0);
   dense_targets.assign(num_dense_buckets, 0);
   moe_targets.assign(num_moe_buckets, 0);
@@ -825,6 +903,9 @@ int setup(const std::vector<int>& dense_order,
   try {
     std::thread(thread_main).detach();
   } catch (...) {
+    // no thread: unpublish control so that setup can be retried
+    delete control;
+    control = nullptr;
     return (int)cudaErrorUnknown;
   }
   std::unique_lock<std::mutex> lk(control->mutex);
@@ -855,9 +936,12 @@ int step_reset(long long step_) {
   step = step_;
   pos_dense_copy = 0;
   pos_moe_put = 0;
-  for (int& position : stage_positions) position = 0;
+  pos_dense_intra_node_reduce = pos_dense_inter_node_put = 0;
+  pos_dense_inter_node_reduce = pos_moe_reduce = 0;
   std::fill(ready_dense.begin(), ready_dense.end(), 0);
   std::fill(ready_moe.begin(), ready_moe.end(), 0);
+  std::fill(reported_dense.begin(), reported_dense.end(), 0);
+  std::fill(reported_moe.begin(), reported_moe.end(), 0);
   for (int& position : posted_snapshot) position = -1;
   for (int& count : posted_counts) count = 0;
   err_rc = 0;
@@ -940,8 +1024,8 @@ int tail_start(int intra_node_reduce_blocks_,
 //     message.
 //   - Returns 0 = accepted; 1 = the tail thread stopped on an error (reason:
 //     get_last_error); 2 = usage error (mark does not match the state, invalid
-//     bucket id, bucket already ready in this step, a bucket becomes ready
-//     after everything was released).
+//     bucket id, bucket already reported in this step (checked in both
+//     states), a bucket becomes ready after everything was released).
 int bucket_ready(int kind, int bucket, float scale, int mark_) {
   if (!control) return 2;
   std::lock_guard<std::mutex> lk(control->mutex);
@@ -952,9 +1036,11 @@ int bucket_ready(int kind, int bucket, float scale, int mark_) {
     return 2;
   if (control->state == IDLE) {  // main thread still releasing: record now
     if (mark_ >= 0 || kind < 0 || is_step_done()) return 2;
+    unsigned char& reported = (kind ? reported_moe : reported_dense)[bucket];
     unsigned char& ready =
         (kind ? ready_moe : ready_dense)[bucket];  // ready once per step
-    if (ready) return 2;
+    if (reported || ready) return 2;
+    reported = 1;
     ready = 1;
     (kind ? moe_scales : dense_scales)[bucket] = scale;
     return 0;
@@ -963,6 +1049,11 @@ int bucket_ready(int kind, int bucket, float scale, int mark_) {
   if (control->state == DONE)
     return kind < 0 ? 0 : 2;  // all released: drop mark-only messages
   if (control->state != RUN) return 2;
+  if (kind >= 0) {
+    unsigned char& reported = (kind ? reported_moe : reported_dense)[bucket];
+    if (reported) return 2;  // reported twice in this step
+    reported = 1;
+  }
   control->queue.push_back(ReadyMessage{kind, bucket, mark_, scale});
   control->cv_proxy.notify_all();
   return 0;
@@ -1039,11 +1130,11 @@ int status(std::vector<int>& positions6,
   std::lock_guard<std::mutex> lk(control->mutex);
   if (control->state == RUN) return (int)cudaErrorNotReady;
   positions6 = {pos_dense_copy,
-                stage_positions[0],
-                stage_positions[1],
-                stage_positions[2],
+                pos_dense_intra_node_reduce,
+                pos_dense_inter_node_put,
+                pos_dense_inter_node_reduce,
                 pos_moe_put,
-                stage_positions[3]};
+                pos_moe_reduce};
   int counts[4] = {0, 0, 0, 0};
   pending_counts(counts);
   counts4.assign(counts, counts + 4);
@@ -1080,23 +1171,23 @@ static void stuck_stage(int stage, std::vector<long long>& flat) {
       previous = -1;
       break;
     case STAGE_DENSE_INTRA_NODE_REDUCE:
-      position = stage_positions[0];
+      position = pos_dense_intra_node_reduce;
       previous = pos_dense_copy;
       break;
     case STAGE_DENSE_INTER_NODE_PUT:
-      position = stage_positions[1];
-      previous = stage_positions[0];
+      position = pos_dense_inter_node_put;
+      previous = pos_dense_intra_node_reduce;
       break;
     case STAGE_DENSE_INTER_NODE_REDUCE:
-      position = stage_positions[2];
-      previous = stage_positions[1];
+      position = pos_dense_inter_node_reduce;
+      previous = pos_dense_inter_node_put;
       break;
     case STAGE_MOE_PUT:
       position = pos_moe_put;
       previous = -1;
       break;
     default:  // STAGE_MOE_REDUCE
-      position = stage_positions[3];
+      position = pos_moe_reduce;
       previous = pos_moe_put;
       break;
   }
@@ -1254,6 +1345,13 @@ int setup_gather_table(const std::vector<long long>& table) {
         entry.bucket >= (entry.kind ? num_moe_buckets : num_dense_buckets) ||
         entry.slot < 0 || entry.slot >= (int)g_event_gather_put.size() ||
         entry.shard_numel <= 0 || entry.send_offset < 0 || row[7] < 1)
+      return (int)cudaErrorInvalidValue;
+    // the two arrival counters: non-negative, 8-byte aligned, inside the
+    // group's host window (all ranks share the host window layout)
+    const size_t host_bytes =
+        group_at(entry.kind ? GROUP_MOE : GROUP_DENSE).host_bytes;
+    if (!in_window(row[8], 1, 8, 8, host_bytes) ||
+        !in_window(row[9], 1, 8, 8, host_bytes))
       return (int)cudaErrorInvalidValue;
     int& entry_index = (entry.kind ? index_moe : index_dense)[entry.bucket];
     if (entry_index >= 0)
