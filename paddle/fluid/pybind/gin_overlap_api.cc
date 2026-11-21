@@ -26,6 +26,7 @@
 #include "paddle/fluid/pybind/gin_overlap_api.h"
 
 #include <cstdint>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
@@ -45,6 +46,20 @@ namespace pybind {
 
 #ifdef PADDLE_WITH_GIN_OVERLAP
 using gin_overlap::GradCommEngine;
+
+namespace {
+// Raises RuntimeError for a failed record_window_mark / tail_mark
+void ThrowOnError(const char* what, int rc) {
+  std::string msg = std::string("gin_overlap: ") + what +
+                    " failed: " + GradCommEngine::error_string(rc) + " (code " +
+                    std::to_string(rc) + ")";
+  if (rc == static_cast<int>(cudaErrorLaunchOutOfResources))
+    msg +=
+        "; this step's tail mark slots are used up (TAIL_EXTRA_MARKS of "
+        "the primitive is too small)";
+  throw std::runtime_error(msg);
+}
+}  // namespace
 #endif
 
 void BindGinOverlapApi(py::module* m) {
@@ -147,7 +162,15 @@ void BindGinOverlapApi(py::module* m) {
            py::arg("credit_intra_offset"),
            py::arg("credit_inter_offset"),
            py::arg("credit_moe_offset"))
-      .def("record_window_mark", &GradCommEngine::record_window_mark)
+      // record_window_mark / tail_mark return the slot and raise RuntimeError
+      // with the error text on failure
+      .def("record_window_mark",
+           [](GradCommEngine& self) {
+             int slot = -1;
+             const int rc = self.record_window_mark(&slot);
+             if (rc) ThrowOnError("record_window_mark", rc);
+             return slot;
+           })
       .def("gather_gate", &GradCommEngine::gather_gate, py::arg("mark"))
       // ---- host window, join, scale, flush
       .def(
@@ -249,7 +272,13 @@ void BindGinOverlapApi(py::module* m) {
              return py::make_tuple(rc, code, stage, bucket);
            })
       .def("release_activity", &GradCommEngine::release_activity)
-      .def("tail_mark", &GradCommEngine::tail_mark)
+      .def("tail_mark",
+           [](GradCommEngine& self) {
+             int slot = -1;
+             const int rc = self.tail_mark(&slot);
+             if (rc) ThrowOnError("tail_mark", rc);
+             return slot;
+           })
       .def("tail_start",
            &GradCommEngine::tail_start,
            py::arg("intra_node_reduce_blocks"),
