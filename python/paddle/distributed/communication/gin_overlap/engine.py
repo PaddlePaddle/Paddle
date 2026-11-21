@@ -89,11 +89,17 @@ Constraints
   - Each sender writes only its own intra-node arrival counter; a counter has exactly one writer.
   - Every stage is submitted in the fixed release order, which must be the same on all ranks.
   - Every bucket goes through all of its stages every step; otherwise later credits never arrive.
+  - The engine lives as long as the process: its windows are registered on the ncclComms of Paddle's ProcessGroups
+    and are never deregistered or freed. shutdown_process_group / restart_process_group are not supported; using the
+    engine after calling either of them is undefined behavior.
+  - A failed init cannot be retried in the same process; restart the process.
 """
 
 import ctypes
 import os
+import statistics
 import time
+import zlib
 from collections import Counter
 
 import paddle
@@ -166,6 +172,21 @@ def log(msg):
         print(f"[gin_overlap] {msg}", flush=True)
 
 
+def _all_ranks_same(checks, world):
+    """Collective: whether every (obj, group) in checks is identical on all ranks of its group (crc32 of repr(obj),
+    compared with one all_reduce MAX per group), combined with an all_reduce MIN over world. Every rank of world must
+    call it with the same groups in the same order."""
+    ok = True
+    for obj, group in checks:
+        h = zlib.crc32(repr(obj).encode()) & 0x7FFFFFFF
+        v = paddle.to_tensor([h, -h], dtype="int64")
+        dist.all_reduce(v, op=dist.ReduceOp.MAX, group=group)
+        ok = int(v[0]) == -int(v[1]) and ok
+    v = paddle.to_tensor([int(ok)], dtype="int32")
+    dist.all_reduce(v, op=dist.ReduceOp.MIN, group=world)
+    return int(v[0]) == 1
+
+
 def _align(n, a=256):
     return (n + a - 1) // a * a
 
@@ -221,22 +242,25 @@ class GinOverlapPrimitive:
         self.moe_bucket_numels = list(moe_numels)
         self.expert_group_size = self.expert_group_rank = 0
         if self.moe_bucket_numels:
-            assert moe_group is not None, (
-                "there are expert buckets but no expert communication group"
-            )
+            if moe_group is None:
+                raise RuntimeError(
+                    "gin_overlap: there are expert buckets but no expert communication group"
+                )
             self.expert_group_size, self.expert_group_rank = (
                 moe_group.nranks,
                 moe_group.rank,
             )
             for n in self.moe_bucket_numels:
-                assert n % self.expert_group_size == 0, (
-                    f"expert bucket size {n} is not divisible by the group size {self.expert_group_size}"
-                )
+                if n % self.expert_group_size:
+                    raise RuntimeError(
+                        f"gin_overlap: expert bucket size {n} is not divisible by the group size {self.expert_group_size}"
+                    )
         self.dense_bucket_numels = list(dense_numels)
         for n in self.dense_bucket_numels:
-            assert n % self.group_size == 0, (
-                f"dense bucket size {n} is not divisible by the group size {self.group_size}"
-            )
+            if n % self.group_size:
+                raise RuntimeError(
+                    f"gin_overlap: dense bucket size {n} is not divisible by the group size {self.group_size}"
+                )
 
         # Node layout of the group (requirements in the module docstring); checked against the devcomm's lsaRank /
         # lsaSize later in _check_devcomm
@@ -301,9 +325,10 @@ class GinOverlapPrimitive:
             )  # fmt: skip
         t_init.append(time.perf_counter())
         for n in self.dense_bucket_numels:
-            assert (n // self.group_size) % 4 == 0, (
-                f"the per-block numel of a dense bucket must be a multiple of 4: {n // self.group_size}"
-            )
+            if (n // self.group_size) % 4:
+                raise RuntimeError(
+                    f"gin_overlap: the per-block numel of a dense bucket must be a multiple of 4, got {n // self.group_size}"
+                )
         self._configure(num_dense, num_moe)
         t_init.append(time.perf_counter())
         self.moe_offsets = list(
@@ -361,9 +386,8 @@ class GinOverlapPrimitive:
         )
         rc, ptr, nbytes = lib.alloc_host_counters(gid, host_bytes)
         check_cuda(rc, f"alloc_host_counters({what})")
-        if (
-            nbytes < host_bytes
-        ):  # the C++ side rounds up to the granularity, so this should not happen
+        # the C++ side rounds up to the granularity, so this should not happen
+        if nbytes < host_bytes:
             raise RuntimeError(
                 f"gin_overlap: host window of the {what} group is {nbytes} B, less than the {host_bytes} B needed"
             )
@@ -440,9 +464,6 @@ class GinOverlapPrimitive:
           - The intra-node and inter-node segments follow each other in the dense group's recv window, the expert
             segment is in the expert group's recv window; all start at 0.
         The result goes into self.recv_pool; returns (dense recv window bytes, expert recv window bytes)."""
-        import statistics
-        import zlib
-
         nd, nm = len(self.dense_bucket_numels), len(self.moe_bucket_numels)
         d_order, m_order = (
             [int(i) for i in order[0]],
@@ -497,44 +518,21 @@ class GinOverlapPrimitive:
         off_n, d_n = self._recv_pool_ring(d_order, seg[1], P[1])
         off_m, d_m = self._recv_pool_ring(m_order, seg[2], P[2])
 
-        def same(obj, group):
-            h = zlib.crc32(repr(obj).encode()) & 0x7FFFFFFF
-            v = paddle.to_tensor([h, -h], dtype="int64")
-            dist.all_reduce(v, op=dist.ReduceOp.MAX, group=group)
-            return int(v[0]) == -int(v[1])
-
         # Senders compute the write offsets on the peers from their own table, so the table must be identical on all
         # ranks
-        ok = same(
-            (
-                P[0],
-                P[1],
-                L,
-                Nn,
-                d_order,
-                seg[0],
-                seg[1],
-                off_i,
-                d_i,
-                off_n,
-                d_n,
-            ),
-            self.world,
-        )
+        dense_layout = (P[0], P[1], L, Nn, d_order, seg[0], seg[1], off_i, d_i, off_n, d_n)  # fmt: skip
+        checks = [(dense_layout, self.world)]
         if moe_group is not None:
-            ok = same((P[2], N, m_order, seg[2], off_m, d_m), moe_group) and ok
-        v = paddle.to_tensor([int(ok)], dtype="int32")
-        dist.all_reduce(v, op=dist.ReduceOp.MIN, group=self.world)
-        if int(v[0]) != 1:
+            checks.append(((P[2], N, m_order, seg[2], off_m, d_m), moe_group))
+        if not _all_ranks_same(checks, self.world):
             raise RuntimeError(
                 "gin_overlap: the recv pool ring layout (segment sizes / fixed order / offsets / predecessors) differs "
                 "between ranks (dense must match across the whole world, expert within the group); check "
                 "dense_recv_pool_gb / moe_recv_pool_gb and the bucket split on every rank"
             )
 
-        def fit(
-            i,
-        ):  # estimated number of buckets this segment holds at once, from the median slot size (logs only)
+        # estimated number of buckets segment i holds at once, from the median slot size (logs only)
+        def fit(i):
             s = [x for x in seg[i] if x > 0]
             if not s or not P[i]:
                 return 0.0, 0
@@ -574,9 +572,8 @@ class GinOverlapPrimitive:
             P[0] = (lb[0] * Td // Sd) // 4096 * 4096
             P[1] = (lb[1] * Td // Sd) // 4096 * 4096
             for i in (0, 1):
-                if (
-                    P[i] < lb[i]
-                ):  # cannot happen: lb is a multiple of 4 KB and Td >= Sd
+                # cannot happen: lb is a multiple of 4 KB and Td >= Sd
+                if P[i] < lb[i]:
                     raise RuntimeError(
                         f"dense_recv_pool_gb={gd:g}: after the proportional split, {descs[i]} is not met (got {_gib(P[i])} GiB)"
                     )
@@ -632,9 +629,8 @@ class GinOverlapPrimitive:
                 keep.append((a, e, q))
                 occ = sorted(keep)
                 if s == 1:
-                    if (
-                        pq < 0
-                    ):  # in step 2 a bucket covers at least its own copy from step 1
+                    # in step 2 a bucket covers at least its own copy from step 1
+                    if pq < 0:
                         raise RuntimeError(
                             f"gin_overlap: no predecessor found for bucket {b} (internal error)"
                         )
@@ -758,8 +754,6 @@ class GinOverlapPrimitive:
             arrival counter / the start of the bucket's intra-node arrival counters.
           - the owner also has n_inter (number of inter-node senders) and intra (node-local indices of the
             intra-node senders); a sender also has intra_owner (whether the owner is on the same node)."""
-        import zlib
-
         p = self.recv_pool
         nd = len(self.dense_bucket_numels)
         tab = {}
@@ -776,7 +770,10 @@ class GinOverlapPrimitive:
             ml = self.rank_in_node if kind == "dense" else self.moe_rank_in_node
             for b in buckets:
                 k, idx = b._gin_bucket_id
-                assert k == kind, (k, kind)
+                if k != kind:
+                    raise RuntimeError(
+                        f"gin_overlap: 2D bucket {b._gin_bucket_id} is listed as a {kind} bucket"
+                    )
                 _, npad, o = b._gin_owner_bucket
                 if kind == "dense":
                     grp, S, me, soff, slot = (
@@ -786,11 +783,7 @@ class GinOverlapPrimitive:
                         self.dense_offsets[idx][0],
                         idx,
                     )
-                    assert npad == self.dense_bucket_numels[idx], (
-                        idx,
-                        npad,
-                        self.dense_bucket_numels[idx],
-                    )
+                    want = self.dense_bucket_numels[idx]
                 else:
                     grp, S, me = (
                         GROUP_MOE,
@@ -798,10 +791,10 @@ class GinOverlapPrimitive:
                         self.expert_group_rank,
                     )
                     soff, slot = self.moe_offsets[idx][0], nd + idx
-                    assert npad == self.moe_bucket_numels[idx], (
-                        idx,
-                        npad,
-                        self.moe_bucket_numels[idx],
+                    want = self.moe_bucket_numels[idx]
+                if npad != want:
+                    raise RuntimeError(
+                        f"gin_overlap: 2D bucket ({kind!r}, {idx}) has padded numel {npad}, the engine laid out {want}"
                     )
                 m = npad // S
                 ent = {
@@ -825,22 +818,17 @@ class GinOverlapPrimitive:
                 if k == kind
             ]
 
-        def same(obj, group):
-            h = zlib.crc32(repr(obj).encode()) & 0x7FFFFFFF
-            v = paddle.to_tensor([h, -h], dtype="int64")
-            dist.all_reduce(v, op=dist.ReduceOp.MAX, group=group)
-            return int(v[0]) == -int(v[1])
-
-        ok = same(
-            (p["gather_dense"][:2], nd, self.ranks_per_node, sig("dense")),
-            self.world,
+        dense_table = (
+            p["gather_dense"][:2],
+            nd,
+            self.ranks_per_node,
+            sig("dense"),
         )
+        checks = [(dense_table, self.world)]
         if moe_group is not None and self.moe_bucket_numels:
-            ok = same((p["gather_moe"][:2], len(self.moe_bucket_numels), self.moe_ranks_per_node, sig("moe")),
-                      moe_group) and ok  # fmt: skip
-        v = paddle.to_tensor([int(ok)], dtype="int32")
-        dist.all_reduce(v, op=dist.ReduceOp.MIN, group=self.world)
-        if int(v[0]) != 1:
+            moe_table = (p["gather_moe"][:2], len(self.moe_bucket_numels), self.moe_ranks_per_node, sig("moe"))  # fmt: skip
+            checks.append((moe_table, moe_group))
+        if not _all_ranks_same(checks, self.world):
             raise RuntimeError(
                 "gin_overlap: the 2D-bucket table (bucket id / send window offset / per-shard size / owner) or the "
                 "offsets of the gather counters in the host window differ between ranks (dense must match across the "
