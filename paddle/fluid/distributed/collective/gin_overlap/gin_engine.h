@@ -431,13 +431,15 @@ class GradCommEngine {
                 size_t credit_intra_offset,
                 size_t credit_inter_offset,
                 size_t credit_moe_offset);
+  // Returns the slot of the recorded mark (>= 0), or -1 on any failure
   int record_window_mark();
 
   int alloc_host_counters(int group,
                           size_t want_bytes,
                           uintptr_t* cpu_ptr,
                           size_t* nbytes);
-  int join_bucket_streams(int is_dense, int bucket);
+  // kind: 0 = dense bucket, 1 = expert bucket (as in bucket_ready)
+  int join_bucket_streams(int kind, int bucket);
   int scale_range(int group, size_t send_offset, long long numel, float scale);
   int end_step();
   void stats(unsigned long long* out3);
@@ -446,7 +448,7 @@ class GradCommEngine {
   // The next three run on the gate stream of the 2D gather
   // (g_stream_gather_gate)
   int gather_gate(int mark);
-  int gather_wait_bucket(int is_dense, int bucket);
+  int gather_wait_bucket(int kind, int bucket);
   int gather_mark_ready(int slot);
   int gather_join(int slot);
 };
