@@ -540,14 +540,11 @@ int submit_dense_intra_node_copy(int bucket,
                                   &attrs_idx,
                                   1,
                                   g_stream_intra_node_copy));
-  {
-    const int rc = launch_signal_intra_arrive(arrive_slots,
-                                              ranks_per_node,
-                                              rank_in_node,
-                                              seq,
-                                              g_stream_intra_node_copy);
-    if (rc) return rc;
-  }
+  GIN_CHECK(launch_signal_intra_arrive(arrive_slots,
+                                       ranks_per_node,
+                                       rank_in_node,
+                                       seq,
+                                       g_stream_intra_node_copy));
   CUDA_CHECK(cudaEventRecord(g_event_intra_node_copy[bucket],
                              g_stream_intra_node_copy));
   g_intra_node_bytes +=
@@ -572,18 +569,15 @@ int submit_dense_intra_node_reduce(int bucket,
   const int ranks_per_node = comm_group.ranks_per_node,
             rank_in_node = comm_group.rank_in_node;
   CUDA_CHECK(cudaStreamWaitEvent(g_stream_intra_node_reduce, mark_event, 0));
-  {
-    const int rc =
-        launch_reduce_intra_node((float4*)(comm_group.send + send_offset),
-                                 (const float4*)(comm_group.recv + recv_offset),
-                                 numel / 4,
-                                 ranks_per_node,
-                                 comm_group.num_nodes,
-                                 rank_in_node,
-                                 num_blocks,
-                                 g_stream_intra_node_reduce);
-    if (rc) return rc;
-  }
+  GIN_CHECK(
+      launch_reduce_intra_node((float4*)(comm_group.send + send_offset),
+                               (const float4*)(comm_group.recv + recv_offset),
+                               numel / 4,
+                               ranks_per_node,
+                               comm_group.num_nodes,
+                               rank_in_node,
+                               num_blocks,
+                               g_stream_intra_node_reduce));
   if (ranks_per_node > 1) {
     LsaSlotPointers credit_slots;
     memset(&credit_slots, 0, sizeof(credit_slots));
@@ -593,9 +587,10 @@ int submit_dense_intra_node_reduce(int bucket,
             (unsigned long long*)(comm_group.lsa_host[l] +
                                   g_credit_intra_offset +
                                   8 * (size_t)rank_in_node);
-    const int rc = launch_signal_intra_node(
-        credit_slots, ranks_per_node, rank_in_node, g_stream_intra_node_reduce);
-    if (rc) return rc;
+    GIN_CHECK(launch_signal_intra_node(credit_slots,
+                                       ranks_per_node,
+                                       rank_in_node,
+                                       g_stream_intra_node_reduce));
   }
   CUDA_CHECK(cudaEventRecord(g_event_intra_node_reduce[bucket],
                              g_stream_intra_node_reduce));
@@ -625,22 +620,21 @@ int submit_dense_inter_node_put(int bucket,
   if (comm_group.num_nodes > 1) {
     // the peers receive the signal in their host window, so the host window is
     // passed as signal_window
-    const int rc = launch_put_to_node_peers(comm_group.dev_comm,
-                                            comm_group.win_recv,
-                                            comm_group.win_send,
-                                            comm_group.win_host,
-                                            send_offset,
-                                            recv_offset,
-                                            signal_offset,
-                                            numel,
-                                            comm_group.ranks_per_node,
-                                            comm_group.num_nodes,
-                                            comm_group.node_index,
-                                            comm_group.rank_in_node,
-                                            comm_group.num_gin_contexts,
-                                            num_blocks,
-                                            g_stream_put);
-    if (rc) return rc;
+    GIN_CHECK(launch_put_to_node_peers(comm_group.dev_comm,
+                                       comm_group.win_recv,
+                                       comm_group.win_send,
+                                       comm_group.win_host,
+                                       send_offset,
+                                       recv_offset,
+                                       signal_offset,
+                                       numel,
+                                       comm_group.ranks_per_node,
+                                       comm_group.num_nodes,
+                                       comm_group.node_index,
+                                       comm_group.rank_in_node,
+                                       comm_group.num_gin_contexts,
+                                       num_blocks,
+                                       g_stream_put));
     *num_signals = comm_group.num_nodes - 1;
     g_inter_node_bytes +=
         (unsigned long long)(comm_group.num_nodes - 1) * numel * 4;
@@ -670,20 +664,19 @@ int submit_moe_put(int bucket,
             expert_group_rank = comm_group.rank;
   CUDA_CHECK(cudaStreamWaitEvent(g_stream_put, mark_event, 0));
   if (expert_group_size > 1) {
-    const int rc = launch_put_to_expert_peers(comm_group.dev_comm,
-                                              comm_group.win_recv,
-                                              comm_group.win_send,
-                                              comm_group.win_host,
-                                              recv_offset,
-                                              send_offset,
-                                              signal_offset,
-                                              numel,
-                                              expert_group_size,
-                                              expert_group_rank,
-                                              comm_group.num_gin_contexts,
-                                              num_blocks,
-                                              g_stream_put);
-    if (rc) return rc;
+    GIN_CHECK(launch_put_to_expert_peers(comm_group.dev_comm,
+                                         comm_group.win_recv,
+                                         comm_group.win_send,
+                                         comm_group.win_host,
+                                         send_offset,
+                                         recv_offset,
+                                         signal_offset,
+                                         numel,
+                                         expert_group_size,
+                                         expert_group_rank,
+                                         comm_group.num_gin_contexts,
+                                         num_blocks,
+                                         g_stream_put));
     *num_signals = expert_group_size - 1;
     g_inter_node_bytes +=
         (unsigned long long)(expert_group_size - 1) * numel * 4;
@@ -715,20 +708,17 @@ int submit_dense_inter_node_reduce(int bucket,
                  (size_t)(comm_group.node_index * comm_group.ranks_per_node +
                           comm_group.rank_in_node) *
                      numel;
-  {
-    const int rc = launch_reduce_dense_shard(
-        shard,
-        (const float*)(comm_group.recv + recv_offset),
-        numel,
-        comm_group.num_nodes,
-        comm_group.node_index,
-        scale,
-        num_blocks > 0 ? num_blocks : blocks_for_numel(numel),
-        g_stream_shard_reduce);
-    if (rc) return rc;
-  }
+  GIN_CHECK(launch_reduce_dense_shard(
+      shard,
+      (const float*)(comm_group.recv + recv_offset),
+      numel,
+      comm_group.num_nodes,
+      comm_group.node_index,
+      scale,
+      num_blocks > 0 ? num_blocks : blocks_for_numel(numel),
+      g_stream_shard_reduce));
   if (comm_group.num_nodes > 1) {
-    const int rc = launch_signal_credit(
+    GIN_CHECK(launch_signal_credit(
         comm_group.dev_comm,
         comm_group.win_host,
         g_credit_inter_offset + 8 * (size_t)comm_group.node_index,
@@ -738,8 +728,7 @@ int submit_dense_inter_node_reduce(int bucket,
         comm_group.ranks_per_node,
         comm_group.num_gin_contexts,
         (comm_group.num_nodes + 127) / 128,
-        g_stream_shard_reduce);
-    if (rc) return rc;
+        g_stream_shard_reduce));
   }
   CUDA_CHECK(cudaEventRecord(g_event_dense_inter_node_reduce[bucket],
                              g_stream_shard_reduce));
@@ -766,20 +755,17 @@ int submit_moe_reduce(int bucket,
   CUDA_CHECK(cudaStreamWaitEvent(g_stream_shard_reduce, mark_event, 0));
   float* shard = (float*)(comm_group.send + send_offset) +
                  (size_t)expert_group_rank * numel;
-  {
-    const int rc = launch_reduce_moe_shard(
-        shard,
-        (const float*)(comm_group.recv + recv_offset),
-        numel,
-        expert_group_size,
-        expert_group_rank,
-        scale,
-        num_blocks > 0 ? num_blocks : blocks_for_numel(numel),
-        g_stream_shard_reduce);
-    if (rc) return rc;
-  }
+  GIN_CHECK(launch_reduce_moe_shard(
+      shard,
+      (const float*)(comm_group.recv + recv_offset),
+      numel,
+      expert_group_size,
+      expert_group_rank,
+      scale,
+      num_blocks > 0 ? num_blocks : blocks_for_numel(numel),
+      g_stream_shard_reduce));
   if (expert_group_size > 1) {
-    const int rc = launch_signal_credit(
+    GIN_CHECK(launch_signal_credit(
         comm_group.dev_comm,
         comm_group.win_host,
         g_credit_moe_offset + 8 * (size_t)expert_group_rank,
@@ -789,8 +775,7 @@ int submit_moe_reduce(int bucket,
         1,
         comm_group.num_gin_contexts,
         (expert_group_size + 127) / 128,
-        g_stream_shard_reduce);
-    if (rc) return rc;
+        g_stream_shard_reduce));
   }
   CUDA_CHECK(
       cudaEventRecord(g_event_moe_reduce[bucket], g_stream_shard_reduce));
@@ -801,12 +786,10 @@ int submit_moe_reduce(int bucket,
 // Makes `stream` wait on the side-stream events of one bucket: intra-node
 // copy / put / shard reduce for a dense bucket, put / shard reduce for an
 // expert bucket
-static int join_bucket_streams_on(int is_dense,
-                                  int bucket,
-                                  cudaStream_t stream) {
+static int join_bucket_streams_on(int kind, int bucket, cudaStream_t stream) {
   if (!g_buckets_ready) return (int)cudaErrorNotReady;
-  if (bucket < 0) return (int)cudaErrorInvalidValue;
-  if (is_dense) {
+  if ((kind != 0 && kind != 1) || bucket < 0) return (int)cudaErrorInvalidValue;
+  if (kind == 0) {
     if (bucket >= (int)g_event_intra_node_copy.size() ||
         bucket >= (int)g_event_dense_put.size() ||
         bucket >= (int)g_event_dense_inter_node_reduce.size())
@@ -827,15 +810,15 @@ static int join_bucket_streams_on(int is_dense,
 
 // The compute stream waits on this bucket's stage events (called per bucket in
 // reduce_gradients)
-int GradCommEngine::join_bucket_streams(int is_dense, int bucket) {
+int GradCommEngine::join_bucket_streams(int kind, int bucket) {
   GIN_COMPUTE_STREAM(compute_stream);
-  return join_bucket_streams_on(is_dense, bucket, compute_stream);
+  return join_bucket_streams_on(kind, bucket, compute_stream);
 }
 
 // The gate stream of the 2D gather waits on this bucket's stage events
-int GradCommEngine::gather_wait_bucket(int is_dense, int bucket) {
+int GradCommEngine::gather_wait_bucket(int kind, int bucket) {
   if (!g_gather_ready || !g_stream_gather_gate) return (int)cudaErrorNotReady;
-  return join_bucket_streams_on(is_dense, bucket, g_stream_gather_gate);
+  return join_bucket_streams_on(kind, bucket, g_stream_gather_gate);
 }
 
 // [send_offset, send_offset + 4*numel) of the group's send window *= scale (on
@@ -846,8 +829,11 @@ int GradCommEngine::scale_range(int group,
                                 float scale) {
   if (!is_valid_group(group)) return (int)cudaErrorInvalidValue;
   CommGroup& comm_group = group_at(group);
-  if (!comm_group.send ||
-      send_offset + (size_t)numel * 4 > comm_group.send_bytes) {
+  if (!comm_group.send) return (int)cudaErrorNotReady;
+  // written so that nothing can wrap around: numel < 0 and offsets past the
+  // window are rejected before the subtraction
+  if (numel < 0 || send_offset > comm_group.send_bytes ||
+      (size_t)numel > (comm_group.send_bytes - send_offset) / 4) {
     return (int)cudaErrorInvalidValue;
   }
   GIN_COMPUTE_STREAM(compute_stream);
@@ -866,9 +852,8 @@ int GradCommEngine::end_step() {
   for (int group_index = 0; group_index < NUM_GROUPS; ++group_index) {
     CommGroup& comm_group = group_at(group_index);
     if (!comm_group.dev_comm_ready || comm_group.num_gin_contexts < 1) continue;
-    const int rc = launch_gin_flush(
-        comm_group.dev_comm, comm_group.num_gin_contexts, compute_stream);
-    if (rc) return rc;
+    GIN_CHECK(launch_gin_flush(
+        comm_group.dev_comm, comm_group.num_gin_contexts, compute_stream));
   }
   return 0;
 }
@@ -894,8 +879,8 @@ void GradCommEngine::stats(unsigned long long* out3) {
 // slot = the event index of the 2D bucket: the bucket id for a dense bucket,
 // number of dense buckets + bucket id for an expert bucket.
 int GradCommEngine::gather_setup(int num_slots) {
-  if (!g_buckets_ready || g_gather_ready || num_slots < 0)
-    return (int)cudaErrorNotReady;
+  if (!g_buckets_ready || g_gather_ready) return (int)cudaErrorNotReady;
+  if (num_slots < 0) return (int)cudaErrorInvalidValue;
   CUDA_CHECK(
       cudaStreamCreateWithFlags(&g_stream_gather_put, cudaStreamNonBlocking));
   CUDA_CHECK(
@@ -914,14 +899,8 @@ int GradCommEngine::gather_setup(int num_slots) {
       NCCL_CHECK(ncclGetLsaDevicePointer(
           comm_group.win_send, 0, l, (void**)&comm_group.lsa_send[l]));
   }
-  {
-    const int rc = preload_put_kernels();
-    if (rc) return rc;
-  }
-  {
-    const int rc = preload_signal_kernels();
-    if (rc) return rc;
-  }
+  GIN_CHECK(preload_put_kernels());
+  GIN_CHECK(preload_signal_kernels());
   CUDA_CHECK(cudaDeviceSynchronize());
   g_gather_ready = 1;
   return 0;
@@ -971,13 +950,17 @@ int gather_put_to_owner(int group,
                         unsigned long long seq,
                         int* num_signals,
                         cudaEvent_t wait_event) {
-  const size_t numel = (size_t)shard_numel;
   *num_signals = 0;
-  if (!g_gather_ready || !is_valid_group(group)) return (int)cudaErrorNotReady;
+  if (!g_gather_ready) return (int)cudaErrorNotReady;
+  if (!is_valid_group(group) || shard_numel < 0)
+    return (int)cudaErrorInvalidValue;
+  const size_t numel = (size_t)shard_numel;
   CommGroup& comm_group = group_at(group);
+  // bounds written so that nothing can wrap around
   if (slot < 0 || slot >= (int)g_event_gather_put.size() || owner < 0 ||
       owner >= comm_group.size || owner == comm_group.rank ||
-      (send_offset & 3) || send_offset + numel * 4 > comm_group.send_bytes)
+      (send_offset & 3) || send_offset > comm_group.send_bytes ||
+      numel > (comm_group.send_bytes - send_offset) / 4)
     return (int)cudaErrorInvalidValue;
   CUDA_CHECK(cudaStreamWaitEvent(g_stream_gather_put, wait_event, 0));
   if (owner / comm_group.ranks_per_node == comm_group.node_index) {
@@ -1001,26 +984,24 @@ int gather_put_to_owner(int group,
                                     &attrs_idx,
                                     1,
                                     g_stream_gather_put));
-    const int rc = launch_store_release(
+    GIN_CHECK(launch_store_release(
         (unsigned long long*)(comm_group.lsa_host[l] + intra_arrive_offset),
         seq,
-        g_stream_gather_put);
-    if (rc) return rc;
+        g_stream_gather_put));
     g_intra_node_bytes += bytes;
   } else {
     if (arrive_offset & 7) return (int)cudaErrorInvalidValue;
-    const int rc = launch_put_to_owner(comm_group.dev_comm,
-                                       comm_group.win_send,
-                                       send_offset,
-                                       comm_group.win_send,
-                                       send_offset,
-                                       comm_group.win_host,
-                                       arrive_offset,
-                                       numel,
-                                       owner,
-                                       comm_group.num_gin_contexts,
-                                       g_stream_gather_put);
-    if (rc) return rc;
+    GIN_CHECK(launch_put_to_owner(comm_group.dev_comm,
+                                  comm_group.win_send,
+                                  send_offset,
+                                  comm_group.win_send,
+                                  send_offset,
+                                  comm_group.win_host,
+                                  arrive_offset,
+                                  numel,
+                                  owner,
+                                  comm_group.num_gin_contexts,
+                                  g_stream_gather_put));
     *num_signals = 1;
     g_inter_node_bytes += (unsigned long long)numel * 4;
   }
