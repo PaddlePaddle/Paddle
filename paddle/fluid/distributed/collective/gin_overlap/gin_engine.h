@@ -12,95 +12,135 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// gin_engine.h —— gin_overlap 的总声明：全局状态（window、侧流、event、
-// 偏移）、错误检查宏、各阶段的提交函数、放行层接口，以及导出给 Python 的
-// GradCommEngine 类。
+// gin_engine.h: everything gin_overlap declares. Global state (windows, side
+// streams, events, offsets), error-check macros, the per-stage submit
+// functions, the release layer interface, and GradCommEngine, the class
+// exported to Python.
 //
-// gin_overlap 把 sharding stage1 每个梯度桶的 reduce_scatter 拆成几个
-// 阶段，用 NCCL 的 GIN 单边写分步完成，每个阶段在反向里单独提交到 GPU。
-// 这里是 C++ 侧的完整说明，其它文件只引用这里。
+// gin_overlap splits the reduce_scatter of each sharding-stage1 gradient
+// bucket into stages built on NCCL GIN one-sided puts. Each stage is submitted
+// to the GPU on its own during the backward pass. This header is the complete
+// description of the C++ side; other files refer to it.
 //
-// 术语
-//   - 桶（bucket）：一块连续显存，装着若干参数的梯度；通信以桶为单位。
-//   - 分片（shard）：桶按通信组切开后，本卡负责的那一片。
-//   - GIN：NCCL 的 GPU-Initiated Networking。这里只用它的单边写 put：
-//     把本卡一段数据写进对端的 window，对端 GPU 不参与。
-//   - LSA：NCCL 设备 API 里「同一节点、能用指针直接访问」的那组卡
-//     （Load/Store Accessible）。lsaRank / lsaSize = 本卡在节点内的
-//     序号 / 节点内的卡数。
-//   - devcomm：ncclDevComm，kernel 里调用 GIN / LSA 用的通信器句柄。
-//   - CE：拷贝引擎（copy engine）。cudaMemcpyBatchAsync 走它，不占 SM。
-//   - window：注册给 NCCL 的对称内存，对端能单边读写。每个通信组一套
-//     send / recv / signal 三块显存 window，外加一块 host window（CPU
-//     内存，放计数）。signal window 只占位，计数实际写在 host window 的
-//     同一偏移上。send window 里各桶那一段就是该桶的 grad_storage
-//     （send_window_tensor 包成张量，零拷贝）。
-//   - 窗口（时间上的）：反向里 DeepEP 不占网卡或不占 SM 的一段时间。
-//   - mark：计算流上记的 cudaEvent。提交到 GPU 的工作先等 mark，所以
-//     不会早于这个时刻开始，梯度也已经写完。
-//   - 放行：判断某个桶的某个阶段现在可以做，并把它提交到 GPU。
-//   - credit：接收方用完接收池里的一个槽后，给发送方的计数 +1，叫「发
-//     credit」。发送方看到计数达标，才能往那个槽里写。
-//   - owner：Muon 2D 桶最终归哪张卡，那张卡就是这个桶的 owner。
-//   - 组内序号：通信组内部的 rank 编号，不是 world rank。
-//   - 尾部线程：放行层的后台线程，本步最后一个窗口之后由它放行。
+// Terms
+//   - bucket: a contiguous block of device memory holding the gradients of
+//     several parameters; communication works on whole buckets.
+//   - shard: the part of a bucket this rank owns after the bucket is split
+//     across the communication group.
+//   - GIN: NCCL GPU-Initiated Networking. Only its one-sided put is used: it
+//     writes a range of local data into a peer's window without involving the
+//     peer GPU.
+//   - LSA: in the NCCL device API, the ranks of one node that can reach each
+//     other's memory through plain pointers (Load/Store Accessible). lsaRank /
+//     lsaSize are this rank's index in the node / the number of ranks in it.
+//   - devcomm: ncclDevComm, the communicator handle that kernels use for GIN
+//     and LSA calls.
+//   - CE: copy engine. cudaMemcpyBatchAsync runs on it and takes no SMs.
+//   - window: symmetric memory registered with NCCL that peers can read and
+//     write one-sidedly. Each communication group has three device windows
+//     (send / recv / signal) and one host window (CPU memory that holds the
+//     counters). The signal window only reserves the offsets: counters are
+//     written to the same offset of the host window. A bucket's grad_storage
+//     is its range of the send window (send_window_tensor wraps it as a
+//     tensor without copying).
+//   - overlap window: a span of the backward pass in which DeepEP leaves the
+//     NIC or the SMs idle. Window A / B and the pre window below are overlap
+//     windows, and so is the "window" in record_window_mark.
+//   - mark: a cudaEvent recorded on the compute stream. Work submitted to the
+//     GPU waits on a mark first, so it cannot start earlier than that point
+//     and the gradients it reads are already written.
+//   - release: deciding that one stage of one bucket may run now, and
+//     submitting it to the GPU. The release layer (release.cu) makes that
+//     decision.
+//   - credit: after a receiver is done with a slot of its recv pool, it adds
+//     1 to a counter of the sender ("returns a credit"). The sender writes to
+//     that slot again only once the counter reaches its target.
+//   - owner: the rank a Muon 2D bucket finally belongs to.
+//   - group rank: a rank's index inside a communication group, not its world
+//     rank.
+//   - tail thread: the background thread of the release layer. It releases
+//     everything that is left after the last overlap window of a step.
 //
-// 通信组
-//   - dense 桶走 sharding 组（GROUP_DENSE），专家桶走 moe_sharding 组
-//     （GROUP_MOE）。两组各有自己的 ncclComm、devcomm 和 window。
-//   - 组内必须按节点分块：rank_in_node = rank % ranks_per_node，
-//     node_index = rank / ranks_per_node。
+// Communication groups
+//   - Dense buckets use the sharding group (GROUP_DENSE), expert buckets the
+//     moe_sharding group (GROUP_MOE). Each group has its own ncclComm, devcomm
+//     and windows.
+//   - Ranks of a group must be laid out node-major:
+//     rank_in_node = rank % ranks_per_node, node_index = rank / ranks_per_node.
 //
-// dense 桶的四个阶段。卡 (node_index, rank_in_node) 负责第 rank_in_node
-// 列，即块 {n * ranks_per_node + rank_in_node | n = 0..num_nodes-1}：
-//   1. 机内拷贝：CE 把本卡在第 l 列的各块推进同节点卡 l 的 recv window
-//      机内段里本卡那一行，再写卡 l 的 host window 里的机内到达格。
-//   2. 机内求和：本列各块 = 本节点各卡对应块之和，原地写回 grad，作为
-//      put 的源；之后给同节点其余卡发机内 credit。
-//   3. 机间 put：本列第 n 块发给节点 n 上同卡号的卡，写进它机间段的第
-//      node_index 行，同时它 host window 里本桶的 signal 计数 +1。
-//   4. 分片求和：本卡分片 = 各节点部分和之和 × scale；之后给其余节点
-//      同卡号的卡发机间 credit。
-// 专家桶两个阶段：put 给专家组其余各卡，再做分片求和、发专家 credit。
-// Muon 2D 桶：分片求和之后，再把本卡分片 gather 到 owner（跨节点用 GIN
-// put，同节点用 CE + release store）。
+// The four stages of a dense bucket. Rank (node_index, rank_in_node) owns
+// column rank_in_node, i.e. the blocks
+// {n * ranks_per_node + rank_in_node | n = 0..num_nodes-1}:
+//   1. intra-node copy: the CE copies this rank's blocks of column l into this
+//      rank's row of the intra-node segment of rank l's recv window (l is a
+//      rank of the same node), then writes this rank's intra-node arrival
+//      counter in rank l's host window.
+//   2. intra-node reduce: each block of this rank's column becomes the sum of
+//      the matching blocks of all ranks of the node, written back in place
+//      into grad; it is the source of the put. Then an intra-node credit is
+//      returned to the other ranks of the node.
+//   3. inter-node put: block n of this column goes to the rank with the same
+//      rank_in_node on node n, into row node_index of its inter-node segment;
+//      the put also adds 1 to that rank's signal counter of this bucket in
+//      its host window.
+//   4. shard reduce: this rank's shard = (sum of the partial sums of all
+//      nodes) * scale. Then an inter-node credit is returned to the ranks with
+//      the same rank_in_node on the other nodes.
+// An expert bucket has two stages: the expert put to every other rank of the
+// expert group, then the shard reduce and an expert credit.
+// A Muon 2D bucket additionally gathers this rank's shard to the owner after
+// the shard reduce (GIN put across nodes, CE + release store within a node).
 //
-// 「分片求和」在代码里叫 inter_node_reduce（dense）、moe_reduce（专家），
-// 两者合称 shard_reduce（如 g_stream_shard_reduce、ADVANCE_SHARD_REDUCE）。
+// In names, the shard reduce is inter_node_reduce for dense buckets and
+// moe_reduce for expert buckets; shard_reduce covers both (for example
+// g_stream_shard_reduce, ADVANCE_SHARD_REDUCE).
 //
-// 接收池（recv window）
-//   - dense 组的 recv window = [机内段][机间段]，专家组的 = [专家段]。
-//   - 每段是一个环：桶按固定放行顺序依次占一个槽，放不下就绕回段首，
-//     所以同一段里可以有多个桶同时在途。
-//   - 一个槽被新桶复用之前，接收方必须已经用完占着它的那个桶，并发了
-//     credit。
+// Recv pool (the recv window)
+//   - The dense group's recv window is [intra-node segment][inter-node
+//     segment]; the expert group's is [expert segment].
+//   - Each segment is a ring: buckets take one slot each in the fixed release
+//     order and wrap to the start of the segment when the rest does not fit,
+//     so several buckets of one segment can be in flight at once.
+//   - Before a new bucket reuses a slot, the receiver must be done with the
+//     bucket that held it and have returned the credit.
 //
-// host window 布局（每组一块 HOST_NUMA 内存，每格一个 u64，偏移由
-// Python 侧算好传进来）
-//   - dense 组：
-//     - [signal_offset]：每个 dense 桶一格，机间 put 带的 GIN signal。
-//     - [intra_arrive + (bucket*16 + l)*8]：机内到达格，同节点发送卡 l
-//       写入本桶已提交的机内拷贝次数。
-//     - [credit_intra + 8*l]：同节点卡 l 做完一次机内求和后 +1。
-//     - [credit_inter + 8*n]：节点 n 同卡号的卡做完一次分片求和后 +1。
-//     - 2D 桶 gather 的到达格。
-//   - 专家组：
-//     - [signal_offset]：每个专家桶一格，专家 put 带的 GIN signal。
-//     - [credit_moe + 8*k]：组内序号 k 做完一次分片求和后 +1。
-//     - 2D 桶 gather 的到达格。
+// Host window layout (one HOST_NUMA allocation per group, one u64 per
+// counter; Python computes the offsets and passes them in)
+//   - dense group:
+//     - [signal_offset]: one counter per dense bucket, the GIN signal carried
+//       by the inter-node put.
+//     - [intra_arrive + (bucket*16 + l)*8]: intra-node arrival counters.
+//       Sender l of the same node writes how many intra-node copies of this
+//       bucket it has submitted.
+//     - [credit_intra + 8*l]: +1 each time rank l of the node finishes an
+//       intra-node reduce.
+//     - [credit_inter + 8*n]: +1 each time the rank with the same
+//       rank_in_node on node n finishes a shard reduce.
+//     - arrival counters of the 2D-bucket gather.
+//   - expert group:
+//     - [signal_offset]: one counter per expert bucket, the GIN signal carried
+//       by the expert put.
+//     - [credit_moe + 8*k]: +1 each time group rank k finishes a shard reduce.
+//     - arrival counters of the 2D-bucket gather.
 //
-// 约束
-//   - 计数跨步累加、只增不减；CPU 不能写这些格子，也不能清零。
-//   - 同一个 u64 不能既有网卡原子写又有 GPU 写：signal 格和机间 / 专家
-//     credit 只由网卡写，机内到达格和机内 credit 只由 GPU 写。
-//   - 每张发送卡只写自己那一个机内到达格，同一格不能有多个写者。
-//   - 每个阶段必须按固定放行顺序提交到 GPU，所有 rank 的顺序必须相同；
-//     credit 的目标值是按这个顺序算的。
-//   - 提交到 GPU 的工作只等本卡的 event（计算流上的 mark、本卡侧流的
-//     event），不能等远端计数。远端计数由放行层（release.cu）在 CPU 上
-//     读 host window 判断。
-//   - 每个桶每步都必须走完全部阶段，否则后面的 credit 永远等不到。
-//   - 放行状态任何时刻只能有一个写者：主线程（advance）或尾部线程。
+// Constraints
+//   - Counters accumulate across steps and only grow. The CPU never writes or
+//     clears them.
+//   - A u64 is written either by the NIC (atomics) or by the GPU, never both:
+//     signal counters and inter-node / expert credits are written only by the
+//     NIC, intra-node arrival counters and intra-node credits only by the GPU.
+//   - Each sender writes only its own intra-node arrival counter; a counter
+//     has exactly one writer.
+//   - Every stage is submitted in the fixed release order, which must be the
+//     same on all ranks; credit targets are computed from that order.
+//   - Work submitted to the GPU waits only on local events (marks on the
+//     compute stream, events of local side streams), never on remote
+//     counters. The release layer reads remote counters from the host window
+//     on the CPU.
+//   - Every bucket goes through all of its stages every step; otherwise later
+//     credits never arrive.
+//   - The release state has one writer at any time: the main thread (advance)
+//     or the tail thread.
 #pragma once
 
 #include <cstddef>
@@ -119,7 +159,8 @@
 
 namespace gin_overlap {
 
-// 返回码：0 成功；<10000 = cudaError_t；>=10000 = 10000 + ncclResult_t
+// Return codes: 0 = success; < 10000 = cudaError_t; >= 10000 = 10000 +
+// ncclResult_t.
 #define CUDA_CHECK(x)                          \
   do {                                         \
     cudaError_t _err = (x);                    \
@@ -130,47 +171,50 @@ namespace gin_overlap {
     ncclResult_t _res = (x);                           \
     if (_res != ncclSuccess) return 10000 + (int)_res; \
   } while (0)
-// 驱动 API 出错：打印 CUresult，再返回 cudaErrorUnknown（CUresult 和
-// cudaError_t 的编号不通用）
-#define CUDA_DRIVER_CHECK(x)                    \
-  do {                                          \
-    CUresult _res = (x);                        \
-    if (_res != CUDA_SUCCESS) {                 \
-      const char* _msg = nullptr;               \
-      cuGetErrorString(_res, &_msg);            \
-      fprintf(stderr,                           \
-              "[gin_overlap] %s 失败: %d %s\n", \
-              #x,                               \
-              (int)_res,                        \
-              _msg ? _msg : "?");               \
-      return (int)cudaErrorUnknown;             \
-    }                                           \
+// Driver API failure: prints the CUresult, then returns cudaErrorUnknown
+// (CUresult and cudaError_t use different numbering).
+#define CUDA_DRIVER_CHECK(x)                      \
+  do {                                            \
+    CUresult _res = (x);                          \
+    if (_res != CUDA_SUCCESS) {                   \
+      const char* _msg = nullptr;                 \
+      cuGetErrorString(_res, &_msg);              \
+      fprintf(stderr,                             \
+              "[gin_overlap] %s failed: %d %s\n", \
+              #x,                                 \
+              (int)_res,                          \
+              _msg ? _msg : "?");                 \
+      return (int)cudaErrorUnknown;               \
+    }                                             \
   } while (0)
 
 // ----------------------------------------------------------------
-// 通信组：每组一套 ncclComm、devcomm 和 window（分组方式见文件头）。
-// 组内寻址一律用组内序号。
+// Communication groups: one ncclComm, devcomm and window set per group (see
+// the file header). Addressing inside a group always uses group ranks.
 enum { GROUP_DENSE = 0, GROUP_MOE = 1, NUM_GROUPS = 2 };
 
 struct CommGroup {
   ncclComm_t comm = nullptr;
   ncclDevComm_t dev_comm{};
-  int num_gin_contexts =
-      0;  // devcomm 实际给的 GIN context 数（put kernel 按 blockIdx 轮转）
-  int size = 0, rank = 0;  // 组大小、本卡组内序号
-  int ranks_per_node = 1;  // 一个节点上的组内成员数（= dev_comm.lsaSize）
-  int rank_in_node = 0;  // 本卡在节点内的序号（= dev_comm.lsaRank）
-  int num_nodes = 1;     // 组内节点数
-  int node_index = 0;    // 本卡所在节点的序号
+  // GIN contexts the devcomm actually provides (the put kernels pick one by
+  // blockIdx)
+  int num_gin_contexts = 0;
+  int size = 0, rank = 0;  // group size, this rank's group rank
+  int ranks_per_node = 1;  // group members per node (= dev_comm.lsaSize)
+  int rank_in_node = 0;    // this rank's index in the node (= dev_comm.lsaRank)
+  int num_nodes = 1;       // nodes in the group
+  int node_index = 0;      // index of this rank's node
   ncclWindow_t win_send{}, win_recv{}, win_signal{}, win_host{};
-  char* send = nullptr;  // send window：本组各桶的 grad_storage
-  char* recv = nullptr;  // dense 组 = [机内段][机间段]；专家组 = [专家段]
-  char* signal = nullptr;  // 只占位：计数写在 host window 的同一偏移
-  char* host = nullptr;  // host window 的 CPU 地址（放行层从这里读计数）
+  char* send = nullptr;  // send window: grad_storage of this group's buckets
+  // dense group = [intra-node segment][inter-node segment];
+  // expert group = [expert segment]
+  char* recv = nullptr;
+  char* signal = nullptr;  // offsets only: counters live in the host window
+  char* host = nullptr;    // CPU address of the host window (read by release)
   size_t send_bytes = 0, host_bytes = 0;
   CUmemGenericAllocationHandle host_handle = 0;
-  char* lsa_recv[16] =
-      {};  // 同节点卡 l 的 recv / signal / host / send window 起点
+  // start of the recv / signal / host / send window of node-local rank l
+  char* lsa_recv[16] = {};
   char* lsa_signal[16] = {};
   char* lsa_host[16] = {};
   char* lsa_send[16] = {};
@@ -189,39 +233,41 @@ inline const char* group_name(int group) {
 }
 
 // ----------------------------------------------------------------
-// 全局状态（gin_engine.cc 里定义）
-extern int g_device_id;  // 本进程用的卡（set_comms 里设）
-extern cudaStream_t g_stream_intra_node_copy;    // 机内拷贝
-extern cudaStream_t g_stream_intra_node_reduce;  // 机内求和
-extern cudaStream_t g_stream_put;                // dense put + 专家 put
-extern cudaStream_t g_stream_shard_reduce;       // dense + 专家分片求和
+// Global state (defined in gin_engine.cc)
+extern int g_device_id;  // device of this process (set in set_comms)
+extern cudaStream_t g_stream_intra_node_copy;    // intra-node copy
+extern cudaStream_t g_stream_intra_node_reduce;  // intra-node reduce
+extern cudaStream_t g_stream_put;                // dense put + expert put
+extern cudaStream_t g_stream_shard_reduce;       // dense + expert shard reduce
 extern std::vector<cudaEvent_t> g_event_intra_node_copy,
     g_event_intra_node_reduce, g_event_dense_put, g_event_moe_put;
 extern std::vector<cudaEvent_t> g_event_dense_inter_node_reduce,
     g_event_moe_reduce;
-extern std::vector<cudaEvent_t> g_window_marks;  // 窗口 mark 环（循环复用）
+extern std::vector<cudaEvent_t> g_window_marks;  // window mark ring (reused)
 extern int g_window_mark_index;
 extern unsigned long long g_inter_node_bytes, g_intra_node_bytes;
-// credit 区在 host window 里的字节偏移：机内 / 机间在 dense 组的 host
-// window，专家在专家组的 host window
+// Byte offsets of the credit areas in the host windows: intra-node /
+// inter-node in the dense group's host window, expert in the expert group's
 extern size_t g_credit_intra_offset, g_credit_inter_offset, g_credit_moe_offset;
 extern int g_buckets_ready;
-extern cudaStream_t g_stream_gather_put;  // 2D 桶 gather：发送方的 put / CE
-// 2D 桶 gather 的门流（gather_setup 里建）：只放 cudaStreamWaitEvent 和
-// cudaEventRecord，不放 kernel
+// 2D-bucket gather: the sender's put / CE
+extern cudaStream_t g_stream_gather_put;
+// Gate stream of the 2D-bucket gather (created in gather_setup): only
+// cudaStreamWaitEvent and cudaEventRecord go on it, no kernels
 extern cudaStream_t g_stream_gather_gate;
-extern std::vector<cudaEvent_t>
-    g_event_gather_source;  // 每 slot 一个：本卡分片求和之后
-extern std::vector<cudaEvent_t>
-    g_event_gather_put;  // 每 slot 一个：本卡的 gather put / CE 之后
+// one per slot: after this rank's shard reduce
+extern std::vector<cudaEvent_t> g_event_gather_source;
+// one per slot: after this rank's gather put / CE
+extern std::vector<cudaEvent_t> g_event_gather_put;
 extern int g_gather_ready;
 
 // ----------------------------------------------------------------
-// Paddle 当前计算流（实现在 paddle_tensor.cc），和 Python 的
-// paddle.device.current_stream() 是同一条流。取不到时打印原因并返回错误码，
-// 不退回默认流。
+// Paddle's current compute stream (implemented in paddle_tensor.cc), the same
+// stream as Python's paddle.device.current_stream(). On failure it prints the
+// reason and returns an error code; it never falls back to the default stream.
 int paddle_compute_stream(cudaStream_t* out);
-// 取当前计算流；取不到时让所在的方法带着错误码返回
+// Gets the current compute stream; on failure the enclosing method returns
+// the error code
 #define GIN_COMPUTE_STREAM(var)                         \
   cudaStream_t var = nullptr;                           \
   do {                                                  \
@@ -230,10 +276,11 @@ int paddle_compute_stream(cudaStream_t* out);
   } while (0)
 
 // ----------------------------------------------------------------
-// 各阶段的提交函数：把一个桶的某个阶段提交到 GPU（发 kernel 或 CE 拷贝，
-// 记 event）。只由 release.cu 的 release_next_* 调用；调用前远端条件已经
-// 满足。mark_event = 这次工作要先等的 mark（主线程传窗口 mark，尾部线程
-// 传尾部 mark）。
+// Per-stage submit functions: submit one stage of one bucket to the GPU
+// (launch a kernel or a CE copy, record an event). Only release_next_* in
+// release.cu calls them, after the remote conditions are met. mark_event is
+// the mark this work waits on first (the main thread passes a window mark,
+// the tail thread a tail mark).
 int submit_dense_intra_node_copy(int bucket,
                                  size_t recv_offset,
                                  size_t send_offset,
@@ -255,7 +302,8 @@ int submit_dense_inter_node_put(int bucket,
                                 int num_blocks,
                                 cudaEvent_t mark_event,
                                 int* num_signals);
-// 专家桶的两个阶段：组大小和本卡组内序号取自 expert_group()
+// The two stages of an expert bucket: group size and this rank's group rank
+// come from expert_group()
 int submit_moe_put(int bucket,
                    size_t recv_offset,
                    size_t send_offset,
@@ -278,9 +326,10 @@ int submit_moe_reduce(int bucket,
                       float scale,
                       int num_blocks,
                       cudaEvent_t mark_event);
-// 2D 桶 gather 的发送：跨节点用 k_put_to_owner，同节点用 CE +
-// k_store_release。group = GROUP_DENSE / GROUP_MOE；owner 是该组的组内序号；
-// wait_event = g_stream_gather_put 先等的本卡 event
+// Send side of the 2D-bucket gather: k_put_to_owner across nodes, CE +
+// k_store_release within a node. group = GROUP_DENSE / GROUP_MOE; owner is a
+// group rank of that group; wait_event = the local event g_stream_gather_put
+// waits on first
 int gather_put_to_owner(int group,
                         int slot,
                         size_t send_offset,
@@ -293,9 +342,10 @@ int gather_put_to_owner(int group,
                         cudaEvent_t wait_event);
 
 // ----------------------------------------------------------------
-// 放行层（release.cu）：判断某个桶的某个阶段能不能提交到 GPU，并提交。
-// 主线程（advance）和尾部线程用同一份判断和同一份状态。
-// 阶段编号。Python 侧按名字取（constants），数值不能改
+// Release layer (release.cu): decides whether one stage of one bucket can be
+// submitted to the GPU, and submits it. The main thread (advance) and the tail
+// thread share the same decision code and the same state.
+// Stage ids. Python reads them by name (constants); the values must not change
 namespace release {
 enum {
   STAGE_DENSE_INTRA_NODE_COPY = 1,
@@ -308,9 +358,11 @@ enum {
 enum {
   STAGE_GATHER_DENSE = 10,
   STAGE_GATHER_MOE = 11
-};  // 2D 桶 gather put（Muon）
-// advance 的阶段集合，按位或。窗口 A / B（DeepEP 刚结束，网卡空）用机内拷贝
-// + put；pre 窗口（计算流在等 DeepEP，SM 空）用机内求和 + 分片求和。
+};  // 2D-bucket gather put (Muon)
+// Stage sets for advance, OR-ed together. Window A / B (DeepEP has just
+// finished, the NIC is idle) uses intra-node copy + put; the pre window (the
+// compute stream waits for DeepEP, the SMs are idle) uses intra-node reduce +
+// shard reduce.
 enum {
   ADVANCE_INTRA_NODE_COPY = 1,
   ADVANCE_INTRA_NODE_REDUCE = 2,
@@ -348,8 +400,9 @@ int status(std::vector<int>& positions6,
 int stuck_report(std::vector<long long>& flat);
 int get_last_error(int* out3);
 int get_current_activity();
-// 导出给 Python 的常量表（名字 → 数值）：ADVANCE_* / STAGE_* / COUNTER_* /
-// TAIL_*。数值只在 release.cu 里定义；Python 侧必须按名字取，不能自己写数值
+// Constant table exported to Python (name -> value): ADVANCE_* / STAGE_* /
+// COUNTER_* / TAIL_*. The values are defined only in release.cu; Python must
+// read them by name and never hard-code them
 int constants(std::vector<std::string>& names, std::vector<int>& values);
 int setup_gather_table(const std::vector<long long>& table);
 int gather_put_entry(int entry_index, unsigned long long seq, int* num_signals);
@@ -358,9 +411,10 @@ int get_gather_sent(std::vector<long long>& flat);
 }  // namespace release
 
 // ----------------------------------------------------------------
-// 按 ring id（Python 侧通信组对象的 .id）取 Paddle ProcessGroup 已有的
-// ncclComm_t，同时返回组大小和本卡序号（实现在 paddle_comm.cc）。
-// 返回非 0 时 *out_err 是原因。
+// Gets the ncclComm_t that Paddle's ProcessGroup already holds for a ring id
+// (the .id of the Python group object), together with the group size and this
+// rank's rank (implemented in paddle_comm.cc). On a non-zero return, *out_err
+// holds the reason.
 int paddle_nccl_comm(int ring_id,
                      int device_id,
                      ncclComm_t* out_comm,
@@ -369,29 +423,34 @@ int paddle_nccl_comm(int ring_id,
                      std::string* out_err);
 
 // ----------------------------------------------------------------
-// GradCommEngine：导出成 paddle.base.core.gin_overlap.GradCommEngine
-// （注册在 paddle/fluid/pybind/gin_overlap_api.cc），进程内只有一个对象。
-// Python 侧按名字调用这些方法，方法名和 py::arg 名字不能改。
-// 约定：
-//   - 返回 int 返回码：0 成功，<10000 = cudaError_t，>=10000 = 10000 +
-//     ncclResult_t。多个返回值走出参，gin_overlap_api.cc 包成 tuple。
-//   - 指针按 uintptr_t 传；group = GROUP_DENSE(0) / GROUP_MOE(1)；
-//     offset 是对应 window 里的字节偏移；numel / shard_numel 是元素数。
-//   - 流不从 Python 传。排在计算流上的方法自己取 paddle_compute_stream；
-//     gather_gate / gather_wait_bucket / gather_mark_ready 排在
-//     g_stream_gather_gate 上。
-//   - send_window_tensor / copy_2d（实现在 paddle_tensor.cc）出错时抛异常，
-//     不返回错误码。
-// 调用顺序：
-//   - 初始化：set_comms → alloc_windows → alloc_host_counters →
-//     create_dev_comm → set_group_topology → configure →（Muon）
-//     gather_setup → release_setup。
-//   - 每步反向：record_window_mark → advance（窗口里放行）→ tail_mark /
-//     tail_start / bucket_ready / tail_all_posted / tail_wait / tail_finish
-//     （尾部线程）→ join_bucket_streams → end_step → release_step_reset。
-//   - 查放行进度：release_status / release_stuck_report。
-// 专家桶的阶段名（submit_moe_put / submit_moe_reduce）不带 intra_node /
-// inter_node：专家桶没有机内阶段，而且专家组的 peer 可能在同一节点上。
+// GradCommEngine: exported as paddle.base.core.gin_overlap.GradCommEngine
+// (registered in paddle/fluid/pybind/gin_overlap_api.cc); one object per
+// process. Python calls these methods by name, so method names and py::arg
+// names must not change.
+// Conventions:
+//   - Methods return an int code: 0 = success, < 10000 = cudaError_t,
+//     >= 10000 = 10000 + ncclResult_t. Extra results go through out-params,
+//     which gin_overlap_api.cc packs into a tuple.
+//   - Pointers are passed as uintptr_t; group = GROUP_DENSE(0) / GROUP_MOE(1);
+//     an offset is a byte offset in the matching window; numel / shard_numel
+//     count elements.
+//   - Streams are never passed from Python. Methods that run on the compute
+//     stream get it through paddle_compute_stream; gather_gate /
+//     gather_wait_bucket / gather_mark_ready run on g_stream_gather_gate.
+//   - send_window_tensor / copy_2d (implemented in paddle_tensor.cc) throw on
+//     error instead of returning a code.
+// Call order:
+//   - init: set_comms -> alloc_windows -> alloc_host_counters ->
+//     create_dev_comm -> set_group_topology -> configure -> (Muon)
+//     gather_setup -> release_setup.
+//   - each backward pass: record_window_mark -> advance (release inside a
+//     window) -> tail_mark / tail_start / bucket_ready / tail_all_posted /
+//     tail_wait / tail_finish (tail thread) -> join_bucket_streams ->
+//     end_step -> release_step_reset.
+//   - release progress: release_status / release_stuck_report.
+// The expert stages (submit_moe_put / submit_moe_reduce) have no intra_node /
+// inter_node in their names: expert buckets have no intra-node stage, and
+// expert peers may sit on the same node.
 class GradCommEngine {
  public:
   GradCommEngine() = default;
@@ -400,8 +459,9 @@ class GradCommEngine {
   static int nccl_runtime_version();
   static int nccl_build_version();
 
-  // 取 Paddle 已有的 comm。ring id < 0 = 不用这个组（没有专家桶）。
-  // 取不到，或组大小 / 序号和传入的不一致时返回错误，err 是原因
+  // Takes Paddle's existing comms. A ring id < 0 means the group is unused
+  // (no expert buckets). Returns an error, with the reason in err, when a comm
+  // cannot be found or its size / rank differs from the values passed in
   int set_comms(int dense_ring_id,
                 int expert_ring_id,
                 int device_id,
@@ -420,9 +480,10 @@ class GradCommEngine {
                       int* lsa_rank,
                       int* lsa_size);
   int set_group_topology(int group, int num_nodes, int node_index);
-  // 桶数只在这里传入：建侧流、每桶 event、窗口 mark 环，并收下 host window
-  // 里三块 credit 区的字节偏移（dense 组的 credit_intra / credit_inter，
-  // 专家组的 credit_moe）
+  // The only place bucket counts are passed in: creates the side streams,
+  // per-bucket events and the window mark ring, and takes the byte offsets of
+  // the three credit areas in the host windows (credit_intra / credit_inter in
+  // the dense group, credit_moe in the expert group)
   int configure(int num_dense_buckets,
                 int num_moe_buckets,
                 int num_window_marks,
@@ -440,7 +501,7 @@ class GradCommEngine {
   int end_step();
   void stats(unsigned long long* out3);
 
-  // ---- 放行层（release.cu）的 Python 入口
+  // ---- Python entry points of the release layer (release.cu)
   int release_setup(const std::vector<int>& dense_order,
                     const std::vector<int>& moe_order,
                     const std::vector<long long>& dense_table,
@@ -476,12 +537,14 @@ class GradCommEngine {
   int tail_gather_get_sent(std::vector<long long>& flat);
 
   int gather_setup(int num_slots);
-  // 下面三个排在 2D gather 的门流上（g_stream_gather_gate）
+  // The next three run on the gate stream of the 2D gather
+  // (g_stream_gather_gate)
   int gather_gate(int mark);
   int gather_wait_bucket(int is_dense, int bucket);
   int gather_mark_ready(int slot);
-  // 主线程发一个 2D 桶的 gather put：只给表项下标和本步序号，slot / 偏移 /
-  // owner 从 release::setup_gather_table 建的表里查
+  // Main thread sends the gather put of one 2D bucket: only the table index
+  // and this step's sequence number are passed; slot / offsets / owner come
+  // from the table built by release::setup_gather_table
   int gather_put_entry(int entry_index,
                        unsigned long long seq,
                        int* num_signals);

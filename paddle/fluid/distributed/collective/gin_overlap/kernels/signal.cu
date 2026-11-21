@@ -12,17 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// signal.cu —— 写计数格的小 kernel：机内 credit、发 credit、机内到达格、
-// release store，以及初始化时取同节点各卡 host window 的设备侧地址。
-// 这些格子都在对端的 host window 上（布局见 gin_engine.h 文件头），写法有两种：
-//   - 同节点：经 LSA 指针直接写对端卡的 host window。
-//   - 跨节点：GIN signal，由网卡做原子加。
+// signal.cu: small kernels that write counters: intra-node credits, credits,
+// intra-node arrival counters, a release store, and, at init, the
+// device-side addresses of the host windows of the node's ranks.
+// All of these counters live in a peer's host window (layout in the
+// gin_engine.h file header) and are written in one of two ways:
+//   - within the node: directly through the LSA pointer of the peer's host
+//     window.
+//   - across nodes: as a GIN signal, an atomic add done by the NIC.
 #include "paddle/fluid/distributed/collective/gin_overlap/kernels/kernels.h"
 
 namespace gin_overlap {
 namespace {
 
-// 同节点其余卡（跳过 skip_rank）的机内 credit 格 +1（系统级原子加）
+// Adds 1 to the intra-node credit counter of every other rank of the node
+// (skipping skip_rank) (system-scope atomic add)
 __global__ void k_signal_intra_node(LsaSlotPointers counter_slots,
                                     int ranks_per_node,
                                     int skip_rank) {
@@ -33,10 +37,10 @@ __global__ void k_signal_intra_node(LsaSlotPointers counter_slots,
   }
 }
 
-// 发 credit：第 k 个 peer（组内序号 peer_base + k*peer_stride，k 跳过
-// skip_rank）的 signal_window 在 signal_offset 处的 VA signal +1，只发 signal
-// 不带数据（ncclGin::signal）。一个线程负责一个 peer。signal_window 传 host
-// window。
+// Returns a credit: adds 1 to the VA signal at signal_offset of signal_window
+// of peer k (group rank peer_base + k*peer_stride; k == skip_rank is
+// skipped), signal only, no data (ncclGin::signal). One thread per peer.
+// signal_window is the host window.
 __global__ void k_signal_credit(ncclDevComm dev_comm,
                                 ncclWindow_t signal_window,
                                 size_t signal_offset,
@@ -54,17 +58,19 @@ __global__ void k_signal_credit(ncclDevComm dev_comm,
              ncclCoopThread());
 }
 
-// 写机内到达格。线程 l（l < ranks_per_node，跳过 skip_rank = 本卡）把 seq
-// 写进 arrive_slots.per_rank[l]，即接收卡 l 的 host window 里「本桶 × 本卡」
-// 那一格。
-//   - seq = 本卡这个桶已提交的机内拷贝次数，从 1 开始单调递增。
-//   - 每张发送卡只写自己那一格，同一格不能有多个写者；写的是绝对值，不是
-//     加 1。
-//   - 写法：__threadfence_system()，再 st.release.sys（system scope 的
-//     release store，generic 地址）。
-//   - 机内拷贝的数据由同一条流上前面的 cudaMemcpyBatchAsync 写入，靠流顺序
-//     保证本 kernel 开始前拷贝已完成。拷贝引擎写的数据对接收端 CPU 的可见性
-//     没有验证过。
+// Writes intra-node arrival counters. Thread l (l < ranks_per_node, skipping
+// skip_rank = this rank) writes seq into arrive_slots.per_rank[l], the
+// "this bucket x this rank" counter in the host window of receiver l.
+//   - seq = how many intra-node copies of this bucket this rank has
+//     submitted, starting at 1 and strictly increasing.
+//   - Each sender writes only its own counter, so a counter has exactly one
+//     writer; the value written is absolute, not an increment.
+//   - How: __threadfence_system(), then st.release.sys (system-scope release
+//     store on a generic address).
+//   - The copied data is written by the cudaMemcpyBatchAsync queued before
+//     this kernel on the same stream; stream order makes the copy finish
+//     before this kernel starts. Whether data written by the copy engine is
+//     visible to the receiving CPU has not been verified.
 __global__ void k_signal_intra_arrive(LsaSlotPointers arrive_slots,
                                       int ranks_per_node,
                                       int skip_rank,
@@ -78,9 +84,11 @@ __global__ void k_signal_intra_arrive(LsaSlotPointers arrive_slots,
   }
 }
 
-// 一个线程把 value 用 st.release.sys 写进 dst。用于 2D 桶 gather：同节点
-// 发送方 CE 拷完本卡分片之后，写 owner host window 里「本桶 × 本卡」的到达格。
-// 单写者，写法和数据顺序同 k_signal_intra_arrive。
+// One thread writes value into dst with st.release.sys. Used by the 2D-bucket
+// gather: after the CE of an intra-node sender has copied its shard, this
+// writes the "this bucket x this rank" arrival counter in the owner's host
+// window. Single writer; same store and data ordering as
+// k_signal_intra_arrive.
 __global__ void k_store_release(unsigned long long* dst,
                                 unsigned long long value) {
   if (threadIdx.x || blockIdx.x) return;
@@ -89,9 +97,9 @@ __global__ void k_store_release(unsigned long long* dst,
                : "memory");
 }
 
-// 取同节点各卡 host window 的设备侧地址（只在 configure 里调一次）：
-// out_pointers[l] = 节点内序号为 l 的卡的 host window 起点（设备侧
-// ncclGetLsaPointer）。
+// Device-side addresses of the host windows of the node's ranks (called only
+// once, in configure): out_pointers[l] = start of the host window of the rank
+// with node-local index l (device-side ncclGetLsaPointer).
 __global__ void k_host_window_lsa_pointers(ncclWindow_t window,
                                            int ranks_per_node,
                                            void** out_pointers) {

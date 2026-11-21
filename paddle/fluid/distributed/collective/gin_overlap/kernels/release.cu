@@ -12,31 +12,40 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// release.cu —— 放行层：判断一个桶的某个阶段现在能不能提交到 GPU，能就调
-// gin_engine.cc 的 submit_* 提交。术语和约束见 gin_engine.h 文件头。
+// release.cu: the release layer. Decides whether one stage of one bucket can
+// be submitted to the GPU now and, if so, submits it through the submit_*
+// functions of gin_engine.cc. Terms and constraints are in the gin_engine.h
+// file header.
 //
-// 放行者有两个，共用同一份判断（release_next_*）和同一份每步状态：
-//   - 主线程：每个窗口里调 advance()，按调用方给的阶段集合把能放的都放，
-//     然后立即返回。
-//   - 尾部线程：本步最后一个窗口之后，主线程调 tail_start() 把放行交给它；
-//     它循环调 release_next_*，直到本步全部放完。
-// 任何时刻只能有一个写者：尾部线程只在 RUN 状态改每步状态，advance() 只在
-// IDLE 状态放行，两边都先拿 control->mutex。
+// Two releasers share the same decision code (release_next_*) and the same
+// per-step state:
+//   - the main thread: calls advance() in each overlap window, releases
+//     whatever the stage set given by the caller allows, and returns at once.
+//   - the tail thread: after the last overlap window of a step, the main
+//     thread calls tail_start() to hand off to it; it keeps calling
+//     release_next_* until the whole step is released.
+// There is one writer at any time: the tail thread changes the per-step state
+// only in RUN, advance() releases only in IDLE, and both take control->mutex
+// first.
 //
-// 交给尾部线程之后，主线程只能调：
-//   - bucket_ready：某个桶的梯度凑齐了，或者换了新 mark。
-//   - set_all_posted：本步所有桶都已 post。
-//   - wait_for_step_end：等尾部线程离开 RUN（条件变量，不轮询）。
-//   - tail_finish：尾部线程停下后收尾，回到 IDLE。
+// After the hand-off the main thread may only call:
+//   - bucket_ready: a bucket's gradients are complete, or a new mark is given.
+//   - set_all_posted: every bucket of this step has been posted.
+//   - wait_for_step_end: waits for the tail thread to leave RUN (on a condition
+//     variable, no polling).
+//   - tail_finish: cleans up after the tail thread stops; back to IDLE.
 //
-// mark
-//   - 主线程放行用窗口 mark 环（g_window_marks，循环复用）。
-//   - 尾部线程用单独的 tail_marks 环：每步从 0 号槽顺序使用，一步内一个槽只记
-//     一次，用满时报错，不能绕回；下标在 step_reset 清零。
+// Marks
+//   - The main thread releases against the window mark ring (g_window_marks,
+//     reused in a cycle).
+//   - The tail thread uses its own tail_marks ring: each step uses the slots
+//     in order from slot 0, each slot at most once per step; running out is an
+//     error, there is no wrap-around. The index is cleared in step_reset.
 //
-// 调用方（Python 侧）决定什么时候推进、每个窗口试哪些阶段、求和用多少 block；
-// 这里决定每个桶能不能放并提交到 GPU。查放行进度用 status() /
-// stuck_report()。
+// The caller (Python) decides when to advance, which stages to try in each
+// window and how many blocks the reduce kernels get; this layer decides
+// whether each bucket can be released and submits it. Release progress is
+// available from status() / stuck_report().
 #include <algorithm>
 #include <atomic>
 #include <chrono>
@@ -56,108 +65,132 @@ namespace gin_overlap {
 namespace release {
 namespace {
 
-// 尾部线程的状态：
-//   - IDLE：主线程放行（包括步与步之间）。
-//   - RUN：尾部线程放行。
-//   - DONE / ERR / ABORTED：本步放完 / 出错停下 / 被叫停。
-// Python 侧按名字（TAIL_*）取这些数值。
+// States of the tail thread:
+//   - IDLE: the main thread releases (also between steps).
+//   - RUN: the tail thread releases.
+//   - DONE / ERR / ABORTED: step fully released / stopped on an error /
+//     stopped on request.
+// Python reads these values by name (TAIL_*).
 enum { IDLE = 0, RUN = 1, DONE = 2, ERR = 3, ABORTED = 4 };
-// 尾部线程既没有进展也没有新消息时，在条件变量上最多等这么久（微秒），再重新
-// 读远端计数。远端计数的变化不会唤醒线程，只能轮询。
+// When the tail thread has neither progress nor a new message, it waits on the
+// condition variable for at most this long (microseconds) before reading the
+// remote counters again. Changes of remote counters do not wake the thread, so
+// they can only be polled.
 const int POLL_INTERVAL_US = 10;
 
-// 主线程发给尾部线程的消息。kind：0 = dense 桶 bucket 的梯度凑齐了；1 = 专家
-// 桶 bucket 凑齐了；-1 = 没有新桶，只换 mark。scale = 这个桶分片求和时乘的
-// 系数。
+// Message from the main thread to the tail thread. kind: 0 = the gradients of
+// dense bucket `bucket` are complete; 1 = expert bucket `bucket` is complete;
+// -1 = no new bucket, only a new mark. scale = the factor applied in this
+// bucket's shard reduce.
 struct ReadyMessage {
   int kind, bucket, mark;
   float scale;
 };
-// 一个 dense 桶的固定参数。字段顺序和 setup 收到的扁平表一致：
+// Fixed parameters of one dense bucket. Field order matches the flat table
+// that setup receives:
 //   [send_offset, signal_offset, shard_numel, recv_offset_intra,
 //    recv_offset_inter, intra_depth, inter_depth]
-//   - *_offset：本组 window 里的字节偏移。
-//   - shard_numel：本卡分片的元素数。
-//   - *_depth：本桶和接收池这一段里上一个占用同一槽的桶之间，在放行序号上
-//     相差多少（见 credit_target）。-1 = 本桶在这一段没有槽，不用等 credit。
+//   - *_offset: byte offset in the group's window.
+//   - shard_numel: number of elements of this rank's shard.
+//   - *_depth: predecessor distance, i.e. how far apart in release sequence
+//     this bucket and the previous holder of the same slot of the segment are
+//     (see credit_target). -1 = the bucket has no slot in this segment and
+//     waits for no credit.
 struct DenseBucket {
   long long send_offset, signal_offset, shard_numel, recv_offset_intra,
       recv_offset_inter, intra_depth, inter_depth;
 };
-// 一个专家桶的固定参数：[send_offset, signal_offset, shard_numel,
-// recv_offset_moe, moe_depth]，含义同 DenseBucket。
+// Fixed parameters of one expert bucket: [send_offset, signal_offset,
+// shard_numel, recv_offset_moe, moe_depth], same meaning as DenseBucket.
 struct MoeBucket {
   long long send_offset, signal_offset, shard_numel, recv_offset_moe, moe_depth;
 };
 
-// 主线程和尾部线程共用的锁、两个条件变量和消息队列。这把锁也保护下面的每步
-// 放行状态。对象 new 出来后不能释放：进程退出时尾部线程可能还在等 cv。
+// Lock, two condition variables and message queue shared by the main thread
+// and the tail thread. The lock also protects the per-step release state
+// below. The object is never freed after new: at process exit the tail thread
+// may still wait on a cv.
 struct TailControl {
   std::mutex mutex;
-  std::condition_variable cv_proxy,
-      cv_main;  // cv_proxy 唤醒尾部线程，cv_main 唤醒等结果的主线程
+  // cv_proxy wakes the tail thread, cv_main wakes the main thread waiting for
+  // a result
+  std::condition_variable cv_proxy, cv_main;
   std::deque<ReadyMessage> queue;
   int state = IDLE;
   bool all_posted = false, abort = false, started = false;
-  int set_device_rc = 0;  // 尾部线程里 cudaSetDevice 的返回码
+  int set_device_rc = 0;  // return code of cudaSetDevice in the tail thread
 };
 TailControl* control = nullptr;
 int device_id = 0;
 
-// ---- setup 时设定，之后只读
-//   put_blocks 由 setup 传入，没有默认值。专家组大小和本卡组内序号直接读
-//   expert_group()。
+// ---- set in setup, read-only afterwards
+//   put_blocks comes from setup and has no default. The expert group size and
+//   this rank's group rank are read from expert_group().
 int num_dense_buckets = 0, num_moe_buckets = 0, put_blocks = 0;
-// host window 里各计数区的位置：intra_arrive_offset 是字节偏移，credit_*_word
-// 是 u64 下标（= g_credit_*_offset / 8）。机内到达区和机内 / 机间 credit 在
-// dense 组的 host window，专家 credit 在专家组的 host window。
+// Positions of the counter areas in the host windows: intra_arrive_offset is a
+// byte offset, credit_*_word is a u64 index (= g_credit_*_offset / 8). The
+// intra-node arrival area and the intra-node / inter-node credits are in the
+// dense group's host window, the expert credits in the expert group's.
 size_t intra_arrive_offset = 0, credit_intra_word = 0, credit_inter_word = 0,
        credit_moe_word = 0;
-// 固定放行顺序：*_release_order[位置] = 桶号，*_pos_in_order[桶号] = 位置
-// （互为反函数）。credit 目标按位置算（见 credit_target）。
+// Fixed release order: *_release_order[position] = bucket id,
+// *_pos_in_order[bucket id] = position (inverse of each other). Credit
+// targets are computed from positions (see credit_target).
 std::vector<int> dense_release_order, moe_release_order, dense_pos_in_order,
     moe_pos_in_order;
 std::vector<DenseBucket> dense_buckets;
 std::vector<MoeBucket> moe_buckets;
-std::vector<cudaEvent_t> tail_marks;  // 尾部 mark 环（见文件头）
-int tail_mark_index = 0;  // 本步已用的槽数；只有主线程改
+std::vector<cudaEvent_t> tail_marks;  // tail mark ring (see the file header)
+int tail_mark_index = 0;  // slots used in this step; only the main thread
+                          // changes it
 
-// ---- 每步的放行状态（主线程在 IDLE 时改，尾部线程在 RUN 时改）
-long long step = 0;  // 步号，credit 目标要用；由 step_reset 设定
-// 各阶段已放行到固定顺序里的哪个位置：
-//   - pos_dense_copy：dense 机内拷贝。
-//   - stage_positions[0..2]：dense 机内求和 / put / 分片求和。
-//   - pos_moe_put：专家 put。
-//   - stage_positions[3]：专家分片求和。
-// 一个阶段的待放行队列 = 它的位置到上一阶段位置之间的那些桶。
+// ---- per-step release state (changed by the main thread in IDLE, by the
+// tail thread in RUN)
+long long step = 0;  // step number used by credit targets; set by step_reset
+// Position in the fixed release order each stage has been released up to:
+//   - pos_dense_copy: dense intra-node copy.
+//   - stage_positions[0..2]: dense intra-node reduce / put / shard reduce.
+//   - pos_moe_put: expert put.
+//   - stage_positions[3]: expert shard reduce.
+// A stage's pending queue = the buckets between its position and the
+// position of the previous stage.
 int pos_dense_copy = 0, stage_positions[4] = {0, 0, 0, 0}, pos_moe_put = 0;
-// 本步哪些桶的梯度已经凑齐（调过 bucket_ready）。只在 step_reset 时清零。
+// Which buckets of this step have complete gradients (bucket_ready was
+// called). Cleared only in step_reset.
 std::vector<unsigned char> ready_dense, ready_moe;
-// 下面三个跨步累加，step_reset 不清零：
-//   - dense_copy_seq[桶]：本桶已提交的机内拷贝次数，写进接收卡的机内到达格。
-//   - dense_targets / moe_targets[桶]：本卡为本桶累计发出的 put 笔数。各卡
-//     对称，所以它也是本卡 signal 格应达到的值；分片求和等它。
+// These three accumulate across steps; step_reset does not clear them:
+//   - dense_copy_seq[bucket]: intra-node copies of this bucket submitted so
+//     far; written into the receivers' intra-node arrival counters.
+//   - dense_targets / moe_targets[bucket]: puts this rank has issued for this
+//     bucket so far. The ranks are symmetric, so this is also the value this
+//     rank's signal counter must reach; the shard reduce waits for it.
 std::vector<unsigned long long> dense_copy_seq, dense_targets, moe_targets;
-std::vector<float> dense_scales, moe_scales;  // 各桶分片求和时乘的系数
-// 机内求和 / 分片求和 kernel 的 block 数，每次 advance / tail_start 由调用方
-// 传入，没有默认值
+// factor applied in each bucket's shard reduce
+std::vector<float> dense_scales, moe_scales;
+// Block counts of the intra-node reduce / shard reduce kernels, passed by the
+// caller on every advance / tail_start; no default
 int intra_node_reduce_blocks = 0, shard_reduce_blocks = 0;
-// 本次提交要等的 mark：主线程放行时是 advance 传入的窗口 mark；尾部线程放行时
-// 是最近一条消息带的尾部 mark（刚交接时是 tail_start 传入的）
+// Mark the next submission waits on: for the main thread, the window mark
+// passed to advance; for the tail thread, the tail mark of the latest message
+// (right after the hand-off, the one passed to tail_start)
 cudaEvent_t current_mark = nullptr;
-// 尾部线程第一次看到「all_posted 且消息队列为空」时的六个位置和四个阶段的
-// 待放行桶数。posted_snapshot[0] = -1 表示本步还没到这一刻。只用于日志。
+// Six positions and pending counts of the four stages at the moment the tail
+// thread first sees "all_posted and the message queue is empty".
+// posted_snapshot[0] = -1 means that moment has not come yet in this step.
+// For logs only.
 int posted_snapshot[6], posted_counts[4];
-// 放行出错时记下：CUDA 返回码 / 阶段编号 / 桶号
+// Recorded on a release failure: CUDA return code / stage id / bucket id
 int err_rc = 0, err_stage = 0, err_bucket = -1;
-// current_activity 的编码倍率：阶段编号 * ACTIVITY_STAGE_SCALE + 桶号 + 1。
-// Python 侧按名字取这个数来解码
+// Encoding factor of current_activity: stage id * ACTIVITY_STAGE_SCALE +
+// bucket id + 1. Python reads this value by name to decode it
 constexpr int ACTIVITY_STAGE_SCALE = 1000000;
-// 正在做的提交：阶段 * ACTIVITY_STAGE_SCALE + 桶号 + 1；0 = 不在 CUDA 调用里
+// Submission in progress: stage * ACTIVITY_STAGE_SCALE + bucket id + 1;
+// 0 = not inside a CUDA call
 std::atomic<int> current_activity{0};
 
-// 读本卡 host window 的第 word_index 个 u64（acquire load，每次都从内存读）。
-// dense 桶的计数在 sharding 组的 host window，专家桶的在 moe_sharding 组的
+// Reads u64 number word_index of this rank's host window (acquire load, always
+// from memory). Dense bucket counters live in the sharding group's host
+// window, expert bucket counters in the moe_sharding group's
 inline unsigned long long host_counter(const CommGroup& comm_group,
                                        size_t word_index) {
   return __atomic_load_n(
@@ -171,10 +204,14 @@ inline unsigned long long moe_host_counter(size_t word_index) {
   return host_counter(expert_group(), word_index);
 }
 
-// 接收池某一段的 credit 目标值。第 step 步放行顺序第 position 个桶的序号是
-// step * 桶数 + position；它要用的槽上一个占用者的序号小 depth。对端每用完一个
-// 桶发一次 credit，credit 跨步累加，所以目标 = step * 桶数 + position - depth
-// + 1（小于 0 时取 0）。depth < 0 = 这一段没有槽，不用等。
+// Credit target of one recv pool segment. The bucket at position `position`
+// of the fixed release order in step `step` has sequence number
+// step * num_buckets + position; the previous holder of its slot has a
+// sequence number smaller by `depth` (the predecessor distance). The peer
+// returns one credit each time it is done with a bucket, and credits
+// accumulate across steps, so target = step * num_buckets + position - depth
+// + 1 (0 if negative). depth < 0 = no slot in this segment, nothing to wait
+// for.
 inline unsigned long long credit_target(long long num_buckets,
                                         long long position,
                                         long long depth) {
@@ -183,26 +220,29 @@ inline unsigned long long credit_target(long long num_buckets,
   return target > 0 ? (unsigned long long)target : 0ull;
 }
 
-// 下面六个 blocked_* 是各阶段的远端放行条件，只读本卡 host window 里的计数。
-// 返回 true = 还不能放。out 非空时填入等的是哪个计数、等谁、当前值和目标值
-// （stuck_report 用）。
+// The six blocked_* below are the remote release conditions of the stages;
+// they only read counters of this rank's host window. true = cannot release
+// yet. When out is non-null it receives which counter is awaited, from whom,
+// its current value and its target (used by stuck_report).
 struct Blocker {
-  int counter;  // COUNTER_*：等的是哪个计数（0 = 没卡住）
-  int sender;   // 第几个发送方（只有机内到达格用；其余 -1）
-  int peer;  // 对端的组内序号（-1 = 所有发送方共用的那一格）
-  unsigned long long value, target;  // 读到的值 / 目标值
+  int counter;  // COUNTER_*: which counter is awaited (0 = not blocked)
+  int sender;   // sender index (intra-node arrival counters only; else -1)
+  int peer;     // group rank of the peer (-1 = the counter shared by all
+                // senders)
+  unsigned long long value, target;  // value read / target value
 };
 enum {
-  COUNTER_INTRA_CREDIT = 1,  // 机内 credit
-  COUNTER_INTRA_ARRIVE = 2,  // 机内到达（某个发送方那一格）
-  COUNTER_INTER_CREDIT = 3,  // 机间 credit
-  COUNTER_MOE_CREDIT = 4,    // 专家 credit
-  COUNTER_INTER_SIGNAL = 5,  // 机间 signal（所有发送方合计）
-  COUNTER_MOE_SIGNAL = 6     // 专家 signal（所有发送方合计）
+  COUNTER_INTRA_CREDIT = 1,  // intra-node credit
+  COUNTER_INTRA_ARRIVE = 2,  // intra-node arrival (one sender's counter)
+  COUNTER_INTER_CREDIT = 3,  // inter-node credit
+  COUNTER_MOE_CREDIT = 4,    // expert credit
+  COUNTER_INTER_SIGNAL = 5,  // inter-node signal (all senders combined)
+  COUNTER_MOE_SIGNAL = 6     // expert signal (all senders combined)
 };
 
-// 机内拷贝能不能放：同节点其余各卡发来的机内 credit（[credit_intra + 8l]）都已
-// 达到目标，即它们机内段里本桶要用的槽已经空出来
+// Intra-node copy can be released when the intra-node credits from every
+// other rank of the node ([credit_intra + 8l]) have reached the target, i.e.
+// the slot of this bucket in their intra-node segments is free
 bool blocked_intra_node_copy(int bucket, Blocker* out) {
   const CommGroup& comm_group = dense_group();
   const unsigned long long target =
@@ -224,8 +264,10 @@ bool blocked_intra_node_copy(int bucket, Blocker* out) {
   }
   return false;
 }
-// 机内求和能不能放：本桶的机内到达格里，同节点其余每张发送卡那一格
-// （[intra_arrive + (桶*16 + l)*8]）都已达到本卡本桶的机内拷贝次数
+// Intra-node reduce can be released when, in this bucket's intra-node arrival
+// counters, the counter of every other sender of the node
+// ([intra_arrive + (bucket*16 + l)*8]) has reached this rank's intra-node copy
+// count of this bucket
 bool blocked_intra_node_reduce(int bucket, Blocker* out) {
   const CommGroup& comm_group = dense_group();
   const unsigned long long target = dense_copy_seq[bucket];
@@ -245,8 +287,8 @@ bool blocked_intra_node_reduce(int bucket, Blocker* out) {
   }
   return false;
 }
-// dense put 能不能放：其余各节点发来的机间 credit（[credit_inter + 8n]）都已
-// 达到目标
+// Dense put can be released when the inter-node credits from every other node
+// ([credit_inter + 8n]) have reached the target
 bool blocked_dense_inter_node_put(int bucket, Blocker* out) {
   const CommGroup& comm_group = dense_group();
   const unsigned long long target =
@@ -268,8 +310,8 @@ bool blocked_dense_inter_node_put(int bucket, Blocker* out) {
   }
   return false;
 }
-// 专家 put 能不能放：专家组其余各卡发来的专家 credit（[credit_moe + 8k]）都已
-// 达到目标
+// Expert put can be released when the expert credits from every other rank of
+// the expert group ([credit_moe + 8k]) have reached the target
 bool blocked_moe_put(int bucket, Blocker* out) {
   const CommGroup& comm_group = expert_group();
   const unsigned long long target = credit_target(
@@ -284,8 +326,8 @@ bool blocked_moe_put(int bucket, Blocker* out) {
   }
   return false;
 }
-// 分片求和能不能放：本桶的 signal 格已达到 dense_targets / moe_targets，即其余
-// 各卡的 put 都已到达本卡
+// Shard reduce can be released when this bucket's signal counter has reached
+// dense_targets / moe_targets, i.e. the puts of all other ranks have arrived
 bool blocked_dense_inter_node_reduce(int bucket, Blocker* out) {
   const unsigned long long value =
       dense_host_counter((size_t)dense_buckets[bucket].signal_offset / 8);
@@ -303,7 +345,8 @@ bool blocked_moe_reduce(int bucket, Blocker* out) {
   return true;
 }
 
-// 记下出错位置，返回 -1，调用方据此停止本步放行
+// Records where a failure happened and returns -1; the caller then stops
+// releasing for this step
 int record_failure(int rc, int stage, int bucket) {
   err_rc = rc;
   err_stage = stage;
@@ -311,35 +354,43 @@ int record_failure(int rc, int stage, int bucket) {
   return -1;
 }
 
-// ---- Muon 2D 桶 gather。尾部线程放完一个 2D 桶的分片求和后，立即把本卡分片
-// 发给 owner。主线程放的分片求和不在这里发 gather put，由调用方在窗口里调
-// gather_put_entry 发。
-//   - 表由 setup_gather_table 建；没建表时 gather_enabled = 0，不走这个分支。
-//   - 每个表项对应一个 2D 桶：kind、bucket、slot（event 下标）、本卡是不是
-//     owner、owner 的组内序号、本卡分片在 send window 的偏移 send_offset 和
-//     元素数 shard_numel、owner host window 上的到达格（跨节点用
-//     arrive_offset，同节点用 intra_arrive_offset）。
-//   - gather_seq[表项]：本步这一片的 put 序号（同节点时写进到达格的值），由
-//     set_gather_sequences 在交接前写入。0 = 本步不由尾部线程发。
-//   - gather_sent / gather_sent_seq：本步尾部线程发了哪些表项、用了什么序号，
-//     由 get_gather_sent 读出。
-//   - 这些状态和其它每步状态一样，只有尾部线程不在 RUN 时主线程才能读写。
+// ---- Muon 2D-bucket gather. After the tail thread releases the shard reduce
+// of a 2D bucket, it sends this rank's shard to the owner right away. Shard
+// reduces released by the main thread do not send the gather put here; the
+// caller sends it in a window through gather_put_entry.
+//   - The table is built by setup_gather_table; without it gather_enabled = 0
+//     and this path is not taken.
+//   - One entry per 2D bucket: kind, bucket, slot (event index), whether this
+//     rank is the owner, the owner's group rank, the offset send_offset and
+//     element count shard_numel of this rank's shard in the send window, and
+//     the arrival counter in the owner's host window (arrive_offset across
+//     nodes, intra_arrive_offset within the node).
+//   - gather_seq[entry]: put sequence number of this shard in this step (the
+//     value written into the arrival counter within a node), set by
+//     set_gather_sequences before the hand-off. 0 = the tail thread does not
+//     send it in this step.
+//   - gather_sent / gather_sent_seq: entries the tail thread sent in this step
+//     and the sequence numbers used, read by get_gather_sent.
+//   - Like the other per-step state, the main thread may read or write these
+//     only while the tail thread is not in RUN.
 struct GatherEntry {
   int kind, bucket, slot, is_owner, owner_rank;
   long long send_offset, shard_numel;
   size_t arrive_offset, intra_arrive_offset;
 };
 std::vector<GatherEntry> gather_entries;
-std::vector<int> gather_index_dense,
-    gather_index_moe;  // 桶号 → 表项下标，-1 = 不是 2D 桶
+// bucket id -> table index, -1 = not a 2D bucket
+std::vector<int> gather_index_dense, gather_index_moe;
 std::vector<unsigned long long> gather_seq;
 std::vector<int> gather_sent;
 std::vector<unsigned long long> gather_sent_seq;
 int gather_enabled = 0;
 
-// 尾部线程在一个桶的分片求和提交到 GPU 之后调。不是 2D 桶、或本卡是 owner 时
-// 什么都不做；否则让 g_stream_gather_put 等本桶分片求和的 event，再调
-// gather_put_to_owner，不等远端条件。返回 0 或 CUDA 错误码。
+// Called by the tail thread after the shard reduce of a bucket is submitted to
+// the GPU. Does nothing for a bucket that is not 2D or when this rank is the
+// owner; otherwise makes g_stream_gather_put wait on this bucket's shard
+// reduce event and calls gather_put_to_owner, without waiting on remote
+// conditions. Returns 0 or a CUDA error code.
 int send_gather_put_after_shard_reduce(int kind, int bucket) {
   const int entry_index =
       (kind ? gather_index_moe : gather_index_dense)[bucket];
@@ -348,7 +399,8 @@ int send_gather_put_after_shard_reduce(int kind, int bucket) {
   if (entry.is_owner) return 0;
   const unsigned long long seq = gather_seq[entry_index];
   if (seq == 0)
-    return (int)cudaErrorInvalidValue;  // 本步没给序号，或本步已经发过
+    return (int)cudaErrorInvalidValue;  // no sequence number in this step, or
+                                        // already sent in this step
   const int group = kind ? GROUP_MOE : GROUP_DENSE;
   int num_signals = 0;
   const int rc =
@@ -364,7 +416,8 @@ int send_gather_put_after_shard_reduce(int kind, int bucket) {
                           kind ? g_event_moe_reduce[bucket]
                                : g_event_dense_inter_node_reduce[bucket]);
   if (rc) return rc;
-  // 核对 signal 笔数：同节点走 CE 不发 signal（0），跨节点一笔 put 带一个（1）
+  // check the signal count: none within the node (CE), one per put across
+  // nodes
   const CommGroup& comm_group = group_at(group);
   if (num_signals !=
       ((entry.owner_rank / comm_group.ranks_per_node == comm_group.node_index)
@@ -378,18 +431,22 @@ int send_gather_put_after_shard_reduce(int kind, int bucket) {
   return 0;
 }
 
-// 下面四个 release_next_* 各管一个阶段：从固定顺序里下一个还没放的桶开始，
-// 能放的都放，遇到第一个不满足条件的桶就停（不能跳过它放后面的桶）。
-// 主线程和尾部线程都调这四个函数，区别只在 current_mark 和 block 数。
-// 返回 1 = 放了至少一个，0 = 一个都没放，-1 = CUDA 调用出错（已记入 err_*）。
+// Each of the four release_next_* handles one stage: starting at the next
+// unreleased bucket of the fixed release order, release every bucket that can
+// go and stop at the first one that cannot (later buckets are never released
+// ahead of it). Both the main thread and the tail thread call these; they
+// differ only in current_mark and the block counts.
+// Returns 1 = released at least one, 0 = none, -1 = a CUDA call failed
+// (recorded in err_*).
 int release_next_intra_node_copy() {
   int moved = 0;
   while (pos_dense_copy < num_dense_buckets) {
     const int bucket = dense_release_order[pos_dense_copy];
     if (!ready_dense[bucket] || blocked_intra_node_copy(bucket, nullptr))
-      break;  // 梯度还没凑齐，或接收卡的槽还没空出来
+      break;  // gradients not complete yet, or the receivers' slot is not free
     const DenseBucket& bucket_params = dense_buckets[bucket];
-    // 本卡在各接收卡机内到达区里的那一格（每张接收卡上偏移相同）
+    // this rank's counter in each receiver's intra-node arrival area (same
+    // offset on every receiver)
     const size_t arrive_slot_offset =
         intra_arrive_offset +
         ((size_t)bucket * 16 + dense_group().rank_in_node) * 8;
@@ -414,7 +471,8 @@ int release_next_intra_node_reduce() {
   int moved = 0;
   while (stage_positions[0] < num_dense_buckets) {
     const int bucket = dense_release_order[stage_positions[0]];
-    // 要求本桶的机内拷贝已放行，而且其余卡推来的行都已到达
+    // requires this bucket's intra-node copy to be released and the rows
+    // pushed by the other ranks to have arrived
     if (stage_positions[0] >= pos_dense_copy ||
         blocked_intra_node_reduce(bucket, nullptr))
       break;
@@ -439,7 +497,8 @@ int release_next_put() {
   int moved = 0, num_signals = 0;
   while (stage_positions[1] < num_dense_buckets) {
     const int bucket = dense_release_order[stage_positions[1]];
-    // 要求本桶的机内求和已放行，而且对端机间段的槽已空出来
+    // requires this bucket's intra-node reduce to be released and the slot in
+    // the peers' inter-node segment to be free
     if (stage_positions[1] >= stage_positions[0] ||
         blocked_dense_inter_node_put(bucket, nullptr))
       break;
@@ -464,7 +523,7 @@ int release_next_put() {
   while (pos_moe_put < num_moe_buckets) {
     const int bucket = moe_release_order[pos_moe_put];
     if (!ready_moe[bucket] || blocked_moe_put(bucket, nullptr))
-      break;  // 梯度还没凑齐，或对端的槽还没空出来
+      break;  // gradients not complete yet, or the peers' slot is not free
     const MoeBucket& bucket_params = moe_buckets[bucket];
     current_activity = STAGE_MOE_PUT * ACTIVITY_STAGE_SCALE + bucket + 1;
     const int rc = submit_moe_put(bucket,
@@ -483,16 +542,19 @@ int release_next_put() {
   }
   return moved;
 }
-// 分片求和比其它阶段多两个参数：
-//   - in_tail = 1（尾部线程调用）：放完一个 2D 桶的分片求和后立即发它的
-//     gather put（send_gather_put_after_shard_reduce）。
-//   - released 非空（主线程调用）：按放行顺序追加本次放了哪些分片求和，每个
-//     两个数 [kind, 桶号]。
+// The shard reduce takes two extra arguments:
+//   - in_tail = 1 (called by the tail thread): after releasing the shard
+//     reduce of a 2D bucket, send its gather put right away
+//     (send_gather_put_after_shard_reduce).
+//   - released non-null (called by the main thread): appends, in release
+//     order, the shard reduces released by this call, two numbers each
+//     [kind, bucket id].
 int release_next_shard_reduce(int in_tail, std::vector<int>* released) {
   int moved = 0;
   while (stage_positions[2] < num_dense_buckets) {
     const int bucket = dense_release_order[stage_positions[2]];
-    // 要求本桶的 put 已放行，而且其余卡的 put 都已到达
+    // requires this bucket's put to be released and the puts of all other
+    // ranks to have arrived
     if (stage_positions[2] >= stage_positions[1] ||
         blocked_dense_inter_node_reduce(bucket, nullptr))
       break;
@@ -514,7 +576,7 @@ int release_next_shard_reduce(int in_tail, std::vector<int>* released) {
       released->push_back(0);  // kind 0 = dense
       released->push_back(bucket);
     }
-    if (in_tail && gather_enabled) {  // 只有建了 2D 桶表才为 1
+    if (in_tail && gather_enabled) {  // 1 only when a 2D-bucket table exists
       current_activity = STAGE_GATHER_DENSE * ACTIVITY_STAGE_SCALE + bucket + 1;
       const int gather_rc = send_gather_put_after_shard_reduce(0, bucket);
       current_activity = 0;
@@ -541,10 +603,10 @@ int release_next_shard_reduce(int in_tail, std::vector<int>* released) {
     if (rc) return record_failure(rc, STAGE_MOE_REDUCE, bucket);
     ++stage_positions[3];
     if (released) {
-      released->push_back(1);  // kind 1 = 专家
+      released->push_back(1);  // kind 1 = expert
       released->push_back(bucket);
     }
-    if (in_tail && gather_enabled) {  // 专家 2D 桶，同上
+    if (in_tail && gather_enabled) {  // expert 2D bucket, as above
       current_activity = STAGE_GATHER_MOE * ACTIVITY_STAGE_SCALE + bucket + 1;
       const int gather_rc = send_gather_put_after_shard_reduce(1, bucket);
       current_activity = 0;
@@ -554,9 +616,10 @@ int release_next_shard_reduce(int in_tail, std::vector<int>* released) {
   }
   return moved;
 }
-// 尾部线程的一轮：分片求和 → 机内拷贝 → 机内求和 → put 各试一次。分片求和
-// 排在最前，因为它会空出接收池的槽。返回 1 = 有进展，0 = 没有，-1 = 出错。
-// 主线程不调这个函数。
+// One round of the tail thread: try shard reduce -> intra-node copy ->
+// intra-node reduce -> put once each. Shard reduce goes first because it frees
+// recv pool slots. Returns 1 = progress, 0 = none, -1 = error.
+// The main thread does not call this function.
 int release_pass_once() {
   int any_progress = 0, progress;
   if ((progress = release_next_shard_reduce(1, nullptr)) < 0) return -1;
@@ -568,9 +631,10 @@ int release_pass_once() {
   if ((progress = release_next_put()) < 0) return -1;
   return any_progress | progress;
 }
-// 四个阶段各有多少桶「已到这一阶段、还没放行」，顺序 = [机内拷贝, 机内求和,
-// put, 分片求和]（put 和分片求和含 dense 和专家）。机内拷贝和专家 put 只算已
-// ready 的桶。只用于日志。
+// How many buckets of each of the four stages have reached it but are not
+// released yet, in the order [intra-node copy, intra-node reduce, put, shard
+// reduce] (put and shard reduce count dense and expert). Intra-node copy and
+// expert put count only buckets that are ready. For logs only.
 void pending_counts(int* out4) {
   int ready_copy = 0, ready_moe_put = 0;
   for (int k = pos_dense_copy; k < num_dense_buckets; ++k)
@@ -583,7 +647,7 @@ void pending_counts(int* out4) {
   out4[3] = stage_positions[1] - stage_positions[2] + pos_moe_put -
             stage_positions[3];
 }
-// 本步是否全部放完：六个位置都到了末尾
+// Whether the whole step is released: all six positions are at the end
 bool is_step_done() {
   return pos_dense_copy >= num_dense_buckets &&
          stage_positions[0] >= num_dense_buckets &&
@@ -593,10 +657,13 @@ bool is_step_done() {
          stage_positions[3] >= num_moe_buckets;
 }
 
-// 尾部线程一步的主循环（RUN 期间只有本线程改每步状态）：取一条消息 → 反复
-// release_pass_once 直到没有进展 → 全部放完就返回 DONE。既没有消息也没有进展
-// 时，在条件变量上最多等 POLL_INTERVAL_US（新消息、all_posted、abort 都会唤醒
-// 它）。CUDA 调用必须在锁外做，否则会堵住主线程发消息。
+// Main loop of one tail-thread step (in RUN only this thread changes the
+// per-step state): take one message -> call release_pass_once until it makes
+// no progress -> return DONE once everything is released. With neither a
+// message nor progress, wait on the condition variable for at most
+// POLL_INTERVAL_US (a new message, all_posted and abort wake it). CUDA calls
+// must be made outside the lock, or they would block the main thread from
+// sending messages.
 int run_step() {
   for (;;) {
     ReadyMessage message{};
@@ -622,7 +689,8 @@ int run_step() {
       current_mark = tail_marks[message.mark];
     }
     if (all_posted_seen && posted_snapshot[0] < 0) {
-      // 记下 all_posted 且队列为空那一刻的六个位置和待放行桶数（日志用）
+      // record the six positions and pending counts at the moment all_posted
+      // is set and the queue is empty (for logs)
       const int snapshot[6] = {pos_dense_copy,
                                stage_positions[0],
                                stage_positions[1],
@@ -650,8 +718,10 @@ int run_step() {
 }
 void thread_main() {
   const cudaError_t device_err =
-      cudaSetDevice(device_id);  // 和主线程同一张卡（primary context）
-  // 本线程的定时器余量设为 1 µs，让 POLL_INTERVAL_US 的短等待按时醒来
+      cudaSetDevice(device_id);  // same device as the main thread (primary
+                                 // context)
+  // timer slack of this thread = 1 us, so the short POLL_INTERVAL_US waits
+  // wake up on time
   prctl(PR_SET_TIMERSLACK, 1000UL, 0UL, 0UL, 0UL);
   std::unique_lock<std::mutex> lk(control->mutex);
   control->set_device_rc = (int)device_err;
@@ -661,7 +731,7 @@ void thread_main() {
   for (;;) {
     control->cv_proxy.wait(lk, [] {
       return control->state == RUN;
-    });  // 步与步之间在条件变量上等，不轮询
+    });  // between steps, wait on the condition variable, no polling
     lk.unlock();
     const int state = run_step();
     lk.lock();
@@ -672,14 +742,18 @@ void thread_main() {
 
 }  // namespace
 
-// 初始化，在 configure 之后调一次：收下固定放行顺序和每桶参数表，建尾部 mark
-// 环（num_marks 个槽），启动尾部线程（启动后在 IDLE 等待）。
-//   - 桶数取自 g_event_dense_put / g_event_moe_put 的长度；dense_order /
-//     moe_order 必须是桶号的排列，参数表长度必须和桶数一致，否则报错。
-//   - dense_table 每桶 7 个数，moe_table 每桶 5 个（字段见 DenseBucket /
-//     MoeBucket）。
-//   - intra_arrive_offset_：dense 组 host window 里机内到达区的字节偏移。
-//   - credit 区的位置取自 g_credit_*_offset。
+// Init, called once after configure: takes the fixed release orders and the
+// per-bucket parameter tables, creates the tail mark ring (num_marks slots)
+// and starts the tail thread (which then waits in IDLE).
+//   - Bucket counts come from the sizes of g_event_dense_put /
+//     g_event_moe_put; dense_order / moe_order must be permutations of the
+//     bucket ids and the table sizes must match the bucket counts, otherwise
+//     an error is returned.
+//   - dense_table has 7 numbers per bucket, moe_table 5 (fields as in
+//     DenseBucket / MoeBucket).
+//   - intra_arrive_offset_: byte offset of the intra-node arrival area in the
+//     dense group's host window.
+//   - The positions of the credit areas come from g_credit_*_offset.
 int setup(const std::vector<int>& dense_order,
           const std::vector<int>& moe_order,
           const std::vector<long long>& dense_table,
@@ -702,14 +776,15 @@ int setup(const std::vector<int>& dense_order,
   num_moe_buckets = num_moe;
   put_blocks = put_blocks_;
   intra_arrive_offset = intra_arrive_offset_;
-  credit_intra_word = g_credit_intra_offset / 8;  // 字节偏移 → u64 下标
+  credit_intra_word = g_credit_intra_offset / 8;  // byte offset -> u64 index
   credit_inter_word = g_credit_inter_offset / 8;
   credit_moe_word = g_credit_moe_offset / 8;
   dense_release_order = dense_order;
   moe_release_order = moe_order;
   dense_pos_in_order.assign(num_dense_buckets, -1);
   moe_pos_in_order.assign(num_moe_buckets, -1);
-  // 建「桶号 → 位置」，同时校验顺序是桶号的排列
+  // build "bucket id -> position" and check that the order is a permutation
+  // of the bucket ids
   for (int k = 0; k < num_dense_buckets; ++k) {
     if (dense_release_order[k] < 0 ||
         dense_release_order[k] >= num_dense_buckets ||
@@ -757,8 +832,9 @@ int setup(const std::vector<int>& dense_order,
   return control->set_device_rc;
 }
 
-// 主线程在 stream 当前位置记一个尾部 mark，返回槽号；-1 = 没 setup 或
-// cudaEventRecord 失败，-2 = 本步的槽已用完
+// Main thread records a tail mark at the current position of `stream` and
+// returns its slot; -1 = not set up or cudaEventRecord failed, -2 = the slots
+// of this step are used up
 int record_tail_mark(cudaStream_t stream) {
   if (!control) return -1;
   if (tail_mark_index >= (int)tail_marks.size()) return -2;
@@ -768,9 +844,10 @@ int record_tail_mark(cudaStream_t stream) {
   return i;
 }
 
-// 每步开始前调：清零每步状态，设定步号 step_（= 已结束的步数，绝对值）。
-// step 只用于 credit 目标（见 credit_target）。dense_copy_seq / dense_targets /
-// moe_targets 跨步累加，不清零。只能在 IDLE 状态调。
+// Called before each step: clears the per-step state and sets the step number
+// step_ (= number of finished steps, absolute). step is used only by credit
+// targets (see credit_target). dense_copy_seq / dense_targets / moe_targets
+// accumulate across steps and are not cleared. Only callable in IDLE.
 int step_reset(long long step_) {
   if (!control) return (int)cudaErrorNotReady;
   std::lock_guard<std::mutex> lk(control->mutex);
@@ -787,20 +864,23 @@ int step_reset(long long step_) {
   err_stage = 0;
   err_bucket = -1;
   current_mark = nullptr;
-  tail_mark_index = 0;  // 尾部 mark 环每步从 0 号槽开始
+  tail_mark_index = 0;  // the tail mark ring restarts at slot 0 every step
   return 0;
 }
 
-// 主线程在一个窗口里放行。
-//   - stages：要试的阶段，ADVANCE_* 按位或。
-//   - mark_event：本窗口的窗口 mark。
-//   - 两个 block 数：本次提交的机内求和 / 分片求和 kernel 用多少 block。
-//   - 选中的阶段按 机内拷贝 → 机内求和 → put → 分片求和 的顺序各试一次，不等
-//     远端，放不了的留给下一个窗口或尾部线程。
-//   - released_shard_reduce：本次放了哪些分片求和，按放行顺序，每个两个数
-//     [kind, 桶号]。
-//   - 返回 0 或 CUDA 错误码（出错位置用 get_last_error 取）。只能在 IDLE 状态
-//     调，否则返回 cudaErrorInvalidValue。
+// Main thread releases inside one overlap window.
+//   - stages: the stages to try, ADVANCE_* OR-ed together.
+//   - mark_event: the window mark of this window.
+//   - the two block counts: blocks of the intra-node reduce / shard reduce
+//     kernels submitted by this call.
+//   - The selected stages are tried once each in the order intra-node copy ->
+//     intra-node reduce -> put -> shard reduce, without waiting on remote
+//     counters; what cannot go now is left to a later window or the tail
+//     thread.
+//   - released_shard_reduce: the shard reduces released by this call, in
+//     release order, two numbers each [kind, bucket id].
+//   - Returns 0 or a CUDA error code (where it failed: get_last_error). Only
+//     callable in IDLE; otherwise returns cudaErrorInvalidValue.
 int advance(cudaEvent_t mark_event,
             int stages,
             int intra_node_reduce_blocks_,
@@ -824,11 +904,14 @@ int advance(cudaEvent_t mark_event,
   return 0;
 }
 
-// 把放行交给尾部线程，状态从 IDLE 变成 RUN。只能在 IDLE 状态调。
-//   - 两个 block 数：尾部线程提交的机内求和 / 分片求和 kernel 用多少 block。
-//   - mark_：交接时记的尾部 mark 槽号。
-//   - all_posted = 1：本步所有桶在交接前都已 post（本步没有进入尾部，在
-//     reduce_gradients 里才交接）。
+// Hands release off to the tail thread: state IDLE -> RUN. Only callable in
+// IDLE.
+//   - the two block counts: blocks of the intra-node reduce / shard reduce
+//     kernels the tail thread submits.
+//   - mark_: slot of the tail mark recorded at the hand-off.
+//   - all_posted = 1: every bucket of this step was posted before the
+//     hand-off (the step never reached the tail; the hand-off happens in
+//     reduce_gradients).
 int tail_start(int intra_node_reduce_blocks_,
                int shard_reduce_blocks_,
                int mark_,
@@ -848,14 +931,17 @@ int tail_start(int intra_node_reduce_blocks_,
   return 0;
 }
 
-// 某个桶的梯度凑齐了（kind 0 = dense 桶，1 = 专家桶），或者只换 mark（kind
-// -1）。scale = 这个桶分片求和时乘的系数。
-//   - IDLE 状态：mark_ 必须是 -1，直接记下 ready 和 scale，由之后的 advance
-//     放行。
-//   - RUN 状态：mark_ 是尾部 mark 槽号，作为一条消息发给尾部线程。
-//   - 返回 0 = 收下；1 = 尾部线程已出错停下（原因用 get_last_error 取）；2 =
-//     用法错误（mark 和状态不匹配、桶号无效、这个桶本步已经 ready 过、全部放完
-//     后又有桶 ready）。
+// A bucket's gradients are complete (kind 0 = dense bucket, 1 = expert
+// bucket), or only a new mark is given (kind -1). scale = the factor applied
+// in this bucket's shard reduce.
+//   - IDLE: mark_ must be -1; ready and scale are recorded directly and a
+//     later advance releases the bucket.
+//   - RUN: mark_ is a tail mark slot; this is sent to the tail thread as a
+//     message.
+//   - Returns 0 = accepted; 1 = the tail thread stopped on an error (reason:
+//     get_last_error); 2 = usage error (mark does not match the state, invalid
+//     bucket id, bucket already ready in this step, a bucket becomes ready
+//     after everything was released).
 int bucket_ready(int kind, int bucket, float scale, int mark_) {
   if (!control) return 2;
   std::lock_guard<std::mutex> lk(control->mutex);
@@ -864,10 +950,10 @@ int bucket_ready(int kind, int bucket, float scale, int mark_) {
       (kind >= 0 &&
        (bucket < 0 || bucket >= (kind ? num_moe_buckets : num_dense_buckets))))
     return 2;
-  if (control->state == IDLE) {  // 主线程还在放行：直接记下
+  if (control->state == IDLE) {  // main thread still releasing: record now
     if (mark_ >= 0 || kind < 0 || is_step_done()) return 2;
     unsigned char& ready =
-        (kind ? ready_moe : ready_dense)[bucket];  // 每步只能 ready 一次
+        (kind ? ready_moe : ready_dense)[bucket];  // ready once per step
     if (ready) return 2;
     ready = 1;
     (kind ? moe_scales : dense_scales)[bucket] = scale;
@@ -875,7 +961,7 @@ int bucket_ready(int kind, int bucket, float scale, int mark_) {
   }
   if (mark_ < 0 || mark_ >= tail_mark_index) return 2;
   if (control->state == DONE)
-    return kind < 0 ? 0 : 2;  // 已全部放完：只换 mark 的消息直接丢弃
+    return kind < 0 ? 0 : 2;  // all released: drop mark-only messages
   if (control->state != RUN) return 2;
   control->queue.push_back(ReadyMessage{kind, bucket, mark_, scale});
   control->cv_proxy.notify_all();
@@ -892,8 +978,9 @@ int set_all_posted() {
   return 0;
 }
 
-// 等尾部线程离开 RUN（放完 / 出错 / 被叫停），最多等 timeout_s 秒，返回当时
-// 的状态；超时时返回 RUN。在条件变量上等，不轮询。
+// Waits up to timeout_s seconds for the tail thread to leave RUN (released /
+// error / stopped) and returns the state at that point; on timeout it returns
+// RUN. Waits on a condition variable, no polling.
 int wait_for_step_end(double timeout_s) {
   if (!control) return -1;
   std::unique_lock<std::mutex> lk(control->mutex);
@@ -906,8 +993,10 @@ int wait_for_step_end(double timeout_s) {
   return control->state;
 }
 
-// 叫停尾部线程，最多等 wait_s 秒，返回之后的状态。尾部线程只在每轮开头检查
-// abort；它卡在 CUDA 调用里时，这里等到超时并返回 RUN
+// Asks the tail thread to stop, waits up to wait_s seconds and returns the
+// state afterwards. The tail thread checks abort only at the start of each
+// round; if it is stuck inside a CUDA call, this waits until the timeout and
+// returns RUN
 int abort_step(double wait_s) {
   if (!control) return -1;
   {
@@ -919,8 +1008,9 @@ int abort_step(double wait_s) {
   return wait_for_step_end(wait_s);
 }
 
-// 尾部线程停下之后收尾：清空消息队列和 all_posted / abort 标志，回到 IDLE。
-// 只能在 DONE / ERR / ABORTED 状态调。
+// Cleanup after the tail thread stops: clears the message queue and the
+// all_posted / abort flags, back to IDLE. Only callable in DONE / ERR /
+// ABORTED.
 int tail_finish() {
   if (!control) return (int)cudaErrorNotReady;
   std::lock_guard<std::mutex> lk(control->mutex);
@@ -932,12 +1022,15 @@ int tail_finish() {
   return 0;
 }
 
-// 本步的放行进度。不能在 RUN 状态调。
-//   - positions6 = [dense 机内拷贝, dense 机内求和, dense put, dense 分片求和,
-//     专家 put, 专家分片求和] 已放行到的位置。
-//   - counts4 = 四个阶段的待放行桶数（顺序同 pending_counts）。
-//   - posted4 = posted_snapshot 时刻的同一组数；没有这一刻时是 [-1, 0, 0, 0]。
-//   - *done = 本步是否全部放完。
+// Release progress of this step. Not callable in RUN.
+//   - positions6 = positions released up to by [dense intra-node copy, dense
+//     intra-node reduce, dense put, dense shard reduce, expert put, expert
+//     shard reduce].
+//   - counts4 = pending counts of the four stages (order as in
+//     pending_counts).
+//   - posted4 = the same numbers at the posted_snapshot moment; [-1, 0, 0, 0]
+//     if that moment has not come.
+//   - *done = whether the whole step is released.
 int status(std::vector<int>& positions6,
            std::vector<int>& counts4,
            std::vector<int>& posted4,
@@ -961,13 +1054,17 @@ int status(std::vector<int>& positions6,
   return 0;
 }
 
-// 卡住时的现场（只读 host window，不改状态）。不能在 RUN 状态调。
-// flat 里依次是六个阶段的记录（dense 四个阶段，再专家两个），每条记录：
-//   - 6 个数的表头：[阶段编号 STAGE_*, 位置, 桶数, 下一个桶是否已到这一阶段
-//     （1 / 0）, 待放行桶数, 后面列出的桶数 n]。
-//   - n 组、每组 6 个数（n ≤ STUCK_MAX_ITEMS）：[桶号, 等的计数 COUNTER_*（0 =
-//     条件已满足，只是排在前一个桶后面）, 第几个发送方（-1 = 不适用）, 对端组内
-//     序号（-1 = 所有发送方共用的那一格）, 当前值, 目标值]。
+// Snapshot of a stuck step (only reads the host window, changes no state).
+// Not callable in RUN.
+// flat holds one record per stage, six in all (the four dense stages, then
+// the two expert stages). Each record is:
+//   - a 6-number header: [stage id STAGE_*, position, number of buckets,
+//     whether the next bucket has reached this stage (1 / 0), pending count,
+//     number n of buckets listed after it].
+//   - n groups of 6 numbers (n <= STUCK_MAX_ITEMS): [bucket id, awaited
+//     counter COUNTER_* (0 = condition met, only queued behind the previous
+//     bucket), sender index (-1 = not applicable), peer group rank (-1 = the
+//     counter shared by all senders), current value, target value].
 const int STUCK_MAX_ITEMS = 8;
 
 static void stuck_stage(int stage, std::vector<long long>& flat) {
@@ -975,7 +1072,8 @@ static void stuck_stage(int stage, std::vector<long long>& flat) {
   const std::vector<int>& order =
       is_moe ? moe_release_order : dense_release_order;
   const int num_buckets = is_moe ? num_moe_buckets : num_dense_buckets;
-  int position = 0, previous = 0;  // previous = 上一阶段的位置（-1 = 看 ready）
+  // previous = position of the previous stage (-1 = use ready)
+  int position = 0, previous = 0;
   switch (stage) {
     case STAGE_DENSE_INTRA_NODE_COPY:
       position = pos_dense_copy;
@@ -1002,8 +1100,8 @@ static void stuck_stage(int stage, std::vector<long long>& flat) {
       previous = pos_moe_put;
       break;
   }
-  // 这个阶段的待放行队列：位置之后、已经到了这一阶段的桶（已 ready，或者上一
-  // 阶段的位置在它后面）
+  // pending queue of this stage: buckets after the position that have reached
+  // this stage (ready, or the previous stage's position is past them)
   std::vector<int> items;
   for (int k = position; k < num_buckets; ++k) {
     const bool arrived = previous < 0
@@ -1067,7 +1165,8 @@ int stuck_report(std::vector<long long>& flat) {
   return 0;
 }
 
-// out3 = [CUDA 返回码, 阶段编号（STAGE_*）, 桶号]；没出错时是 [0, 0, -1]
+// out3 = [CUDA return code, stage id (STAGE_*), bucket id]; [0, 0, -1] when no
+// error occurred
 int get_last_error(int* out3) {
   if (!control) return (int)cudaErrorNotReady;
   std::lock_guard<std::mutex> lk(control->mutex);
@@ -1077,12 +1176,14 @@ int get_last_error(int* out3) {
   return 0;
 }
 
-// 当前正在做的提交，编码同 current_activity；0 = 不在 CUDA 调用里
+// The submission in progress, encoded as current_activity; 0 = not inside a
+// CUDA call
 int get_current_activity() { return current_activity.load(); }
 
-// 导出给 Python 的常量表（名字 → 数值）：ADVANCE_*、STAGE_*、COUNTER_*、
-// TAIL_* 和 ACTIVITY_STAGE_SCALE。gin_overlap_api.cc 把它们导出成
-// paddle.base.core.gin_overlap 的模块属性。加、改、删常量时必须同时改这张表。
+// Constant table exported to Python (name -> value): ADVANCE_*, STAGE_*,
+// COUNTER_*, TAIL_* and ACTIVITY_STAGE_SCALE. gin_overlap_api.cc exports them
+// as module attributes of paddle.base.core.gin_overlap. Adding, changing or
+// removing a constant requires changing this table too.
 int constants(std::vector<std::string>& names, std::vector<int>& values) {
   names.clear();
   values.clear();
@@ -1122,12 +1223,12 @@ int constants(std::vector<std::string>& names, std::vector<int>& values) {
   return 0;
 }
 
-// 建 2D 桶表。必须在 setup 和 gather_setup 之后、IDLE 状态下调，只能调一次。
-// table 每项 10 个数：
-//   [kind（0 dense / 1 专家）, 桶号, slot, 本卡是不是 owner, owner 的组内序号,
-//    send_offset, shard_numel, 保留位（必须 ≥ 1）, arrive_offset,
-//    intra_arrive_offset]
-// 表为空时不建，gather_enabled 保持 0。
+// Builds the 2D-bucket table. Call it after setup and gather_setup, in IDLE,
+// only once. Each entry of table has 10 numbers:
+//   [kind (0 dense / 1 expert), bucket id, slot, whether this rank is the
+//    owner, owner's group rank, send_offset, shard_numel, reserved (must be
+//    >= 1), arrive_offset, intra_arrive_offset]
+// An empty table builds nothing and gather_enabled stays 0.
 int setup_gather_table(const std::vector<long long>& table) {
   if (!control || !g_gather_ready || gather_enabled)
     return (int)cudaErrorNotReady;
@@ -1156,7 +1257,7 @@ int setup_gather_table(const std::vector<long long>& table) {
       return (int)cudaErrorInvalidValue;
     int& entry_index = (entry.kind ? index_moe : index_dense)[entry.bucket];
     if (entry_index >= 0)
-      return (int)cudaErrorInvalidValue;  // 同一个桶出现了两项
+      return (int)cudaErrorInvalidValue;  // two entries for the same bucket
     entry_index = i;
     entries.push_back(entry);
   }
@@ -1172,11 +1273,13 @@ int setup_gather_table(const std::vector<long long>& table) {
   return 0;
 }
 
-// 主线程发一个 2D 桶的 gather put：按表项下标查 setup_gather_table 建的表，
-// 等 g_event_gather_source[slot]（由 gather_mark_ready 记）。只能在 IDLE 状态
-// 调。
-//   - seq：本步这一片的 put 序号（同节点时写进 owner 的到达格），必须 > 0。
-//   - *num_signals：发出的 signal 笔数（同节点 0，跨节点 1）。
+// Main thread sends the gather put of one 2D bucket: looks up the entry built
+// by setup_gather_table and waits on g_event_gather_source[slot] (recorded by
+// gather_mark_ready). Only callable in IDLE.
+//   - seq: put sequence number of this shard in this step (written into the
+//     owner's arrival counter within a node); must be > 0.
+//   - *num_signals: number of signals sent (0 within the node, 1 across
+//     nodes).
 int gather_put_entry(int entry_index,
                      unsigned long long seq,
                      int* num_signals) {
@@ -1202,8 +1305,9 @@ int gather_put_entry(int entry_index,
                              g_event_gather_source[entry.slot]);
 }
 
-// 设定本步每个表项的 put 序号（0 = 本步不由尾部线程发），并清空上一步的发送
-// 记录。必须在 tail_start 之前、IDLE 状态下调
+// Sets this step's put sequence number of every entry (0 = the tail thread
+// does not send it in this step) and clears the previous step's send record.
+// Call it before tail_start, in IDLE
 int set_gather_sequences(const std::vector<unsigned long long>& seqs) {
   if (!control || !gather_enabled) return (int)cudaErrorNotReady;
   std::lock_guard<std::mutex> lk(control->mutex);
@@ -1215,8 +1319,8 @@ int set_gather_sequences(const std::vector<unsigned long long>& seqs) {
   return 0;
 }
 
-// 本步尾部线程发出的 gather put，按发出顺序，每个三个数 [kind, bucket, seq]。
-// 不能在 RUN 状态调
+// Gather puts the tail thread sent in this step, in send order, three numbers
+// each [kind, bucket, seq]. Not callable in RUN
 int get_gather_sent(std::vector<long long>& flat) {
   flat.clear();
   if (!control || !gather_enabled) return (int)cudaErrorNotReady;

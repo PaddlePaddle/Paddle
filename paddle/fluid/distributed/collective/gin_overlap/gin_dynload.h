@@ -12,17 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// gin_dynload.h —— 用 using 声明把 gin_overlap 用到的 NCCL host API 和 CUDA
-// 驱动 API 引进 namespace gin_overlap，实际调用的是 phi::dynload 里的 dlopen
-// 包装（phi/backends/dynload/nccl.h、cuda_driver.h）。gin_overlap 里的调用点
-// 按原名书写即可。
+// gin_dynload.h: using-declarations that bring the NCCL host API and the CUDA
+// driver API calls of gin_overlap into namespace gin_overlap. The calls go to
+// the dlopen wrappers in phi::dynload (phi/backends/dynload/nccl.h,
+// cuda_driver.h), so call sites in gin_overlap use the plain API names.
 //
-// 不经过这里的：
-//   - kernel 里用的设备侧 API（ncclGin*、ncclTeamWorld(ncclDevComm const&)、
-//     ncclGetLsaPointer）：nccl_device.h 里的 __device__ inline 函数。
-//   - host 版 ncclTeamWorld(ncclComm_t)：和设备版重载同名，不能用
-//     DECLARE_DYNAMIC_LOAD_NCCL_WRAP 包装；gin_overlap 的 host 代码不能调用它。
-//   - cudaMemcpyBatchAsync 等 runtime API：libcudart 是静态链接的。
+// Not covered here:
+//   - device-side API used in kernels (ncclGin*, ncclTeamWorld(ncclDevComm
+//     const&), ncclGetLsaPointer): __device__ inline functions of
+//     nccl_device.h.
+//   - the host ncclTeamWorld(ncclComm_t): it shares its name with the device
+//     overload, so DECLARE_DYNAMIC_LOAD_NCCL_WRAP cannot wrap it; host code of
+//     gin_overlap must not call it.
+//   - runtime API such as cudaMemcpyBatchAsync: libcudart is linked
+//     statically.
 #pragma once
 
 #include <cuda.h>
@@ -33,8 +36,8 @@
 #include "paddle/phi/backends/dynload/cuda_driver.h"
 #include "paddle/phi/backends/dynload/nccl.h"
 
-// CMake 门控（collective/CMakeLists.txt）不满足时这个目录不会参与编译；下面两条
-// 在门控写错时直接报编译错误。
+// When the CMake gate (collective/CMakeLists.txt) is not met this directory is
+// not built; the two checks below turn a wrong gate into a compile error.
 #if !defined(PADDLE_WITH_NCCL)
 #error "gin_overlap needs PADDLE_WITH_NCCL (NCCL on CUDA); check the CMake gate"
 #endif
@@ -44,8 +47,8 @@
 
 namespace gin_overlap {
 
-// NCCL host API：nccl.h 里的，加上 nccl_device.h 的两个 host 入口
-// （ncclDevCommCreate、ncclGetLsaDevicePointer，要求 NCCL >= 2.30.7）
+// NCCL host API: the calls of nccl.h, plus the two host entry points of
+// nccl_device.h (ncclDevCommCreate, ncclGetLsaDevicePointer; NCCL >= 2.30.7)
 using phi::dynload::ncclCommCount;
 using phi::dynload::ncclCommUserRank;
 using phi::dynload::ncclCommWindowRegister;
@@ -55,7 +58,7 @@ using phi::dynload::ncclGetLsaDevicePointer;
 using phi::dynload::ncclGetVersion;
 using phi::dynload::ncclMemAlloc;
 
-// CUDA 驱动 API
+// CUDA driver API
 using phi::dynload::cuDeviceGet;
 using phi::dynload::cuDeviceGetAttribute;
 using phi::dynload::cuGetErrorString;
@@ -64,9 +67,10 @@ using phi::dynload::cuMemCreate;
 using phi::dynload::cuMemGetAllocationGranularity;
 using phi::dynload::cuMemMap;
 using phi::dynload::cuMemSetAccess;
-// 2D 拷贝：cuda.h 把 cuMemcpy2DAsync 定义成宏，展开为 cuMemcpy2DAsync_v2。
-// 包装器必须按 _v2 这个名字建，否则 dlsym 拿到的是参数结构不同的 v1。调用点
-// 照常写 cuMemcpy2DAsync(...)。
+// 2D copy: cuda.h defines cuMemcpy2DAsync as a macro that expands to
+// cuMemcpy2DAsync_v2. The wrapper must be built under the _v2 name, or dlsym
+// returns the v1 entry point, whose parameter struct differs. Call sites keep
+// writing cuMemcpy2DAsync(...).
 using phi::dynload::cuMemcpy2DAsync_v2;
 
 }  // namespace gin_overlap

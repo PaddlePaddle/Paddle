@@ -12,16 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// paddle_tensor.cc —— 用到 paddle::Tensor 和 Paddle 当前计算流的实现：
-//   - send_window_tensor：把本组 send window 里一段 fp32 包成 paddle::Tensor
-//     （各桶的 grad_storage 就是它）。零拷贝，paddle::from_blob 的 deleter 传
-//     nullptr，张量析构时不释放内存；内存归 NCCL window 所有。
-//   - copy_2d：在计算流上做一次 pitched 拷贝（驱动 API cuMemcpy2DAsync，经
-//     phi::dynload，见 gin_dynload.h）。参数是张量 + 字节偏移，越界在这里检查。
-//   - paddle_compute_stream：Paddle 的当前计算流
-//     （paddle::GetCurrentCUDAStream(GPUPlace)->raw_stream()），和 Python 的
-//     paddle.device.current_stream() 是同一条流，paddle.device.stream_guard
-//     换流时也跟着变。
+// paddle_tensor.cc: the parts that use paddle::Tensor and Paddle's current
+// compute stream:
+//   - send_window_tensor: wraps a range of fp32 in the group's send window as
+//     a paddle::Tensor (each bucket's grad_storage is one). No copy: the
+//     deleter passed to paddle::from_blob is nullptr, so destroying the tensor
+//     does not free the memory, which belongs to the NCCL window.
+//   - copy_2d: one pitched copy on the compute stream (driver API
+//     cuMemcpy2DAsync through phi::dynload, see gin_dynload.h). Arguments are
+//     tensors plus byte offsets; bounds are checked here.
+//   - paddle_compute_stream: Paddle's current compute stream
+//     (paddle::GetCurrentCUDAStream(GPUPlace)->raw_stream()), the same stream
+//     as Python's paddle.device.current_stream(); it follows
+//     paddle.device.stream_guard.
 #include "paddle/fluid/distributed/collective/gin_overlap/paddle_tensor.h"
 
 #include <cstdint>
@@ -48,16 +51,17 @@ namespace {
 }
 
 std::string describe(const paddle::Tensor& t) {
-  if (!t.defined()) return "未定义的张量";
-  if (!t.initialized()) return "没初始化的张量";
-  return "numel " + std::to_string(t.numel()) + "、每元素 " +
-         std::to_string(phi::SizeOf(t.dtype())) + " B、place " +
+  if (!t.defined()) return "undefined tensor";
+  if (!t.initialized()) return "uninitialized tensor";
+  return "numel " + std::to_string(t.numel()) + ", " +
+         std::to_string(phi::SizeOf(t.dtype())) + " B per element, place " +
          t.place().DebugString();
 }
 
-// 检查 2D 拷贝的源或目的：必须是 GPU 上已初始化的 dense 张量，而且
-// [offset, offset + (height-1)*pitch + width) 落在张量内（最后一行只算
-// width）。返回张量的数据指针；不满足时抛异常
+// Checks the source or destination of a 2D copy: it must be an initialized
+// dense tensor on the GPU, and [offset, offset + (height-1)*pitch + width)
+// must lie inside it (the last row counts only width). Returns the tensor's
+// data pointer; throws otherwise
 void* checked_block(const paddle::Tensor& t,
                     size_t offset,
                     size_t pitch,
@@ -66,29 +70,32 @@ void* checked_block(const paddle::Tensor& t,
                     const char* what) {
   if (!t.defined() || !t.initialized() || !t.is_dense_tensor() ||
       t.place().GetType() != phi::AllocationType::GPU) {
-    fail(std::string("fused all_gather 的 2D 拷贝：") + what +
-         "不是 GPU 上已初始化的 dense 张量（" + describe(t) + "）");
+    fail(std::string("copy_2d: ") + what +
+         " is not an initialized dense tensor on the GPU (" + describe(t) +
+         ")");
   }
   if (width == 0 || height == 0 || width > pitch) {
-    fail(std::string("fused all_gather 的 2D 拷贝：") + what + "的 width " +
-         std::to_string(width) + " B / height " + std::to_string(height) +
-         " / pitch " + std::to_string(pitch) + " B 不合法");
+    fail(std::string("copy_2d: ") + what + " width " + std::to_string(width) +
+         " B / height " + std::to_string(height) + " / pitch " +
+         std::to_string(pitch) + " B is invalid");
   }
   const size_t nbytes = (size_t)t.numel() * phi::SizeOf(t.dtype());
   const size_t need = offset + (height - 1) * pitch + width;
   if (offset > nbytes || need > nbytes) {
-    fail(std::string("fused all_gather 的 2D 拷贝：") + what + "越界（偏移 " +
-         std::to_string(offset) + " B + " + std::to_string(height) + " 行 × " +
-         std::to_string(pitch) + " B 行距，最后一行 " + std::to_string(width) +
-         " B，共要 " + std::to_string(need) + " B，张量只有" +
-         std::to_string(nbytes) + " B：" + describe(t) + "）");
+    fail(std::string("copy_2d: ") + what + " out of bounds (offset " +
+         std::to_string(offset) + " B + " + std::to_string(height) +
+         " rows x " + std::to_string(pitch) + " B pitch, last row " +
+         std::to_string(width) + " B, needs " + std::to_string(need) +
+         " B, the tensor has " + std::to_string(nbytes) + " B: " + describe(t) +
+         ")");
   }
   return const_cast<void*>(t.data());
 }
 
 }  // namespace
 
-// Paddle 的当前计算流。取不到时打印原因并返回错误码，不退回默认流
+// Paddle's current compute stream. On failure prints the reason and returns
+// an error code; never falls back to the default stream
 int paddle_compute_stream(cudaStream_t* out) {
   *out = nullptr;
   try {
@@ -97,7 +104,7 @@ int paddle_compute_stream(cudaStream_t* out) {
     if (stream == nullptr) {
       fprintf(stderr,
               "[gin_overlap] paddle::GetCurrentCUDAStream(GPUPlace(%d)) "
-              "返回空\n",
+              "returned null\n",
               g_device_id);
       return (int)cudaErrorInvalidValue;
     }
@@ -105,7 +112,7 @@ int paddle_compute_stream(cudaStream_t* out) {
   } catch (const std::exception& ex) {
     fprintf(stderr,
             "[gin_overlap] paddle::GetCurrentCUDAStream(GPUPlace(%d)) "
-            "抛异常：%s\n",
+            "threw: %s\n",
             g_device_id,
             ex.what());
     return (int)cudaErrorInvalidValue;
@@ -113,28 +120,30 @@ int paddle_compute_stream(cudaStream_t* out) {
   return 0;
 }
 
-// 把本组 send window 的 [send_offset, send_offset + 4*numel) 包成一个 1-D fp32
-// paddle::Tensor（零拷贝，见文件头）。send_offset 必须 4 字节对齐且不越界；包完
-// 检查张量的指针、numel、dtype 和 place，对不上就抛异常。
+// Wraps [send_offset, send_offset + 4*numel) of the group's send window as a
+// 1-D fp32 paddle::Tensor (no copy, see the file header). send_offset must be
+// 4-byte aligned and in bounds; after wrapping, the tensor's pointer, numel,
+// dtype and place are checked, and a mismatch throws.
 paddle::Tensor send_window_tensor(int group,
                                   size_t send_offset,
                                   long long numel) {
   if (!is_valid_group(group)) {
-    fail("send_window_tensor: 通信组编号要是 0 / 1，给的是 " +
+    fail("send_window_tensor: group id must be 0 / 1, got " +
          std::to_string(group));
   }
   CommGroup& comm_group = group_at(group);
   if (!comm_group.send) {
-    fail("send_window_tensor: " + std::string(group_name(group)) +
-         " 组的 send window 还没分配（alloc_windows 之前就来切片了）");
+    fail("send_window_tensor: send window of the " +
+         std::string(group_name(group)) +
+         " group is not allocated yet (called before alloc_windows)");
   }
   if (numel <= 0 || (send_offset & 3) ||
       send_offset + (size_t)numel * 4 > comm_group.send_bytes) {
-    fail("send_window_tensor: " + std::string(group_name(group)) +
-         " 组的 send window 切片越界或没按 4 B 对齐（偏移 " +
+    fail("send_window_tensor: slice of the send window of the " +
+         std::string(group_name(group)) +
+         " group is out of bounds or not 4-byte aligned (offset " +
          std::to_string(send_offset) + " B + " + std::to_string(numel) +
-         " 个 fp32，window 一共 " + std::to_string(comm_group.send_bytes) +
-         " B）");
+         " fp32, window size " + std::to_string(comm_group.send_bytes) + " B)");
   }
   char* data = comm_group.send + send_offset;
   paddle::Tensor t = paddle::from_blob(data,
@@ -148,18 +157,18 @@ paddle::Tensor send_window_tensor(int group,
       t.dtype() != phi::DataType::FLOAT32 ||
       t.place() != phi::Place(phi::GPUPlace(g_device_id))) {
     fail(
-        "send_window_tensor: 包出来的张量和 send window 的切片对不上（要 "
-        "data_ptr " +
-        std::to_string((uintptr_t)data) + "、" + std::to_string(numel) +
-        " 个 fp32、GPUPlace(" + std::to_string(g_device_id) + ")，得到 " +
-        describe(t) + "）");
+        "send_window_tensor: the wrapped tensor does not match the send "
+        "window slice (want data_ptr " +
+        std::to_string((uintptr_t)data) + ", " + std::to_string(numel) +
+        " fp32, GPUPlace(" + std::to_string(g_device_id) + "), got " +
+        describe(t) + ")");
   }
   return t;
 }
 
-// 在计算流上做一次 2D 拷贝（cuMemcpy2DAsync）：height 行，每行 width 字节，源
-// 行距 src_pitch、目的行距 dst_pitch，起点分别是两个张量里的字节偏移。出错时
-// 抛异常。
+// One 2D copy on the compute stream (cuMemcpy2DAsync): height rows of width
+// bytes, source pitch src_pitch and destination pitch dst_pitch, starting at
+// byte offsets in the two tensors. Throws on error.
 void copy_2d(const paddle::Tensor& dst,
              size_t dst_offset,
              size_t dst_pitch,
@@ -169,12 +178,12 @@ void copy_2d(const paddle::Tensor& dst,
              size_t width,
              size_t height) {
   void* dst_data =
-      checked_block(dst, dst_offset, dst_pitch, width, height, "目的");
+      checked_block(dst, dst_offset, dst_pitch, width, height, "destination");
   void* src_data =
-      checked_block(src, src_offset, src_pitch, width, height, "源");
+      checked_block(src, src_offset, src_pitch, width, height, "source");
   cudaStream_t stream = nullptr;
   if (paddle_compute_stream(&stream)) {
-    fail("fused all_gather 的 2D 拷贝：取不到 Paddle 的当前计算流");
+    fail("copy_2d: cannot get Paddle's current compute stream");
   }
   CUDA_MEMCPY2D params;
   memset(&params, 0, sizeof(params));
@@ -190,11 +199,11 @@ void copy_2d(const paddle::Tensor& dst,
   if (res != CUDA_SUCCESS) {
     const char* msg = nullptr;
     cuGetErrorString(res, &msg);
-    fail("fused all_gather 拆回 cuMemcpy2DAsync 失败 CUresult=" +
-         std::to_string((int)res) + "（" + (msg ? msg : "?") + "）：width " +
-         std::to_string(width) + " B、height " + std::to_string(height) +
-         "、源行距 " + std::to_string(src_pitch) + " B、目的行距 " +
-         std::to_string(dst_pitch) + " B");
+    fail("copy_2d: cuMemcpy2DAsync failed, CUresult=" +
+         std::to_string((int)res) + " (" + (msg ? msg : "?") + "): width " +
+         std::to_string(width) + " B, height " + std::to_string(height) +
+         ", source pitch " + std::to_string(src_pitch) +
+         " B, destination pitch " + std::to_string(dst_pitch) + " B");
   }
 }
 

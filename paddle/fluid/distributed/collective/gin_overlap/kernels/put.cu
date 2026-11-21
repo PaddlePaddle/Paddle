@@ -12,20 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// put.cu —— GIN 单边写（put）的四个 kernel：dense 机间 put、专家 put、
-// 2D 桶 gather 给 owner 的 put，以及每步末尾的 flush。
-//   - 每笔 put 带一个 ncclGin_VASignalInc：数据写进对端 recv / send window，
-//     同时对端 host window 里的 signal 计数 +1（网卡原子加）。对端 CPU 看到
-//     计数达标，就知道数据已经到了。
-//   - 每个 peer 一笔 put，不切片。
+// put.cu: the four GIN one-sided put kernels: the dense inter-node put, the
+// expert put, the 2D-bucket gather put to the owner, and the end-of-step
+// flush.
+//   - Every put carries an ncclGin_VASignalInc: the data lands in the peer's
+//     recv / send window, and the signal counter in the peer's host window
+//     goes up by 1 (NIC atomic add). Once the peer's CPU sees the counter
+//     reach its target, the data has arrived.
+//   - One put per peer, no chunking.
 #include "paddle/fluid/distributed/collective/gin_overlap/kernels/kernels.h"
 
 namespace gin_overlap {
 namespace {
 
-// dense 机间 put：本列第 peer_node 块的部分和 → 节点 peer_node 上同卡号那张
-// 卡的机间段第 node_index 行。一个 block 负责一个 peer；block 数少于 peer 数时
-// 一个 block 依次发多笔。
+// dense inter-node put: block peer_node of this rank's column (a partial sum)
+// -> row node_index of the inter-node segment of the rank with the same
+// rank_in_node on node peer_node. One block per peer; with fewer blocks than
+// peers a block sends several puts in turn.
 __global__ void k_put_to_node_peers(ncclDevComm dev_comm,
                                     ncclWindow_t recv_window,
                                     ncclWindow_t send_window,
@@ -58,8 +61,9 @@ __global__ void k_put_to_node_peers(ncclDevComm dev_comm,
   }
 }
 
-// 专家 put：本卡第 peer 块 → 专家组里组内序号为 peer 的卡的专家段第
-// expert_group_rank 行。block 分配同 k_put_to_node_peers
+// expert put: this rank's block `peer` -> row expert_group_rank of the expert
+// segment of the rank with group rank `peer`. Blocks are assigned as in
+// k_put_to_node_peers
 __global__ void k_put_to_expert_peers(ncclDevComm dev_comm,
                                       ncclWindow_t recv_window,
                                       ncclWindow_t send_window,
@@ -89,8 +93,8 @@ __global__ void k_put_to_expert_peers(ncclDevComm dev_comm,
   }
 }
 
-// 2D 桶 gather（Muon）：本卡分片整段一笔 put 给 owner，同时 owner host window
-// 的到达格 +1。1 个 block
+// 2D-bucket gather (Muon): this rank's whole shard in one put to the owner,
+// adding 1 to the arrival counter in the owner's host window. 1 block
 __global__ void k_put_to_owner(ncclDevComm dev_comm,
                                ncclWindow_t dst_window,
                                size_t dst_offset,
@@ -115,7 +119,8 @@ __global__ void k_put_to_owner(ncclDevComm dev_comm,
           ncclCoopCta());
 }
 
-// flush：一个 block 处理一个 GIN context。下一步复用 send window 之前必须调
+// flush: one block per GIN context. Call it before the next step reuses the
+// send window
 __global__ void k_gin_flush(ncclDevComm dev_comm, int num_gin_contexts) {
   if (blockIdx.x >= (unsigned)num_gin_contexts) return;
   ncclGin gin(dev_comm, (int)blockIdx.x);

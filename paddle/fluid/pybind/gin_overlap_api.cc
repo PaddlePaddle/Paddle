@@ -12,14 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// gin_overlap_api.cc —— 把 GradCommEngine 导出成 paddle.base.core.gin_overlap
-// 子模块（GradCommEngine 类、GROUP_* 和放行层常量）。方法的含义、返回码约定和
-// 调用顺序见 gin_overlap/gin_engine.h 里 GradCommEngine 前的注释。
-//   - Python 侧按名字调用，方法名和 py::arg 名字不能改。
-//   - 有多个输出的方法返回 tuple，第一个元素是返回码。指针用 Python int
-//     （uintptr_t）传。
-//   - 没定义 PADDLE_WITH_GIN_OVERLAP 时不注册任何东西，paddle.base.core 上没有
-//     gin_overlap 属性。
+// gin_overlap_api.cc: exports GradCommEngine as the
+// paddle.base.core.gin_overlap submodule (the GradCommEngine class, GROUP_* and
+// the release layer constants). What the methods do, the return-code convention
+// and the call order are described in the comment before GradCommEngine in
+// gin_overlap/gin_engine.h.
+//   - Python calls the methods by name, so method names and py::arg names must
+//     not change.
+//   - Methods with several outputs return a tuple whose first element is the
+//     return code. Pointers are passed as Python ints (uintptr_t).
+//   - Without PADDLE_WITH_GIN_OVERLAP nothing is registered, and
+//     paddle.base.core has no gin_overlap attribute.
 #include "paddle/fluid/pybind/gin_overlap_api.h"
 
 #include <cstdint>
@@ -47,13 +50,17 @@ using gin_overlap::GradCommEngine;
 void BindGinOverlapApi(py::module* m) {
 #ifdef PADDLE_WITH_GIN_OVERLAP
   py::module gin = m->def_submodule(
-      "gin_overlap", "sharding stage1 梯度通信（NCCL GIN 单边）的 CUDA 后端");
-  // 通信组编号：dense 桶走 sharding 组，专家桶走 moe_sharding 组
+      "gin_overlap",
+      "CUDA backend of sharding-stage1 gradient communication (NCCL GIN "
+      "one-sided puts)");
+  // Group ids: dense buckets use the sharding group, expert buckets the
+  // moe_sharding group
   gin.attr("GROUP_DENSE") = static_cast<int>(gin_overlap::GROUP_DENSE);
   gin.attr("GROUP_MOE") = static_cast<int>(gin_overlap::GROUP_MOE);
-  // 放行层常量（ADVANCE_*、STAGE_*、COUNTER_*、TAIL_*、ACTIVITY_STAGE_SCALE，
-  // 来自 release::constants）导出成模块属性；release_constants() 以 dict
-  // 返回同一张表。Python 侧必须按名字取这些数值，不能自己写数值。
+  // Release layer constants (ADVANCE_*, STAGE_*, COUNTER_*, TAIL_*,
+  // ACTIVITY_STAGE_SCALE, from release::constants) become module attributes;
+  // release_constants() returns the same table as a dict. Python must read
+  // these values by name and never hard-code them.
   py::dict release_constants;
   {
     std::vector<std::string> names;
@@ -68,7 +75,7 @@ void BindGinOverlapApi(py::module* m) {
   py::class_<GradCommEngine> engine(gin, "GradCommEngine");
   engine
       .def(py::init<>())
-      // ---- 初始化
+      // ---- init
       .def_static("release_constants",
                   [release_constants]() { return release_constants; })
       .def_static(
@@ -79,8 +86,8 @@ void BindGinOverlapApi(py::module* m) {
           py::arg("code"))
       .def_static("nccl_runtime_version", &GradCommEngine::nccl_runtime_version)
       .def_static("nccl_build_version", &GradCommEngine::nccl_build_version)
-      // 取 Paddle 已有的 ncclComm：返回 (返回码, 出错原因)；expert_ring_id < 0
-      // = 没有专家桶
+      // Takes Paddle's existing ncclComm: returns (return code, reason);
+      // expert_ring_id < 0 means there are no expert buckets
       .def(
           "set_comms",
           [](GradCommEngine& self,
@@ -130,7 +137,8 @@ void BindGinOverlapApi(py::module* m) {
            py::arg("group"),
            py::arg("num_nodes"),
            py::arg("node_index"))
-      // 桶数只在这里传入（侧流、每桶 event、窗口 mark 环、三块 credit 区偏移）
+      // The only place bucket counts are passed in (side streams, per-bucket
+      // events, window mark ring, offsets of the three credit areas)
       .def("configure",
            &GradCommEngine::configure,
            py::arg("num_dense_buckets"),
@@ -141,7 +149,7 @@ void BindGinOverlapApi(py::module* m) {
            py::arg("credit_moe_offset"))
       .def("record_window_mark", &GradCommEngine::record_window_mark)
       .def("gather_gate", &GradCommEngine::gather_gate, py::arg("mark"))
-      // ---- host window、join、scale、flush
+      // ---- host window, join, scale, flush
       .def(
           "alloc_host_counters",
           [](GradCommEngine& self, int group, size_t want_bytes) {
@@ -174,8 +182,9 @@ void BindGinOverlapApi(py::module* m) {
              self.stats(out);
              return py::make_tuple(out[0], out[1], out[2]);
            })
-      // ---- 放行层（主线程的 advance + 尾部线程）
-      // 桶数、credit 区偏移、专家组大小和序号来自 configure / set_comms
+      // ---- release layer (advance on the main thread + the tail thread)
+      // Bucket counts, credit area offsets and the expert group's size and
+      // rank come from configure / set_comms
       .def("release_setup",
            &GradCommEngine::release_setup,
            py::arg("dense_order"),
@@ -188,7 +197,8 @@ void BindGinOverlapApi(py::module* m) {
       .def("release_step_reset",
            &GradCommEngine::release_step_reset,
            py::arg("step"))
-      // 返回 (返回码, [kind, 桶号, ...] = 本次放了哪些分片求和，按放行顺序)
+      // Returns (return code, [kind, bucket, ...] = the shard reduces
+      // released by this call, in release order)
       .def(
           "advance",
           [](GradCommEngine& self,
@@ -214,8 +224,9 @@ void BindGinOverlapApi(py::module* m) {
            py::arg("bucket"),
            py::arg("scale"),
            py::arg("mark"))
-      // 返回 (返回码, 六个阶段的位置, 四个阶段的待放行桶数,
-      // 尾部线程看到全部 post 那一刻的待放行桶数, 是否全部放完)
+      // Returns (return code, positions of the six stages, pending buckets of
+      // the four stages, pending buckets at the moment the tail thread saw
+      // everything posted, whether everything is released)
       .def("release_status",
            [](GradCommEngine& self) {
              std::vector<int> positions, counts, posted;
@@ -248,13 +259,14 @@ void BindGinOverlapApi(py::module* m) {
       .def("tail_wait", &GradCommEngine::tail_wait, py::arg("timeout_s"))
       .def("tail_abort", &GradCommEngine::tail_abort, py::arg("wait_s"))
       .def("tail_finish", &GradCommEngine::tail_finish)
-      // ---- Muon 2D 桶 gather
+      // ---- Muon 2D-bucket gather
       .def("gather_setup", &GradCommEngine::gather_setup, py::arg("num_slots"))
       .def("gather_mark_ready",
            &GradCommEngine::gather_mark_ready,
            py::arg("slot"))
-      // 参数（slot / 偏移 / owner）从 tail_gather_setup 建的表里查，这里只给
-      // 表项下标和本步序号；返回 (返回码, signal 笔数)
+      // Arguments (slot / offsets / owner) come from the table built by
+      // tail_gather_setup; only the entry index and this step's sequence
+      // number are passed. Returns (return code, number of signals)
       .def(
           "gather_put_entry",
           [](GradCommEngine& self,
@@ -279,8 +291,9 @@ void BindGinOverlapApi(py::module* m) {
         return py::make_tuple(rc, flat);
       });
 
-  // send window 切片的 paddle::Tensor 和 pitched 拷贝（实现在
-  // gin_overlap/paddle_tensor.cc）。出错时抛异常，不返回错误码。
+  // paddle::Tensor of a send window slice, and the pitched copy (implemented
+  // in gin_overlap/paddle_tensor.cc). They throw on error instead of
+  // returning a code.
   engine.def(
       "send_window_tensor",
       [](GradCommEngine&,

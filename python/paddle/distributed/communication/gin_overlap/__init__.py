@@ -12,16 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""gin_overlap 的通信原语：用 NCCL GIN 单边写分阶段完成 sharding stage1 每个梯度桶的 reduce_scatter。
+"""Communication primitive of gin_overlap: the reduce_scatter of each sharding-stage1 gradient bucket, done in stages
+with NCCL GIN one-sided puts.
 
-这个包只提供原语：window / 接收池 / host window 的布局、两个通信组的建立和校验、交给 C++ 侧放行层的参数表，
-以及 2D 桶 gather 到 owner 的表（engine.GinOverlapPrimitive，调用方继承它）。什么时候推进哪个阶段由调用方决定。
-术语和布局的完整说明见 engine.py 的模块 docstring。
+This package provides only the primitive: the layout of the windows, the recv pool and the host windows, setting up
+and checking the two communication groups, the parameter tables handed to the C++ release layer, and the table of
+the 2D-bucket gather to the owner (engine.GinOverlapPrimitive; callers subclass it). When each stage is released is
+decided by the caller. Terms and layouts are described in full in the module docstring of engine.py.
 
-C++ / CUDA 实现在 paddle/fluid/distributed/collective/gin_overlap/，导出成 paddle.base.core.gin_overlap。
-构建没开启时没有这个属性，device_engine() 会报错并给出构建条件。
+The C++ / CUDA implementation lives in paddle/fluid/distributed/collective/gin_overlap/ and is exported as
+paddle.base.core.gin_overlap. Builds without it have no such attribute, and device_engine() raises with the build
+requirements.
 
-不是公开 API：__all__ 是空的，按名字从这里或 .engine 取用。
+Not a public API: __all__ is empty; take names from here or from .engine.
 """
 
 from .engine import (  # noqa: F401
