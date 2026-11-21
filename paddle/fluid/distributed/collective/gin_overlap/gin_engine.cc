@@ -12,10 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// gin_engine.cc —— host 侧编排：建 window、devcomm、侧流和 event，把一个
-// 桶的某个阶段提交到 GPU（submit_*），以及 2D 桶 gather。
-// 这里只有 host 代码，kernel 一律经 kernels/kernels.h 的 launch_* 发射。
-// 术语、host window 布局和约束见 gin_engine.h 文件头。
+// gin_engine.cc: host-side orchestration. Creates the windows, devcomms, side
+// streams and events, submits one stage of one bucket to the GPU (submit_*),
+// and runs the 2D-bucket gather. Host code only: every kernel is launched
+// through a launch_* function of kernels/kernels.h. Terms, the host window
+// layout and the constraints are in the gin_engine.h file header.
 #include "paddle/fluid/distributed/collective/gin_overlap/gin_engine.h"
 
 #include <cstring>
@@ -35,7 +36,8 @@ size_t g_credit_intra_offset = 0, g_credit_inter_offset = 0,
        g_credit_moe_offset = 0;
 int g_buckets_ready = 0;
 
-// 集合操作：组内所有 rank 必须以相同的大小、相同的顺序调用
+// Collective: every rank of the group must call it with the same size, in the
+// same order
 static int alloc_symmetric_window(ncclComm_t comm,
                                   size_t bytes,
                                   char** out_ptr,
@@ -48,7 +50,7 @@ static int alloc_symmetric_window(ncclComm_t comm,
   return 0;
 }
 
-// ---------------------------------------------------------------- 初始化
+// ---------------------------------------------------------------- init
 const char* GradCommEngine::error_string(int code) {
   if (code >= 10000) return ncclGetErrorString((ncclResult_t)(code - 10000));
   return cudaGetErrorString((cudaError_t)code);
@@ -60,13 +62,15 @@ int GradCommEngine::nccl_runtime_version() {
   return version;
 }
 
-// 编译时用的 NCCL 头文件版本。GIN 设备 API 内联在头文件里，所以它必须和运行时
-// 加载的 libnccl 同版本
+// Version of the NCCL headers used at build time. The GIN device API is inlined
+// from those headers, so it must match the libnccl loaded at run time
 int GradCommEngine::nccl_build_version() { return NCCL_VERSION_CODE; }
 
-// 两个组都取 Paddle 已有的 ncclComm（paddle_nccl_comm）。expert_ring_id < 0
-// = 没有专家桶，不取专家组。取回的组大小 / 组内序号必须和传入的一致，否则
-// 报错（ring id 填错时在这里报出）。set_comms 只能调一次。
+// Takes Paddle's existing ncclComm for both groups (paddle_nccl_comm).
+// expert_ring_id < 0 means there are no expert buckets and the expert group is
+// skipped. The size / group rank found must match the values passed in;
+// otherwise this returns an error (a wrong ring id is caught here). Call
+// set_comms only once.
 int GradCommEngine::set_comms(int dense_ring_id,
                               int expert_ring_id,
                               int device_id,
@@ -87,7 +91,7 @@ int GradCommEngine::set_comms(int dense_ring_id,
     CommGroup& comm_group = group_at(group_index);
     if (comm_group.comm) {
       err = std::string(group_names[group_index]) +
-            " 组的 comm 已经设置过了（set_comms 只能调一次）";
+            " group: comm is already set (set_comms may be called only once)";
       return (int)cudaErrorNotReady;
     }
     ncclComm_t comm = nullptr;
@@ -95,28 +99,28 @@ int GradCommEngine::set_comms(int dense_ring_id,
     std::string reason;
     if (paddle_nccl_comm(
             ring_ids[group_index], device_id, &comm, &size, &rank, &reason)) {
-      err = std::string(group_names[group_index]) + " 组（ring id " +
-            std::to_string(ring_ids[group_index]) + "）：" + reason;
+      err = std::string(group_names[group_index]) + " group (ring id " +
+            std::to_string(ring_ids[group_index]) + "): " + reason;
       return (int)cudaErrorInvalidValue;
     }
     int comm_rank = -1, comm_size = -1;
     if (ncclCommUserRank(comm, &comm_rank) != ncclSuccess ||
         ncclCommCount(comm, &comm_size) != ncclSuccess) {
       err = std::string(group_names[group_index]) +
-            " 组：ncclCommUserRank / ncclCommCount 失败";
+            " group: ncclCommUserRank / ncclCommCount failed";
       return (int)cudaErrorInvalidValue;
     }
     if (size != want_size[group_index] || rank != want_rank[group_index] ||
         comm_size != want_size[group_index] ||
         comm_rank != want_rank[group_index]) {
-      err = std::string(group_names[group_index]) + " 组（ring id " +
+      err = std::string(group_names[group_index]) + " group (ring id " +
             std::to_string(ring_ids[group_index]) +
-            "）的大小 / 序号对不上：Python 侧 " +
+            "): size / rank mismatch: Python side " +
             std::to_string(want_rank[group_index]) + "/" +
-            std::to_string(want_size[group_index]) + "，Paddle ProcessGroup " +
-            std::to_string(rank) + "/" + std::to_string(size) + "，ncclComm " +
+            std::to_string(want_size[group_index]) + ", Paddle ProcessGroup " +
+            std::to_string(rank) + "/" + std::to_string(size) + ", ncclComm " +
             std::to_string(comm_rank) + "/" + std::to_string(comm_size) +
-            "（ring id 是不是填成别的组了？）";
+            " (is the ring id that of another group?)";
       return (int)cudaErrorInvalidValue;
     }
     comm_group.comm = comm;
@@ -155,8 +159,9 @@ int GradCommEngine::alloc_windows(int group,
   return 0;
 }
 
-// 建本组的 devcomm（集合操作）。必须在本组所有 window（含 host window）都注册
-// 之后调。出参：GIN context 数、lsaRank、lsaSize（lsaSize 必须在 1..16）
+// Creates the group's devcomm (collective). Call it after every window of the
+// group, the host window included, is registered. Out-params: number of GIN
+// contexts, lsaRank, lsaSize (lsaSize must be in 1..16)
 int GradCommEngine::create_dev_comm(int group,
                                     int num_gin_contexts_hint,
                                     int* num_contexts,
@@ -167,10 +172,10 @@ int GradCommEngine::create_dev_comm(int group,
   if (!comm_group.comm || comm_group.dev_comm_ready)
     return (int)cudaErrorNotReady;
   ncclDevCommRequirements_t req = NCCL_DEV_COMM_REQUIREMENTS_INITIALIZER;
-  req.ginConnectionType =
-      NCCL_GIN_CONNECTION_FULL;  // 专家 put 和 dense 机间 put 都要发给任意 peer
-  req.ginContextCount = num_gin_contexts_hint;  // 只是建议值，以实际值为准
-  req.ginSignalCount = 1;                       // 用 VA signal
+  // the expert put and the dense inter-node put both go to arbitrary peers
+  req.ginConnectionType = NCCL_GIN_CONNECTION_FULL;
+  req.ginContextCount = num_gin_contexts_hint;  // a hint; the result may differ
+  req.ginSignalCount = 1;                       // VA signals
   req.ginCounterCount = 0;
   NCCL_CHECK(ncclDevCommCreate(comm_group.comm, &req, &comm_group.dev_comm));
   comm_group.num_gin_contexts = (int)comm_group.dev_comm.ginContextCount;
@@ -191,8 +196,9 @@ int GradCommEngine::create_dev_comm(int group,
   return 0;
 }
 
-// 设置组内节点分块：num_nodes 个节点，本卡在第 node_index 个。必须满足
-// num_nodes * ranks_per_node == 组大小，且 node_index == rank / ranks_per_node
+// Sets the node layout of the group: num_nodes nodes, this rank on node
+// node_index. Requires num_nodes * ranks_per_node == group size and
+// node_index == rank / ranks_per_node
 int GradCommEngine::set_group_topology(int group,
                                        int num_nodes,
                                        int node_index) {
@@ -211,13 +217,17 @@ int GradCommEngine::set_group_topology(int group,
   return 0;
 }
 
-// 建四条侧流、窗口 mark 环和每桶 event，收下 host window 里三块 credit 区的
-// 字节偏移（credit_intra / credit_inter 在 dense 组，credit_moe 在专家组），
-// 取同节点各卡 host window 的 LSA 指针，并预加载全部 kernel。
-// 预加载让模块提前加载，免得第一次 launch 落在反向的关键路径上。同一进程里有
-// 在 GPU 上自旋等待的 kernel（DeepEP / NCCL）时，第一次加载模块会怎样没有
-// 验证过。
-// 桶数只在这里传入，release_setup 从 g_event_* 的长度读桶数。
+// Creates the four side streams, the window mark ring and the per-bucket
+// events, takes the byte offsets of the three credit areas in the host windows
+// (credit_intra / credit_inter in the dense group, credit_moe in the expert
+// group), gets the LSA pointers of the host windows of the node's ranks, and
+// preloads every kernel.
+// Preloading loads the kernel modules up front so that the first launch does
+// not land on the critical path of the backward pass. What a first module load
+// does while a kernel of DeepEP / NCCL spins on the GPU in the same process has
+// not been verified.
+// The bucket counts are passed only here; release_setup reads them from the
+// sizes of g_event_*.
 int GradCommEngine::configure(int num_dense_buckets,
                               int num_moe_buckets,
                               int num_window_marks,
@@ -257,9 +267,10 @@ int GradCommEngine::configure(int num_dense_buckets,
                        &g_window_marks})
     for (auto& ev : *events)
       CUDA_CHECK(cudaEventCreateWithFlags(&ev, cudaEventDisableTiming));
-  // 取同节点各卡 host window 的 LSA 指针，本卡 GPU 用它直接写对端的计数格。
-  // dense 组用于机内到达格、机内 credit 和 2D gather 的同节点 CE；专家组只用于
-  // 2D gather
+  // LSA pointers of the host windows of the node's ranks: this GPU writes the
+  // peers' counters through them. The dense group uses them for intra-node
+  // arrival counters, intra-node credits and the intra-node CE of the 2D
+  // gather; the expert group only for the 2D gather
   void** lsa_pointers_device = nullptr;
   CUDA_CHECK(cudaMalloc((void**)&lsa_pointers_device, 16 * sizeof(void*)));
   for (int group_index = 0; group_index < NUM_GROUPS; ++group_index) {
@@ -304,14 +315,15 @@ int GradCommEngine::configure(int num_dense_buckets,
 }
 
 // ----------------------------------------------------------------
-// 分配本组的 host window（集合操作，组内所有 rank 都要调）：一块 HOST_NUMA
-// 内存，本卡 GPU 和 CPU 都可读写，注册成本组的 NCCL window。
-//   - 必须在本组 alloc_windows 之后、create_dev_comm 之前调，否则 devcomm
-//     里没有这块 window。
-//   - 注册时必须带 NCCL_WIN_STRICT_ORDERING，否则 CPU 读不到对端网卡写入的
-//     计数。
-//   - *cpu_ptr = CPU 读计数用的地址；*nbytes = 实际大小（≥ want_bytes，按
-//     分配粒度向上取整）。
+// Allocates the group's host window (collective, every rank of the group must
+// call it): a HOST_NUMA allocation that both this GPU and the CPU can read and
+// write, registered as an NCCL window of the group.
+//   - Call it after alloc_windows of the group and before create_dev_comm;
+//     otherwise the devcomm does not contain this window.
+//   - It must be registered with NCCL_WIN_STRICT_ORDERING, or the CPU may not
+//     see the counters a peer NIC writes.
+//   - *cpu_ptr = address the CPU reads the counters from; *nbytes = actual size
+//     (>= want_bytes, rounded up to the allocation granularity).
 int GradCommEngine::alloc_host_counters(int group,
                                         size_t want_bytes,
                                         uintptr_t* cpu_ptr,
@@ -337,9 +349,8 @@ int GradCommEngine::alloc_host_counters(int group,
   alloc_prop.type = CU_MEM_ALLOCATION_TYPE_PINNED;
   alloc_prop.location.type = CU_MEM_LOCATION_TYPE_HOST_NUMA;
   alloc_prop.location.id = numa_id;
-  alloc_prop.requestedHandleTypes =
-      CU_MEM_HANDLE_TYPE_POSIX_FILE_DESCRIPTOR;  // 同节点的卡要映射这块内存，
-                                                 // 必须用这种 handle
+  // ranks of the same node map this memory, which needs this handle type
+  alloc_prop.requestedHandleTypes = CU_MEM_HANDLE_TYPE_POSIX_FILE_DESCRIPTOR;
   size_t granularity = 0;
   CUDA_DRIVER_CHECK(cuMemGetAllocationGranularity(
       &granularity, &alloc_prop, CU_MEM_ALLOC_GRANULARITY_MINIMUM));
@@ -362,7 +373,7 @@ int GradCommEngine::alloc_host_counters(int group,
   access_desc.location.id = numa_id;
   CUDA_DRIVER_CHECK(cuMemSetAccess(base_ptr, bytes, &access_desc, 1));
   comm_group.host = (char*)base_ptr;
-  memset(comm_group.host, 0, bytes);  // 必须在注册之前清零
+  memset(comm_group.host, 0, bytes);  // must be cleared before registration
   NCCL_CHECK(ncclCommWindowRegister(
       comm_group.comm,
       comm_group.host,
