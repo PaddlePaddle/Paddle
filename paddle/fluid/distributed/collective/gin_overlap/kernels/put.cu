@@ -68,8 +68,8 @@ __global__ void k_put_to_expert_peers(ncclDevComm dev_comm,
                                       ncclWindow_t recv_window,
                                       ncclWindow_t send_window,
                                       ncclWindow_t signal_window,
-                                      size_t recv_offset,
                                       size_t send_offset,
+                                      size_t recv_offset,
                                       size_t signal_offset,
                                       size_t numel,
                                       int expert_group_size,
@@ -129,21 +129,21 @@ __global__ void k_gin_flush(ncclDevComm dev_comm, int num_gin_contexts) {
 
 }  // namespace
 
-int launch_put_to_node_peers(ncclDevComm dev_comm,
-                             ncclWindow_t recv_window,
-                             ncclWindow_t send_window,
-                             ncclWindow_t signal_window,
-                             size_t send_offset,
-                             size_t inter_recv_offset,
-                             size_t signal_offset,
-                             size_t numel,
-                             int ranks_per_node,
-                             int num_nodes,
-                             int node_index,
-                             int rank_in_node,
-                             int num_gin_contexts,
-                             int num_blocks,
-                             cudaStream_t stream) {
+cudaError_t launch_put_to_node_peers(ncclDevComm dev_comm,
+                                     ncclWindow_t recv_window,
+                                     ncclWindow_t send_window,
+                                     ncclWindow_t signal_window,
+                                     size_t send_offset,
+                                     size_t inter_recv_offset,
+                                     size_t signal_offset,
+                                     size_t numel,
+                                     int ranks_per_node,
+                                     int num_nodes,
+                                     int node_index,
+                                     int rank_in_node,
+                                     int num_gin_contexts,
+                                     int num_blocks,
+                                     cudaStream_t stream) {
   k_put_to_node_peers<<<num_blocks, 256, 0, stream>>>(dev_comm,
                                                       recv_window,
                                                       send_window,
@@ -157,47 +157,47 @@ int launch_put_to_node_peers(ncclDevComm dev_comm,
                                                       node_index,
                                                       rank_in_node,
                                                       num_gin_contexts);
-  return (int)cudaGetLastError();
+  return cudaGetLastError();
 }
 
-int launch_put_to_expert_peers(ncclDevComm dev_comm,
-                               ncclWindow_t recv_window,
-                               ncclWindow_t send_window,
-                               ncclWindow_t signal_window,
-                               size_t recv_offset,
-                               size_t send_offset,
-                               size_t signal_offset,
-                               size_t numel,
-                               int expert_group_size,
-                               int expert_group_rank,
-                               int num_gin_contexts,
-                               int num_blocks,
-                               cudaStream_t stream) {
+cudaError_t launch_put_to_expert_peers(ncclDevComm dev_comm,
+                                       ncclWindow_t recv_window,
+                                       ncclWindow_t send_window,
+                                       ncclWindow_t signal_window,
+                                       size_t send_offset,
+                                       size_t recv_offset,
+                                       size_t signal_offset,
+                                       size_t numel,
+                                       int expert_group_size,
+                                       int expert_group_rank,
+                                       int num_gin_contexts,
+                                       int num_blocks,
+                                       cudaStream_t stream) {
   k_put_to_expert_peers<<<num_blocks, 256, 0, stream>>>(dev_comm,
                                                         recv_window,
                                                         send_window,
                                                         signal_window,
-                                                        recv_offset,
                                                         send_offset,
+                                                        recv_offset,
                                                         signal_offset,
                                                         numel,
                                                         expert_group_size,
                                                         expert_group_rank,
                                                         num_gin_contexts);
-  return (int)cudaGetLastError();
+  return cudaGetLastError();
 }
 
-int launch_put_to_owner(ncclDevComm dev_comm,
-                        ncclWindow_t dst_window,
-                        size_t dst_offset,
-                        ncclWindow_t src_window,
-                        size_t src_offset,
-                        ncclWindow_t signal_window,
-                        size_t signal_offset,
-                        size_t numel,
-                        int owner,
-                        int num_gin_contexts,
-                        cudaStream_t stream) {
+cudaError_t launch_put_to_owner(ncclDevComm dev_comm,
+                                ncclWindow_t dst_window,
+                                size_t dst_offset,
+                                ncclWindow_t src_window,
+                                size_t src_offset,
+                                ncclWindow_t signal_window,
+                                size_t signal_offset,
+                                size_t numel,
+                                int owner,
+                                int num_gin_contexts,
+                                cudaStream_t stream) {
   k_put_to_owner<<<1, 256, 0, stream>>>(dev_comm,
                                         dst_window,
                                         dst_offset,
@@ -208,28 +208,28 @@ int launch_put_to_owner(ncclDevComm dev_comm,
                                         numel,
                                         owner,
                                         num_gin_contexts);
-  return (int)cudaGetLastError();
+  return cudaGetLastError();
 }
 
-int launch_gin_flush(ncclDevComm dev_comm,
-                     int num_gin_contexts,
-                     cudaStream_t stream) {
+cudaError_t launch_gin_flush(ncclDevComm dev_comm,
+                             int num_gin_contexts,
+                             cudaStream_t stream) {
   k_gin_flush<<<num_gin_contexts, 128, 0, stream>>>(dev_comm, num_gin_contexts);
-  return (int)cudaGetLastError();
+  return cudaGetLastError();
 }
 
-int preload_put_kernels() {
+cudaError_t preload_put_kernels() {
   cudaFuncAttributes fa;
   cudaError_t err;
   if ((err = cudaFuncGetAttributes(&fa, k_put_to_node_peers)) != cudaSuccess)
-    return (int)err;
+    return err;
   if ((err = cudaFuncGetAttributes(&fa, k_put_to_expert_peers)) != cudaSuccess)
-    return (int)err;
+    return err;
   if ((err = cudaFuncGetAttributes(&fa, k_put_to_owner)) != cudaSuccess)
-    return (int)err;
+    return err;
   if ((err = cudaFuncGetAttributes(&fa, k_gin_flush)) != cudaSuccess)
-    return (int)err;
-  return 0;
+    return err;
+  return cudaSuccess;
 }
 
 }  // namespace gin_overlap

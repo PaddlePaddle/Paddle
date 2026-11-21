@@ -30,19 +30,19 @@ __global__ void k_scale_range(float* data, size_t numel, float scale) {
 
 }  // namespace
 
-int launch_scale_range(float* data,
-                       size_t numel,
-                       float scale,
-                       int num_blocks,
-                       cudaStream_t stream) {
+cudaError_t launch_scale_range(float* data,
+                               size_t numel,
+                               float scale,
+                               int num_blocks,
+                               cudaStream_t stream) {
   k_scale_range<<<num_blocks, 256, 0, stream>>>(data, numel, scale);
-  return (int)cudaGetLastError();
+  return cudaGetLastError();
 }
 
-int preload_scale_kernels() {
+cudaError_t preload_scale_kernels() {
   cudaFuncAttributes fa;
   const cudaError_t err = cudaFuncGetAttributes(&fa, k_scale_range);
-  return err == cudaSuccess ? 0 : (int)err;
+  return err;
 }
 
 }  // namespace gin_overlap
