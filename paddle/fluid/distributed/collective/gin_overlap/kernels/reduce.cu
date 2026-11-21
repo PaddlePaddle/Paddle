@@ -41,13 +41,13 @@ namespace {
 //   - scalar path: everything else.
 // fma_rn4: one __fadd_rn(acc, __fmul_rn(value, scale)) per component of a
 // float4, the same operation order as the scalar path.
-__device__ __forceinline__ void fma_rn4(float4& acc,
+__device__ __forceinline__ void fma_rn4(float4* acc,
                                         const float4& value,
                                         float scale) {
-  acc.x = __fadd_rn(acc.x, __fmul_rn(value.x, scale));
-  acc.y = __fadd_rn(acc.y, __fmul_rn(value.y, scale));
-  acc.z = __fadd_rn(acc.z, __fmul_rn(value.z, scale));
-  acc.w = __fadd_rn(acc.w, __fmul_rn(value.w, scale));
+  acc->x = __fadd_rn(acc->x, __fmul_rn(value.x, scale));
+  acc->y = __fadd_rn(acc->y, __fmul_rn(value.y, scale));
+  acc->z = __fadd_rn(acc->z, __fmul_rn(value.z, scale));
+  acc->w = __fadd_rn(acc->w, __fmul_rn(value.w, scale));
 }
 // Whether the float4 path applies: element count a multiple of 4 and both
 // pointers 16-byte aligned
@@ -74,15 +74,18 @@ __global__ void k_reduce_intra_node(float4* grad,
                                     int ranks_per_node,
                                     int num_nodes,
                                     int rank_in_node) {
-  const size_t total = (size_t)num_nodes * numel4,
+  const size_t total = static_cast<size_t>(num_nodes) * numel4,
                stride = static_cast<size_t>(gridDim.x) * blockDim.x;
   for (size_t i = static_cast<size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
        i < total;
        i += stride) {
     const size_t node = i / numel4, elem = i - node * numel4;
     const float4* own_block =
-        grad + ((size_t)node * ranks_per_node + rank_in_node) * numel4 + elem;
-    const float4* recv_base = intra_recv + (size_t)node * numel4 + elem;
+        grad +
+        (static_cast<size_t>(node) * ranks_per_node + rank_in_node) * numel4 +
+        elem;
+    const float4* recv_base =
+        intra_recv + static_cast<size_t>(node) * numel4 + elem;
     float4 acc = make_float4(0.f, 0.f, 0.f, 0.f);
     for (int batch = 0; batch < ranks_per_node; batch += 8) {
       float4 vals[8];
@@ -92,9 +95,10 @@ __global__ void k_reduce_intra_node(float4* grad,
         if (k < ranks_per_node) {
           const int l = (rank_in_node + 1 + k) % ranks_per_node;
           const int row = l - (l > rank_in_node);
-          vals[j] = *((l == rank_in_node)
-                          ? own_block
-                          : recv_base + (size_t)row * num_nodes * numel4);
+          vals[j] =
+              *((l == rank_in_node) ? own_block
+                                    : recv_base + static_cast<size_t>(row) *
+                                                      num_nodes * numel4);
         }
       }
 #pragma unroll
@@ -107,7 +111,8 @@ __global__ void k_reduce_intra_node(float4* grad,
         }
       }
     }
-    grad[((size_t)node * ranks_per_node + rank_in_node) * numel4 + elem] = acc;
+    grad[(static_cast<size_t>(node) * ranks_per_node + rank_in_node) * numel4 +
+         elem] = acc;
   }
 }
 
@@ -136,14 +141,15 @@ __global__ void k_reduce_dense_shard(float* shard,
           const int k = batch + j;
           if (k <= num_nodes) {
             const int node = (node_index + k) % num_nodes;
-            vals[j] = *((node == node_index)
-                            ? (shard4 + elem)
-                            : (recv4 + (size_t)node * numel4 + elem));
+            vals[j] =
+                *((node == node_index)
+                      ? (shard4 + elem)
+                      : (recv4 + static_cast<size_t>(node) * numel4 + elem));
           }
         }
 #pragma unroll
         for (int j = 0; j < 8; ++j)
-          if (batch + j <= num_nodes) fma_rn4(acc, vals[j], scale);
+          if (batch + j <= num_nodes) fma_rn4(&acc, vals[j], scale);
       }
       shard4[elem] = acc;
     }
@@ -153,9 +159,10 @@ __global__ void k_reduce_dense_shard(float* shard,
     float acc = 0.f;
     for (int k = 1; k <= num_nodes; ++k) {
       const int node = (node_index + k) % num_nodes;
-      const float value = (node == node_index)
-                              ? shard[elem]
-                              : inter_recv[(size_t)node * numel + elem];
+      const float value =
+          (node == node_index)
+              ? shard[elem]
+              : inter_recv[static_cast<size_t>(node) * numel + elem];
       acc = __fadd_rn(acc, __fmul_rn(value, scale));
     }
     shard[elem] = acc;
@@ -189,12 +196,12 @@ __global__ void k_reduce_moe_shard(float* shard,
             const int peer = (expert_group_rank + 1 + k) % expert_group_size;
             vals[j] = *((peer == expert_group_rank)
                             ? (shard4 + i)
-                            : (recv4 + (size_t)peer * numel4 + i));
+                            : (recv4 + static_cast<size_t>(peer) * numel4 + i));
           }
         }
 #pragma unroll
         for (int j = 0; j < 8; ++j)
-          if (batch + j < expert_group_size) fma_rn4(acc, vals[j], scale);
+          if (batch + j < expert_group_size) fma_rn4(&acc, vals[j], scale);
       }
       shard4[i] = acc;
     }
@@ -206,7 +213,7 @@ __global__ void k_reduce_moe_shard(float* shard,
       const int peer = (expert_group_rank + 1 + k) % expert_group_size;
       const float value = (peer == expert_group_rank)
                               ? shard[i]
-                              : recv[(size_t)peer * numel + i];
+                              : recv[static_cast<size_t>(peer) * numel + i];
       acc = __fadd_rn(acc, __fmul_rn(value, scale));
     }
     shard[i] = acc;

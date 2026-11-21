@@ -33,11 +33,12 @@
 //     (cudaSuccess = success).
 #pragma once
 
-#include <cstddef>
-
 #include <cuda_runtime.h>
 #include <nccl.h>
 #include <nccl_device.h>
+
+#include <cstddef>
+#include <cstdint>
 
 namespace gin_overlap {
 
@@ -45,7 +46,7 @@ namespace gin_overlap {
 // credit counter) in the host windows of the node's ranks, indexed by the
 // node-local rank (lsaRank). A node has at most 16 ranks.
 struct LsaSlotPointers {
-  unsigned long long* per_rank[16];
+  uint64_t* per_rank[16];
 };
 
 // Block count from the element count (256 threads per block, at least 1, at
@@ -54,7 +55,7 @@ inline int blocks_for_numel(size_t numel) {
   size_t num_blocks = (numel + 255) / 256;
   if (num_blocks < 1) num_blocks = 1;
   if (num_blocks > 4096) num_blocks = 4096;
-  return (int)num_blocks;
+  return static_cast<int>(num_blocks);
 }
 
 // ----------------------------------------------------------------
@@ -179,12 +180,12 @@ cudaError_t launch_signal_credit(ncclDevComm dev_comm,
 cudaError_t launch_signal_intra_arrive(LsaSlotPointers arrive_slots,
                                        int ranks_per_node,
                                        int skip_rank,
-                                       unsigned long long seq,
+                                       uint64_t seq,
                                        cudaStream_t stream);
 // Writes one u64 with a release store from one thread (the intra-node arrival
 // counter of the 2D gather). <<<1, 32>>>
-cudaError_t launch_store_release(unsigned long long* dst,
-                                 unsigned long long value,
+cudaError_t launch_store_release(uint64_t* dst,
+                                 uint64_t value,
                                  cudaStream_t stream);
 // Gets the device-side addresses of the host windows of the node's ranks into
 // out_pointers (device memory). Called once at init, on the default stream.

@@ -42,7 +42,9 @@ __global__ void k_put_to_node_peers(ncclDevComm dev_comm,
                                     int node_index,
                                     int rank_in_node,
                                     int num_gin_contexts) {
-  ncclGin gin(dev_comm, (int)(blockIdx.x % (unsigned)num_gin_contexts));
+  ncclGin gin(
+      dev_comm,
+      static_cast<int>(blockIdx.x % static_cast<unsigned>(num_gin_contexts)));
   const ncclTeam team = ncclTeamWorld(dev_comm);
   for (int peer_index = blockIdx.x; peer_index < num_nodes - 1;
        peer_index += gridDim.x) {
@@ -50,9 +52,11 @@ __global__ void k_put_to_node_peers(ncclDevComm dev_comm,
     gin.put(team,
             peer_node * ranks_per_node + rank_in_node,
             recv_window,
-            inter_recv_offset + (size_t)node_index * numel * sizeof(float),
+            inter_recv_offset +
+                static_cast<size_t>(node_index) * numel * sizeof(float),
             send_window,
-            send_offset + ((size_t)peer_node * ranks_per_node + rank_in_node) *
+            send_offset + (static_cast<size_t>(peer_node) * ranks_per_node +
+                           rank_in_node) *
                               numel * sizeof(float),
             numel * sizeof(float),
             ncclGin_VASignalInc{signal_window, signal_offset},
@@ -75,7 +79,9 @@ __global__ void k_put_to_expert_peers(ncclDevComm dev_comm,
                                       int expert_group_size,
                                       int expert_group_rank,
                                       int num_gin_contexts) {
-  ncclGin gin(dev_comm, (int)(blockIdx.x % (unsigned)num_gin_contexts));
+  ncclGin gin(
+      dev_comm,
+      static_cast<int>(blockIdx.x % static_cast<unsigned>(num_gin_contexts)));
   const ncclTeam team = ncclTeamWorld(dev_comm);
   for (int peer_index = blockIdx.x; peer_index < expert_group_size - 1;
        peer_index += gridDim.x) {
@@ -83,9 +89,10 @@ __global__ void k_put_to_expert_peers(ncclDevComm dev_comm,
     gin.put(team,
             peer,
             recv_window,
-            recv_offset + (size_t)expert_group_rank * numel * sizeof(float),
+            recv_offset +
+                static_cast<size_t>(expert_group_rank) * numel * sizeof(float),
             send_window,
-            send_offset + (size_t)peer * numel * sizeof(float),
+            send_offset + static_cast<size_t>(peer) * numel * sizeof(float),
             numel * sizeof(float),
             ncclGin_VASignalInc{signal_window, signal_offset},
             ncclGin_None{},
@@ -105,7 +112,9 @@ __global__ void k_put_to_owner(ncclDevComm dev_comm,
                                size_t numel,
                                int owner,
                                int num_gin_contexts) {
-  ncclGin gin(dev_comm, (int)(blockIdx.x % (unsigned)num_gin_contexts));
+  ncclGin gin(
+      dev_comm,
+      static_cast<int>(blockIdx.x % static_cast<unsigned>(num_gin_contexts)));
   const ncclTeam team = ncclTeamWorld(dev_comm);
   gin.put(team,
           owner,
@@ -122,8 +131,8 @@ __global__ void k_put_to_owner(ncclDevComm dev_comm,
 // flush: one block per GIN context. Call it before the next step reuses the
 // send window
 __global__ void k_gin_flush(ncclDevComm dev_comm, int num_gin_contexts) {
-  if (blockIdx.x >= (unsigned)num_gin_contexts) return;
-  ncclGin gin(dev_comm, (int)blockIdx.x);
+  if (blockIdx.x >= static_cast<unsigned>(num_gin_contexts)) return;
+  ncclGin gin(dev_comm, static_cast<int>(blockIdx.x));
   gin.flush(ncclCoopCta());
 }
 

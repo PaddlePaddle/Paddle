@@ -25,6 +25,10 @@
 namespace gin_overlap {
 namespace {
 
+// The 64-bit type of CUDA's atomicAdd_system prototype (uint64_t is unsigned
+// long on Linux, a different type)
+using cuda_u64 = unsigned long long;  // NOLINT(runtime/int)
+
 // Adds 1 to the intra-node credit counter of every other rank of the node
 // (skipping skip_rank) (system-scope atomic add)
 __global__ void k_signal_intra_node(LsaSlotPointers counter_slots,
@@ -33,7 +37,8 @@ __global__ void k_signal_intra_node(LsaSlotPointers counter_slots,
   const int l = threadIdx.x;
   if (l < ranks_per_node && l != skip_rank) {
     __threadfence_system();
-    atomicAdd_system(counter_slots.per_rank[l], 1ULL);
+    atomicAdd_system(reinterpret_cast<cuda_u64*>(counter_slots.per_rank[l]),
+                     1ULL);
   }
 }
 
@@ -74,7 +79,7 @@ __global__ void k_signal_credit(ncclDevComm dev_comm,
 __global__ void k_signal_intra_arrive(LsaSlotPointers arrive_slots,
                                       int ranks_per_node,
                                       int skip_rank,
-                                      unsigned long long seq) {
+                                      uint64_t seq) {
   const int l = threadIdx.x;
   if (l < ranks_per_node && l != skip_rank) {
     __threadfence_system();
@@ -89,8 +94,7 @@ __global__ void k_signal_intra_arrive(LsaSlotPointers arrive_slots,
 // writes the "this bucket x this rank" arrival counter in the owner's host
 // window. Single writer; same store and data ordering as
 // k_signal_intra_arrive.
-__global__ void k_store_release(unsigned long long* dst,
-                                unsigned long long value) {
+__global__ void k_store_release(uint64_t* dst, uint64_t value) {
   if (threadIdx.x || blockIdx.x) return;
   __threadfence_system();
   asm volatile("st.release.sys.u64 [%0], %1;" ::"l"(dst), "l"(value)
@@ -143,15 +147,15 @@ cudaError_t launch_signal_credit(ncclDevComm dev_comm,
 cudaError_t launch_signal_intra_arrive(LsaSlotPointers arrive_slots,
                                        int ranks_per_node,
                                        int skip_rank,
-                                       unsigned long long seq,
+                                       uint64_t seq,
                                        cudaStream_t stream) {
   k_signal_intra_arrive<<<1, 32, 0, stream>>>(
       arrive_slots, ranks_per_node, skip_rank, seq);
   return cudaGetLastError();
 }
 
-cudaError_t launch_store_release(unsigned long long* dst,
-                                 unsigned long long value,
+cudaError_t launch_store_release(uint64_t* dst,
+                                 uint64_t value,
                                  cudaStream_t stream) {
   k_store_release<<<1, 32, 0, stream>>>(dst, value);
   return cudaGetLastError();
