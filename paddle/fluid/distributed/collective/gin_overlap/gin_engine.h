@@ -50,7 +50,7 @@
 //     GPU waits on a mark first, so it cannot start earlier than that point
 //     and the gradients it reads are already written.
 //   - release: deciding that one stage of one bucket may run now, and
-//     submitting it to the GPU. The release layer (release.cu) makes that
+//     submitting it to the GPU. The release layer (release.cc) makes that
 //     decision.
 //   - credit: after a receiver is done with a slot of its recv pool, it adds
 //     1 to a counter of the sender ("returns a credit"). The sender writes to
