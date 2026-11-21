@@ -159,6 +159,9 @@ NCCL_RAND_ROUTINE_EACH_AFTER_21100(DECLARE_DYNAMIC_LOAD_NCCL_WRAP)
 // but the hierarchical zero-SM collectives only work from 2.30.7 on, so they
 // are gated as one group on that version: below it the feature is refused
 // rather than silently degraded.
+// ncclDevCommCreate / ncclGetLsaDevicePointer are the host entry points of the
+// device (LSA/GIN) API; they also first appear in 2.30.7, so they share this
+// gate with the zero-SM entry points.
 #if NCCL_VERSION_CODE >= 23007
 #define NCCL_RAND_ROUTINE_EACH_AFTER_23007(__macro) \
   __macro(ncclCommInitRankConfig);                  \
