@@ -58,10 +58,11 @@ std::string describe(const paddle::Tensor& t) {
          t.place().DebugString();
 }
 
-// Checks the source or destination of a 2D copy: it must be an initialized
-// dense tensor on the GPU, and [offset, offset + (height-1)*pitch + width)
-// must lie inside it (the last row counts only width). Returns the tensor's
-// data pointer; throws otherwise
+// Checks the source or destination of a 2D copy: it must be an initialized,
+// contiguous dense tensor on the GPU, and [offset, offset + (height-1)*pitch +
+// width) must lie inside it (the last row counts only width). Returns the
+// tensor's data pointer; throws otherwise. Strided views (expand, transpose,
+// ...) are rejected: the copy treats the memory as contiguous bytes.
 void* checked_block(const paddle::Tensor& t,
                     size_t offset,
                     size_t pitch,
@@ -74,20 +75,25 @@ void* checked_block(const paddle::Tensor& t,
          " is not an initialized dense tensor on the GPU (" + describe(t) +
          ")");
   }
+  if (!t.is_contiguous()) {
+    fail(std::string("copy_2d: ") + what + " is not contiguous (" +
+         describe(t) + ")");
+  }
   if (width == 0 || height == 0 || width > pitch) {
     fail(std::string("copy_2d: ") + what + " width " + std::to_string(width) +
          " B / height " + std::to_string(height) + " / pitch " +
          std::to_string(pitch) + " B is invalid");
   }
   const size_t nbytes = (size_t)t.numel() * phi::SizeOf(t.dtype());
-  const size_t need = offset + (height - 1) * pitch + width;
-  if (offset > nbytes || need > nbytes) {
+  // written so that nothing wraps around: width <= pitch was checked above,
+  // so the division is safe
+  if (offset > nbytes || width > nbytes - offset ||
+      height - 1 > (nbytes - offset - width) / pitch) {
     fail(std::string("copy_2d: ") + what + " out of bounds (offset " +
          std::to_string(offset) + " B + " + std::to_string(height) +
          " rows x " + std::to_string(pitch) + " B pitch, last row " +
-         std::to_string(width) + " B, needs " + std::to_string(need) +
-         " B, the tensor has " + std::to_string(nbytes) + " B: " + describe(t) +
-         ")");
+         std::to_string(width) + " B, the tensor has " +
+         std::to_string(nbytes) + " B: " + describe(t) + ")");
   }
   return const_cast<void*>(t.data());
 }
@@ -137,8 +143,8 @@ paddle::Tensor send_window_tensor(int group,
          std::string(group_name(group)) +
          " group is not allocated yet (called before alloc_windows)");
   }
-  if (numel <= 0 || (send_offset & 3) ||
-      send_offset + (size_t)numel * 4 > comm_group.send_bytes) {
+  if (numel <= 0 || (send_offset & 3) || send_offset > comm_group.send_bytes ||
+      (size_t)numel > (comm_group.send_bytes - send_offset) / 4) {
     fail("send_window_tensor: slice of the send window of the " +
          std::string(group_name(group)) +
          " group is out of bounds or not 4-byte aligned (offset " +

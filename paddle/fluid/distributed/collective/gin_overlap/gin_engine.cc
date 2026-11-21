@@ -37,16 +37,19 @@ size_t g_credit_intra_offset = 0, g_credit_inter_offset = 0,
 int g_buckets_ready = 0;
 
 // Collective: every rank of the group must call it with the same size, in the
-// same order
+// same order. Allocates at least 4096 bytes; *out_bytes = the size actually
+// allocated and registered.
 static int alloc_symmetric_window(ncclComm_t comm,
                                   size_t bytes,
                                   char** out_ptr,
-                                  ncclWindow_t* out_window) {
+                                  ncclWindow_t* out_window,
+                                  size_t* out_bytes) {
   if (bytes < 4096) bytes = 4096;
   NCCL_CHECK(ncclMemAlloc((void**)out_ptr, bytes));
   CUDA_CHECK(cudaMemset(*out_ptr, 0, bytes));
   NCCL_CHECK(ncclCommWindowRegister(
       comm, *out_ptr, bytes, out_window, NCCL_WIN_COLL_SYMMETRIC));
+  *out_bytes = bytes;
   return 0;
 }
 
@@ -70,7 +73,7 @@ int GradCommEngine::nccl_build_version() { return NCCL_VERSION_CODE; }
 // expert_ring_id < 0 means there are no expert buckets and the expert group is
 // skipped. The size / group rank found must match the values passed in;
 // otherwise this returns an error (a wrong ring id is caught here). Call
-// set_comms only once.
+// set_comms only once. On failure no group is left set, so it can be retried.
 int GradCommEngine::set_comms(int dense_ring_id,
                               int expert_ring_id,
                               int device_id,
@@ -86,13 +89,25 @@ int GradCommEngine::set_comms(int dense_ring_id,
   const int want_size[NUM_GROUPS] = {dense_size, expert_size};
   const int want_rank[NUM_GROUPS] = {dense_rank, expert_rank};
   const char* group_names[NUM_GROUPS] = {"sharding", "moe_sharding"};
+  // Groups set by this call; a failure clears them again, so set_comms can be
+  // retried.
+  bool set_here[NUM_GROUPS] = {false, false};
+  auto fail = [&](int rc) {
+    for (int group_index = 0; group_index < NUM_GROUPS; ++group_index) {
+      if (!set_here[group_index]) continue;
+      CommGroup& comm_group = group_at(group_index);
+      comm_group.comm = nullptr;
+      comm_group.size = comm_group.rank = 0;
+    }
+    return rc;
+  };
   for (int group_index = 0; group_index < NUM_GROUPS; ++group_index) {
     if (ring_ids[group_index] < 0) continue;
     CommGroup& comm_group = group_at(group_index);
     if (comm_group.comm) {
       err = std::string(group_names[group_index]) +
             " group: comm is already set (set_comms may be called only once)";
-      return (int)cudaErrorNotReady;
+      return fail((int)cudaErrorNotReady);
     }
     ncclComm_t comm = nullptr;
     int size = 0, rank = 0;
@@ -101,14 +116,14 @@ int GradCommEngine::set_comms(int dense_ring_id,
             ring_ids[group_index], device_id, &comm, &size, &rank, &reason)) {
       err = std::string(group_names[group_index]) + " group (ring id " +
             std::to_string(ring_ids[group_index]) + "): " + reason;
-      return (int)cudaErrorInvalidValue;
+      return fail((int)cudaErrorInvalidValue);
     }
     int comm_rank = -1, comm_size = -1;
     if (ncclCommUserRank(comm, &comm_rank) != ncclSuccess ||
         ncclCommCount(comm, &comm_size) != ncclSuccess) {
       err = std::string(group_names[group_index]) +
             " group: ncclCommUserRank / ncclCommCount failed";
-      return (int)cudaErrorInvalidValue;
+      return fail((int)cudaErrorInvalidValue);
     }
     if (size != want_size[group_index] || rank != want_rank[group_index] ||
         comm_size != want_size[group_index] ||
@@ -121,15 +136,19 @@ int GradCommEngine::set_comms(int dense_ring_id,
             std::to_string(rank) + "/" + std::to_string(size) + ", ncclComm " +
             std::to_string(comm_rank) + "/" + std::to_string(comm_size) +
             " (is the ring id that of another group?)";
-      return (int)cudaErrorInvalidValue;
+      return fail((int)cudaErrorInvalidValue);
     }
     comm_group.comm = comm;
     comm_group.size = want_size[group_index];
     comm_group.rank = want_rank[group_index];
+    set_here[group_index] = true;
   }
   return 0;
 }
 
+// Allocates and registers the group's send / recv / signal windows
+// (collective). A failure cannot be rolled back (window registration is
+// collective) and alloc_windows cannot be retried: restart the process.
 int GradCommEngine::alloc_windows(int group,
                                   size_t send_bytes,
                                   size_t recv_bytes,
@@ -137,31 +156,32 @@ int GradCommEngine::alloc_windows(int group,
   if (!is_valid_group(group)) return (int)cudaErrorInvalidValue;
   CommGroup& comm_group = group_at(group);
   if (!comm_group.comm || comm_group.send) return (int)cudaErrorNotReady;
-  int rc;
-  if ((rc = alloc_symmetric_window(comm_group.comm,
+  size_t send_actual = 0, recv_actual = 0, signal_actual = 0;
+  GIN_CHECK(alloc_symmetric_window(comm_group.comm,
                                    send_bytes,
                                    &comm_group.send,
-                                   &comm_group.win_send)))
-    return rc;
-  comm_group.send_bytes = send_bytes < 4096 ? 4096 : send_bytes;
-  if ((rc = alloc_symmetric_window(comm_group.comm,
+                                   &comm_group.win_send,
+                                   &send_actual));
+  comm_group.send_bytes = send_actual;
+  GIN_CHECK(alloc_symmetric_window(comm_group.comm,
                                    recv_bytes,
                                    &comm_group.recv,
-                                   &comm_group.win_recv)))
-    return rc;
-  if ((rc = alloc_symmetric_window(comm_group.comm,
+                                   &comm_group.win_recv,
+                                   &recv_actual));
+  comm_group.recv_bytes = recv_actual;
+  GIN_CHECK(alloc_symmetric_window(comm_group.comm,
                                    signal_bytes,
                                    &comm_group.signal,
-                                   &comm_group.win_signal))) {
-    return rc;
-  }
+                                   &comm_group.win_signal,
+                                   &signal_actual));
   CUDA_CHECK(cudaDeviceSynchronize());
   return 0;
 }
 
 // Creates the group's devcomm (collective). Call it after every window of the
 // group, the host window included, is registered. Out-params: number of GIN
-// contexts, lsaRank, lsaSize (lsaSize must be in 1..16)
+// contexts, lsaRank, lsaSize (lsaSize must be in 1..16). A failure, the
+// lsaSize check included, cannot be retried: restart the process.
 int GradCommEngine::create_dev_comm(int group,
                                     int num_gin_contexts_hint,
                                     int* num_contexts,
@@ -217,30 +237,15 @@ int GradCommEngine::set_group_topology(int group,
   return 0;
 }
 
-// Creates the four side streams, the window mark ring and the per-bucket
-// events, takes the byte offsets of the three credit areas in the host windows
-// (credit_intra / credit_inter in the dense group, credit_moe in the expert
-// group), gets the LSA pointers of the host windows of the node's ranks, and
-// preloads every kernel.
-// Preloading loads the kernel modules up front so that the first launch does
-// not land on the critical path of the backward pass. What a first module load
-// does while a kernel of DeepEP / NCCL spins on the GPU in the same process has
-// not been verified.
-// The bucket counts are passed only here; release_setup reads them from the
-// sizes of g_event_*.
-int GradCommEngine::configure(int num_dense_buckets,
-                              int num_moe_buckets,
-                              int num_window_marks,
-                              size_t credit_intra_offset,
-                              size_t credit_inter_offset,
-                              size_t credit_moe_offset) {
-  if (!dense_group().dev_comm_ready || g_buckets_ready || !dense_group().host)
-    return (int)cudaErrorNotReady;
-  if (num_window_marks <= 0 || num_moe_buckets < 0 || num_dense_buckets < 0)
-    return (int)cudaErrorInvalidValue;
-  if (num_moe_buckets > 0 &&
-      (!expert_group().dev_comm_ready || !expert_group().host))
-    return (int)cudaErrorNotReady;
+// configure, step by step. On failure configure calls
+// release_configure_resources, which undoes everything done here.
+static int configure_resources(int num_dense_buckets,
+                               int num_moe_buckets,
+                               int num_window_marks,
+                               size_t credit_intra_offset,
+                               size_t credit_inter_offset,
+                               size_t credit_moe_offset,
+                               void*** lsa_pointers_out) {
   g_credit_intra_offset = credit_intra_offset;
   g_credit_inter_offset = credit_inter_offset;
   g_credit_moe_offset = credit_moe_offset;
@@ -271,16 +276,13 @@ int GradCommEngine::configure(int num_dense_buckets,
   // peers' counters through them. The dense group uses them for intra-node
   // arrival counters, intra-node credits and the intra-node CE of the 2D
   // gather; the expert group only for the 2D gather
-  void** lsa_pointers_device = nullptr;
+  void**& lsa_pointers_device = *lsa_pointers_out;
   CUDA_CHECK(cudaMalloc((void**)&lsa_pointers_device, 16 * sizeof(void*)));
   for (int group_index = 0; group_index < NUM_GROUPS; ++group_index) {
     CommGroup& comm_group = group_at(group_index);
     if (!comm_group.host) continue;
-    {
-      const int rc = launch_host_window_lsa_pointers(
-          comm_group.win_host, comm_group.ranks_per_node, lsa_pointers_device);
-      if (rc) return rc;
-    }
+    GIN_CHECK(launch_host_window_lsa_pointers(
+        comm_group.win_host, comm_group.ranks_per_node, lsa_pointers_device));
     void* lsa_pointers_host[16] = {};
     CUDA_CHECK(cudaMemcpy(lsa_pointers_host,
                           lsa_pointers_device,
@@ -293,23 +295,81 @@ int GradCommEngine::configure(int num_dense_buckets,
     }
   }
   CUDA_CHECK(cudaFree(lsa_pointers_device));
-  {
-    const int rc = preload_signal_kernels();
-    if (rc) return rc;
-  }
-  {
-    const int rc = preload_put_kernels();
-    if (rc) return rc;
-  }
-  {
-    const int rc = preload_reduce_kernels();
-    if (rc) return rc;
-  }
-  {
-    const int rc = preload_scale_kernels();
-    if (rc) return rc;
-  }
+  lsa_pointers_device = nullptr;
+  GIN_CHECK(preload_signal_kernels());
+  GIN_CHECK(preload_put_kernels());
+  GIN_CHECK(preload_reduce_kernels());
+  GIN_CHECK(preload_scale_kernels());
   CUDA_CHECK(cudaDeviceSynchronize());
+  return 0;
+}
+
+// Destroys the streams and events configure created, frees its temporary
+// device buffer, and resets the globals it set, so that a failed configure
+// leaves the engine as it was before the call (configure can be retried).
+static void release_configure_resources(void*** lsa_pointers_device) {
+  for (cudaStream_t* stream : {&g_stream_intra_node_copy,
+                               &g_stream_intra_node_reduce,
+                               &g_stream_put,
+                               &g_stream_shard_reduce}) {
+    if (*stream) cudaStreamDestroy(*stream);
+    *stream = nullptr;
+  }
+  for (auto* events : {&g_event_moe_put,
+                       &g_event_moe_reduce,
+                       &g_event_dense_put,
+                       &g_event_intra_node_copy,
+                       &g_event_intra_node_reduce,
+                       &g_event_dense_inter_node_reduce,
+                       &g_window_marks}) {
+    for (cudaEvent_t ev : *events)
+      if (ev) cudaEventDestroy(ev);
+    events->clear();
+  }
+  if (*lsa_pointers_device) cudaFree(*lsa_pointers_device);
+  *lsa_pointers_device = nullptr;
+  for (int group_index = 0; group_index < NUM_GROUPS; ++group_index)
+    for (char*& pointer : group_at(group_index).lsa_host) pointer = nullptr;
+  g_credit_intra_offset = g_credit_inter_offset = g_credit_moe_offset = 0;
+  cudaGetLastError();  // drop the error the failed call left behind
+}
+
+// Creates the four side streams, the window mark ring and the per-bucket
+// events, takes the byte offsets of the three credit areas in the host windows
+// (credit_intra / credit_inter in the dense group, credit_moe in the expert
+// group), gets the LSA pointers of the host windows of the node's ranks, and
+// preloads every kernel.
+// Preloading loads the kernel modules up front so that the first launch does
+// not land on the critical path of the backward pass. What a first module load
+// does while a kernel of DeepEP / NCCL spins on the GPU in the same process has
+// not been verified.
+// The bucket counts are passed only here; release_setup reads them from the
+// sizes of g_event_*.
+int GradCommEngine::configure(int num_dense_buckets,
+                              int num_moe_buckets,
+                              int num_window_marks,
+                              size_t credit_intra_offset,
+                              size_t credit_inter_offset,
+                              size_t credit_moe_offset) {
+  if (!dense_group().dev_comm_ready || g_buckets_ready || !dense_group().host)
+    return (int)cudaErrorNotReady;
+  if (num_window_marks <= 0 || num_moe_buckets < 0 || num_dense_buckets < 0)
+    return (int)cudaErrorInvalidValue;
+  if (num_moe_buckets > 0 &&
+      (!expert_group().dev_comm_ready || !expert_group().host))
+    return (int)cudaErrorNotReady;
+  void** lsa_pointers_device = nullptr;
+  const int rc = configure_resources(num_dense_buckets,
+                                     num_moe_buckets,
+                                     num_window_marks,
+                                     credit_intra_offset,
+                                     credit_inter_offset,
+                                     credit_moe_offset,
+                                     &lsa_pointers_device);
+  if (rc) {
+    release_configure_resources(&lsa_pointers_device);
+    return rc;
+  }
   g_buckets_ready = 1;
   return 0;
 }
@@ -324,6 +384,7 @@ int GradCommEngine::configure(int num_dense_buckets,
 //     see the counters a peer NIC writes.
 //   - *cpu_ptr = address the CPU reads the counters from; *nbytes = actual size
 //     (>= want_bytes, rounded up to the allocation granularity).
+//   - A failure cannot be retried: restart the process.
 int GradCommEngine::alloc_host_counters(int group,
                                         size_t want_bytes,
                                         uintptr_t* cpu_ptr,

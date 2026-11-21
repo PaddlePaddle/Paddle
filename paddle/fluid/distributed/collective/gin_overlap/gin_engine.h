@@ -141,6 +141,14 @@
 //     credits never arrive.
 //   - The release state has one writer at any time: the main thread (advance)
 //     or the tail thread.
+//   - The engine lives as long as the process. Its windows are registered on
+//     the ncclComm of Paddle's ProcessGroup and are never deregistered or
+//     freed; the devcomms, streams and events are never destroyed either.
+//     shutdown_process_group / restart_process_group are not supported: using
+//     the engine after either of them is undefined behavior.
+//   - An init step that fails can be retried only if its comment says so
+//     (set_comms, set_group_topology, configure); otherwise restart the
+//     process.
 #pragma once
 
 #include <cstddef>
@@ -170,6 +178,13 @@ namespace gin_overlap {
   do {                                                 \
     ncclResult_t _res = (x);                           \
     if (_res != ncclSuccess) return 10000 + (int)_res; \
+  } while (0)
+// Calls something that already returns a code in this convention (a launch_*
+// wrapper, a submit_* function, ...) and returns that code on failure.
+#define GIN_CHECK(x)          \
+  do {                        \
+    const int _rc = (int)(x); \
+    if (_rc) return _rc;      \
   } while (0)
 // Driver API failure: prints the CUresult, then returns cudaErrorUnknown
 // (CUresult and cudaError_t use different numbering).
@@ -211,7 +226,8 @@ struct CommGroup {
   char* recv = nullptr;
   char* signal = nullptr;  // offsets only: counters live in the host window
   char* host = nullptr;    // CPU address of the host window (read by release)
-  size_t send_bytes = 0, host_bytes = 0;
+  // actual sizes of the send / recv / host windows
+  size_t send_bytes = 0, recv_bytes = 0, host_bytes = 0;
   CUmemGenericAllocationHandle host_handle = 0;
   // start of the recv / signal / host / send window of node-local rank l
   char* lsa_recv[16] = {};
@@ -279,6 +295,8 @@ int paddle_nccl_comm(int ring_id,
 //   - Pointers are passed as uintptr_t; group = GROUP_DENSE(0) / GROUP_MOE(1);
 //     an offset is a byte offset in the matching window; numel / shard_numel
 //     count elements.
+//   - A few methods return something else (a slot, a state, a version); their
+//     declarations say so.
 //   - send_window_tensor / copy_2d (implemented in paddle_tensor.cc) throw on
 //     error instead of returning a code.
 class GradCommEngine {
@@ -286,6 +304,7 @@ class GradCommEngine {
   GradCommEngine() = default;
 
   static const char* error_string(int code);
+  // NCCL_VERSION_CODE of the loaded libnccl / of the headers used at build time
   static int nccl_runtime_version();
   static int nccl_build_version();
 
