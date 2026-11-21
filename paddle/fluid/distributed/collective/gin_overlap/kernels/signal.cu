@@ -110,25 +110,25 @@ __global__ void k_host_window_lsa_pointers(ncclWindow_t window,
 
 }  // namespace
 
-int launch_signal_intra_node(LsaSlotPointers counter_slots,
-                             int ranks_per_node,
-                             int skip_rank,
-                             cudaStream_t stream) {
+cudaError_t launch_signal_intra_node(LsaSlotPointers counter_slots,
+                                     int ranks_per_node,
+                                     int skip_rank,
+                                     cudaStream_t stream) {
   k_signal_intra_node<<<1, 32, 0, stream>>>(
       counter_slots, ranks_per_node, skip_rank);
-  return (int)cudaGetLastError();
+  return cudaGetLastError();
 }
 
-int launch_signal_credit(ncclDevComm dev_comm,
-                         ncclWindow_t signal_window,
-                         size_t signal_offset,
-                         int num_peers,
-                         int skip_rank,
-                         int peer_base,
-                         int peer_stride,
-                         int num_gin_contexts,
-                         int num_blocks,
-                         cudaStream_t stream) {
+cudaError_t launch_signal_credit(ncclDevComm dev_comm,
+                                 ncclWindow_t signal_window,
+                                 size_t signal_offset,
+                                 int num_peers,
+                                 int skip_rank,
+                                 int peer_base,
+                                 int peer_stride,
+                                 int num_gin_contexts,
+                                 int num_blocks,
+                                 cudaStream_t stream) {
   k_signal_credit<<<num_blocks, 128, 0, stream>>>(dev_comm,
                                                   signal_window,
                                                   signal_offset,
@@ -137,45 +137,45 @@ int launch_signal_credit(ncclDevComm dev_comm,
                                                   peer_base,
                                                   peer_stride,
                                                   num_gin_contexts);
-  return (int)cudaGetLastError();
+  return cudaGetLastError();
 }
 
-int launch_signal_intra_arrive(LsaSlotPointers arrive_slots,
-                               int ranks_per_node,
-                               int skip_rank,
-                               unsigned long long seq,
-                               cudaStream_t stream) {
+cudaError_t launch_signal_intra_arrive(LsaSlotPointers arrive_slots,
+                                       int ranks_per_node,
+                                       int skip_rank,
+                                       unsigned long long seq,
+                                       cudaStream_t stream) {
   k_signal_intra_arrive<<<1, 32, 0, stream>>>(
       arrive_slots, ranks_per_node, skip_rank, seq);
-  return (int)cudaGetLastError();
+  return cudaGetLastError();
 }
 
-int launch_store_release(unsigned long long* dst,
-                         unsigned long long value,
-                         cudaStream_t stream) {
+cudaError_t launch_store_release(unsigned long long* dst,
+                                 unsigned long long value,
+                                 cudaStream_t stream) {
   k_store_release<<<1, 32, 0, stream>>>(dst, value);
-  return (int)cudaGetLastError();
+  return cudaGetLastError();
 }
 
-int launch_host_window_lsa_pointers(ncclWindow_t window,
-                                    int ranks_per_node,
-                                    void** out_pointers) {
+cudaError_t launch_host_window_lsa_pointers(ncclWindow_t window,
+                                            int ranks_per_node,
+                                            void** out_pointers) {
   k_host_window_lsa_pointers<<<1, 1>>>(window, ranks_per_node, out_pointers);
-  return (int)cudaGetLastError();
+  return cudaGetLastError();
 }
 
-int preload_signal_kernels() {
+cudaError_t preload_signal_kernels() {
   cudaFuncAttributes fa;
   cudaError_t err;
   if ((err = cudaFuncGetAttributes(&fa, k_signal_intra_node)) != cudaSuccess)
-    return (int)err;
+    return err;
   if ((err = cudaFuncGetAttributes(&fa, k_signal_credit)) != cudaSuccess)
-    return (int)err;
+    return err;
   if ((err = cudaFuncGetAttributes(&fa, k_signal_intra_arrive)) != cudaSuccess)
-    return (int)err;
+    return err;
   if ((err = cudaFuncGetAttributes(&fa, k_store_release)) != cudaSuccess)
-    return (int)err;
-  return 0;
+    return err;
+  return cudaSuccess;
 }
 
 }  // namespace gin_overlap

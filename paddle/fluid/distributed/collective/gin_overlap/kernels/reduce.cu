@@ -215,56 +215,56 @@ __global__ void k_reduce_moe_shard(float* shard,
 
 }  // namespace
 
-int launch_reduce_intra_node(float4* grad,
-                             const float4* intra_recv,
-                             size_t numel4,
-                             int ranks_per_node,
-                             int num_nodes,
-                             int rank_in_node,
-                             int num_blocks,
-                             cudaStream_t stream) {
+cudaError_t launch_reduce_intra_node(float4* grad,
+                                     const float4* intra_recv,
+                                     size_t numel4,
+                                     int ranks_per_node,
+                                     int num_nodes,
+                                     int rank_in_node,
+                                     int num_blocks,
+                                     cudaStream_t stream) {
   k_reduce_intra_node<<<num_blocks, 512, 0, stream>>>(
       grad, intra_recv, numel4, ranks_per_node, num_nodes, rank_in_node);
-  return (int)cudaGetLastError();
+  return cudaGetLastError();
 }
 
-int launch_reduce_dense_shard(float* shard,
-                              const float* inter_recv,
-                              size_t numel,
-                              int num_nodes,
-                              int node_index,
-                              float scale,
-                              int num_blocks,
-                              cudaStream_t stream) {
+cudaError_t launch_reduce_dense_shard(float* shard,
+                                      const float* inter_recv,
+                                      size_t numel,
+                                      int num_nodes,
+                                      int node_index,
+                                      float scale,
+                                      int num_blocks,
+                                      cudaStream_t stream) {
   k_reduce_dense_shard<<<num_blocks, 256, 0, stream>>>(
       shard, inter_recv, numel, num_nodes, node_index, scale);
-  return (int)cudaGetLastError();
+  return cudaGetLastError();
 }
 
-int launch_reduce_moe_shard(float* shard,
-                            const float* recv,
-                            size_t numel,
-                            int expert_group_size,
-                            int expert_group_rank,
-                            float scale,
-                            int num_blocks,
-                            cudaStream_t stream) {
+cudaError_t launch_reduce_moe_shard(float* shard,
+                                    const float* recv,
+                                    size_t numel,
+                                    int expert_group_size,
+                                    int expert_group_rank,
+                                    float scale,
+                                    int num_blocks,
+                                    cudaStream_t stream) {
   k_reduce_moe_shard<<<num_blocks, 256, 0, stream>>>(
       shard, recv, numel, expert_group_size, expert_group_rank, scale);
-  return (int)cudaGetLastError();
+  return cudaGetLastError();
 }
 
 // Preloads the module of this file's kernels (why: see the kernels.h header)
-int preload_reduce_kernels() {
+cudaError_t preload_reduce_kernels() {
   cudaFuncAttributes fa;
   cudaError_t err;
   if ((err = cudaFuncGetAttributes(&fa, k_reduce_intra_node)) != cudaSuccess)
-    return (int)err;
+    return err;
   if ((err = cudaFuncGetAttributes(&fa, k_reduce_dense_shard)) != cudaSuccess)
-    return (int)err;
+    return err;
   if ((err = cudaFuncGetAttributes(&fa, k_reduce_moe_shard)) != cudaSuccess)
-    return (int)err;
-  return 0;
+    return err;
+  return cudaSuccess;
 }
 
 }  // namespace gin_overlap

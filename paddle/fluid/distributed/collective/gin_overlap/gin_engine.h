@@ -141,6 +141,14 @@
 //     credits never arrive.
 //   - The release state has one writer at any time: the main thread (advance)
 //     or the tail thread.
+//   - The engine lives as long as the process. Its windows are registered on
+//     the ncclComm of Paddle's ProcessGroup and are never deregistered or
+//     freed; the devcomms, streams and events are never destroyed either.
+//     shutdown_process_group / restart_process_group are not supported: using
+//     the engine after either of them is undefined behavior.
+//   - An init step that fails can be retried only if its comment says so
+//     (set_comms, set_group_topology, configure); otherwise restart the
+//     process.
 #pragma once
 
 #include <cstddef>
@@ -170,6 +178,13 @@ namespace gin_overlap {
   do {                                                 \
     ncclResult_t _res = (x);                           \
     if (_res != ncclSuccess) return 10000 + (int)_res; \
+  } while (0)
+// Calls something that already returns a code in this convention (a launch_*
+// wrapper, a submit_* function, ...) and returns that code on failure.
+#define GIN_CHECK(x)          \
+  do {                        \
+    const int _rc = (int)(x); \
+    if (_rc) return _rc;      \
   } while (0)
 // Driver API failure: prints the CUresult, then returns cudaErrorUnknown
 // (CUresult and cudaError_t use different numbering).
@@ -211,7 +226,8 @@ struct CommGroup {
   char* recv = nullptr;
   char* signal = nullptr;  // offsets only: counters live in the host window
   char* host = nullptr;    // CPU address of the host window (read by release)
-  size_t send_bytes = 0, host_bytes = 0;
+  // actual sizes of the send / recv / host windows
+  size_t send_bytes = 0, recv_bytes = 0, host_bytes = 0;
   CUmemGenericAllocationHandle host_handle = 0;
   // start of the recv / signal / host / send window of node-local rank l
   char* lsa_recv[16] = {};
@@ -434,6 +450,8 @@ int paddle_nccl_comm(int ring_id,
 //   - Pointers are passed as uintptr_t; group = GROUP_DENSE(0) / GROUP_MOE(1);
 //     an offset is a byte offset in the matching window; numel / shard_numel
 //     count elements.
+//   - A few methods return something else (a slot, a state, a version); their
+//     declarations say so.
 //   - Streams are never passed from Python. Methods that run on the compute
 //     stream get it through paddle_compute_stream; gather_gate /
 //     gather_wait_bucket / gather_mark_ready run on g_stream_gather_gate.
@@ -456,6 +474,7 @@ class GradCommEngine {
   GradCommEngine() = default;
 
   static const char* error_string(int code);
+  // NCCL_VERSION_CODE of the loaded libnccl / of the headers used at build time
   static int nccl_runtime_version();
   static int nccl_build_version();
 
@@ -490,13 +509,15 @@ class GradCommEngine {
                 size_t credit_intra_offset,
                 size_t credit_inter_offset,
                 size_t credit_moe_offset);
+  // Returns the slot of the recorded mark (>= 0), or -1 on any failure
   int record_window_mark();
 
   int alloc_host_counters(int group,
                           size_t want_bytes,
                           uintptr_t* cpu_ptr,
                           size_t* nbytes);
-  int join_bucket_streams(int is_dense, int bucket);
+  // kind: 0 = dense bucket, 1 = expert bucket (as in bucket_ready)
+  int join_bucket_streams(int kind, int bucket);
   int scale_range(int group, size_t send_offset, long long numel, float scale);
   int end_step();
   void stats(unsigned long long* out3);
@@ -515,6 +536,8 @@ class GradCommEngine {
               int intra_node_reduce_blocks,
               int shard_reduce_blocks,
               std::vector<int>& released_shard_reduce);
+  // bucket_ready / tail_all_posted return 0 = accepted, 1 = the tail thread
+  // stopped on an error (see release_error), 2 = wrong usage
   int bucket_ready(int kind, int bucket, float scale, int mark);
   int release_status(std::vector<int>& positions,
                      std::vector<int>& counts,
@@ -522,13 +545,20 @@ class GradCommEngine {
                      int* done);
   int release_stuck_report(std::vector<long long>& flat);
   int release_error(int* code, int* stage, int* bucket);
+  // What the release layer is submitting right now: stage *
+  // ACTIVITY_STAGE_SCALE + bucket + 1; 0 = not inside a CUDA call
   int release_activity();
+  // Returns the tail mark slot (>= 0); -1 = no release_setup or
+  // cudaEventRecord failed, -2 = this step's tail mark slots are used up
   int tail_mark();
   int tail_start(int intra_node_reduce_blocks,
                  int shard_reduce_blocks,
                  int mark,
                  int all_posted);
   int tail_all_posted();
+  // tail_wait / tail_abort return the tail thread's state (TAIL_*; TAIL_RUN =
+  // still running after the timeout), or -1 without release_setup. They block
+  // for up to timeout_s / wait_s seconds.
   int tail_wait(double timeout_s);
   int tail_abort(double wait_s);
   int tail_finish();
@@ -540,7 +570,7 @@ class GradCommEngine {
   // The next three run on the gate stream of the 2D gather
   // (g_stream_gather_gate)
   int gather_gate(int mark);
-  int gather_wait_bucket(int is_dense, int bucket);
+  int gather_wait_bucket(int kind, int bucket);
   int gather_mark_ready(int slot);
   // Main thread sends the gather put of one 2D bucket: only the table index
   // and this step's sequence number are passed; slot / offsets / owner come
