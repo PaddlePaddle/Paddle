@@ -45,6 +45,7 @@ from ...utils.tensor_fusion_helper import (
     assign_group_by_size,
     fused_parameters,
     get_group_size,
+    install_grad_comm_backend,
 )
 
 g_sharding_v2_check_zero_padding = int(
@@ -740,6 +741,13 @@ class DygraphShardingOptimizerV2:
         self._forward_pre_hook_remove_helper = []
         self.has_register_forward_hook = False
 
+        # Gradient communication backend (see register_grad_comm_backend): the
+        # comm buffers are built, so a backend can pick its buckets, build its
+        # communication resources, register its own backward hooks and set
+        # bucket._grad_comm_backend. None when nothing takes this optimizer
+        # over, which leaves every path below unchanged.
+        self._grad_comm_backend = install_grad_comm_backend(self)
+
     def rebuild(self):
         """rebuild DygraphShardingOptimizerV2."""
 
@@ -820,6 +828,14 @@ class DygraphShardingOptimizerV2:
         self._all_gather_overlap_forward = False
         self._forward_pre_hook_remove_helper = []
         self.has_register_forward_hook = False
+
+        # The comm buffers this optimizer dispatches to are new ones, so an
+        # installed gradient communication backend is notified last: it has to
+        # release whatever it held for the old buckets and take the new ones
+        # over again (set bucket._grad_comm_backend, re-register its backward
+        # hooks), as it did in its setup().
+        if self._grad_comm_backend is not None:
+            self._grad_comm_backend.rebuild(self)
 
     def _set_all_gather_overlap_forward(
         self, all_gather_overlap_forward, layers
@@ -1026,11 +1042,24 @@ class DygraphShardingOptimizerV2:
 
             if self._enable_timer:
                 self.timers("reduce-gradients").start()
-            for comm_buffer in self._comm_buffer_list:
-                if not self.comm_overlap:
-                    comm_buffer._comm_grads()
+            if self._grad_comm_backend is not None:
+                # Same two steps, but a backend needs them separated: it is
+                # told once every bucket has been handed to it (so that it can
+                # finish whatever it issues across buckets) and once every
+                # bucket has been waited on.
+                for comm_buffer in self._comm_buffer_list:
+                    if not self.comm_overlap:
+                        comm_buffer._comm_grads()
+                self._grad_comm_backend.on_all_grads_posted(self)
+                for comm_buffer in self._comm_buffer_list:
+                    comm_buffer.scale_grads()
+                self._grad_comm_backend.on_grads_reduced(self)
+            else:
+                for comm_buffer in self._comm_buffer_list:
+                    if not self.comm_overlap:
+                        comm_buffer._comm_grads()
 
-                comm_buffer.scale_grads()
+                    comm_buffer.scale_grads()
 
             if self._enable_timer:
                 self.timers("reduce-gradients").stop()
@@ -1163,8 +1192,18 @@ class DygraphShardingOptimizerV2:
                             )
                         )
             else:
-                for comm_buffer in self._comm_buffer_list:
-                    comm_buffer.sync_params()
+                # A gradient communication backend may send this whole batch
+                # itself (e.g. to fuse the per-bucket all_gathers); True = it
+                # did, so the per-bucket sync below is skipped. The overlapped
+                # branch above is not offered: the two optimizations conflict.
+                if (
+                    self._grad_comm_backend is None
+                    or not self._grad_comm_backend.sync_params_fused(
+                        self._comm_buffer_list
+                    )
+                ):
+                    for comm_buffer in self._comm_buffer_list:
+                        comm_buffer.sync_params()
 
         if self._enable_timer:
             self.timers("sync-parameters").stop()

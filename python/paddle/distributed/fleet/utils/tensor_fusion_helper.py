@@ -49,6 +49,118 @@ class HOOK_ACTION:
     REDUCE_SCATTER = 2
 
 
+# Gradient communication backend: an optional extension point that lets an
+# out-of-tree implementation replace single steps of the gradient
+# communication of the ``FusedCommBuffer`` buckets of a sharding optimizer, for
+# example to replace the per-bucket ``reduce_scatter`` with one-sided writes
+# issued while the backward pass is still running. Without such an extension
+# point the only way to do this is to patch ``FusedCommBuffer`` and the
+# sharding optimizers at runtime, which silently breaks whenever their
+# internals change.
+#
+# A backend never takes a whole method over: the bodies of ``reduce_gradients``
+# and ``_sharding_sync_parameters`` run as they do without one, so logic added
+# to them later applies to a backend too. Only the collective of a step is
+# replaced, and the backend is told when the steps around it have finished.
+#
+# The backend cannot be passed through the optimizer constructor: the sharding
+# optimizers are built by ``fleet.distributed_optimizer``, so the user code that
+# knows about the backend usually has no access to them (the same reason
+# ``register_global_pipeline_parallel_hook`` is global). There is one sharding
+# optimizer per process, so the factory is registered globally and queried once
+# per optimizer, by ``install_grad_comm_backend`` at the end of its
+# ``__init__``:
+#
+#     backend = factory(optimizer)            # None: do not take over
+#     backend.setup(optimizer) -> bool        # pick buckets, build resources,
+#                                             # set bucket._grad_comm_backend
+#     backend.comm_grads(bucket, reduce_op)   # -> task, waited on by scale_grads
+#     backend.on_all_grads_posted(optimizer)  # -> None
+#     backend.on_grads_reduced(optimizer)     # -> None
+#     backend.sync_params_fused(buckets)      # -> bool
+#     backend.rebuild(optimizer)              # called at the end of rebuild(),
+#                                             # take the new buckets over again
+#
+# ``setup`` returns whether the backend takes this optimizer over. ``rebuild``
+# is called after the optimizer has thrown its comm buffers away and built new
+# ones, so the backend has to release what it held for the old buckets and take
+# the new ones over there, exactly as in ``setup``.
+#
+# ``comm_grads`` replaces the collective in ``_comm_grads``, and only that: the
+# stop_gradient check, the reduce op, the pre-communication scaling and the
+# nan/inf check still run, and ``scale_grads`` still waits on the task it
+# returns and still applies the post-communication scaling. It is given the
+# reduce op the replaced collective would have used, so the backend has to
+# apply the scaling that op implies (AVG divides by
+# ``bucket._comm_group.nranks``, SUM does not scale). The backend must not take
+# over a bucket created with ``free_grads_in_comm=True``: the reduced result of
+# such a bucket has to land in a freshly allocated shard buffer that then
+# replaces the bucket grad storage, which this interface does not express;
+# ``_comm_grads`` raises instead of silently dropping that step.
+#
+# ``on_all_grads_posted`` and ``on_grads_reduced`` bracket the waiting in
+# ``reduce_gradients``: the first is called once every bucket has been handed
+# to ``comm_grads`` and nothing has been waited on yet, the second once every
+# bucket has been waited on through ``scale_grads``. A backend that spreads one
+# bucket over several asynchronous steps can finish them in the first and clean
+# the step up in the second. Note that ``reduce_gradients`` hands every bucket
+# to ``comm_grads``, including the ones a backend already took in a backward
+# hook of its own, so ``comm_grads`` has to be idempotent within a step (return
+# the task of the posted bucket again).
+#
+# ``sync_params_fused`` replaces the per-bucket parameter ``sync_params`` of
+# ``_sharding_sync_parameters`` with one call for the whole batch, for example
+# to fuse the per-bucket all_gathers; it is given the buckets of that batch and
+# returns whether it sent them, False leaving the per-bucket path to run. It is
+# only offered the batch that the optimizer would send bucket by bucket right
+# there: not the buckets whose all_gather overlaps the forward pass (the two
+# optimizations conflict) and not the 2D broadcast of
+# ``MuonShardingOptimizer``.
+#
+# Nothing changes when no factory is registered.
+_grad_comm_backend_factory = None
+
+
+def register_grad_comm_backend(factory):
+    """
+    Register the global gradient communication backend factory, or pass None to
+    unregister it. See the comment above for the expected backend interface.
+    """
+    global _grad_comm_backend_factory
+    _grad_comm_backend_factory = factory
+
+
+def get_grad_comm_backend_factory():
+    """
+    Return the factory registered by ``register_grad_comm_backend``, or None
+    when no gradient communication backend is registered.
+    """
+    return _grad_comm_backend_factory
+
+
+def install_grad_comm_backend(optimizer):
+    """
+    Install the registered gradient communication backend on ``optimizer``.
+
+    Queries the registered factory, lets it build a backend for this optimizer
+    and asks that backend, through its ``setup``, whether it takes the
+    optimizer over. Returns the backend the optimizer has to dispatch to, or
+    None when nothing takes it over: no factory registered, the factory
+    returned None, or ``setup`` returned False.
+
+    Call it once at the end of a sharding optimizer ``__init__`` (and nowhere
+    else: ``rebuild`` notifies the already installed backend instead), because
+    ``setup`` needs the comm buffers to exist to pick its buckets.
+    """
+    factory = get_grad_comm_backend_factory()
+    if factory is None:
+        return None
+    backend = factory(optimizer)
+    if backend is None or not backend.setup(optimizer):
+        return None
+    return backend
+
+
 alignment = {
     "gpu": 256,
     "npu": 256,
@@ -588,6 +700,12 @@ class FusedCommBuffer:
         if not self._release_grads:
             self._record_addr()
 
+        # Gradient communication backend of this bucket, see
+        # register_grad_comm_backend. It stays None unless a backend takes the
+        # bucket over in its setup(), in which case _comm_grads hands the
+        # bucket to the backend instead of calling a collective.
+        self._grad_comm_backend = None
+
     def _refresh_param_buffer_ipc_meta(self):
         meta_tensor = self._param_buffer_meta_tensor
         if meta_tensor is None:
@@ -799,6 +917,14 @@ class FusedCommBuffer:
             if self._use_reduce_avg
             else paddle.distributed.ReduceOp.SUM
         )
+        # In align mode, we scale the grad in advance, so we need a SUM head.
+        # Decided here, before the backend dispatch below, so that a backend is
+        # always handed the op the collective would really have used.
+        if (
+            self._act == HOOK_ACTION.REDUCE_SCATTER
+            and paddle.distributed.in_auto_parallel_align_mode()
+        ):
+            reduce_op = paddle.distributed.ReduceOp.SUM
         # scale will be skipped when reduce_avg comm operation is enabled.
         if not self._scale_after_comm and not self._use_reduce_avg:
             scale_factor = 1.0 / self._comm_group.nranks
@@ -811,6 +937,24 @@ class FusedCommBuffer:
                 raise ValueError(
                     f"{err_msg}. Tensor contains inf or nan values at rank {paddle.distributed.get_rank()} before gradient communication"
                 )
+
+        # A backend took this bucket over: everything above (the stop_gradient
+        # check, the reduce op, the pre-communication scaling and the nan/inf
+        # check) still applies, only the collective is replaced. The backend
+        # returns a task that scale_grads() waits on, just like the collectives
+        # below.
+        if self._grad_comm_backend is not None:
+            if self._free_grads_in_comm:
+                raise ValueError(
+                    "A gradient communication backend must not take over a "
+                    "bucket created with free_grads_in_comm=True: the reduced "
+                    "result of such a bucket has to land in a freshly "
+                    "allocated shard buffer that then replaces the bucket "
+                    "grad storage, which the backend interface does not "
+                    "express. Leave _grad_comm_backend unset on these buckets."
+                )
+            self._task = self._grad_comm_backend.comm_grads(self, reduce_op)
+            return
 
         if self._act == HOOK_ACTION.ALL_REDUCE:
             task = paddle.distributed.all_reduce(
@@ -830,9 +974,6 @@ class FusedCommBuffer:
             )
 
         elif self._act == HOOK_ACTION.REDUCE_SCATTER:
-            # In align mode, we scale the grad in advance, so we need a SUM head
-            if paddle.distributed.in_auto_parallel_align_mode():
-                reduce_op = paddle.distributed.ReduceOp.SUM
             shard_size = self.grad_storage._numel() // self._comm_group.nranks
             begin = shard_size * max(self._comm_group.rank, 0)
             end = begin + shard_size

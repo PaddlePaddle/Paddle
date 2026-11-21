@@ -61,6 +61,7 @@ from paddle.distributed.fleet.utils.tensor_fusion_helper import (
     HOOK_ACTION,
     FusedCommBuffer,
     assign_group_by_size,
+    install_grad_comm_backend,
 )
 
 
@@ -622,6 +623,13 @@ class MuonShardingOptimizer:
                     )
                     group = paddle.distributed.new_group(ranks)
                     self.trainer_same_card_comms[pp_idx][card_idx] = group
+
+        # Gradient communication backend (see register_grad_comm_backend): the
+        # comm buffers (1D and 2D) are built, so a backend can pick its
+        # buckets, build its communication resources, register its own backward
+        # hooks and set bucket._grad_comm_backend. None when nothing takes this
+        # optimizer over, which leaves every path below unchanged.
+        self._grad_comm_backend = install_grad_comm_backend(self)
 
     # ------------------------------------------------------------------
     # 2D partition (V1-style greedy)
@@ -1450,6 +1458,12 @@ class MuonShardingOptimizer:
                 ):
                     comm_buffer._comm_grads()
 
+            # Every bucket (2D above, 1D here) has been handed to the backend,
+            # and nothing has been waited on yet: the scale_grads below are the
+            # waits.
+            if self._grad_comm_backend is not None:
+                self._grad_comm_backend.on_all_grads_posted(self)
+
             # wait for all comm_buffer tasks to finish
             if self._use_fuse_gradients:
                 if not self.use_group_call_opt or self.comm_overlap:
@@ -1458,6 +1472,9 @@ class MuonShardingOptimizer:
 
             for comm_buffer in self._comm_buffer_list:
                 comm_buffer.scale_grads()
+
+            if self._grad_comm_backend is not None:
+                self._grad_comm_backend.on_grads_reduced(self)
 
     def filter_parameters(self, parameter_list, hcg):
         """Filter parameters: return local 2D params + initialized 1D slices."""
@@ -1716,8 +1733,18 @@ class MuonShardingOptimizer:
                     task.wait()
 
             # --- 1D params: all-gather via comm buffers ---
-            for comm_buffer in self._comm_buffer_list:
-                comm_buffer.sync_params()
+            # A gradient communication backend may send this whole batch
+            # itself (e.g. to fuse the per-bucket all_gathers); True = it did,
+            # so the per-bucket sync below is skipped. The 2D broadcast above
+            # is not offered, it stays with this method.
+            if (
+                self._grad_comm_backend is None
+                or not self._grad_comm_backend.sync_params_fused(
+                    self._comm_buffer_list
+                )
+            ):
+                for comm_buffer in self._comm_buffer_list:
+                    comm_buffer.sync_params()
 
     # ------------------------------------------------------------------
     # Clear gradients
