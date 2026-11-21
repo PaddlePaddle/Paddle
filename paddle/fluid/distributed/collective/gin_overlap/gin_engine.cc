@@ -392,17 +392,18 @@ int GradCommEngine::configure(int num_dense_buckets,
 }
 
 // Records a window mark at the current position of Paddle's compute stream and
-// returns its slot (< 0 = error)
-int GradCommEngine::record_window_mark() {
-  if (g_window_marks.empty()) return -1;
+// writes its slot to *slot
+int GradCommEngine::record_window_mark(int* slot) {
+  *slot = -1;
+  if (g_window_marks.empty()) return static_cast<int>(cudaErrorNotReady);
   cudaStream_t compute_stream = nullptr;
-  if (paddle_compute_stream(&compute_stream)) return -1;
+  GIN_CHECK(paddle_compute_stream(&compute_stream));
   const int i = g_window_mark_index;
   g_window_mark_index =
       (g_window_mark_index + 1) % static_cast<int>(g_window_marks.size());
-  if (cudaEventRecord(g_window_marks[i], compute_stream) != cudaSuccess)
-    return -1;
-  return i;
+  CUDA_CHECK(cudaEventRecord(g_window_marks[i], compute_stream));
+  *slot = i;
+  return 0;
 }
 
 // ----------------------------------------------------------------
