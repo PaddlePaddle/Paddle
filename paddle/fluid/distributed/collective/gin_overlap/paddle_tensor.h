@@ -12,12 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// paddle_tensor.h —— 收发 paddle::Tensor 的两个接口（实现在 paddle_tensor.cc，
-// Python 绑定在 paddle/fluid/pybind/gin_overlap_api.cc）：
-//   - send_window_tensor：把本组 send window 的一段包成 1-D fp32
-//     paddle::Tensor。零拷贝，Paddle 不负责释放；各桶的 grad_storage 就是它。
-//   - copy_2d：在 Paddle 当前计算流上做一次 pitched 拷贝。
-// 两者出错时抛异常，不返回错误码。
+// paddle_tensor.h: the two interfaces that take or return paddle::Tensor
+// (implemented in paddle_tensor.cc, bound to Python in
+// paddle/fluid/pybind/gin_overlap_api.cc):
+//   - send_window_tensor: wraps a range of the group's send window as a 1-D
+//     fp32 paddle::Tensor. No copy, and Paddle does not free the memory; each
+//     bucket's grad_storage is such a tensor.
+//   - copy_2d: one pitched copy on Paddle's current compute stream.
+// Both throw on error instead of returning a code.
 #pragma once
 
 #include <cstddef>

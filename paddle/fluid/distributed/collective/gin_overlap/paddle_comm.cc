@@ -12,13 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// paddle_comm.cc —— paddle_nccl_comm：按 ring id 取 Paddle ProcessGroup 已有的
-// ncclComm_t，路径是
+// paddle_comm.cc: paddle_nccl_comm, which gets the ncclComm_t that Paddle's
+// ProcessGroup already holds for a ring id, through
 //   ProcessGroupMapFromGid::getInstance()->get(ring_id)
-//   → ProcessGroupNCCL::GetOrCreateCommContext(place, CommType::ALLTOALL)
-//   → NCCLCommContext::GetNcclComm()
-// 这个组还没有 NCCL comm 时，GetOrCreateCommContext 会当场创建。
-// 取不到时返回非 0，*out_err 是原因。
+//   -> ProcessGroupNCCL::GetOrCreateCommContext(place, CommType::ALLTOALL)
+//   -> NCCLCommContext::GetNcclComm()
+// If the group has no NCCL comm yet, GetOrCreateCommContext creates it.
+// On failure it returns non-zero and *out_err holds the reason.
 #include <exception>
 #include <string>
 
@@ -43,24 +43,26 @@ int paddle_nccl_comm(int ring_id,
       paddle::distributed::ProcessGroupMapFromGid::getInstance();
   if (process_groups == nullptr) {
     *out_err =
-        "paddle::distributed::ProcessGroupMapFromGid::getInstance() 返回空";
+        "paddle::distributed::ProcessGroupMapFromGid::getInstance() returned "
+        "null";
     return -1;
   }
   paddle::distributed::ProcessGroup* process_group =
       process_groups->get(ring_id);
   if (process_group == nullptr) {
     *out_err =
-        "Paddle 的 ProcessGroupMapFromGid 里没有 ring id " +
+        "Paddle's ProcessGroupMapFromGid has no ring id " +
         std::to_string(ring_id) +
-        "（这个通信组还没在 C++ 侧注册？确认传的是 paddle 通信组对象的 .id）";
+        " (the group is not registered on the C++ side yet? pass the .id of "
+        "the Paddle group object)";
     return -1;
   }
   auto* nccl_process_group =
       dynamic_cast<paddle::distributed::ProcessGroupNCCL*>(process_group);
   if (nccl_process_group == nullptr) {
     *out_err = "ring id " + std::to_string(ring_id) +
-               " 对应的 ProcessGroup 不是 ProcessGroupNCCL（backend=" +
-               process_group->GetBackendName() + "）";
+               " is not a ProcessGroupNCCL (backend=" +
+               process_group->GetBackendName() + ")";
     return -1;
   }
   *out_size = process_group->GetSize();
@@ -71,19 +73,19 @@ int paddle_nccl_comm(int ring_id,
         phi::GPUPlace(device_id), phi::distributed::CommType::ALLTOALL);
   } catch (const std::exception& ex) {
     *out_err = "ring id " + std::to_string(ring_id) +
-               " 的 GetOrCreateCommContext(GPUPlace(" +
-               std::to_string(device_id) + ")) 抛异常：" + ex.what();
+               ": GetOrCreateCommContext(GPUPlace(" +
+               std::to_string(device_id) + ")) threw: " + ex.what();
     return -1;
   }
   if (comm_context == nullptr) {
     *out_err = "ring id " + std::to_string(ring_id) +
-               " 的 GetOrCreateCommContext 返回空";
+               ": GetOrCreateCommContext returned null";
     return -1;
   }
   ncclComm_t comm = comm_context->GetNcclComm();
   if (comm == nullptr) {
     *out_err = "ring id " + std::to_string(ring_id) +
-               " 的 NCCLCommContext::GetNcclComm() 返回空";
+               ": NCCLCommContext::GetNcclComm() returned null";
     return -1;
   }
   *out_comm = comm;

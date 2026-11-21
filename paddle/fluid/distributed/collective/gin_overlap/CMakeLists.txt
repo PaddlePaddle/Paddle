@@ -8,9 +8,9 @@
 string(REGEX REPLACE "-gencode arch=compute_[0-8][0-9],code=sm_[0-8][0-9]" ""
                      CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS}")
 
-# - gin_engine.cc：host 侧编排。
-# - paddle_comm.cc / paddle_tensor.cc：取 ProcessGroup 的 ncclComm、把 window
-#   切片包成 paddle::Tensor。
+# - gin_engine.cc: host-side orchestration.
+# - paddle_comm.cc / paddle_tensor.cc: get the ncclComm of a ProcessGroup, and
+#   wrap window slices as paddle::Tensor.
 set(GIN_OVERLAP_SRCS
     gin_engine.cc
     paddle_comm.cc
@@ -20,10 +20,11 @@ set(GIN_OVERLAP_SRCS
     kernels/signal.cu
     kernels/scale.cu)
 
-# NCCL 头文件（nccl.h / nccl_device.h）来自 cmake/nccl.cmake 设置的 include 路径。
-# 不链接 libnccl 和 libcuda：host 侧的 NCCL / 驱动调用走 phi::dynload（见
-# gin_dynload.h）。process_group_nccl：paddle_comm.cc 要用
-# ProcessGroupNCCL::GetOrCreateCommContext。
+# NCCL headers (nccl.h / nccl_device.h) come from the include path set by
+# cmake/nccl.cmake. libnccl and libcuda are not linked: host-side NCCL /
+# driver calls go through phi::dynload (see gin_dynload.h).
+# process_group_nccl: paddle_comm.cc uses
+# ProcessGroupNCCL::GetOrCreateCommContext.
 cc_library(
   gin_overlap
   SRCS ${GIN_OVERLAP_SRCS}
