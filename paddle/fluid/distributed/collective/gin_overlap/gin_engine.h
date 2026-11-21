@@ -400,7 +400,7 @@ int advance(cudaEvent_t mark_event,
             int shard_reduce_blocks,
             std::vector<int>* released_shard_reduce);
 int bucket_ready(int kind, int bucket, float scale, int mark);
-int record_tail_mark(cudaStream_t stream);
+int record_tail_mark(int* slot);
 int tail_start(int intra_node_reduce_blocks,
                int shard_reduce_blocks,
                int mark,
@@ -450,7 +450,7 @@ int paddle_nccl_comm(int ring_id,
 //   - Pointers are passed as uintptr_t; group = GROUP_DENSE(0) / GROUP_MOE(1);
 //     an offset is a byte offset in the matching window; numel / shard_numel
 //     count elements.
-//   - A few methods return something else (a slot, a state, a version); their
+//   - A few methods return something else (a state, a version); their
 //     declarations say so.
 //   - Streams are never passed from Python. Methods that run on the compute
 //     stream get it through paddle_compute_stream; gather_gate /
@@ -509,9 +509,9 @@ class GradCommEngine {
                 size_t credit_intra_offset,
                 size_t credit_inter_offset,
                 size_t credit_moe_offset);
-  // Returns the window mark slot (>= 0); -1 = no configure, the compute stream
-  // cannot be read, or cudaEventRecord failed
-  int record_window_mark();
+  // Records a window mark on the compute stream and writes its slot to *slot.
+  // cudaErrorNotReady without configure.
+  int record_window_mark(int* slot);
 
   int alloc_host_counters(int group,
                           size_t want_bytes,
@@ -549,9 +549,10 @@ class GradCommEngine {
   // What the release layer is submitting right now: stage *
   // ACTIVITY_STAGE_SCALE + bucket + 1; 0 = not inside a CUDA call
   int release_activity();
-  // Returns the tail mark slot (>= 0); -1 = no release_setup or
-  // cudaEventRecord failed, -2 = this step's tail mark slots are used up
-  int tail_mark();
+  // Records a tail mark on the compute stream and writes its slot to *slot.
+  // cudaErrorNotReady without release_setup, cudaErrorLaunchOutOfResources when
+  // this step's tail mark slots are used up.
+  int tail_mark(int* slot);
   int tail_start(int intra_node_reduce_blocks,
                  int shard_reduce_blocks,
                  int mark,

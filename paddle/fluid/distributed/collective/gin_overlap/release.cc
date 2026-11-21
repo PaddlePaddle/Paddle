@@ -923,16 +923,23 @@ int setup(const std::vector<int>& dense_order,
   return control->set_device_rc;
 }
 
-// Main thread records a tail mark at the current position of `stream` and
-// returns its slot; -1 = not set up or cudaEventRecord failed, -2 = the slots
-// of this step are used up
-int record_tail_mark(cudaStream_t stream) {
-  if (!control) return -1;
-  if (tail_mark_index >= static_cast<int>(tail_marks.size())) return -2;
+// Main thread records a tail mark at the current position of Paddle's compute
+// stream and writes its slot to *slot. Returns 0, cudaErrorNotReady (no setup),
+// cudaErrorLaunchOutOfResources (this step's tail mark slots are used up), or
+// the error of paddle_compute_stream / cudaEventRecord.
+int record_tail_mark(int* slot) {
+  *slot = -1;
+  if (!control) return static_cast<int>(cudaErrorNotReady);
+  if (tail_mark_index >= static_cast<int>(tail_marks.size()))
+    return static_cast<int>(cudaErrorLaunchOutOfResources);
+  cudaStream_t stream = nullptr;
+  GIN_CHECK(paddle_compute_stream(&stream));
   const int i = tail_mark_index;
-  if (cudaEventRecord(tail_marks[i], stream) != cudaSuccess) return -1;
+  const cudaError_t err = cudaEventRecord(tail_marks[i], stream);
+  if (err != cudaSuccess) return static_cast<int>(err);
   ++tail_mark_index;
-  return i;
+  *slot = i;
+  return 0;
 }
 
 // Called before each step: clears the per-step state and sets the step number

@@ -16,6 +16,8 @@
 _send_layout, _recv_pool_sizes and _recv_pool_ring are pure Python; their results become the per-bucket tables of
 the C++ release layer (offsets and the predecessor distances that the credit targets are computed from). No GPU,
 no process group and no paddle.base.core.gin_overlap are needed: importing the module does not create the engine.
+TestMarkBinding also checks, when paddle.base.core.gin_overlap is built in, that record_window_mark / tail_mark raise
+RuntimeError before the engine is set up (no GPU needed).
 """
 
 import importlib.util
@@ -151,6 +153,40 @@ class TestBuildHint(unittest.TestCase):
             ">= 9.0",
         ):
             self.assertIn(cond, engine._BUILD_HINT)
+
+
+def _core_gin():
+    try:
+        from paddle.base import core
+    except ImportError:
+        return None
+    return getattr(core, "gin_overlap", None)
+
+
+@unittest.skipUnless(
+    _core_gin() is not None, "paddle.base.core.gin_overlap is not built"
+)
+class TestMarkBinding(unittest.TestCase):
+    """record_window_mark / tail_mark return the slot and raise RuntimeError
+    with the error text on failure (C++: error code + slot out-parameter)."""
+
+    def test_record_window_mark_before_configure_raises_not_ready(self):
+        lib = _core_gin().GradCommEngine()
+        not_ready = 600  # cudaErrorNotReady
+        with self.assertRaisesRegex(
+            RuntimeError,
+            "gin_overlap: record_window_mark failed: .*\\(code 600\\)",
+        ) as cm:
+            lib.record_window_mark()
+        self.assertIn(lib.error_string(not_ready), str(cm.exception))
+
+    def test_tail_mark_before_release_setup_raises_not_ready(self):
+        lib = _core_gin().GradCommEngine()
+        with self.assertRaisesRegex(
+            RuntimeError,
+            "gin_overlap: tail_mark failed: .*\\(code 600\\)",
+        ):
+            lib.tail_mark()
 
 
 if __name__ == "__main__":
