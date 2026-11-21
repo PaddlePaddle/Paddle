@@ -1108,10 +1108,8 @@ int GradCommEngine::release_error(int* code, int* stage, int* bucket) {
 int GradCommEngine::release_activity() {
   return release::get_current_activity();
 }
-int GradCommEngine::tail_mark() {
-  cudaStream_t compute_stream = nullptr;
-  if (paddle_compute_stream(&compute_stream)) return -1;
-  return release::record_tail_mark(compute_stream);
+int GradCommEngine::tail_mark(int* slot) {
+  return release::record_tail_mark(slot);
 }
 int GradCommEngine::tail_start(int intra_node_reduce_blocks,
                                int shard_reduce_blocks,

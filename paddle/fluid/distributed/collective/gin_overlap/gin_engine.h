@@ -400,7 +400,7 @@ int advance(cudaEvent_t mark_event,
             int shard_reduce_blocks,
             std::vector<int>* released_shard_reduce);
 int bucket_ready(int kind, int bucket, float scale, int mark);
-int record_tail_mark(cudaStream_t stream);
+int record_tail_mark(int* slot);
 int tail_start(int intra_node_reduce_blocks,
                int shard_reduce_blocks,
                int mark,
@@ -549,9 +549,10 @@ class GradCommEngine {
   // What the release layer is submitting right now: stage *
   // ACTIVITY_STAGE_SCALE + bucket + 1; 0 = not inside a CUDA call
   int release_activity();
-  // Returns the tail mark slot (>= 0); -1 = no release_setup or
-  // cudaEventRecord failed, -2 = this step's tail mark slots are used up
-  int tail_mark();
+  // Records a tail mark on the compute stream and writes its slot to *slot.
+  // cudaErrorNotReady without release_setup, cudaErrorLaunchOutOfResources when
+  // this step's tail mark slots are used up.
+  int tail_mark(int* slot);
   int tail_start(int intra_node_reduce_blocks,
                  int shard_reduce_blocks,
                  int mark,
