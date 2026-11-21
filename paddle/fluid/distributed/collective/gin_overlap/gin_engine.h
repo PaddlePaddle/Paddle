@@ -261,7 +261,7 @@ extern std::vector<cudaEvent_t> g_event_dense_inter_node_reduce,
     g_event_moe_reduce;
 extern std::vector<cudaEvent_t> g_window_marks;  // window mark ring (reused)
 extern int g_window_mark_index;
-extern unsigned long long g_inter_node_bytes, g_intra_node_bytes;
+extern uint64_t g_inter_node_bytes, g_intra_node_bytes;
 // Byte offsets of the credit areas in the host windows: intra-node /
 // inter-node in the dense group's host window, expert in the expert group's
 extern size_t g_credit_intra_offset, g_credit_inter_offset, g_credit_moe_offset;
@@ -300,21 +300,21 @@ int paddle_compute_stream(cudaStream_t* out);
 int submit_dense_intra_node_copy(int bucket,
                                  size_t recv_offset,
                                  size_t send_offset,
-                                 long long shard_numel,
+                                 int64_t shard_numel,
                                  cudaEvent_t mark_event,
                                  size_t intra_arrive_offset,
-                                 unsigned long long seq);
+                                 uint64_t seq);
 int submit_dense_intra_node_reduce(int bucket,
                                    size_t recv_offset,
                                    size_t send_offset,
-                                   long long shard_numel,
+                                   int64_t shard_numel,
                                    int num_blocks,
                                    cudaEvent_t mark_event);
 int submit_dense_inter_node_put(int bucket,
                                 size_t recv_offset,
                                 size_t send_offset,
                                 size_t signal_offset,
-                                long long shard_numel,
+                                int64_t shard_numel,
                                 int num_blocks,
                                 cudaEvent_t mark_event,
                                 int* num_signals);
@@ -324,21 +324,21 @@ int submit_moe_put(int bucket,
                    size_t recv_offset,
                    size_t send_offset,
                    size_t signal_offset,
-                   long long shard_numel,
+                   int64_t shard_numel,
                    int num_blocks,
                    cudaEvent_t mark_event,
                    int* num_signals);
 int submit_dense_inter_node_reduce(int bucket,
                                    size_t recv_offset,
                                    size_t send_offset,
-                                   long long shard_numel,
+                                   int64_t shard_numel,
                                    float scale,
                                    int num_blocks,
                                    cudaEvent_t mark_event);
 int submit_moe_reduce(int bucket,
                       size_t recv_offset,
                       size_t send_offset,
-                      long long shard_numel,
+                      int64_t shard_numel,
                       float scale,
                       int num_blocks,
                       cudaEvent_t mark_event);
@@ -349,11 +349,11 @@ int submit_moe_reduce(int bucket,
 int gather_put_to_owner(int group,
                         int slot,
                         size_t send_offset,
-                        long long shard_numel,
+                        int64_t shard_numel,
                         int owner,
                         size_t arrive_offset,
                         size_t intra_arrive_offset,
-                        unsigned long long seq,
+                        uint64_t seq,
                         int* num_signals,
                         cudaEvent_t wait_event);
 
@@ -441,9 +441,9 @@ class GradCommEngine {
                           size_t* nbytes);
   // kind: 0 = dense bucket, 1 = expert bucket (as in bucket_ready)
   int join_bucket_streams(int kind, int bucket);
-  int scale_range(int group, size_t send_offset, long long numel, float scale);
+  int scale_range(int group, size_t send_offset, int64_t numel, float scale);
   int end_step();
-  void stats(unsigned long long* out3);
+  void stats(uint64_t* out3);
 
   int gather_setup(int num_slots);
   // The next three run on the gate stream of the 2D gather
