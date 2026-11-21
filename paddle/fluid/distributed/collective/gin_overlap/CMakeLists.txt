@@ -16,8 +16,11 @@ cc_library(
   SRCS ${GIN_OVERLAP_SRCS}
   DEPS phi common)
 
-# Paddle compiles with -Werror; the warning classes below are off for this
-# target.
+# Paddle compiles with -Werror; the warning classes below are off for the C++
+# sources of this target (not passed to nvcc).
 target_compile_options(
-  gin_overlap PRIVATE -Wno-unused-variable -Wno-unused-but-set-variable
-                      -Wno-sign-compare -Wno-reorder)
+  gin_overlap
+  PRIVATE $<$<COMPILE_LANGUAGE:CXX>:-Wno-unused-variable>
+          $<$<COMPILE_LANGUAGE:CXX>:-Wno-unused-but-set-variable>
+          $<$<COMPILE_LANGUAGE:CXX>:-Wno-sign-compare>
+          $<$<COMPILE_LANGUAGE:CXX>:-Wno-reorder>)
