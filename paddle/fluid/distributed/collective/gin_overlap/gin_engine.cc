@@ -789,7 +789,7 @@ int submit_moe_reduce(int bucket,
 }
 
 // ----------------------------------------------------------------
-// 窗口 mark 环里的槽号是否有效
+// Whether a slot of the window mark ring is valid
 static inline bool is_valid_mark(int mark) {
   return mark >= 0 && mark < (int)g_window_marks.size();
 }
@@ -1030,8 +1030,9 @@ int gather_put_to_owner(int group,
   return 0;
 }
 
-// 主线程发 2D gather put：按表项下标查表后调 gather_put_to_owner，等的 event
-// 是 g_event_gather_source[slot]（实现在 release.cu）
+// Main thread sends a 2D-gather put: looks up the table entry and calls
+// gather_put_to_owner, waiting on g_event_gather_source[slot] (implemented in
+// release.cu)
 int GradCommEngine::gather_put_entry(int entry_index,
                                      unsigned long long seq,
                                      int* num_signals) {
@@ -1052,7 +1053,7 @@ int GradCommEngine::gather_join(int slot) {
 }
 
 // ----------------------------------------------------------------
-// 放行层的入口（实现在 kernels/release.cu）
+// Entry points of the release layer (implemented in kernels/release.cu)
 int GradCommEngine::release_setup(const std::vector<int>& dense_order,
                                   const std::vector<int>& moe_order,
                                   const std::vector<long long>& dense_table,

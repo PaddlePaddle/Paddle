@@ -358,9 +358,10 @@ int gather_put_to_owner(int group,
                         cudaEvent_t wait_event);
 
 // ----------------------------------------------------------------
-// 放行层（release.cu）：判断某个桶的某个阶段能不能提交到 GPU，并提交。
-// 主线程（advance）和尾部线程用同一份判断和同一份状态。
-// 阶段编号。Python 侧按名字取（constants），数值不能改
+// Release layer (release.cu): decides whether one stage of one bucket can be
+// submitted to the GPU, and submits it. The main thread (advance) and the tail
+// thread share the same decision code and the same state.
+// Stage ids. Python reads them by name (constants); the values must not change
 namespace release {
 enum {
   STAGE_DENSE_INTRA_NODE_COPY = 1,
@@ -373,9 +374,11 @@ enum {
 enum {
   STAGE_GATHER_DENSE = 10,
   STAGE_GATHER_MOE = 11
-};  // 2D 桶 gather put（Muon）
-// advance 的阶段集合，按位或。窗口 A / B（DeepEP 刚结束，网卡空）用机内拷贝
-// + put；pre 窗口（计算流在等 DeepEP，SM 空）用机内求和 + 分片求和。
+};  // 2D-bucket gather put (Muon)
+// Stage sets for advance, OR-ed together. Window A / B (DeepEP has just
+// finished, the NIC is idle) uses intra-node copy + put; the pre window (the
+// compute stream waits for DeepEP, the SMs are idle) uses intra-node reduce +
+// shard reduce.
 enum {
   ADVANCE_INTRA_NODE_COPY = 1,
   ADVANCE_INTRA_NODE_REDUCE = 2,
@@ -413,8 +416,9 @@ int status(std::vector<int>& positions6,
 int stuck_report(std::vector<long long>& flat);
 int get_last_error(int* out3);
 int get_current_activity();
-// 导出给 Python 的常量表（名字 → 数值）：ADVANCE_* / STAGE_* / COUNTER_* /
-// TAIL_*。数值只在 release.cu 里定义；Python 侧必须按名字取，不能自己写数值
+// Constant table exported to Python (name -> value): ADVANCE_* / STAGE_* /
+// COUNTER_* / TAIL_*. The values are defined only in release.cu; Python must
+// read them by name and never hard-code them
 int constants(std::vector<std::string>& names, std::vector<int>& values);
 int setup_gather_table(const std::vector<long long>& table);
 int gather_put_entry(int entry_index, unsigned long long seq, int* num_signals);
@@ -435,14 +439,6 @@ int paddle_nccl_comm(int ring_id,
                      std::string* out_err);
 
 // ----------------------------------------------------------------
-// 调用顺序：
-//   - 初始化：set_comms → alloc_windows → alloc_host_counters →
-//     create_dev_comm → set_group_topology → configure →（Muon）
-//     gather_setup → release_setup。
-//   - 每步反向：record_window_mark → advance（窗口里放行）→ tail_mark /
-//     tail_start / bucket_ready / tail_all_posted / tail_wait / tail_finish
-//     （尾部线程）→ join_bucket_streams → end_step → release_step_reset。
-//   - 查放行进度：release_status / release_stuck_report。
 // GradCommEngine: exported as paddle.base.core.gin_overlap.GradCommEngine
 // (registered in paddle/fluid/pybind/gin_overlap_api.cc); one object per
 // process. Python calls these methods by name, so method names and py::arg
@@ -461,6 +457,15 @@ int paddle_nccl_comm(int ring_id,
 //     gather_wait_bucket / gather_mark_ready run on g_stream_gather_gate.
 //   - send_window_tensor / copy_2d (implemented in paddle_tensor.cc) throw on
 //     error instead of returning a code.
+// Call order:
+//   - init: set_comms -> alloc_windows -> alloc_host_counters ->
+//     create_dev_comm -> set_group_topology -> configure -> (Muon)
+//     gather_setup -> release_setup.
+//   - each backward pass: record_window_mark -> advance (release inside a
+//     window) -> tail_mark / tail_start / bucket_ready / tail_all_posted /
+//     tail_wait / tail_finish (tail thread) -> join_bucket_streams ->
+//     end_step -> release_step_reset.
+//   - release progress: release_status / release_stuck_report.
 // The expert stages (submit_moe_put / submit_moe_reduce) have no intra_node /
 // inter_node in their names: expert buckets have no intra-node stage, and
 // expert peers may sit on the same node.
@@ -518,7 +523,7 @@ class GradCommEngine {
   int end_step();
   void stats(uint64_t* out3);
 
-  // ---- 放行层（release.cu）的 Python 入口
+  // ---- Python entry points of the release layer (release.cu)
   int release_setup(const std::vector<int>& dense_order,
                     const std::vector<int>& moe_order,
                     const std::vector<long long>& dense_table,
@@ -559,8 +564,9 @@ class GradCommEngine {
   int gather_gate(int mark);
   int gather_wait_bucket(int kind, int bucket);
   int gather_mark_ready(int slot);
-  // 主线程发一个 2D 桶的 gather put：只给表项下标和本步序号，slot / 偏移 /
-  // owner 从 release::setup_gather_table 建的表里查
+  // Main thread sends the gather put of one 2D bucket: only the table index
+  // and this step's sequence number are passed; slot / offsets / owner come
+  // from the table built by release::setup_gather_table
   int gather_put_entry(int entry_index,
                        unsigned long long seq,
                        int* num_signals);
