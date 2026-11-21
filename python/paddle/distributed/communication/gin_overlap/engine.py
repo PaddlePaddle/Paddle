@@ -103,8 +103,8 @@ import paddle.distributed as dist
 # exists only when the build conditions hold; otherwise paddle.base.core has no gin_overlap attribute. The
 # conditions are spelled out in the error message below.
 _BUILD_HINT = (
-    "this paddlepaddle was built without gin_overlap: it needs WITH_GPU + WITH_NCCL, NCCL >= 2.30.7 "
-    "(with nccl_device.h) and a CUDA arch of 9.0 or 10.0"
+    "this paddlepaddle was built without gin_overlap: it needs WITH_DISTRIBUTE, WITH_GPU and WITH_NCCL, "
+    "CUDA >= 13.0, NCCL >= 2.30.7 with nccl_device.h, and at least one CUDA arch >= 9.0 in CUDA_ARCH_BIN"
 )
 
 # Fixed parameters (none of them affects numerical results)
