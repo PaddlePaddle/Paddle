@@ -358,7 +358,7 @@ int gather_put_to_owner(int group,
                         cudaEvent_t wait_event);
 
 // ----------------------------------------------------------------
-// Release layer (release.cu): decides whether one stage of one bucket can be
+// Release layer (release.cc): decides whether one stage of one bucket can be
 // submitted to the GPU, and submits it. The main thread (advance) and the tail
 // thread share the same decision code and the same state.
 // Stage ids. Python reads them by name (constants); the values must not change
@@ -417,7 +417,7 @@ int stuck_report(std::vector<long long>& flat);
 int get_last_error(int* out3);
 int get_current_activity();
 // Constant table exported to Python (name -> value): ADVANCE_* / STAGE_* /
-// COUNTER_* / TAIL_*. The values are defined only in release.cu; Python must
+// COUNTER_* / TAIL_*. The values are defined only in release.cc; Python must
 // read them by name and never hard-code them
 int constants(std::vector<std::string>& names, std::vector<int>& values);
 int setup_gather_table(const std::vector<long long>& table);
@@ -523,7 +523,7 @@ class GradCommEngine {
   int end_step();
   void stats(uint64_t* out3);
 
-  // ---- Python entry points of the release layer (release.cu)
+  // ---- Python entry points of the release layer (release.cc)
   int release_setup(const std::vector<int>& dense_order,
                     const std::vector<int>& moe_order,
                     const std::vector<long long>& dense_table,

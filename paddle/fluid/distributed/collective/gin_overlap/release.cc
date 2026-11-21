@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// release.cu: the release layer. Decides whether one stage of one bucket can
+// release.cc: the release layer. Decides whether one stage of one bucket can
 // be submitted to the GPU now and, if so, submits it through the submit_*
 // functions of gin_engine.cc. Terms and constraints are in the gin_engine.h
 // file header.
