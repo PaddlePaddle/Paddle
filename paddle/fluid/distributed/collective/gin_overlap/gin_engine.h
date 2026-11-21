@@ -295,7 +295,7 @@ int paddle_nccl_comm(int ring_id,
 //   - Pointers are passed as uintptr_t; group = GROUP_DENSE(0) / GROUP_MOE(1);
 //     an offset is a byte offset in the matching window; numel / shard_numel
 //     count elements.
-//   - A few methods return something else (a slot, a state, a version); their
+//   - A few methods return something else (a state, a version); their
 //     declarations say so.
 //   - send_window_tensor / copy_2d (implemented in paddle_tensor.cc) throw on
 //     error instead of returning a code.
