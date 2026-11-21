@@ -38,7 +38,7 @@ Terms
     pre window).
   - mark: a cudaEvent recorded on the compute stream; work submitted to the GPU waits on it first.
   - release: deciding that one stage of one bucket may run now, and submitting it to the GPU (the C++ release layer,
-    release.cu).
+    release.cc).
   - credit: after a receiver is done with a slot of its recv pool, it adds 1 to a counter of the sender ("returns a
     credit"); the sender writes to that slot again only once the counter reaches its target.
   - owner: the rank a Muon 2D bucket finally belongs to.
@@ -696,7 +696,7 @@ class GinOverlapPrimitive:
         )
         self._log_recv_pool()
 
-    # ------------------------------------------------------------------ parameter tables of the release layer (C++, release.cu)
+    # ------------------------------------------------------------------ parameter tables of the release layer (C++, release.cc)
     def _recv_offset(self, seg, idx):
         """Byte offset in the recv window of bucket idx in segment seg (0 intra-node / 1 inter-node: the dense group's
         recv window; 2 expert: the expert group's) = segment start + offset in the segment."""
