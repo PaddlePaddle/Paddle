@@ -266,14 +266,15 @@ extern unsigned long long g_inter_node_bytes, g_intra_node_bytes;
 // inter-node in the dense group's host window, expert in the expert group's
 extern size_t g_credit_intra_offset, g_credit_inter_offset, g_credit_moe_offset;
 extern int g_buckets_ready;
-extern cudaStream_t g_stream_gather_put;  // 2D 桶 gather：发送方的 put / CE
-// 2D 桶 gather 的门流（gather_setup 里建）：只放 cudaStreamWaitEvent 和
-// cudaEventRecord，不放 kernel
+// 2D-bucket gather: the sender's put / CE
+extern cudaStream_t g_stream_gather_put;
+// Gate stream of the 2D-bucket gather (created in gather_setup): only
+// cudaStreamWaitEvent and cudaEventRecord go on it, no kernels
 extern cudaStream_t g_stream_gather_gate;
-extern std::vector<cudaEvent_t>
-    g_event_gather_source;  // 每 slot 一个：本卡分片求和之后
-extern std::vector<cudaEvent_t>
-    g_event_gather_put;  // 每 slot 一个：本卡的 gather put / CE 之后
+// one per slot: after this rank's shard reduce
+extern std::vector<cudaEvent_t> g_event_gather_source;
+// one per slot: after this rank's gather put / CE
+extern std::vector<cudaEvent_t> g_event_gather_put;
 extern int g_gather_ready;
 
 // ----------------------------------------------------------------
@@ -281,7 +282,8 @@ extern int g_gather_ready;
 // stream as Python's paddle.device.current_stream(). On failure it prints the
 // reason and returns an error code; it never falls back to the default stream.
 int paddle_compute_stream(cudaStream_t* out);
-// 取当前计算流；取不到时让所在的方法带着错误码返回
+// Gets the current compute stream; on failure the enclosing method returns
+// the error code
 #define GIN_COMPUTE_STREAM(var)                         \
   cudaStream_t var = nullptr;                           \
   do {                                                  \
@@ -290,10 +292,11 @@ int paddle_compute_stream(cudaStream_t* out);
   } while (0)
 
 // ----------------------------------------------------------------
-// 各阶段的提交函数：把一个桶的某个阶段提交到 GPU（发 kernel 或 CE 拷贝，
-// 记 event）。只由 release.cu 的 release_next_* 调用；调用前远端条件已经
-// 满足。mark_event = 这次工作要先等的 mark（主线程传窗口 mark，尾部线程
-// 传尾部 mark）。
+// Per-stage submit functions: submit one stage of one bucket to the GPU
+// (launch a kernel or a CE copy, record an event). Only release_next_* in
+// release.cu calls them, after the remote conditions are met. mark_event is
+// the mark this work waits on first (the main thread passes a window mark,
+// the tail thread a tail mark).
 int submit_dense_intra_node_copy(int bucket,
                                  size_t recv_offset,
                                  size_t send_offset,
@@ -315,7 +318,8 @@ int submit_dense_inter_node_put(int bucket,
                                 int num_blocks,
                                 cudaEvent_t mark_event,
                                 int* num_signals);
-// 专家桶的两个阶段：组大小和本卡组内序号取自 expert_group()
+// The two stages of an expert bucket: group size and this rank's group rank
+// come from expert_group()
 int submit_moe_put(int bucket,
                    size_t recv_offset,
                    size_t send_offset,
@@ -338,9 +342,10 @@ int submit_moe_reduce(int bucket,
                       float scale,
                       int num_blocks,
                       cudaEvent_t mark_event);
-// 2D 桶 gather 的发送：跨节点用 k_put_to_owner，同节点用 CE +
-// k_store_release。group = GROUP_DENSE / GROUP_MOE；owner 是该组的组内序号；
-// wait_event = g_stream_gather_put 先等的本卡 event
+// Send side of the 2D-bucket gather: k_put_to_owner across nodes, CE +
+// k_store_release within a node. group = GROUP_DENSE / GROUP_MOE; owner is a
+// group rank of that group; wait_event = the local event g_stream_gather_put
+// waits on first
 int gather_put_to_owner(int group,
                         int slot,
                         size_t send_offset,
@@ -365,11 +370,6 @@ int paddle_nccl_comm(int ring_id,
                      std::string* out_err);
 
 // ----------------------------------------------------------------
-//   - 流不从 Python 传。排在计算流上的方法自己取 paddle_compute_stream；
-//     gather_gate / gather_wait_bucket / gather_mark_ready 排在
-//     g_stream_gather_gate 上。
-// 专家桶的阶段名（submit_moe_put / submit_moe_reduce）不带 intra_node /
-// inter_node：专家桶没有机内阶段，而且专家组的 peer 可能在同一节点上。
 // GradCommEngine: exported as paddle.base.core.gin_overlap.GradCommEngine
 // (registered in paddle/fluid/pybind/gin_overlap_api.cc); one object per
 // process. Python calls these methods by name, so method names and py::arg
@@ -383,8 +383,14 @@ int paddle_nccl_comm(int ring_id,
 //     count elements.
 //   - A few methods return something else (a state, a version); their
 //     declarations say so.
+//   - Streams are never passed from Python. Methods that run on the compute
+//     stream get it through paddle_compute_stream; gather_gate /
+//     gather_wait_bucket / gather_mark_ready run on g_stream_gather_gate.
 //   - send_window_tensor / copy_2d (implemented in paddle_tensor.cc) throw on
 //     error instead of returning a code.
+// The expert stages (submit_moe_put / submit_moe_reduce) have no intra_node /
+// inter_node in their names: expert buckets have no intra-node stage, and
+// expert peers may sit on the same node.
 class GradCommEngine {
  public:
   GradCommEngine() = default;
@@ -437,7 +443,8 @@ class GradCommEngine {
   void stats(unsigned long long* out3);
 
   int gather_setup(int num_slots);
-  // 下面三个排在 2D gather 的门流上（g_stream_gather_gate）
+  // The next three run on the gate stream of the 2D gather
+  // (g_stream_gather_gate)
   int gather_gate(int mark);
   int gather_wait_bucket(int is_dense, int bucket);
   int gather_mark_ready(int slot);
