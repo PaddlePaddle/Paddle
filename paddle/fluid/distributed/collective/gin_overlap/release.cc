@@ -365,10 +365,11 @@ inline bool in_window(long long offset,
 }
 
 // Checks the per-bucket tables and the host window offsets setup receives:
-// every offset is non-negative, aligned (counters 8 bytes, data 4 bytes) and
-// inside its window, so that the CPU reads of the host window and the GPU
-// writes stay in bounds. A recv offset is checked only when the bucket has a
-// slot in that segment (depth >= 0).
+// every offset is non-negative, aligned (counters 8 bytes, data 4 bytes, the
+// dense send_offset and recv_offset_intra 16 bytes: k_reduce_intra_node reads
+// both as float4*) and inside its window, so that the CPU reads of the host
+// window and the GPU writes stay in bounds. A recv offset is checked only when
+// the bucket has a slot in that segment (depth >= 0).
 bool tables_in_bounds(const std::vector<long long>& dense_table,
                       const std::vector<long long>& moe_table,
                       size_t intra_arrive) {
@@ -391,11 +392,11 @@ bool tables_in_bounds(const std::vector<long long>& dense_table,
     const long long m = row[2];
     if (m < 0 || (dense.size > 0 && m > (long long)(SIZE_MAX / 4) / dense.size))
       return false;
-    if (!in_window(row[0], m * dense.size, 4, 4, dense.send_bytes) ||
+    if (!in_window(row[0], m * dense.size, 4, 16, dense.send_bytes) ||
         !in_window(row[1], 1, 8, 8, dense.host_bytes))
       return false;
     if (row[5] >= 0 &&
-        !in_window(row[3], (L - 1) * Nn * m, 4, 4, dense.recv_bytes))
+        !in_window(row[3], (L - 1) * Nn * m, 4, 16, dense.recv_bytes))
       return false;
     if (row[6] >= 0 && !in_window(row[4], Nn * m, 4, 4, dense.recv_bytes))
       return false;
