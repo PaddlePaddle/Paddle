@@ -44,7 +44,8 @@ __global__ void k_signal_intra_node(LsaSlotPointers counter_slots,
 
 // Returns a credit: adds 1 to the VA signal at signal_offset of signal_window
 // of peer k (group rank peer_base + k*peer_stride; k == skip_rank is
-// skipped), signal only, no data (ncclGin::signal). One thread per peer.
+// skipped), signal only, no data (ncclGin::signal). One thread per peer, no
+// grid-stride loop: the grid must have at least num_peers threads.
 // signal_window is the host window.
 __global__ void k_signal_credit(ncclDevComm dev_comm,
                                 ncclWindow_t signal_window,
