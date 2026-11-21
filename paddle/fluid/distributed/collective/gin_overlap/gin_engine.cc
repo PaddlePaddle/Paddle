@@ -791,7 +791,7 @@ int submit_moe_reduce(int bucket,
 // ----------------------------------------------------------------
 // Whether a slot of the window mark ring is valid
 static inline bool is_valid_mark(int mark) {
-  return mark >= 0 && mark < (int)g_window_marks.size();
+  return mark >= 0 && mark < static_cast<int>(g_window_marks.size());
 }
 
 // Makes `stream` wait on the side-stream events of one bucket: intra-node
@@ -1034,10 +1034,10 @@ int gather_put_to_owner(int group,
 // gather_put_to_owner, waiting on g_event_gather_source[slot] (implemented in
 // release.cc)
 int GradCommEngine::gather_put_entry(int entry_index,
-                                     unsigned long long seq,
+                                     uint64_t seq,
                                      int* num_signals) {
   *num_signals = 0;
-  if (!g_gather_ready) return (int)cudaErrorNotReady;
+  if (!g_gather_ready) return static_cast<int>(cudaErrorNotReady);
   return release::gather_put_entry(entry_index, seq, num_signals);
 }
 
@@ -1056,8 +1056,8 @@ int GradCommEngine::gather_join(int slot) {
 // Entry points of the release layer (implemented in release.cc)
 int GradCommEngine::release_setup(const std::vector<int>& dense_order,
                                   const std::vector<int>& moe_order,
-                                  const std::vector<long long>& dense_table,
-                                  const std::vector<long long>& moe_table,
+                                  const std::vector<int64_t>& dense_table,
+                                  const std::vector<int64_t>& moe_table,
                                   int put_blocks,
                                   size_t intra_arrive_offset,
                                   int num_marks) {
@@ -1069,16 +1069,16 @@ int GradCommEngine::release_setup(const std::vector<int>& dense_order,
                         intra_arrive_offset,
                         num_marks);
 }
-int GradCommEngine::release_step_reset(long long step) {
+int GradCommEngine::release_step_reset(int64_t step) {
   return release::step_reset(step);
 }
 int GradCommEngine::advance(int mark,
                             int stages,
                             int intra_node_reduce_blocks,
                             int shard_reduce_blocks,
-                            std::vector<int>& released_shard_reduce) {
-  released_shard_reduce.clear();
-  if (!is_valid_mark(mark)) return (int)cudaErrorInvalidValue;
+                            std::vector<int>* released_shard_reduce) {
+  released_shard_reduce->clear();
+  if (!is_valid_mark(mark)) return static_cast<int>(cudaErrorInvalidValue);
   return release::advance(g_window_marks[mark],
                           stages,
                           intra_node_reduce_blocks,
@@ -1088,13 +1088,13 @@ int GradCommEngine::advance(int mark,
 int GradCommEngine::bucket_ready(int kind, int bucket, float scale, int mark) {
   return release::bucket_ready(kind, bucket, scale, mark);
 }
-int GradCommEngine::release_status(std::vector<int>& positions,
-                                   std::vector<int>& counts,
-                                   std::vector<int>& posted,
+int GradCommEngine::release_status(std::vector<int>* positions,
+                                   std::vector<int>* counts,
+                                   std::vector<int>* posted,
                                    int* done) {
   return release::status(positions, counts, posted, done);
 }
-int GradCommEngine::release_stuck_report(std::vector<long long>& flat) {
+int GradCommEngine::release_stuck_report(std::vector<int64_t>* flat) {
   return release::stuck_report(flat);
 }
 int GradCommEngine::release_error(int* code, int* stage, int* bucket) {
@@ -1128,14 +1128,14 @@ int GradCommEngine::tail_abort(double wait_s) {
   return release::abort_step(wait_s);
 }
 int GradCommEngine::tail_finish() { return release::tail_finish(); }
-int GradCommEngine::tail_gather_setup(const std::vector<long long>& table) {
+int GradCommEngine::tail_gather_setup(const std::vector<int64_t>& table) {
   return release::setup_gather_table(table);
 }
 int GradCommEngine::tail_gather_set_sequences(
-    const std::vector<unsigned long long>& seqs) {
+    const std::vector<uint64_t>& seqs) {
   return release::set_gather_sequences(seqs);
 }
-int GradCommEngine::tail_gather_get_sent(std::vector<long long>& flat) {
+int GradCommEngine::tail_gather_get_sent(std::vector<int64_t>* flat) {
   return release::get_gather_sent(flat);
 }
 

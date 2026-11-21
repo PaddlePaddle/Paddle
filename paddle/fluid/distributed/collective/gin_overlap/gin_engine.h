@@ -388,17 +388,17 @@ enum {
 
 int setup(const std::vector<int>& dense_order,
           const std::vector<int>& moe_order,
-          const std::vector<long long>& dense_table,
-          const std::vector<long long>& moe_table,
+          const std::vector<int64_t>& dense_table,
+          const std::vector<int64_t>& moe_table,
           int put_blocks,
           size_t intra_arrive_offset,
           int num_marks);
-int step_reset(long long step);
+int step_reset(int64_t step);
 int advance(cudaEvent_t mark_event,
             int stages,
             int intra_node_reduce_blocks,
             int shard_reduce_blocks,
-            std::vector<int>& released_shard_reduce);
+            std::vector<int>* released_shard_reduce);
 int bucket_ready(int kind, int bucket, float scale, int mark);
 int record_tail_mark(cudaStream_t stream);
 int tail_start(int intra_node_reduce_blocks,
@@ -409,21 +409,21 @@ int set_all_posted();
 int wait_for_step_end(double timeout_s);
 int abort_step(double wait_s);
 int tail_finish();
-int status(std::vector<int>& positions6,
-           std::vector<int>& counts4,
-           std::vector<int>& posted4,
+int status(std::vector<int>* positions6,
+           std::vector<int>* counts4,
+           std::vector<int>* posted4,
            int* done);
-int stuck_report(std::vector<long long>& flat);
+int stuck_report(std::vector<int64_t>* flat);
 int get_last_error(int* out3);
 int get_current_activity();
 // Constant table exported to Python (name -> value): ADVANCE_* / STAGE_* /
 // COUNTER_* / TAIL_*. The values are defined only in release.cc; Python must
 // read them by name and never hard-code them
-int constants(std::vector<std::string>& names, std::vector<int>& values);
-int setup_gather_table(const std::vector<long long>& table);
-int gather_put_entry(int entry_index, unsigned long long seq, int* num_signals);
-int set_gather_sequences(const std::vector<unsigned long long>& seqs);
-int get_gather_sent(std::vector<long long>& flat);
+int constants(std::vector<std::string>* names, std::vector<int>* values);
+int setup_gather_table(const std::vector<int64_t>& table);
+int gather_put_entry(int entry_index, uint64_t seq, int* num_signals);
+int set_gather_sequences(const std::vector<uint64_t>& seqs);
+int get_gather_sent(std::vector<int64_t>* flat);
 }  // namespace release
 
 // ----------------------------------------------------------------
@@ -526,25 +526,25 @@ class GradCommEngine {
   // ---- Python entry points of the release layer (release.cc)
   int release_setup(const std::vector<int>& dense_order,
                     const std::vector<int>& moe_order,
-                    const std::vector<long long>& dense_table,
-                    const std::vector<long long>& moe_table,
+                    const std::vector<int64_t>& dense_table,
+                    const std::vector<int64_t>& moe_table,
                     int put_blocks,
                     size_t intra_arrive_offset,
                     int num_marks);
-  int release_step_reset(long long step);
+  int release_step_reset(int64_t step);
   int advance(int mark,
               int stages,
               int intra_node_reduce_blocks,
               int shard_reduce_blocks,
-              std::vector<int>& released_shard_reduce);
+              std::vector<int>* released_shard_reduce);
   // bucket_ready / tail_all_posted return 0 = accepted, 1 = the tail thread
   // stopped on an error (see release_error), 2 = wrong usage
   int bucket_ready(int kind, int bucket, float scale, int mark);
-  int release_status(std::vector<int>& positions,
-                     std::vector<int>& counts,
-                     std::vector<int>& posted,
+  int release_status(std::vector<int>* positions,
+                     std::vector<int>* counts,
+                     std::vector<int>* posted,
                      int* done);
-  int release_stuck_report(std::vector<long long>& flat);
+  int release_stuck_report(std::vector<int64_t>* flat);
   int release_error(int* code, int* stage, int* bucket);
   // What the release layer is submitting right now: stage *
   // ACTIVITY_STAGE_SCALE + bucket + 1; 0 = not inside a CUDA call
@@ -563,9 +563,9 @@ class GradCommEngine {
   int tail_wait(double timeout_s);
   int tail_abort(double wait_s);
   int tail_finish();
-  int tail_gather_setup(const std::vector<long long>& table);
-  int tail_gather_set_sequences(const std::vector<unsigned long long>& seqs);
-  int tail_gather_get_sent(std::vector<long long>& flat);
+  int tail_gather_setup(const std::vector<int64_t>& table);
+  int tail_gather_set_sequences(const std::vector<uint64_t>& seqs);
+  int tail_gather_get_sent(std::vector<int64_t>* flat);
 
   int gather_setup(int num_slots);
   // The next three run on the gate stream of the 2D gather
@@ -576,9 +576,7 @@ class GradCommEngine {
   // Main thread sends the gather put of one 2D bucket: only the table index
   // and this step's sequence number are passed; slot / offsets / owner come
   // from the table built by release::setup_gather_table
-  int gather_put_entry(int entry_index,
-                       unsigned long long seq,
-                       int* num_signals);
+  int gather_put_entry(int entry_index, uint64_t seq, int* num_signals);
   int gather_join(int slot);
 };
 }  // namespace gin_overlap
