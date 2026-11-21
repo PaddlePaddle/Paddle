@@ -24,7 +24,6 @@ void* cuda_dso_handle = nullptr;
 CUDA_ROUTINE_EACH_VVM(DEFINE_WRAP);
 CUDA_ROUTINE_EACH_CUDA_GRAPH(DEFINE_WRAP);
 CUDA_ROUTINE_EACH(DEFINE_WRAP);
-CUDA_ROUTINE_EACH_MEMCPY(DEFINE_WRAP);
 
 bool HasCUDADriver() {
   std::call_once(cuda_dso_flag, []() { cuda_dso_handle = GetCUDADsoHandle(); });
