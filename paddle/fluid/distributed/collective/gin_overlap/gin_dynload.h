@@ -24,8 +24,10 @@
 //   - the host ncclTeamWorld(ncclComm_t): it shares its name with the device
 //     overload, so DECLARE_DYNAMIC_LOAD_NCCL_WRAP cannot wrap it; host code of
 //     gin_overlap must not call it.
-//   - runtime API such as cudaMemcpyBatchAsync: libcudart is linked
-//     statically.
+//   - runtime API such as cudaMemcpyBatchAsync: called directly, not through
+//     phi::dynload. On Linux libcudart is linked dynamically (--cudart shared,
+//     top-level CMakeLists.txt), so libpaddle.so needs a libcudart that has
+//     these entry points (CUDA >= 13.0, checked below).
 #pragma once
 
 #include <cuda.h>
