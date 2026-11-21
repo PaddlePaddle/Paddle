@@ -11,7 +11,7 @@ string(REGEX REPLACE "-gencode arch=compute_[0-8][0-9],code=sm_[0-8][0-9]" ""
 # - gin_engine.cc: host-side orchestration.
 # - paddle_comm.cc / paddle_tensor.cc: get the ncclComm of a ProcessGroup, and
 #   wrap window slices as paddle::Tensor.
-# - kernels/: device kernels, and release.cu (release layer, host code).
+# - kernels/: device kernels. release.cc: the release layer (host code).
 set(GIN_OVERLAP_SRCS
     gin_engine.cc
     paddle_comm.cc
@@ -20,7 +20,7 @@ set(GIN_OVERLAP_SRCS
     kernels/put.cu
     kernels/signal.cu
     kernels/scale.cu
-    kernels/release.cu)
+    release.cc)
 
 # NCCL headers (nccl.h / nccl_device.h) come from the include path set by
 # cmake/nccl.cmake. libnccl and libcuda are not linked: host-side NCCL /

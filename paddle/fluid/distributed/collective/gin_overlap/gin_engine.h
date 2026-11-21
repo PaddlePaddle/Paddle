@@ -50,7 +50,7 @@
 //     GPU waits on a mark first, so it cannot start earlier than that point
 //     and the gradients it reads are already written.
 //   - release: deciding that one stage of one bucket may run now, and
-//     submitting it to the GPU. The release layer (release.cu) makes that
+//     submitting it to the GPU. The release layer (release.cc) makes that
 //     decision.
 //   - credit: after a receiver is done with a slot of its recv pool, it adds
 //     1 to a counter of the sender ("returns a credit"). The sender writes to
@@ -294,7 +294,7 @@ int paddle_compute_stream(cudaStream_t* out);
 // ----------------------------------------------------------------
 // Per-stage submit functions: submit one stage of one bucket to the GPU
 // (launch a kernel or a CE copy, record an event). Only release_next_* in
-// release.cu calls them, after the remote conditions are met. mark_event is
+// release.cc calls them, after the remote conditions are met. mark_event is
 // the mark this work waits on first (the main thread passes a window mark,
 // the tail thread a tail mark).
 int submit_dense_intra_node_copy(int bucket,
@@ -358,7 +358,7 @@ int gather_put_to_owner(int group,
                         cudaEvent_t wait_event);
 
 // ----------------------------------------------------------------
-// Release layer (release.cu): decides whether one stage of one bucket can be
+// Release layer (release.cc): decides whether one stage of one bucket can be
 // submitted to the GPU, and submits it. The main thread (advance) and the tail
 // thread share the same decision code and the same state.
 // Stage ids. Python reads them by name (constants); the values must not change
@@ -417,7 +417,7 @@ int stuck_report(std::vector<long long>& flat);
 int get_last_error(int* out3);
 int get_current_activity();
 // Constant table exported to Python (name -> value): ADVANCE_* / STAGE_* /
-// COUNTER_* / TAIL_*. The values are defined only in release.cu; Python must
+// COUNTER_* / TAIL_*. The values are defined only in release.cc; Python must
 // read them by name and never hard-code them
 int constants(std::vector<std::string>& names, std::vector<int>& values);
 int setup_gather_table(const std::vector<long long>& table);
@@ -522,7 +522,7 @@ class GradCommEngine {
   int end_step();
   void stats(unsigned long long* out3);
 
-  // ---- Python entry points of the release layer (release.cu)
+  // ---- Python entry points of the release layer (release.cc)
   int release_setup(const std::vector<int>& dense_order,
                     const std::vector<int>& moe_order,
                     const std::vector<long long>& dense_table,

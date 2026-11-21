@@ -20,7 +20,7 @@
 //   - An offset argument is a byte offset in some window.
 //   - numel counts elements (floats), not bytes; numel4 counts float4
 //     (= numel / 4).
-//   - Host code (gin_engine.cc / release.cu) only calls the launch_* /
+//   - Host code (gin_engine.cc / release.cc) only calls the launch_* /
 //     preload_* functions here and never writes <<<>>> itself.
 //   - The thread count of each launch_* is fixed (given in its comment). The
 //     block count of the reduce kernels comes from the caller and decides how

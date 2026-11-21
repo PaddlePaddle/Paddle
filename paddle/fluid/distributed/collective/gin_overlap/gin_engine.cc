@@ -1004,7 +1004,7 @@ int gather_put_to_owner(int group,
 
 // Main thread sends a 2D-gather put: looks up the table entry and calls
 // gather_put_to_owner, waiting on g_event_gather_source[slot] (implemented in
-// release.cu)
+// release.cc)
 int GradCommEngine::gather_put_entry(int entry_index,
                                      unsigned long long seq,
                                      int* num_signals) {
@@ -1024,7 +1024,7 @@ int GradCommEngine::gather_join(int slot) {
 }
 
 // ----------------------------------------------------------------
-// Entry points of the release layer (implemented in kernels/release.cu)
+// Entry points of the release layer (implemented in release.cc)
 int GradCommEngine::release_setup(const std::vector<int>& dense_order,
                                   const std::vector<int>& moe_order,
                                   const std::vector<long long>& dense_table,
