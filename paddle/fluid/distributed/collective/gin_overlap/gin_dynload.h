@@ -37,12 +37,15 @@
 #include "paddle/phi/backends/dynload/nccl.h"
 
 // When the CMake gate (collective/CMakeLists.txt) is not met this directory is
-// not built; the two checks below turn a wrong gate into a compile error.
+// not built; the checks below turn a wrong gate into a compile error.
 #if !defined(PADDLE_WITH_NCCL)
 #error "gin_overlap needs PADDLE_WITH_NCCL (NCCL on CUDA); check the CMake gate"
 #endif
 #if NCCL_VERSION_CODE < 23007
 #error "gin_overlap needs NCCL >= 2.30.7 for the device (LSA/GIN) API"
+#endif
+#if CUDART_VERSION < 13000
+#error "gin_overlap needs CUDA >= 13.0 for the cudaMemcpyBatchAsync signature"
 #endif
 
 namespace gin_overlap {
