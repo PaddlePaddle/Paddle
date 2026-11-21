@@ -509,7 +509,8 @@ class GradCommEngine {
                 size_t credit_intra_offset,
                 size_t credit_inter_offset,
                 size_t credit_moe_offset);
-  // Returns the slot of the recorded mark (>= 0), or -1 on any failure
+  // Returns the window mark slot (>= 0); -1 = no configure, the compute stream
+  // cannot be read, or cudaEventRecord failed
   int record_window_mark();
 
   int alloc_host_counters(int group,
