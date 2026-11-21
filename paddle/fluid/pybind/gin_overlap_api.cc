@@ -163,11 +163,11 @@ void BindGinOverlapApi(py::module* m) {
           py::arg("want_bytes"))
       .def("join_bucket_streams",
            &GradCommEngine::join_bucket_streams,
-           py::arg("is_dense"),
+           py::arg("kind"),
            py::arg("bucket"))
       .def("gather_wait_bucket",
            &GradCommEngine::gather_wait_bucket,
-           py::arg("is_dense"),
+           py::arg("kind"),
            py::arg("bucket"))
       .def("scale_range",
            &GradCommEngine::scale_range,
@@ -256,8 +256,17 @@ void BindGinOverlapApi(py::module* m) {
            py::arg("mark"),
            py::arg("all_posted"))
       .def("tail_all_posted", &GradCommEngine::tail_all_posted)
-      .def("tail_wait", &GradCommEngine::tail_wait, py::arg("timeout_s"))
-      .def("tail_abort", &GradCommEngine::tail_abort, py::arg("wait_s"))
+      // tail_wait / tail_abort block on a condition variable for up to
+      // timeout_s / wait_s; the tail thread never touches Python objects, so
+      // the GIL is released while they wait.
+      .def("tail_wait",
+           &GradCommEngine::tail_wait,
+           py::arg("timeout_s"),
+           py::call_guard<py::gil_scoped_release>())
+      .def("tail_abort",
+           &GradCommEngine::tail_abort,
+           py::arg("wait_s"),
+           py::call_guard<py::gil_scoped_release>())
       .def("tail_finish", &GradCommEngine::tail_finish)
       // ---- Muon 2D-bucket gather
       .def("gather_setup", &GradCommEngine::gather_setup, py::arg("num_slots"))
