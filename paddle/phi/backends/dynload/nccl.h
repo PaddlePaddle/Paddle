@@ -158,7 +158,7 @@ NCCL_RAND_ROUTINE_EACH_AFTER_21100(DECLARE_DYNAMIC_LOAD_NCCL_WRAP)
 // are gated as one group on that version: below it the feature is refused
 // rather than silently degraded.
 // ncclDevCommCreate / ncclDevCommDestroy / ncclGetLsaDevicePointer are the host
-// entry points of the device (LSA/GIN) API used by the one-sided primitives of
+// entry points of the device (LSA/GIN) API used by the GIN primitives of
 // ProcessGroupNCCL; they are present from 2.30.7 on as well.
 #if NCCL_VERSION_CODE >= 23007
 #define NCCL_RAND_ROUTINE_EACH_AFTER_23007(__macro) \

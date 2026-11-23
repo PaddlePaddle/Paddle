@@ -14,14 +14,11 @@
 
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
 
-// The NCCL device API (ncclDevComm, LSA pointers, GIN) is used with NCCL 2.30.7
-// or newer with nccl_device.h, on CUDA 13.0 or newer.
-#if defined(PADDLE_WITH_NCCL) && NCCL_VERSION_CODE >= 23007 && \
-    defined(CUDA_VERSION) && CUDA_VERSION >= 13000 && defined(__has_include)
-#if __has_include(<nccl_device.h>)
+// PADDLE_WITH_GIN_OVERLAP (cmake/configure.cmake) means Paddle is built against
+// the NCCL device API: NCCL 2.30.7 or newer with nccl_device.h, CUDA 13.0 or
+// newer, an arch of sm_90 or newer.
+#ifdef PADDLE_WITH_GIN_OVERLAP
 #include <nccl_device.h>
-#define PADDLE_WITH_NCCL_DEVICE_API
-#endif
 #endif
 
 #include <algorithm>
@@ -39,7 +36,7 @@
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/utils/data_type.h"
 
-#ifdef PADDLE_WITH_NCCL_DEVICE_API
+#ifdef PADDLE_WITH_GIN_OVERLAP
 #include "paddle/phi/backends/dynload/cuda_driver.h"
 #endif
 
@@ -57,7 +54,7 @@ struct NCCLCommContext::DeviceApiState {
   bool has_dev_comm{false};
   int gin_context_hint{0};
   NCCLDevCommInfo info;
-#ifdef PADDLE_WITH_NCCL_DEVICE_API
+#ifdef PADDLE_WITH_GIN_OVERLAP
   ncclDevComm dev_comm{};
   // Memory of a host window.
   struct HostMemory {
@@ -70,7 +67,7 @@ struct NCCLCommContext::DeviceApiState {
 #endif
 };
 
-#ifdef PADDLE_WITH_NCCL_DEVICE_API
+#ifdef PADDLE_WITH_GIN_OVERLAP
 namespace {
 
 // Unmaps and frees the memory of a host window.
@@ -289,7 +286,7 @@ bool NCCLCommContext::GetWindowRange(void* window,
 }
 
 bool NCCLCommContext::IsDevCommSupported() {
-#ifdef PADDLE_WITH_NCCL_DEVICE_API
+#ifdef PADDLE_WITH_GIN_OVERLAP
   return phi::dynload::ncclDevCommCreate.IsValid() &&
          phi::dynload::ncclDevCommDestroy.IsValid() &&
          phi::dynload::ncclGetLsaDevicePointer.IsValid() &&
@@ -300,7 +297,7 @@ bool NCCLCommContext::IsDevCommSupported() {
 }
 
 NCCLDevCommInfo NCCLCommContext::GetOrCreateDevComm(int gin_context_count) {
-#ifdef PADDLE_WITH_NCCL_DEVICE_API
+#ifdef PADDLE_WITH_GIN_OVERLAP
   DeviceApiState& state = *device_api_;
   if (state.has_dev_comm) {
     PADDLE_ENFORCE_EQ(
@@ -353,8 +350,9 @@ NCCLDevCommInfo NCCLCommContext::GetOrCreateDevComm(int gin_context_count) {
   return state.info;
 #else
   PADDLE_THROW(common::errors::Unavailable(
-      "Paddle was not compiled against the NCCL device API (NCCL 2.30.7 or "
-      "newer with nccl_device.h)."));
+      "Paddle was not built with PADDLE_WITH_GIN_OVERLAP (the NCCL device "
+      "API: NCCL 2.30.7 or newer with nccl_device.h, CUDA 13.0 or newer, "
+      "sm_90 or newer)."));
 #endif
 }
 
@@ -370,7 +368,7 @@ const NCCLDevCommInfo& NCCLCommContext::GetDevCommInfo() const {
 }
 
 void NCCLCommContext::DestroyDevComm() {
-#ifdef PADDLE_WITH_NCCL_DEVICE_API
+#ifdef PADDLE_WITH_GIN_OVERLAP
   DeviceApiState& state = *device_api_;
   if (state.has_dev_comm) {
     NCCL_CHECK(phi::dynload::ncclDevCommDestroy(nccl_comm_, &state.dev_comm));
@@ -383,7 +381,7 @@ void NCCLCommContext::DestroyDevComm() {
 }
 
 void* NCCLCommContext::LsaPointer(void* window, int lsa_peer, size_t offset) {
-#ifdef PADDLE_WITH_NCCL_DEVICE_API
+#ifdef PADDLE_WITH_GIN_OVERLAP
   void* ptr = nullptr;
   size_t size = 0;
   PADDLE_ENFORCE_EQ(
@@ -415,13 +413,14 @@ void* NCCLCommContext::LsaPointer(void* window, int lsa_peer, size_t offset) {
   return static_cast<char*>(bases[lsa_peer]) + offset;
 #else
   PADDLE_THROW(common::errors::Unavailable(
-      "Paddle was not compiled against the NCCL device API (NCCL 2.30.7 or "
-      "newer with nccl_device.h)."));
+      "Paddle was not built with PADDLE_WITH_GIN_OVERLAP (the NCCL device "
+      "API: NCCL 2.30.7 or newer with nccl_device.h, CUDA 13.0 or newer, "
+      "sm_90 or newer)."));
 #endif
 }
 
 NCCLHostWindow NCCLCommContext::AllocHostWindow(size_t bytes) {
-#ifdef PADDLE_WITH_NCCL_DEVICE_API
+#ifdef PADDLE_WITH_GIN_OVERLAP
   PADDLE_ENFORCE_EQ(phi::dynload::ncclCommWindowRegister.IsValid(),
                     true,
                     common::errors::Unavailable(
@@ -523,13 +522,14 @@ NCCLHostWindow NCCLCommContext::AllocHostWindow(size_t bytes) {
   return NCCLHostWindow{window, memory.ptr, alloc_bytes};
 #else
   PADDLE_THROW(common::errors::Unavailable(
-      "Paddle was not compiled against the NCCL device API (NCCL 2.30.7 or "
-      "newer with nccl_device.h)."));
+      "Paddle was not built with PADDLE_WITH_GIN_OVERLAP (the NCCL device "
+      "API: NCCL 2.30.7 or newer with nccl_device.h, CUDA 13.0 or newer, "
+      "sm_90 or newer)."));
 #endif
 }
 
 void NCCLCommContext::FreeHostWindow(void* window) {
-#ifdef PADDLE_WITH_NCCL_DEVICE_API
+#ifdef PADDLE_WITH_GIN_OVERLAP
   auto iter = device_api_->host_windows.find(window);
   PADDLE_ENFORCE_NE(iter,
                     device_api_->host_windows.end(),
@@ -543,13 +543,14 @@ void NCCLCommContext::FreeHostWindow(void* window) {
   ReleaseHostMemory(memory.handle, memory.ptr, memory.bytes);
 #else
   PADDLE_THROW(common::errors::Unavailable(
-      "Paddle was not compiled against the NCCL device API (NCCL 2.30.7 or "
-      "newer with nccl_device.h)."));
+      "Paddle was not built with PADDLE_WITH_GIN_OVERLAP (the NCCL device "
+      "API: NCCL 2.30.7 or newer with nccl_device.h, CUDA 13.0 or newer, "
+      "sm_90 or newer)."));
 #endif
 }
 
 void NCCLCommContext::FreeAllHostWindowMemory() {
-#ifdef PADDLE_WITH_NCCL_DEVICE_API
+#ifdef PADDLE_WITH_GIN_OVERLAP
   for (auto& item : device_api_->host_windows) {
     ReleaseHostMemory(item.second.handle, item.second.ptr, item.second.bytes);
   }

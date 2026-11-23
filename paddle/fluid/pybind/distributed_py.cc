@@ -110,9 +110,9 @@ py::dict DevCommInfoToDict(const phi::distributed::NCCLDevCommInfo &info) {
   return result;
 }
 
-// The stream of a one-sided primitive: a raw stream handle passed as an int,
+// The stream of a GIN primitive: a raw stream handle passed as an int,
 // or the current stream of the current device for None.
-gpuStream_t OneSidedStream(const py::object &stream) {
+gpuStream_t GinStream(const py::object &stream) {
   if (stream.is_none()) {
     return paddle::GetCurrentCUDAStream(
                phi::GPUPlace(phi::backends::gpu::GetCurrentDeviceId()))
@@ -1350,13 +1350,13 @@ void BindDistributed(py::module *m) {
             comm_context->DeregisterWindow(p_tensor->data());
           },
           py::arg("tensor"))
-      // NCCL one-sided primitives. Window handles are the ints returned by
+      // GIN primitives. Window handles are the ints returned by
       // register_comm_buffer() / alloc_host_window(); `stream` is a raw
       // cudaStream_t as an int (for example
       // paddle.device.current_stream().cuda_stream), None meaning the current
       // stream of the current device.
-      .def_static("is_one_sided_supported",
-                  &distributed::ProcessGroupNCCL::IsOneSidedSupported)
+      .def_static("is_gin_supported",
+                  &distributed::ProcessGroupNCCL::IsGinSupported)
       .def(
           "get_or_create_dev_comm",
           [](distributed::ProcessGroupNCCL &self, int gin_context_count) {
@@ -1412,10 +1412,10 @@ void BindDistributed(py::module *m) {
                                           size_t>> &puts,
              py::object stream,
              int num_blocks) {
-            std::vector<distributed::OneSidedPut> descs;
+            std::vector<distributed::PutArgs> descs;
             descs.reserve(puts.size());
             for (const auto &put : puts) {
-              distributed::OneSidedPut desc;
+              distributed::PutArgs desc;
               desc.src_window = reinterpret_cast<void *>(std::get<0>(put));
               desc.src_offset = std::get<1>(put);
               desc.dst_window = reinterpret_cast<void *>(std::get<2>(put));
@@ -1426,7 +1426,7 @@ void BindDistributed(py::module *m) {
               desc.counter_offset = std::get<7>(put);
               descs.push_back(desc);
             }
-            gpuStream_t raw_stream = OneSidedStream(stream);
+            gpuStream_t raw_stream = GinStream(stream);
             py::gil_scoped_release release;
             self.Put(descs, raw_stream, num_blocks);
           },
@@ -1445,17 +1445,17 @@ void BindDistributed(py::module *m) {
           [](distributed::ProcessGroupNCCL &self,
              const std::vector<std::tuple<int, uint64_t, size_t>> &increments,
              py::object stream) {
-            std::vector<distributed::OneSidedCounterIncrement> descs;
+            std::vector<distributed::IncrementPeerCounterArgs> descs;
             descs.reserve(increments.size());
             for (const auto &increment : increments) {
-              distributed::OneSidedCounterIncrement desc;
+              distributed::IncrementPeerCounterArgs desc;
               desc.peer = std::get<0>(increment);
               desc.counter_window =
                   reinterpret_cast<void *>(std::get<1>(increment));
               desc.counter_offset = std::get<2>(increment);
               descs.push_back(desc);
             }
-            gpuStream_t raw_stream = OneSidedStream(stream);
+            gpuStream_t raw_stream = GinStream(stream);
             py::gil_scoped_release release;
             self.IncrementPeerCounter(descs, raw_stream);
           },
@@ -1472,17 +1472,17 @@ void BindDistributed(py::module *m) {
              const std::vector<std::tuple<int, uint64_t, size_t, uint64_t>>
                  &sets,
              py::object stream) {
-            std::vector<distributed::OneSidedCounterSet> descs;
+            std::vector<distributed::SetPeerCounterArgs> descs;
             descs.reserve(sets.size());
             for (const auto &set : sets) {
-              distributed::OneSidedCounterSet desc;
+              distributed::SetPeerCounterArgs desc;
               desc.peer = std::get<0>(set);
               desc.counter_window = reinterpret_cast<void *>(std::get<1>(set));
               desc.counter_offset = std::get<2>(set);
               desc.value = std::get<3>(set);
               descs.push_back(desc);
             }
-            gpuStream_t raw_stream = OneSidedStream(stream);
+            gpuStream_t raw_stream = GinStream(stream);
             py::gil_scoped_release release;
             self.SetPeerCounter(descs, raw_stream);
           },
@@ -1500,10 +1500,10 @@ void BindDistributed(py::module *m) {
              const std::vector<
                  std::tuple<uint64_t, uint64_t, size_t, int, size_t>> &copies,
              py::object stream) {
-            std::vector<distributed::OneSidedCopy> descs;
+            std::vector<distributed::CopyToPeersArgs> descs;
             descs.reserve(copies.size());
             for (const auto &copy : copies) {
-              distributed::OneSidedCopy desc;
+              distributed::CopyToPeersArgs desc;
               desc.src = reinterpret_cast<const void *>(std::get<0>(copy));
               desc.dst_window = reinterpret_cast<void *>(std::get<1>(copy));
               desc.dst_offset = std::get<2>(copy);
@@ -1511,7 +1511,7 @@ void BindDistributed(py::module *m) {
               desc.bytes = std::get<4>(copy);
               descs.push_back(desc);
             }
-            gpuStream_t raw_stream = OneSidedStream(stream);
+            gpuStream_t raw_stream = GinStream(stream);
             py::gil_scoped_release release;
             self.CopyToPeers(descs, raw_stream);
           },
@@ -1525,7 +1525,7 @@ void BindDistributed(py::module *m) {
       .def(
           "flush",
           [](distributed::ProcessGroupNCCL &self, py::object stream) {
-            gpuStream_t raw_stream = OneSidedStream(stream);
+            gpuStream_t raw_stream = GinStream(stream);
             py::gil_scoped_release release;
             self.Flush(raw_stream);
           },

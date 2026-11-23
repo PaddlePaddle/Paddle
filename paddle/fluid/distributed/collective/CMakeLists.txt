@@ -17,34 +17,6 @@ if(WITH_DISTRIBUTE
   set(DEEPEP_LIB deep_ep_xpu)
 endif()
 
-# NCCL one-sided primitives of ProcessGroupNCCL (GIN puts, LSA counters and
-# copies). Built only when all of these hold:
-#   * WITH_DISTRIBUTE, WITH_GPU and WITH_NCCL.
-#   * An arch >= 9.0 is compiled (ARCH_BIN_CONTAINS_GE_90, as for DeepEP).
-#   * NCCL 2.30.7 or newer, with nccl_device.h next to nccl.h (the device
-#     LSA/GIN API).
-#   * CUDA 13.0 or newer: the code calls cudaMemcpyBatchAsync with the
-#     CUDA 13 signature (CUDA 12.8 / 12.9 declare a different one).
-# Without them the ProcessGroupNCCL methods still exist and raise Unavailable.
-set(nccl_one_sided_supported FALSE)
-if(WITH_DISTRIBUTE
-   AND WITH_GPU
-   AND WITH_NCCL
-   AND ARCH_BIN_CONTAINS_GE_90
-   AND (CUDA_VERSION VERSION_GREATER_EQUAL 13.0)
-   AND DEFINED NCCL_VERSION)
-  if(NCCL_VERSION GREATER_EQUAL 23007 AND EXISTS
-                                          "${NCCL_INCLUDE_DIR}/nccl_device.h")
-    set(nccl_one_sided_supported TRUE)
-  endif()
-endif()
-set(NCCL_ONE_SIDED_LIB "")
-if(nccl_one_sided_supported)
-  message(STATUS "Enable NCCL one-sided primitives of ProcessGroupNCCL.")
-  add_subdirectory(gin_overlap/kernels)
-  set(NCCL_ONE_SIDED_LIB gin_overlap_comm_kernels)
-endif()
-
 cc_library(
   process_group
   SRCS process_group.cc
@@ -62,15 +34,21 @@ if(WITH_DISTRIBUTE)
     DEPS phi common eager_api gloo_wrapper)
 endif()
 
+# gin_overlap_comm: device kernels of the GIN primitives of ProcessGroupNCCL
+# (gin_overlap/kernels/comm.h). Built under WITH_GIN_OVERLAP (gate in
+# cmake/configure.cmake). comm.cu emits device code only for sm_90 and newer;
+# for older archs its kernels trap.
+set(GIN_OVERLAP_COMM_LIB "")
+if(WITH_GIN_OVERLAP)
+  cc_library(gin_overlap_comm SRCS gin_overlap/kernels/comm.cu)
+  set(GIN_OVERLAP_COMM_LIB gin_overlap_comm)
+endif()
+
 if(WITH_NCCL OR WITH_RCCL)
   cc_library(
     process_group_nccl
     SRCS process_group_nccl.cc common.cc
-    DEPS process_group phi ${DEVICE_EVENT_LIBS} ${NCCL_ONE_SIDED_LIB})
-  if(nccl_one_sided_supported)
-    target_compile_definitions(process_group_nccl
-                               PRIVATE PADDLE_WITH_NCCL_ONE_SIDED)
-  endif()
+    DEPS process_group phi ${DEVICE_EVENT_LIBS} ${GIN_OVERLAP_COMM_LIB})
 
   cc_library(
     async_load

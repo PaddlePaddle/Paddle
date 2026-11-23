@@ -14,10 +14,6 @@
 
 #include "paddle/fluid/distributed/collective/process_group_nccl.h"
 
-#include <unistd.h>
-
-#include <array>
-#include <climits>
 #include <cstring>
 
 #include "glog/logging.h"
@@ -38,7 +34,7 @@
 #include "paddle/phi/core/utils/data_type.h"
 #include "paddle/utils/string/string_helper.h"
 
-#ifdef PADDLE_WITH_NCCL_ONE_SIDED
+#ifdef PADDLE_WITH_GIN_OVERLAP
 #include "paddle/fluid/distributed/collective/gin_overlap/kernels/comm.h"
 #endif
 
@@ -72,20 +68,21 @@ bool IsCommBufferRegistered(phi::distributed::NCCLCommContext* comm_context,
       tensor.data(), tensor.numel() * phi::SizeOf(tensor.dtype()));
 }
 
-// Raises Unavailable when the one-sided primitives cannot be used.
-void CheckOneSidedSupported() {
+// Raises Unavailable when the GIN primitives cannot be used.
+void CheckGinSupported() {
   PADDLE_ENFORCE_EQ(
-      ProcessGroupNCCL::IsOneSidedSupported(),
+      ProcessGroupNCCL::IsGinSupported(),
       true,
       common::errors::Unavailable(
-          "The NCCL one-sided primitives of ProcessGroupNCCL are not "
-          "available. They need Paddle built with WITH_DISTRIBUTE, WITH_GPU "
-          "and WITH_NCCL for an arch of sm_90 or newer, CUDA 13.0 or newer "
-          "and NCCL 2.30.7 or newer with nccl_device.h, and a loaded NCCL "
-          "library that provides the device API."));
+          "The GIN primitives of ProcessGroupNCCL are not "
+          "available. They need Paddle built with PADDLE_WITH_GIN_OVERLAP "
+          "(WITH_DISTRIBUTE, WITH_GPU and WITH_NCCL for an arch of sm_90 or "
+          "newer, CUDA 13.0 or newer and NCCL 2.30.7 or newer with "
+          "nccl_device.h), a GPU of compute capability 9.0 or newer, and a "
+          "loaded NCCL library that provides the device API."));
 }
 
-#ifdef PADDLE_WITH_NCCL_ONE_SIDED
+#ifdef PADDLE_WITH_GIN_OVERLAP
 // Checks that [offset, offset + bytes) lies in `window` and that `offset` is
 // a multiple of `alignment`. `what` names the argument in the error.
 void CheckWindowRange(phi::distributed::NCCLCommContext* comm_context,
@@ -126,14 +123,6 @@ void CheckWindowRange(phi::distributed::NCCLCommContext* comm_context,
 // Size and alignment of a counter.
 constexpr size_t kCounterBytes = sizeof(uint64_t);
 #endif
-
-std::string GetHostName() {
-  std::array<char, HOST_NAME_MAX + 1> hostname{};
-  PADDLE_ENFORCE_EQ(::gethostname(hostname.data(), HOST_NAME_MAX),
-                    0,
-                    common::errors::External("gethostname() failed."));
-  return std::string(hostname.data());
-}
 
 }  // namespace
 
@@ -1536,15 +1525,17 @@ void ProcessGroupNCCL::EndCoalescing(
   coalescing_place_keys_.clear();
 }
 
-bool ProcessGroupNCCL::IsOneSidedSupported() {
-#ifdef PADDLE_WITH_NCCL_ONE_SIDED
-  return phi::distributed::NCCLCommContext::IsDevCommSupported();
+bool ProcessGroupNCCL::IsGinSupported() {
+#ifdef PADDLE_WITH_GIN_OVERLAP
+  return phi::distributed::NCCLCommContext::IsDevCommSupported() &&
+         phi::backends::gpu::GetGPUComputeCapability(
+             phi::backends::gpu::GetCurrentDeviceId()) >= 90;
 #else
   return false;
 #endif
 }
 
-phi::distributed::NCCLCommContext* ProcessGroupNCCL::GetOneSidedCommContext(
+phi::distributed::NCCLCommContext* ProcessGroupNCCL::GetGinCommContext(
     bool create) {
   const auto place = phi::GPUPlace(phi::backends::gpu::GetCurrentDeviceId());
   if (!create) {
@@ -1577,9 +1568,8 @@ int ProcessGroupNCCL::PeerToLsaIndex(
 
 phi::distributed::NCCLDevCommInfo ProcessGroupNCCL::GetOrCreateDevComm(
     int gin_context_count) {
-  CheckOneSidedSupported();
-  auto* comm_context = GetOneSidedCommContext(/*create=*/true);
-  const bool created_here = !comm_context->HasDevComm();
+  CheckGinSupported();
+  auto* comm_context = GetGinCommContext(/*create=*/true);
   const auto info = comm_context->GetOrCreateDevComm(gin_context_count);
   PADDLE_ENFORCE_EQ(
       info.rank == rank_ && info.nranks == size_,
@@ -1591,16 +1581,19 @@ phi::distributed::NCCLDevCommInfo ProcessGroupNCCL::GetOrCreateDevComm(
           info.nranks,
           rank_,
           size_));
-  // PeerToLsaIndex() maps a group rank to the LSA team peer / lsa_size and
-  // the index peer % lsa_size in it.
+  // PeerToLsaIndex() takes the LSA team of rank r to be ranks
+  // [r / lsa_size * lsa_size, (r / lsa_size + 1) * lsa_size), which holds when
+  // the ranks of each node are consecutive in the group (node-major order).
   PADDLE_ENFORCE_EQ(
       info.lsa_size > 0 && size_ % info.lsa_size == 0 &&
           info.lsa_rank == rank_ % info.lsa_size,
       true,
       common::errors::PreconditionNotMet(
-          "The LSA team of the NCCL device communicator is not a block of "
-          "consecutive ranks: rank %d of %d has LSA rank %d in an LSA team of "
-          "%d.",
+          "The GIN primitives of ProcessGroupNCCL require node-major rank "
+          "order: the ranks of each node must be consecutive in the group, "
+          "so that group rank r has LSA rank r %% lsa_size in the LSA team "
+          "r / lsa_size. Got rank %d of a group of %d with LSA rank %d and "
+          "LSA team size %d.",
           rank_,
           size_,
           info.lsa_rank,
@@ -1610,63 +1603,30 @@ phi::distributed::NCCLDevCommInfo ProcessGroupNCCL::GetOrCreateDevComm(
       0,
       common::errors::Unavailable(
           "The NCCL device communicator was created without GIN contexts."));
-  if (created_here) {
-    CheckNodeMajor(info);
-  }
   return info;
 }
 
-void ProcessGroupNCCL::CheckNodeMajor(
-    const phi::distributed::NCCLDevCommInfo& info) {
-  // Every rank publishes its host name; a rank on this host outside this
-  // rank's LSA team means the ranks of a node are not consecutive.
-  const std::string key_prefix =
-      "nccl_one_sided_host/" + std::to_string(gid_) + "/";
-  const std::string host = GetHostName();
-  store_->set(key_prefix + std::to_string(rank_),
-              std::vector<uint8_t>(host.begin(), host.end()));
-  for (int peer = 0; peer < size_; ++peer) {
-    const std::vector<uint8_t> value =
-        store_->get(key_prefix + std::to_string(peer));
-    const std::string peer_host(value.begin(), value.end());
-    PADDLE_ENFORCE_EQ(
-        peer_host != host || PeerToLsaIndex(info, peer) >= 0,
-        true,
-        common::errors::PreconditionNotMet(
-            "The one-sided primitives require node-major rank order (the "
-            "ranks of each node consecutive in the group), but rank %d and "
-            "rank %d are both on host %s while the LSA team of rank %d is "
-            "ranks %d to %d.",
-            rank_,
-            peer,
-            host,
-            rank_,
-            rank_ / info.lsa_size * info.lsa_size,
-            rank_ / info.lsa_size * info.lsa_size + info.lsa_size - 1));
-  }
-}
-
 phi::distributed::NCCLDevCommInfo ProcessGroupNCCL::GetDevCommInfo() {
-  CheckOneSidedSupported();
-  return GetOneSidedCommContext(/*create=*/false)->GetDevCommInfo();
+  CheckGinSupported();
+  return GetGinCommContext(/*create=*/false)->GetDevCommInfo();
 }
 
 phi::distributed::NCCLHostWindow ProcessGroupNCCL::AllocHostWindow(
     size_t bytes) {
-  CheckOneSidedSupported();
-  return GetOneSidedCommContext(/*create=*/true)->AllocHostWindow(bytes);
+  CheckGinSupported();
+  return GetGinCommContext(/*create=*/true)->AllocHostWindow(bytes);
 }
 
 void ProcessGroupNCCL::FreeHostWindow(void* window) {
-  CheckOneSidedSupported();
-  GetOneSidedCommContext(/*create=*/false)->FreeHostWindow(window);
+  CheckGinSupported();
+  GetGinCommContext(/*create=*/false)->FreeHostWindow(window);
 }
 
-void ProcessGroupNCCL::Put(const std::vector<OneSidedPut>& puts,
+void ProcessGroupNCCL::Put(const std::vector<PutArgs>& puts,
                            gpuStream_t stream,
                            int num_blocks) {
-  CheckOneSidedSupported();
-#ifdef PADDLE_WITH_NCCL_ONE_SIDED
+  CheckGinSupported();
+#ifdef PADDLE_WITH_GIN_OVERLAP
   PADDLE_ENFORCE_GE(
       num_blocks,
       0,
@@ -1675,7 +1635,7 @@ void ProcessGroupNCCL::Put(const std::vector<OneSidedPut>& puts,
   if (puts.empty()) {
     return;
   }
-  auto* comm_context = GetOneSidedCommContext(/*create=*/false);
+  auto* comm_context = GetGinCommContext(/*create=*/false);
   const auto& info = comm_context->GetDevCommInfo();
   for (const auto& put : puts) {
     PeerToLsaIndex(info, put.peer);
@@ -1702,15 +1662,15 @@ void ProcessGroupNCCL::Put(const std::vector<OneSidedPut>& puts,
                      kCounterBytes,
                      "counter");
   }
-  one_sided::PutBatch batch{};
+  gin_overlap::PutBatch batch{};
   auto launch = [&]() {
     const int blocks = num_blocks > 0 ? num_blocks : batch.count;
-    PADDLE_ENFORCE_GPU_SUCCESS(one_sided::LaunchPut(
+    PADDLE_ENFORCE_GPU_SUCCESS(gin_overlap::LaunchPut(
         info.dev_comm, batch, info.gin_context_count, blocks, stream));
     batch.count = 0;
   };
   for (const auto& put : puts) {
-    one_sided::PutDesc& desc = batch.descs[batch.count++];
+    gin_overlap::PutDesc& desc = batch.descs[batch.count++];
     desc.src_window = put.src_window;
     desc.src_offset = put.src_offset;
     desc.dst_window = put.dst_window;
@@ -1719,7 +1679,7 @@ void ProcessGroupNCCL::Put(const std::vector<OneSidedPut>& puts,
     desc.counter_window = put.counter_window;
     desc.counter_offset = put.counter_offset;
     desc.peer = put.peer;
-    if (batch.count == one_sided::kMaxDescsPerLaunch) {
+    if (batch.count == gin_overlap::kMaxDescsPerLaunch) {
       launch();
     }
   }
@@ -1730,14 +1690,14 @@ void ProcessGroupNCCL::Put(const std::vector<OneSidedPut>& puts,
 }
 
 void ProcessGroupNCCL::IncrementPeerCounter(
-    const std::vector<OneSidedCounterIncrement>& increments,
+    const std::vector<IncrementPeerCounterArgs>& increments,
     gpuStream_t stream) {
-  CheckOneSidedSupported();
-#ifdef PADDLE_WITH_NCCL_ONE_SIDED
+  CheckGinSupported();
+#ifdef PADDLE_WITH_GIN_OVERLAP
   if (increments.empty()) {
     return;
   }
-  auto* comm_context = GetOneSidedCommContext(/*create=*/false);
+  auto* comm_context = GetGinCommContext(/*create=*/false);
   const auto& info = comm_context->GetDevCommInfo();
   std::vector<int> lsa_indices;
   lsa_indices.reserve(increments.size());
@@ -1756,15 +1716,15 @@ void ProcessGroupNCCL::IncrementPeerCounter(
                      kCounterBytes,
                      "counter");
   }
-  one_sided::CounterIncrementBatch batch{};
+  gin_overlap::IncrementPeerCounterBatch batch{};
   auto launch = [&]() {
-    PADDLE_ENFORCE_GPU_SUCCESS(one_sided::LaunchIncrementCounters(
+    PADDLE_ENFORCE_GPU_SUCCESS(gin_overlap::LaunchIncrementPeerCounter(
         info.dev_comm, batch, info.gin_context_count, stream));
     batch.count = 0;
   };
   for (size_t i = 0; i < increments.size(); ++i) {
     const auto& increment = increments[i];
-    one_sided::CounterIncrementDesc& desc = batch.descs[batch.count++];
+    gin_overlap::IncrementPeerCounterDesc& desc = batch.descs[batch.count++];
     desc.lsa_counter = lsa_indices[i] < 0
                            ? nullptr
                            : static_cast<uint64_t*>(comm_context->LsaPointer(
@@ -1774,7 +1734,7 @@ void ProcessGroupNCCL::IncrementPeerCounter(
     desc.counter_window = increment.counter_window;
     desc.counter_offset = increment.counter_offset;
     desc.peer = increment.peer;
-    if (batch.count == one_sided::kMaxDescsPerLaunch) {
+    if (batch.count == gin_overlap::kMaxDescsPerLaunch) {
       launch();
     }
   }
@@ -1785,13 +1745,13 @@ void ProcessGroupNCCL::IncrementPeerCounter(
 }
 
 void ProcessGroupNCCL::SetPeerCounter(
-    const std::vector<OneSidedCounterSet>& sets, gpuStream_t stream) {
-  CheckOneSidedSupported();
-#ifdef PADDLE_WITH_NCCL_ONE_SIDED
+    const std::vector<SetPeerCounterArgs>& sets, gpuStream_t stream) {
+  CheckGinSupported();
+#ifdef PADDLE_WITH_GIN_OVERLAP
   if (sets.empty()) {
     return;
   }
-  auto* comm_context = GetOneSidedCommContext(/*create=*/false);
+  auto* comm_context = GetGinCommContext(/*create=*/false);
   const auto& info = comm_context->GetDevCommInfo();
   std::vector<int> lsa_indices;
   lsa_indices.reserve(sets.size());
@@ -1820,17 +1780,18 @@ void ProcessGroupNCCL::SetPeerCounter(
                      "counter");
     lsa_indices.push_back(lsa_index);
   }
-  one_sided::CounterSetBatch batch{};
+  gin_overlap::SetPeerCounterBatch batch{};
   auto launch = [&]() {
-    PADDLE_ENFORCE_GPU_SUCCESS(one_sided::LaunchSetCounters(batch, stream));
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        gin_overlap::LaunchSetPeerCounter(batch, stream));
     batch.count = 0;
   };
   for (size_t i = 0; i < sets.size(); ++i) {
-    one_sided::CounterSetDesc& desc = batch.descs[batch.count++];
+    gin_overlap::SetPeerCounterDesc& desc = batch.descs[batch.count++];
     desc.counter = static_cast<uint64_t*>(comm_context->LsaPointer(
         sets[i].counter_window, lsa_indices[i], sets[i].counter_offset));
     desc.value = sets[i].value;
-    if (batch.count == one_sided::kMaxDescsPerLaunch) {
+    if (batch.count == gin_overlap::kMaxDescsPerLaunch) {
       launch();
     }
   }
@@ -1840,14 +1801,14 @@ void ProcessGroupNCCL::SetPeerCounter(
 #endif
 }
 
-void ProcessGroupNCCL::CopyToPeers(const std::vector<OneSidedCopy>& copies,
+void ProcessGroupNCCL::CopyToPeers(const std::vector<CopyToPeersArgs>& copies,
                                    gpuStream_t stream) {
-  CheckOneSidedSupported();
-#ifdef PADDLE_WITH_NCCL_ONE_SIDED
+  CheckGinSupported();
+#ifdef PADDLE_WITH_GIN_OVERLAP
   if (copies.empty()) {
     return;
   }
-  auto* comm_context = GetOneSidedCommContext(/*create=*/false);
+  auto* comm_context = GetGinCommContext(/*create=*/false);
   const auto& info = comm_context->GetDevCommInfo();
   std::vector<void*> dsts;
   std::vector<const void*> srcs;
@@ -1908,11 +1869,11 @@ void ProcessGroupNCCL::CopyToPeers(const std::vector<OneSidedCopy>& copies,
 }
 
 void ProcessGroupNCCL::Flush(gpuStream_t stream) {
-  CheckOneSidedSupported();
-#ifdef PADDLE_WITH_NCCL_ONE_SIDED
-  const auto& info = GetOneSidedCommContext(/*create=*/false)->GetDevCommInfo();
+  CheckGinSupported();
+#ifdef PADDLE_WITH_GIN_OVERLAP
+  const auto& info = GetGinCommContext(/*create=*/false)->GetDevCommInfo();
   PADDLE_ENFORCE_GPU_SUCCESS(
-      one_sided::LaunchFlush(info.dev_comm, info.gin_context_count, stream));
+      gin_overlap::LaunchFlush(info.dev_comm, info.gin_context_count, stream));
 #endif
 }
 }  // namespace paddle::distributed

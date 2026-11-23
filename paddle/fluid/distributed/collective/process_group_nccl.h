@@ -37,7 +37,7 @@
 namespace paddle {
 namespace distributed {
 
-// Descriptors of the NCCL one-sided primitives of ProcessGroupNCCL. A window is
+// Descriptors of the GIN primitives of ProcessGroupNCCL. A window is
 // a handle returned by ProcessGroupNCCL.register_comm_buffer() or
 // ProcessGroupNCCL::AllocHostWindow() on this group; it names the window of
 // this rank, and the same handle addresses the matching window on every peer.
@@ -46,7 +46,7 @@ namespace distributed {
 // A GIN put of `bytes` bytes from `src_offset` of `src_window` to `dst_offset`
 // of `dst_window` on `peer`, followed by an increment by 1 of the u64 counter
 // at `counter_offset` of `counter_window` on `peer`.
-struct OneSidedPut {
+struct PutArgs {
   void* src_window{nullptr};
   size_t src_offset{0};
   void* dst_window{nullptr};
@@ -59,7 +59,7 @@ struct OneSidedPut {
 
 // An increment by 1 of the u64 counter at `counter_offset` of `counter_window`
 // on `peer`.
-struct OneSidedCounterIncrement {
+struct IncrementPeerCounterArgs {
   int peer{0};
   void* counter_window{nullptr};
   size_t counter_offset{0};
@@ -67,7 +67,7 @@ struct OneSidedCounterIncrement {
 
 // A store of `value` into the u64 counter at `counter_offset` of
 // `counter_window` on `peer`, which must be in this rank's LSA team.
-struct OneSidedCounterSet {
+struct SetPeerCounterArgs {
   int peer{0};
   void* counter_window{nullptr};
   size_t counter_offset{0};
@@ -76,7 +76,7 @@ struct OneSidedCounterSet {
 
 // A copy of `bytes` bytes from the device address `src` to `dst_offset` of
 // `dst_window` on `peer`, which must be in this rank's LSA team.
-struct OneSidedCopy {
+struct CopyToPeersArgs {
   const void* src{nullptr};
   void* dst_window{nullptr};
   size_t dst_offset{0};
@@ -250,26 +250,25 @@ class ProcessGroupNCCL final : public ProcessGroupWithStream {
   void EagerConnectRingExchange(
       std::shared_ptr<phi::distributed::NCCLConfig> nccl_config);
 
-  // NCCL one-sided primitives. They need Paddle built with
-  // PADDLE_WITH_NCCL_ONE_SIDED (sm_90 or newer, CUDA 13.0 or newer, NCCL
-  // 2.30.7 or newer with nccl_device.h) and raise Unavailable otherwise. They
-  // act on the NCCL communicator of the current device, and the stream
-  // arguments are CUDA streams of that device.
+  // GIN primitives. They need IsGinSupported() and raise Unavailable
+  // otherwise. They act on the NCCL communicator of the current device, and
+  // the stream arguments are CUDA streams of that device.
   //
   // Same LSA team: the LSA team of a rank is the run of lsa_size consecutive
   // ranks that contains it (NCCLDevCommInfo), all on one node. Peers in this
   // rank's LSA team are reached by GPU loads and stores through LSA pointers,
   // other peers through GIN (the NIC).
 
-  // True when Paddle was built with the one-sided primitives and the loaded
-  // NCCL provides the device API.
-  static bool IsOneSidedSupported();
+  // True when Paddle was built with PADDLE_WITH_GIN_OVERLAP, the current GPU
+  // has compute capability 9.0 or newer, and the loaded NCCL provides the host
+  // entry points of the NCCL device (LSA/GIN) API.
+  static bool IsGinSupported();
 
   // Creates the device communicator on the first call (collective, see
   // NCCLCommContext::GetOrCreateDevComm()) and returns its properties. Every
-  // primitive except AllocHostWindow / FreeHostWindow needs it. The first call
-  // raises when the ranks of a node are not consecutive in the group
-  // (node-major order is required).
+  // primitive except AllocHostWindow / FreeHostWindow needs it. It raises when
+  // the LSA team of the device communicator does not match node-major rank
+  // order (lsa_rank != rank % lsa_size).
   phi::distributed::NCCLDevCommInfo GetOrCreateDevComm(int gin_context_count);
 
   // Properties of the device communicator. Raises when GetOrCreateDevComm()
@@ -289,25 +288,26 @@ class ProcessGroupNCCL final : public ProcessGroupWithStream {
   // before Flush() on a later point of the stream. num_blocks is the number of
   // thread blocks per launch; 0 means one block per put. A launch takes at
   // most 32 puts; longer lists are split into launches on the same stream.
-  void Put(const std::vector<OneSidedPut>& puts,
+  void Put(const std::vector<PutArgs>& puts,
            gpuStream_t stream,
            int num_blocks = 0);
 
   // Increments peer counters on `stream`: through an LSA atomic add for peers
   // in this rank's LSA team, through a GIN signal for the others.
   void IncrementPeerCounter(
-      const std::vector<OneSidedCounterIncrement>& increments,
+      const std::vector<IncrementPeerCounterArgs>& increments,
       gpuStream_t stream);
 
   // Stores values into counters of peers in this rank's LSA team on `stream`.
   // Work queued on `stream` before this call has finished before the store is
   // made visible.
-  void SetPeerCounter(const std::vector<OneSidedCounterSet>& sets,
+  void SetPeerCounter(const std::vector<SetPeerCounterArgs>& sets,
                       gpuStream_t stream);
 
   // Copies to windows of peers in this rank's LSA team on `stream`, with one
   // cudaMemcpyBatchAsync for the whole list.
-  void CopyToPeers(const std::vector<OneSidedCopy>& copies, gpuStream_t stream);
+  void CopyToPeers(const std::vector<CopyToPeersArgs>& copies,
+                   gpuStream_t stream);
 
   // Flushes every GIN context on `stream`: after it, the sources of the puts
   // issued so far may be reused.
@@ -375,16 +375,12 @@ class ProcessGroupNCCL final : public ProcessGroupWithStream {
 
   // The NCCLCommContext of the current device. With create = false it raises
   // instead of creating the communicator, which is collective.
-  phi::distributed::NCCLCommContext* GetOneSidedCommContext(bool create);
+  phi::distributed::NCCLCommContext* GetGinCommContext(bool create);
 
   // Converts a group rank to its index in this rank's LSA team, or -1 when it
   // is in another LSA team. Raises when `peer` is not a rank of this group.
   int PeerToLsaIndex(const phi::distributed::NCCLDevCommInfo& info,
                      int peer) const;
-
-  // Raises when a rank on this rank's host is outside this rank's LSA team.
-  // Collective: exchanges host names through the store.
-  void CheckNodeMajor(const phi::distributed::NCCLDevCommInfo& info);
 
  private:
   std::shared_ptr<phi::distributed::Store> store_;

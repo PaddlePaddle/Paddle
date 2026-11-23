@@ -177,9 +177,9 @@ class NCCLCommContext final : public CommContext {
   // registered buffer.
   bool GetWindowRange(void* window, void** ptr, size_t* size) const;
 
-  // True when Paddle was compiled against the NCCL device API (NCCL 2.30.7 or
-  // newer with nccl_device.h, CUDA 13.0 or newer) and the loaded NCCL provides
-  // its host entry points.
+  // True when Paddle was built with PADDLE_WITH_GIN_OVERLAP (the NCCL device
+  // API: NCCL 2.30.7 or newer with nccl_device.h, CUDA 13.0 or newer, sm_90 or
+  // newer) and the loaded NCCL provides the host entry points of that API.
   static bool IsDevCommSupported();
 
   // Returns the device communicator (ncclDevComm) of this communicator and
