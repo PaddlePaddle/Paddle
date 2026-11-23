@@ -255,21 +255,28 @@ GinGradCommScheduler::GinGradCommScheduler(
   targets_.assign(num_buckets, 0);
   published_scale_.assign(num_buckets, 1.f);
   gather_owner_step_.assign(gather_.size(), 0);
-  CreateStreamsAndEvents(config.num_window_marks, config.num_tail_marks);
-  slot_bucket_.assign(tail_marks_.size(), kSlotUnused);
+  // The destructor does not run when the constructor raises, so the streams
+  // and events are destroyed here on that path.
+  try {
+    CreateStreamsAndEvents(config.num_window_marks, config.num_tail_marks);
+    slot_bucket_.assign(tail_marks_.size(), kSlotUnused);
 
-  proxy_ = std::thread([this] { ProxyMain(); });
-  std::unique_lock<std::mutex> lock(mutex_);
-  cv_main_.wait(lock, [this] { return proxy_started_; });
-  if (proxy_device_status_ != 0) {
-    const int status = proxy_device_status_;
-    lock.unlock();
-    proxy_.join();
-    PADDLE_THROW(common::errors::External(
-        "cudaSetDevice(%d) failed in the proxy thread of "
-        "GinGradCommScheduler: %s.",
-        device_id_,
-        cudaGetErrorString(static_cast<cudaError_t>(status))));
+    proxy_ = std::thread([this] { ProxyMain(); });
+    std::unique_lock<std::mutex> lock(mutex_);
+    cv_main_.wait(lock, [this] { return proxy_started_; });
+    if (proxy_device_status_ != 0) {
+      const int status = proxy_device_status_;
+      lock.unlock();
+      proxy_.join();
+      PADDLE_THROW(common::errors::External(
+          "cudaSetDevice(%d) failed in the proxy thread of "
+          "GinGradCommScheduler: %s.",
+          device_id_,
+          cudaGetErrorString(static_cast<cudaError_t>(status))));
+    }
+  } catch (...) {
+    DestroyStreamsAndEvents();
+    throw;
   }
 }
 
@@ -281,6 +288,10 @@ GinGradCommScheduler::~GinGradCommScheduler() {
     cv_proxy_.notify_all();
   }
   if (proxy_.joinable()) proxy_.join();
+  DestroyStreamsAndEvents();
+}
+
+void GinGradCommScheduler::DestroyStreamsAndEvents() {
   for (cudaStream_t stream : {stream_intra_copy_,
                               stream_intra_sum_,
                               stream_put_,

@@ -233,6 +233,9 @@ class GinGradCommScheduler {
   // owner waits for its 2D buckets, the compute stream waits on the final
   // events of every bucket and on this step's gathers, the GIN contexts of
   // both groups are flushed on the compute stream, and the next step begins.
+  // When FinishStep() raises, the per-step state is not reset and the
+  // scheduler cannot be used again: the caller must stop training instead of
+  // calling BucketReady() / FinishStep() for another step.
   void FinishStep(double timeout_s);
 
   // Number of steps finished by FinishStep().
@@ -290,6 +293,7 @@ class GinGradCommScheduler {
                  const GinGroupWindows& windows);
   void CheckTables(const GinGradCommSchedulerConfig& config) const;
   void CreateStreamsAndEvents(int num_window_marks, int num_tail_marks);
+  void DestroyStreamsAndEvents();
 
   const Group& GroupOf(int bucket) const;
   uint64_t HostCounter(const Group& group, int64_t byte_offset) const;
