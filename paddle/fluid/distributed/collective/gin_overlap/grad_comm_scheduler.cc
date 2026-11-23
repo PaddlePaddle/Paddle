@@ -1699,7 +1699,9 @@ std::string GinGradCommScheduler::StuckReportLocked() const {
         continue;
       }
       text << " waits for " << CounterName(blocker.counter);
-      if (blocker.sender >= 0) text << " (sender l=" << blocker.sender << ")";
+      if (blocker.sender >= 0) {
+        text << " (node-local sender " << blocker.sender << ")";
+      }
       if (blocker.peer >= 0) {
         text << " of peer group rank " << blocker.peer;
       } else {
