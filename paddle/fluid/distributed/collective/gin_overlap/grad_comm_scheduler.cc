@@ -71,7 +71,8 @@ constexpr int kGatherPollUs = 50;
 // How long FinishStep() waits for the proxy thread to stop after a timeout.
 constexpr double kAbortWaitSeconds = 10.0;
 // Sum kernel grid sizes when FinishStep() hands over to the proxy thread
-// itself (the step never called ReleaseAsync()).
+// itself (the step never called ReleaseAsync()): the counts of the pre
+// window, not those of the tail.
 constexpr int kFallbackIntraSumBlocks = 16;
 constexpr int kFallbackFinalSumBlocks = 64;
 // activity_ = op * kActivityScale + bucket + 1.
@@ -1276,7 +1277,9 @@ void GinGradCommScheduler::BucketReady(int bucket, float scale) {
   cv_proxy_.notify_all();
 }
 
-void GinGradCommScheduler::Release(int ops, int blocks) {
+void GinGradCommScheduler::Release(int ops,
+                                   int intra_sum_blocks,
+                                   int final_sum_blocks) {
   PADDLE_ENFORCE_EQ(ops != 0 && (ops & ~kAllOps) == 0,
                     true,
                     common::errors::InvalidArgument(
@@ -1284,13 +1287,16 @@ void GinGradCommScheduler::Release(int ops, int blocks) {
                         "INTRA_SUM, PUT, FINAL_SUM and GATHER.",
                         ops));
   PADDLE_ENFORCE_EQ(
-      blocks > 0 ||
-          (blocks == 0 && (ops & (kGinOpIntraSum | kGinOpFinalSum)) == 0),
+      intra_sum_blocks >= 0 && final_sum_blocks >= 0 &&
+          (intra_sum_blocks > 0 || (ops & kGinOpIntraSum) == 0) &&
+          (final_sum_blocks > 0 || (ops & kGinOpFinalSum) == 0),
       true,
       common::errors::InvalidArgument(
-          "Release() got blocks %d; it must be positive when INTRA_SUM or "
-          "FINAL_SUM is selected, and not negative otherwise.",
-          blocks));
+          "Release() got intra_sum_blocks %d and final_sum_blocks %d; each "
+          "must be positive when its op (INTRA_SUM / FINAL_SUM) is selected, "
+          "and not negative otherwise.",
+          intra_sum_blocks,
+          final_sum_blocks));
   std::lock_guard<std::mutex> lock(mutex_);
   if (state_ != kIdle) return;
   const int slot = window_mark_index_;
@@ -1298,8 +1304,8 @@ void GinGradCommScheduler::Release(int ops, int blocks) {
   PADDLE_ENFORCE_GPU_SUCCESS(
       cudaEventRecord(window_marks_[slot], ComputeStream(device_id_)));
   current_mark_ = window_marks_[slot];
-  intra_sum_blocks_ = blocks;
-  final_sum_blocks_ = blocks;
+  intra_sum_blocks_ = intra_sum_blocks;
+  final_sum_blocks_ = final_sum_blocks;
   // pipeline order
   if (ops & kGinOpIntraCopy) ReleaseIntraCopy();
   if (ops & kGinOpIntraSum) ReleaseIntraSum();
@@ -1308,15 +1314,18 @@ void GinGradCommScheduler::Release(int ops, int blocks) {
   if (ops & kGinOpGather) ReleaseGather(current_mark_);
 }
 
-void GinGradCommScheduler::ReleaseAsync(int blocks) {
-  PADDLE_ENFORCE_GT(
-      blocks,
-      0,
-      common::errors::InvalidArgument(
-          "ReleaseAsync() got blocks %d; it must be positive.", blocks));
+void GinGradCommScheduler::ReleaseAsync(int intra_sum_blocks,
+                                        int final_sum_blocks) {
+  PADDLE_ENFORCE_EQ(intra_sum_blocks > 0 && final_sum_blocks > 0,
+                    true,
+                    common::errors::InvalidArgument(
+                        "ReleaseAsync() got intra_sum_blocks %d and "
+                        "final_sum_blocks %d; both must be positive.",
+                        intra_sum_blocks,
+                        final_sum_blocks));
   std::lock_guard<std::mutex> lock(mutex_);
   if (state_ == kIdle) {
-    StartProxy(RecordTailMark(), blocks, blocks);
+    StartProxy(RecordTailMark(), intra_sum_blocks, final_sum_blocks);
   } else if (state_ == kRun) {
     // a later point of the compute stream for the proxy thread's next
     // submissions

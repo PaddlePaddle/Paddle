@@ -208,18 +208,22 @@ class GinGradCommScheduler {
 
   // Records a mark on the compute stream and tries the selected ops once each
   // in pipeline order (INTRA_COPY, INTRA_SUM, PUT, FINAL_SUM, GATHER), without
-  // waiting on remote counters. `blocks` is the grid size of the sum kernels
-  // and must be positive when INTRA_SUM or FINAL_SUM is selected. Does nothing
-  // unless idle. Raises with the op and bucket when a submission fails.
-  void Release(int ops, int blocks);
+  // waiting on remote counters. intra_sum_blocks / final_sum_blocks are the
+  // grid sizes of the INTRA_SUM / FINAL_SUM kernels released by this call; a
+  // count must be positive when its op is selected. Does nothing unless idle.
+  // Raises with the op and bucket when a submission fails.
+  void Release(int ops, int intra_sum_blocks, int final_sum_blocks);
 
   // Hands release over to the proxy thread, which loops over the ops until
-  // the step is released; its sum kernels use `blocks` blocks. Called again
-  // while the proxy thread runs, it gives the proxy thread a new mark.
-  void ReleaseAsync(int blocks);
+  // the step is released; its INTRA_SUM / FINAL_SUM kernels use
+  // intra_sum_blocks / final_sum_blocks blocks. Called again while the proxy
+  // thread runs, it gives the proxy thread a new mark and leaves the block
+  // counts unchanged.
+  void ReleaseAsync(int intra_sum_blocks, int final_sum_blocks);
 
   // Ends the step: checks that every bucket was reported, hands over to the
-  // proxy thread if that has not happened, and waits for the step to be
+  // proxy thread if that has not happened (its sums then use 16 / 64 blocks,
+  // the counts of the pre window), and waits for the step to be
   // released (raises with a per-op report after timeout_s seconds). Then the
   // owner waits for its 2D buckets, the compute stream waits on the final
   // events of every bucket and on this step's gathers, the GIN contexts of

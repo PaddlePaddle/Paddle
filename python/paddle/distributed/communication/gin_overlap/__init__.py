@@ -19,8 +19,10 @@ Turned on by ``strategy.hybrid_configs["sharding_configs"].gin_overlap``; Dygrap
 MuonShardingOptimizer then build the scheduler (build_grad_comm_scheduler). A framework that knows the overlap
 windows (for example the DeepEP hooks of a MoE layer) drives it through active_scheduler():
 
-  - ``release(ops, blocks)``: in a window, release what the ops in ``ops`` can release now.
-  - ``release_async(blocks)``: after the last window of the step, hand the rest over to the proxy thread.
+  - ``release(ops, intra_sum_blocks, final_sum_blocks)``: in a window, release what the ops in ``ops`` can release
+    now; the two counts are the grid sizes of the INTRA_SUM / FINAL_SUM kernels.
+  - ``release_async(intra_sum_blocks, final_sum_blocks)``: after the last window of the step, hand the rest over to
+    the proxy thread.
   - ``completed_steps()`` / ``has_expert_buckets()``: read-only.
 
 Without a driver every bucket is released at the end of reduce_gradients. Op constants: INTRA_COPY, INTRA_SUM, PUT,

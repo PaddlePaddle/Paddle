@@ -164,11 +164,13 @@ void BindGinOverlapApi(py::module* m) {
       .def("release",
            &GinGradCommScheduler::Release,
            py::arg("ops"),
-           py::arg("blocks"),
+           py::arg("intra_sum_blocks"),
+           py::arg("final_sum_blocks"),
            py::call_guard<py::gil_scoped_release>())
       .def("release_async",
            &GinGradCommScheduler::ReleaseAsync,
-           py::arg("blocks"),
+           py::arg("intra_sum_blocks"),
+           py::arg("final_sum_blocks"),
            py::call_guard<py::gil_scoped_release>())
       .def("finish_step",
            &GinGradCommScheduler::FinishStep,
