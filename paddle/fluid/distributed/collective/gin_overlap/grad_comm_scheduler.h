@@ -47,7 +47,8 @@
 // rank_in_node, i.e. blocks {n * ranks_per_node + rank_in_node}):
 //   1. INTRA_COPY: CopyToPeers writes this rank's blocks of column l into this
 //      rank's row of the intra-node segment of node-local rank l, then
-//      SetPeerCounter writes this rank's intra-node arrival counter on l.
+//      IncrementPeerCounter adds 1 to this rank's intra-node arrival counter
+//      of the bucket on l.
 //   2. INTRA_SUM: each block of this rank's column becomes the sum over the
 //      node (LaunchIntraNodeSum, in place), then IncrementPeerCounter returns
 //      an intra-node credit to the other ranks of the node.
@@ -59,15 +60,17 @@
 // An expert bucket has PUT (to every other rank of the expert group) and
 // FINAL_SUM (with an expert credit). A Muon 2D bucket also has GATHER: after
 // FINAL_SUM this rank's shard is written to the same offset of the owner's
-// send window (CopyToPeers + SetPeerCounter within the node, Put across
-// nodes); the owner waits for all shards in FinishStep().
+// send window (CopyToPeers + IncrementPeerCounter within the node, Put across
+// nodes; each adds 1 to an arrival counter of the owner); the owner waits for
+// all shards in FinishStep().
 //
 // Rules
 //   - Each op starts at the next unreleased bucket of the fixed release order
 //     of its kind and releases every bucket it can; it stops at the first one
 //     that cannot go. The orders must be the same on all ranks.
-//   - Counters accumulate across steps and only grow; the CPU never writes
-//     them. A u64 counter has one writer.
+//   - Counters accumulate across steps and only grow by increments of 1; the
+//     CPU never writes them. A receiver's target is the number of increments
+//     the counter has received once the awaited writes have arrived.
 //   - GPU work waits only on local events (marks, side-stream events); remote
 //     counters are read on the CPU before release.
 //   - Every bucket goes through all of its ops every step.
@@ -128,7 +131,8 @@ struct GinBucketDesc {
   // Elements of this rank's shard (bucket numel / group size).
   int64_t shard_numel{0};
   // Start of the 16 intra-node arrival counters of a dense bucket in the host
-  // window; counter l is written by node-local rank l. Unused for experts.
+  // window; counter l gets 1 added by node-local rank l per INTRA_COPY of the
+  // bucket (once per step). Unused for experts.
   int64_t arrive_offset{0};
   // Slot of the bucket in the recv window: dense = [intra-node segment,
   // inter-node segment], expert = [expert segment, unused].
@@ -144,11 +148,11 @@ struct GinGatherDesc {
   int bucket{0};
   // Owner, a group rank of the bucket's group.
   int owner{0};
-  // Owner's inter-node arrival counter in the host window (each put from
-  // another node adds 1).
+  // Owner's inter-node arrival counter in the host window (each gather put
+  // from another node adds 1).
   int64_t arrive_offset{0};
   // Start of the owner's 16 same-node arrival counters of the bucket in the
-  // host window (node-local sender l writes its sequence number to counter l).
+  // host window (node-local sender l adds 1 to counter l per gather).
   int64_t intra_arrive_offset{0};
 };
 
@@ -184,8 +188,9 @@ struct GinGradCommStatus {
   // 0 idle, 1 proxy running, 2 done, 3 error, 4 aborted.
   int state{0};
   int64_t completed_steps{0};
-  // Positions in the fixed order: dense intra copy, dense intra sum, dense
-  // put, dense final sum, expert put, expert final sum.
+  // Positions in the fixed order, in this order: dense intra copy, dense
+  // intra sum, dense put, dense final sum, expert put, expert final sum
+  // (pos_intra_copy_ ... pos_expert_final_sum_ of the scheduler).
   std::vector<int> positions;
   // Buckets that reached an op but are not released: intra copy, intra sum,
   // put, final sum.
@@ -297,7 +302,7 @@ class GinGradCommScheduler {
   bool BlockedDenseFinalSum(int bucket, Blocker* out) const;
   bool BlockedExpertFinalSum(int bucket, Blocker* out) const;
 
-  void SubmitIntraCopy(int bucket, uint64_t seq);
+  void SubmitIntraCopy(int bucket);
   void SubmitIntraSum(int bucket);
   int SubmitDensePut(int bucket);
   int SubmitExpertPut(int bucket);
@@ -366,13 +371,22 @@ class GinGradCommScheduler {
 
   // ---- accumulate across steps
   int64_t step_{0};
+  // Per bucket: INTRA_COPY releases so far, the INTRA_SUM target.
   std::vector<uint64_t> copy_seq_;
+  // Per bucket: puts this rank issued for it so far, the FINAL_SUM target.
   std::vector<uint64_t> targets_;
-  std::vector<uint64_t> gather_put_seq_;
+  // Per gather entry, owner only: steps waited for, the arrival target unit.
   std::vector<int64_t> gather_owner_step_;
 
   // ---- per-step release state (one writer, see the file header)
-  int pos_[6] = {0, 0, 0, 0, 0, 0};
+  // Position in the fixed order each op is released up to; dense ops index
+  // dense_order_, expert ops expert_order_.
+  int pos_intra_copy_{0};
+  int pos_intra_sum_{0};
+  int pos_dense_put_{0};
+  int pos_dense_final_sum_{0};
+  int pos_expert_put_{0};
+  int pos_expert_final_sum_{0};
   std::vector<unsigned char> ready_;
   std::vector<float> scale_;
   cudaEvent_t current_mark_{nullptr};

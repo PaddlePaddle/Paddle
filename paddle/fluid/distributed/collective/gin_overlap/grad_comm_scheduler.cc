@@ -40,16 +40,6 @@ namespace {
 // request.
 enum State { kIdle = 0, kRun = 1, kDone = 2, kErr = 3, kAborted = 4 };
 
-// Indices of pos_, the position in the fixed order each op is released up to.
-enum Position {
-  kPosIntraCopy = 0,
-  kPosIntraSum = 1,
-  kPosDensePut = 2,
-  kPosDenseFinalSum = 3,
-  kPosExpertPut = 4,
-  kPosExpertFinalSum = 5,
-};
-
 // Which counter a blocked op waits for (Blocker::counter, StuckReport()).
 enum Counter {
   kCounterIntraCredit = 1,
@@ -300,7 +290,6 @@ GinGradCommScheduler::GinGradCommScheduler(
   copy_seq_.assign(num_buckets, 0);
   targets_.assign(num_buckets, 0);
   published_scale_.assign(num_buckets, 1.f);
-  gather_put_seq_.assign(gather_.size(), 0);
   gather_owner_step_.assign(gather_.size(), 0);
   gather_reduced_.assign(gather_.size(), 0);
   gather_sent_.assign(gather_.size(), 0);
@@ -579,7 +568,9 @@ bool GinGradCommScheduler::BlockedIntraCopy(int bucket, Blocker* out) const {
 
 // INTRA_SUM: in this bucket's intra-node arrival counters, the counter of
 // every other sender of the node has reached this rank's INTRA_COPY count of
-// the bucket.
+// the bucket. Counter l has one sender, node-local rank l, which adds 1 to it
+// per INTRA_COPY of the bucket, i.e. once per step, like this rank's own
+// count copy_seq_[bucket]; so after the INTRA_COPY of step s the target is s.
 bool GinGradCommScheduler::BlockedIntraSum(int bucket, Blocker* out) const {
   const Group& group = groups_[kGinDenseBucket];
   const uint64_t target = copy_seq_[bucket];
@@ -675,9 +666,10 @@ bool GinGradCommScheduler::BlockedExpertFinalSum(int bucket,
 
 // INTRA_COPY (stream_intra_copy_): wait on the mark -> this rank's blocks of
 // column l go to row `row` of the intra-node segment of node-local rank l ->
-// `seq` is stored into this rank's arrival counter of the bucket on l ->
-// record the event. Nothing is submitted with one rank per node.
-void GinGradCommScheduler::SubmitIntraCopy(int bucket, uint64_t seq) {
+// this rank's arrival counter of the bucket on l is incremented by 1 (after
+// the copies, same stream) -> record the event. Nothing is submitted with one
+// rank per node.
+void GinGradCommScheduler::SubmitIntraCopy(int bucket) {
   const Group& group = groups_[kGinDenseBucket];
   const GinBucketDesc& desc = buckets_[bucket];
   const int ranks_per_node = group.ranks_per_node;
@@ -688,9 +680,9 @@ void GinGradCommScheduler::SubmitIntraCopy(int bucket, uint64_t seq) {
   PADDLE_ENFORCE_GPU_SUCCESS(
       cudaStreamWaitEvent(stream_intra_copy_, current_mark_, 0));
   std::vector<CopyToPeersArgs> copies;
-  std::vector<SetPeerCounterArgs> sets;
+  std::vector<IncrementPeerCounterArgs> arrivals;
   copies.reserve(static_cast<size_t>(ranks_per_node - 1) * num_nodes);
-  sets.reserve(static_cast<size_t>(ranks_per_node - 1));
+  arrivals.reserve(static_cast<size_t>(ranks_per_node - 1));
   for (int l = 0; l < ranks_per_node; ++l) {
     if (l == me) continue;
     const int peer = group.node_index * ranks_per_node + l;
@@ -710,16 +702,15 @@ void GinGradCommScheduler::SubmitIntraCopy(int bucket, uint64_t seq) {
       copy.bytes = static_cast<size_t>(block_bytes);
       copies.push_back(copy);
     }
-    SetPeerCounterArgs set;
-    set.peer = peer;
-    set.counter_window = group.windows.host_window;
-    set.counter_offset =
+    IncrementPeerCounterArgs arrival;
+    arrival.peer = peer;
+    arrival.counter_window = group.windows.host_window;
+    arrival.counter_offset =
         static_cast<size_t>(desc.arrive_offset + kCounterBytes * me);
-    set.value = seq;
-    sets.push_back(set);
+    arrivals.push_back(arrival);
   }
   group.pg->CopyToPeers(copies, stream_intra_copy_);
-  group.pg->SetPeerCounter(sets, stream_intra_copy_);
+  group.pg->IncrementPeerCounter(arrivals, stream_intra_copy_);
   PADDLE_ENFORCE_GPU_SUCCESS(
       cudaEventRecord(event_intra_copy_[bucket], stream_intra_copy_));
 }
@@ -924,9 +915,11 @@ void GinGradCommScheduler::SubmitExpertFinalSum(int bucket) {
 
 // GATHER, sender side (stream_gather_put_): wait on `wait_event` -> this
 // rank's shard goes to the same offset of the owner's send window (within the
-// node: CopyToPeers, then the sequence number is stored into this rank's
-// same-node arrival counter on the owner; across nodes: one Put that
-// increments the owner's inter-node arrival counter) -> record the event.
+// node: CopyToPeers, then this rank's same-node arrival counter of the bucket
+// on the owner is incremented by 1; across nodes: one Put that increments the
+// owner's inter-node arrival counter of the bucket by 1) -> record the event.
+// Each sender sends each 2D bucket once per step (gather_sent_), so every
+// gather adds exactly 1 to one counter of the owner.
 void GinGradCommScheduler::SubmitGatherPut(int entry, cudaEvent_t wait_event) {
   const GatherEntry& gather = gather_[entry];
   const int bucket = gather.desc.bucket;
@@ -942,7 +935,6 @@ void GinGradCommScheduler::SubmitGatherPut(int entry, cudaEvent_t wait_event) {
   const size_t offset =
       static_cast<size_t>(desc.send_offset + group.rank * shard_bytes);
   const int owner = gather.desc.owner;
-  const uint64_t seq = ++gather_put_seq_[entry];
   PADDLE_ENFORCE_GPU_SUCCESS(
       cudaStreamWaitEvent(stream_gather_put_, wait_event, 0));
   if (owner / group.ranks_per_node == group.node_index) {
@@ -954,13 +946,12 @@ void GinGradCommScheduler::SubmitGatherPut(int entry, cudaEvent_t wait_event) {
     copy.peer = owner;
     copy.bytes = static_cast<size_t>(shard_bytes);
     group.pg->CopyToPeers({copy}, stream_gather_put_);
-    SetPeerCounterArgs set;
-    set.peer = owner;
-    set.counter_window = group.windows.host_window;
-    set.counter_offset = static_cast<size_t>(
+    IncrementPeerCounterArgs arrival;
+    arrival.peer = owner;
+    arrival.counter_window = group.windows.host_window;
+    arrival.counter_offset = static_cast<size_t>(
         gather.desc.intra_arrive_offset + kCounterBytes * group.rank_in_node);
-    set.value = seq;
-    group.pg->SetPeerCounter({set}, stream_gather_put_);
+    group.pg->IncrementPeerCounter({arrival}, stream_gather_put_);
   } else {
     PutArgs put;
     put.src_window = group.windows.send_window;
@@ -1030,13 +1021,14 @@ std::string GinGradCommScheduler::ErrorText() const {
 bool GinGradCommScheduler::ReleaseIntraCopy() {
   bool moved = false;
   const int num_dense = static_cast<int>(dense_order_.size());
-  while (pos_[kPosIntraCopy] < num_dense) {
-    const int bucket = dense_order_[pos_[kPosIntraCopy]];
+  while (pos_intra_copy_ < num_dense) {
+    const int bucket = dense_order_[pos_intra_copy_];
     // gradients not complete yet, or the receivers' slot is not free
     if (!ready_[bucket] || BlockedIntraCopy(bucket, nullptr)) break;
-    const uint64_t seq = ++copy_seq_[bucket];
-    Submit(kGinOpIntraCopy, bucket, [&] { SubmitIntraCopy(bucket, seq); });
-    ++pos_[kPosIntraCopy];
+    // the INTRA_SUM target of this bucket (see BlockedIntraSum)
+    ++copy_seq_[bucket];
+    Submit(kGinOpIntraCopy, bucket, [&] { SubmitIntraCopy(bucket); });
+    ++pos_intra_copy_;
     moved = true;
   }
   return moved;
@@ -1045,16 +1037,15 @@ bool GinGradCommScheduler::ReleaseIntraCopy() {
 bool GinGradCommScheduler::ReleaseIntraSum() {
   bool moved = false;
   const int num_dense = static_cast<int>(dense_order_.size());
-  while (pos_[kPosIntraSum] < num_dense) {
-    const int bucket = dense_order_[pos_[kPosIntraSum]];
+  while (pos_intra_sum_ < num_dense) {
+    const int bucket = dense_order_[pos_intra_sum_];
     // the bucket's INTRA_COPY is released and the rows of the other ranks of
     // the node have arrived
-    if (pos_[kPosIntraSum] >= pos_[kPosIntraCopy] ||
-        BlockedIntraSum(bucket, nullptr)) {
+    if (pos_intra_sum_ >= pos_intra_copy_ || BlockedIntraSum(bucket, nullptr)) {
       break;
     }
     Submit(kGinOpIntraSum, bucket, [&] { SubmitIntraSum(bucket); });
-    ++pos_[kPosIntraSum];
+    ++pos_intra_sum_;
     moved = true;
   }
   return moved;
@@ -1063,29 +1054,28 @@ bool GinGradCommScheduler::ReleaseIntraSum() {
 bool GinGradCommScheduler::ReleasePut() {
   bool moved = false;
   const int num_dense = static_cast<int>(dense_order_.size());
-  while (pos_[kPosDensePut] < num_dense) {
-    const int bucket = dense_order_[pos_[kPosDensePut]];
+  while (pos_dense_put_ < num_dense) {
+    const int bucket = dense_order_[pos_dense_put_];
     // the bucket's INTRA_SUM is released and its slot in the peers'
     // inter-node segment is free
-    if (pos_[kPosDensePut] >= pos_[kPosIntraSum] ||
-        BlockedDensePut(bucket, nullptr)) {
+    if (pos_dense_put_ >= pos_intra_sum_ || BlockedDensePut(bucket, nullptr)) {
       break;
     }
     int num_signals = 0;
     Submit(kGinOpPut, bucket, [&] { num_signals = SubmitDensePut(bucket); });
     targets_[bucket] += static_cast<uint64_t>(num_signals);
-    ++pos_[kPosDensePut];
+    ++pos_dense_put_;
     moved = true;
   }
   const int num_expert = static_cast<int>(expert_order_.size());
-  while (pos_[kPosExpertPut] < num_expert) {
-    const int bucket = expert_order_[pos_[kPosExpertPut]];
+  while (pos_expert_put_ < num_expert) {
+    const int bucket = expert_order_[pos_expert_put_];
     // gradients not complete yet, or the peers' slot is not free
     if (!ready_[bucket] || BlockedExpertPut(bucket, nullptr)) break;
     int num_signals = 0;
     Submit(kGinOpPut, bucket, [&] { num_signals = SubmitExpertPut(bucket); });
     targets_[bucket] += static_cast<uint64_t>(num_signals);
-    ++pos_[kPosExpertPut];
+    ++pos_expert_put_;
     moved = true;
   }
   return moved;
@@ -1096,27 +1086,27 @@ bool GinGradCommScheduler::ReleasePut() {
 bool GinGradCommScheduler::ReleaseFinalSum(bool in_proxy) {
   bool moved = false;
   const int num_dense = static_cast<int>(dense_order_.size());
-  while (pos_[kPosDenseFinalSum] < num_dense) {
-    const int bucket = dense_order_[pos_[kPosDenseFinalSum]];
+  while (pos_dense_final_sum_ < num_dense) {
+    const int bucket = dense_order_[pos_dense_final_sum_];
     // the bucket's PUT is released and the puts of all other ranks arrived
-    if (pos_[kPosDenseFinalSum] >= pos_[kPosDensePut] ||
+    if (pos_dense_final_sum_ >= pos_dense_put_ ||
         BlockedDenseFinalSum(bucket, nullptr)) {
       break;
     }
     Submit(kGinOpFinalSum, bucket, [&] { SubmitDenseFinalSum(bucket); });
-    ++pos_[kPosDenseFinalSum];
+    ++pos_dense_final_sum_;
     AfterFinalSum(bucket, in_proxy);
     moved = true;
   }
   const int num_expert = static_cast<int>(expert_order_.size());
-  while (pos_[kPosExpertFinalSum] < num_expert) {
-    const int bucket = expert_order_[pos_[kPosExpertFinalSum]];
-    if (pos_[kPosExpertFinalSum] >= pos_[kPosExpertPut] ||
+  while (pos_expert_final_sum_ < num_expert) {
+    const int bucket = expert_order_[pos_expert_final_sum_];
+    if (pos_expert_final_sum_ >= pos_expert_put_ ||
         BlockedExpertFinalSum(bucket, nullptr)) {
       break;
     }
     Submit(kGinOpFinalSum, bucket, [&] { SubmitExpertFinalSum(bucket); });
-    ++pos_[kPosExpertFinalSum];
+    ++pos_expert_final_sum_;
     AfterFinalSum(bucket, in_proxy);
     moved = true;
   }
@@ -1176,11 +1166,9 @@ bool GinGradCommScheduler::ReleaseGather(cudaEvent_t mark) {
 bool GinGradCommScheduler::IsStepDone() const {
   const int num_dense = static_cast<int>(dense_order_.size());
   const int num_expert = static_cast<int>(expert_order_.size());
-  return pos_[kPosIntraCopy] >= num_dense && pos_[kPosIntraSum] >= num_dense &&
-         pos_[kPosDensePut] >= num_dense &&
-         pos_[kPosDenseFinalSum] >= num_dense &&
-         pos_[kPosExpertPut] >= num_expert &&
-         pos_[kPosExpertFinalSum] >= num_expert;
+  return pos_intra_copy_ >= num_dense && pos_intra_sum_ >= num_dense &&
+         pos_dense_put_ >= num_dense && pos_dense_final_sum_ >= num_dense &&
+         pos_expert_put_ >= num_expert && pos_expert_final_sum_ >= num_expert;
 }
 
 // Buckets that reached an op but are not released, in the order [intra copy,
@@ -1189,17 +1177,17 @@ bool GinGradCommScheduler::IsStepDone() const {
 void GinGradCommScheduler::PendingCounts(int* out4) const {
   int ready_copy = 0;
   int ready_expert_put = 0;
-  for (size_t k = pos_[kPosIntraCopy]; k < dense_order_.size(); ++k) {
+  for (size_t k = pos_intra_copy_; k < dense_order_.size(); ++k) {
     if (ready_[dense_order_[k]]) ++ready_copy;
   }
-  for (size_t k = pos_[kPosExpertPut]; k < expert_order_.size(); ++k) {
+  for (size_t k = pos_expert_put_; k < expert_order_.size(); ++k) {
     if (ready_[expert_order_[k]]) ++ready_expert_put;
   }
   out4[0] = ready_copy;
-  out4[1] = pos_[kPosIntraCopy] - pos_[kPosIntraSum];
-  out4[2] = pos_[kPosIntraSum] - pos_[kPosDensePut] + ready_expert_put;
-  out4[3] = pos_[kPosDensePut] - pos_[kPosDenseFinalSum] + pos_[kPosExpertPut] -
-            pos_[kPosExpertFinalSum];
+  out4[1] = pos_intra_copy_ - pos_intra_sum_;
+  out4[2] = pos_intra_sum_ - pos_dense_put_ + ready_expert_put;
+  out4[3] = pos_dense_put_ - pos_dense_final_sum_ + pos_expert_put_ -
+            pos_expert_final_sum_;
 }
 
 // Records the next tail mark of this step on the compute stream and returns
@@ -1504,17 +1492,17 @@ void GinGradCommScheduler::FinishStep(double timeout_s) {
           "%d/%d, intra sum %d/%d, put %d/%d, final sum %d/%d; expert put "
           "%d/%d, final sum %d/%d.",
           step_ + 1,
-          pos_[kPosIntraCopy],
+          pos_intra_copy_,
           static_cast<int>(dense_order_.size()),
-          pos_[kPosIntraSum],
+          pos_intra_sum_,
           static_cast<int>(dense_order_.size()),
-          pos_[kPosDensePut],
+          pos_dense_put_,
           static_cast<int>(dense_order_.size()),
-          pos_[kPosDenseFinalSum],
+          pos_dense_final_sum_,
           static_cast<int>(dense_order_.size()),
-          pos_[kPosExpertPut],
+          pos_expert_put_,
           static_cast<int>(expert_order_.size()),
-          pos_[kPosExpertFinalSum],
+          pos_expert_final_sum_,
           static_cast<int>(expert_order_.size())));
   lock.unlock();
 
@@ -1556,9 +1544,11 @@ void GinGradCommScheduler::FinishStep(double timeout_s) {
 }
 
 // Owner side of GATHER: waits until every 2D bucket this rank owns has all of
-// its shards, reading the arrival counters of the host window. Each sender
-// sends each bucket once per step, so after s steps the inter-node counter is
-// s * (senders on other nodes) and each same-node counter is s; a larger value
+// its shards, reading the arrival counters of the host window. Every gather
+// adds 1 to one counter of the owner, and each sender sends each bucket once
+// per step. The inter-node counter of a bucket is shared by all senders on
+// other nodes, so after s steps it is s * (senders on other nodes); same-node
+// counter l has one sender, node-local rank l, so it is s. A larger value
 // means a gather was sent twice and raises.
 void GinGradCommScheduler::WaitOwnedGathers(double timeout_s) {
   std::vector<int> pending;
@@ -1649,8 +1639,8 @@ bool GinGradCommScheduler::OwnedGatherPending(int entry,
         steps,
         common::errors::PreconditionNotMet(
             "gin_overlap: owner of 2D bucket %d: the same-node arrival "
-            "counter of node-local rank %d holds sequence number %d, above "
-            "the step count %d; that rank sent a gather twice.",
+            "counter of node-local rank %d is %d, above the step count %d; "
+            "that rank sent a gather twice.",
             bucket,
             l,
             value,
@@ -1660,7 +1650,12 @@ bool GinGradCommScheduler::OwnedGatherPending(int entry,
 }
 
 void GinGradCommScheduler::ResetStep() {
-  std::fill(pos_, pos_ + 6, 0);
+  pos_intra_copy_ = 0;
+  pos_intra_sum_ = 0;
+  pos_dense_put_ = 0;
+  pos_dense_final_sum_ = 0;
+  pos_expert_put_ = 0;
+  pos_expert_final_sum_ = 0;
   std::fill(ready_.begin(), ready_.end(), 0);
   std::fill(reported_.begin(), reported_.end(), 0);
   std::fill(slot_bucket_.begin(), slot_bucket_.end(), kSlotUnused);
@@ -1694,7 +1689,13 @@ GinGradCommStatus GinGradCommScheduler::Status() const {
   status.reported = num_reported_;
   // The release state belongs to the proxy thread while it runs.
   if (state_ == kRun) return status;
-  status.positions.assign(pos_, pos_ + 6);
+  // Same order as GinGradCommStatus::positions documents.
+  status.positions = {pos_intra_copy_,
+                      pos_intra_sum_,
+                      pos_dense_put_,
+                      pos_dense_final_sum_,
+                      pos_expert_put_,
+                      pos_expert_final_sum_};
   int pending[4] = {0, 0, 0, 0};
   PendingCounts(pending);
   status.pending.assign(pending, pending + 4);
@@ -1721,35 +1722,30 @@ std::string GinGradCommScheduler::StuckReportLocked() const {
     int which;
   };
   const OpRow rows[] = {
-      {"dense intra copy",
-       false,
-       pos_[kPosIntraCopy],
-       -1,
-       "is not ready yet",
-       0},
+      {"dense intra copy", false, pos_intra_copy_, -1, "is not ready yet", 0},
       {"dense intra sum",
        false,
-       pos_[kPosIntraSum],
-       pos_[kPosIntraCopy],
+       pos_intra_sum_,
+       pos_intra_copy_,
        "has not had its intra copy released",
        1},
       {"dense put",
        false,
-       pos_[kPosDensePut],
-       pos_[kPosIntraSum],
+       pos_dense_put_,
+       pos_intra_sum_,
        "has not had its intra sum released",
        2},
       {"dense final sum",
        false,
-       pos_[kPosDenseFinalSum],
-       pos_[kPosDensePut],
+       pos_dense_final_sum_,
+       pos_dense_put_,
        "has not had its put released",
        3},
-      {"expert put", true, pos_[kPosExpertPut], -1, "is not ready yet", 4},
+      {"expert put", true, pos_expert_put_, -1, "is not ready yet", 4},
       {"expert final sum",
        true,
-       pos_[kPosExpertFinalSum],
-       pos_[kPosExpertPut],
+       pos_expert_final_sum_,
+       pos_expert_put_,
        "has not had its put released",
        5},
   };
