@@ -339,6 +339,27 @@ create_test_bf16_class(TestSumOp_withInt)
 create_test_bf16_class(TestSumOp3Dim)
 
 
+@unittest.skipIf(
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "sum for float8 is only registered on GPU",
+)
+class TestSumFP8(unittest.TestCase):
+    def test_dygraph(self):
+        place = get_device_place()
+        # Values in {-1, 0, 1} summed over at most 6 elements stay exactly
+        # representable in both float8 formats.
+        x_np = np.random.randint(-1, 2, size=[2, 3, 4]).astype("float32")
+        with dygraph_guard():
+            for dtype in ['float8_e4m3fn', 'float8_e5m2']:
+                x = paddle.to_tensor(x_np, place=place).astype(dtype)
+                for axis in [0, (0, 1)]:
+                    out = paddle.sum(x, axis=axis)
+                    self.assertEqual(out.dtype, x.dtype)
+                    np.testing.assert_array_equal(
+                        out.astype("float32").numpy(), x_np.sum(axis=axis)
+                    )
+
+
 class TestSumAPIZeroDimKeepDim(unittest.TestCase):
     def setUp(self):
         np.random.seed(123)

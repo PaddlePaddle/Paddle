@@ -13,126 +13,18 @@
 // limitations under the License.
 
 #pragma once
-#include <type_traits>
 #include <vector>
 
 #include "paddle/phi/core/tensor_utils.h"
-#include "paddle/phi/kernels/cast_kernel.h"
 #include "paddle/phi/kernels/full_kernel.h"
-#include "paddle/phi/kernels/funcs/eigen/common.h"
-#include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
 #include "paddle/phi/kernels/tile_grad_kernel.h"
 
 namespace phi {
 
-template <typename Context, typename T, int Dims>
-void TileBackward(const Context& dev_ctx,
-                  const DenseTensor& out_grad,
-                  const std::vector<int64_t>& reshape_dims_vec,
-                  const std::vector<int64_t>& reduce_dims_vec,
-                  DenseTensor* x_grad) {
-  size_t reshape_size = reshape_dims_vec.size();
-  size_t reduce_size = reduce_dims_vec.size();
-  dev_ctx.template Alloc<T>(x_grad);
-
-  if constexpr (std::is_same_v<T, dtype::float16> ||
-                std::is_same_v<T, dtype::bfloat16>) {
-    const DenseTensor out_grad_fp32 =
-        Cast<T, Context>(dev_ctx, out_grad, DataType::FLOAT32);
-    DenseTensor x_grad_fp32;
-    x_grad_fp32.Resize(x_grad->dims());
-    dev_ctx.template Alloc<float>(&x_grad_fp32);
-    auto eigen_x_grad = EigenVector<float>::Flatten(x_grad_fp32);
-    Eigen::DSizes<int64_t, Dims * 2> reshape_dims;
-    for (size_t i = 0; i < reshape_size; ++i) {
-      reshape_dims[i] = reshape_dims_vec[i];
-    }
-    Eigen::DSizes<int64_t, Dims> reduce_dims;
-    for (size_t i = 0; i < reduce_size; ++i) {
-      reduce_dims[i] = reduce_dims_vec[i];
-    }
-    const auto eigen_out_grad_fp32 = EigenVector<float>::Flatten(out_grad_fp32);
-    auto& place = *dev_ctx.eigen_device();
-    funcs::EigenBroadcastGrad<std::decay_t<decltype(place)>, float, Dims>::Eval(
-        place, eigen_x_grad, eigen_out_grad_fp32, reduce_dims, reshape_dims);
-    if constexpr (std::is_same_v<T, dtype::float16>) {
-      CastKernel<float, Context>(
-          dev_ctx, x_grad_fp32, DataType::FLOAT16, x_grad);
-    } else {
-      CastKernel<float, Context>(
-          dev_ctx, x_grad_fp32, DataType::BFLOAT16, x_grad);
-    }
-  } else {
-    auto eigen_x_grad = EigenVector<T>::Flatten(*x_grad);
-    Eigen::DSizes<int64_t, Dims * 2> reshape_dims;
-    for (size_t i = 0; i < reshape_size; ++i) {
-      reshape_dims[i] = reshape_dims_vec[i];
-    }
-    Eigen::DSizes<int64_t, Dims> reduce_dims;
-    for (size_t i = 0; i < reduce_size; ++i) {
-      reduce_dims[i] = reduce_dims_vec[i];
-    }
-
-    auto eigen_out_grad = EigenVector<T>::Flatten(out_grad);
-    auto& place = *dev_ctx.eigen_device();
-    funcs::EigenBroadcastGrad<std::decay_t<decltype(place)>, T, Dims>::Eval(
-        place, eigen_x_grad, eigen_out_grad, reduce_dims, reshape_dims);
-  }
-}
-
-template <typename T, typename Context>
-bool TileGradCompatKernel(const Context& dev_ctx,
-                          const DDim& x_dims,
-                          const DenseTensor& out_grad,
-                          const std::vector<int64_t>& repeat_times_data,
-                          DenseTensor* x_grad) {
-  // float8 types have no SumKernel implementation, so they fall back to the
-  // Eigen-based TileBackward path.
-  if constexpr (std::is_same_v<T, dtype::float8_e4m3fn> ||
-                std::is_same_v<T, dtype::float8_e5m2>) {
-    return false;
-  } else {
-    if (!out_grad.meta().is_contiguous()) {
-      return false;
-    }
-    const int x_rank = x_dims.size();
-    const int num_unsqueezed =
-        static_cast<int>(repeat_times_data.size()) - x_rank;
-
-    std::vector<int64_t> grad_size;
-    std::vector<int64_t> sum_dims;
-    for (int i = 0; i < x_rank; ++i) {
-      if (repeat_times_data[i + num_unsqueezed] != 1) {
-        grad_size.push_back(repeat_times_data[i + num_unsqueezed]);
-        sum_dims.push_back(static_cast<int64_t>(grad_size.size()) - 1);
-      }
-      grad_size.push_back(x_dims[i]);
-    }
-    // Resize below cannot express a rank beyond DDim::kMaxRank.
-    if (static_cast<int>(grad_size.size()) > DDim::kMaxRank) {
-      return false;
-    }
-
-    DenseTensor cur = out_grad;
-    for (int i = 0; i < num_unsqueezed; ++i) {
-      cur = Sum<T, Context>(dev_ctx, cur, IntArray({0}), cur.dtype(), false);
-    }
-
-    if (sum_dims.empty()) {
-      dev_ctx.template Alloc<T>(x_grad);
-      Copy(dev_ctx, cur, dev_ctx.GetPlace(), false, x_grad);
-      x_grad->Resize(x_dims);
-      return true;
-    }
-
-    cur.Resize(make_ddim(grad_size));
-    SumKernel<T, Context>(
-        dev_ctx, cur, IntArray(sum_dims), cur.dtype(), false, x_grad);
-    return true;
-  }
-}
-
+// Mirrors torch's repeat_backward: sum the leading unsqueezed dims one at a
+// time, then view each tiled dim i as [repeat_i, x_dims[i]] and sum the
+// repeat axes.
 template <typename T, typename Context>
 void TileGradKernel(const Context& dev_ctx,
                     const DenseTensor& x,
@@ -144,113 +36,94 @@ void TileGradKernel(const Context& dev_ctx,
     Full<T, Context>(dev_ctx, x_grad->dims(), 0, x_grad);
     return;
   }
-  auto x_dims = x.dims();
-  auto vec_x_dims = vectorize<int64_t>(x_dims);
+  const auto x_dims = x.dims();
+  const int x_rank = x_dims.size();
   auto repeat_times_data = repeat_times.GetData();
-  if (repeat_times_data.size() < vec_x_dims.size()) {
-    int diff = vec_x_dims.size() - repeat_times_data.size();
-    repeat_times_data.insert(repeat_times_data.begin(), diff, 1);
-  } else {
-    int diff = repeat_times_data.size() - vec_x_dims.size();
-    vec_x_dims.insert(vec_x_dims.begin(), diff, 1);
+  if (repeat_times_data.size() < static_cast<size_t>(x_rank)) {
+    repeat_times_data.insert(
+        repeat_times_data.begin(), x_rank - repeat_times_data.size(), 1);
   }
-  // 1. reshape_dims_vec is the broadcast parameter.
-  // 2. reduce_dims_vec is the dimension parameter to compute gradients. For
-  //    each dimension expanded, the gradients should be summed to original
-  //    size.
-  std::vector<int64_t> reshape_dims_vec;
-  std::vector<int64_t> reduce_dims_vec;
-  for (size_t i = 0; i < repeat_times_data.size(); ++i) {
-    reduce_dims_vec.push_back(reshape_dims_vec.size());
-    reshape_dims_vec.push_back(repeat_times_data[i]);
-    reshape_dims_vec.push_back(vec_x_dims[i]);
-  }
+  const int num_unsqueezed =
+      static_cast<int>(repeat_times_data.size()) - x_rank;
 
-  int dims = reduce_dims_vec.size();
-
-  bool just_copy = true;
-  for (size_t i = 0; i < repeat_times_data.size(); i++) {
+  DenseTensor cur = out_grad;
+  for (int i = 0; i < num_unsqueezed; ++i) {
+    // A dim with repeat 1 has size 1, summing it is a no-op.
     if (repeat_times_data[i] != 1) {
-      just_copy = false;
-      break;
+      cur = Sum<T, Context>(dev_ctx, cur, IntArray({0}), cur.dtype(), false);
     }
   }
-  // no need reduce, just copy
-  if (just_copy) {
-    dev_ctx.template Alloc<T>(x_grad);
 
-    Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
+  // grad_size interleaves [repeat_i, x_dims[i]] for every repeat_i != 1.
+  // Untiled dims are merged into the preceding kept dim, which the reduce
+  // kernel would collapse anyway, so the reduction itself is unchanged.
+  std::vector<int64_t> grad_size;
+  std::vector<bool> is_repeat;
+  for (int i = 0; i < x_rank; ++i) {
+    const int64_t repeat = repeat_times_data[i + num_unsqueezed];
+    if (repeat != 1) {
+      grad_size.push_back(repeat);
+      is_repeat.push_back(true);
+    } else if (!grad_size.empty()) {
+      grad_size.back() *= x_dims[i];
+      continue;
+    }
+    grad_size.push_back(x_dims[i]);
+    is_repeat.push_back(false);
+  }
+
+  if (grad_size.size() <= 1) {
+    dev_ctx.template Alloc<T>(x_grad);
+    Copy(dev_ctx, cur, dev_ctx.GetPlace(), false, x_grad);
     // TensorCopy may change the dims of dx
     x_grad->Resize(x_dims);
-  } else {
-    // The reduce-based gradient reshapes the tensor, which cannot express a
-    // rank beyond DDim::kMaxRank(9).
-    PADDLE_ENFORCE_LE(
-        dims,
-        DDim::kMaxRank,
-        errors::InvalidArgument(
-            "The rank of the input 'Out@GRAD' for tile_grad op must be less "
-            "than or equal to %d, but the value received is %d.",
-            DDim::kMaxRank,
-            dims));
-    // Prefer the torch-compatible reduce-based implementation. It returns
-    // false and falls back to the Eigen path below for dtypes it does not
-    // support (float8) or when the reduced rank exceeds DDim::kMaxRank.
-    if (TileGradCompatKernel<T, Context>(
-            dev_ctx, x_dims, out_grad, repeat_times_data, x_grad)) {
-      return;
+    return;
+  }
+
+  // With every repeat != 1, grad_size reaches 2 * rank(x) = 14 dims, more
+  // than a DDim holds. Then sum the repeat axes among the first
+  // kMaxRank - 1 dims with the rest flattened, and go on with the result.
+  // ponytail: the extra pass rounds to T once more for fp16/bf16/fp8; only
+  // ranks beyond DDim::kMaxRank take it.
+  while (grad_size.size() > static_cast<size_t>(DDim::kMaxRank)) {
+    const int head = DDim::kMaxRank - 1;
+    std::vector<int64_t> shape(grad_size.begin(), grad_size.begin() + head);
+    std::vector<int64_t> axes;
+    int64_t kept = 1;
+    int64_t rest = 1;
+    for (int d = 0; d < head; ++d) {
+      if (is_repeat[d]) {
+        axes.push_back(d);
+      } else {
+        kept *= grad_size[d];
+      }
     }
-    PADDLE_ENFORCE_GE(dims,
-                      1,
-                      errors::InvalidArgument(
-                          "The rank of the input 'Out@GRAD' for tile_grad op "
-                          "must be greater than or equal to 1, but "
-                          "the value received is %d.",
-                          dims));
-    PADDLE_ENFORCE_LE(dims,
-                      MAX_RANK_SUPPORTED,
-                      errors::InvalidArgument(
-                          "The rank of the input 'Out@GRAD' for tile_grad op "
-                          "must be less than or equal "
-                          "to %d, but the value received is %d.",
-                          MAX_RANK_SUPPORTED,
-                          dims));
-    switch (dims) {
-      case 1:
-        TileBackward<Context, T, 1>(
-            dev_ctx, out_grad, reshape_dims_vec, reduce_dims_vec, x_grad);
-        break;
-      case 2:
-        TileBackward<Context, T, 2>(
-            dev_ctx, out_grad, reshape_dims_vec, reduce_dims_vec, x_grad);
-        break;
-      case 3:
-        TileBackward<Context, T, 3>(
-            dev_ctx, out_grad, reshape_dims_vec, reduce_dims_vec, x_grad);
-        break;
-      case 4:
-        TileBackward<Context, T, 4>(
-            dev_ctx, out_grad, reshape_dims_vec, reduce_dims_vec, x_grad);
-        break;
-      case 5:
-        TileBackward<Context, T, 5>(
-            dev_ctx, out_grad, reshape_dims_vec, reduce_dims_vec, x_grad);
-        break;
-      case 6:
-        TileBackward<Context, T, 6>(
-            dev_ctx, out_grad, reshape_dims_vec, reduce_dims_vec, x_grad);
-        break;
-      case 7:
-        TileBackward<Context, T, 7>(
-            dev_ctx, out_grad, reshape_dims_vec, reduce_dims_vec, x_grad);
-        break;
-      default:
-        PADDLE_THROW(errors::InvalidArgument(
-            "Only support tensor with rank being between 1 and 7. But "
-            "received tensor's rank = %d.",
-            dims));
+    for (size_t d = head; d < grad_size.size(); ++d) {
+      rest *= grad_size[d];
+    }
+    shape.push_back(rest);
+    cur.Resize(make_ddim(shape));
+    cur = Sum<T, Context>(dev_ctx, cur, IntArray(axes), cur.dtype(), false);
+    grad_size.erase(grad_size.begin(), grad_size.begin() + head);
+    grad_size.insert(grad_size.begin(), kept);
+    is_repeat.erase(is_repeat.begin(), is_repeat.begin() + head);
+    is_repeat.insert(is_repeat.begin(), false);
+  }
+
+  std::vector<int64_t> sum_dims;
+  std::vector<int64_t> kept_size;
+  for (size_t d = 0; d < grad_size.size(); ++d) {
+    if (is_repeat[d]) {
+      sum_dims.push_back(d);
+    } else {
+      kept_size.push_back(grad_size[d]);
     }
   }
+  cur.Resize(make_ddim(grad_size));
+  x_grad->Resize(make_ddim(kept_size));
+  SumKernel<T, Context>(
+      dev_ctx, cur, IntArray(sum_dims), cur.dtype(), false, x_grad);
+  x_grad->Resize(x_dims);
 }
 
 }  // namespace phi

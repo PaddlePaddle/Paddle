@@ -658,53 +658,68 @@ class TestTileAlias(unittest.TestCase):
             np.testing.assert_array_equal(out_ref.numpy(), out_both.numpy())
 
 
+def tile_grad_ref(grad, ori_shape, repeat_times):
+    full = [1] * (grad.ndim - len(ori_shape)) + list(ori_shape)
+    reps = [o // f for o, f in zip(grad.shape, full)]
+    view = grad.reshape([d for r, f in zip(reps, full) for d in (r, f)])
+    return view.sum(axis=tuple(range(0, 2 * len(full), 2))).reshape(ori_shape)
+
+
 @unittest.skipIf(
     not (core.is_compiled_with_cuda() or is_custom_device()),
     "tile_grad for float8 is only registered on GPU",
 )
-class TestTileGradFP8EigenFallback(unittest.TestCase):
-    """float8 has no SumKernel implementation, so TileGradCompatKernel returns
-    False and tile_grad falls back to the Eigen based TileBackward. This test
-    exercises that fallback: if float8 were routed to the reduce_sum path it
-    would raise a "no kernel found for float8" error during backward instead of
-    producing a gradient. Exact values are not asserted because float8
-    accumulates the gradient in float8 (very low precision); the point is that
-    the Eigen fallback is reachable and yields a well-formed gradient.
-    """
-
-    # (ori_shape, repeat_times)
+class TestTileGradFP8(unittest.TestCase):
+    # (ori_shape, repeat_times), at most 6 copies per element
     cases = [
         ([4, 5], [2, 3]),
         ([2, 4, 3], [2, 1, 2]),
+        ([2, 3], [3, 1, 2]),
     ]
 
-    def test_fp8_backward_falls_back_to_eigen(self):
+    def test_fp8_backward(self):
         place = get_device_place()
         with base.dygraph.guard(place):
             for dtype in ['float8_e4m3fn', 'float8_e5m2']:
                 for ori_shape, repeat_times in self.cases:
-                    x_np = np.random.randint(-2, 3, size=ori_shape).astype(
-                        "float32"
-                    )
-                    x = paddle.to_tensor(x_np, place=place).astype(dtype)
+                    x = paddle.zeros(ori_shape).astype(dtype)
                     x.stop_gradient = False
                     out = paddle.tile(x, repeat_times)
-                    grad_np = np.random.randint(-2, 3, size=out.shape).astype(
+                    # Sums of at most 6 values in {-1, 0, 1} are exact in
+                    # both float8 formats.
+                    grad_np = np.random.randint(-1, 2, size=out.shape).astype(
                         "float32"
                     )
-                    grad = paddle.to_tensor(grad_np, place=place).astype(dtype)
-                    # Would raise here if float8 hit the (unregistered)
-                    # reduce_sum kernel instead of the Eigen fallback.
-                    out.backward(grad)
-
-                    msg = (
-                        f"dtype={dtype}, shape={ori_shape}, "
-                        f"repeat={repeat_times}"
+                    out.backward(paddle.to_tensor(grad_np).astype(dtype))
+                    np.testing.assert_array_equal(
+                        x.grad.astype("float32").numpy(),
+                        tile_grad_ref(grad_np, ori_shape, repeat_times),
+                        err_msg=f"{dtype}, {ori_shape}, {repeat_times}",
                     )
-                    self.assertIsNotNone(x.grad, msg)
-                    got = x.grad.astype("float32").numpy()
-                    self.assertEqual(list(got.shape), list(ori_shape), msg)
-                    self.assertTrue(np.isfinite(got).all(), msg)
+
+
+class TestTileGradHighRank(unittest.TestCase):
+    # The interleaved [repeat, size] view exceeds DDim::kMaxRank(9).
+    cases = [
+        ([2, 2, 2, 2, 2, 2, 2], [2, 2, 2, 2, 2, 2, 2]),
+        ([3, 2, 1, 2, 2, 3], [2, 2, 3, 2, 1, 2, 2]),
+    ]
+
+    def test_high_rank_backward(self):
+        for place in get_places():
+            with base.dygraph.guard(place):
+                for ori_shape, repeat_times in self.cases:
+                    x = paddle.zeros(ori_shape, dtype="float64")
+                    x.stop_gradient = False
+                    out = paddle.tile(x, repeat_times)
+                    grad_np = np.random.random(out.shape)
+                    out.backward(paddle.to_tensor(grad_np))
+                    np.testing.assert_allclose(
+                        x.grad.numpy(),
+                        tile_grad_ref(grad_np, ori_shape, repeat_times),
+                        rtol=1e-12,
+                        err_msg=f"{place}, {ori_shape}, {repeat_times}",
+                    )
 
 
 if __name__ == "__main__":
