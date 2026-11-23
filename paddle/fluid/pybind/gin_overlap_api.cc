@@ -79,18 +79,18 @@ GinGradCommScheduler* CreateScheduler(ProcessGroupNCCL* dense_group,
   config.dense_windows = ToWindows(dense_windows);
   config.expert_windows = ToWindows(expert_windows);
   config.buckets.reserve(buckets.size());
-  for (const BucketTuple& item : buckets) {
-    GinBucketDesc desc;
-    desc.kind = std::get<0>(item);
-    desc.send_offset = std::get<1>(item);
-    desc.signal_offset = std::get<2>(item);
-    desc.shard_numel = std::get<3>(item);
-    desc.arrive_offset = std::get<4>(item);
-    desc.recv_offset[0] = std::get<5>(item);
-    desc.recv_offset[1] = std::get<6>(item);
-    desc.depth[0] = std::get<7>(item);
-    desc.depth[1] = std::get<8>(item);
-    config.buckets.push_back(desc);
+  for (const BucketTuple& bucket_tuple : buckets) {
+    GinBucketDesc bucket_desc;
+    bucket_desc.kind = std::get<0>(bucket_tuple);
+    bucket_desc.send_offset = std::get<1>(bucket_tuple);
+    bucket_desc.signal_offset = std::get<2>(bucket_tuple);
+    bucket_desc.shard_numel = std::get<3>(bucket_tuple);
+    bucket_desc.arrive_offset = std::get<4>(bucket_tuple);
+    bucket_desc.recv_offset[0] = std::get<5>(bucket_tuple);
+    bucket_desc.recv_offset[1] = std::get<6>(bucket_tuple);
+    bucket_desc.depth[0] = std::get<7>(bucket_tuple);
+    bucket_desc.depth[1] = std::get<8>(bucket_tuple);
+    config.buckets.push_back(bucket_desc);
   }
   config.dense_order = dense_order;
   config.expert_order = expert_order;
@@ -98,13 +98,13 @@ GinGradCommScheduler* CreateScheduler(ProcessGroupNCCL* dense_group,
   config.credit_inter_offset = credit_inter_offset;
   config.credit_expert_offset = credit_expert_offset;
   config.gather.reserve(gather.size());
-  for (const GatherTuple& item : gather) {
-    GinGatherDesc desc;
-    desc.bucket = std::get<0>(item);
-    desc.owner = std::get<1>(item);
-    desc.arrive_offset = std::get<2>(item);
-    desc.intra_arrive_offset = std::get<3>(item);
-    config.gather.push_back(desc);
+  for (const GatherTuple& gather_tuple : gather) {
+    GinGatherDesc gather_desc;
+    gather_desc.bucket = std::get<0>(gather_tuple);
+    gather_desc.owner = std::get<1>(gather_tuple);
+    gather_desc.arrive_offset = std::get<2>(gather_tuple);
+    gather_desc.intra_arrive_offset = std::get<3>(gather_tuple);
+    config.gather.push_back(gather_desc);
   }
   config.num_window_marks = num_window_marks;
   config.num_tail_marks = num_tail_marks;

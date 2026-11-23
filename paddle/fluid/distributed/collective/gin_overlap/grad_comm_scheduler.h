@@ -277,7 +277,7 @@ class GinGradCommScheduler {
   };
 
   struct GatherEntry {
-    GinGatherDesc desc;
+    GinGatherDesc gather_desc;
     bool is_owner{false};
     // Owner only: senders on other nodes and node-local indices of the
     // senders on this node.
@@ -295,12 +295,12 @@ class GinGradCommScheduler {
   uint64_t HostCounter(const Group& group, int64_t byte_offset) const;
   uint64_t CreditTarget(int num_buckets, int position, int64_t depth) const;
 
-  bool BlockedIntraCopy(int bucket, Blocker* out) const;
-  bool BlockedIntraSum(int bucket, Blocker* out) const;
-  bool BlockedDensePut(int bucket, Blocker* out) const;
-  bool BlockedExpertPut(int bucket, Blocker* out) const;
-  bool BlockedDenseFinalSum(int bucket, Blocker* out) const;
-  bool BlockedExpertFinalSum(int bucket, Blocker* out) const;
+  bool BlockedIntraCopy(int bucket, Blocker* blocker) const;
+  bool BlockedIntraSum(int bucket, Blocker* blocker) const;
+  bool BlockedDensePut(int bucket, Blocker* blocker) const;
+  bool BlockedExpertPut(int bucket, Blocker* blocker) const;
+  bool BlockedDenseFinalSum(int bucket, Blocker* blocker) const;
+  bool BlockedExpertFinalSum(int bucket, Blocker* blocker) const;
 
   void SubmitIntraCopy(int bucket);
   void SubmitIntraSum(int bucket);
@@ -322,7 +322,7 @@ class GinGradCommScheduler {
   void AfterFinalSum(int bucket, bool in_proxy);
 
   bool IsStepDone() const;
-  void PendingCounts(int* out4) const;
+  void PendingCounts(int* counts) const;
   int RecordTailMark();
   void StartProxy(int slot, int intra_sum_blocks, int final_sum_blocks);
   bool ConsumePublished();
