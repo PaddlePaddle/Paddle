@@ -67,13 +67,10 @@ TAIL_EXTRA_MARKS = 1024
 # Intra-node arrival counters per dense bucket (ranks per node <= 16).
 _MAX_RANKS_PER_NODE = 16
 
-# The scheduler of this process (one sharding optimizer per process).
-_ACTIVE = None
-
-
-def active_scheduler():
-    """The GinGradCommScheduler of this process, or None when gin_overlap is off."""
-    return _ACTIVE
+# The GinGradCommScheduler of this process, None when gin_overlap is off. Set once by build_grad_comm_scheduler (one
+# sharding optimizer per process). Read it on this module each time (grad_comm_scheduler.ACTIVE_SCHEDULER): a
+# ``from ... import ACTIVE_SCHEDULER`` copies the value at import time, which is None.
+ACTIVE_SCHEDULER = None
 
 
 def _sharding_configs():
@@ -880,7 +877,7 @@ def _hook_action():
 
 def build_grad_comm_scheduler(opt):
     """Builds the GinGradCommScheduler of a DygraphShardingOptimizerV2 or MuonShardingOptimizer, after its buckets
-    are built, and registers it (active_scheduler()). Collective over the sharding group and, with expert buckets,
+    are built, and sets it as ACTIVE_SCHEDULER. Collective over the sharding group and, with expert buckets,
     the moe_sharding group. Raises on an unsupported configuration or bucket.
       - Every bucket is taken over: expert buckets (all parameters expert: is_moe_param or color "moe_expert") in
         the moe_sharding group, dense buckets (no expert parameter) in the sharding group. Muon 2D buckets are
@@ -890,7 +887,7 @@ def build_grad_comm_scheduler(opt):
         hook that reports its bucket once the bucket is full, i.e. after sharding_configs.accumulate_steps gradients
         per parameter (the bucket's _acc_steps, set when the sharding optimizer creates the bucket). The trainer must
         set sharding_configs.accumulate_steps to its gradient accumulation steps."""
-    global _ACTIVE
+    global ACTIVE_SCHEDULER
     from paddle.distributed.fleet.meta_optimizers.dygraph_optimizer.dygraph_sharding_optimizer import (
         DygraphShardingOptimizerV2,
     )
@@ -899,7 +896,7 @@ def build_grad_comm_scheduler(opt):
         raise RuntimeError(
             f"sharding_configs.gin_overlap is on, but {_BUILD_HINT}"
         )
-    if _ACTIVE is not None:
+    if ACTIVE_SCHEDULER is not None:
         raise RuntimeError(
             "gin_overlap: a GinGradCommScheduler is already built in this process (one sharding optimizer per "
             "process)"
@@ -1026,7 +1023,7 @@ def build_grad_comm_scheduler(opt):
             f"[gin_overlap] init: {len(gather)} Muon 2D buckets gathered to their owners (dense {len(dense_2d)} / "
             f"expert {len(expert_2d)})"
         )
-    _ACTIVE = scheduler
+    ACTIVE_SCHEDULER = scheduler
     return scheduler
 
 
