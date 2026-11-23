@@ -22,6 +22,7 @@
 #include <hip/hip_runtime.h>
 #endif
 
+#include <memory>
 #include <unordered_map>
 
 #include "paddle/common/macros.h"
@@ -40,6 +41,36 @@ namespace phi {
 class DenseTensor;
 namespace distributed {
 
+// Properties of the device communicator (ncclDevComm) of a NCCLCommContext,
+// returned by NCCLCommContext::GetOrCreateDevComm().
+struct NCCLDevCommInfo {
+  // Points to the ncclDevComm (nccl_device.h). Valid until the communicator is
+  // destroyed or recreated.
+  const void* dev_comm{nullptr};
+  // Rank and size of the communicator.
+  int rank{0};
+  int nranks{0};
+  // Index of this rank in its LSA team (the ranks that can load and store each
+  // other's windows directly) and the size of that team. An LSA team is a run
+  // of consecutive ranks: rank r belongs to team r / lsa_size.
+  int lsa_rank{0};
+  int lsa_size{0};
+  // Number of GIN contexts the device communicator was created with.
+  int gin_context_count{0};
+};
+
+// A window over pinned host memory, returned by
+// NCCLCommContext::AllocHostWindow().
+struct NCCLHostWindow {
+  // Window handle, usable wherever a handle from RegisterWindow() is.
+  void* window{nullptr};
+  // Start of the memory. The CPU and the GPU of the communicator both access
+  // it through this address.
+  void* ptr{nullptr};
+  // Size of the memory in bytes.
+  size_t bytes{0};
+};
+
 class NCCLCommContext final : public CommContext {
  public:
   NCCLCommContext(
@@ -48,7 +79,7 @@ class NCCLCommContext final : public CommContext {
       ncclUniqueId nccl_id,
       int nccl_comm_init_option = 0,
       std::shared_ptr<phi::distributed::NCCLConfig> nccl_config_ptr = nullptr);
-  ~NCCLCommContext() override = default;
+  ~NCCLCommContext() override;
 
   int GetNcclVersion();
 
@@ -137,6 +168,59 @@ class NCCLCommContext final : public CommContext {
   // a collective over that buffer may take a symmetric-memory path.
   bool IsRegistered(const void* ptr, size_t size) const;
 
+  // Returns the handle of the window registered at `ptr` by RegisterWindow(),
+  // or nullptr when `ptr` is not the start of a registered buffer.
+  void* GetWindow(const void* ptr) const;
+
+  // Looks up a window handle returned by RegisterWindow(). Returns false when
+  // the handle is not registered here; otherwise sets *ptr and *size to the
+  // registered buffer.
+  bool GetWindowRange(void* window, void** ptr, size_t* size) const;
+
+  // True when Paddle was compiled against the NCCL device API (NCCL 2.30.7 or
+  // newer with nccl_device.h, CUDA 13.0 or newer) and the loaded NCCL provides
+  // its host entry points.
+  static bool IsDevCommSupported();
+
+  // Returns the device communicator (ncclDevComm) of this communicator and
+  // creates it on the first call. Creation is collective: every rank must make
+  // the first call, in the same order relative to other collective calls. The
+  // device communicator has full GIN connectivity, one GIN signal and no GIN
+  // counter; gin_context_count is a hint for the number of GIN contexts, the
+  // number created is NCCLDevCommInfo::gin_context_count. Later calls return
+  // the cached device communicator and must pass the same hint. Windows can be
+  // registered before or after the device communicator is created. It is
+  // destroyed by DestroyNCCLComm() before the communicator.
+  NCCLDevCommInfo GetOrCreateDevComm(int gin_context_count);
+
+  // True once GetOrCreateDevComm() has created the device communicator.
+  bool HasDevComm() const;
+
+  // The device communicator created by GetOrCreateDevComm(). Raises when it
+  // has not been created.
+  const NCCLDevCommInfo& GetDevCommInfo() const;
+
+  // Device address of byte `offset` of `window` in the memory of the rank with
+  // index `lsa_peer` in this rank's LSA team. This GPU can load from and store
+  // to that address. `window` is a handle returned by RegisterWindow() or
+  // AllocHostWindow(); `offset` may equal the window size. Requires the device
+  // communicator (GetOrCreateDevComm()).
+  void* LsaPointer(void* window, int lsa_peer, size_t offset);
+
+  // Allocates pinned host memory on the host NUMA node of this communicator's
+  // GPU, mapped for the GPU and the CPU at the same address, zeroes it, and
+  // registers it as a window with NCCL_WIN_COLL_SYMMETRIC |
+  // NCCL_WIN_STRICT_ORDERING. Collective, like RegisterWindow(): every rank
+  // must call it with the same `bytes`. The size is `bytes` rounded up to the
+  // allocation granularity. The window is in the same table as the windows of
+  // RegisterWindow(). FreeHostWindow() releases it; DestroyNCCLComm() and a
+  // recreation of the communicator release every host window.
+  NCCLHostWindow AllocHostWindow(size_t bytes);
+
+  // Deregisters a window returned by AllocHostWindow() and frees its memory.
+  // Collective.
+  void FreeHostWindow(void* window);
+
   // True when the loaded NCCL provides the single-call all-to-all, the only
   // all-to-all entry point that can reach the zero-SM path. A group of
   // Send/Recv calls always runs a point-to-point device kernel instead.
@@ -193,6 +277,20 @@ class NCCLCommContext final : public CommContext {
   // Keyed by buffer pointer, so that registration is idempotent and every
   // window can be released before the communicator is destroyed.
   std::unordered_map<void*, RegisteredWindow> windows_;
+
+  // Destroys the device communicator while nccl_comm_ is still alive.
+  void DestroyDevComm();
+
+  // Unmaps and frees the memory of every host window. Their windows must have
+  // been deregistered already.
+  void FreeAllHostWindowMemory();
+
+  // State of the NCCL device API and of window lookups by handle: the device
+  // communicator, the window handle -> buffer map, the LSA addresses of
+  // windows and the host window allocations. Defined in nccl_comm_context.cc
+  // so that this header does not include nccl_device.h.
+  struct DeviceApiState;
+  std::unique_ptr<DeviceApiState> device_api_;
 };
 
 }  // namespace distributed

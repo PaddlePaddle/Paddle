@@ -13,6 +13,13 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/collective/process_group_nccl.h"
+
+#include <unistd.h>
+
+#include <array>
+#include <climits>
+#include <cstring>
+
 #include "glog/logging.h"
 #include "paddle/common/flags.h"
 #include "paddle/fluid/distributed/collective/common.h"
@@ -30,6 +37,10 @@
 #include "paddle/phi/core/platform/device/gpu/nccl_helper.h"
 #include "paddle/phi/core/utils/data_type.h"
 #include "paddle/utils/string/string_helper.h"
+
+#ifdef PADDLE_WITH_NCCL_ONE_SIDED
+#include "paddle/fluid/distributed/collective/gin_overlap/kernels/comm.h"
+#endif
 
 COMMON_DECLARE_bool(benchmark);
 COMMON_DECLARE_bool(benchmark_nccl);
@@ -59,6 +70,69 @@ bool IsCommBufferRegistered(phi::distributed::NCCLCommContext* comm_context,
                             const phi::DenseTensor& tensor) {
   return comm_context->IsRegistered(
       tensor.data(), tensor.numel() * phi::SizeOf(tensor.dtype()));
+}
+
+// Raises Unavailable when the one-sided primitives cannot be used.
+void CheckOneSidedSupported() {
+  PADDLE_ENFORCE_EQ(
+      ProcessGroupNCCL::IsOneSidedSupported(),
+      true,
+      common::errors::Unavailable(
+          "The NCCL one-sided primitives of ProcessGroupNCCL are not "
+          "available. They need Paddle built with WITH_DISTRIBUTE, WITH_GPU "
+          "and WITH_NCCL for an arch of sm_90 or newer, CUDA 13.0 or newer "
+          "and NCCL 2.30.7 or newer with nccl_device.h, and a loaded NCCL "
+          "library that provides the device API."));
+}
+
+#ifdef PADDLE_WITH_NCCL_ONE_SIDED
+// Checks that [offset, offset + bytes) lies in `window` and that `offset` is
+// a multiple of `alignment`. `what` names the argument in the error.
+void CheckWindowRange(phi::distributed::NCCLCommContext* comm_context,
+                      void* window,
+                      size_t offset,
+                      size_t bytes,
+                      size_t alignment,
+                      const char* what) {
+  void* base = nullptr;
+  size_t size = 0;
+  PADDLE_ENFORCE_EQ(
+      comm_context->GetWindowRange(window, &base, &size),
+      true,
+      common::errors::InvalidArgument(
+          "The %s window %p is not registered on this process group.",
+          what,
+          window));
+  PADDLE_ENFORCE_EQ(
+      offset <= size && bytes <= size - offset,
+      true,
+      common::errors::InvalidArgument(
+          "The %s range [%d, %d + %d) is outside window %p of %d bytes.",
+          what,
+          offset,
+          offset,
+          bytes,
+          window,
+          size));
+  PADDLE_ENFORCE_EQ(offset % alignment,
+                    static_cast<size_t>(0),
+                    common::errors::InvalidArgument(
+                        "The %s offset %d must be a multiple of %d bytes.",
+                        what,
+                        offset,
+                        alignment));
+}
+
+// Size and alignment of a counter.
+constexpr size_t kCounterBytes = sizeof(uint64_t);
+#endif
+
+std::string GetHostName() {
+  std::array<char, HOST_NAME_MAX + 1> hostname{};
+  PADDLE_ENFORCE_EQ(::gethostname(hostname.data(), HOST_NAME_MAX),
+                    0,
+                    common::errors::External("gethostname() failed."));
+  return std::string(hostname.data());
 }
 
 }  // namespace
@@ -1462,4 +1536,383 @@ void ProcessGroupNCCL::EndCoalescing(
   coalescing_place_keys_.clear();
 }
 
+bool ProcessGroupNCCL::IsOneSidedSupported() {
+#ifdef PADDLE_WITH_NCCL_ONE_SIDED
+  return phi::distributed::NCCLCommContext::IsDevCommSupported();
+#else
+  return false;
+#endif
+}
+
+phi::distributed::NCCLCommContext* ProcessGroupNCCL::GetOneSidedCommContext(
+    bool create) {
+  const auto place = phi::GPUPlace(phi::backends::gpu::GetCurrentDeviceId());
+  if (!create) {
+    PADDLE_ENFORCE_NE(
+        place_to_comm_ctx_.find(GetKeyFromPlace(place)),
+        place_to_comm_ctx_.end(),
+        common::errors::PreconditionNotMet(
+            "Process group %d has no NCCL communicator on device %d; call "
+            "get_or_create_dev_comm() on every rank first.",
+            gid_,
+            place.GetDeviceId()));
+  }
+  return GetOrCreateCommContext(place);
+}
+
+int ProcessGroupNCCL::PeerToLsaIndex(
+    const phi::distributed::NCCLDevCommInfo& info, int peer) const {
+  PADDLE_ENFORCE_EQ(
+      peer >= 0 && peer < size_,
+      true,
+      common::errors::InvalidArgument(
+          "Peer %d is not a rank of this process group of size %d.",
+          peer,
+          size_));
+  if (peer / info.lsa_size != rank_ / info.lsa_size) {
+    return -1;
+  }
+  return peer % info.lsa_size;
+}
+
+phi::distributed::NCCLDevCommInfo ProcessGroupNCCL::GetOrCreateDevComm(
+    int gin_context_count) {
+  CheckOneSidedSupported();
+  auto* comm_context = GetOneSidedCommContext(/*create=*/true);
+  const bool created_here = !comm_context->HasDevComm();
+  const auto info = comm_context->GetOrCreateDevComm(gin_context_count);
+  PADDLE_ENFORCE_EQ(
+      info.rank == rank_ && info.nranks == size_,
+      true,
+      common::errors::PreconditionNotMet(
+          "The NCCL device communicator has rank %d of %d, but the process "
+          "group has rank %d of %d.",
+          info.rank,
+          info.nranks,
+          rank_,
+          size_));
+  // PeerToLsaIndex() maps a group rank to the LSA team peer / lsa_size and
+  // the index peer % lsa_size in it.
+  PADDLE_ENFORCE_EQ(
+      info.lsa_size > 0 && size_ % info.lsa_size == 0 &&
+          info.lsa_rank == rank_ % info.lsa_size,
+      true,
+      common::errors::PreconditionNotMet(
+          "The LSA team of the NCCL device communicator is not a block of "
+          "consecutive ranks: rank %d of %d has LSA rank %d in an LSA team of "
+          "%d.",
+          rank_,
+          size_,
+          info.lsa_rank,
+          info.lsa_size));
+  PADDLE_ENFORCE_GT(
+      info.gin_context_count,
+      0,
+      common::errors::Unavailable(
+          "The NCCL device communicator was created without GIN contexts."));
+  if (created_here) {
+    CheckNodeMajor(info);
+  }
+  return info;
+}
+
+void ProcessGroupNCCL::CheckNodeMajor(
+    const phi::distributed::NCCLDevCommInfo& info) {
+  // Every rank publishes its host name; a rank on this host outside this
+  // rank's LSA team means the ranks of a node are not consecutive.
+  const std::string key_prefix =
+      "nccl_one_sided_host/" + std::to_string(gid_) + "/";
+  const std::string host = GetHostName();
+  store_->set(key_prefix + std::to_string(rank_),
+              std::vector<uint8_t>(host.begin(), host.end()));
+  for (int peer = 0; peer < size_; ++peer) {
+    const std::vector<uint8_t> value =
+        store_->get(key_prefix + std::to_string(peer));
+    const std::string peer_host(value.begin(), value.end());
+    PADDLE_ENFORCE_EQ(
+        peer_host != host || PeerToLsaIndex(info, peer) >= 0,
+        true,
+        common::errors::PreconditionNotMet(
+            "The one-sided primitives require node-major rank order (the "
+            "ranks of each node consecutive in the group), but rank %d and "
+            "rank %d are both on host %s while the LSA team of rank %d is "
+            "ranks %d to %d.",
+            rank_,
+            peer,
+            host,
+            rank_,
+            rank_ / info.lsa_size * info.lsa_size,
+            rank_ / info.lsa_size * info.lsa_size + info.lsa_size - 1));
+  }
+}
+
+phi::distributed::NCCLDevCommInfo ProcessGroupNCCL::GetDevCommInfo() {
+  CheckOneSidedSupported();
+  return GetOneSidedCommContext(/*create=*/false)->GetDevCommInfo();
+}
+
+phi::distributed::NCCLHostWindow ProcessGroupNCCL::AllocHostWindow(
+    size_t bytes) {
+  CheckOneSidedSupported();
+  return GetOneSidedCommContext(/*create=*/true)->AllocHostWindow(bytes);
+}
+
+void ProcessGroupNCCL::FreeHostWindow(void* window) {
+  CheckOneSidedSupported();
+  GetOneSidedCommContext(/*create=*/false)->FreeHostWindow(window);
+}
+
+void ProcessGroupNCCL::Put(const std::vector<OneSidedPut>& puts,
+                           gpuStream_t stream,
+                           int num_blocks) {
+  CheckOneSidedSupported();
+#ifdef PADDLE_WITH_NCCL_ONE_SIDED
+  PADDLE_ENFORCE_GE(
+      num_blocks,
+      0,
+      common::errors::InvalidArgument(
+          "num_blocks must not be negative, but got %d.", num_blocks));
+  if (puts.empty()) {
+    return;
+  }
+  auto* comm_context = GetOneSidedCommContext(/*create=*/false);
+  const auto& info = comm_context->GetDevCommInfo();
+  for (const auto& put : puts) {
+    PeerToLsaIndex(info, put.peer);
+    PADDLE_ENFORCE_NE(put.peer,
+                      rank_,
+                      common::errors::InvalidArgument(
+                          "Put() cannot target this rank (%d).", rank_));
+    PADDLE_ENFORCE_GT(
+        put.bytes,
+        static_cast<size_t>(0),
+        common::errors::InvalidArgument("A put must move at least one byte."));
+    CheckWindowRange(
+        comm_context, put.src_window, put.src_offset, put.bytes, 1, "source");
+    CheckWindowRange(comm_context,
+                     put.dst_window,
+                     put.dst_offset,
+                     put.bytes,
+                     1,
+                     "destination");
+    CheckWindowRange(comm_context,
+                     put.counter_window,
+                     put.counter_offset,
+                     kCounterBytes,
+                     kCounterBytes,
+                     "counter");
+  }
+  one_sided::PutBatch batch{};
+  auto launch = [&]() {
+    const int blocks = num_blocks > 0 ? num_blocks : batch.count;
+    PADDLE_ENFORCE_GPU_SUCCESS(one_sided::LaunchPut(
+        info.dev_comm, batch, info.gin_context_count, blocks, stream));
+    batch.count = 0;
+  };
+  for (const auto& put : puts) {
+    one_sided::PutDesc& desc = batch.descs[batch.count++];
+    desc.src_window = put.src_window;
+    desc.src_offset = put.src_offset;
+    desc.dst_window = put.dst_window;
+    desc.dst_offset = put.dst_offset;
+    desc.bytes = put.bytes;
+    desc.counter_window = put.counter_window;
+    desc.counter_offset = put.counter_offset;
+    desc.peer = put.peer;
+    if (batch.count == one_sided::kMaxDescsPerLaunch) {
+      launch();
+    }
+  }
+  if (batch.count > 0) {
+    launch();
+  }
+#endif
+}
+
+void ProcessGroupNCCL::IncrementPeerCounter(
+    const std::vector<OneSidedCounterIncrement>& increments,
+    gpuStream_t stream) {
+  CheckOneSidedSupported();
+#ifdef PADDLE_WITH_NCCL_ONE_SIDED
+  if (increments.empty()) {
+    return;
+  }
+  auto* comm_context = GetOneSidedCommContext(/*create=*/false);
+  const auto& info = comm_context->GetDevCommInfo();
+  std::vector<int> lsa_indices;
+  lsa_indices.reserve(increments.size());
+  for (const auto& increment : increments) {
+    lsa_indices.push_back(PeerToLsaIndex(info, increment.peer));
+    PADDLE_ENFORCE_NE(increment.peer,
+                      rank_,
+                      common::errors::InvalidArgument(
+                          "IncrementPeerCounter() cannot target this rank "
+                          "(%d).",
+                          rank_));
+    CheckWindowRange(comm_context,
+                     increment.counter_window,
+                     increment.counter_offset,
+                     kCounterBytes,
+                     kCounterBytes,
+                     "counter");
+  }
+  one_sided::CounterIncrementBatch batch{};
+  auto launch = [&]() {
+    PADDLE_ENFORCE_GPU_SUCCESS(one_sided::LaunchIncrementCounters(
+        info.dev_comm, batch, info.gin_context_count, stream));
+    batch.count = 0;
+  };
+  for (size_t i = 0; i < increments.size(); ++i) {
+    const auto& increment = increments[i];
+    one_sided::CounterIncrementDesc& desc = batch.descs[batch.count++];
+    desc.lsa_counter = lsa_indices[i] < 0
+                           ? nullptr
+                           : static_cast<uint64_t*>(comm_context->LsaPointer(
+                                 increment.counter_window,
+                                 lsa_indices[i],
+                                 increment.counter_offset));
+    desc.counter_window = increment.counter_window;
+    desc.counter_offset = increment.counter_offset;
+    desc.peer = increment.peer;
+    if (batch.count == one_sided::kMaxDescsPerLaunch) {
+      launch();
+    }
+  }
+  if (batch.count > 0) {
+    launch();
+  }
+#endif
+}
+
+void ProcessGroupNCCL::SetPeerCounter(
+    const std::vector<OneSidedCounterSet>& sets, gpuStream_t stream) {
+  CheckOneSidedSupported();
+#ifdef PADDLE_WITH_NCCL_ONE_SIDED
+  if (sets.empty()) {
+    return;
+  }
+  auto* comm_context = GetOneSidedCommContext(/*create=*/false);
+  const auto& info = comm_context->GetDevCommInfo();
+  std::vector<int> lsa_indices;
+  lsa_indices.reserve(sets.size());
+  for (const auto& set : sets) {
+    const int lsa_index = PeerToLsaIndex(info, set.peer);
+    PADDLE_ENFORCE_GE(
+        lsa_index,
+        0,
+        common::errors::InvalidArgument(
+            "SetPeerCounter() needs a peer in the LSA team of "
+            "rank %d (ranks %d to %d), but got %d.",
+            rank_,
+            rank_ / info.lsa_size * info.lsa_size,
+            rank_ / info.lsa_size * info.lsa_size + info.lsa_size - 1,
+            set.peer));
+    PADDLE_ENFORCE_NE(
+        set.peer,
+        rank_,
+        common::errors::InvalidArgument(
+            "SetPeerCounter() cannot target this rank (%d).", rank_));
+    CheckWindowRange(comm_context,
+                     set.counter_window,
+                     set.counter_offset,
+                     kCounterBytes,
+                     kCounterBytes,
+                     "counter");
+    lsa_indices.push_back(lsa_index);
+  }
+  one_sided::CounterSetBatch batch{};
+  auto launch = [&]() {
+    PADDLE_ENFORCE_GPU_SUCCESS(one_sided::LaunchSetCounters(batch, stream));
+    batch.count = 0;
+  };
+  for (size_t i = 0; i < sets.size(); ++i) {
+    one_sided::CounterSetDesc& desc = batch.descs[batch.count++];
+    desc.counter = static_cast<uint64_t*>(comm_context->LsaPointer(
+        sets[i].counter_window, lsa_indices[i], sets[i].counter_offset));
+    desc.value = sets[i].value;
+    if (batch.count == one_sided::kMaxDescsPerLaunch) {
+      launch();
+    }
+  }
+  if (batch.count > 0) {
+    launch();
+  }
+#endif
+}
+
+void ProcessGroupNCCL::CopyToPeers(const std::vector<OneSidedCopy>& copies,
+                                   gpuStream_t stream) {
+  CheckOneSidedSupported();
+#ifdef PADDLE_WITH_NCCL_ONE_SIDED
+  if (copies.empty()) {
+    return;
+  }
+  auto* comm_context = GetOneSidedCommContext(/*create=*/false);
+  const auto& info = comm_context->GetDevCommInfo();
+  std::vector<void*> dsts;
+  std::vector<const void*> srcs;
+  std::vector<size_t> sizes;
+  dsts.reserve(copies.size());
+  srcs.reserve(copies.size());
+  sizes.reserve(copies.size());
+  for (const auto& copy : copies) {
+    const int lsa_index = PeerToLsaIndex(info, copy.peer);
+    PADDLE_ENFORCE_GE(
+        lsa_index,
+        0,
+        common::errors::InvalidArgument(
+            "CopyToPeers() needs a peer in the LSA team of "
+            "rank %d (ranks %d to %d), but got %d.",
+            rank_,
+            rank_ / info.lsa_size * info.lsa_size,
+            rank_ / info.lsa_size * info.lsa_size + info.lsa_size - 1,
+            copy.peer));
+    PADDLE_ENFORCE_NE(
+        copy.peer,
+        rank_,
+        common::errors::InvalidArgument(
+            "CopyToPeers() cannot target this rank (%d).", rank_));
+    PADDLE_ENFORCE_NOT_NULL(
+        copy.src,
+        common::errors::InvalidArgument("The copy source must not be null."));
+    PADDLE_ENFORCE_GT(
+        copy.bytes,
+        static_cast<size_t>(0),
+        common::errors::InvalidArgument("A copy must move at least one byte."));
+    CheckWindowRange(comm_context,
+                     copy.dst_window,
+                     copy.dst_offset,
+                     copy.bytes,
+                     1,
+                     "destination");
+    dsts.push_back(
+        comm_context->LsaPointer(copy.dst_window, lsa_index, copy.dst_offset));
+    srcs.push_back(copy.src);
+    sizes.push_back(copy.bytes);
+  }
+  cudaMemcpyAttributes copy_attrs;
+  std::memset(&copy_attrs, 0, sizeof(copy_attrs));
+  copy_attrs.srcAccessOrder = cudaMemcpySrcAccessOrderStream;
+  // CUDA 13 signature: (dsts, srcs, sizes, count, attrs, attrsIdxs, numAttrs,
+  // stream). The one attribute set applies from copy 0 on.
+  size_t attrs_idx = 0;
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyBatchAsync(dsts.data(),
+                                                  srcs.data(),
+                                                  sizes.data(),
+                                                  dsts.size(),
+                                                  &copy_attrs,
+                                                  &attrs_idx,
+                                                  1,
+                                                  stream));
+#endif
+}
+
+void ProcessGroupNCCL::Flush(gpuStream_t stream) {
+  CheckOneSidedSupported();
+#ifdef PADDLE_WITH_NCCL_ONE_SIDED
+  const auto& info = GetOneSidedCommContext(/*create=*/false)->GetDevCommInfo();
+  PADDLE_ENFORCE_GPU_SUCCESS(
+      one_sided::LaunchFlush(info.dev_comm, info.gin_context_count, stream));
+#endif
+}
 }  // namespace paddle::distributed

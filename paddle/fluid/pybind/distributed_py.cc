@@ -21,7 +21,10 @@ limitations under the License. */
 #undef _XOPEN_SOURCE
 #endif
 
+#include <cstdint>
 #include <limits>
+#include <tuple>
+#include <vector>
 
 #include "paddle/fluid/distributed/collective/process_group.h"
 #include "paddle/fluid/distributed/collective/reducer.h"
@@ -93,6 +96,33 @@ using ProcessGroupFlagcx = paddle::distributed::ProcessGroupFlagcx;
 #endif
 
 static UNUSED void *use_ccl_comm_func = phi::detail::GetCCLComm(CPUPlace());
+
+#if defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_NCCL)
+namespace {
+
+py::dict DevCommInfoToDict(const phi::distributed::NCCLDevCommInfo &info) {
+  py::dict result;
+  result["rank"] = info.rank;
+  result["nranks"] = info.nranks;
+  result["lsa_rank"] = info.lsa_rank;
+  result["lsa_size"] = info.lsa_size;
+  result["gin_context_count"] = info.gin_context_count;
+  return result;
+}
+
+// The stream of a one-sided primitive: a raw stream handle passed as an int,
+// or the current stream of the current device for None.
+gpuStream_t OneSidedStream(const py::object &stream) {
+  if (stream.is_none()) {
+    return paddle::GetCurrentCUDAStream(
+               phi::GPUPlace(phi::backends::gpu::GetCurrentDeviceId()))
+        ->raw_stream();
+  }
+  return reinterpret_cast<gpuStream_t>(stream.cast<uintptr_t>());
+}
+
+}  // namespace
+#endif
 
 void BindDistributed(py::module *m) {
   py::enum_<distributed::ReduceOp>(*m, "ReduceOp")
@@ -1319,7 +1349,191 @@ void BindDistributed(py::module *m) {
             auto *comm_context = self.GetOrCreateCommContext(p_tensor->place());
             comm_context->DeregisterWindow(p_tensor->data());
           },
-          py::arg("tensor"));
+          py::arg("tensor"))
+      // NCCL one-sided primitives. Window handles are the ints returned by
+      // register_comm_buffer() / alloc_host_window(); `stream` is a raw
+      // cudaStream_t as an int (for example
+      // paddle.device.current_stream().cuda_stream), None meaning the current
+      // stream of the current device.
+      .def_static("is_one_sided_supported",
+                  &distributed::ProcessGroupNCCL::IsOneSidedSupported)
+      .def(
+          "get_or_create_dev_comm",
+          [](distributed::ProcessGroupNCCL &self, int gin_context_count) {
+            phi::distributed::NCCLDevCommInfo info;
+            {
+              py::gil_scoped_release release;
+              info = self.GetOrCreateDevComm(gin_context_count);
+            }
+            return DevCommInfoToDict(info);
+          },
+          py::arg("gin_context_count") = 4)
+      .def("dev_comm_info",
+           [](distributed::ProcessGroupNCCL &self) {
+             return DevCommInfoToDict(self.GetDevCommInfo());
+           })
+      .def(
+          "alloc_host_window",
+          [](distributed::ProcessGroupNCCL &self, size_t bytes) {
+            phi::distributed::NCCLHostWindow host_window;
+            {
+              py::gil_scoped_release release;
+              host_window = self.AllocHostWindow(bytes);
+            }
+            return py::make_tuple(
+                reinterpret_cast<uint64_t>(host_window.window),
+                reinterpret_cast<uint64_t>(host_window.ptr),
+                host_window.bytes);
+          },
+          py::arg("bytes"),
+          R"DOC(
+          Allocates pinned host memory, mapped for the CPU and the current GPU,
+          and registers it as a window of this group (collective). Returns
+          (window, cpu_ptr, bytes): the window handle, the address of the
+          memory (the same for the CPU and the GPU) and its size.
+          )DOC")
+      .def(
+          "free_host_window",
+          [](distributed::ProcessGroupNCCL &self, uint64_t window) {
+            py::gil_scoped_release release;
+            self.FreeHostWindow(reinterpret_cast<void *>(window));
+          },
+          py::arg("window"))
+      .def(
+          "put",
+          [](distributed::ProcessGroupNCCL &self,
+             const std::vector<std::tuple<uint64_t,
+                                          size_t,
+                                          uint64_t,
+                                          size_t,
+                                          size_t,
+                                          int,
+                                          uint64_t,
+                                          size_t>> &puts,
+             py::object stream,
+             int num_blocks) {
+            std::vector<distributed::OneSidedPut> descs;
+            descs.reserve(puts.size());
+            for (const auto &put : puts) {
+              distributed::OneSidedPut desc;
+              desc.src_window = reinterpret_cast<void *>(std::get<0>(put));
+              desc.src_offset = std::get<1>(put);
+              desc.dst_window = reinterpret_cast<void *>(std::get<2>(put));
+              desc.dst_offset = std::get<3>(put);
+              desc.bytes = std::get<4>(put);
+              desc.peer = std::get<5>(put);
+              desc.counter_window = reinterpret_cast<void *>(std::get<6>(put));
+              desc.counter_offset = std::get<7>(put);
+              descs.push_back(desc);
+            }
+            gpuStream_t raw_stream = OneSidedStream(stream);
+            py::gil_scoped_release release;
+            self.Put(descs, raw_stream, num_blocks);
+          },
+          py::arg("puts"),
+          py::arg("stream") = py::none(),
+          py::arg("num_blocks") = 0,
+          R"DOC(
+          GIN puts. Each item of `puts` is (src_window, src_offset, dst_window,
+          dst_offset, bytes, peer, counter_window, counter_offset): `bytes`
+          bytes go from this rank's src_window to dst_window on group rank
+          `peer`, then the u64 at counter_offset of counter_window on `peer`
+          is incremented by 1. num_blocks = 0 uses one thread block per put.
+          )DOC")
+      .def(
+          "increment_peer_counter",
+          [](distributed::ProcessGroupNCCL &self,
+             const std::vector<std::tuple<int, uint64_t, size_t>> &increments,
+             py::object stream) {
+            std::vector<distributed::OneSidedCounterIncrement> descs;
+            descs.reserve(increments.size());
+            for (const auto &increment : increments) {
+              distributed::OneSidedCounterIncrement desc;
+              desc.peer = std::get<0>(increment);
+              desc.counter_window =
+                  reinterpret_cast<void *>(std::get<1>(increment));
+              desc.counter_offset = std::get<2>(increment);
+              descs.push_back(desc);
+            }
+            gpuStream_t raw_stream = OneSidedStream(stream);
+            py::gil_scoped_release release;
+            self.IncrementPeerCounter(descs, raw_stream);
+          },
+          py::arg("increments"),
+          py::arg("stream") = py::none(),
+          R"DOC(
+          Increments peer counters by 1. Each item is (peer, counter_window,
+          counter_offset). Peers in this rank's LSA team (its node) go through
+          an LSA atomic add, other peers through a GIN signal.
+          )DOC")
+      .def(
+          "set_peer_counter",
+          [](distributed::ProcessGroupNCCL &self,
+             const std::vector<std::tuple<int, uint64_t, size_t, uint64_t>>
+                 &sets,
+             py::object stream) {
+            std::vector<distributed::OneSidedCounterSet> descs;
+            descs.reserve(sets.size());
+            for (const auto &set : sets) {
+              distributed::OneSidedCounterSet desc;
+              desc.peer = std::get<0>(set);
+              desc.counter_window = reinterpret_cast<void *>(std::get<1>(set));
+              desc.counter_offset = std::get<2>(set);
+              desc.value = std::get<3>(set);
+              descs.push_back(desc);
+            }
+            gpuStream_t raw_stream = OneSidedStream(stream);
+            py::gil_scoped_release release;
+            self.SetPeerCounter(descs, raw_stream);
+          },
+          py::arg("sets"),
+          py::arg("stream") = py::none(),
+          R"DOC(
+          Stores values into counters of peers in this rank's LSA team (its
+          node) with a system-scope release store, after the work queued
+          before it on the stream. Each item is (peer, counter_window,
+          counter_offset, value).
+          )DOC")
+      .def(
+          "copy_to_peers",
+          [](distributed::ProcessGroupNCCL &self,
+             const std::vector<
+                 std::tuple<uint64_t, uint64_t, size_t, int, size_t>> &copies,
+             py::object stream) {
+            std::vector<distributed::OneSidedCopy> descs;
+            descs.reserve(copies.size());
+            for (const auto &copy : copies) {
+              distributed::OneSidedCopy desc;
+              desc.src = reinterpret_cast<const void *>(std::get<0>(copy));
+              desc.dst_window = reinterpret_cast<void *>(std::get<1>(copy));
+              desc.dst_offset = std::get<2>(copy);
+              desc.peer = std::get<3>(copy);
+              desc.bytes = std::get<4>(copy);
+              descs.push_back(desc);
+            }
+            gpuStream_t raw_stream = OneSidedStream(stream);
+            py::gil_scoped_release release;
+            self.CopyToPeers(descs, raw_stream);
+          },
+          py::arg("copies"),
+          py::arg("stream") = py::none(),
+          R"DOC(
+          Copies to windows of peers in this rank's LSA team (its node) with
+          one cudaMemcpyBatchAsync. Each item is (src_ptr, dst_window, dst_offset,
+          peer, bytes); src_ptr is a device address.
+          )DOC")
+      .def(
+          "flush",
+          [](distributed::ProcessGroupNCCL &self, py::object stream) {
+            gpuStream_t raw_stream = OneSidedStream(stream);
+            py::gil_scoped_release release;
+            self.Flush(raw_stream);
+          },
+          py::arg("stream") = py::none(),
+          R"DOC(
+          Flushes every GIN context: after it, the sources of the puts issued
+          so far on the stream may be reused.
+          )DOC");
 
   // Allocates a device buffer through ncclMemAlloc, whose address and size are
   // padded to NCCLCommContext::kNCCLWindowAlignment so that it can be handed to

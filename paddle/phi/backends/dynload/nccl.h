@@ -52,6 +52,26 @@ ncclMemOptConfig_t* ncclCommGenMemOptConfig(const char* commName,
                                             const char* protoStr);
 
 ncclResult_t ncclCommFreeMemOptConfig(ncclMemOptConfig_t* config);
+
+// Host entry points of the NCCL device (LSA/GIN) API. They are declared in
+// nccl_device.h (nccl_device/core.h in 2.30.x and 2.31.x), which must not be
+// included here. The prototypes must match nccl_device.h exactly, so that both
+// declarations can coexist when nccl_device.h is included after this header.
+#if NCCL_VERSION_CODE >= 23007 && !defined(_NCCL_DEVICE_CORE_H_)
+struct ncclDevComm;
+typedef struct ncclDevComm ncclDevComm_t;
+struct ncclDevCommRequirements;
+typedef struct ncclDevCommRequirements ncclDevCommRequirements_t;
+
+ncclResult_t ncclDevCommCreate(ncclComm_t comm,
+                               ncclDevCommRequirements_t const* reqs,
+                               ncclDevComm_t* outDevComm);
+ncclResult_t ncclDevCommDestroy(ncclComm_t comm, ncclDevComm_t const* devComm);
+ncclResult_t ncclGetLsaDevicePointer(ncclWindow_t window,
+                                     size_t offset,
+                                     int lsaRank,
+                                     void** outPtr);
+#endif
 #ifdef __cplusplus
 }
 #endif
@@ -137,6 +157,9 @@ NCCL_RAND_ROUTINE_EACH_AFTER_21100(DECLARE_DYNAMIC_LOAD_NCCL_WRAP)
 // but the hierarchical zero-SM collectives only work from 2.30.7 on, so they
 // are gated as one group on that version: below it the feature is refused
 // rather than silently degraded.
+// ncclDevCommCreate / ncclDevCommDestroy / ncclGetLsaDevicePointer are the host
+// entry points of the device (LSA/GIN) API used by the one-sided primitives of
+// ProcessGroupNCCL; they are present from 2.30.7 on as well.
 #if NCCL_VERSION_CODE >= 23007
 #define NCCL_RAND_ROUTINE_EACH_AFTER_23007(__macro) \
   __macro(ncclCommInitRankConfig);                  \
@@ -146,7 +169,10 @@ NCCL_RAND_ROUTINE_EACH_AFTER_21100(DECLARE_DYNAMIC_LOAD_NCCL_WRAP)
   __macro(ncclCommDeregister);                      \
   __macro(ncclCommWindowRegister);                  \
   __macro(ncclCommWindowDeregister);                \
-  __macro(ncclAlltoAll);
+  __macro(ncclAlltoAll);                            \
+  __macro(ncclDevCommCreate);                       \
+  __macro(ncclDevCommDestroy);                      \
+  __macro(ncclGetLsaDevicePointer);
 NCCL_RAND_ROUTINE_EACH_AFTER_23007(DECLARE_DYNAMIC_LOAD_NCCL_WRAP)
 #endif
 

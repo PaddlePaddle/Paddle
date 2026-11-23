@@ -14,6 +14,21 @@
 
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
 
+// The NCCL device API (ncclDevComm, LSA pointers, GIN) is used with NCCL 2.30.7
+// or newer with nccl_device.h, on CUDA 13.0 or newer.
+#if defined(PADDLE_WITH_NCCL) && NCCL_VERSION_CODE >= 23007 && \
+    defined(CUDA_VERSION) && CUDA_VERSION >= 13000 && defined(__has_include)
+#if __has_include(<nccl_device.h>)
+#include <nccl_device.h>
+#define PADDLE_WITH_NCCL_DEVICE_API
+#endif
+#endif
+
+#include <algorithm>
+#include <cstring>
+#include <limits>
+#include <vector>
+
 #include "glog/logging.h"
 
 #include "paddle/phi/core/dense_tensor.h"
@@ -24,10 +39,58 @@
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/utils/data_type.h"
 
+#ifdef PADDLE_WITH_NCCL_DEVICE_API
+#include "paddle/phi/backends/dynload/cuda_driver.h"
+#endif
+
 namespace phi::distributed {
 
 // set this flag to `true` and recompile to enable dynamic checks
 constexpr bool FLAGS_enable_nccl_dynamic_check = false;
+
+struct NCCLCommContext::DeviceApiState {
+  // Window handle -> start of the registered buffer (the key of windows_).
+  std::unordered_map<void*, void*> window_ptrs;
+  // Window handle -> device address of offset 0 of the window on each LSA
+  // index, filled on first use (nullptr = not looked up yet).
+  std::unordered_map<void*, std::vector<void*>> lsa_bases;
+  bool has_dev_comm{false};
+  int gin_context_hint{0};
+  NCCLDevCommInfo info;
+#ifdef PADDLE_WITH_NCCL_DEVICE_API
+  ncclDevComm dev_comm{};
+  // Memory of a host window.
+  struct HostMemory {
+    CUmemGenericAllocationHandle handle{0};
+    void* ptr{nullptr};
+    size_t bytes{0};
+  };
+  // Window handle -> memory, for the windows of AllocHostWindow().
+  std::unordered_map<void*, HostMemory> host_windows;
+#endif
+};
+
+#ifdef PADDLE_WITH_NCCL_DEVICE_API
+namespace {
+
+// Unmaps and frees the memory of a host window.
+void ReleaseHostMemory(CUmemGenericAllocationHandle handle,
+                       void* ptr,
+                       size_t bytes) {
+  auto address = reinterpret_cast<CUdeviceptr>(ptr);
+  if (address != 0) {
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cuMemUnmap(address, bytes));
+  }
+  if (handle != 0) {
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cuMemRelease(handle));
+  }
+  if (address != 0) {
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cuMemAddressFree(address, bytes));
+  }
+}
+
+}  // namespace
+#endif
 
 NCCLCommContext::NCCLCommContext(
     int rank,
@@ -40,10 +103,13 @@ NCCLCommContext::NCCLCommContext(
       nccl_comm_(nullptr),
       nranks(size_),
       myrank(rank_),
-      param(nccl_comm_init_option) {
+      param(nccl_comm_init_option),
+      device_api_(std::make_unique<DeviceApiState>()) {
   this->CreateNCCLComm(nccl_id, nccl_config_ptr);
   NCCL_CHECK(phi::dynload::ncclGetVersion(&nccl_version_));
 }
+
+NCCLCommContext::~NCCLCommContext() = default;
 
 void NCCLCommContext::CreateNCCLComm(
     ncclUniqueId nccl_id,
@@ -54,9 +120,17 @@ void NCCLCommContext::CreateNCCLComm(
   // handle back from its cache: deregister while the old communicator is still
   // alive, or simply forget the windows when it is already gone.
   if (nccl_comm_ != nullptr) {
+    DestroyDevComm();
     DeregisterAllWindows();
+    FreeAllHostWindowMemory();
   } else {
     windows_.clear();
+    device_api_->window_ptrs.clear();
+    device_api_->lsa_bases.clear();
+    FreeAllHostWindowMemory();
+    device_api_->has_dev_comm = false;
+    device_api_->gin_context_hint = 0;
+    device_api_->info = NCCLDevCommInfo{};
   }
   if (param > 0 && phi::dynload::ncclCommInitRank2.IsValid()) {
     LOG(WARNING) << "Creating modified qp with ncclCommInitRank2.";
@@ -103,7 +177,9 @@ void NCCLCommContext::CreateNCCLComm(
 
 void NCCLCommContext::DestroyNCCLComm() {
   if (nccl_comm_ != nullptr) {
+    DestroyDevComm();
     DeregisterAllWindows();
+    FreeAllHostWindowMemory();
     NCCL_CHECK(phi::dynload::ncclCommDestroy(nccl_comm_));
     nccl_comm_ = nullptr;
   }
@@ -141,6 +217,7 @@ void* NCCLCommContext::RegisterWindow(void* ptr, size_t size, int win_flags) {
   NCCL_CHECK(phi::dynload::ncclCommWindowRegister(
       nccl_comm_, ptr, size, &win, win_flags));
   windows_.emplace(ptr, RegisteredWindow{reinterpret_cast<void*>(win), size});
+  device_api_->window_ptrs[reinterpret_cast<void*>(win)] = ptr;
   VLOG(3) << "Registered NCCL window for buffer " << ptr << " of size " << size
           << " with flags " << win_flags;
   return reinterpret_cast<void*>(win);
@@ -162,6 +239,8 @@ void NCCLCommContext::DeregisterWindow(void* ptr) {
     NCCL_CHECK(phi::dynload::ncclCommWindowDeregister(
         nccl_comm_, reinterpret_cast<ncclWindow_t>(iter->second.handle)));
   }
+  device_api_->window_ptrs.erase(iter->second.handle);
+  device_api_->lsa_bases.erase(iter->second.handle);
   windows_.erase(iter);
 #endif
 }
@@ -175,6 +254,8 @@ void NCCLCommContext::DeregisterAllWindows() {
     }
   }
   windows_.clear();
+  device_api_->window_ptrs.clear();
+  device_api_->lsa_bases.clear();
 #endif
 }
 
@@ -188,6 +269,292 @@ bool NCCLCommContext::IsRegistered(const void* ptr, size_t size) const {
     }
   }
   return false;
+}
+
+void* NCCLCommContext::GetWindow(const void* ptr) const {
+  auto iter = windows_.find(const_cast<void*>(ptr));
+  return iter == windows_.end() ? nullptr : iter->second.handle;
+}
+
+bool NCCLCommContext::GetWindowRange(void* window,
+                                     void** ptr,
+                                     size_t* size) const {
+  auto iter = device_api_->window_ptrs.find(window);
+  if (iter == device_api_->window_ptrs.end()) {
+    return false;
+  }
+  *ptr = iter->second;
+  *size = windows_.at(iter->second).size;
+  return true;
+}
+
+bool NCCLCommContext::IsDevCommSupported() {
+#ifdef PADDLE_WITH_NCCL_DEVICE_API
+  return phi::dynload::ncclDevCommCreate.IsValid() &&
+         phi::dynload::ncclDevCommDestroy.IsValid() &&
+         phi::dynload::ncclGetLsaDevicePointer.IsValid() &&
+         phi::dynload::ncclCommWindowRegister.IsValid();
+#else
+  return false;
+#endif
+}
+
+NCCLDevCommInfo NCCLCommContext::GetOrCreateDevComm(int gin_context_count) {
+#ifdef PADDLE_WITH_NCCL_DEVICE_API
+  DeviceApiState& state = *device_api_;
+  if (state.has_dev_comm) {
+    PADDLE_ENFORCE_EQ(
+        gin_context_count,
+        state.gin_context_hint,
+        common::errors::InvalidArgument(
+            "The device communicator was created with a GIN context count "
+            "hint of %d, but got %d.",
+            state.gin_context_hint,
+            gin_context_count));
+    return state.info;
+  }
+  PADDLE_ENFORCE_EQ(
+      IsDevCommSupported(),
+      true,
+      common::errors::Unavailable(
+          "The loaded NCCL library does not provide the device API entry "
+          "points (ncclDevCommCreate, ncclDevCommDestroy, "
+          "ncclGetLsaDevicePointer); NCCL 2.30.7 or newer is required."));
+  PADDLE_ENFORCE_NOT_NULL(
+      nccl_comm_,
+      common::errors::PreconditionNotMet(
+          "The NCCL communicator has not been created or has been destroyed."));
+  PADDLE_ENFORCE_GT(gin_context_count,
+                    0,
+                    common::errors::InvalidArgument(
+                        "The GIN context count hint must be positive, but "
+                        "got %d.",
+                        gin_context_count));
+  ncclDevCommRequirements_t reqs = NCCL_DEV_COMM_REQUIREMENTS_INITIALIZER;
+  reqs.ginConnectionType = NCCL_GIN_CONNECTION_FULL;
+  reqs.ginContextCount = gin_context_count;
+  reqs.ginSignalCount = 1;
+  reqs.ginCounterCount = 0;
+  NCCL_CHECK(
+      phi::dynload::ncclDevCommCreate(nccl_comm_, &reqs, &state.dev_comm));
+  state.has_dev_comm = true;
+  state.gin_context_hint = gin_context_count;
+  state.info.dev_comm = &state.dev_comm;
+  state.info.rank = state.dev_comm.rank;
+  state.info.nranks = state.dev_comm.nRanks;
+  state.info.lsa_rank = state.dev_comm.lsaRank;
+  state.info.lsa_size = state.dev_comm.lsaSize;
+  state.info.gin_context_count =
+      static_cast<int>(state.dev_comm.ginContextCount);
+  VLOG(3) << "Created NCCL device communicator: rank " << state.info.rank << "/"
+          << state.info.nranks << ", lsa rank " << state.info.lsa_rank << "/"
+          << state.info.lsa_size << ", " << state.info.gin_context_count
+          << " GIN contexts";
+  return state.info;
+#else
+  PADDLE_THROW(common::errors::Unavailable(
+      "Paddle was not compiled against the NCCL device API (NCCL 2.30.7 or "
+      "newer with nccl_device.h)."));
+#endif
+}
+
+bool NCCLCommContext::HasDevComm() const { return device_api_->has_dev_comm; }
+
+const NCCLDevCommInfo& NCCLCommContext::GetDevCommInfo() const {
+  PADDLE_ENFORCE_EQ(device_api_->has_dev_comm,
+                    true,
+                    common::errors::PreconditionNotMet(
+                        "The NCCL device communicator has not been created; "
+                        "call GetOrCreateDevComm() on every rank first."));
+  return device_api_->info;
+}
+
+void NCCLCommContext::DestroyDevComm() {
+#ifdef PADDLE_WITH_NCCL_DEVICE_API
+  DeviceApiState& state = *device_api_;
+  if (state.has_dev_comm) {
+    NCCL_CHECK(phi::dynload::ncclDevCommDestroy(nccl_comm_, &state.dev_comm));
+  }
+  state.dev_comm = ncclDevComm{};
+#endif
+  device_api_->has_dev_comm = false;
+  device_api_->gin_context_hint = 0;
+  device_api_->info = NCCLDevCommInfo{};
+}
+
+void* NCCLCommContext::LsaPointer(void* window, int lsa_peer, size_t offset) {
+#ifdef PADDLE_WITH_NCCL_DEVICE_API
+  void* ptr = nullptr;
+  size_t size = 0;
+  PADDLE_ENFORCE_EQ(
+      GetWindowRange(window, &ptr, &size),
+      true,
+      common::errors::InvalidArgument(
+          "Window %p is not registered on this communicator.", window));
+  PADDLE_ENFORCE_LE(offset,
+                    size,
+                    common::errors::InvalidArgument(
+                        "Offset %d is past the end of window %p (%d bytes).",
+                        offset,
+                        window,
+                        size));
+  const int lsa_size = GetDevCommInfo().lsa_size;
+  PADDLE_ENFORCE_EQ(
+      lsa_peer >= 0 && lsa_peer < lsa_size,
+      true,
+      common::errors::InvalidArgument(
+          "LSA index %d is out of range [0, %d).", lsa_peer, lsa_size));
+  std::vector<void*>& bases = device_api_->lsa_bases[window];
+  if (bases.size() <= static_cast<size_t>(lsa_peer)) {
+    bases.resize(static_cast<size_t>(lsa_peer) + 1, nullptr);
+  }
+  if (bases[lsa_peer] == nullptr) {
+    NCCL_CHECK(phi::dynload::ncclGetLsaDevicePointer(
+        reinterpret_cast<ncclWindow_t>(window), 0, lsa_peer, &bases[lsa_peer]));
+  }
+  return static_cast<char*>(bases[lsa_peer]) + offset;
+#else
+  PADDLE_THROW(common::errors::Unavailable(
+      "Paddle was not compiled against the NCCL device API (NCCL 2.30.7 or "
+      "newer with nccl_device.h)."));
+#endif
+}
+
+NCCLHostWindow NCCLCommContext::AllocHostWindow(size_t bytes) {
+#ifdef PADDLE_WITH_NCCL_DEVICE_API
+  PADDLE_ENFORCE_EQ(phi::dynload::ncclCommWindowRegister.IsValid(),
+                    true,
+                    common::errors::Unavailable(
+                        "ncclCommWindowRegister is not provided by the loaded "
+                        "NCCL library (NCCL 2.30.7 or newer is required)."));
+  PADDLE_ENFORCE_NOT_NULL(
+      nccl_comm_,
+      common::errors::PreconditionNotMet(
+          "The NCCL communicator has not been created or has been destroyed."));
+  PADDLE_ENFORCE_GT(bytes,
+                    static_cast<size_t>(0),
+                    common::errors::InvalidArgument(
+                        "The host window size must be positive."));
+  int device_id = 0;
+  NCCL_CHECK(phi::dynload::ncclCommCuDevice(nccl_comm_, &device_id));
+  CUdevice cu_device;
+  PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cuDeviceGet(&cu_device, device_id));
+  int numa_id = -1;
+  if (phi::dynload::cuDeviceGetAttribute(&numa_id,
+                                         CU_DEVICE_ATTRIBUTE_HOST_NUMA_ID,
+                                         cu_device) != CUDA_SUCCESS ||
+      numa_id < 0) {
+    numa_id = 0;
+  }
+  CUmemAllocationProp alloc_prop;
+  std::memset(&alloc_prop, 0, sizeof(alloc_prop));
+  alloc_prop.type = CU_MEM_ALLOCATION_TYPE_PINNED;
+  alloc_prop.location.type = CU_MEM_LOCATION_TYPE_HOST_NUMA;
+  alloc_prop.location.id = numa_id;
+  // The ranks of the same node map this memory through a file descriptor.
+  alloc_prop.requestedHandleTypes = CU_MEM_HANDLE_TYPE_POSIX_FILE_DESCRIPTOR;
+  size_t granularity = 0;
+  PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cuMemGetAllocationGranularity(
+      &granularity, &alloc_prop, CU_MEM_ALLOC_GRANULARITY_MINIMUM));
+  constexpr size_t kMaxSize = std::numeric_limits<size_t>::max();
+  size_t alloc_bytes = std::max(bytes, kNCCLWindowAlignment);
+  PADDLE_ENFORCE_LE(alloc_bytes,
+                    kMaxSize - (granularity - 1),
+                    common::errors::InvalidArgument(
+                        "The host window size %d overflows size_t once "
+                        "rounded up to the allocation granularity %d.",
+                        bytes,
+                        granularity));
+  alloc_bytes = (alloc_bytes + granularity - 1) / granularity * granularity;
+
+  DeviceApiState::HostMemory memory;
+  memory.bytes = alloc_bytes;
+  bool mapped = false;
+  void* window = nullptr;
+  try {
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        phi::dynload::cuMemCreate(&memory.handle, alloc_bytes, &alloc_prop, 0));
+    CUdeviceptr address = 0;
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cuMemAddressReserve(
+        &address, alloc_bytes, granularity, 0, 0));
+    memory.ptr = reinterpret_cast<void*>(address);
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        phi::dynload::cuMemMap(address, alloc_bytes, 0, memory.handle, 0));
+    mapped = true;
+    CUmemAccessDesc access_desc;
+    std::memset(&access_desc, 0, sizeof(access_desc));
+    access_desc.location.type = CU_MEM_LOCATION_TYPE_DEVICE;
+    access_desc.location.id = device_id;
+    access_desc.flags = CU_MEM_ACCESS_FLAGS_PROT_READWRITE;
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        phi::dynload::cuMemSetAccess(address, alloc_bytes, &access_desc, 1));
+    access_desc.location.type = CU_MEM_LOCATION_TYPE_HOST_NUMA;
+    access_desc.location.id = numa_id;
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        phi::dynload::cuMemSetAccess(address, alloc_bytes, &access_desc, 1));
+    // The memory must be cleared before it is registered.
+    std::memset(memory.ptr, 0, alloc_bytes);
+    window = RegisterWindow(memory.ptr,
+                            alloc_bytes,
+                            NCCL_WIN_COLL_SYMMETRIC | NCCL_WIN_STRICT_ORDERING);
+    PADDLE_ENFORCE_NOT_NULL(
+        window,
+        common::errors::Unavailable(
+            "ncclCommWindowRegister returned no window for the host memory; "
+            "the communicator does not support symmetric memory."));
+  } catch (...) {
+    // Undo the steps that succeeded; errors here are ignored so that the
+    // original exception propagates.
+    auto address = reinterpret_cast<CUdeviceptr>(memory.ptr);
+    if (mapped) {
+      phi::dynload::cuMemUnmap(address, alloc_bytes);
+    }
+    if (memory.handle != 0) {
+      phi::dynload::cuMemRelease(memory.handle);
+    }
+    if (address != 0) {
+      phi::dynload::cuMemAddressFree(address, alloc_bytes);
+    }
+    throw;
+  }
+  device_api_->host_windows.emplace(window, memory);
+  VLOG(3) << "Allocated NCCL host window " << window << " at " << memory.ptr
+          << " of size " << alloc_bytes << " on host NUMA node " << numa_id;
+  return NCCLHostWindow{window, memory.ptr, alloc_bytes};
+#else
+  PADDLE_THROW(common::errors::Unavailable(
+      "Paddle was not compiled against the NCCL device API (NCCL 2.30.7 or "
+      "newer with nccl_device.h)."));
+#endif
+}
+
+void NCCLCommContext::FreeHostWindow(void* window) {
+#ifdef PADDLE_WITH_NCCL_DEVICE_API
+  auto iter = device_api_->host_windows.find(window);
+  PADDLE_ENFORCE_NE(iter,
+                    device_api_->host_windows.end(),
+                    common::errors::InvalidArgument(
+                        "Window %p was not allocated by AllocHostWindow() on "
+                        "this communicator.",
+                        window));
+  DeviceApiState::HostMemory memory = iter->second;
+  device_api_->host_windows.erase(iter);
+  DeregisterWindow(memory.ptr);
+  ReleaseHostMemory(memory.handle, memory.ptr, memory.bytes);
+#else
+  PADDLE_THROW(common::errors::Unavailable(
+      "Paddle was not compiled against the NCCL device API (NCCL 2.30.7 or "
+      "newer with nccl_device.h)."));
+#endif
+}
+
+void NCCLCommContext::FreeAllHostWindowMemory() {
+#ifdef PADDLE_WITH_NCCL_DEVICE_API
+  for (auto& item : device_api_->host_windows) {
+    ReleaseHostMemory(item.second.handle, item.second.ptr, item.second.bytes);
+  }
+  device_api_->host_windows.clear();
+#endif
 }
 
 bool NCCLCommContext::IsAllToAllAvailable() const {
