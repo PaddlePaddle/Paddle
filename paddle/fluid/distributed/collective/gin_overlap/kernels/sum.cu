@@ -183,8 +183,8 @@ cudaError_t LaunchSum(float* self_values,
                       const SumLayout& layout,
                       float scale,
                       int num_blocks,
-                      int num_threads,
-                      cudaStream_t stream) {
+                      cudaStream_t stream,
+                      int num_threads) {
   if (layout.num_sources < 1 || layout.self_index < 0 ||
       layout.self_index >= layout.num_sources || layout.num_shards < 1 ||
       (!kMultiShard && layout.num_shards != 1)) {
@@ -197,9 +197,9 @@ cudaError_t LaunchSum(float* self_values,
 }
 
 template cudaError_t LaunchSum<false, true, true>(
-    float*, const float*, const SumLayout&, float, int, int, cudaStream_t);
+    float*, const float*, const SumLayout&, float, int, cudaStream_t, int);
 template cudaError_t LaunchSum<true, false, false>(
-    float*, const float*, const SumLayout&, float, int, int, cudaStream_t);
+    float*, const float*, const SumLayout&, float, int, cudaStream_t, int);
 
 cudaError_t LaunchIntraNodeSum(float* grad,
                                const float* intra_recv,
@@ -220,7 +220,7 @@ cudaError_t LaunchIntraNodeSum(float* grad,
   layout.recv_shard_stride = numel;
   float* self_values = grad + static_cast<size_t>(rank_in_node) * numel;
   return LaunchSum<false, true, true>(
-      self_values, intra_recv, layout, 1.f, num_blocks, num_threads, stream);
+      self_values, intra_recv, layout, 1.f, num_blocks, stream, num_threads);
 }
 
 cudaError_t LaunchFinalSum(float* shard,
@@ -241,7 +241,7 @@ cudaError_t LaunchFinalSum(float* shard,
   layout.recv_row_stride = numel;
   layout.recv_shard_stride = 0;
   return LaunchSum<true, false, false>(
-      shard, recv, layout, scale, num_blocks, num_threads, stream);
+      shard, recv, layout, scale, num_blocks, stream, num_threads);
 }
 
 }  // namespace distributed

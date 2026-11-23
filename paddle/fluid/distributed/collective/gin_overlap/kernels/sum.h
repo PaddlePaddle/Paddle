@@ -72,8 +72,8 @@ cudaError_t LaunchSum(float* self_values,
                       const SumLayout& layout,
                       float scale,
                       int num_blocks,
-                      int num_threads,
-                      cudaStream_t stream);
+                      cudaStream_t stream,
+                      int num_threads);
 
 // Sum over the ranks of one node, for a bucket with one block per node.
 // LaunchSum<false, true, true>.
