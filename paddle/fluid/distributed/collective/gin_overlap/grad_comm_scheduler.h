@@ -393,8 +393,6 @@ class GinGradCommScheduler {
   int intra_sum_blocks_{0};
   int final_sum_blocks_{0};
   int consumed_slot_{-1};
-  std::vector<unsigned char> gather_reduced_;
-  std::vector<unsigned char> gather_sent_;
   std::vector<int> gather_pending_;
   std::vector<int> gather_put_entries_;
   // ---- per-step, caller thread only

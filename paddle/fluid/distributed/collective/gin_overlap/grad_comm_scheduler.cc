@@ -156,28 +156,12 @@ bool InWindow(
 
 GinGradCommScheduler::GinGradCommScheduler(
     const GinGradCommSchedulerConfig& config) {
-  PADDLE_ENFORCE_NOT_NULL(
-      config.dense_group,
-      common::errors::InvalidArgument(
-          "GinGradCommScheduler needs the process group of the dense "
-          "buckets (the sharding group)."));
   PADDLE_ENFORCE_GPU_SUCCESS(cudaGetDevice(&device_id_));
   const int num_buckets = static_cast<int>(config.buckets.size());
   int num_dense = 0;
   int num_expert = 0;
-  for (int i = 0; i < num_buckets; ++i) {
-    const int kind = config.buckets[i].kind;
-    PADDLE_ENFORCE_EQ(
-        kind == kGinDenseBucket || kind == kGinExpertBucket,
-        true,
-        common::errors::InvalidArgument(
-            "Bucket %d has kind %d; it must be DENSE_BUCKET (%d) or "
-            "EXPERT_BUCKET (%d).",
-            i,
-            kind,
-            static_cast<int>(kGinDenseBucket),
-            static_cast<int>(kGinExpertBucket)));
-    if (kind == kGinDenseBucket) {
+  for (const GinBucketDesc& bucket : config.buckets) {
+    if (bucket.kind == kGinDenseBucket) {
       ++num_dense;
     } else {
       ++num_expert;
@@ -206,30 +190,21 @@ GinGradCommScheduler::GinGradCommScheduler(
                            int kind,
                            int count,
                            const char* name) {
-    PADDLE_ENFORCE_EQ(static_cast<int>(order.size()),
-                      count,
+    bool ok = static_cast<int>(order.size()) == count;
+    for (int k = 0; ok && k < count; ++k) {
+      const int bucket = order[k];
+      ok = bucket >= 0 && bucket < num_buckets &&
+           buckets_[bucket].kind == kind && position_[bucket] < 0;
+      if (ok) position_[bucket] = k;
+    }
+    PADDLE_ENFORCE_EQ(ok,
+                      true,
                       common::errors::InvalidArgument(
-                          "The %s release order has %d entries, but the "
-                          "bucket table has %d %s buckets.",
+                          "The %s release order is not a permutation of the "
+                          "ids of the %d %s buckets.",
                           name,
-                          static_cast<int>(order.size()),
                           count,
                           name));
-    for (int k = 0; k < count; ++k) {
-      const int bucket = order[k];
-      PADDLE_ENFORCE_EQ(
-          bucket >= 0 && bucket < num_buckets &&
-              buckets_[bucket].kind == kind && position_[bucket] < 0,
-          true,
-          common::errors::InvalidArgument(
-              "The %s release order is not a permutation of the %s bucket "
-              "ids: entry %d is %d.",
-              name,
-              name,
-              k,
-              bucket));
-      position_[bucket] = k;
-    }
   };
   set_positions(dense_order_, kGinDenseBucket, num_dense, "dense");
   set_positions(expert_order_, kGinExpertBucket, num_expert, "expert");
@@ -238,35 +213,29 @@ GinGradCommScheduler::GinGradCommScheduler(
   gather_index_.assign(num_buckets, -1);
   for (size_t i = 0; i < config.gather.size(); ++i) {
     const GinGatherDesc& desc = config.gather[i];
+    const bool known = desc.bucket >= 0 && desc.bucket < num_buckets &&
+                       gather_index_[desc.bucket] < 0;
     PADDLE_ENFORCE_EQ(
-        desc.bucket >= 0 && desc.bucket < num_buckets &&
-            gather_index_[desc.bucket] < 0,
-        true,
-        common::errors::InvalidArgument(
-            "Gather entry %d names bucket %d, which is out of range or "
-            "already has an entry.",
-            static_cast<int>(i),
-            desc.bucket));
-    const Group& group = GroupOf(desc.bucket);
-    PADDLE_ENFORCE_EQ(
-        desc.owner >= 0 && desc.owner < group.size &&
+        known && desc.owner >= 0 && desc.owner < GroupOf(desc.bucket).size &&
             InWindow(desc.arrive_offset,
                      1,
                      kCounterBytes,
                      kCounterBytes,
-                     group.host_bytes) &&
+                     GroupOf(desc.bucket).host_bytes) &&
             InWindow(desc.intra_arrive_offset,
                      kMaxRanksPerNode,
                      kCounterBytes,
                      kCounterBytes,
-                     group.host_bytes),
+                     GroupOf(desc.bucket).host_bytes),
         true,
         common::errors::InvalidArgument(
-            "Gather entry of bucket %d: owner %d is not a rank of a group of "
-            "%d, or its arrival counters lie outside the host window.",
+            "Gather entry %d (bucket %d, owner %d): the bucket is out of "
+            "range or already has an entry, the owner is not a rank of its "
+            "group, or its arrival counters lie outside the host window.",
+            static_cast<int>(i),
             desc.bucket,
-            desc.owner,
-            group.size));
+            desc.owner));
+    const Group& group = GroupOf(desc.bucket);
     GatherEntry entry;
     entry.desc = desc;
     entry.is_owner = desc.owner == group.rank;
@@ -291,8 +260,6 @@ GinGradCommScheduler::GinGradCommScheduler(
   targets_.assign(num_buckets, 0);
   published_scale_.assign(num_buckets, 1.f);
   gather_owner_step_.assign(gather_.size(), 0);
-  gather_reduced_.assign(gather_.size(), 0);
-  gather_sent_.assign(gather_.size(), 0);
   CreateStreamsAndEvents(config.num_window_marks, config.num_tail_marks);
   slot_bucket_.assign(tail_marks_.size(), kSlotUnused);
 
@@ -352,22 +319,16 @@ void GinGradCommScheduler::InitGroup(int kind,
   const phi::distributed::NCCLDevCommInfo info = pg->GetDevCommInfo();
   phi::distributed::NCCLCommContext* comm_context =
       pg->GetOrCreateCommContext(phi::GPUPlace(device_id_));
-  auto lookup = [&](void* window, const char* what, size_t* bytes) {
+  // A window not registered on the communicator keeps its size at 0, so
+  // CheckTables() rejects every range in it.
+  auto lookup = [&](void* window, size_t* bytes) {
     void* ptr = nullptr;
-    PADDLE_ENFORCE_EQ(
-        window != nullptr && comm_context->GetWindowRange(window, &ptr, bytes),
-        true,
-        common::errors::InvalidArgument(
-            "The %s window %p of the %s group is not registered on its "
-            "communicator.",
-            what,
-            window,
-            name));
+    comm_context->GetWindowRange(window, &ptr, bytes);
     return static_cast<char*>(ptr);
   };
-  group.send = lookup(windows.send_window, "send", &group.send_bytes);
-  group.recv = lookup(windows.recv_window, "recv", &group.recv_bytes);
-  group.host = lookup(windows.host_window, "host", &group.host_bytes);
+  group.send = lookup(windows.send_window, &group.send_bytes);
+  group.recv = lookup(windows.recv_window, &group.recv_bytes);
+  group.host = lookup(windows.host_window, &group.host_bytes);
   const int lsa_size = info.lsa_size;
   PADDLE_ENFORCE_EQ(
       lsa_size >= 1 && lsa_size <= kMaxRanksPerNode &&
@@ -396,35 +357,30 @@ void GinGradCommScheduler::CheckTables(
   const Group& expert = groups_[kGinExpertBucket];
   const int64_t ranks_per_node = dense.ranks_per_node;
   const int64_t num_nodes = dense.num_nodes;
-  PADDLE_ENFORCE_EQ(
-      InWindow(credit_intra_offset_,
-               kMaxRanksPerNode,
-               kCounterBytes,
-               kCounterBytes,
-               dense.host_bytes) &&
-          InWindow(credit_inter_offset_,
-                   num_nodes,
-                   kCounterBytes,
-                   kCounterBytes,
-                   dense.host_bytes),
-      true,
-      common::errors::InvalidArgument(
-          "The intra-node / inter-node credit areas lie outside the host "
-          "window of the sharding group (%d bytes).",
-          dense.host_bytes));
-  if (!config.expert_order.empty()) {
-    PADDLE_ENFORCE_EQ(InWindow(credit_expert_offset_,
-                               expert.size,
-                               kCounterBytes,
-                               kCounterBytes,
-                               expert.host_bytes),
-                      true,
-                      common::errors::InvalidArgument(
-                          "The expert credit area lies outside the host "
-                          "window of the moe_sharding group (%d bytes).",
-                          expert.host_bytes));
+  // the first range that lies outside its window or is misaligned
+  std::ostringstream bad;
+  if (!InWindow(credit_intra_offset_,
+                kMaxRanksPerNode,
+                kCounterBytes,
+                kCounterBytes,
+                dense.host_bytes) ||
+      !InWindow(credit_inter_offset_,
+                num_nodes,
+                kCounterBytes,
+                kCounterBytes,
+                dense.host_bytes)) {
+    bad << "The intra-node / inter-node credit area (sharding group host "
+           "window of "
+        << dense.host_bytes << " bytes)";
+  } else if (!config.expert_order.empty() && !InWindow(credit_expert_offset_,
+                                                       expert.size,
+                                                       kCounterBytes,
+                                                       kCounterBytes,
+                                                       expert.host_bytes)) {
+    bad << "The expert credit area (moe_sharding group host window of "
+        << expert.host_bytes << " bytes)";
   }
-  for (size_t i = 0; i < config.buckets.size(); ++i) {
+  for (size_t i = 0; bad.tellp() == 0 && i < config.buckets.size(); ++i) {
     const GinBucketDesc& bucket = config.buckets[i];
     const bool is_dense = bucket.kind == kGinDenseBucket;
     const Group& group = is_dense ? dense : expert;
@@ -468,28 +424,22 @@ void GinGradCommScheduler::CheckTables(
                                                   kFloatBytes,
                                                   group.recv_bytes));
     }
-    PADDLE_ENFORCE_EQ(
-        ok,
-        true,
-        common::errors::InvalidArgument(
-            "Bucket %d (%s): shard of %d elements, or one of its ranges "
-            "(send, signal, arrival counters, recv slots), lies outside its "
-            "window or is misaligned.",
-            static_cast<int>(i),
-            is_dense ? "dense" : "expert",
-            numel));
+    if (!ok) {
+      bad << "Bucket " << i << " (" << (is_dense ? "dense" : "expert")
+          << ", shard of " << numel
+          << " elements): the shard size, or one of its ranges (send, "
+             "signal, arrival counters, recv slots)";
+    }
   }
+  PADDLE_ENFORCE_EQ(
+      bad.tellp() == 0,
+      true,
+      common::errors::InvalidArgument(
+          "%s lies outside its window or is misaligned.", bad.str()));
 }
 
 void GinGradCommScheduler::CreateStreamsAndEvents(int num_window_marks,
                                                   int num_tail_marks) {
-  PADDLE_ENFORCE_EQ(num_window_marks > 0 && num_tail_marks > 0,
-                    true,
-                    common::errors::InvalidArgument(
-                        "num_window_marks (%d) and num_tail_marks (%d) must "
-                        "be positive.",
-                        num_window_marks,
-                        num_tail_marks));
   stream_intra_copy_ = CreateStream();
   stream_intra_sum_ = CreateStream();
   stream_put_ = CreateStream();
@@ -918,19 +868,13 @@ void GinGradCommScheduler::SubmitExpertFinalSum(int bucket) {
 // node: CopyToPeers, then this rank's same-node arrival counter of the bucket
 // on the owner is incremented by 1; across nodes: one Put that increments the
 // owner's inter-node arrival counter of the bucket by 1) -> record the event.
-// Each sender sends each 2D bucket once per step (gather_sent_), so every
-// gather adds exactly 1 to one counter of the owner.
+// Each sender sends each 2D bucket once per step, so every gather adds
+// exactly 1 to one counter of the owner.
 void GinGradCommScheduler::SubmitGatherPut(int entry, cudaEvent_t wait_event) {
   const GatherEntry& gather = gather_[entry];
   const int bucket = gather.desc.bucket;
   const GinBucketDesc& desc = buckets_[bucket];
   const Group& group = GroupOf(bucket);
-  PADDLE_ENFORCE_EQ(gather_sent_[entry] == 0,
-                    true,
-                    common::errors::PreconditionNotMet(
-                        "The gather of bucket %d was sent twice in step %d.",
-                        bucket,
-                        step_ + 1));
   const int64_t shard_bytes = desc.shard_numel * kFloatBytes;
   const size_t offset =
       static_cast<size_t>(desc.send_offset + group.rank * shard_bytes);
@@ -966,7 +910,6 @@ void GinGradCommScheduler::SubmitGatherPut(int entry, cudaEvent_t wait_event) {
   }
   PADDLE_ENFORCE_GPU_SUCCESS(
       cudaEventRecord(event_gather_put_[entry], stream_gather_put_));
-  gather_sent_[entry] = 1;
   gather_put_entries_.push_back(entry);
 }
 
@@ -1119,14 +1062,6 @@ bool GinGradCommScheduler::ReleaseFinalSum(bool in_proxy) {
 void GinGradCommScheduler::AfterFinalSum(int bucket, bool in_proxy) {
   const int entry = gather_index_[bucket];
   if (entry < 0) return;
-  PADDLE_ENFORCE_EQ(gather_reduced_[entry] == 0,
-                    true,
-                    common::errors::PreconditionNotMet(
-                        "The FINAL_SUM of 2D bucket %d was released twice in "
-                        "step %d.",
-                        bucket,
-                        step_ + 1));
-  gather_reduced_[entry] = 1;
   if (gather_[entry].is_owner) return;
   if (in_proxy) {
     Submit(kGinOpGather, bucket, [&] {
@@ -1224,12 +1159,6 @@ void GinGradCommScheduler::StartProxy(int slot,
 }
 
 void GinGradCommScheduler::BucketReady(int bucket, float scale) {
-  PADDLE_ENFORCE_EQ(
-      bucket >= 0 && bucket < static_cast<int>(buckets_.size()),
-      true,
-      common::errors::InvalidArgument("Bucket %d is out of range [0, %d).",
-                                      bucket,
-                                      static_cast<int>(buckets_.size())));
   std::lock_guard<std::mutex> lock(mutex_);
   if (state_ == kErr) {
     PADDLE_THROW(common::errors::External("%s", ErrorText()));
@@ -1399,11 +1328,6 @@ void GinGradCommScheduler::ProxyMain() {
 }
 
 void GinGradCommScheduler::FinishStep(double timeout_s) {
-  PADDLE_ENFORCE_GT(
-      timeout_s,
-      0.0,
-      common::errors::InvalidArgument(
-          "FinishStep() got timeout_s %f; it must be positive.", timeout_s));
   std::unique_lock<std::mutex> lock(mutex_);
   if (state_ == kErr) {
     const std::string text = ErrorText();
@@ -1475,55 +1399,14 @@ void GinGradCommScheduler::FinishStep(double timeout_s) {
     state_ = kIdle;
     PADDLE_THROW(common::errors::External("%s", text));
   }
-  PADDLE_ENFORCE_EQ(state_ == kIdle || state_ == kDone,
-                    true,
-                    common::errors::PreconditionNotMet(
-                        "gin_overlap: unexpected scheduler state %d at the "
-                        "end of step %d.",
-                        state_,
-                        step_ + 1));
   state_ = kIdle;
   abort_ = false;
-  PADDLE_ENFORCE_EQ(
-      IsStepDone(),
-      true,
-      common::errors::PreconditionNotMet(
-          "gin_overlap: step %d is not fully released: dense intra copy "
-          "%d/%d, intra sum %d/%d, put %d/%d, final sum %d/%d; expert put "
-          "%d/%d, final sum %d/%d.",
-          step_ + 1,
-          pos_intra_copy_,
-          static_cast<int>(dense_order_.size()),
-          pos_intra_sum_,
-          static_cast<int>(dense_order_.size()),
-          pos_dense_put_,
-          static_cast<int>(dense_order_.size()),
-          pos_dense_final_sum_,
-          static_cast<int>(dense_order_.size()),
-          pos_expert_put_,
-          static_cast<int>(expert_order_.size()),
-          pos_expert_final_sum_,
-          static_cast<int>(expert_order_.size())));
   lock.unlock();
 
   // The release state is the caller's again. Gathers of 2D buckets whose
   // FINAL_SUM the caller released but no later GATHER sent go out now,
   // without a mark.
   ReleaseGather(nullptr);
-  for (size_t entry = 0; entry < gather_.size(); ++entry) {
-    PADDLE_ENFORCE_EQ(
-        gather_reduced_[entry] &&
-            (gather_[entry].is_owner || gather_sent_[entry]),
-        true,
-        common::errors::PreconditionNotMet(
-            "gin_overlap: 2D bucket %d of step %d: FINAL_SUM released %d, "
-            "gather sent %d (owner %d).",
-            gather_[entry].desc.bucket,
-            step_ + 1,
-            static_cast<int>(gather_reduced_[entry]),
-            static_cast<int>(gather_sent_[entry]),
-            static_cast<int>(gather_[entry].is_owner)));
-  }
   const cudaStream_t compute_stream = ComputeStream(device_id_);
   for (int bucket = 0; bucket < num_buckets; ++bucket) {
     JoinBucket(bucket, compute_stream);
@@ -1598,53 +1481,44 @@ bool GinGradCommScheduler::OwnedGatherPending(int entry,
   const uint64_t steps = static_cast<uint64_t>(gather_owner_step_[entry]);
   const uint64_t inter_target =
       steps * static_cast<uint64_t>(gather.num_inter_senders);
-  const uint64_t inter = HostCounter(group, gather.desc.arrive_offset);
-  std::ostringstream text;
-  if (inter < inter_target) {
-    if (why) {
-      text << "bucket " << bucket << " waits for the inter-node arrival "
-           << "counter (sum of all senders on other nodes): current " << inter
-           << " / target " << inter_target;
-      *why = text.str();
+  // Whether `value` is still below `target`. A value above its target means
+  // a gather was sent twice. `sender` is the group rank of a same-node
+  // sender, or -1 for the inter-node counter (all senders on other nodes).
+  const auto waits = [&](uint64_t value, uint64_t target, int sender) {
+    if (value <= target && (value == target || !why)) return value < target;
+    std::ostringstream what;
+    if (sender < 0) {
+      what << "inter-node arrival counter (sum of all senders on other nodes)";
+    } else {
+      what << "same-node arrival counter of group rank " << sender;
     }
+    PADDLE_ENFORCE_LE(
+        value,
+        target,
+        common::errors::PreconditionNotMet(
+            "gin_overlap: owner of 2D bucket %d in step %d: the %s is %d, "
+            "above its target %d; a gather was sent twice.",
+            bucket,
+            steps,
+            what.str(),
+            value,
+            target));
+    std::ostringstream text;
+    text << "bucket " << bucket << " waits for the " << what.str()
+         << ": current " << value << " / target " << target;
+    *why = text.str();
+    return true;
+  };
+  if (waits(HostCounter(group, gather.desc.arrive_offset), inter_target, -1)) {
     return true;
   }
-  PADDLE_ENFORCE_EQ(
-      inter,
-      inter_target,
-      common::errors::PreconditionNotMet(
-          "gin_overlap: owner of 2D bucket %d: inter-node arrival counter "
-          "%d exceeds its target %d (= step %d x %d senders on other nodes); "
-          "a gather was sent twice.",
-          bucket,
-          inter,
-          inter_target,
-          steps,
-          gather.num_inter_senders));
   for (const int l : gather.intra_senders) {
-    const uint64_t value =
-        HostCounter(group, gather.desc.intra_arrive_offset + kCounterBytes * l);
-    if (value < steps) {
-      if (why) {
-        text << "bucket " << bucket << " waits for the same-node arrival "
-             << "counter of group rank "
-             << group.node_index * group.ranks_per_node + l << ": current "
-             << value << " / target " << steps;
-        *why = text.str();
-      }
+    if (waits(HostCounter(group,
+                          gather.desc.intra_arrive_offset + kCounterBytes * l),
+              steps,
+              group.node_index * group.ranks_per_node + l)) {
       return true;
     }
-    PADDLE_ENFORCE_EQ(
-        value,
-        steps,
-        common::errors::PreconditionNotMet(
-            "gin_overlap: owner of 2D bucket %d: the same-node arrival "
-            "counter of node-local rank %d is %d, above the step count %d; "
-            "that rank sent a gather twice.",
-            bucket,
-            l,
-            value,
-            steps));
   }
   return false;
 }
@@ -1659,8 +1533,6 @@ void GinGradCommScheduler::ResetStep() {
   std::fill(ready_.begin(), ready_.end(), 0);
   std::fill(reported_.begin(), reported_.end(), 0);
   std::fill(slot_bucket_.begin(), slot_bucket_.end(), kSlotUnused);
-  std::fill(gather_reduced_.begin(), gather_reduced_.end(), 0);
-  std::fill(gather_sent_.begin(), gather_sent_.end(), 0);
   gather_pending_.clear();
   gather_put_entries_.clear();
   num_reported_ = 0;
