@@ -84,38 +84,38 @@ void CheckGinSupported() {
 
 #ifdef PADDLE_WITH_GIN_OVERLAP
 // Checks that [offset, offset + bytes) lies in `window` and that `offset` is
-// a multiple of `alignment`. `what` names the argument in the error.
+// a multiple of `alignment`. `range_name` names the argument in the error.
 void CheckWindowRange(phi::distributed::NCCLCommContext* comm_context,
                       void* window,
                       size_t offset,
                       size_t bytes,
                       size_t alignment,
-                      const char* what) {
-  void* base = nullptr;
-  size_t size = 0;
+                      const char* range_name) {
+  void* window_base = nullptr;
+  size_t window_bytes = 0;
   PADDLE_ENFORCE_EQ(
-      comm_context->GetWindowRange(window, &base, &size),
+      comm_context->GetWindowRange(window, &window_base, &window_bytes),
       true,
       common::errors::InvalidArgument(
           "The %s window %p is not registered on this process group.",
-          what,
+          range_name,
           window));
   PADDLE_ENFORCE_EQ(
-      offset <= size && bytes <= size - offset,
+      offset <= window_bytes && bytes <= window_bytes - offset,
       true,
       common::errors::InvalidArgument(
           "The %s range [%d, %d + %d) is outside window %p of %d bytes.",
-          what,
+          range_name,
           offset,
           offset,
           bytes,
           window,
-          size));
+          window_bytes));
   PADDLE_ENFORCE_EQ(offset % alignment,
                     static_cast<size_t>(0),
                     common::errors::InvalidArgument(
                         "The %s offset %d must be a multiple of %d bytes.",
-                        what,
+                        range_name,
                         offset,
                         alignment));
 }
@@ -1536,9 +1536,9 @@ bool ProcessGroupNCCL::IsGinSupported() {
 }
 
 phi::distributed::NCCLCommContext* ProcessGroupNCCL::GetGinCommContext(
-    bool create) {
+    bool create_if_missing) {
   const auto place = phi::GPUPlace(phi::backends::gpu::GetCurrentDeviceId());
-  if (!create) {
+  if (!create_if_missing) {
     PADDLE_ENFORCE_NE(
         place_to_comm_ctx_.find(GetKeyFromPlace(place)),
         place_to_comm_ctx_.end(),
@@ -1552,7 +1552,7 @@ phi::distributed::NCCLCommContext* ProcessGroupNCCL::GetGinCommContext(
 }
 
 int ProcessGroupNCCL::PeerToLsaIndex(
-    const phi::distributed::NCCLDevCommInfo& info, int peer) const {
+    const phi::distributed::NCCLDevCommInfo& dev_comm_info, int peer) const {
   PADDLE_ENFORCE_EQ(
       peer >= 0 && peer < size_,
       true,
@@ -1560,33 +1560,34 @@ int ProcessGroupNCCL::PeerToLsaIndex(
           "Peer %d is not a rank of this process group of size %d.",
           peer,
           size_));
-  if (peer / info.lsa_size != rank_ / info.lsa_size) {
+  if (peer / dev_comm_info.lsa_size != rank_ / dev_comm_info.lsa_size) {
     return -1;
   }
-  return peer % info.lsa_size;
+  return peer % dev_comm_info.lsa_size;
 }
 
 phi::distributed::NCCLDevCommInfo ProcessGroupNCCL::GetOrCreateDevComm(
     int gin_context_count) {
   CheckGinSupported();
-  auto* comm_context = GetGinCommContext(/*create=*/true);
-  const auto info = comm_context->GetOrCreateDevComm(gin_context_count);
+  auto* comm_context = GetGinCommContext(/*create_if_missing=*/true);
+  const auto dev_comm_info =
+      comm_context->GetOrCreateDevComm(gin_context_count);
   PADDLE_ENFORCE_EQ(
-      info.rank == rank_ && info.nranks == size_,
+      dev_comm_info.rank == rank_ && dev_comm_info.nranks == size_,
       true,
       common::errors::PreconditionNotMet(
           "The NCCL device communicator has rank %d of %d, but the process "
           "group has rank %d of %d.",
-          info.rank,
-          info.nranks,
+          dev_comm_info.rank,
+          dev_comm_info.nranks,
           rank_,
           size_));
   // PeerToLsaIndex() takes the LSA team of rank r to be ranks
   // [r / lsa_size * lsa_size, (r / lsa_size + 1) * lsa_size), which holds when
   // the ranks of each node are consecutive in the group (node-major order).
   PADDLE_ENFORCE_EQ(
-      info.lsa_size > 0 && size_ % info.lsa_size == 0 &&
-          info.lsa_rank == rank_ % info.lsa_size,
+      dev_comm_info.lsa_size > 0 && size_ % dev_comm_info.lsa_size == 0 &&
+          dev_comm_info.lsa_rank == rank_ % dev_comm_info.lsa_size,
       true,
       common::errors::PreconditionNotMet(
           "The GIN primitives of ProcessGroupNCCL require node-major rank "
@@ -1596,30 +1597,30 @@ phi::distributed::NCCLDevCommInfo ProcessGroupNCCL::GetOrCreateDevComm(
           "LSA team size %d.",
           rank_,
           size_,
-          info.lsa_rank,
-          info.lsa_size));
+          dev_comm_info.lsa_rank,
+          dev_comm_info.lsa_size));
   PADDLE_ENFORCE_GT(
-      info.gin_context_count,
+      dev_comm_info.gin_context_count,
       0,
       common::errors::Unavailable(
           "The NCCL device communicator was created without GIN contexts."));
-  return info;
+  return dev_comm_info;
 }
 
 phi::distributed::NCCLDevCommInfo ProcessGroupNCCL::GetDevCommInfo() {
   CheckGinSupported();
-  return GetGinCommContext(/*create=*/false)->GetDevCommInfo();
+  return GetGinCommContext(/*create_if_missing=*/false)->GetDevCommInfo();
 }
 
 phi::distributed::NCCLHostWindow ProcessGroupNCCL::AllocHostWindow(
     size_t bytes) {
   CheckGinSupported();
-  return GetGinCommContext(/*create=*/true)->AllocHostWindow(bytes);
+  return GetGinCommContext(/*create_if_missing=*/true)->AllocHostWindow(bytes);
 }
 
 void ProcessGroupNCCL::FreeHostWindow(void* window) {
   CheckGinSupported();
-  GetGinCommContext(/*create=*/false)->FreeHostWindow(window);
+  GetGinCommContext(/*create_if_missing=*/false)->FreeHostWindow(window);
 }
 
 void ProcessGroupNCCL::Put(const std::vector<PutArgs>& puts,
@@ -1635,10 +1636,10 @@ void ProcessGroupNCCL::Put(const std::vector<PutArgs>& puts,
   if (puts.empty()) {
     return;
   }
-  auto* comm_context = GetGinCommContext(/*create=*/false);
-  const auto& info = comm_context->GetDevCommInfo();
+  auto* comm_context = GetGinCommContext(/*create_if_missing=*/false);
+  const auto& dev_comm_info = comm_context->GetDevCommInfo();
   for (const auto& put : puts) {
-    PeerToLsaIndex(info, put.peer);
+    PeerToLsaIndex(dev_comm_info, put.peer);
     PADDLE_ENFORCE_NE(put.peer,
                       rank_,
                       common::errors::InvalidArgument(
@@ -1663,20 +1664,24 @@ void ProcessGroupNCCL::Put(const std::vector<PutArgs>& puts,
                      "counter");
   }
   gin_overlap::PutBatch batch{};
-  auto launch = [&]() {
-    const int blocks = num_blocks > 0 ? num_blocks : batch.count;
-    PADDLE_ENFORCE_GPU_SUCCESS(gin_overlap::LaunchPut(
-        info.dev_comm, batch, info.gin_context_count, blocks, stream));
+  auto launch_batch = [&]() {
+    const int grid_blocks = num_blocks > 0 ? num_blocks : batch.count;
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        gin_overlap::LaunchPut(dev_comm_info.dev_comm,
+                               batch,
+                               dev_comm_info.gin_context_count,
+                               grid_blocks,
+                               stream));
     batch.count = 0;
   };
   for (const auto& put : puts) {
-    batch.descs[batch.count++] = put;
-    if (batch.count == gin_overlap::kMaxDescsPerLaunch) {
-      launch();
+    batch.puts[batch.count++] = put;
+    if (batch.count == gin_overlap::kMaxOpsPerLaunch) {
+      launch_batch();
     }
   }
   if (batch.count > 0) {
-    launch();
+    launch_batch();
   }
 #endif
 }
@@ -1689,12 +1694,12 @@ void ProcessGroupNCCL::IncrementPeerCounter(
   if (increments.empty()) {
     return;
   }
-  auto* comm_context = GetGinCommContext(/*create=*/false);
-  const auto& info = comm_context->GetDevCommInfo();
+  auto* comm_context = GetGinCommContext(/*create_if_missing=*/false);
+  const auto& dev_comm_info = comm_context->GetDevCommInfo();
   std::vector<int> lsa_indices;
   lsa_indices.reserve(increments.size());
   for (const auto& increment : increments) {
-    lsa_indices.push_back(PeerToLsaIndex(info, increment.peer));
+    lsa_indices.push_back(PeerToLsaIndex(dev_comm_info, increment.peer));
     PADDLE_ENFORCE_NE(increment.peer,
                       rank_,
                       common::errors::InvalidArgument(
@@ -1709,27 +1714,30 @@ void ProcessGroupNCCL::IncrementPeerCounter(
                      "counter");
   }
   gin_overlap::IncrementPeerCounterBatch batch{};
-  auto launch = [&]() {
-    PADDLE_ENFORCE_GPU_SUCCESS(gin_overlap::LaunchIncrementPeerCounter(
-        info.dev_comm, batch, info.gin_context_count, stream));
+  auto launch_batch = [&]() {
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        gin_overlap::LaunchIncrementPeerCounter(dev_comm_info.dev_comm,
+                                                batch,
+                                                dev_comm_info.gin_context_count,
+                                                stream));
     batch.count = 0;
   };
   for (size_t i = 0; i < increments.size(); ++i) {
     const auto& increment = increments[i];
-    IncrementPeerCounterArgs& desc = batch.descs[batch.count++];
-    desc = increment;
-    desc.lsa_counter = lsa_indices[i] < 0
-                           ? nullptr
-                           : static_cast<uint64_t*>(comm_context->LsaPointer(
-                                 increment.counter_window,
-                                 lsa_indices[i],
-                                 increment.counter_offset));
-    if (batch.count == gin_overlap::kMaxDescsPerLaunch) {
-      launch();
+    IncrementPeerCounterArgs& batched = batch.increments[batch.count++];
+    batched = increment;
+    batched.lsa_counter = lsa_indices[i] < 0
+                              ? nullptr
+                              : static_cast<uint64_t*>(comm_context->LsaPointer(
+                                    increment.counter_window,
+                                    lsa_indices[i],
+                                    increment.counter_offset));
+    if (batch.count == gin_overlap::kMaxOpsPerLaunch) {
+      launch_batch();
     }
   }
   if (batch.count > 0) {
-    launch();
+    launch_batch();
   }
 #endif
 }
@@ -1741,8 +1749,8 @@ void ProcessGroupNCCL::CopyToPeers(const std::vector<CopyToPeersArgs>& copies,
   if (copies.empty()) {
     return;
   }
-  auto* comm_context = GetGinCommContext(/*create=*/false);
-  const auto& info = comm_context->GetDevCommInfo();
+  auto* comm_context = GetGinCommContext(/*create_if_missing=*/false);
+  const auto& dev_comm_info = comm_context->GetDevCommInfo();
   std::vector<void*> dsts;
   std::vector<const void*> srcs;
   std::vector<size_t> sizes;
@@ -1750,7 +1758,7 @@ void ProcessGroupNCCL::CopyToPeers(const std::vector<CopyToPeersArgs>& copies,
   srcs.reserve(copies.size());
   sizes.reserve(copies.size());
   for (const auto& copy : copies) {
-    const int lsa_index = PeerToLsaIndex(info, copy.peer);
+    const int lsa_index = PeerToLsaIndex(dev_comm_info, copy.peer);
     PADDLE_ENFORCE_GE(
         lsa_index,
         0,
@@ -1758,8 +1766,9 @@ void ProcessGroupNCCL::CopyToPeers(const std::vector<CopyToPeersArgs>& copies,
             "CopyToPeers() needs a peer in the LSA team of "
             "rank %d (ranks %d to %d), but got %d.",
             rank_,
-            rank_ / info.lsa_size * info.lsa_size,
-            rank_ / info.lsa_size * info.lsa_size + info.lsa_size - 1,
+            rank_ / dev_comm_info.lsa_size * dev_comm_info.lsa_size,
+            rank_ / dev_comm_info.lsa_size * dev_comm_info.lsa_size +
+                dev_comm_info.lsa_size - 1,
             copy.peer));
     PADDLE_ENFORCE_NE(
         copy.peer,
@@ -1784,10 +1793,11 @@ void ProcessGroupNCCL::CopyToPeers(const std::vector<CopyToPeersArgs>& copies,
                      "destination");
     dsts.push_back(
         comm_context->LsaPointer(copy.dst_window, lsa_index, copy.dst_offset));
-    void* src_base = nullptr;
-    size_t src_size = 0;
-    comm_context->GetWindowRange(copy.src_window, &src_base, &src_size);
-    srcs.push_back(static_cast<const char*>(src_base) + copy.src_offset);
+    void* src_window_base = nullptr;
+    size_t src_window_bytes = 0;
+    comm_context->GetWindowRange(
+        copy.src_window, &src_window_base, &src_window_bytes);
+    srcs.push_back(static_cast<const char*>(src_window_base) + copy.src_offset);
     sizes.push_back(copy.bytes);
   }
   cudaMemcpyAttributes copy_attrs;
@@ -1795,13 +1805,13 @@ void ProcessGroupNCCL::CopyToPeers(const std::vector<CopyToPeersArgs>& copies,
   copy_attrs.srcAccessOrder = cudaMemcpySrcAccessOrderStream;
   // CUDA 13 signature: (dsts, srcs, sizes, count, attrs, attrsIdxs, numAttrs,
   // stream). The one attribute set applies from copy 0 on.
-  size_t attrs_idx = 0;
+  size_t attr_start_copy = 0;
   PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyBatchAsync(dsts.data(),
                                                   srcs.data(),
                                                   sizes.data(),
                                                   dsts.size(),
                                                   &copy_attrs,
-                                                  &attrs_idx,
+                                                  &attr_start_copy,
                                                   1,
                                                   stream));
 #endif
@@ -1810,9 +1820,10 @@ void ProcessGroupNCCL::CopyToPeers(const std::vector<CopyToPeersArgs>& copies,
 void ProcessGroupNCCL::Flush(gpuStream_t stream) {
   CheckGinSupported();
 #ifdef PADDLE_WITH_GIN_OVERLAP
-  const auto& info = GetGinCommContext(/*create=*/false)->GetDevCommInfo();
-  PADDLE_ENFORCE_GPU_SUCCESS(
-      gin_overlap::LaunchFlush(info.dev_comm, info.gin_context_count, stream));
+  const auto& dev_comm_info =
+      GetGinCommContext(/*create_if_missing=*/false)->GetDevCommInfo();
+  PADDLE_ENFORCE_GPU_SUCCESS(gin_overlap::LaunchFlush(
+      dev_comm_info.dev_comm, dev_comm_info.gin_context_count, stream));
 #endif
 }
 }  // namespace paddle::distributed

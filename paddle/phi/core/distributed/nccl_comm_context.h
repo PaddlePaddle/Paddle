@@ -173,9 +173,9 @@ class NCCLCommContext final : public CommContext {
   void* GetWindow(const void* ptr) const;
 
   // Looks up a window handle returned by RegisterWindow(). Returns false when
-  // the handle is not registered here; otherwise sets *ptr and *size to the
-  // registered buffer.
-  bool GetWindowRange(void* window, void** ptr, size_t* size) const;
+  // the handle is not registered here; otherwise sets *base and *bytes to the
+  // start and size of the registered buffer.
+  bool GetWindowRange(void* window, void** base, size_t* bytes) const;
 
   // True when Paddle was built with PADDLE_WITH_GIN_OVERLAP (the NCCL device
   // API: NCCL 2.30.7 or newer with nccl_device.h, CUDA 13.0 or newer, sm_90 or
@@ -201,11 +201,11 @@ class NCCLCommContext final : public CommContext {
   const NCCLDevCommInfo& GetDevCommInfo() const;
 
   // Device address of byte `offset` of `window` in the memory of the rank with
-  // index `lsa_peer` in this rank's LSA team. This GPU can load from and store
+  // index `lsa_index` in this rank's LSA team. This GPU can load from and store
   // to that address. `window` is a handle returned by RegisterWindow() or
   // AllocHostWindow(); `offset` may equal the window size. Requires the device
   // communicator (GetOrCreateDevComm()).
-  void* LsaPointer(void* window, int lsa_peer, size_t offset);
+  void* LsaPointer(void* window, int lsa_index, size_t offset);
 
   // Allocates pinned host memory on the host NUMA node of this communicator's
   // GPU, mapped for the GPU and the CPU at the same address, zeroes it, and

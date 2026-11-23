@@ -100,13 +100,14 @@ static UNUSED void *use_ccl_comm_func = phi::detail::GetCCLComm(CPUPlace());
 #if defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_NCCL)
 namespace {
 
-py::dict DevCommInfoToDict(const phi::distributed::NCCLDevCommInfo &info) {
+py::dict DevCommInfoToDict(
+    const phi::distributed::NCCLDevCommInfo &dev_comm_info) {
   py::dict result;
-  result["rank"] = info.rank;
-  result["nranks"] = info.nranks;
-  result["lsa_rank"] = info.lsa_rank;
-  result["lsa_size"] = info.lsa_size;
-  result["gin_context_count"] = info.gin_context_count;
+  result["rank"] = dev_comm_info.rank;
+  result["nranks"] = dev_comm_info.nranks;
+  result["lsa_rank"] = dev_comm_info.lsa_rank;
+  result["lsa_size"] = dev_comm_info.lsa_size;
+  result["gin_context_count"] = dev_comm_info.gin_context_count;
   return result;
 }
 
@@ -1360,12 +1361,12 @@ void BindDistributed(py::module *m) {
       .def(
           "get_or_create_dev_comm",
           [](distributed::ProcessGroupNCCL &self, int gin_context_count) {
-            phi::distributed::NCCLDevCommInfo info;
+            phi::distributed::NCCLDevCommInfo dev_comm_info;
             {
               py::gil_scoped_release release;
-              info = self.GetOrCreateDevComm(gin_context_count);
+              dev_comm_info = self.GetOrCreateDevComm(gin_context_count);
             }
-            return DevCommInfoToDict(info);
+            return DevCommInfoToDict(dev_comm_info);
           },
           py::arg("gin_context_count") = 4)
       .def("dev_comm_info",
@@ -1409,26 +1410,27 @@ void BindDistributed(py::module *m) {
                                           size_t,
                                           int,
                                           uint64_t,
-                                          size_t>> &puts,
+                                          size_t>> &put_tuples,
              py::object stream,
              int num_blocks) {
-            std::vector<distributed::PutArgs> descs;
-            descs.reserve(puts.size());
-            for (const auto &put : puts) {
-              distributed::PutArgs desc;
-              desc.src_window = reinterpret_cast<void *>(std::get<0>(put));
-              desc.src_offset = std::get<1>(put);
-              desc.dst_window = reinterpret_cast<void *>(std::get<2>(put));
-              desc.dst_offset = std::get<3>(put);
-              desc.bytes = std::get<4>(put);
-              desc.peer = std::get<5>(put);
-              desc.counter_window = reinterpret_cast<void *>(std::get<6>(put));
-              desc.counter_offset = std::get<7>(put);
-              descs.push_back(desc);
+            std::vector<distributed::PutArgs> puts;
+            puts.reserve(put_tuples.size());
+            for (const auto &put_tuple : put_tuples) {
+              distributed::PutArgs put;
+              put.src_window = reinterpret_cast<void *>(std::get<0>(put_tuple));
+              put.src_offset = std::get<1>(put_tuple);
+              put.dst_window = reinterpret_cast<void *>(std::get<2>(put_tuple));
+              put.dst_offset = std::get<3>(put_tuple);
+              put.bytes = std::get<4>(put_tuple);
+              put.peer = std::get<5>(put_tuple);
+              put.counter_window =
+                  reinterpret_cast<void *>(std::get<6>(put_tuple));
+              put.counter_offset = std::get<7>(put_tuple);
+              puts.push_back(put);
             }
             gpuStream_t raw_stream = GinStream(stream);
             py::gil_scoped_release release;
-            self.Put(descs, raw_stream, num_blocks);
+            self.Put(puts, raw_stream, num_blocks);
           },
           py::arg("puts"),
           py::arg("stream") = py::none(),
@@ -1443,21 +1445,22 @@ void BindDistributed(py::module *m) {
       .def(
           "increment_peer_counter",
           [](distributed::ProcessGroupNCCL &self,
-             const std::vector<std::tuple<int, uint64_t, size_t>> &increments,
+             const std::vector<std::tuple<int, uint64_t, size_t>>
+                 &increment_tuples,
              py::object stream) {
-            std::vector<distributed::IncrementPeerCounterArgs> descs;
-            descs.reserve(increments.size());
-            for (const auto &increment : increments) {
-              distributed::IncrementPeerCounterArgs desc;
-              desc.peer = std::get<0>(increment);
-              desc.counter_window =
-                  reinterpret_cast<void *>(std::get<1>(increment));
-              desc.counter_offset = std::get<2>(increment);
-              descs.push_back(desc);
+            std::vector<distributed::IncrementPeerCounterArgs> increments;
+            increments.reserve(increment_tuples.size());
+            for (const auto &increment_tuple : increment_tuples) {
+              distributed::IncrementPeerCounterArgs increment;
+              increment.peer = std::get<0>(increment_tuple);
+              increment.counter_window =
+                  reinterpret_cast<void *>(std::get<1>(increment_tuple));
+              increment.counter_offset = std::get<2>(increment_tuple);
+              increments.push_back(increment);
             }
             gpuStream_t raw_stream = GinStream(stream);
             py::gil_scoped_release release;
-            self.IncrementPeerCounter(descs, raw_stream);
+            self.IncrementPeerCounter(increments, raw_stream);
           },
           py::arg("increments"),
           py::arg("stream") = py::none(),
@@ -1471,23 +1474,25 @@ void BindDistributed(py::module *m) {
           [](distributed::ProcessGroupNCCL &self,
              const std::vector<
                  std::tuple<uint64_t, size_t, uint64_t, size_t, int, size_t>>
-                 &copies,
+                 &copy_tuples,
              py::object stream) {
-            std::vector<distributed::CopyToPeersArgs> descs;
-            descs.reserve(copies.size());
-            for (const auto &copy : copies) {
-              distributed::CopyToPeersArgs desc;
-              desc.src_window = reinterpret_cast<void *>(std::get<0>(copy));
-              desc.src_offset = std::get<1>(copy);
-              desc.dst_window = reinterpret_cast<void *>(std::get<2>(copy));
-              desc.dst_offset = std::get<3>(copy);
-              desc.peer = std::get<4>(copy);
-              desc.bytes = std::get<5>(copy);
-              descs.push_back(desc);
+            std::vector<distributed::CopyToPeersArgs> copies;
+            copies.reserve(copy_tuples.size());
+            for (const auto &copy_tuple : copy_tuples) {
+              distributed::CopyToPeersArgs copy;
+              copy.src_window =
+                  reinterpret_cast<void *>(std::get<0>(copy_tuple));
+              copy.src_offset = std::get<1>(copy_tuple);
+              copy.dst_window =
+                  reinterpret_cast<void *>(std::get<2>(copy_tuple));
+              copy.dst_offset = std::get<3>(copy_tuple);
+              copy.peer = std::get<4>(copy_tuple);
+              copy.bytes = std::get<5>(copy_tuple);
+              copies.push_back(copy);
             }
             gpuStream_t raw_stream = GinStream(stream);
             py::gil_scoped_release release;
-            self.CopyToPeers(descs, raw_stream);
+            self.CopyToPeers(copies, raw_stream);
           },
           py::arg("copies"),
           py::arg("stream") = py::none(),

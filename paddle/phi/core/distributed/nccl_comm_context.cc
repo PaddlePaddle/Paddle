@@ -47,13 +47,13 @@ constexpr bool FLAGS_enable_nccl_dynamic_check = false;
 
 struct NCCLCommContext::DeviceApiState {
   // Window handle -> start of the registered buffer (the key of windows_).
-  std::unordered_map<void*, void*> window_ptrs;
+  std::unordered_map<void*, void*> window_buffers;
   // Window handle -> device address of offset 0 of the window on each LSA
   // index, filled on first use (nullptr = not looked up yet).
-  std::unordered_map<void*, std::vector<void*>> lsa_bases;
+  std::unordered_map<void*, std::vector<void*>> lsa_window_bases;
   bool has_dev_comm{false};
-  int gin_context_hint{0};
-  NCCLDevCommInfo info;
+  int requested_gin_context_count{0};
+  NCCLDevCommInfo dev_comm_info;
 #ifdef PADDLE_WITH_GIN_OVERLAP
   ncclDevComm dev_comm{};
   // Memory of a host window.
@@ -122,12 +122,12 @@ void NCCLCommContext::CreateNCCLComm(
     FreeAllHostWindowMemory();
   } else {
     windows_.clear();
-    device_api_->window_ptrs.clear();
-    device_api_->lsa_bases.clear();
+    device_api_->window_buffers.clear();
+    device_api_->lsa_window_bases.clear();
     FreeAllHostWindowMemory();
     device_api_->has_dev_comm = false;
-    device_api_->gin_context_hint = 0;
-    device_api_->info = NCCLDevCommInfo{};
+    device_api_->requested_gin_context_count = 0;
+    device_api_->dev_comm_info = NCCLDevCommInfo{};
   }
   if (param > 0 && phi::dynload::ncclCommInitRank2.IsValid()) {
     LOG(WARNING) << "Creating modified qp with ncclCommInitRank2.";
@@ -214,7 +214,7 @@ void* NCCLCommContext::RegisterWindow(void* ptr, size_t size, int win_flags) {
   NCCL_CHECK(phi::dynload::ncclCommWindowRegister(
       nccl_comm_, ptr, size, &win, win_flags));
   windows_.emplace(ptr, RegisteredWindow{reinterpret_cast<void*>(win), size});
-  device_api_->window_ptrs[reinterpret_cast<void*>(win)] = ptr;
+  device_api_->window_buffers[reinterpret_cast<void*>(win)] = ptr;
   VLOG(3) << "Registered NCCL window for buffer " << ptr << " of size " << size
           << " with flags " << win_flags;
   return reinterpret_cast<void*>(win);
@@ -236,8 +236,8 @@ void NCCLCommContext::DeregisterWindow(void* ptr) {
     NCCL_CHECK(phi::dynload::ncclCommWindowDeregister(
         nccl_comm_, reinterpret_cast<ncclWindow_t>(iter->second.handle)));
   }
-  device_api_->window_ptrs.erase(iter->second.handle);
-  device_api_->lsa_bases.erase(iter->second.handle);
+  device_api_->window_buffers.erase(iter->second.handle);
+  device_api_->lsa_window_bases.erase(iter->second.handle);
   windows_.erase(iter);
 #endif
 }
@@ -251,8 +251,8 @@ void NCCLCommContext::DeregisterAllWindows() {
     }
   }
   windows_.clear();
-  device_api_->window_ptrs.clear();
-  device_api_->lsa_bases.clear();
+  device_api_->window_buffers.clear();
+  device_api_->lsa_window_bases.clear();
 #endif
 }
 
@@ -274,14 +274,14 @@ void* NCCLCommContext::GetWindow(const void* ptr) const {
 }
 
 bool NCCLCommContext::GetWindowRange(void* window,
-                                     void** ptr,
-                                     size_t* size) const {
-  auto iter = device_api_->window_ptrs.find(window);
-  if (iter == device_api_->window_ptrs.end()) {
+                                     void** base,
+                                     size_t* bytes) const {
+  auto iter = device_api_->window_buffers.find(window);
+  if (iter == device_api_->window_buffers.end()) {
     return false;
   }
-  *ptr = iter->second;
-  *size = windows_.at(iter->second).size;
+  *base = iter->second;
+  *bytes = windows_.at(iter->second).size;
   return true;
 }
 
@@ -298,17 +298,17 @@ bool NCCLCommContext::IsDevCommSupported() {
 
 NCCLDevCommInfo NCCLCommContext::GetOrCreateDevComm(int gin_context_count) {
 #ifdef PADDLE_WITH_GIN_OVERLAP
-  DeviceApiState& state = *device_api_;
-  if (state.has_dev_comm) {
+  DeviceApiState& device_api = *device_api_;
+  if (device_api.has_dev_comm) {
     PADDLE_ENFORCE_EQ(
         gin_context_count,
-        state.gin_context_hint,
+        device_api.requested_gin_context_count,
         common::errors::InvalidArgument(
             "The device communicator was created with a GIN context count "
             "hint of %d, but got %d.",
-            state.gin_context_hint,
+            device_api.requested_gin_context_count,
             gin_context_count));
-    return state.info;
+    return device_api.dev_comm_info;
   }
   PADDLE_ENFORCE_EQ(
       IsDevCommSupported(),
@@ -327,27 +327,30 @@ NCCLDevCommInfo NCCLCommContext::GetOrCreateDevComm(int gin_context_count) {
                         "The GIN context count hint must be positive, but "
                         "got %d.",
                         gin_context_count));
-  ncclDevCommRequirements_t reqs = NCCL_DEV_COMM_REQUIREMENTS_INITIALIZER;
-  reqs.ginConnectionType = NCCL_GIN_CONNECTION_FULL;
-  reqs.ginContextCount = gin_context_count;
-  reqs.ginSignalCount = 1;
-  reqs.ginCounterCount = 0;
-  NCCL_CHECK(
-      phi::dynload::ncclDevCommCreate(nccl_comm_, &reqs, &state.dev_comm));
-  state.has_dev_comm = true;
-  state.gin_context_hint = gin_context_count;
-  state.info.dev_comm = &state.dev_comm;
-  state.info.rank = state.dev_comm.rank;
-  state.info.nranks = state.dev_comm.nRanks;
-  state.info.lsa_rank = state.dev_comm.lsaRank;
-  state.info.lsa_size = state.dev_comm.lsaSize;
-  state.info.gin_context_count =
-      static_cast<int>(state.dev_comm.ginContextCount);
-  VLOG(3) << "Created NCCL device communicator: rank " << state.info.rank << "/"
-          << state.info.nranks << ", lsa rank " << state.info.lsa_rank << "/"
-          << state.info.lsa_size << ", " << state.info.gin_context_count
-          << " GIN contexts";
-  return state.info;
+  ncclDevCommRequirements_t requirements =
+      NCCL_DEV_COMM_REQUIREMENTS_INITIALIZER;
+  requirements.ginConnectionType = NCCL_GIN_CONNECTION_FULL;
+  requirements.ginContextCount = gin_context_count;
+  requirements.ginSignalCount = 1;
+  requirements.ginCounterCount = 0;
+  NCCL_CHECK(phi::dynload::ncclDevCommCreate(
+      nccl_comm_, &requirements, &device_api.dev_comm));
+  device_api.has_dev_comm = true;
+  device_api.requested_gin_context_count = gin_context_count;
+  device_api.dev_comm_info.dev_comm = &device_api.dev_comm;
+  device_api.dev_comm_info.rank = device_api.dev_comm.rank;
+  device_api.dev_comm_info.nranks = device_api.dev_comm.nRanks;
+  device_api.dev_comm_info.lsa_rank = device_api.dev_comm.lsaRank;
+  device_api.dev_comm_info.lsa_size = device_api.dev_comm.lsaSize;
+  device_api.dev_comm_info.gin_context_count =
+      static_cast<int>(device_api.dev_comm.ginContextCount);
+  VLOG(3) << "Created NCCL device communicator: rank "
+          << device_api.dev_comm_info.rank << "/"
+          << device_api.dev_comm_info.nranks << ", lsa rank "
+          << device_api.dev_comm_info.lsa_rank << "/"
+          << device_api.dev_comm_info.lsa_size << ", "
+          << device_api.dev_comm_info.gin_context_count << " GIN contexts";
+  return device_api.dev_comm_info;
 #else
   PADDLE_THROW(common::errors::Unavailable(
       "Paddle was not built with PADDLE_WITH_GIN_OVERLAP (the NCCL device "
@@ -364,53 +367,57 @@ const NCCLDevCommInfo& NCCLCommContext::GetDevCommInfo() const {
                     common::errors::PreconditionNotMet(
                         "The NCCL device communicator has not been created; "
                         "call GetOrCreateDevComm() on every rank first."));
-  return device_api_->info;
+  return device_api_->dev_comm_info;
 }
 
 void NCCLCommContext::DestroyDevComm() {
 #ifdef PADDLE_WITH_GIN_OVERLAP
-  DeviceApiState& state = *device_api_;
-  if (state.has_dev_comm) {
-    NCCL_CHECK(phi::dynload::ncclDevCommDestroy(nccl_comm_, &state.dev_comm));
+  DeviceApiState& device_api = *device_api_;
+  if (device_api.has_dev_comm) {
+    NCCL_CHECK(
+        phi::dynload::ncclDevCommDestroy(nccl_comm_, &device_api.dev_comm));
   }
-  state.dev_comm = ncclDevComm{};
+  device_api.dev_comm = ncclDevComm{};
 #endif
   device_api_->has_dev_comm = false;
-  device_api_->gin_context_hint = 0;
-  device_api_->info = NCCLDevCommInfo{};
+  device_api_->requested_gin_context_count = 0;
+  device_api_->dev_comm_info = NCCLDevCommInfo{};
 }
 
-void* NCCLCommContext::LsaPointer(void* window, int lsa_peer, size_t offset) {
+void* NCCLCommContext::LsaPointer(void* window, int lsa_index, size_t offset) {
 #ifdef PADDLE_WITH_GIN_OVERLAP
-  void* ptr = nullptr;
-  size_t size = 0;
+  void* window_base = nullptr;
+  size_t window_bytes = 0;
   PADDLE_ENFORCE_EQ(
-      GetWindowRange(window, &ptr, &size),
+      GetWindowRange(window, &window_base, &window_bytes),
       true,
       common::errors::InvalidArgument(
           "Window %p is not registered on this communicator.", window));
   PADDLE_ENFORCE_LE(offset,
-                    size,
+                    window_bytes,
                     common::errors::InvalidArgument(
                         "Offset %d is past the end of window %p (%d bytes).",
                         offset,
                         window,
-                        size));
+                        window_bytes));
   const int lsa_size = GetDevCommInfo().lsa_size;
   PADDLE_ENFORCE_EQ(
-      lsa_peer >= 0 && lsa_peer < lsa_size,
+      lsa_index >= 0 && lsa_index < lsa_size,
       true,
       common::errors::InvalidArgument(
-          "LSA index %d is out of range [0, %d).", lsa_peer, lsa_size));
-  std::vector<void*>& bases = device_api_->lsa_bases[window];
-  if (bases.size() <= static_cast<size_t>(lsa_peer)) {
-    bases.resize(static_cast<size_t>(lsa_peer) + 1, nullptr);
+          "LSA index %d is out of range [0, %d).", lsa_index, lsa_size));
+  std::vector<void*>& peer_bases = device_api_->lsa_window_bases[window];
+  if (peer_bases.size() <= static_cast<size_t>(lsa_index)) {
+    peer_bases.resize(static_cast<size_t>(lsa_index) + 1, nullptr);
   }
-  if (bases[lsa_peer] == nullptr) {
+  if (peer_bases[lsa_index] == nullptr) {
     NCCL_CHECK(phi::dynload::ncclGetLsaDevicePointer(
-        reinterpret_cast<ncclWindow_t>(window), 0, lsa_peer, &bases[lsa_peer]));
+        reinterpret_cast<ncclWindow_t>(window),
+        0,
+        lsa_index,
+        &peer_bases[lsa_index]));
   }
-  return static_cast<char*>(bases[lsa_peer]) + offset;
+  return static_cast<char*>(peer_bases[lsa_index]) + offset;
 #else
   PADDLE_THROW(common::errors::Unavailable(
       "Paddle was not built with PADDLE_WITH_GIN_OVERLAP (the NCCL device "
@@ -468,7 +475,7 @@ NCCLHostWindow NCCLCommContext::AllocHostWindow(size_t bytes) {
 
   DeviceApiState::HostMemory memory;
   memory.bytes = alloc_bytes;
-  bool mapped = false;
+  bool is_mapped = false;
   void* window = nullptr;
   try {
     PADDLE_ENFORCE_GPU_SUCCESS(
@@ -479,7 +486,7 @@ NCCLHostWindow NCCLCommContext::AllocHostWindow(size_t bytes) {
     memory.ptr = reinterpret_cast<void*>(address);
     PADDLE_ENFORCE_GPU_SUCCESS(
         phi::dynload::cuMemMap(address, alloc_bytes, 0, memory.handle, 0));
-    mapped = true;
+    is_mapped = true;
     CUmemAccessDesc access_desc;
     std::memset(&access_desc, 0, sizeof(access_desc));
     access_desc.location.type = CU_MEM_LOCATION_TYPE_DEVICE;
@@ -505,7 +512,7 @@ NCCLHostWindow NCCLCommContext::AllocHostWindow(size_t bytes) {
     // Undo the steps that succeeded; errors here are ignored so that the
     // original exception propagates.
     auto address = reinterpret_cast<CUdeviceptr>(memory.ptr);
-    if (mapped) {
+    if (is_mapped) {
       phi::dynload::cuMemUnmap(address, alloc_bytes);
     }
     if (memory.handle != 0) {
@@ -551,8 +558,9 @@ void NCCLCommContext::FreeHostWindow(void* window) {
 
 void NCCLCommContext::FreeAllHostWindowMemory() {
 #ifdef PADDLE_WITH_GIN_OVERLAP
-  for (auto& item : device_api_->host_windows) {
-    ReleaseHostMemory(item.second.handle, item.second.ptr, item.second.bytes);
+  for (const auto& window_and_memory : device_api_->host_windows) {
+    const DeviceApiState::HostMemory& memory = window_and_memory.second;
+    ReleaseHostMemory(memory.handle, memory.ptr, memory.bytes);
   }
   device_api_->host_windows.clear();
 #endif

@@ -48,17 +48,18 @@ __global__ void PutKernel(ncclDevComm dev_comm,
       dev_comm,
       static_cast<int>(blockIdx.x % static_cast<unsigned>(num_gin_contexts)));
   const ncclTeam team = ncclTeamWorld(dev_comm);
-  for (int i = blockIdx.x; i < batch.count; i += gridDim.x) {
-    const PutArgs& desc = batch.descs[i];
+  for (int put_index = blockIdx.x; put_index < batch.count;
+       put_index += gridDim.x) {
+    const PutArgs& put = batch.puts[put_index];
     gin.put(team,
-            desc.peer,
-            static_cast<ncclWindow_t>(desc.dst_window),
-            desc.dst_offset,
-            static_cast<ncclWindow_t>(desc.src_window),
-            desc.src_offset,
-            desc.bytes,
-            ncclGin_VASignalInc{static_cast<ncclWindow_t>(desc.counter_window),
-                                desc.counter_offset},
+            put.peer,
+            static_cast<ncclWindow_t>(put.dst_window),
+            put.dst_offset,
+            static_cast<ncclWindow_t>(put.src_window),
+            put.src_offset,
+            put.bytes,
+            ncclGin_VASignalInc{static_cast<ncclWindow_t>(put.counter_window),
+                                put.counter_offset},
             ncclGin_None{},
             ncclCoopCta());
   }
@@ -71,20 +72,21 @@ __global__ void IncrementPeerCounterKernel(ncclDevComm dev_comm,
                                            IncrementPeerCounterBatch batch,
                                            int num_gin_contexts) {
 #if GIN_OVERLAP_COMM_DEVICE_CODE
-  const int i = blockIdx.x * blockDim.x + threadIdx.x;
-  if (i >= batch.count) return;
-  const IncrementPeerCounterArgs& desc = batch.descs[i];
-  if (desc.lsa_counter != nullptr) {
+  const int increment_index = blockIdx.x * blockDim.x + threadIdx.x;
+  if (increment_index >= batch.count) return;
+  const IncrementPeerCounterArgs& increment = batch.increments[increment_index];
+  if (increment.lsa_counter != nullptr) {
     __threadfence_system();
-    atomicAdd_system(reinterpret_cast<cuda_u64*>(desc.lsa_counter), 1ULL);
+    atomicAdd_system(reinterpret_cast<cuda_u64*>(increment.lsa_counter), 1ULL);
     return;
   }
-  ncclGin gin(dev_comm, i % num_gin_contexts);
-  gin.signal(ncclTeamWorld(dev_comm),
-             desc.peer,
-             ncclGin_VASignalInc{static_cast<ncclWindow_t>(desc.counter_window),
-                                 desc.counter_offset},
-             ncclCoopThread());
+  ncclGin gin(dev_comm, increment_index % num_gin_contexts);
+  gin.signal(
+      ncclTeamWorld(dev_comm),
+      increment.peer,
+      ncclGin_VASignalInc{static_cast<ncclWindow_t>(increment.counter_window),
+                          increment.counter_offset},
+      ncclCoopThread());
 #else
   __trap();
 #endif
@@ -116,7 +118,7 @@ cudaError_t LaunchIncrementPeerCounter(const void* dev_comm,
                                        const IncrementPeerCounterBatch& batch,
                                        int num_gin_contexts,
                                        cudaStream_t stream) {
-  IncrementPeerCounterKernel<<<1, kMaxDescsPerLaunch, 0, stream>>>(
+  IncrementPeerCounterKernel<<<1, kMaxOpsPerLaunch, 0, stream>>>(
       *static_cast<const ncclDevComm*>(dev_comm), batch, num_gin_contexts);
   return cudaGetLastError();
 }

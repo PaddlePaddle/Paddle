@@ -17,7 +17,7 @@
 // communicator is passed as a pointer to an ncclDevComm, and a window as its
 // ncclWindow_t handle cast to void*.
 //
-// A batch holds at most kMaxDescsPerLaunch descriptors and is passed to the
+// A batch holds at most kMaxOpsPerLaunch operations and is passed to the
 // kernel by value, so a launch does not read host or device memory that the
 // caller may reuse after the launch returns. The largest kernel parameter list
 // (ncclDevComm + PutBatch) stays below 4 KB.
@@ -36,21 +36,21 @@ namespace paddle {
 namespace distributed {
 namespace gin_overlap {
 
-constexpr int kMaxDescsPerLaunch = 32;
+constexpr int kMaxOpsPerLaunch = 32;
 
-// A batch of arguments for one launch: descs[0, count).
+// The operations of one launch: puts[0, count) / increments[0, count).
 struct PutBatch {
-  PutArgs descs[kMaxDescsPerLaunch];
+  PutArgs puts[kMaxOpsPerLaunch];
   int count;
 };
 
 struct IncrementPeerCounterBatch {
-  IncrementPeerCounterArgs descs[kMaxDescsPerLaunch];
+  IncrementPeerCounterArgs increments[kMaxOpsPerLaunch];
   int count;
 };
 
 // GIN puts, <<<num_blocks, 256>>>. Block b uses GIN context
-// b % num_gin_contexts and sends descriptors b, b + num_blocks, ... in turn.
+// b % num_gin_contexts and sends puts b, b + num_blocks, ... in turn.
 // Every thread of the block takes part in each put (ncclCoopCta).
 cudaError_t LaunchPut(const void* dev_comm,
                       const PutBatch& batch,
@@ -58,10 +58,10 @@ cudaError_t LaunchPut(const void* dev_comm,
                       int num_blocks,
                       cudaStream_t stream);
 
-// Counter increments, <<<1, kMaxDescsPerLaunch>>>, one thread per descriptor.
+// Counter increments, <<<1, kMaxOpsPerLaunch>>>, one thread per increment.
 // lsa_counter set: __threadfence_system() then atomicAdd_system on it.
 // Otherwise: ncclGin::signal on
-// GIN context (descriptor index % num_gin_contexts), one thread
+// GIN context (increment index % num_gin_contexts), one thread
 // (ncclCoopThread).
 cudaError_t LaunchIncrementPeerCounter(const void* dev_comm,
                                        const IncrementPeerCounterBatch& batch,
