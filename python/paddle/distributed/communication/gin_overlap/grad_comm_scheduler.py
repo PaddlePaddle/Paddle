@@ -886,7 +886,8 @@ def build_grad_comm_scheduler(opt):
       - Each bucket gets ``_gin_bucket_index`` (unified index) and ``_gin_scheduler``; each parameter gets a backward
         hook that reports its bucket once the bucket is full, i.e. after sharding_configs.accumulate_steps gradients
         per parameter (the bucket's _acc_steps, set when the sharding optimizer creates the bucket). The trainer must
-        set sharding_configs.accumulate_steps to its gradient accumulation steps."""
+        set sharding_configs.accumulate_steps to its gradient accumulation steps; with pipeline parallelism it must
+        equal pipeline_configs.accumulate_steps (raises otherwise)."""
     global scheduler
     from paddle.distributed.fleet.meta_optimizers.dygraph_optimizer.dygraph_sharding_optimizer import (
         DygraphShardingOptimizerV2,
@@ -910,6 +911,20 @@ def build_grad_comm_scheduler(opt):
             f"sharding_configs.gin_overlap_timeout must be positive, got {cfg.gin_overlap_timeout}"
         )
     hcg = opt._hcg
+    pp_degree = hcg.get_pipe_parallel_world_size()
+    if pp_degree > 1:
+        from paddle.distributed import fleet
+
+        pipeline_steps = fleet.fleet._user_defined_strategy.pipeline_configs[
+            "accumulate_steps"
+        ]
+        if pipeline_steps != cfg.accumulate_steps:
+            raise ValueError(
+                f"gin_overlap ({where}): with pp_degree={pp_degree} a bucket is full after "
+                f"sharding_configs.accumulate_steps={cfg.accumulate_steps} gradients per parameter, but the pipeline "
+                f"runs pipeline_configs.accumulate_steps={pipeline_steps} micro-steps per step; set both to the "
+                "gradient accumulation steps"
+            )
     world = hcg.get_sharding_parallel_group()
     # only the hcg of expert parallelism (EPHybridCommunicateGroup) has a moe_sharding group
     moe_group = (
