@@ -113,14 +113,6 @@ const char* CounterName(int counter) {
   }
 }
 
-// Grid size of a final sum submitted with blocks <= 0.
-int BlocksForNumel(int64_t numel) {
-  int64_t blocks = (numel + 255) / 256;
-  if (blocks < 1) blocks = 1;
-  if (blocks > 4096) blocks = 4096;
-  return static_cast<int>(blocks);
-}
-
 // Paddle's current compute stream of the device, the stream of
 // paddle.device.current_stream().
 cudaStream_t ComputeStream(int device_id) {
@@ -820,8 +812,7 @@ void GinGradCommScheduler::SubmitDenseFinalSum(int bucket) {
       group.num_nodes,
       group.node_index,
       scale_[bucket],
-      final_sum_blocks_ > 0 ? final_sum_blocks_
-                            : BlocksForNumel(bucket_desc.shard_numel),
+      final_sum_blocks_,
       stream_final_sum_));
   if (group.num_nodes > 1) {
     std::vector<IncrementPeerCounterArgs> credits;
@@ -858,8 +849,7 @@ void GinGradCommScheduler::SubmitExpertFinalSum(int bucket) {
       group.size,
       group.rank,
       scale_[bucket],
-      final_sum_blocks_ > 0 ? final_sum_blocks_
-                            : BlocksForNumel(bucket_desc.shard_numel),
+      final_sum_blocks_,
       stream_final_sum_));
   if (group.size > 1) {
     std::vector<IncrementPeerCounterArgs> credits;
@@ -1366,7 +1356,10 @@ void GinGradCommScheduler::FinishStep(double timeout_s) {
     PADDLE_THROW(common::errors::PreconditionNotMet(
         "gin_overlap: %d of %d buckets were not reported in step %d (e.g. "
         "%s). Every bucket must be reported every step; a bucket whose "
-        "parameters are all frozen is never reported.",
+        "parameters are all frozen is never reported. The cause may also be "
+        "that FusedCommBuffer._comm_grads was replaced (for example by "
+        "PaddleFleet's accuracy_compatible patch, use_dsv4_accuracy), so the "
+        "buckets never reach the scheduler.",
         num_buckets - num_reported_,
         num_buckets,
         step_ + 1,
