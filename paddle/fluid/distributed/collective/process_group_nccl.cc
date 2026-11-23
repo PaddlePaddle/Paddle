@@ -1833,13 +1833,16 @@ void ProcessGroupNCCL::CopyToPeers(const std::vector<CopyToPeersArgs>& copies,
         rank_,
         common::errors::InvalidArgument(
             "CopyToPeers() cannot target this rank (%d).", rank_));
-    PADDLE_ENFORCE_NOT_NULL(
-        copy.src,
-        common::errors::InvalidArgument("The copy source must not be null."));
     PADDLE_ENFORCE_GT(
         copy.bytes,
         static_cast<size_t>(0),
         common::errors::InvalidArgument("A copy must move at least one byte."));
+    CheckWindowRange(comm_context,
+                     copy.src_window,
+                     copy.src_offset,
+                     copy.bytes,
+                     1,
+                     "source");
     CheckWindowRange(comm_context,
                      copy.dst_window,
                      copy.dst_offset,
@@ -1848,7 +1851,10 @@ void ProcessGroupNCCL::CopyToPeers(const std::vector<CopyToPeersArgs>& copies,
                      "destination");
     dsts.push_back(
         comm_context->LsaPointer(copy.dst_window, lsa_index, copy.dst_offset));
-    srcs.push_back(copy.src);
+    void* src_base = nullptr;
+    size_t src_size = 0;
+    comm_context->GetWindowRange(copy.src_window, &src_base, &src_size);
+    srcs.push_back(static_cast<const char*>(src_base) + copy.src_offset);
     sizes.push_back(copy.bytes);
   }
   cudaMemcpyAttributes copy_attrs;

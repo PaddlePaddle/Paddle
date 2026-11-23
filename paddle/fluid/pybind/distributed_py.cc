@@ -1498,17 +1498,19 @@ void BindDistributed(py::module *m) {
           "copy_to_peers",
           [](distributed::ProcessGroupNCCL &self,
              const std::vector<
-                 std::tuple<uint64_t, uint64_t, size_t, int, size_t>> &copies,
+                 std::tuple<uint64_t, size_t, uint64_t, size_t, int, size_t>>
+                 &copies,
              py::object stream) {
             std::vector<distributed::CopyToPeersArgs> descs;
             descs.reserve(copies.size());
             for (const auto &copy : copies) {
               distributed::CopyToPeersArgs desc;
-              desc.src = reinterpret_cast<const void *>(std::get<0>(copy));
-              desc.dst_window = reinterpret_cast<void *>(std::get<1>(copy));
-              desc.dst_offset = std::get<2>(copy);
-              desc.peer = std::get<3>(copy);
-              desc.bytes = std::get<4>(copy);
+              desc.src_window = reinterpret_cast<void *>(std::get<0>(copy));
+              desc.src_offset = std::get<1>(copy);
+              desc.dst_window = reinterpret_cast<void *>(std::get<2>(copy));
+              desc.dst_offset = std::get<3>(copy);
+              desc.peer = std::get<4>(copy);
+              desc.bytes = std::get<5>(copy);
               descs.push_back(desc);
             }
             gpuStream_t raw_stream = GinStream(stream);
@@ -1519,8 +1521,9 @@ void BindDistributed(py::module *m) {
           py::arg("stream") = py::none(),
           R"DOC(
           Copies to windows of peers in this rank's LSA team (its node) with
-          one cudaMemcpyBatchAsync. Each item is (src_ptr, dst_window, dst_offset,
-          peer, bytes); src_ptr is a device address.
+          one cudaMemcpyBatchAsync. Each item is (src_window, src_offset,
+          dst_window, dst_offset, peer, bytes): `bytes` bytes go from this
+          rank's src_window to dst_window on group rank `peer`.
           )DOC")
       .def(
           "flush",

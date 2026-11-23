@@ -74,10 +74,12 @@ struct SetPeerCounterArgs {
   uint64_t value{0};
 };
 
-// A copy of `bytes` bytes from the device address `src` to `dst_offset` of
-// `dst_window` on `peer`, which must be in this rank's LSA team.
+// A copy of `bytes` bytes from `src_offset` of this rank's `src_window` to
+// `dst_offset` of `dst_window` on `peer`, which must be in this rank's LSA
+// team.
 struct CopyToPeersArgs {
-  const void* src{nullptr};
+  void* src_window{nullptr};
+  size_t src_offset{0};
   void* dst_window{nullptr};
   size_t dst_offset{0};
   int peer{0};
