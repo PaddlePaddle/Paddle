@@ -1467,34 +1467,6 @@ void BindDistributed(py::module *m) {
           an LSA atomic add, other peers through a GIN signal.
           )DOC")
       .def(
-          "set_peer_counter",
-          [](distributed::ProcessGroupNCCL &self,
-             const std::vector<std::tuple<int, uint64_t, size_t, uint64_t>>
-                 &sets,
-             py::object stream) {
-            std::vector<distributed::SetPeerCounterArgs> descs;
-            descs.reserve(sets.size());
-            for (const auto &set : sets) {
-              distributed::SetPeerCounterArgs desc;
-              desc.peer = std::get<0>(set);
-              desc.counter_window = reinterpret_cast<void *>(std::get<1>(set));
-              desc.counter_offset = std::get<2>(set);
-              desc.value = std::get<3>(set);
-              descs.push_back(desc);
-            }
-            gpuStream_t raw_stream = GinStream(stream);
-            py::gil_scoped_release release;
-            self.SetPeerCounter(descs, raw_stream);
-          },
-          py::arg("sets"),
-          py::arg("stream") = py::none(),
-          R"DOC(
-          Stores values into counters of peers in this rank's LSA team (its
-          node) with a system-scope release store, after the work queued
-          before it on the stream. Each item is (peer, counter_window,
-          counter_offset, value).
-          )DOC")
-      .def(
           "copy_to_peers",
           [](distributed::ProcessGroupNCCL &self,
              const std::vector<

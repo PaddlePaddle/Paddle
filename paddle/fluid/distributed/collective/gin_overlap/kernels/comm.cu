@@ -49,7 +49,7 @@ __global__ void PutKernel(ncclDevComm dev_comm,
       static_cast<int>(blockIdx.x % static_cast<unsigned>(num_gin_contexts)));
   const ncclTeam team = ncclTeamWorld(dev_comm);
   for (int i = blockIdx.x; i < batch.count; i += gridDim.x) {
-    const PutDesc& desc = batch.descs[i];
+    const PutArgs& desc = batch.descs[i];
     gin.put(team,
             desc.peer,
             static_cast<ncclWindow_t>(desc.dst_window),
@@ -73,7 +73,7 @@ __global__ void IncrementPeerCounterKernel(ncclDevComm dev_comm,
 #if GIN_OVERLAP_COMM_DEVICE_CODE
   const int i = blockIdx.x * blockDim.x + threadIdx.x;
   if (i >= batch.count) return;
-  const IncrementPeerCounterDesc& desc = batch.descs[i];
+  const IncrementPeerCounterArgs& desc = batch.descs[i];
   if (desc.lsa_counter != nullptr) {
     __threadfence_system();
     atomicAdd_system(reinterpret_cast<cuda_u64*>(desc.lsa_counter), 1ULL);
@@ -85,19 +85,6 @@ __global__ void IncrementPeerCounterKernel(ncclDevComm dev_comm,
              ncclGin_VASignalInc{static_cast<ncclWindow_t>(desc.counter_window),
                                  desc.counter_offset},
              ncclCoopThread());
-#else
-  __trap();
-#endif
-}
-
-__global__ void SetPeerCounterKernel(SetPeerCounterBatch batch) {
-#if GIN_OVERLAP_COMM_DEVICE_CODE
-  const int i = blockIdx.x * blockDim.x + threadIdx.x;
-  if (i >= batch.count) return;
-  __threadfence_system();
-  asm volatile("st.release.sys.u64 [%0], %1;" ::"l"(batch.descs[i].counter),
-               "l"(batch.descs[i].value)
-               : "memory");
 #else
   __trap();
 #endif
@@ -131,12 +118,6 @@ cudaError_t LaunchIncrementPeerCounter(const void* dev_comm,
                                        cudaStream_t stream) {
   IncrementPeerCounterKernel<<<1, kMaxDescsPerLaunch, 0, stream>>>(
       *static_cast<const ncclDevComm*>(dev_comm), batch, num_gin_contexts);
-  return cudaGetLastError();
-}
-
-cudaError_t LaunchSetPeerCounter(const SetPeerCounterBatch& batch,
-                                 cudaStream_t stream) {
-  SetPeerCounterKernel<<<1, kMaxDescsPerLaunch, 0, stream>>>(batch);
   return cudaGetLastError();
 }
 

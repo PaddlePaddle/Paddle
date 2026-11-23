@@ -1670,15 +1670,7 @@ void ProcessGroupNCCL::Put(const std::vector<PutArgs>& puts,
     batch.count = 0;
   };
   for (const auto& put : puts) {
-    gin_overlap::PutDesc& desc = batch.descs[batch.count++];
-    desc.src_window = put.src_window;
-    desc.src_offset = put.src_offset;
-    desc.dst_window = put.dst_window;
-    desc.dst_offset = put.dst_offset;
-    desc.bytes = put.bytes;
-    desc.counter_window = put.counter_window;
-    desc.counter_offset = put.counter_offset;
-    desc.peer = put.peer;
+    batch.descs[batch.count++] = put;
     if (batch.count == gin_overlap::kMaxDescsPerLaunch) {
       launch();
     }
@@ -1724,73 +1716,14 @@ void ProcessGroupNCCL::IncrementPeerCounter(
   };
   for (size_t i = 0; i < increments.size(); ++i) {
     const auto& increment = increments[i];
-    gin_overlap::IncrementPeerCounterDesc& desc = batch.descs[batch.count++];
+    IncrementPeerCounterArgs& desc = batch.descs[batch.count++];
+    desc = increment;
     desc.lsa_counter = lsa_indices[i] < 0
                            ? nullptr
                            : static_cast<uint64_t*>(comm_context->LsaPointer(
                                  increment.counter_window,
                                  lsa_indices[i],
                                  increment.counter_offset));
-    desc.counter_window = increment.counter_window;
-    desc.counter_offset = increment.counter_offset;
-    desc.peer = increment.peer;
-    if (batch.count == gin_overlap::kMaxDescsPerLaunch) {
-      launch();
-    }
-  }
-  if (batch.count > 0) {
-    launch();
-  }
-#endif
-}
-
-void ProcessGroupNCCL::SetPeerCounter(
-    const std::vector<SetPeerCounterArgs>& sets, gpuStream_t stream) {
-  CheckGinSupported();
-#ifdef PADDLE_WITH_GIN_OVERLAP
-  if (sets.empty()) {
-    return;
-  }
-  auto* comm_context = GetGinCommContext(/*create=*/false);
-  const auto& info = comm_context->GetDevCommInfo();
-  std::vector<int> lsa_indices;
-  lsa_indices.reserve(sets.size());
-  for (const auto& set : sets) {
-    const int lsa_index = PeerToLsaIndex(info, set.peer);
-    PADDLE_ENFORCE_GE(
-        lsa_index,
-        0,
-        common::errors::InvalidArgument(
-            "SetPeerCounter() needs a peer in the LSA team of "
-            "rank %d (ranks %d to %d), but got %d.",
-            rank_,
-            rank_ / info.lsa_size * info.lsa_size,
-            rank_ / info.lsa_size * info.lsa_size + info.lsa_size - 1,
-            set.peer));
-    PADDLE_ENFORCE_NE(
-        set.peer,
-        rank_,
-        common::errors::InvalidArgument(
-            "SetPeerCounter() cannot target this rank (%d).", rank_));
-    CheckWindowRange(comm_context,
-                     set.counter_window,
-                     set.counter_offset,
-                     kCounterBytes,
-                     kCounterBytes,
-                     "counter");
-    lsa_indices.push_back(lsa_index);
-  }
-  gin_overlap::SetPeerCounterBatch batch{};
-  auto launch = [&]() {
-    PADDLE_ENFORCE_GPU_SUCCESS(
-        gin_overlap::LaunchSetPeerCounter(batch, stream));
-    batch.count = 0;
-  };
-  for (size_t i = 0; i < sets.size(); ++i) {
-    gin_overlap::SetPeerCounterDesc& desc = batch.descs[batch.count++];
-    desc.counter = static_cast<uint64_t*>(comm_context->LsaPointer(
-        sets[i].counter_window, lsa_indices[i], sets[i].counter_offset));
-    desc.value = sets[i].value;
     if (batch.count == gin_overlap::kMaxDescsPerLaunch) {
       launch();
     }

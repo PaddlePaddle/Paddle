@@ -30,55 +30,22 @@
 #include <cstddef>
 #include <cstdint>
 
+#include "paddle/fluid/distributed/collective/gin_overlap/kernels/comm_args.h"
+
 namespace paddle {
 namespace distributed {
 namespace gin_overlap {
 
 constexpr int kMaxDescsPerLaunch = 32;
 
-// One GIN put: `bytes` bytes from `src_offset` of this rank's `src_window` to
-// `dst_offset` of `dst_window` on rank `peer`, then a VA signal increment of
-// the u64 at `counter_offset` of `counter_window` on rank `peer`.
-struct PutDesc {
-  void* src_window;
-  size_t src_offset;
-  void* dst_window;
-  size_t dst_offset;
-  size_t bytes;
-  void* counter_window;
-  size_t counter_offset;
-  int peer;
-};
-
+// A batch of arguments for one launch: descs[0, count).
 struct PutBatch {
-  PutDesc descs[kMaxDescsPerLaunch];
+  PutArgs descs[kMaxDescsPerLaunch];
   int count;
-};
-
-// One counter increment by 1. When `lsa_counter` is not null it is the LSA
-// address of the peer's counter and the increment is a system-scope atomic
-// add; otherwise it is a GIN VA signal increment of the u64 at
-// `counter_offset` of `counter_window` on rank `peer`.
-struct IncrementPeerCounterDesc {
-  uint64_t* lsa_counter;
-  void* counter_window;
-  size_t counter_offset;
-  int peer;
 };
 
 struct IncrementPeerCounterBatch {
-  IncrementPeerCounterDesc descs[kMaxDescsPerLaunch];
-  int count;
-};
-
-// One counter store: `value` is written to the LSA address `counter`.
-struct SetPeerCounterDesc {
-  uint64_t* counter;
-  uint64_t value;
-};
-
-struct SetPeerCounterBatch {
-  SetPeerCounterDesc descs[kMaxDescsPerLaunch];
+  IncrementPeerCounterArgs descs[kMaxDescsPerLaunch];
   int count;
 };
 
@@ -92,18 +59,14 @@ cudaError_t LaunchPut(const void* dev_comm,
                       cudaStream_t stream);
 
 // Counter increments, <<<1, kMaxDescsPerLaunch>>>, one thread per descriptor.
-// LSA: __threadfence_system() then atomicAdd_system. GIN: ncclGin::signal on
+// lsa_counter set: __threadfence_system() then atomicAdd_system on it.
+// Otherwise: ncclGin::signal on
 // GIN context (descriptor index % num_gin_contexts), one thread
 // (ncclCoopThread).
 cudaError_t LaunchIncrementPeerCounter(const void* dev_comm,
                                        const IncrementPeerCounterBatch& batch,
                                        int num_gin_contexts,
                                        cudaStream_t stream);
-
-// Counter stores, <<<1, kMaxDescsPerLaunch>>>, one thread per descriptor:
-// __threadfence_system() then st.release.sys.u64.
-cudaError_t LaunchSetPeerCounter(const SetPeerCounterBatch& batch,
-                                 cudaStream_t stream);
 
 // Flushes every GIN context: returns once the puts issued on them so far have
 // been sent, so their source buffers can be reused.

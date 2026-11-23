@@ -23,6 +23,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "paddle/fluid/distributed/collective/gin_overlap/kernels/comm_args.h"
 #include "paddle/fluid/distributed/collective/process_group.h"
 #include "paddle/fluid/distributed/collective/process_group_with_stream.h"
 #include "paddle/phi/backends/gpu/forwards.h"
@@ -36,55 +37,6 @@
 
 namespace paddle {
 namespace distributed {
-
-// Descriptors of the GIN primitives of ProcessGroupNCCL. A window is
-// a handle returned by ProcessGroupNCCL.register_comm_buffer() or
-// ProcessGroupNCCL::AllocHostWindow() on this group; it names the window of
-// this rank, and the same handle addresses the matching window on every peer.
-// `peer` is a rank of this group. Offsets and sizes are in bytes.
-
-// A GIN put of `bytes` bytes from `src_offset` of `src_window` to `dst_offset`
-// of `dst_window` on `peer`, followed by an increment by 1 of the u64 counter
-// at `counter_offset` of `counter_window` on `peer`.
-struct PutArgs {
-  void* src_window{nullptr};
-  size_t src_offset{0};
-  void* dst_window{nullptr};
-  size_t dst_offset{0};
-  size_t bytes{0};
-  int peer{0};
-  void* counter_window{nullptr};
-  size_t counter_offset{0};
-};
-
-// An increment by 1 of the u64 counter at `counter_offset` of `counter_window`
-// on `peer`.
-struct IncrementPeerCounterArgs {
-  int peer{0};
-  void* counter_window{nullptr};
-  size_t counter_offset{0};
-};
-
-// A store of `value` into the u64 counter at `counter_offset` of
-// `counter_window` on `peer`, which must be in this rank's LSA team.
-struct SetPeerCounterArgs {
-  int peer{0};
-  void* counter_window{nullptr};
-  size_t counter_offset{0};
-  uint64_t value{0};
-};
-
-// A copy of `bytes` bytes from `src_offset` of this rank's `src_window` to
-// `dst_offset` of `dst_window` on `peer`, which must be in this rank's LSA
-// team.
-struct CopyToPeersArgs {
-  void* src_window{nullptr};
-  size_t src_offset{0};
-  void* dst_window{nullptr};
-  size_t dst_offset{0};
-  int peer{0};
-  size_t bytes{0};
-};
 
 class ProcessGroupNCCL final : public ProcessGroupWithStream {
  public:
@@ -294,17 +246,14 @@ class ProcessGroupNCCL final : public ProcessGroupWithStream {
            gpuStream_t stream,
            int num_blocks = 0);
 
-  // Increments peer counters on `stream`: through an LSA atomic add for peers
-  // in this rank's LSA team, through a GIN signal for the others.
+  // Increments peer counters on `stream`: through an LSA atomic add
+  // (__threadfence_system() then atomicAdd_system) for peers in this rank's
+  // LSA team, through a GIN signal for the others. Work queued on `stream`
+  // before this call has finished before an increment is made. lsa_counter of
+  // the arguments is ignored and filled in here.
   void IncrementPeerCounter(
       const std::vector<IncrementPeerCounterArgs>& increments,
       gpuStream_t stream);
-
-  // Stores values into counters of peers in this rank's LSA team on `stream`.
-  // Work queued on `stream` before this call has finished before the store is
-  // made visible.
-  void SetPeerCounter(const std::vector<SetPeerCounterArgs>& sets,
-                      gpuStream_t stream);
 
   // Copies to windows of peers in this rank's LSA team on `stream`, with one
   // cudaMemcpyBatchAsync for the whole list.
