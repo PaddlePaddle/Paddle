@@ -23,9 +23,9 @@ Layout
   - Recv pool: dense = [intra-node segment][inter-node segment], expert = [expert segment]. Each segment is a ring:
     buckets take one slot each in the fixed release order and wrap to the start when the rest does not fit. The
     predecessor distance d of a slot (1..n, n = the bucket itself one step earlier) gives the credit target.
-  - Host window, dense group: 16 B of signal per dense bucket; 16 intra-node credits; one inter-node credit per node;
-    16 intra-node arrival counters per dense bucket; the dense 2D-gather arrival counters. Expert group: 16 B of
-    signal per expert bucket; one expert credit per group rank; the expert 2D-gather arrival counters.
+  - Host window, dense group: one signal counter per dense bucket; 16 intra-node credits; one inter-node credit per
+    node; 16 intra-node arrival counters per dense bucket; the dense 2D-gather arrival counters. Expert group: one
+    signal counter per expert bucket; one expert credit per group rank; the expert 2D-gather arrival counters.
   - The layout must be identical on all ranks (dense over the sharding group, expert over the moe_sharding group);
     init checks it with a crc.
 Buckets have one index across both kinds: dense buckets 0..nd-1, expert buckets nd..nd+ne-1
@@ -573,31 +573,29 @@ class _Layout:
 
     def _host_windows(self):
         """Host window layout of both groups, each from 0, every area 256 B aligned.
-        dense group: signal (16 B per dense bucket, the first u64 counts the inter-node puts) | credit_intra (16
+        dense group: signal (one counter per dense bucket at 8*idx, counting the inter-node puts) | credit_intra (16
         counters, one per node-local sender) | credit_inter (one counter per node) | intra_arrive (16 counters per
         dense bucket at intra_arrive + (idx*16 + l)*8, written by node-local sender l) | gather arrive (8 B per
-        dense bucket) | gather intra (16 counters per dense bucket) | reserved (8 B per dense bucket).
-        expert group: signal (16 B per expert bucket) | credit_expert (one counter per group rank) | gather arrive
-        | gather intra | reserved, sized by the expert buckets."""
+        dense bucket) | gather intra (16 counters per dense bucket).
+        expert group: signal (one counter per expert bucket at 8*idx) | credit_expert (one counter per group rank) |
+        gather arrive | gather intra, sized by the expert buckets."""
         nd, ne = len(self.dense_numels), len(self.expert_numels)
-        c0 = _align(_align(16 * nd + 64, 256), 256)
+        c0 = _align(8 * nd, 256)
         c1 = _align(c0 + 8 * 16, 256)
         dense_signal_end = c1 + 8 * max(self.dense.num_nodes, 1)
         ia = _align(dense_signal_end, 256)
         ga = _align(ia + 8 * 16 * nd, 256)
         gi = _align(ga + 8 * max(nd, 1), 256)
-        gc = _align(gi + 8 * 16 * max(nd, 1), 256)
         self.intra_arrive = ia
-        self.gather_dense = (ga, gi, gc)
-        self.dense_host_bytes = _align(gc + 8 * max(nd, 1), 4096)
+        self.gather_dense = (ga, gi)
+        self.dense_host_bytes = _align(gi + 8 * 16 * max(nd, 1), 4096)
         expert_size = self.expert.size if ne else 0
-        c2 = _align(_align(16 * ne + 64, 256), 256)
+        c2 = _align(8 * ne, 256)
         moe_signal_end = c2 + 8 * max(expert_size, 1)
         mga = _align(moe_signal_end, 256)
         mgi = _align(mga + 8 * max(ne, 1), 256)
-        mgc = _align(mgi + 8 * 16 * max(ne, 1), 256)
-        self.gather_expert = (mga, mgi, mgc)
-        self.expert_host_bytes = _align(mgc + 8 * max(ne, 1), 4096)
+        self.gather_expert = (mga, mgi)
+        self.expert_host_bytes = _align(mgi + 8 * 16 * max(ne, 1), 4096)
         self.credit = (c0, c1, c2)
 
     def bucket_table(self):
@@ -611,7 +609,7 @@ class _Layout:
                 (
                     _LIB.DENSE_BUCKET,
                     self.dense_send[i],
-                    16 * i,
+                    8 * i,
                     n // self.dense.size,
                     self.intra_arrive + i * 16 * 8,
                     self.base[0] + self.offsets[0].get(i, 0),
@@ -626,7 +624,7 @@ class _Layout:
                 (
                     _LIB.EXPERT_BUCKET,
                     self.expert_send[i],
-                    16 * i,
+                    8 * i,
                     n // self.expert.size,
                     0,
                     self.base[2] + self.offsets[2].get(i, 0),
@@ -784,7 +782,7 @@ def _gather_table(layout, dense_2d, expert_2d, dense_index, expert_index):
     same-node arrival counters. Collective: the table must match over each group (crc)."""
     nd = len(layout.dense_numels)
     rows, sig = [], {"dense": [], "expert": []}
-    for kind, buckets, index, gl, (ga, gi, _) in (
+    for kind, buckets, index, gl, (ga, gi) in (
         ("dense", dense_2d, dense_index, layout.dense, layout.gather_dense),
         (
             "expert",
@@ -808,14 +806,14 @@ def _gather_table(layout, dense_2d, expert_2d, dense_index, expert_index):
             sig[kind].append((idx, send, npad // gl.size, owner))
     checks = [
         (
-            (layout.gather_dense[:2], nd, layout.dense.ranks_per_node, sorted(sig["dense"])),
+            (layout.gather_dense, nd, layout.dense.ranks_per_node, sorted(sig["dense"])),
             layout.dense.group,
         )
     ]  # fmt: skip
     if layout.expert_numels:
         checks.append(
             (
-                (layout.gather_expert[:2], len(layout.expert_numels), layout.expert.ranks_per_node,
+                (layout.gather_expert, len(layout.expert_numels), layout.expert.ranks_per_node,
                  sorted(sig["expert"])),
                 layout.expert.group,
             )
