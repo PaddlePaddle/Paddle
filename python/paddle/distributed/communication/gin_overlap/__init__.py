@@ -18,7 +18,7 @@ the overlap windows of the backward pass by a C++ scheduler (paddle.base.core.gi
 Turned on by ``strategy.hybrid_configs["sharding_configs"].gin_overlap``; DygraphShardingOptimizerV2 and
 MuonShardingOptimizer then build the scheduler (build_grad_comm_scheduler). A framework that knows the overlap
 windows (for example the DeepEP callbacks of a MoE layer) drives it through
-``grad_comm_scheduler.ACTIVE_SCHEDULER`` (None when gin_overlap is off; read it on the grad_comm_scheduler module
+``grad_comm_scheduler.scheduler`` (None when gin_overlap is off; read it on the grad_comm_scheduler module
 each time, it is not re-exported here because an imported copy would stay None):
 
   - ``release(ops, intra_sum_blocks, final_sum_blocks)``: in a window, release what the ops in ``ops`` can release
