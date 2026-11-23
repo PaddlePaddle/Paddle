@@ -30,18 +30,16 @@ void SwiGLUGradKernelImpl(const Context &dev_ctx,
                           int64_t m,
                           int64_t n);
 
-template <typename T, typename Context>
-void SwiGLUGradKernel(const Context &dev_ctx,
-                      const DenseTensor &x,
-                      const optional<DenseTensor> &y,
-                      const DenseTensor &dz,
-                      DenseTensor *dx,
-                      DenseTensor *dy) {
+// Validate the backward input shapes. Shared by SwiGLUGradKernel below and by
+// the separate XPU implementation in kernels/xpu/swiglu_grad_kernel.cc, so
+// that an illegal y/dz is rejected on every backend. Must run before the
+// 0-size early returns, otherwise a mismatched dz/y is silently accepted
+// whenever x has no elements.
+inline void SwiGLUGradCheckShapes(const DenseTensor &x,
+                                  const optional<DenseTensor> &y,
+                                  const DenseTensor &dz) {
   const auto &dims = x.dims();
   const auto &dz_dims = dz.dims();
-  // Validate shapes before the 0-size early returns below, otherwise a
-  // mismatched dz/y is silently accepted whenever x has no elements.
-  int64_t m = 0, n = 0;
   if (y) {
     const auto &y_dims = y.get().dims();
     // Mirror SwiGLUInferMeta: x and y may differ when either is 0-size, and
@@ -67,8 +65,7 @@ void SwiGLUGradKernel(const Context &dev_ctx,
                           out_dims));
   } else {
     auto dims_2d = flatten_to_2d(dims, dims.size() - 1);
-    m = dims_2d[0];
-    n = dims_2d[1];
+    int64_t n = dims_2d[1];
     PADDLE_ENFORCE_EQ(n % 2,
                       0,
                       common::errors::InvalidArgument(
@@ -102,6 +99,16 @@ void SwiGLUGradKernel(const Context &dev_ctx,
             dz_dims[dz_dims.size() - 1],
             n));
   }
+}
+
+template <typename T, typename Context>
+void SwiGLUGradKernel(const Context &dev_ctx,
+                      const DenseTensor &x,
+                      const optional<DenseTensor> &y,
+                      const DenseTensor &dz,
+                      DenseTensor *dx,
+                      DenseTensor *dy) {
+  SwiGLUGradCheckShapes(x, y, dz);
 
   if (dx && dx->numel() == 0) {
     dev_ctx.template Alloc<T>(dx);
@@ -134,8 +141,16 @@ void SwiGLUGradKernel(const Context &dev_ctx,
                                      x.numel(),
                                      1);
   } else {
-    SwiGLUGradKernelImpl<T, Context>(
-        dev_ctx, x_ptr, nullptr, dz_ptr, dx_ptr, nullptr, m, n / 2);
+    const auto &dims = x.dims();
+    auto dims_2d = flatten_to_2d(dims, dims.size() - 1);
+    SwiGLUGradKernelImpl<T, Context>(dev_ctx,
+                                     x_ptr,
+                                     nullptr,
+                                     dz_ptr,
+                                     dx_ptr,
+                                     nullptr,
+                                     dims_2d[0],
+                                     dims_2d[1] / 2);
   }
 }
 
