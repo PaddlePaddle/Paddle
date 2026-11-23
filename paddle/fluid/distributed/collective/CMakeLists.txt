@@ -92,3 +92,15 @@ cc_library(
   processgroup_comm_utils
   SRCS processgroup_comm_utils.cc
   DEPS ${COMM_UTILS_DEPS})
+
+# gin_overlap_scheduler: GinGradCommScheduler, the staged gradient
+# reduce_scatter of the sharding-stage1 buckets
+# (gin_overlap/grad_comm_scheduler.h). Built under WITH_GIN_OVERLAP (gate in
+# cmake/configure.cmake) on the GIN primitives of process_group_nccl and the
+# sum kernels of gin_overlap_kernels.
+if(WITH_GIN_OVERLAP)
+  cc_library(
+    gin_overlap_scheduler
+    SRCS gin_overlap/grad_comm_scheduler.cc
+    DEPS process_group_nccl gin_overlap_kernels phi common)
+endif()

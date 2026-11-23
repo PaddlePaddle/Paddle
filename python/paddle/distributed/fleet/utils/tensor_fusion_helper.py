@@ -588,6 +588,11 @@ class FusedCommBuffer:
         if not self._release_grads:
             self._record_addr()
 
+        # GinGradCommScheduler that owns this bucket (gin_overlap), set by
+        # build_grad_comm_scheduler; None for the collective path.
+        self._gin_scheduler = None
+        self._gin_reported = False
+
     def _refresh_param_buffer_ipc_meta(self):
         meta_tensor = self._param_buffer_meta_tensor
         if meta_tensor is None:
@@ -799,6 +804,15 @@ class FusedCommBuffer:
             if self._use_reduce_avg
             else paddle.distributed.ReduceOp.SUM
         )
+        # A bucket owned by the gin_overlap scheduler is reported to it
+        # instead of calling a collective (once per step).
+        if self._gin_scheduler is not None:
+            from paddle.distributed.communication.gin_overlap.grad_comm_scheduler import (
+                bucket_ready,
+            )
+
+            bucket_ready(self, reduce_op)
+            return
         # scale will be skipped when reduce_avg comm operation is enabled.
         if not self._scale_after_comm and not self._use_reduce_avg:
             scale_factor = 1.0 / self._comm_group.nranks
@@ -856,6 +870,19 @@ class FusedCommBuffer:
 
     @imperative_base.no_grad
     def scale_grads(self):
+        if self._gin_scheduler is not None:
+            # GinGradCommScheduler.FinishStep() already waited for the
+            # bucket; only the post-communication scaling of a SUM reduce is
+            # left.
+            if (
+                self.need_reduce_scale_sync()
+                and self._scale_after_comm
+                and not self._use_reduce_avg
+            ):
+                self.grad_storage.scale_(1.0 / self._comm_group.nranks)
+            self._gin_reported = False
+            self._reset_params_checked_in()
+            return
         if self.need_reduce_scale_sync():
             if self._comm_group.nranks == 1 and self._task is None:
                 self._reset_params_checked_in()

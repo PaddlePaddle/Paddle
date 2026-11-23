@@ -740,8 +740,24 @@ class DygraphShardingOptimizerV2:
         self._forward_pre_hook_remove_helper = []
         self.has_register_forward_hook = False
 
+        # gin_overlap: the gradient reduce_scatter of the buckets runs in
+        # stages during the backward pass (GinGradCommScheduler).
+        self._gin_scheduler = None
+        if sharding_config.gin_overlap:
+            from paddle.distributed.communication.gin_overlap.grad_comm_scheduler import (
+                build_grad_comm_scheduler,
+            )
+
+            build_grad_comm_scheduler(self)
+
     def rebuild(self):
         """rebuild DygraphShardingOptimizerV2."""
+        if getattr(self, "_gin_scheduler", None) is not None:
+            raise RuntimeError(
+                "sharding_configs.gin_overlap does not support "
+                "DygraphShardingOptimizerV2.rebuild(): the GIN windows are "
+                "laid out for the current buckets"
+            )
 
         self._sharding_world_size = self._hcg.get_sharding_parallel_world_size()
         self._sharding_rank = self._hcg.get_sharding_parallel_rank()
@@ -1026,11 +1042,24 @@ class DygraphShardingOptimizerV2:
 
             if self._enable_timer:
                 self.timers("reduce-gradients").start()
-            for comm_buffer in self._comm_buffer_list:
-                if not self.comm_overlap:
-                    comm_buffer._comm_grads()
+            if getattr(self, "_gin_scheduler", None) is not None:
+                # Report the buckets not reported in the backward pass, wait
+                # for the step, then reset the buckets.
+                from paddle.distributed.communication.gin_overlap.grad_comm_scheduler import (
+                    finish_step,
+                )
 
-                comm_buffer.scale_grads()
+                for comm_buffer in self._comm_buffer_list:
+                    comm_buffer._comm_grads()
+                finish_step(self)
+                for comm_buffer in self._comm_buffer_list:
+                    comm_buffer.scale_grads()
+            else:
+                for comm_buffer in self._comm_buffer_list:
+                    if not self.comm_overlap:
+                        comm_buffer._comm_grads()
+
+                    comm_buffer.scale_grads()
 
             if self._enable_timer:
                 self.timers("reduce-gradients").stop()
@@ -1162,6 +1191,13 @@ class DygraphShardingOptimizerV2:
                                 self._forward_pre_hook_function(tasks)
                             )
                         )
+            elif getattr(self, "_gin_scheduler", None) is not None:
+                # one all_gather per (group, dtype) batch
+                from paddle.distributed.communication.gin_overlap.grad_comm_scheduler import (
+                    fused_all_gather,
+                )
+
+                fused_all_gather(self._comm_buffer_list)
             else:
                 for comm_buffer in self._comm_buffer_list:
                     comm_buffer.sync_params()

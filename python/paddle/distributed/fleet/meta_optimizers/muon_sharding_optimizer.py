@@ -227,6 +227,18 @@ class MuonShardingOptimizer:
         self.enable_fuse_optimizer_states = (
             sharding_configs.enable_fuse_optimizer_states
         )
+        # gin_overlap: MB per owner of the 2D partition, independent of the
+        # gradient bucket size comm_buffer_size_MB; None = comm_buffer_size_MB.
+        self._gin_overlap = sharding_configs.gin_overlap
+        self._owner_partition_mb = None
+        if self._gin_overlap and sharding_configs.muon_owner_partition_mb > 0:
+            self._owner_partition_mb = sharding_configs.muon_owner_partition_mb
+        if self._owner_partition_mb is not None and self._global_rank == 0:
+            logger.info(
+                f"[gin_overlap] 2D owner partition uses "
+                f"muon_owner_partition_mb={self._owner_partition_mb} MB "
+                f"(gradient buckets stay {self.comm_buffer_size_MB} MB)"
+            )
 
         self.use_group_call_opt = sharding_configs.comm_group_call_opt
         hcg = fleet.get_hybrid_communicate_group()
@@ -623,6 +635,17 @@ class MuonShardingOptimizer:
                     group = paddle.distributed.new_group(ranks)
                     self.trainer_same_card_comms[pp_idx][card_idx] = group
 
+        # gin_overlap: the gradient reduce of the buckets (1D reduce_scatter,
+        # 2D reduce to the owner) runs in stages during the backward pass
+        # (GinGradCommScheduler).
+        self._gin_scheduler = None
+        if self._gin_overlap:
+            from paddle.distributed.communication.gin_overlap.grad_comm_scheduler import (
+                build_grad_comm_scheduler,
+            )
+
+            build_grad_comm_scheduler(self)
+
     # ------------------------------------------------------------------
     # 2D partition (V1-style greedy)
     # ------------------------------------------------------------------
@@ -738,7 +761,8 @@ class MuonShardingOptimizer:
             # numel * 4 is the fp32 main_grad width that actually gets
             # reduced, so comm buffer sizes stay as they are.
             total_size_mb = bucket['numel'] * 4 / (1024**2)
-            buffer_size_mb = (
+            # muon_owner_partition_mb under gin_overlap
+            buffer_size_mb = getattr(self, "_owner_partition_mb", None) or (
                 self.comm_buffer_size_MB
                 if self.comm_buffer_size_MB > 0
                 else 256
@@ -1005,7 +1029,8 @@ class MuonShardingOptimizer:
             total_size_bytes = total_numel * 4
             total_size_mb = total_size_bytes / (1024**2)
 
-            buffer_size_mb = (
+            # muon_owner_partition_mb under gin_overlap
+            buffer_size_mb = getattr(self, "_owner_partition_mb", None) or (
                 self.comm_buffer_size_MB
                 if self.comm_buffer_size_MB > 0
                 else 256
@@ -1297,6 +1322,24 @@ class MuonShardingOptimizer:
             paddle.device.synchronize()
 
         with framework.no_grad():
+            if getattr(self, "_gin_scheduler", None) is not None:
+                # Report the buckets not reported in the backward pass (2D
+                # and 1D), wait for the step, then reset the buckets.
+                from paddle.distributed.communication.gin_overlap.grad_comm_scheduler import (
+                    finish_step,
+                )
+
+                for comm_buffer in self.comm_buffer_2d:
+                    comm_buffer._comm_grads()
+                for comm_buffer in self._comm_buffer_list:
+                    comm_buffer._comm_grads()
+                finish_step(self)
+                for comm_buffer in self.comm_buffer_2d:
+                    comm_buffer.scale_grads()
+                for comm_buffer in self._comm_buffer_list:
+                    comm_buffer.scale_grads()
+                return
+
             # --- 2D params: reduce to owner rank via each color's group ---
             if self._use_fuse_gradients:
                 for comm_buffer in self.comm_buffer_2d:
@@ -1716,8 +1759,16 @@ class MuonShardingOptimizer:
                     task.wait()
 
             # --- 1D params: all-gather via comm buffers ---
-            for comm_buffer in self._comm_buffer_list:
-                comm_buffer.sync_params()
+            if getattr(self, "_gin_scheduler", None) is not None:
+                # one all_gather per (group, dtype) batch
+                from paddle.distributed.communication.gin_overlap.grad_comm_scheduler import (
+                    fused_all_gather,
+                )
+
+                fused_all_gather(self._comm_buffer_list)
+            else:
+                for comm_buffer in self._comm_buffer_list:
+                    comm_buffer.sync_params()
 
     # ------------------------------------------------------------------
     # Clear gradients
