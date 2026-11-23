@@ -12,25 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// sum.cu: the sum kernel declared in sum.h.
-//
-// Instantiations that match the kernels of gin_overlap/kernels/reduce.cu:
-//   k_reduce_intra_node  SumKernel<false, true, true>, 512 threads,
-//                        through LaunchIntraNodeSum with
-//                        numel = numel4 * 4.
-//   k_reduce_dense_shard SumKernel<true, false, false>, 256 threads,
-//                        through LaunchFinalSum with count = num_nodes,
-//                        self_index = node_index.
-//   k_reduce_moe_shard   SumKernel<true, false, false>, 256 threads,
-//                        through LaunchFinalSum with
-//                        count = expert_group_size,
-//                        self_index = expert_group_rank.
+// sum.cu: the sum kernel declared in sum.h. It has two uses:
+//   - intra-node sum: SumKernel<false, true, true>, 512 threads, through
+//     LaunchIntraNodeSum; the sources are the ranks of the node.
+//   - final sum: SumKernel<true, false, false>, 256 threads, through
+//     LaunchFinalSum; the sources are the nodes (dense bucket,
+//     self_index = node index) or the ranks of the expert group (expert
+//     bucket, self_index = rank in the group).
 //
 // Constraints
 //   - Summation order: ring order, starting at self_index + 1 and going once
-//     around, from acc = 0.
-//   - kScale = true: each term is __fadd_rn(acc, __fmul_rn(value, scale)).
-//     kScale = false: each term is acc += value.
+//     around, from sum = 0.
+//   - kScale = true: each term is __fadd_rn(sum, __fmul_rn(value, scale)).
+//     kScale = false: each term is sum += value.
 //   - The float4 path and the scalar path give the same bits: the float4 path
 //     loads up to 8 sources first and then adds them in source order, one
 //     component at a time.
@@ -45,146 +39,160 @@ namespace {
 constexpr int kSourcesPerBatch = 8;
 
 template <bool kScale>
-__device__ __forceinline__ void Accumulate(float* acc,
+__device__ __forceinline__ void Accumulate(float* sum,
                                            float value,
                                            float scale) {
   if constexpr (kScale) {
-    *acc = __fadd_rn(*acc, __fmul_rn(value, scale));
+    *sum = __fadd_rn(*sum, __fmul_rn(value, scale));
   } else {
-    *acc += value;
+    *sum += value;
   }
 }
 
 template <bool kScale>
-__device__ __forceinline__ void Accumulate4(float4* acc,
+__device__ __forceinline__ void Accumulate4(float4* sum,
                                             const float4& value,
                                             float scale) {
-  Accumulate<kScale>(&acc->x, value.x, scale);
-  Accumulate<kScale>(&acc->y, value.y, scale);
-  Accumulate<kScale>(&acc->z, value.z, scale);
-  Accumulate<kScale>(&acc->w, value.w, scale);
+  Accumulate<kScale>(&sum->x, value.x, scale);
+  Accumulate<kScale>(&sum->y, value.y, scale);
+  Accumulate<kScale>(&sum->z, value.z, scale);
+  Accumulate<kScale>(&sum->w, value.w, scale);
 }
 
-// Row of recv that holds source src.
+// Row of recv that holds `source`.
 template <bool kSkipSelf>
-__device__ __forceinline__ size_t RecvRow(int src, int self_index) {
+__device__ __forceinline__ size_t RecvRow(int source, int self_index) {
   if constexpr (kSkipSelf) {
-    return static_cast<size_t>(src - (src > self_index));
+    return static_cast<size_t>(source - (source > self_index));
   } else {
-    return static_cast<size_t>(src);
+    return static_cast<size_t>(source);
   }
 }
 
-// Whether the float4 path applies: numel and every stride a multiple of 4,
-// own and recv 16-byte aligned.
+// Whether the float4 path applies: numel and every stride that is read are
+// multiples of 4, and self_values and recv are 16-byte aligned.
+// size_bits / address_bits are the OR of those sizes / addresses, so their low
+// bits are 0 only when they are 0 in every one.
 template <bool kMultiShard>
-__device__ __forceinline__ bool CanUseFloat4(const float* own,
+__device__ __forceinline__ bool CanUseFloat4(const float* self_values,
                                              const float* recv,
                                              const SumLayout& layout) {
-  size_t counts = layout.numel | layout.recv_row_stride;
+  size_t size_bits = layout.numel | layout.recv_row_stride;
   if constexpr (kMultiShard) {
-    counts |= layout.own_shard_stride | layout.recv_shard_stride;
+    size_bits |= layout.self_shard_stride | layout.recv_shard_stride;
   }
-  const uintptr_t addresses =
-      reinterpret_cast<uintptr_t>(own) | reinterpret_cast<uintptr_t>(recv);
-  return (counts & 3) == 0 && (addresses & 15) == 0;
+  const uintptr_t address_bits = reinterpret_cast<uintptr_t>(self_values) |
+                                 reinterpret_cast<uintptr_t>(recv);
+  return (size_bits & 3) == 0 && (address_bits & 15) == 0;
 }
 
 template <bool kScale, bool kSkipSelf, bool kMultiShard>
-__global__ void SumKernel(float* own,
+__global__ void SumKernel(float* self_values,
                           const float* __restrict__ recv,
                           SumLayout layout,
                           float scale) {
-  const size_t stride = static_cast<size_t>(gridDim.x) * blockDim.x;
-  const size_t thread_first =
+  const size_t grid_stride = static_cast<size_t>(gridDim.x) * blockDim.x;
+  const size_t first_index =
       static_cast<size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
-  const int count = layout.count;
+  const int num_sources = layout.num_sources;
   const int self_index = layout.self_index;
   const size_t num_shards =
       kMultiShard ? static_cast<size_t>(layout.num_shards) : 1;
 
-  if (CanUseFloat4<kMultiShard>(own, recv, layout)) {
+  if (CanUseFloat4<kMultiShard>(self_values, recv, layout)) {
+    // in float4 units
     const size_t numel4 = layout.numel / 4;
-    const size_t own_shard_stride4 = layout.own_shard_stride / 4;
+    const size_t self_shard_stride4 = layout.self_shard_stride / 4;
     const size_t recv_row_stride4 = layout.recv_row_stride / 4;
     const size_t recv_shard_stride4 = layout.recv_shard_stride / 4;
-    float4* own4 = reinterpret_cast<float4*>(own);
+    float4* self_values4 = reinterpret_cast<float4*>(self_values);
     const float4* recv4 = reinterpret_cast<const float4*>(recv);
-    const size_t total = num_shards * numel4;
-    for (size_t i = thread_first; i < total; i += stride) {
+    const size_t total_numel4 = num_shards * numel4;
+    for (size_t index = first_index; index < total_numel4;
+         index += grid_stride) {
       size_t shard = 0;
-      size_t elem = i;
+      size_t element = index;
       if constexpr (kMultiShard) {
-        shard = i / numel4;
-        elem = i - shard * numel4;
+        shard = index / numel4;
+        element = index - shard * numel4;
       }
-      float4* own_elem = own4 + shard * own_shard_stride4 + elem;
-      const float4* recv_elem = recv4 + shard * recv_shard_stride4 + elem;
-      float4 acc = make_float4(0.f, 0.f, 0.f, 0.f);
-      for (int batch = 0; batch < count; batch += kSourcesPerBatch) {
-        float4 vals[kSourcesPerBatch];
+      float4* self_element =
+          self_values4 + shard * self_shard_stride4 + element;
+      const float4* recv_element = recv4 + shard * recv_shard_stride4 + element;
+      float4 sum = make_float4(0.f, 0.f, 0.f, 0.f);
+      for (int batch_start = 0; batch_start < num_sources;
+           batch_start += kSourcesPerBatch) {
+        float4 batch_values[kSourcesPerBatch];
 #pragma unroll
-        for (int j = 0; j < kSourcesPerBatch; ++j) {
-          const int k = batch + j;
-          if (k < count) {
-            const int src = (self_index + 1 + k) % count;
-            vals[j] = *((src == self_index)
-                            ? own_elem
-                            : recv_elem + RecvRow<kSkipSelf>(src, self_index) *
-                                              recv_row_stride4);
+        for (int batch_offset = 0; batch_offset < kSourcesPerBatch;
+             ++batch_offset) {
+          const int ring_step = batch_start + batch_offset;
+          if (ring_step < num_sources) {
+            const int source = (self_index + 1 + ring_step) % num_sources;
+            batch_values[batch_offset] =
+                *((source == self_index)
+                      ? self_element
+                      : recv_element + RecvRow<kSkipSelf>(source, self_index) *
+                                           recv_row_stride4);
           }
         }
 #pragma unroll
-        for (int j = 0; j < kSourcesPerBatch; ++j) {
-          if (batch + j < count) Accumulate4<kScale>(&acc, vals[j], scale);
+        for (int batch_offset = 0; batch_offset < kSourcesPerBatch;
+             ++batch_offset) {
+          if (batch_start + batch_offset < num_sources)
+            Accumulate4<kScale>(&sum, batch_values[batch_offset], scale);
         }
       }
-      *own_elem = acc;
+      *self_element = sum;
     }
     return;
   }
 
   const size_t numel = layout.numel;
-  const size_t total = num_shards * numel;
-  for (size_t i = thread_first; i < total; i += stride) {
+  const size_t total_numel = num_shards * numel;
+  for (size_t index = first_index; index < total_numel; index += grid_stride) {
     size_t shard = 0;
-    size_t elem = i;
+    size_t element = index;
     if constexpr (kMultiShard) {
-      shard = i / numel;
-      elem = i - shard * numel;
+      shard = index / numel;
+      element = index - shard * numel;
     }
-    float* own_elem = own + shard * layout.own_shard_stride + elem;
-    const float* recv_elem = recv + shard * layout.recv_shard_stride + elem;
-    float acc = 0.f;
-    for (int k = 0; k < count; ++k) {
-      const int src = (self_index + 1 + k) % count;
-      const float value = (src == self_index)
-                              ? *own_elem
-                              : recv_elem[RecvRow<kSkipSelf>(src, self_index) *
-                                          layout.recv_row_stride];
-      Accumulate<kScale>(&acc, value, scale);
+    float* self_element =
+        self_values + shard * layout.self_shard_stride + element;
+    const float* recv_element =
+        recv + shard * layout.recv_shard_stride + element;
+    float sum = 0.f;
+    for (int ring_step = 0; ring_step < num_sources; ++ring_step) {
+      const int source = (self_index + 1 + ring_step) % num_sources;
+      const float value =
+          (source == self_index)
+              ? *self_element
+              : recv_element[RecvRow<kSkipSelf>(source, self_index) *
+                             layout.recv_row_stride];
+      Accumulate<kScale>(&sum, value, scale);
     }
-    *own_elem = acc;
+    *self_element = sum;
   }
 }
 
 }  // namespace
 
 template <bool kScale, bool kSkipSelf, bool kMultiShard>
-cudaError_t LaunchSum(float* own,
+cudaError_t LaunchSum(float* self_values,
                       const float* recv,
                       const SumLayout& layout,
                       float scale,
                       int num_blocks,
                       int num_threads,
                       cudaStream_t stream) {
-  if (layout.count < 1 || layout.self_index < 0 ||
-      layout.self_index >= layout.count || layout.num_shards < 1 ||
+  if (layout.num_sources < 1 || layout.self_index < 0 ||
+      layout.self_index >= layout.num_sources || layout.num_shards < 1 ||
       (!kMultiShard && layout.num_shards != 1)) {
     return cudaErrorInvalidValue;
   }
   SumKernel<kScale, kSkipSelf, kMultiShard>
-      <<<num_blocks, num_threads, 0, stream>>>(own, recv, layout, scale);
+      <<<num_blocks, num_threads, 0, stream>>>(
+          self_values, recv, layout, scale);
   return cudaGetLastError();
 }
 
@@ -203,33 +211,33 @@ cudaError_t LaunchIntraNodeSum(float* grad,
                                cudaStream_t stream,
                                int num_threads) {
   SumLayout layout;
-  layout.count = ranks_per_node;
+  layout.num_sources = ranks_per_node;
   layout.self_index = rank_in_node;
   layout.num_shards = num_nodes;
   layout.numel = numel;
-  layout.own_shard_stride = static_cast<size_t>(ranks_per_node) * numel;
+  layout.self_shard_stride = static_cast<size_t>(ranks_per_node) * numel;
   layout.recv_row_stride = static_cast<size_t>(num_nodes) * numel;
   layout.recv_shard_stride = numel;
-  float* own = grad + static_cast<size_t>(rank_in_node) * numel;
+  float* self_values = grad + static_cast<size_t>(rank_in_node) * numel;
   return LaunchSum<false, true, true>(
-      own, intra_recv, layout, 1.f, num_blocks, num_threads, stream);
+      self_values, intra_recv, layout, 1.f, num_blocks, num_threads, stream);
 }
 
 cudaError_t LaunchFinalSum(float* shard,
                            const float* recv,
                            size_t numel,
-                           int count,
+                           int num_sources,
                            int self_index,
                            float scale,
                            int num_blocks,
                            cudaStream_t stream,
                            int num_threads) {
   SumLayout layout;
-  layout.count = count;
+  layout.num_sources = num_sources;
   layout.self_index = self_index;
   layout.num_shards = 1;
   layout.numel = numel;
-  layout.own_shard_stride = 0;
+  layout.self_shard_stride = 0;
   layout.recv_row_stride = numel;
   layout.recv_shard_stride = 0;
   return LaunchSum<true, false, false>(

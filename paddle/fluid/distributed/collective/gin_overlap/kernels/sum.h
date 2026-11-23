@@ -13,12 +13,12 @@
 // limitations under the License.
 
 // sum.h: in-place sum kernel on one GPU for gradient buckets.
-// own = sum over the count sources, taken in ring order starting at
-// self_index + 1 and going once around. Source self_index is own itself;
-// every other source is a row of recv.
+// self_values = sum over the num_sources sources, taken in ring order starting
+// at self_index + 1 and going once around. Source self_index is self_values
+// itself; every other source is a row of recv.
 //
 // Conventions
-//   - Element counts and strides count floats, not bytes.
+//   - Element counts and strides are in floats, not bytes.
 //   - Every launch function returns cudaGetLastError() after the launch, or
 //     cudaErrorInvalidValue without launching when the layout is out of range
 //     (see SumLayout).
@@ -37,37 +37,37 @@ namespace distributed {
 //
 // The data is num_shards shards of numel elements each; a shard is one
 // slice of this rank's column per node. Element e of shard s is at
-//   own:                  own + s * own_shard_stride + e
-//   recv, source src:     recv + RecvRow(src) * recv_row_stride
-//                              + s * recv_shard_stride + e
-// RecvRow(src) is src when recv has count rows (the row of self_index is not
-// read), or src - (src > self_index) when recv has count - 1 rows that skip
-// self_index (template parameter kSkipSelf). The shard strides are not read
-// when kMultiShard is false.
+//   self_values:        self_values + s * self_shard_stride + e
+//   recv, for `source`: recv + RecvRow(source) * recv_row_stride
+//                            + s * recv_shard_stride + e
+// RecvRow(source) is source when recv has num_sources rows (the row of
+// self_index is not read), or source - (source > self_index) when recv has
+// num_sources - 1 rows that skip self_index (template parameter kSkipSelf).
+// The shard strides are not read when kMultiShard is false.
 struct SumLayout {
-  int count;       // number of sources, this rank included (>= 1)
-  int self_index;  // index of this rank among the sources, in [0, count)
-  int num_shards;  // >= 1; must be 1 when kMultiShard is false
-  size_t numel;    // elements per shard
-  size_t own_shard_stride;
+  int num_sources;  // number of sources, this rank included (>= 1)
+  int self_index;   // index of this rank among the sources, in [0, num_sources)
+  int num_shards;   // >= 1; must be 1 when kMultiShard is false
+  size_t numel;     // elements per shard
+  size_t self_shard_stride;
   size_t recv_row_stride;
   size_t recv_shard_stride;
 };
 
 // Generic sum. <<<num_blocks, num_threads>>>
-//   kScale        false: acc += value.
-//                 true:  acc = __fadd_rn(acc, __fmul_rn(value, scale)).
-//   kSkipSelf     recv has count - 1 rows and no row for self_index (true),
-//                 or count rows (false).
+//   kScale        false: sum += value.
+//                 true:  sum = __fadd_rn(sum, __fmul_rn(value, scale)).
+//   kSkipSelf     recv has num_sources - 1 rows and no row for self_index
+//                 (true), or num_sources rows (false).
 //   kMultiShard   layout.num_shards may be greater than 1.
-// acc starts at 0. A float4 path is taken when numel and every stride that is
-// read are multiples of 4 and own and recv are 16-byte aligned; otherwise a
-// scalar path is taken. Both paths use the same summation order and float
-// operations. scale is ignored when kScale is false. Only two
+// sum starts at 0. A float4 path is taken when numel and every stride that is
+// read are multiples of 4 and self_values and recv are 16-byte aligned;
+// otherwise a scalar path is taken. Both paths use the same summation order and
+// float operations. scale is ignored when kScale is false. Only two
 // instantiations exist: <false, true, true> (LaunchIntraNodeSum) and
 // <true, false, false> (LaunchFinalSum).
 template <bool kScale, bool kSkipSelf, bool kMultiShard>
-cudaError_t LaunchSum(float* own,
+cudaError_t LaunchSum(float* self_values,
                       const float* recv,
                       const SumLayout& layout,
                       float scale,
@@ -93,13 +93,14 @@ cudaError_t LaunchIntraNodeSum(float* grad,
                                int num_threads = 512);
 
 // Final sum of one shard with a coefficient, in place:
-//   shard = sum over k of (k == self_index ? shard : recv[k]) * scale.
+//   shard = sum over source of
+//           (source == self_index ? shard : recv[source]) * scale.
 // LaunchSum<true, false, false>.
-//   recv: [count][numel]; row self_index is not read.
+//   recv: [num_sources][numel]; row self_index is not read.
 cudaError_t LaunchFinalSum(float* shard,
                            const float* recv,
                            size_t numel,
-                           int count,
+                           int num_sources,
                            int self_index,
                            float scale,
                            int num_blocks,
