@@ -1367,6 +1367,8 @@ inline void GPUReduceScheduler(const KPDevice& dev_ctx,
 }
 
 namespace funcs {
+// `x_shape`, if not empty, reads the contiguous `x` as that shape, which may
+// have more dims than DDim::kMaxRank.
 template <typename Tx,
           typename Ty,
           template <typename, typename, typename>
@@ -1375,7 +1377,8 @@ void ReduceGpuKernel(const KPDevice& dev_ctx,
                      const phi::DenseTensor& x,
                      phi::DenseTensor* y,
                      const std::vector<int>& origin_reduce_dims,
-                     const double norm_p = 1.0) {
+                     const double norm_p = 1.0,
+                     const std::vector<int64_t>& x_shape = {}) {
   if (x.numel() == 0) {
     dev_ctx.Alloc<Ty>(y);
     return;
@@ -1383,17 +1386,32 @@ void ReduceGpuKernel(const KPDevice& dev_ctx,
 
   dev_ctx.Alloc<Ty>(y);
 
-  int64_t ndim = x.dims().size();
+  int64_t ndim = x_shape.empty() ? x.dims().size() : x_shape.size();
   auto positive_reduce_dims = ConvertToPositiveDims(origin_reduce_dims, ndim);
   auto mask = MakeDimMask(positive_reduce_dims, ndim);
-  auto viewed_result = ReviewReduceResult(x, *(y), ndim, mask);
-
-  auto x_dim = vectorize<int64_t>(x.dims());
 
   DenseTensorIteratorConfig dense_iter_config;
   dense_iter_config.is_reduction(true);
-  dense_iter_config.add_output(viewed_result);
-  dense_iter_config.add_const_input(x);
+  DenseTensor viewed_result;
+  if (x_shape.empty()) {
+    viewed_result = ReviewReduceResult(x, *(y), ndim, mask);
+    dense_iter_config.add_output(viewed_result);
+    dense_iter_config.add_const_input(x);
+  } else {
+    // Same view as ReviewReduceResult, kept in vectors.
+    std::vector<int64_t> out_shape(ndim), out_stride(ndim), x_stride(ndim);
+    int64_t out_numel = 1;
+    int64_t x_numel = 1;
+    for (int dim = ndim - 1; dim >= 0; dim--) {
+      out_shape[dim] = mask[dim] ? 1 : x_shape[dim];
+      out_stride[dim] = out_numel;
+      out_numel *= out_shape[dim];
+      x_stride[dim] = x_numel;
+      x_numel *= x_shape[dim];
+    }
+    dense_iter_config.add_output(*y, out_shape, out_stride);
+    dense_iter_config.add_const_input(x, x_shape, x_stride);
+  }
   DenseTensorIterator iter = dense_iter_config.build();
 
   using MPType = typename MPTypeTrait<Ty>::Type;

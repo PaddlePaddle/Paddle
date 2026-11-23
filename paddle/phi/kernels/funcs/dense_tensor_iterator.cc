@@ -291,8 +291,23 @@ void DenseTensorIteratorBase::populate_operands(
     if (idx < static_cast<size_t>(config.num_outputs_)) {
       operands_[idx].is_output = true;
     }
+    auto view = config.views_.find(idx);
+    if (view != config.views_.end()) {
+      operands_[idx].has_view = true;
+      operands_[idx].view_shape = view->second.first;
+      operands_[idx].view_strides = view->second.second;
+    }
   }
   num_outputs_ = config.num_outputs_;
+}
+
+static std::vector<int64_t> OperandShape(const DenseOperandInfo& op) {
+  return op.has_view ? op.view_shape : vectorize<int64_t>(op.tensor().dims());
+}
+
+static std::vector<int64_t> OperandStrides(const DenseOperandInfo& op) {
+  return op.has_view ? op.view_strides
+                     : vectorize<int64_t>(op.tensor().strides());
 }
 
 FastSetupType DenseTensorIteratorBase::compute_fast_setup_type(
@@ -374,7 +389,7 @@ void DenseTensorIteratorBase::compute_shape(
     bool valid_stride = op.tensor().strides().size() == -1 ? false : true;
     if (!op.tensor().initialized() || !valid_stride) continue;
     if (config.resize_outputs_ && op.is_output) continue;
-    auto shape = vectorize<int64_t>(op.tensor().dims());
+    auto shape = OperandShape(op);
     if (shape.empty()) {
       has_scalars = true;
     } else {
@@ -400,8 +415,8 @@ void DenseTensorIteratorBase::compute_strides(
     bool reduce_pass = false;
     bool out_pass = false;
     if (is_alloc_out_ && op.is_output) out_pass = true;
-    std::vector<int64_t> tmp_shape = vectorize<int64_t>(op.tensor().dims());
-    std::vector<int64_t> tmp_stride = vectorize<int64_t>(op.tensor().strides());
+    std::vector<int64_t> tmp_shape = OperandShape(op);
+    std::vector<int64_t> tmp_stride = OperandStrides(op);
 
     if (is_reduction_ && !valid_stride && op.is_output) {
       tmp_stride = std::vector<int64_t>(shape_.size(), 0);
@@ -411,12 +426,10 @@ void DenseTensorIteratorBase::compute_strides(
     if (out_pass || reduce_pass ||
         op.tensor().initialized() && !op.will_resize && valid_stride) {
       std::vector<int64_t> original_shape;
-      original_shape = config.static_shape_
-                           ? shape_
-                           : vectorize<int64_t>(op.tensor().dims());
+      original_shape = config.static_shape_ ? shape_ : tmp_shape;
       if (op.is_output && reduce_pass) original_shape = tmp_shape;
       std::vector<int64_t> original_stride;
-      original_stride = vectorize<int64_t>(op.tensor().strides());
+      original_stride = OperandStrides(op);
       if (op.is_output && reduce_pass) original_stride = tmp_stride;
       auto element_size_in_bytes = phi::SizeOf(op.tensor().dtype());
       auto offset = ndim() - original_shape.size();

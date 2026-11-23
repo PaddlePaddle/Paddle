@@ -19,6 +19,9 @@
 #include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
 #include "paddle/phi/kernels/tile_grad_kernel.h"
+#if defined(__NVCC__) || defined(__HIPCC__)
+#include "paddle/phi/kernels/gpu/reduce.h"
+#endif
 
 namespace phi {
 
@@ -46,14 +49,6 @@ void TileGradKernel(const Context& dev_ctx,
   const int num_unsqueezed =
       static_cast<int>(repeat_times_data.size()) - x_rank;
 
-  DenseTensor cur = out_grad;
-  for (int i = 0; i < num_unsqueezed; ++i) {
-    // A dim with repeat 1 has size 1, summing it is a no-op.
-    if (repeat_times_data[i] != 1) {
-      cur = Sum<T, Context>(dev_ctx, cur, IntArray({0}), cur.dtype(), false);
-    }
-  }
-
   // grad_size interleaves [repeat_i, x_dims[i]] for every repeat_i != 1.
   // Untiled dims are merged into the preceding kept dim, which the reduce
   // kernel would collapse anyway, so the reduction itself is unchanged.
@@ -72,6 +67,28 @@ void TileGradKernel(const Context& dev_ctx,
     is_repeat.push_back(false);
   }
 
+  // A dim with repeat 1 has size 1, summing it is a no-op.
+  int last_lead_sum = -1;
+  for (int i = 0; i < num_unsqueezed; ++i) {
+    if (repeat_times_data[i] != 1) {
+      last_lead_sum = i;
+    }
+  }
+  DenseTensor cur = out_grad;
+  for (int i = 0; i <= last_lead_sum; ++i) {
+    if (repeat_times_data[i] == 1) {
+      continue;
+    }
+    if (i == last_lead_sum && grad_size.size() <= 1) {
+      // Nothing is left to reduce, so the last sum writes x_grad directly.
+      SumKernel<T, Context>(
+          dev_ctx, cur, IntArray({0}), cur.dtype(), false, x_grad);
+      x_grad->Resize(x_dims);
+      return;
+    }
+    cur = Sum<T, Context>(dev_ctx, cur, IntArray({0}), cur.dtype(), false);
+  }
+
   if (grad_size.size() <= 1) {
     dev_ctx.template Alloc<T>(x_grad);
     Copy(dev_ctx, cur, dev_ctx.GetPlace(), false, x_grad);
@@ -80,11 +97,24 @@ void TileGradKernel(const Context& dev_ctx,
     return;
   }
 
+#if defined(__NVCC__) || defined(__HIPCC__)
+  // One reduce over the whole interleaved view, as torch does. The view can
+  // reach 2 * rank(x) = 14 dims, more than a DDim holds, so it is passed as a
+  // shape vector.
+  std::vector<int> reduce_dims;
+  for (size_t d = 0; d < grad_size.size(); ++d) {
+    if (is_repeat[d]) {
+      reduce_dims.push_back(static_cast<int>(d));
+    }
+  }
+  funcs::ReduceGpuKernel<T, T, kps::SumOps>(
+      dev_ctx, cur, x_grad, reduce_dims, 1.0, grad_size);
+#else
   // With every repeat != 1, grad_size reaches 2 * rank(x) = 14 dims, more
   // than a DDim holds. Then sum the repeat axes among the first
   // kMaxRank - 1 dims with the rest flattened, and go on with the result.
-  // ponytail: the extra pass rounds to T once more for fp16/bf16/fp8; only
-  // ranks beyond DDim::kMaxRank take it.
+  // ponytail: CPU only; the extra pass rounds to T once more for
+  // fp16/bf16/fp8, only ranks beyond DDim::kMaxRank take it.
   while (grad_size.size() > static_cast<size_t>(DDim::kMaxRank)) {
     const int head = DDim::kMaxRank - 1;
     std::vector<int64_t> shape(grad_size.begin(), grad_size.begin() + head);
@@ -124,6 +154,7 @@ void TileGradKernel(const Context& dev_ctx,
   SumKernel<T, Context>(
       dev_ctx, cur, IntArray(sum_dims), cur.dtype(), false, x_grad);
   x_grad->Resize(x_dims);
+#endif
 }
 
 }  // namespace phi
