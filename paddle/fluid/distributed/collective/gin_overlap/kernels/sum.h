@@ -35,23 +35,23 @@ namespace distributed {
 
 // Memory layout of one sum.
 //
-// The data is num_segments segments of numel elements each. Element e of
-// segment s is at
-//   own:                  own + s * own_segment_stride + e
+// The data is num_shards shards of numel elements each; a shard is one
+// slice of this rank's column per node. Element e of shard s is at
+//   own:                  own + s * own_shard_stride + e
 //   recv, source src:     recv + RecvRow(src) * recv_row_stride
-//                              + s * recv_segment_stride + e
+//                              + s * recv_shard_stride + e
 // RecvRow(src) is src when recv has count rows (the row of self_index is not
 // read), or src - (src > self_index) when recv has count - 1 rows that skip
-// self_index (template parameter kSkipSelf). The segment strides are not read
-// when kMultiSegment is false.
+// self_index (template parameter kSkipSelf). The shard strides are not read
+// when kMultiShard is false.
 struct SumLayout {
-  int count;         // number of sources, this rank included (>= 1)
-  int self_index;    // index of this rank among the sources, in [0, count)
-  int num_segments;  // >= 1; must be 1 when kMultiSegment is false
-  size_t numel;      // elements per segment
-  size_t own_segment_stride;
+  int count;       // number of sources, this rank included (>= 1)
+  int self_index;  // index of this rank among the sources, in [0, count)
+  int num_shards;  // >= 1; must be 1 when kMultiShard is false
+  size_t numel;    // elements per shard
+  size_t own_shard_stride;
   size_t recv_row_stride;
-  size_t recv_segment_stride;
+  size_t recv_shard_stride;
 };
 
 // Generic sum. <<<num_blocks, num_threads>>>
@@ -59,13 +59,14 @@ struct SumLayout {
 //                 true:  acc = __fadd_rn(acc, __fmul_rn(value, scale)).
 //   kSkipSelf     recv has count - 1 rows and no row for self_index (true),
 //                 or count rows (false).
-//   kMultiSegment layout.num_segments may be greater than 1.
+//   kMultiShard   layout.num_shards may be greater than 1.
 // acc starts at 0. A float4 path is taken when numel and every stride that is
 // read are multiples of 4 and own and recv are 16-byte aligned; otherwise a
 // scalar path is taken. Both paths use the same summation order and float
-// operations. scale is ignored when kScale is false. sum.cu instantiates
-// all eight combinations.
-template <bool kScale, bool kSkipSelf, bool kMultiSegment>
+// operations. scale is ignored when kScale is false. Only two
+// instantiations exist: <false, true, true> (LaunchIntraNodeSum) and
+// <true, false, false> (LaunchFinalSum).
+template <bool kScale, bool kSkipSelf, bool kMultiShard>
 cudaError_t LaunchSum(float* own,
                       const float* recv,
                       const SumLayout& layout,
