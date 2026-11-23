@@ -190,14 +190,14 @@ GinGradCommScheduler::GinGradCommScheduler(
                            int kind,
                            int count,
                            const char* name) {
-    bool ok = static_cast<int>(order.size()) == count;
-    for (int k = 0; ok && k < count; ++k) {
+    bool is_permutation = static_cast<int>(order.size()) == count;
+    for (int k = 0; is_permutation && k < count; ++k) {
       const int bucket = order[k];
-      ok = bucket >= 0 && bucket < num_buckets &&
-           buckets_[bucket].kind == kind && position_[bucket] < 0;
-      if (ok) position_[bucket] = k;
+      is_permutation = bucket >= 0 && bucket < num_buckets &&
+                       buckets_[bucket].kind == kind && position_[bucket] < 0;
+      if (is_permutation) position_[bucket] = k;
     }
-    PADDLE_ENFORCE_EQ(ok,
+    PADDLE_ENFORCE_EQ(is_permutation,
                       true,
                       common::errors::InvalidArgument(
                           "The %s release order is not a permutation of the "
@@ -213,10 +213,11 @@ GinGradCommScheduler::GinGradCommScheduler(
   gather_index_.assign(num_buckets, -1);
   for (size_t i = 0; i < config.gather.size(); ++i) {
     const GinGatherDesc& desc = config.gather[i];
-    const bool known = desc.bucket >= 0 && desc.bucket < num_buckets &&
-                       gather_index_[desc.bucket] < 0;
+    const bool is_new_bucket = desc.bucket >= 0 && desc.bucket < num_buckets &&
+                               gather_index_[desc.bucket] < 0;
     PADDLE_ENFORCE_EQ(
-        known && desc.owner >= 0 && desc.owner < GroupOf(desc.bucket).size &&
+        is_new_bucket && desc.owner >= 0 &&
+            desc.owner < GroupOf(desc.bucket).size &&
             InWindow(desc.arrive_offset,
                      1,
                      kCounterBytes,
@@ -358,7 +359,7 @@ void GinGradCommScheduler::CheckTables(
   const int64_t ranks_per_node = dense.ranks_per_node;
   const int64_t num_nodes = dense.num_nodes;
   // the first range that lies outside its window or is misaligned
-  std::ostringstream bad;
+  std::ostringstream bad_range;
   if (!InWindow(credit_intra_offset_,
                 kMaxRanksPerNode,
                 kCounterBytes,
@@ -369,18 +370,18 @@ void GinGradCommScheduler::CheckTables(
                 kCounterBytes,
                 kCounterBytes,
                 dense.host_bytes)) {
-    bad << "The intra-node / inter-node credit area (sharding group host "
-           "window of "
-        << dense.host_bytes << " bytes)";
+    bad_range << "The intra-node / inter-node credit area (sharding group host "
+                 "window of "
+              << dense.host_bytes << " bytes)";
   } else if (!config.expert_order.empty() && !InWindow(credit_expert_offset_,
                                                        expert.size,
                                                        kCounterBytes,
                                                        kCounterBytes,
                                                        expert.host_bytes)) {
-    bad << "The expert credit area (moe_sharding group host window of "
-        << expert.host_bytes << " bytes)";
+    bad_range << "The expert credit area (moe_sharding group host window of "
+              << expert.host_bytes << " bytes)";
   }
-  for (size_t i = 0; bad.tellp() == 0 && i < config.buckets.size(); ++i) {
+  for (size_t i = 0; bad_range.tellp() == 0 && i < config.buckets.size(); ++i) {
     const GinBucketDesc& bucket = config.buckets[i];
     const bool is_dense = bucket.kind == kGinDenseBucket;
     const Group& group = is_dense ? dense : expert;
@@ -388,54 +389,57 @@ void GinGradCommScheduler::CheckTables(
     // The intra-node sum reads the dense send and intra-node recv ranges as
     // float4, so those are 16-byte aligned and a dense shard is a multiple
     // of 4.
-    bool ok = numel > 0 && (!is_dense || numel % 4 == 0) &&
-              numel <= INT64_MAX / kFloatBytes / group.size;
-    ok = ok && InWindow(bucket.send_offset,
-                        numel * group.size,
-                        kFloatBytes,
-                        is_dense ? 16 : kFloatBytes,
-                        group.send_bytes);
-    ok = ok && InWindow(bucket.signal_offset,
-                        1,
-                        kCounterBytes,
-                        kCounterBytes,
-                        group.host_bytes);
+    bool is_valid_layout = numel > 0 && (!is_dense || numel % 4 == 0) &&
+                           numel <= INT64_MAX / kFloatBytes / group.size;
+    is_valid_layout = is_valid_layout && InWindow(bucket.send_offset,
+                                                  numel * group.size,
+                                                  kFloatBytes,
+                                                  is_dense ? 16 : kFloatBytes,
+                                                  group.send_bytes);
+    is_valid_layout = is_valid_layout && InWindow(bucket.signal_offset,
+                                                  1,
+                                                  kCounterBytes,
+                                                  kCounterBytes,
+                                                  group.host_bytes);
     if (is_dense) {
-      ok = ok && InWindow(bucket.arrive_offset,
-                          kMaxRanksPerNode,
-                          kCounterBytes,
-                          kCounterBytes,
-                          group.host_bytes);
-      ok = ok && (bucket.depth[0] < 0 ||
-                  InWindow(bucket.recv_offset[0],
-                           (ranks_per_node - 1) * num_nodes * numel,
-                           kFloatBytes,
-                           16,
-                           group.recv_bytes));
-      ok = ok && (bucket.depth[1] < 0 || InWindow(bucket.recv_offset[1],
-                                                  num_nodes * numel,
-                                                  kFloatBytes,
-                                                  kFloatBytes,
-                                                  group.recv_bytes));
+      is_valid_layout = is_valid_layout && InWindow(bucket.arrive_offset,
+                                                    kMaxRanksPerNode,
+                                                    kCounterBytes,
+                                                    kCounterBytes,
+                                                    group.host_bytes);
+      is_valid_layout =
+          is_valid_layout && (bucket.depth[0] < 0 ||
+                              InWindow(bucket.recv_offset[0],
+                                       (ranks_per_node - 1) * num_nodes * numel,
+                                       kFloatBytes,
+                                       16,
+                                       group.recv_bytes));
+      is_valid_layout = is_valid_layout &&
+                        (bucket.depth[1] < 0 || InWindow(bucket.recv_offset[1],
+                                                         num_nodes * numel,
+                                                         kFloatBytes,
+                                                         kFloatBytes,
+                                                         group.recv_bytes));
     } else {
-      ok = ok && (bucket.depth[0] < 0 || InWindow(bucket.recv_offset[0],
-                                                  group.size * numel,
-                                                  kFloatBytes,
-                                                  kFloatBytes,
-                                                  group.recv_bytes));
+      is_valid_layout = is_valid_layout &&
+                        (bucket.depth[0] < 0 || InWindow(bucket.recv_offset[0],
+                                                         group.size * numel,
+                                                         kFloatBytes,
+                                                         kFloatBytes,
+                                                         group.recv_bytes));
     }
-    if (!ok) {
-      bad << "Bucket " << i << " (" << (is_dense ? "dense" : "expert")
-          << ", shard of " << numel
-          << " elements): the shard size, or one of its ranges (send, "
-             "signal, arrival counters, recv slots)";
+    if (!is_valid_layout) {
+      bad_range << "Bucket " << i << " (" << (is_dense ? "dense" : "expert")
+                << ", shard of " << numel
+                << " elements): the shard size, or one of its ranges (send, "
+                   "signal, arrival counters, recv slots)";
     }
   }
   PADDLE_ENFORCE_EQ(
-      bad.tellp() == 0,
+      bad_range.tellp() == 0,
       true,
       common::errors::InvalidArgument(
-          "%s lies outside its window or is misaligned.", bad.str()));
+          "%s lies outside its window or is misaligned.", bad_range.str()));
 }
 
 void GinGradCommScheduler::CreateStreamsAndEvents(int num_window_marks,
@@ -962,7 +966,7 @@ std::string GinGradCommScheduler::ErrorText() const {
 // current_mark_ and the block counts.
 
 bool GinGradCommScheduler::ReleaseIntraCopy() {
-  bool moved = false;
+  bool released = false;
   const int num_dense = static_cast<int>(dense_order_.size());
   while (pos_intra_copy_ < num_dense) {
     const int bucket = dense_order_[pos_intra_copy_];
@@ -972,13 +976,13 @@ bool GinGradCommScheduler::ReleaseIntraCopy() {
     ++copy_seq_[bucket];
     Submit(kGinOpIntraCopy, bucket, [&] { SubmitIntraCopy(bucket); });
     ++pos_intra_copy_;
-    moved = true;
+    released = true;
   }
-  return moved;
+  return released;
 }
 
 bool GinGradCommScheduler::ReleaseIntraSum() {
-  bool moved = false;
+  bool released = false;
   const int num_dense = static_cast<int>(dense_order_.size());
   while (pos_intra_sum_ < num_dense) {
     const int bucket = dense_order_[pos_intra_sum_];
@@ -989,13 +993,13 @@ bool GinGradCommScheduler::ReleaseIntraSum() {
     }
     Submit(kGinOpIntraSum, bucket, [&] { SubmitIntraSum(bucket); });
     ++pos_intra_sum_;
-    moved = true;
+    released = true;
   }
-  return moved;
+  return released;
 }
 
 bool GinGradCommScheduler::ReleasePut() {
-  bool moved = false;
+  bool released = false;
   const int num_dense = static_cast<int>(dense_order_.size());
   while (pos_dense_put_ < num_dense) {
     const int bucket = dense_order_[pos_dense_put_];
@@ -1008,7 +1012,7 @@ bool GinGradCommScheduler::ReleasePut() {
     Submit(kGinOpPut, bucket, [&] { num_signals = SubmitDensePut(bucket); });
     targets_[bucket] += static_cast<uint64_t>(num_signals);
     ++pos_dense_put_;
-    moved = true;
+    released = true;
   }
   const int num_expert = static_cast<int>(expert_order_.size());
   while (pos_expert_put_ < num_expert) {
@@ -1019,15 +1023,15 @@ bool GinGradCommScheduler::ReleasePut() {
     Submit(kGinOpPut, bucket, [&] { num_signals = SubmitExpertPut(bucket); });
     targets_[bucket] += static_cast<uint64_t>(num_signals);
     ++pos_expert_put_;
-    moved = true;
+    released = true;
   }
-  return moved;
+  return released;
 }
 
 // in_proxy: the proxy thread sends the gather of a 2D bucket right after its
 // FINAL_SUM; otherwise the bucket waits for the next GATHER.
 bool GinGradCommScheduler::ReleaseFinalSum(bool in_proxy) {
-  bool moved = false;
+  bool released = false;
   const int num_dense = static_cast<int>(dense_order_.size());
   while (pos_dense_final_sum_ < num_dense) {
     const int bucket = dense_order_[pos_dense_final_sum_];
@@ -1039,7 +1043,7 @@ bool GinGradCommScheduler::ReleaseFinalSum(bool in_proxy) {
     Submit(kGinOpFinalSum, bucket, [&] { SubmitDenseFinalSum(bucket); });
     ++pos_dense_final_sum_;
     AfterFinalSum(bucket, in_proxy);
-    moved = true;
+    released = true;
   }
   const int num_expert = static_cast<int>(expert_order_.size());
   while (pos_expert_final_sum_ < num_expert) {
@@ -1051,9 +1055,9 @@ bool GinGradCommScheduler::ReleaseFinalSum(bool in_proxy) {
     Submit(kGinOpFinalSum, bucket, [&] { SubmitExpertFinalSum(bucket); });
     ++pos_expert_final_sum_;
     AfterFinalSum(bucket, in_proxy);
-    moved = true;
+    released = true;
   }
-  return moved;
+  return released;
 }
 
 // After the FINAL_SUM of a 2D bucket. Nothing is sent by the owner. In the
@@ -1276,23 +1280,23 @@ bool GinGradCommScheduler::ConsumePublished() {
 // the lock.
 int GinGradCommScheduler::RunStep() {
   for (;;) {
-    bool have = false;
+    bool took_mark = false;
     {
       std::lock_guard<std::mutex> lock(mutex_);
       if (abort_) return kAborted;
-      have = ConsumePublished();
+      took_mark = ConsumePublished();
     }
-    bool moved = false;
+    bool released = false;
     for (;;) {
-      bool progress = ReleaseFinalSum(/*in_proxy=*/true);
-      progress |= ReleaseIntraCopy();
-      progress |= ReleaseIntraSum();
-      progress |= ReleasePut();
-      if (!progress) break;
-      moved = true;
+      bool released_in_pass = ReleaseFinalSum(/*in_proxy=*/true);
+      released_in_pass |= ReleaseIntraCopy();
+      released_in_pass |= ReleaseIntraSum();
+      released_in_pass |= ReleasePut();
+      if (!released_in_pass) break;
+      released = true;
     }
     if (IsStepDone()) return kDone;
-    if (have || moved) continue;
+    if (took_mark || released) continue;
     std::unique_lock<std::mutex> lock(mutex_);
     if (consumed_slot_ + 1 >= tail_mark_index_ && !abort_) {
       cv_proxy_.wait_for(lock, std::chrono::microseconds(kPollIntervalUs));
@@ -1370,17 +1374,17 @@ void GinGradCommScheduler::FinishStep(double timeout_s) {
           lock, std::chrono::duration<double>(kAbortWaitSeconds), left_run);
       if (state_ == kRun) {
         const int activity = activity_.load();
-        std::ostringstream doing;
+        std::ostringstream activity_text;
         if (activity) {
-          doing << "submitting " << OpName(activity / kActivityScale)
-                << " of bucket " << activity % kActivityScale - 1;
+          activity_text << "submitting " << OpName(activity / kActivityScale)
+                        << " of bucket " << activity % kActivityScale - 1;
         } else {
-          doing << "not in a CUDA call";
+          activity_text << "not in a CUDA call";
         }
         std::ostringstream text;
         text << "gin_overlap: step " << step_ + 1 << " was not released within "
              << timeout_s << " s, and the proxy thread did not stop within "
-             << kAbortWaitSeconds << " s (" << doing.str()
+             << kAbortWaitSeconds << " s (" << activity_text.str()
              << "), so there is no per-op report.";
         LOG(ERROR) << text.str();
         PADDLE_THROW(common::errors::ExecutionTimeout("%s", text.str()));
@@ -1446,13 +1450,13 @@ void GinGradCommScheduler::WaitOwnedGathers(double timeout_s) {
           std::chrono::duration<double>(timeout_s));
   std::string why;
   while (!pending.empty()) {
-    std::vector<int> rest;
+    std::vector<int> still_pending;
     for (const int entry : pending) {
-      if (OwnedGatherPending(entry, nullptr)) rest.push_back(entry);
+      if (OwnedGatherPending(entry, nullptr)) still_pending.push_back(entry);
     }
-    const bool moved = rest.size() != pending.size();
-    pending.swap(rest);
-    if (pending.empty() || moved) continue;
+    const bool some_complete = still_pending.size() != pending.size();
+    pending.swap(still_pending);
+    if (pending.empty() || some_complete) continue;
     if (std::chrono::steady_clock::now() > deadline) {
       std::ostringstream text;
       text << "gin_overlap: step " << step_ + 1 << ": the gather of "
@@ -1484,7 +1488,7 @@ bool GinGradCommScheduler::OwnedGatherPending(int entry,
   // Whether `value` is still below `target`. A value above its target means
   // a gather was sent twice. `sender` is the group rank of a same-node
   // sender, or -1 for the inter-node counter (all senders on other nodes).
-  const auto waits = [&](uint64_t value, uint64_t target, int sender) {
+  const auto below_target = [&](uint64_t value, uint64_t target, int sender) {
     if (value <= target && (value == target || !why)) return value < target;
     std::ostringstream what;
     if (sender < 0) {
@@ -1509,14 +1513,16 @@ bool GinGradCommScheduler::OwnedGatherPending(int entry,
     *why = text.str();
     return true;
   };
-  if (waits(HostCounter(group, gather.desc.arrive_offset), inter_target, -1)) {
+  if (below_target(
+          HostCounter(group, gather.desc.arrive_offset), inter_target, -1)) {
     return true;
   }
   for (const int l : gather.intra_senders) {
-    if (waits(HostCounter(group,
-                          gather.desc.intra_arrive_offset + kCounterBytes * l),
-              steps,
-              group.node_index * group.ranks_per_node + l)) {
+    if (below_target(
+            HostCounter(group,
+                        gather.desc.intra_arrive_offset + kCounterBytes * l),
+            steps,
+            group.node_index * group.ranks_per_node + l)) {
       return true;
     }
   }
