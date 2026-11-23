@@ -214,7 +214,11 @@ void* NCCLCommContext::RegisterWindow(void* ptr, size_t size, int win_flags) {
   NCCL_CHECK(phi::dynload::ncclCommWindowRegister(
       nccl_comm_, ptr, size, &win, win_flags));
   windows_.emplace(ptr, RegisteredWindow{reinterpret_cast<void*>(win), size});
-  device_api_->window_buffers[reinterpret_cast<void*>(win)] = ptr;
+  // Without symmetric memory support NCCL returns no window; GetWindowRange()
+  // must then reject a null handle.
+  if (win != nullptr) {
+    device_api_->window_buffers[reinterpret_cast<void*>(win)] = ptr;
+  }
   VLOG(3) << "Registered NCCL window for buffer " << ptr << " of size " << size
           << " with flags " << win_flags;
   return reinterpret_cast<void*>(win);
@@ -268,11 +272,6 @@ bool NCCLCommContext::IsRegistered(const void* ptr, size_t size) const {
   return false;
 }
 
-void* NCCLCommContext::GetWindow(const void* ptr) const {
-  auto iter = windows_.find(const_cast<void*>(ptr));
-  return iter == windows_.end() ? nullptr : iter->second.handle;
-}
-
 bool NCCLCommContext::GetWindowRange(void* window,
                                      void** base,
                                      size_t* bytes) const {
@@ -287,7 +286,15 @@ bool NCCLCommContext::GetWindowRange(void* window,
 
 bool NCCLCommContext::IsDevCommSupported() {
 #ifdef PADDLE_WITH_GIN_OVERLAP
-  return phi::dynload::ncclDevCommCreate.IsValid() &&
+  // NCCL 2.28 / 2.29 already export the device API entry points, but their
+  // ncclDevCommCreate rejects the requirements of newer headers, so the loaded
+  // library is also checked for the version Paddle requires.
+  static const int runtime_version = [] {
+    int version = 0;
+    return phi::dynload::ncclGetVersion(&version) == ncclSuccess ? version : 0;
+  }();
+  return runtime_version >= 23007 &&
+         phi::dynload::ncclDevCommCreate.IsValid() &&
          phi::dynload::ncclDevCommDestroy.IsValid() &&
          phi::dynload::ncclGetLsaDevicePointer.IsValid() &&
          phi::dynload::ncclCommWindowRegister.IsValid();
@@ -314,9 +321,10 @@ NCCLDevCommInfo NCCLCommContext::GetOrCreateDevComm(int gin_context_count) {
       IsDevCommSupported(),
       true,
       common::errors::Unavailable(
-          "The loaded NCCL library does not provide the device API entry "
-          "points (ncclDevCommCreate, ncclDevCommDestroy, "
-          "ncclGetLsaDevicePointer); NCCL 2.30.7 or newer is required."));
+          "The loaded NCCL library is older than 2.30.7 or does not provide "
+          "the device API entry points (ncclDevCommCreate, "
+          "ncclDevCommDestroy, ncclGetLsaDevicePointer, "
+          "ncclCommWindowRegister); NCCL 2.30.7 or newer is required."));
   PADDLE_ENFORCE_NOT_NULL(
       nccl_comm_,
       common::errors::PreconditionNotMet(
@@ -358,8 +366,6 @@ NCCLDevCommInfo NCCLCommContext::GetOrCreateDevComm(int gin_context_count) {
       "sm_90 or newer)."));
 #endif
 }
-
-bool NCCLCommContext::HasDevComm() const { return device_api_->has_dev_comm; }
 
 const NCCLDevCommInfo& NCCLCommContext::GetDevCommInfo() const {
   PADDLE_ENFORCE_EQ(device_api_->has_dev_comm,
@@ -503,6 +509,11 @@ NCCLHostWindow NCCLCommContext::AllocHostWindow(size_t bytes) {
     window = RegisterWindow(memory.ptr,
                             alloc_bytes,
                             NCCL_WIN_COLL_SYMMETRIC | NCCL_WIN_STRICT_ORDERING);
+    if (window == nullptr) {
+      // RegisterWindow() records the buffer even without a window; forget it
+      // before the memory is freed below.
+      windows_.erase(memory.ptr);
+    }
     PADDLE_ENFORCE_NOT_NULL(
         window,
         common::errors::Unavailable(

@@ -324,9 +324,9 @@ class ProcessGroupNCCL final : public ProcessGroupWithStream {
 
   void EagerConnectRingExchange();
 
-  // The NCCLCommContext of the current device. With create_if_missing = false
-  // it raises instead of creating the communicator, which is collective.
-  phi::distributed::NCCLCommContext* GetGinCommContext(bool create_if_missing);
+  // The NCCLCommContext of the current device. Raises when it has not been
+  // created, instead of creating it (creation is collective).
+  phi::distributed::NCCLCommContext* GetGinCommContext();
 
   // Converts a group rank to its index in this rank's LSA team, or -1 when it
   // is in another LSA team. Raises when `peer` is not a rank of this group.

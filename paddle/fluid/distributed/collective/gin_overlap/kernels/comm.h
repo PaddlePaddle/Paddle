@@ -68,8 +68,9 @@ cudaError_t LaunchIncrementPeerCounter(const void* dev_comm,
                                        int num_gin_contexts,
                                        cudaStream_t stream);
 
-// Flushes every GIN context: returns once the puts issued on them so far have
-// been sent, so their source buffers can be reused.
+// Enqueues a flush of every GIN context on `stream` and returns without
+// waiting for it. Once the flush kernel has completed on the stream, the
+// source buffers of the puts issued on those contexts before it may be reused.
 // <<<num_gin_contexts, 128>>>, one block per context.
 cudaError_t LaunchFlush(const void* dev_comm,
                         int num_gin_contexts,

@@ -84,13 +84,14 @@ void CheckGinSupported() {
 
 #ifdef PADDLE_WITH_GIN_OVERLAP
 // Checks that [offset, offset + bytes) lies in `window` and that `offset` is
-// a multiple of `alignment`. `range_name` names the argument in the error.
-void CheckWindowRange(phi::distributed::NCCLCommContext* comm_context,
-                      void* window,
-                      size_t offset,
-                      size_t bytes,
-                      size_t alignment,
-                      const char* range_name) {
+// a multiple of `alignment`, and returns the start of the window's buffer.
+// `range_name` names the argument in the error.
+void* CheckWindowRange(phi::distributed::NCCLCommContext* comm_context,
+                       void* window,
+                       size_t offset,
+                       size_t bytes,
+                       size_t alignment,
+                       const char* range_name) {
   void* window_base = nullptr;
   size_t window_bytes = 0;
   PADDLE_ENFORCE_EQ(
@@ -118,6 +119,7 @@ void CheckWindowRange(phi::distributed::NCCLCommContext* comm_context,
                         range_name,
                         offset,
                         alignment));
+  return window_base;
 }
 
 // Size and alignment of a counter.
@@ -1535,19 +1537,16 @@ bool ProcessGroupNCCL::IsGinSupported() {
 #endif
 }
 
-phi::distributed::NCCLCommContext* ProcessGroupNCCL::GetGinCommContext(
-    bool create_if_missing) {
+phi::distributed::NCCLCommContext* ProcessGroupNCCL::GetGinCommContext() {
   const auto place = phi::GPUPlace(phi::backends::gpu::GetCurrentDeviceId());
-  if (!create_if_missing) {
-    PADDLE_ENFORCE_NE(
-        place_to_comm_ctx_.find(GetKeyFromPlace(place)),
-        place_to_comm_ctx_.end(),
-        common::errors::PreconditionNotMet(
-            "Process group %d has no NCCL communicator on device %d; call "
-            "get_or_create_dev_comm() on every rank first.",
-            gid_,
-            place.GetDeviceId()));
-  }
+  PADDLE_ENFORCE_NE(
+      place_to_comm_ctx_.find(GetKeyFromPlace(place)),
+      place_to_comm_ctx_.end(),
+      common::errors::PreconditionNotMet(
+          "Process group %d has no NCCL communicator on device %d; call "
+          "get_or_create_dev_comm() on every rank first.",
+          gid_,
+          place.GetDeviceId()));
   return GetOrCreateCommContext(place);
 }
 
@@ -1569,7 +1568,8 @@ int ProcessGroupNCCL::PeerToLsaIndex(
 phi::distributed::NCCLDevCommInfo ProcessGroupNCCL::GetOrCreateDevComm(
     int gin_context_count) {
   CheckGinSupported();
-  auto* comm_context = GetGinCommContext(/*create_if_missing=*/true);
+  auto* comm_context = GetOrCreateCommContext(
+      phi::GPUPlace(phi::backends::gpu::GetCurrentDeviceId()));
   const auto dev_comm_info =
       comm_context->GetOrCreateDevComm(gin_context_count);
   PADDLE_ENFORCE_EQ(
@@ -1609,18 +1609,20 @@ phi::distributed::NCCLDevCommInfo ProcessGroupNCCL::GetOrCreateDevComm(
 
 phi::distributed::NCCLDevCommInfo ProcessGroupNCCL::GetDevCommInfo() {
   CheckGinSupported();
-  return GetGinCommContext(/*create_if_missing=*/false)->GetDevCommInfo();
+  return GetGinCommContext()->GetDevCommInfo();
 }
 
 phi::distributed::NCCLHostWindow ProcessGroupNCCL::AllocHostWindow(
     size_t bytes) {
   CheckGinSupported();
-  return GetGinCommContext(/*create_if_missing=*/true)->AllocHostWindow(bytes);
+  return GetOrCreateCommContext(
+             phi::GPUPlace(phi::backends::gpu::GetCurrentDeviceId()))
+      ->AllocHostWindow(bytes);
 }
 
 void ProcessGroupNCCL::FreeHostWindow(void* window) {
   CheckGinSupported();
-  GetGinCommContext(/*create_if_missing=*/false)->FreeHostWindow(window);
+  GetGinCommContext()->FreeHostWindow(window);
 }
 
 void ProcessGroupNCCL::Put(const std::vector<PutArgs>& puts,
@@ -1636,7 +1638,7 @@ void ProcessGroupNCCL::Put(const std::vector<PutArgs>& puts,
   if (puts.empty()) {
     return;
   }
-  auto* comm_context = GetGinCommContext(/*create_if_missing=*/false);
+  auto* comm_context = GetGinCommContext();
   const auto& dev_comm_info = comm_context->GetDevCommInfo();
   for (const auto& put : puts) {
     PeerToLsaIndex(dev_comm_info, put.peer);
@@ -1694,7 +1696,7 @@ void ProcessGroupNCCL::IncrementPeerCounter(
   if (increments.empty()) {
     return;
   }
-  auto* comm_context = GetGinCommContext(/*create_if_missing=*/false);
+  auto* comm_context = GetGinCommContext();
   const auto& dev_comm_info = comm_context->GetDevCommInfo();
   std::vector<int> lsa_indices;
   lsa_indices.reserve(increments.size());
@@ -1749,7 +1751,7 @@ void ProcessGroupNCCL::CopyToPeers(const std::vector<CopyToPeersArgs>& copies,
   if (copies.empty()) {
     return;
   }
-  auto* comm_context = GetGinCommContext(/*create_if_missing=*/false);
+  auto* comm_context = GetGinCommContext();
   const auto& dev_comm_info = comm_context->GetDevCommInfo();
   std::vector<void*> dsts;
   std::vector<const void*> srcs;
@@ -1779,12 +1781,12 @@ void ProcessGroupNCCL::CopyToPeers(const std::vector<CopyToPeersArgs>& copies,
         copy.bytes,
         static_cast<size_t>(0),
         common::errors::InvalidArgument("A copy must move at least one byte."));
-    CheckWindowRange(comm_context,
-                     copy.src_window,
-                     copy.src_offset,
-                     copy.bytes,
-                     1,
-                     "source");
+    const void* src_window_base = CheckWindowRange(comm_context,
+                                                   copy.src_window,
+                                                   copy.src_offset,
+                                                   copy.bytes,
+                                                   1,
+                                                   "source");
     CheckWindowRange(comm_context,
                      copy.dst_window,
                      copy.dst_offset,
@@ -1793,10 +1795,6 @@ void ProcessGroupNCCL::CopyToPeers(const std::vector<CopyToPeersArgs>& copies,
                      "destination");
     dsts.push_back(
         comm_context->LsaPointer(copy.dst_window, lsa_index, copy.dst_offset));
-    void* src_window_base = nullptr;
-    size_t src_window_bytes = 0;
-    comm_context->GetWindowRange(
-        copy.src_window, &src_window_base, &src_window_bytes);
     srcs.push_back(static_cast<const char*>(src_window_base) + copy.src_offset);
     sizes.push_back(copy.bytes);
   }
@@ -1820,8 +1818,7 @@ void ProcessGroupNCCL::CopyToPeers(const std::vector<CopyToPeersArgs>& copies,
 void ProcessGroupNCCL::Flush(gpuStream_t stream) {
   CheckGinSupported();
 #ifdef PADDLE_WITH_GIN_OVERLAP
-  const auto& dev_comm_info =
-      GetGinCommContext(/*create_if_missing=*/false)->GetDevCommInfo();
+  const auto& dev_comm_info = GetGinCommContext()->GetDevCommInfo();
   PADDLE_ENFORCE_GPU_SUCCESS(gin_overlap::LaunchFlush(
       dev_comm_info.dev_comm, dev_comm_info.gin_context_count, stream));
 #endif

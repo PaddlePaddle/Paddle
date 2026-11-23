@@ -168,10 +168,6 @@ class NCCLCommContext final : public CommContext {
   // a collective over that buffer may take a symmetric-memory path.
   bool IsRegistered(const void* ptr, size_t size) const;
 
-  // Returns the handle of the window registered at `ptr` by RegisterWindow(),
-  // or nullptr when `ptr` is not the start of a registered buffer.
-  void* GetWindow(const void* ptr) const;
-
   // Looks up a window handle returned by RegisterWindow(). Returns false when
   // the handle is not registered here; otherwise sets *base and *bytes to the
   // start and size of the registered buffer.
@@ -179,7 +175,8 @@ class NCCLCommContext final : public CommContext {
 
   // True when Paddle was built with PADDLE_WITH_GIN_OVERLAP (the NCCL device
   // API: NCCL 2.30.7 or newer with nccl_device.h, CUDA 13.0 or newer, sm_90 or
-  // newer) and the loaded NCCL provides the host entry points of that API.
+  // newer) and the loaded NCCL is 2.30.7 or newer and provides the host entry
+  // points of that API.
   static bool IsDevCommSupported();
 
   // Returns the device communicator (ncclDevComm) of this communicator and
@@ -192,9 +189,6 @@ class NCCLCommContext final : public CommContext {
   // registered before or after the device communicator is created. It is
   // destroyed by DestroyNCCLComm() before the communicator.
   NCCLDevCommInfo GetOrCreateDevComm(int gin_context_count);
-
-  // True once GetOrCreateDevComm() has created the device communicator.
-  bool HasDevComm() const;
 
   // The device communicator created by GetOrCreateDevComm(). Raises when it
   // has not been created.
