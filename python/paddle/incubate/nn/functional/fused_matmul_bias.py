@@ -17,6 +17,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Literal
 
 from paddle import _C_ops, _legacy_C_ops
+from paddle.base import core
 from paddle.base.layer_helper import LayerHelper
 from paddle.framework import (
     in_dynamic_mode,
@@ -127,6 +128,16 @@ def fused_linear(
             >>> print(out.shape)
             paddle.Size([3, 5])
     """
+    # Same decomposition as paddle.nn.functional.linear and torch: the bias
+    # gradient is a separate reduction. The BGRAD epilogue of
+    # fused_gemm_epilogue runs without split-K (1 MiB cublasLt workspace), so
+    # its weight gradient drifts from linear/torch for large M.
+    if (
+        bias is not None
+        and in_dynamic_or_pir_mode()
+        and core.is_compiled_with_cuda()
+    ):
+        return _C_ops.linear_v2(x, weight, bias, transpose_weight)
     return fused_matmul_bias(x, weight, bias, False, transpose_weight, name)
 
 

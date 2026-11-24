@@ -185,5 +185,47 @@ class TestFusedLinear_ZeroSize(unittest.TestCase):
         self.check_fused_linear(False)
 
 
+@unittest.skipIf(
+    not is_fused_matmul_bias_supported(),
+    "fused_gemm_epilogue is only supported when CUDA version >= 11.6",
+)
+class TestFusedLinearMatchesLinear(unittest.TestCase):
+    # fused_linear must be bitwise identical to F.linear in forward and
+    # backward. With M = 16384 the old fused_gemm_epilogue BGRAD path
+    # already produced a different weight gradient.
+    def check(self, transpose):
+        x = paddle.randn([4, 4096, 256]).astype('bfloat16')
+        w = paddle.randn([128, 256] if transpose else [256, 128])
+        w = w.astype('bfloat16')
+        b = paddle.randn([128]).astype('bfloat16')
+        dy = paddle.randn([4, 4096, 128]).astype('bfloat16')
+
+        def run(fn):
+            xs, ws, bs = (t.detach() for t in (x, w, b))
+            for t in (xs, ws, bs):
+                t.stop_gradient = False
+            out = fn(xs, ws, bs)
+            out.backward(dy)
+            return [
+                t.astype('float32').numpy()
+                for t in (out, xs.grad, ws.grad, bs.grad)
+            ]
+
+        expected = run(
+            lambda a, c, d: paddle.nn.functional.linear(
+                a, c.T if transpose else c, d
+            )
+        )
+        actual = run(lambda a, c, d: fused_linear(a, c, d, transpose))
+        for e, a in zip(expected, actual):
+            np.testing.assert_array_equal(a, e)
+
+    def test_non_transpose(self):
+        self.check(False)
+
+    def test_transpose(self):
+        self.check(True)
+
+
 if __name__ == "__main__":
     unittest.main()
