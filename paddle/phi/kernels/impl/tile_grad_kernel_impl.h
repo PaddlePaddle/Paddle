@@ -67,19 +67,21 @@ void TileGradKernel(const Context& dev_ctx,
     is_repeat.push_back(false);
   }
 
-  // A dim with repeat 1 has size 1, summing it is a no-op.
-  int last_lead_sum = -1;
-  for (int i = 0; i < num_unsqueezed; ++i) {
-    if (repeat_times_data[i] != 1) {
-      last_lead_sum = i;
-    }
-  }
+  // A leading dim with repeat 1 has size 1: drop it with a reshape instead of
+  // a sum, so that each Sum({0}) below lands on a real repeat dim.
   DenseTensor cur = out_grad;
-  for (int i = 0; i <= last_lead_sum; ++i) {
-    if (repeat_times_data[i] == 1) {
+  std::vector<int64_t> cur_shape;
+  int num_lead_sums = 0;
+  for (int i = 0; i < cur.dims().size(); ++i) {
+    if (i < num_unsqueezed && repeat_times_data[i] == 1) {
       continue;
     }
-    if (i == last_lead_sum && grad_size.size() <= 1) {
+    num_lead_sums += i < num_unsqueezed;
+    cur_shape.push_back(cur.dims()[i]);
+  }
+  cur.Resize(make_ddim(cur_shape));
+  for (int i = 0; i < num_lead_sums; ++i) {
+    if (i == num_lead_sums - 1 && grad_size.size() <= 1) {
       // Nothing is left to reduce, so the last sum writes x_grad directly.
       SumKernel<T, Context>(
           dev_ctx, cur, IntArray({0}), cur.dtype(), false, x_grad);
@@ -113,7 +115,7 @@ void TileGradKernel(const Context& dev_ctx,
   // With every repeat != 1, grad_size reaches 2 * rank(x) = 14 dims, more
   // than a DDim holds. Then sum the repeat axes among the first
   // kMaxRank - 1 dims with the rest flattened, and go on with the result.
-  // ponytail: CPU only; the extra pass rounds to T once more for
+  // NOTE: CPU only; the extra pass rounds to T once more for
   // fp16/bf16/fp8, only ranks beyond DDim::kMaxRank take it.
   while (grad_size.size() > static_cast<size_t>(DDim::kMaxRank)) {
     const int head = DDim::kMaxRank - 1;

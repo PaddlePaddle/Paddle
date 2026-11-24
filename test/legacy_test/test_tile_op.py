@@ -659,8 +659,9 @@ class TestTileAlias(unittest.TestCase):
 
 
 def tile_grad_ref(grad, ori_shape, repeat_times):
-    full = [1] * (grad.ndim - len(ori_shape)) + list(ori_shape)
-    reps = [o // f for o, f in zip(grad.shape, full)]
+    rank = max(len(ori_shape), len(repeat_times))
+    full = [1] * (rank - len(ori_shape)) + list(ori_shape)
+    reps = [1] * (rank - len(repeat_times)) + list(repeat_times)
     view = grad.reshape([d for r, f in zip(reps, full) for d in (r, f)])
     return view.sum(axis=tuple(range(0, 2 * len(full), 2))).reshape(ori_shape)
 
@@ -699,10 +700,14 @@ class TestTileGradFP8(unittest.TestCase):
 
 
 class TestTileGradHighRank(unittest.TestCase):
-    # The interleaved [repeat, size] view exceeds DDim::kMaxRank(9).
     cases = [
+        # The interleaved [repeat, size] view exceeds DDim::kMaxRank(9).
         ([2, 2, 2, 2, 2, 2, 2], [2, 2, 2, 2, 2, 2, 2]),
         ([3, 2, 1, 2, 2, 3], [2, 2, 3, 2, 1, 2, 2]),
+        # Leading unsqueezed dims with repeat 1.
+        ([4], [1, 3, 2]),
+        ([4], [1, 3, 1]),
+        ([2, 3], [1, 2, 1, 1]),
     ]
 
     def test_high_rank_backward(self):

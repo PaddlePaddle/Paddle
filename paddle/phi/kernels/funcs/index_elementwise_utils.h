@@ -30,9 +30,7 @@ limitations under the License. */
 namespace phi {
 namespace funcs {
 
-// Same as torch's MAX_DIMS. Iterator views (e.g. tile_grad's interleaved
-// reduce view) can have more dims than DDim::kMaxRank.
-constexpr int MAX_DIMS = 25;
+constexpr int MAX_DIMS = DDim::kMaxRank;
 
 // The GPU offset calculator instantiated with signed_strides=true keeps its
 // offsets in std::make_signed_t<INDEX_T>, so its 32-bit fast path is bounded by
