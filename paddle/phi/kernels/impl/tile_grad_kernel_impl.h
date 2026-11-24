@@ -17,7 +17,6 @@
 
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/full_kernel.h"
-#include "paddle/phi/kernels/reduce_sum_kernel.h"
 #include "paddle/phi/kernels/tile_grad_kernel.h"
 #if defined(__NVCC__) || defined(__HIPCC__)
 #include "paddle/phi/kernels/gpu/reduce.h"
@@ -92,7 +91,7 @@ void TileGradKernel(const Context& dev_ctx,
   }
 
   // A leading dim with repeat 1 has size 1: drop it with a reshape instead of
-  // a sum, so that each Sum({0}) below lands on a real repeat dim.
+  // a sum, so that each sum over dim 0 below lands on a real repeat dim.
   DenseTensor cur = out_grad;
   std::vector<int64_t> cur_shape;
   int num_lead_sums = 0;
@@ -107,25 +106,20 @@ void TileGradKernel(const Context& dev_ctx,
   for (int i = 0; i < num_lead_sums; ++i) {
     // When nothing is left to reduce, the last sum writes x_grad directly.
     const bool last = i == num_lead_sums - 1 && grad_size.size() <= 1;
-#if defined(__NVCC__) || defined(__HIPCC__)
-    if (!last) {
-      cur = Sum<T, Context>(dev_ctx, cur, IntArray({0}), cur.dtype(), false);
-      continue;
-    }
-    SumKernel<T, Context>(
-        dev_ctx, cur, IntArray({0}), cur.dtype(), false, x_grad);
-#else
     const auto shape = common::vectorize<int64_t>(cur.dims());
     DenseTensor next;
     DenseTensor* out = last ? x_grad : &next;
     out->Resize(
         make_ddim(std::vector<int64_t>(shape.begin() + 1, shape.end())));
+#if defined(__NVCC__) || defined(__HIPCC__)
+    funcs::ReduceGpuKernel<T, T, kps::SumOps>(dev_ctx, cur, out, {0});
+#else
     CpuContiguousSum<T>(dev_ctx, cur, shape, {0}, out);
+#endif
     if (!last) {
       cur = next;
       continue;
     }
-#endif
     x_grad->Resize(x_dims);
     return;
   }
