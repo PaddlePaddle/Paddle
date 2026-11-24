@@ -124,8 +124,9 @@ __global__ void GPUMaskedFillGradKernel(const T* out_grad,
   const VecType* vec_value = reinterpret_cast<const VecType*>(&set_value[0]);
 
   if (mask[mask_idx]) {
-    *x_grad_dst = *vec_value;
+    // x_grad may alias out_grad (inplace), so read src for value_grad first.
     *value_grad_dst = *src;
+    *x_grad_dst = *vec_value;
   } else {
     *x_grad_dst = *src;
     *value_grad_dst = *vec_value;
@@ -264,6 +265,24 @@ void GPUMaskedFillGrad(const GPUContext& dev_ctx,
       backends::gpu::GetGpuLaunchConfig1D(dev_ctx, input_len, vec_size);
 
   if (value_grad && value_grad->numel() == 1) {
+    // x_grad may share its buffer with out_grad (inplace: out_grad -> x_grad),
+    // so value_grad must be computed before the x_grad kernel overwrites it.
+    DenseTensor zero_tensor;
+    Full<T, GPUContext>(dev_ctx, out_grad.dims(), T(0.0), &zero_tensor);
+    DenseTensor value_grad_tensor;
+    value_grad_tensor.set_meta(out_grad.meta());
+    WhereKernel<T, GPUContext>(
+        dev_ctx, mask, out_grad, zero_tensor, &value_grad_tensor);
+    std::vector<int> v_dims(value_grad_tensor.dims().size());
+    std::iota(v_dims.begin(), v_dims.end(), 0);
+    IntArray v_axis(v_dims);
+    SumKernel<T, GPUContext>(dev_ctx,
+                             value_grad_tensor,
+                             v_axis,
+                             value_grad->dtype(),
+                             false,
+                             value_grad);
+
     DispatchMaskFillOneValueGradKernel<T>(dev_ctx,
                                           out_grad_data,
                                           mask_data,
@@ -272,24 +291,6 @@ void GPUMaskedFillGrad(const GPUContext& dev_ctx,
                                           x_grad_data,
                                           vec_size,
                                           config);
-    if (value_grad) {
-      DenseTensor zero_tensor;
-      Full<T, GPUContext>(dev_ctx, out_grad.dims(), T(0.0), &zero_tensor);
-      DenseTensor value_grad_tensor;
-      value_grad_tensor.set_meta(out_grad.meta());
-      WhereKernel<T, GPUContext>(
-          dev_ctx, mask, out_grad, zero_tensor, &value_grad_tensor);
-      std::vector<int> v_dims(value_grad_tensor.dims().size());
-      std::iota(v_dims.begin(), v_dims.end(), 0);
-      IntArray v_axis(v_dims);
-      SumKernel<T, GPUContext>(dev_ctx,
-                               value_grad_tensor,
-                               v_axis,
-                               value_grad->dtype(),
-                               false,
-                               value_grad);
-    }
-
   } else {
     DispatchMaskFillGradKernel<T>(dev_ctx,
                                   out_grad_data,

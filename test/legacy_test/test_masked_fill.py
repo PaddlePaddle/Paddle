@@ -402,6 +402,41 @@ class TestMaskedFillAPI_ZeroSize2(TestMaskedFillAPI_ZeroSize):
         self.scalar_value = False
 
 
+class TestMaskedFillValueGrad(unittest.TestCase):
+    # The grad of ``value`` is the sum of out_grad over the filled positions.
+    # It must not be affected by x_grad sharing its buffer with out_grad.
+    def setUp(self):
+        np.random.seed(2024)
+        self.x_shape = [4, 3]
+        self.mask_np = np.random.rand(*self.x_shape) > 0.5
+
+    def _check(self, api_name, value_shape, expected_value_grad):
+        with base.dygraph.guard():
+            x = paddle.randn(self.x_shape)
+            x.stop_gradient = False
+            value = paddle.full(value_shape, 2.0)
+            value.stop_gradient = False
+            mask = paddle.to_tensor(self.mask_np)
+            out = getattr(x * 1, api_name)(mask, value)
+            out.sum().backward()
+            np.testing.assert_allclose(
+                value.grad.numpy(), expected_value_grad, rtol=1e-6
+            )
+            np.testing.assert_allclose(
+                x.grad.numpy(), (~self.mask_np).astype('float32'), rtol=1e-6
+            )
+
+    def test_zero_dim_value(self):
+        expected = np.float32(self.mask_np.sum())
+        for api_name in ("masked_fill", "masked_fill_"):
+            self._check(api_name, [], expected)
+
+    def test_full_shape_value(self):
+        expected = self.mask_np.astype('float32')
+        for api_name in ("masked_fill", "masked_fill_"):
+            self._check(api_name, self.x_shape, expected)
+
+
 if __name__ == '__main__':
     paddle.enable_static()
     unittest.main()
