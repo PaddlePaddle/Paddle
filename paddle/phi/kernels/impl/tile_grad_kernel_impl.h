@@ -21,9 +21,33 @@
 #include "paddle/phi/kernels/tile_grad_kernel.h"
 #if defined(__NVCC__) || defined(__HIPCC__)
 #include "paddle/phi/kernels/gpu/reduce.h"
+#else
+#include "paddle/phi/kernels/funcs/cascade_sum.h"
 #endif
 
 namespace phi {
+
+#if !defined(__NVCC__) && !defined(__HIPCC__)
+// Sums the contiguous `x`, viewed as `shape`, over `axes` into `out` with the
+// torch-compatible CPU cascade sum. The shape is a vector, so it may exceed
+// DDim::kMaxRank. `out` must already hold the kept dims' element count.
+template <typename T, typename Context>
+void CpuContiguousSum(const Context& dev_ctx,
+                      const DenseTensor& x,
+                      const std::vector<int64_t>& shape,
+                      const std::vector<int64_t>& axes,
+                      DenseTensor* out) {
+  std::vector<int64_t> strides(shape.size());
+  int64_t stride = 1;
+  for (int i = static_cast<int>(shape.size()) - 1; i >= 0; --i) {
+    strides[i] = stride;
+    stride *= shape[i];
+  }
+  T* out_data = dev_ctx.template Alloc<T>(out);
+  funcs::TorchCompatibleReduceSum<T>(
+      x.data<T>(), shape, strides, axes, out_data, out->numel());
+}
+#endif
 
 // Mirrors torch's repeat_backward: sum the leading unsqueezed dims one at a
 // time, then view each tiled dim i as [repeat_i, x_dims[i]] and sum the
@@ -81,14 +105,29 @@ void TileGradKernel(const Context& dev_ctx,
   }
   cur.Resize(make_ddim(cur_shape));
   for (int i = 0; i < num_lead_sums; ++i) {
-    if (i == num_lead_sums - 1 && grad_size.size() <= 1) {
-      // Nothing is left to reduce, so the last sum writes x_grad directly.
-      SumKernel<T, Context>(
-          dev_ctx, cur, IntArray({0}), cur.dtype(), false, x_grad);
-      x_grad->Resize(x_dims);
-      return;
+    // When nothing is left to reduce, the last sum writes x_grad directly.
+    const bool last = i == num_lead_sums - 1 && grad_size.size() <= 1;
+#if defined(__NVCC__) || defined(__HIPCC__)
+    if (!last) {
+      cur = Sum<T, Context>(dev_ctx, cur, IntArray({0}), cur.dtype(), false);
+      continue;
     }
-    cur = Sum<T, Context>(dev_ctx, cur, IntArray({0}), cur.dtype(), false);
+    SumKernel<T, Context>(
+        dev_ctx, cur, IntArray({0}), cur.dtype(), false, x_grad);
+#else
+    const auto shape = common::vectorize<int64_t>(cur.dims());
+    DenseTensor next;
+    DenseTensor* out = last ? x_grad : &next;
+    out->Resize(
+        make_ddim(std::vector<int64_t>(shape.begin() + 1, shape.end())));
+    CpuContiguousSum<T>(dev_ctx, cur, shape, {0}, out);
+    if (!last) {
+      cur = next;
+      continue;
+    }
+#endif
+    x_grad->Resize(x_dims);
+    return;
   }
 
   if (grad_size.size() <= 1) {
@@ -99,10 +138,10 @@ void TileGradKernel(const Context& dev_ctx,
     return;
   }
 
-#if defined(__NVCC__) || defined(__HIPCC__)
   // One reduce over the whole interleaved view, as torch does. The view can
   // reach 2 * rank(x) = 14 dims, more than a DDim holds, so it is passed as a
-  // shape vector.
+  // shape vector on both CPU and GPU.
+#if defined(__NVCC__) || defined(__HIPCC__)
   std::vector<int> reduce_dims;
   for (size_t d = 0; d < grad_size.size(); ++d) {
     if (is_repeat[d]) {
@@ -112,50 +151,13 @@ void TileGradKernel(const Context& dev_ctx,
   funcs::ReduceGpuKernel<T, T, kps::SumOps>(
       dev_ctx, cur, x_grad, reduce_dims, 1.0, grad_size);
 #else
-  // With every repeat != 1, grad_size reaches 2 * rank(x) = 14 dims, more
-  // than a DDim holds. Then sum the repeat axes among the first
-  // kMaxRank - 1 dims with the rest flattened, and go on with the result.
-  // NOTE: CPU only; the extra pass rounds to T once more for
-  // fp16/bf16/fp8, only ranks beyond DDim::kMaxRank take it.
-  while (grad_size.size() > static_cast<size_t>(DDim::kMaxRank)) {
-    const int head = DDim::kMaxRank - 1;
-    std::vector<int64_t> shape(grad_size.begin(), grad_size.begin() + head);
-    std::vector<int64_t> axes;
-    int64_t kept = 1;
-    int64_t rest = 1;
-    for (int d = 0; d < head; ++d) {
-      if (is_repeat[d]) {
-        axes.push_back(d);
-      } else {
-        kept *= grad_size[d];
-      }
-    }
-    for (size_t d = head; d < grad_size.size(); ++d) {
-      rest *= grad_size[d];
-    }
-    shape.push_back(rest);
-    cur.Resize(make_ddim(shape));
-    cur = Sum<T, Context>(dev_ctx, cur, IntArray(axes), cur.dtype(), false);
-    grad_size.erase(grad_size.begin(), grad_size.begin() + head);
-    grad_size.insert(grad_size.begin(), kept);
-    is_repeat.erase(is_repeat.begin(), is_repeat.begin() + head);
-    is_repeat.insert(is_repeat.begin(), false);
-  }
-
   std::vector<int64_t> sum_dims;
-  std::vector<int64_t> kept_size;
   for (size_t d = 0; d < grad_size.size(); ++d) {
     if (is_repeat[d]) {
-      sum_dims.push_back(d);
-    } else {
-      kept_size.push_back(grad_size[d]);
+      sum_dims.push_back(static_cast<int64_t>(d));
     }
   }
-  cur.Resize(make_ddim(grad_size));
-  x_grad->Resize(make_ddim(kept_size));
-  SumKernel<T, Context>(
-      dev_ctx, cur, IntArray(sum_dims), cur.dtype(), false, x_grad);
-  x_grad->Resize(x_dims);
+  CpuContiguousSum<T>(dev_ctx, cur, grad_size, sum_dims, x_grad);
 #endif
 }
 
