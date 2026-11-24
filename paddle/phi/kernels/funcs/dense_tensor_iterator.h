@@ -15,8 +15,6 @@
 #pragma once
 
 #include <optional>
-#include <unordered_map>
-#include <utility>
 
 #include "paddle/common/ddim.h"
 #include "paddle/phi/core/dense_tensor.h"
@@ -58,11 +56,6 @@ struct DenseOperandInfo {
   bool will_resize = false;
   bool is_read_write = false;
   bool is_const = false;
-  // Shape and strides (in elements) read instead of tensor()'s, so a view can
-  // have more dims than DDim::kMaxRank.
-  bool has_view = false;
-  std::vector<int64_t> view_shape;
-  std::vector<int64_t> view_strides;
   bool is_type_defined() const { return target_dtype != DataType::UNDEFINED; }
   DenseTensor& tensor() const { return *tensor_base_; }
   void tensor(DenseTensor*&& tensor);
@@ -185,21 +178,6 @@ struct DenseTensorIteratorConfig final {
     return add_borrowed_const_input(input);
   }
 
-  // Iterate `tensor` as `shape` / `strides` (in elements) instead of its own
-  // dims and strides. The view may have more dims than DDim::kMaxRank.
-  DenseTensorIteratorConfig& add_output(const DenseTensor& output,
-                                        std::vector<int64_t> shape,
-                                        std::vector<int64_t> strides) {
-    views_[tensors_.size()] = {std::move(shape), std::move(strides)};
-    return add_borrowed_output(output);
-  }
-  DenseTensorIteratorConfig& add_const_input(const DenseTensor& input,
-                                             std::vector<int64_t> shape,
-                                             std::vector<int64_t> strides) {
-    views_[tensors_.size()] = {std::move(shape), std::move(strides)};
-    return add_borrowed_const_input(input);
-  }
-
   DenseTensorIteratorConfig& add_output(DenseTensor&& output) = delete;
   DenseTensorIteratorConfig& add_input(DenseTensor&& input) = delete;
   DenseTensorIteratorConfig& add_const_input(DenseTensor&& input) = delete;
@@ -236,9 +214,6 @@ struct DenseTensorIteratorConfig final {
   std::vector<size_t> const_tensor_indices_;
   size_t num_outputs_ = 0;
   size_t num_inputs_ = 0;
-  std::unordered_map<size_t,
-                     std::pair<std::vector<int64_t>, std::vector<int64_t>>>
-      views_;
 
   std::optional<std::vector<int64_t>> static_shape_ = std::nullopt;
   bool is_reduction_ = false;

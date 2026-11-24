@@ -142,8 +142,8 @@ void TileGradKernel(const Context& dev_ctx,
       reduce_dims.push_back(static_cast<int>(d));
     }
   }
-  funcs::ReduceGpuKernel<T, T, kps::SumOps>(
-      dev_ctx, cur, x_grad, reduce_dims, 1.0, grad_size);
+  funcs::ReduceSumGpuKernelWithShape<T, T>(
+      dev_ctx, cur, x_grad, grad_size, reduce_dims);
 #else
   std::vector<int64_t> sum_dims;
   for (size_t d = 0; d < grad_size.size(); ++d) {

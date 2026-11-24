@@ -16,7 +16,6 @@
 
 #include <bitset>
 #include <limits>
-#include <optional>
 #include <set>
 #include <utility>
 
@@ -28,6 +27,7 @@
 #include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/dense_tensor_iterator.h"
 #include "paddle/phi/kernels/funcs/index_elementwise.cu.h"
+#include "paddle/phi/kernels/funcs/reduce_view_iterator.h"
 #include "paddle/phi/kernels/funcs/scatter.cu.h"
 #include "paddle/phi/kernels/gpu/reduce.h"
 #include "paddle/phi/kernels/legacy/reduce_max_kernel.h"
@@ -160,9 +160,23 @@ inline DenseTensor ReviewReduceResult(const DenseTensor& src,
                                       const DenseTensor& result,
                                       int ndim,
                                       std::bitset<64> mask) {
-  auto src_shape = vectorize<int64_t>(src.dims());
-  src_shape.resize(ndim);
-  auto [shape, stride] = ReduceResultView(src_shape, mask);
+  std::vector<int64_t> shape;
+  std::vector<int64_t> stride;
+
+  int64_t cal_stride = 1;
+  const auto& src_dims = src.dims();
+
+  for (int dim = ndim - 1; dim >= 0; dim--) {
+    if (!mask[dim]) {
+      shape.insert(shape.begin(), src_dims[dim]);
+      stride.insert(stride.begin(), cal_stride);
+      cal_stride *= src_dims[dim];
+    } else {
+      shape.insert(shape.begin(), 1);
+      stride.insert(stride.begin(), cal_stride);
+    }
+  }
+
   return funcs::as_strided(result, shape, stride);
 }
 
@@ -1372,19 +1386,15 @@ inline void GPUReduceScheduler(const KPDevice& dev_ctx,
 }
 
 namespace funcs {
-// `x_shape`, if given, reads the contiguous `x` as that shape, which may
-// have more dims than DDim::kMaxRank.
 template <typename Tx,
           typename Ty,
           template <typename, typename, typename>
           class ReduceOp>
-void ReduceGpuKernel(
-    const KPDevice& dev_ctx,
-    const phi::DenseTensor& x,
-    phi::DenseTensor* y,
-    const std::vector<int>& origin_reduce_dims,
-    const double norm_p = 1.0,
-    const std::optional<std::vector<int64_t>>& x_shape = std::nullopt) {
+void ReduceGpuKernel(const KPDevice& dev_ctx,
+                     const phi::DenseTensor& x,
+                     phi::DenseTensor* y,
+                     const std::vector<int>& origin_reduce_dims,
+                     const double norm_p = 1.0) {
   if (x.numel() == 0) {
     dev_ctx.Alloc<Ty>(y);
     return;
@@ -1392,23 +1402,17 @@ void ReduceGpuKernel(
 
   dev_ctx.Alloc<Ty>(y);
 
-  int64_t ndim = x_shape ? x_shape->size() : x.dims().size();
+  int64_t ndim = x.dims().size();
   auto positive_reduce_dims = ConvertToPositiveDims(origin_reduce_dims, ndim);
   auto mask = MakeDimMask(positive_reduce_dims, ndim);
+  auto viewed_result = ReviewReduceResult(x, *(y), ndim, mask);
+
+  auto x_dim = vectorize<int64_t>(x.dims());
 
   DenseTensorIteratorConfig dense_iter_config;
   dense_iter_config.is_reduction(true);
-  DenseTensor viewed_result;
-  if (x_shape) {
-    auto [out_shape, out_stride] = ReduceResultView(*x_shape, mask);
-    auto x_stride = ReduceResultView(*x_shape, std::bitset<64>()).second;
-    dense_iter_config.add_output(*y, out_shape, out_stride);
-    dense_iter_config.add_const_input(x, *x_shape, x_stride);
-  } else {
-    viewed_result = ReviewReduceResult(x, *(y), ndim, mask);
-    dense_iter_config.add_output(viewed_result);
-    dense_iter_config.add_const_input(x);
-  }
+  dense_iter_config.add_output(viewed_result);
+  dense_iter_config.add_const_input(x);
   DenseTensorIterator iter = dense_iter_config.build();
 
   using MPType = typename MPTypeTrait<Ty>::Type;
@@ -1479,6 +1483,37 @@ void ReduceGpuKernel(
       dev_ctx, iter, reducer, ident);
 
   return;
+}
+
+// Sums the contiguous `x`, read as `x_shape`, over `reduce_dims` into `y`.
+// ReduceGpuKernel views `x` through its DDim; `x_shape` here may have more
+// dims than DDim::kMaxRank, e.g. tile_grad's [repeat_i, x_i] view.
+template <typename Tx, typename Ty>
+void ReduceSumGpuKernelWithShape(const KPDevice& dev_ctx,
+                                 const phi::DenseTensor& x,
+                                 phi::DenseTensor* y,
+                                 const std::vector<int64_t>& x_shape,
+                                 const std::vector<int>& reduce_dims) {
+  dev_ctx.Alloc<Ty>(y);
+  if (x.numel() == 0) {
+    return;
+  }
+
+  const int64_t ndim = static_cast<int64_t>(x_shape.size());
+  auto mask = MakeDimMask(ConvertToPositiveDims(reduce_dims, ndim), ndim);
+  auto [out_shape, out_stride] = ReduceResultView(x_shape, mask);
+  auto x_stride = ReduceResultView(x_shape, std::bitset<64>()).second;
+
+  DenseTensorIterator iter(
+      ReduceViewIterator(*y, out_shape, out_stride, x, x_shape, x_stride));
+
+  using MPType = typename MPTypeTrait<Ty>::Type;
+  using SumOp = kps::SumOps<Tx, MPType, Ty>;
+  constexpr int kVecSize = 4;
+  // Same input vector width as ReduceGpuKernel uses for sum.
+  constexpr int kInputVecSize = sizeof(Tx) == 2 ? 8 : kVecSize;
+  GPUReduceScheduler<Tx, Ty, kVecSize, kInputVecSize, SumOp>(
+      dev_ctx, iter, SumOp{}, Tx{0});
 }
 }  // namespace funcs
 }  // namespace phi
