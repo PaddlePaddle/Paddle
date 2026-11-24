@@ -1180,6 +1180,12 @@ void GinGradCommScheduler::StartProxy(int slot,
 }
 
 void GinGradCommScheduler::BucketReady(int bucket, float scale) {
+  PADDLE_ENFORCE_EQ(
+      bucket >= 0 && bucket < static_cast<int>(buckets_.size()),
+      true,
+      common::errors::InvalidArgument("Bucket %d is out of range [0, %d).",
+                                      bucket,
+                                      static_cast<int>(buckets_.size())));
   std::lock_guard<std::mutex> lock(mutex_);
   if (state_ == kErr) {
     PADDLE_THROW(common::errors::External("%s", ErrorText()));
