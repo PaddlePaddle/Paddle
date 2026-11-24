@@ -220,7 +220,7 @@ class ProcessGroupNCCL final : public ProcessGroupWithStream {
 
   // Creates the device communicator on the first call (collective, see
   // NCCLCommContext::GetOrCreateDevComm()) and returns its properties. Every
-  // primitive except AllocHostWindow / FreeHostWindow needs it. It raises when
+  // primitive except AllocHostWindow needs it. It raises when
   // the LSA team of the device communicator does not match node-major rank
   // order (lsa_rank != rank % lsa_size).
   phi::distributed::NCCLDevCommInfo GetOrCreateDevComm(int gin_context_count);
@@ -232,9 +232,6 @@ class ProcessGroupNCCL final : public ProcessGroupWithStream {
   // Allocates and registers a pinned host memory window (collective, see
   // NCCLCommContext::AllocHostWindow()).
   phi::distributed::NCCLHostWindow AllocHostWindow(size_t bytes);
-
-  // Deregisters and frees a window of AllocHostWindow() (collective).
-  void FreeHostWindow(void* window);
 
   // Issues GIN puts on `stream`. Each put increments its counter after its
   // data has been written, so a peer that sees its counter reach a value knows

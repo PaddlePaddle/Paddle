@@ -1620,11 +1620,6 @@ phi::distributed::NCCLHostWindow ProcessGroupNCCL::AllocHostWindow(
       ->AllocHostWindow(bytes);
 }
 
-void ProcessGroupNCCL::FreeHostWindow(void* window) {
-  CheckGinSupported();
-  GetGinCommContext()->FreeHostWindow(window);
-}
-
 void ProcessGroupNCCL::Put(const std::vector<PutArgs>& puts,
                            gpuStream_t stream,
                            int num_blocks) {

@@ -207,13 +207,9 @@ class NCCLCommContext final : public CommContext {
   // NCCL_WIN_STRICT_ORDERING. Collective, like RegisterWindow(): every rank
   // must call it with the same `bytes`. The size is `bytes` rounded up to the
   // allocation granularity. The window is in the same table as the windows of
-  // RegisterWindow(). FreeHostWindow() releases it; DestroyNCCLComm() and a
-  // recreation of the communicator release every host window.
+  // RegisterWindow(). DestroyNCCLComm() and a recreation of the communicator
+  // release every host window.
   NCCLHostWindow AllocHostWindow(size_t bytes);
-
-  // Deregisters a window returned by AllocHostWindow() and frees its memory.
-  // Collective.
-  void FreeHostWindow(void* window);
 
   // True when the loaded NCCL provides the single-call all-to-all, the only
   // all-to-all entry point that can reach the zero-SM path. A group of

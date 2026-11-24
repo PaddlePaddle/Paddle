@@ -546,27 +546,6 @@ NCCLHostWindow NCCLCommContext::AllocHostWindow(size_t bytes) {
 #endif
 }
 
-void NCCLCommContext::FreeHostWindow(void* window) {
-#ifdef PADDLE_WITH_GIN_OVERLAP
-  auto iter = device_api_->host_windows.find(window);
-  PADDLE_ENFORCE_NE(iter,
-                    device_api_->host_windows.end(),
-                    common::errors::InvalidArgument(
-                        "Window %p was not allocated by AllocHostWindow() on "
-                        "this communicator.",
-                        window));
-  DeviceApiState::HostMemory memory = iter->second;
-  device_api_->host_windows.erase(iter);
-  DeregisterWindow(memory.ptr);
-  ReleaseHostMemory(memory.handle, memory.ptr, memory.bytes);
-#else
-  PADDLE_THROW(common::errors::Unavailable(
-      "Paddle was not built with PADDLE_WITH_GIN_OVERLAP (the NCCL device "
-      "API: NCCL 2.30.7 or newer with nccl_device.h, CUDA 13.0 or newer, "
-      "sm_90 or newer)."));
-#endif
-}
-
 void NCCLCommContext::FreeAllHostWindowMemory() {
 #ifdef PADDLE_WITH_GIN_OVERLAP
   for (const auto& window_and_memory : device_api_->host_windows) {

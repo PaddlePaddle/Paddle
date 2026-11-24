@@ -23,8 +23,6 @@ limitations under the License. */
 
 #include <cstdint>
 #include <limits>
-#include <tuple>
-#include <vector>
 
 #include "paddle/fluid/distributed/collective/process_group.h"
 #include "paddle/fluid/distributed/collective/reducer.h"
@@ -109,17 +107,6 @@ py::dict DevCommInfoToDict(
   result["lsa_size"] = dev_comm_info.lsa_size;
   result["gin_context_count"] = dev_comm_info.gin_context_count;
   return result;
-}
-
-// The stream of a GIN primitive: a raw stream handle passed as an int,
-// or the current stream of the current device for None.
-gpuStream_t GinStream(const py::object &stream) {
-  if (stream.is_none()) {
-    return paddle::GetCurrentCUDAStream(
-               phi::GPUPlace(phi::backends::gpu::GetCurrentDeviceId()))
-        ->raw_stream();
-  }
-  return reinterpret_cast<gpuStream_t>(stream.cast<uintptr_t>());
 }
 
 }  // namespace
@@ -1351,13 +1338,11 @@ void BindDistributed(py::module *m) {
             comm_context->DeregisterWindow(p_tensor->data());
           },
           py::arg("tensor"))
-      // GIN primitives. Window handles are the ints returned by
-      // register_comm_buffer() / alloc_host_window(); `stream` is a raw
-      // cudaStream_t as an int (for example
-      // paddle.device.current_stream().cuda_stream), None meaning the current
-      // stream of the current device.
-      .def_static("is_gin_supported",
-                  &distributed::ProcessGroupNCCL::IsGinSupported)
+      // Setup of the GIN primitives for gin_overlap's Python builder: the
+      // device communicator and the host window. The primitives themselves
+      // (Put, IncrementPeerCounter, CopyToPeers, Flush) are called from C++
+      // and have no binding. Window handles are ints, like those of
+      // register_comm_buffer().
       .def(
           "get_or_create_dev_comm",
           [](distributed::ProcessGroupNCCL &self, int gin_context_count) {
@@ -1369,10 +1354,6 @@ void BindDistributed(py::module *m) {
             return DevCommInfoToDict(dev_comm_info);
           },
           py::arg("gin_context_count") = 4)
-      .def("dev_comm_info",
-           [](distributed::ProcessGroupNCCL &self) {
-             return DevCommInfoToDict(self.GetDevCommInfo());
-           })
       .def(
           "alloc_host_window",
           [](distributed::ProcessGroupNCCL &self, size_t bytes) {
@@ -1392,127 +1373,6 @@ void BindDistributed(py::module *m) {
           and registers it as a window of this group (collective). Returns
           (window, cpu_ptr, bytes): the window handle, the address of the
           memory (the same for the CPU and the GPU) and its size.
-          )DOC")
-      .def(
-          "free_host_window",
-          [](distributed::ProcessGroupNCCL &self, uint64_t window) {
-            py::gil_scoped_release release;
-            self.FreeHostWindow(reinterpret_cast<void *>(window));
-          },
-          py::arg("window"))
-      .def(
-          "put",
-          [](distributed::ProcessGroupNCCL &self,
-             const std::vector<std::tuple<uint64_t,
-                                          size_t,
-                                          uint64_t,
-                                          size_t,
-                                          size_t,
-                                          int,
-                                          uint64_t,
-                                          size_t>> &put_tuples,
-             py::object stream,
-             int num_blocks) {
-            std::vector<distributed::PutArgs> puts;
-            puts.reserve(put_tuples.size());
-            for (const auto &put_tuple : put_tuples) {
-              distributed::PutArgs put;
-              put.src_window = reinterpret_cast<void *>(std::get<0>(put_tuple));
-              put.src_offset = std::get<1>(put_tuple);
-              put.dst_window = reinterpret_cast<void *>(std::get<2>(put_tuple));
-              put.dst_offset = std::get<3>(put_tuple);
-              put.bytes = std::get<4>(put_tuple);
-              put.peer = std::get<5>(put_tuple);
-              put.counter_window =
-                  reinterpret_cast<void *>(std::get<6>(put_tuple));
-              put.counter_offset = std::get<7>(put_tuple);
-              puts.push_back(put);
-            }
-            gpuStream_t raw_stream = GinStream(stream);
-            py::gil_scoped_release release;
-            self.Put(puts, raw_stream, num_blocks);
-          },
-          py::arg("puts"),
-          py::arg("stream") = py::none(),
-          py::arg("num_blocks") = 0,
-          R"DOC(
-          GIN puts. Each item of `puts` is (src_window, src_offset, dst_window,
-          dst_offset, bytes, peer, counter_window, counter_offset): `bytes`
-          bytes go from this rank's src_window to dst_window on group rank
-          `peer`, then the u64 at counter_offset of counter_window on `peer`
-          is incremented by 1. num_blocks = 0 uses one thread block per put.
-          )DOC")
-      .def(
-          "increment_peer_counter",
-          [](distributed::ProcessGroupNCCL &self,
-             const std::vector<std::tuple<int, uint64_t, size_t>>
-                 &increment_tuples,
-             py::object stream) {
-            std::vector<distributed::IncrementPeerCounterArgs> increments;
-            increments.reserve(increment_tuples.size());
-            for (const auto &increment_tuple : increment_tuples) {
-              distributed::IncrementPeerCounterArgs increment;
-              increment.peer = std::get<0>(increment_tuple);
-              increment.counter_window =
-                  reinterpret_cast<void *>(std::get<1>(increment_tuple));
-              increment.counter_offset = std::get<2>(increment_tuple);
-              increments.push_back(increment);
-            }
-            gpuStream_t raw_stream = GinStream(stream);
-            py::gil_scoped_release release;
-            self.IncrementPeerCounter(increments, raw_stream);
-          },
-          py::arg("increments"),
-          py::arg("stream") = py::none(),
-          R"DOC(
-          Increments peer counters by 1. Each item is (peer, counter_window,
-          counter_offset). Peers in this rank's LSA team (its node) go through
-          an LSA atomic add, other peers through a GIN signal.
-          )DOC")
-      .def(
-          "copy_to_peers",
-          [](distributed::ProcessGroupNCCL &self,
-             const std::vector<
-                 std::tuple<uint64_t, size_t, uint64_t, size_t, int, size_t>>
-                 &copy_tuples,
-             py::object stream) {
-            std::vector<distributed::CopyToPeersArgs> copies;
-            copies.reserve(copy_tuples.size());
-            for (const auto &copy_tuple : copy_tuples) {
-              distributed::CopyToPeersArgs copy;
-              copy.src_window =
-                  reinterpret_cast<void *>(std::get<0>(copy_tuple));
-              copy.src_offset = std::get<1>(copy_tuple);
-              copy.dst_window =
-                  reinterpret_cast<void *>(std::get<2>(copy_tuple));
-              copy.dst_offset = std::get<3>(copy_tuple);
-              copy.peer = std::get<4>(copy_tuple);
-              copy.bytes = std::get<5>(copy_tuple);
-              copies.push_back(copy);
-            }
-            gpuStream_t raw_stream = GinStream(stream);
-            py::gil_scoped_release release;
-            self.CopyToPeers(copies, raw_stream);
-          },
-          py::arg("copies"),
-          py::arg("stream") = py::none(),
-          R"DOC(
-          Copies to windows of peers in this rank's LSA team (its node) with
-          one cudaMemcpyBatchAsync. Each item is (src_window, src_offset,
-          dst_window, dst_offset, peer, bytes): `bytes` bytes go from this
-          rank's src_window to dst_window on group rank `peer`.
-          )DOC")
-      .def(
-          "flush",
-          [](distributed::ProcessGroupNCCL &self, py::object stream) {
-            gpuStream_t raw_stream = GinStream(stream);
-            py::gil_scoped_release release;
-            self.Flush(raw_stream);
-          },
-          py::arg("stream") = py::none(),
-          R"DOC(
-          Flushes every GIN context: after it, the sources of the puts issued
-          so far on the stream may be reused.
           )DOC");
 
   // Allocates a device buffer through ncclMemAlloc, whose address and size are
