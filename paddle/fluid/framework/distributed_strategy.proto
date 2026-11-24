@@ -120,9 +120,8 @@ message DygraphShardingConfig {
   optional bool machine_balanced_2d_partition = 15 [ default = false ];
   optional int32 fsdp_outer_degree = 16 [ default = 1 ];
   // gin_overlap: the gradient reduce_scatter of the stage1 buckets runs in
-  // stages on NCCL GIN one-sided puts during the backward pass, and the
-  // parameter all_gather is fused per (group, dtype). Needs Paddle built with
-  // WITH_GIN_OVERLAP.
+  // stages on NCCL GIN one-sided puts during the backward pass. Needs Paddle
+  // built with WITH_GIN_OVERLAP.
   optional bool gin_overlap = 17 [ default = false ];
   // Seconds the end of reduce_gradients waits for the step to be released.
   optional double gin_overlap_timeout = 18 [ default = 300.0 ];
@@ -133,13 +132,14 @@ message DygraphShardingConfig {
   // whole GiB.
   optional double gin_overlap_dense_recv_pool_gb = 19 [ default = 0.0 ];
   optional double gin_overlap_expert_recv_pool_gb = 20 [ default = 0.0 ];
-  // Under gin_overlap, upper bound (MB) of one fused parameter all_gather
-  // (one all_gather per (group, dtype) batch of buckets). <= 0: no fusion,
-  // every bucket runs its own sync_params, as without gin_overlap.
+  // Sharding stage1 (DygraphShardingOptimizerV2, MuonShardingOptimizer):
+  // upper bound (MB) of one fused parameter all_gather after the step (one
+  // all_gather per (group, dtype) batch of buckets). <= 0: no fusion, every
+  // bucket runs its own sync_params.
   optional double param_allgather_fuse_mb = 21 [ default = 0.0 ];
-  // Under gin_overlap, MB per owner when MuonShardingOptimizer partitions the
-  // 2D parameters, independent of comm_buffer_size_MB. <= 0: the partition
-  // uses comm_buffer_size_MB, as without gin_overlap.
+  // MuonShardingOptimizer: MB per owner when it partitions the 2D
+  // parameters, independent of the gradient bucket size comm_buffer_size_MB.
+  // <= 0: the partition uses comm_buffer_size_MB.
   optional double muon_owner_partition_mb = 22 [ default = 0.0 ];
 }
 

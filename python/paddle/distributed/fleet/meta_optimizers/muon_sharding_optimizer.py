@@ -61,6 +61,7 @@ from paddle.distributed.fleet.utils.tensor_fusion_helper import (
     HOOK_ACTION,
     FusedCommBuffer,
     assign_group_by_size,
+    fused_all_gather,
 )
 
 
@@ -227,18 +228,18 @@ class MuonShardingOptimizer:
         self.enable_fuse_optimizer_states = (
             sharding_configs.enable_fuse_optimizer_states
         )
-        # gin_overlap: MB per owner of the 2D partition, independent of the
-        # gradient bucket size comm_buffer_size_MB; None = comm_buffer_size_MB.
         self._gin_overlap = sharding_configs.gin_overlap
-        self._gin_param_allgather_fuse_mb = (
-            sharding_configs.param_allgather_fuse_mb
-        )
+        # > 0: one fused all_gather per (group, dtype) batch of at most this
+        # many MB after the step; <= 0: sync_params per bucket.
+        self._param_allgather_fuse_mb = sharding_configs.param_allgather_fuse_mb
+        # MB per owner of the 2D partition, independent of the gradient
+        # bucket size comm_buffer_size_MB; None = comm_buffer_size_MB.
         self._owner_partition_mb = None
-        if self._gin_overlap and sharding_configs.muon_owner_partition_mb > 0:
+        if sharding_configs.muon_owner_partition_mb > 0:
             self._owner_partition_mb = sharding_configs.muon_owner_partition_mb
         if self._owner_partition_mb is not None and self._global_rank == 0:
             logger.info(
-                f"[gin_overlap] 2D owner partition uses "
+                f"[sharding] 2D owner partition uses "
                 f"muon_owner_partition_mb={self._owner_partition_mb} MB "
                 f"(gradient buckets stay {self.comm_buffer_size_MB} MB)"
             )
@@ -764,7 +765,7 @@ class MuonShardingOptimizer:
             # numel * 4 is the fp32 main_grad width that actually gets
             # reduced, so comm buffer sizes stay as they are.
             total_size_mb = bucket['numel'] * 4 / (1024**2)
-            # muon_owner_partition_mb under gin_overlap
+            # muon_owner_partition_mb when it is set
             buffer_size_mb = getattr(self, "_owner_partition_mb", None) or (
                 self.comm_buffer_size_MB
                 if self.comm_buffer_size_MB > 0
@@ -1032,7 +1033,7 @@ class MuonShardingOptimizer:
             total_size_bytes = total_numel * 4
             total_size_mb = total_size_bytes / (1024**2)
 
-            # muon_owner_partition_mb under gin_overlap
+            # muon_owner_partition_mb when it is set
             buffer_size_mb = getattr(self, "_owner_partition_mb", None) or (
                 self.comm_buffer_size_MB
                 if self.comm_buffer_size_MB > 0
@@ -1762,18 +1763,11 @@ class MuonShardingOptimizer:
                     task.wait()
 
             # --- 1D params: all-gather via comm buffers ---
-            if (
-                getattr(self, "_gin_scheduler", None) is not None
-                and getattr(self, "_gin_param_allgather_fuse_mb", 0) > 0
-            ):
+            if getattr(self, "_param_allgather_fuse_mb", 0) > 0:
                 # one all_gather per (group, dtype) batch of at most
                 # param_allgather_fuse_mb; unset = sync_params per bucket
-                from paddle.distributed.communication.gin_overlap.grad_comm_scheduler import (
-                    fused_all_gather,
-                )
-
                 fused_all_gather(
-                    self._comm_buffer_list, self._gin_param_allgather_fuse_mb
+                    self._comm_buffer_list, self._param_allgather_fuse_mb
                 )
             else:
                 for comm_buffer in self._comm_buffer_list:

@@ -34,6 +34,10 @@ import paddle
 from paddle.distributed.communication.gin_overlap import (
     grad_comm_scheduler as gcs,
 )
+from paddle.distributed.fleet.meta_optimizers import muon_sharding_optimizer
+from paddle.distributed.fleet.meta_optimizers.dygraph_optimizer import (
+    dygraph_sharding_optimizer,
+)
 from paddle.distributed.fleet.meta_optimizers.dygraph_optimizer.dygraph_sharding_optimizer import (
     DygraphShardingOptimizerV2,
 )
@@ -89,6 +93,8 @@ class FakeProcessGroup:
         return self.dev_comm
 
     def all_gather(self, send, recv):
+        # sync_params gathers in place (send is a slice of recv): read it before any row is written
+        send = send.clone()
         total = send._numel()
         self.gathered_numels.append(total)
         for src_rank in range(self.nranks):
@@ -1483,7 +1489,7 @@ class TestFusedAllGather(unittest.TestCase):
         originals = {
             b._params[0].name: b.param_storage.numpy().copy() for b in buckets
         }
-        gcs.fused_all_gather(buckets, fuse_mb=1)
+        tensor_fusion_helper.fused_all_gather(buckets, fuse_mb=1)
         # numel of each send (this rank's half of each bucket): [big0 + big1], [big2], [oversized] in fp32, [half]
         # in fp16, [elsewhere] in the other group
         self.assertEqual(
@@ -1502,7 +1508,9 @@ class TestFusedAllGather(unittest.TestCase):
     def test_empty_part_is_skipped(self):
         empty = param_storage_bucket("empty", self.group, 0)
         filled = param_storage_bucket("filled", self.group, 4)
-        gcs._all_gather_chunk([empty, filled], self.group, 2, 1)
+        tensor_fusion_helper._all_gather_chunk(
+            [empty, filled], self.group, 2, 1
+        )
         self.assertEqual(
             filled.param_storage.numpy().tolist(), [2, 3, 1002, 1003]
         )
@@ -1513,7 +1521,7 @@ class TestFusedAllGather(unittest.TestCase):
             RuntimeError,
             "bucket of odd has 5 elements, not a multiple of the group size 2",
         ):
-            gcs.fused_all_gather([odd], fuse_mb=1)
+            tensor_fusion_helper.fused_all_gather([odd], fuse_mb=1)
 
 
 class CallLog(list):
@@ -1606,15 +1614,41 @@ class TestFusedCommBufferGinBranch(unittest.TestCase):
                 self.assertEqual(b._params_checked_in, 0)
 
 
+class TestFusedAllGatherMatchesSyncParams(unittest.TestCase):
+    def test_same_param_storage_as_sync_params(self):
+        """Real buckets of a 4-rank group (this process is rank 2): the fused all_gather leaves every param_storage
+        exactly as sync_params of each bucket does."""
+
+        def buckets():
+            group = FakeGroup(range(4), rank=2)
+            pair = [real_bucket(group) for _ in range(2)]
+            for offset, b in enumerate(pair):
+                numel = b.param_storage._numel()
+                b.param_storage.copy_(paddle.arange(numel, dtype="float32") + 100.0 * offset, False)  # fmt: skip
+            return pair
+
+        per_bucket, fused = buckets(), buckets()
+        for b in per_bucket:
+            b.sync_params()
+        tensor_fusion_helper.fused_all_gather(fused, fuse_mb=1)
+        for b_sync, b_fused in zip(per_bucket, fused):
+            self.assertEqual(b_sync.param_storage.numpy().tolist(), b_fused.param_storage.numpy().tolist())  # fmt: skip
+
+
 class TestShardingOptimizerGinBranches(unittest.TestCase):
     """reduce_gradients / _sharding_sync_parameters / rebuild of the sharding optimizers, called on fake optimizers;
-    finish_step and fused_all_gather are recorded."""
+    finish_step and fused_all_gather are recorded. param_allgather_fuse_mb > 0 fuses the parameter all_gather with or
+    without gin_overlap; 0 keeps sync_params per bucket."""
+
+    def record_fused_all_gather(self, buckets, fuse_mb):
+        self.calls.append(("fused_all_gather", len(buckets), fuse_mb))
 
     def setUp(self):
         self.calls = CallLog()
         for patcher in (
             mock.patch.object(gcs, "finish_step", lambda opt: self.calls.append("finish_step")),
-            mock.patch.object(gcs, "fused_all_gather", lambda buckets, fuse_mb: self.calls.append(("fused_all_gather", len(buckets), fuse_mb))),
+            mock.patch.object(dygraph_sharding_optimizer, "fused_all_gather", self.record_fused_all_gather),
+            mock.patch.object(muon_sharding_optimizer, "fused_all_gather", self.record_fused_all_gather),
         ):  # fmt: skip
             patcher.start()
             self.addCleanup(patcher.stop)
@@ -1627,7 +1661,7 @@ class TestShardingOptimizerGinBranches(unittest.TestCase):
             _all_gather_overlap_forward=False,
             comm_overlap=comm_overlap,
             _gin_scheduler=RecordingScheduler() if gin else None,
-            _gin_param_allgather_fuse_mb=fuse_mb,
+            _param_allgather_fuse_mb=fuse_mb,
         )  # fmt: skip
 
     def muon(self, gin, fuse_mb=0.0):
@@ -1635,7 +1669,7 @@ class TestShardingOptimizerGinBranches(unittest.TestCase):
             comm_buffer_2d=[logged_buffer(self.calls, "2d")],
             _comm_buffer_list=[logged_buffer(self.calls, "1d")],
             _gin_scheduler=RecordingScheduler() if gin else None,
-            _gin_param_allgather_fuse_mb=fuse_mb,
+            _param_allgather_fuse_mb=fuse_mb,
             _hcg=SimpleNamespace(get_sharding_parallel_group=lambda: None),
             _rank2params_2d_by_color={},
             _color_to_group_info={},
@@ -1656,12 +1690,12 @@ class TestShardingOptimizerGinBranches(unittest.TestCase):
                 )
                 self.assertEqual(self.calls, expected)
 
-    # (case, gin on, param_allgather_fuse_mb): fused only with gin on and a positive size; the default 0 keeps the
-    # per-bucket sync_params of the original code
+    # (case, gin on, param_allgather_fuse_mb, fused): fused whenever the size is positive, with or without gin; the
+    # default 0 keeps the per-bucket sync_params of the original code
     SYNC_CASES = (
         ("gin, fuse_mb unset", True, 0.0, False),
         ("gin, fuse_mb 2048", True, 2048.0, True),
-        ("no gin, fuse_mb 2048", False, 2048.0, False),
+        ("no gin, fuse_mb 2048", False, 2048.0, True),
         ("no gin, fuse_mb unset", False, 0.0, False),
     )
 
@@ -1714,7 +1748,7 @@ class OwnerPartitioner:
 
 
 class TestMuonOwnerPartitionSize(unittest.TestCase):
-    """muon_owner_partition_mb (gin_overlap) > 0 replaces comm_buffer_size_MB as the MB per owner of the 2D
+    """muon_owner_partition_mb > 0 replaces comm_buffer_size_MB as the MB per owner of the 2D
     partition; unset (None, or the default 0) keeps comm_buffer_size_MB as in the original code. Eight 1 MiB fp32
     parameters (8 MiB) may spread over int(8 / MB per owner) + 1 ranks: 9 with 1 MB (so each of the 8 parameters gets
     its own owner) and 3 with 4 MB."""
