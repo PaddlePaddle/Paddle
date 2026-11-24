@@ -130,12 +130,14 @@ message DygraphShardingConfig {
   // sharding group, expert = expert segment of the moe_sharding group.
   optional double gin_overlap_dense_recv_pool_gb = 19 [ default = 6.5 ];
   optional double gin_overlap_expert_recv_pool_gb = 20 [ default = 1.0 ];
-  // Upper bound (MB) of one fused parameter all_gather under gin_overlap.
-  optional double param_allgather_fuse_mb = 21 [ default = 2048.0 ];
-  // MB per owner when MuonShardingOptimizer partitions the 2D parameters
-  // under gin_overlap; independent of comm_buffer_size_MB. <= 0 uses
-  // comm_buffer_size_MB.
-  optional double muon_owner_partition_mb = 22 [ default = 2048.0 ];
+  // Under gin_overlap, upper bound (MB) of one fused parameter all_gather
+  // (one all_gather per (group, dtype) batch of buckets). <= 0: no fusion,
+  // every bucket runs its own sync_params, as without gin_overlap.
+  optional double param_allgather_fuse_mb = 21 [ default = 0.0 ];
+  // Under gin_overlap, MB per owner when MuonShardingOptimizer partitions the
+  // 2D parameters, independent of comm_buffer_size_MB. <= 0: the partition
+  // uses comm_buffer_size_MB, as without gin_overlap.
+  optional double muon_owner_partition_mb = 22 [ default = 0.0 ];
 }
 
 message HybridConfig {

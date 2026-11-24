@@ -1010,7 +1010,6 @@ def sharding_config(**overrides):
     fields = {
         "gin_overlap_timeout": 30.0,
         "accumulate_steps": 1,
-        "param_allgather_fuse_mb": 1,
         "gin_overlap_dense_recv_pool_gb": POOL_CONFIG.gin_overlap_dense_recv_pool_gb,
         "gin_overlap_expert_recv_pool_gb": POOL_CONFIG.gin_overlap_expert_recv_pool_gb,
     }
@@ -1392,14 +1391,7 @@ class TestFusedAllGather(unittest.TestCase):
     each bucket must be this rank's part + 1000 x r."""
 
     def setUp(self):
-        # 1 MiB batches; 2 ranks, this process is rank 1
-        patcher = mock.patch.object(
-            gcs,
-            "_sharding_configs",
-            lambda: sharding_config(param_allgather_fuse_mb=1),
-        )
-        patcher.start()
-        self.addCleanup(patcher.stop)
+        # 2 ranks, this process is rank 1
         self.group = FakeGroup([0, 1], rank=1, group_id=1)
 
     def assert_gathered(self, b, original):
@@ -1436,7 +1428,7 @@ class TestFusedAllGather(unittest.TestCase):
         originals = {
             b._params[0].name: b.param_storage.numpy().copy() for b in buckets
         }
-        gcs.fused_all_gather(buckets)
+        gcs.fused_all_gather(buckets, fuse_mb=1)
         # numel of each send (this rank's half of each bucket): [big0 + big1], [big2], [oversized] in fp32, [half]
         # in fp16, [elsewhere] in the other group
         self.assertEqual(
@@ -1466,7 +1458,7 @@ class TestFusedAllGather(unittest.TestCase):
             RuntimeError,
             "bucket of odd has 5 elements, not a multiple of the group size 2",
         ):
-            gcs.fused_all_gather([odd])
+            gcs.fused_all_gather([odd], fuse_mb=1)
 
 
 class CallLog(list):
@@ -1567,12 +1559,12 @@ class TestShardingOptimizerGinBranches(unittest.TestCase):
         self.calls = CallLog()
         for patcher in (
             mock.patch.object(gcs, "finish_step", lambda opt: self.calls.append("finish_step")),
-            mock.patch.object(gcs, "fused_all_gather", lambda buckets: self.calls.append(("fused_all_gather", len(buckets)))),
+            mock.patch.object(gcs, "fused_all_gather", lambda buckets, fuse_mb: self.calls.append(("fused_all_gather", len(buckets), fuse_mb))),
         ):  # fmt: skip
             patcher.start()
             self.addCleanup(patcher.stop)
 
-    def v2(self, gin, comm_overlap=False):
+    def v2(self, gin, comm_overlap=False, fuse_mb=0.0):
         return SimpleNamespace(
             _comm_buffer_list=[logged_buffer(self.calls, "b0"), logged_buffer(self.calls, "b1")],
             sd_release_grads=False,
@@ -1580,13 +1572,15 @@ class TestShardingOptimizerGinBranches(unittest.TestCase):
             _all_gather_overlap_forward=False,
             comm_overlap=comm_overlap,
             _gin_scheduler=RecordingScheduler() if gin else None,
+            _gin_param_allgather_fuse_mb=fuse_mb,
         )  # fmt: skip
 
-    def muon(self, gin):
+    def muon(self, gin, fuse_mb=0.0):
         return SimpleNamespace(
             comm_buffer_2d=[logged_buffer(self.calls, "2d")],
             _comm_buffer_list=[logged_buffer(self.calls, "1d")],
             _gin_scheduler=RecordingScheduler() if gin else None,
+            _gin_param_allgather_fuse_mb=fuse_mb,
             _hcg=SimpleNamespace(get_sharding_parallel_group=lambda: None),
             _rank2params_2d_by_color={},
             _color_to_group_info={},
@@ -1607,16 +1601,23 @@ class TestShardingOptimizerGinBranches(unittest.TestCase):
                 )
                 self.assertEqual(self.calls, expected)
 
+    # (case, gin on, param_allgather_fuse_mb): fused only with gin on and a positive size; the default 0 keeps the
+    # per-bucket sync_params of the original code
+    SYNC_CASES = (
+        ("gin, fuse_mb unset", True, 0.0, False),
+        ("gin, fuse_mb 2048", True, 2048.0, True),
+        ("no gin, fuse_mb 2048", False, 2048.0, False),
+        ("no gin, fuse_mb unset", False, 0.0, False),
+    )
+
     def test_v2_sync_parameters(self):
-        for gin, expected in (
-            (True, [("fused_all_gather", 2)]),
-            (False, ["b0.sync", "b1.sync"]),
-        ):
-            with self.subTest(gin=gin):
+        for case, gin, fuse_mb, fused in self.SYNC_CASES:
+            with self.subTest(case):
                 self.calls.clear()
                 DygraphShardingOptimizerV2._sharding_sync_parameters(
-                    self.v2(gin)
+                    self.v2(gin, fuse_mb=fuse_mb)
                 )
+                expected = [("fused_all_gather", 2, fuse_mb)] if fused else ["b0.sync", "b1.sync"]  # fmt: skip
                 self.assertEqual(self.calls, expected)
 
     def test_v2_rebuild_is_refused(self):
@@ -1633,13 +1634,13 @@ class TestShardingOptimizerGinBranches(unittest.TestCase):
         )
 
     def test_muon_sync_parameters(self):
-        for gin, expected in (
-            (True, [("fused_all_gather", 1)]),
-            (False, ["1d.sync"]),
-        ):
-            with self.subTest(gin=gin):
+        for case, gin, fuse_mb, fused in self.SYNC_CASES:
+            with self.subTest(case):
                 self.calls.clear()
-                MuonShardingOptimizer._sharding_sync_parameters(self.muon(gin))
+                MuonShardingOptimizer._sharding_sync_parameters(
+                    self.muon(gin, fuse_mb=fuse_mb)
+                )
+                expected = [("fused_all_gather", 1, fuse_mb)] if fused else ["1d.sync"]  # fmt: skip
                 self.assertEqual(self.calls, expected)
 
 
@@ -1658,9 +1659,10 @@ class OwnerPartitioner:
 
 
 class TestMuonOwnerPartitionSize(unittest.TestCase):
-    """muon_owner_partition_mb (gin_overlap) replaces comm_buffer_size_MB as the MB per owner of the 2D partition.
-    Eight 1 MiB fp32 parameters (8 MiB) may spread over int(8 / MB per owner) + 1 ranks: 9 with 1 MB (so each of the
-    8 parameters gets its own owner) and 3 with 4 MB."""
+    """muon_owner_partition_mb (gin_overlap) > 0 replaces comm_buffer_size_MB as the MB per owner of the 2D
+    partition; unset (None, or the default 0) keeps comm_buffer_size_MB as in the original code. Eight 1 MiB fp32
+    parameters (8 MiB) may spread over int(8 / MB per owner) + 1 ranks: 9 with 1 MB (so each of the 8 parameters gets
+    its own owner) and 3 with 4 MB."""
 
     PARAMS = [
         SimpleNamespace(name=f"w{i}", shape=[512, 512], dtype="float32")
@@ -1683,8 +1685,11 @@ class TestMuonOwnerPartitionSize(unittest.TestCase):
     def test_owner_count(self):
         for comm_buffer_size_MB, owner_partition_mb, owner_count in (
             (1, None, 8),
+            (1, 0, 8),
             (1, 4, 3),
             (4, None, 3),
+            (4, 0, 3),
+            (4, 1, 8),
         ):
             with self.subTest(
                 comm_buffer_size_MB=comm_buffer_size_MB,

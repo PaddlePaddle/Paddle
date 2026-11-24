@@ -1071,16 +1071,17 @@ def finish_step(opt):
     )
 
 
-def fused_all_gather(buckets):
+def fused_all_gather(buckets, fuse_mb):
     """Parameter all_gather of the REDUCE_SCATTER buckets, fused per (communication group, dtype): this rank's
     shards of a batch of buckets are concatenated, sent with one process_group.all_gather and split back into each
-    bucket's param_storage. A batch holds at most sharding_configs.param_allgather_fuse_mb MB (at least one bucket).
+    bucket's param_storage. A batch holds at most fuse_mb MB (sharding_configs.param_allgather_fuse_mb; the
+    optimizers call this only when it is positive), and at least one bucket.
     param_storage of a bucket is [rank 0 part, rank 1 part, ...], so a bucket with part_numel elements per part
     takes columns [column, column + part_numel) of each row of recv[nranks, total] and row r goes to
     param_storage[r * part_numel, (r + 1) * part_numel)."""
     from paddle.distributed.fleet.utils.tensor_fusion_helper import HOOK_ACTION
 
-    limit = max(1, int(_sharding_configs().param_allgather_fuse_mb)) * 2**20
+    limit = fuse_mb * 2**20
     groups = {}
     for b in buckets:
         if (

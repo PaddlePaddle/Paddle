@@ -743,6 +743,9 @@ class DygraphShardingOptimizerV2:
         # gin_overlap: the gradient reduce_scatter of the buckets runs in
         # stages during the backward pass (GinGradCommScheduler).
         self._gin_scheduler = None
+        self._gin_param_allgather_fuse_mb = (
+            sharding_config.param_allgather_fuse_mb
+        )
         if sharding_config.gin_overlap:
             from paddle.distributed.communication.gin_overlap.grad_comm_scheduler import (
                 build_grad_comm_scheduler,
@@ -1191,13 +1194,19 @@ class DygraphShardingOptimizerV2:
                                 self._forward_pre_hook_function(tasks)
                             )
                         )
-            elif getattr(self, "_gin_scheduler", None) is not None:
-                # one all_gather per (group, dtype) batch
+            elif (
+                getattr(self, "_gin_scheduler", None) is not None
+                and getattr(self, "_gin_param_allgather_fuse_mb", 0) > 0
+            ):
+                # one all_gather per (group, dtype) batch of at most
+                # param_allgather_fuse_mb; unset = sync_params per bucket
                 from paddle.distributed.communication.gin_overlap.grad_comm_scheduler import (
                     fused_all_gather,
                 )
 
-                fused_all_gather(self._comm_buffer_list)
+                fused_all_gather(
+                    self._comm_buffer_list, self._gin_param_allgather_fuse_mb
+                )
             else:
                 for comm_buffer in self._comm_buffer_list:
                     comm_buffer.sync_params()
