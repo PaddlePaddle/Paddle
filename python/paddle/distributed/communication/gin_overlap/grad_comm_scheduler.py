@@ -116,6 +116,12 @@ def _check_compat(opt, where):
             "its communication, but gin_overlap already sends buckets during the backward pass, so it would read "
             "partial sums written by the side streams and may report a false inf/nan"
         )
+    if dist.in_auto_parallel_align_mode():
+        raise RuntimeError(
+            f"gin_overlap ({where}) does not support align mode (FLAGS_enable_auto_parallel_align_mode=True): "
+            "align mode already divides the loss, and the native path switches the gradient reduce to SUM, but "
+            "gin_overlap would divide by the group size again"
+        )
     hcg = opt._hcg
     if hcg.get_data_parallel_world_size() > 1:
         raise RuntimeError(

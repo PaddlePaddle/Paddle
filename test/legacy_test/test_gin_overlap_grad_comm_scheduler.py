@@ -180,6 +180,7 @@ class SingleProcessTestCase(unittest.TestCase):
             mock.patch.object(gcs.dist, "all_reduce", same_on_every_rank_all_reduce),
             mock.patch.object(gcs.dist, "barrier", lambda group=None: None),
             mock.patch.object(gcs.dist, "get_rank", lambda: 0),
+            mock.patch.object(gcs.dist, "in_auto_parallel_align_mode", lambda: False),
             mock.patch.object(gcs.paddle.device, "synchronize", lambda: None),
             mock.patch("paddle.distributed.collective._nccl_symmetric_empty", paddle.zeros, create=True),
             mock.patch.object(gcs, "scheduler", None),
@@ -482,12 +483,33 @@ class TestTopology(unittest.TestCase):
 
 
 class TestCheckCompat(unittest.TestCase):
+    def setUp(self):
+        patcher = mock.patch.object(
+            gcs.dist, "in_auto_parallel_align_mode", lambda: False
+        )
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
     def opt(self, dp_degree=1, **attrs):
         hcg = SimpleNamespace(get_data_parallel_world_size=lambda: dp_degree)
         return SimpleNamespace(_hcg=hcg, **attrs)
 
     def test_supported_configuration(self):
         with mock.patch.dict(os.environ, {"FLAGS_pp_check_naninf": "0"}):
+            gcs._check_compat(self.opt(), "test")
+
+    def test_align_mode_is_rejected(self):
+        # align mode divides the loss already; gin_overlap would divide by the group size again
+        with (
+            mock.patch.dict(os.environ, {"FLAGS_pp_check_naninf": "0"}),
+            mock.patch.object(
+                gcs.dist, "in_auto_parallel_align_mode", lambda: True
+            ),
+            self.assertRaisesRegex(
+                RuntimeError,
+                "gin_overlap \\(test\\) does not support align mode",
+            ),
+        ):
             gcs._check_compat(self.opt(), "test")
 
     def test_unsupported_configurations(self):
