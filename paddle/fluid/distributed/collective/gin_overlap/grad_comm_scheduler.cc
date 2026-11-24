@@ -148,6 +148,11 @@ bool InWindow(
 
 GinGradCommScheduler::GinGradCommScheduler(
     const GinGradCommSchedulerConfig& config) {
+  PADDLE_ENFORCE_NOT_NULL(
+      config.dense_group,
+      common::errors::InvalidArgument(
+          "GinGradCommScheduler needs the process group of the dense buckets "
+          "(the sharding group)."));
   PADDLE_ENFORCE_GPU_SUCCESS(cudaGetDevice(&device_id_));
   const int num_buckets = static_cast<int>(config.buckets.size());
   int num_dense = 0;
