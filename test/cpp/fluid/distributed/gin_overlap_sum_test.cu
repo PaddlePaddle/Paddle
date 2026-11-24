@@ -16,6 +16,7 @@
 // Every result is compared bit for bit with a CPU reference that adds the
 // sources in the same ring order and with the same float roundings.
 
+#include <algorithm>
 #include <cmath>
 #include <cstdint>
 #include <cstdio>
@@ -277,6 +278,21 @@ void CheckIntraNodeSum(const IntraNodeSumCase& test_case) {
       intra_recv, device_recv.CopyToHost(), context.str() + " (intra_recv)");
 }
 
+// Indices of this rank among num_sources sources to test: all of them up to
+// 8, otherwise the first, a middle one, the last and the two around the
+// batch boundary of the kernel (8 sources per batch).
+std::vector<int> SelfIndices(int num_sources) {
+  if (num_sources <= 8) {
+    std::vector<int> indices(num_sources);
+    for (int index = 0; index < num_sources; ++index) indices[index] = index;
+    return indices;
+  }
+  std::vector<int> indices = {0, 7, 8, num_sources / 2, num_sources - 1};
+  std::sort(indices.begin(), indices.end());
+  indices.erase(std::unique(indices.begin(), indices.end()), indices.end());
+  return indices;
+}
+
 }  // namespace
 
 // The bitwise checks below only catch a wrong summation order if the inputs
@@ -301,9 +317,12 @@ TEST(GinOverlapSumTest, RandomInputsAreOrderSensitive) {
   EXPECT_GT(num_different, 0);
 }
 
+// num_sources above 8 spans several batches of the kernel, with a partial
+// last batch for 9 and 17 (16 is the largest expert group / node count
+// tested).
 TEST(GinOverlapSumTest, FinalSumMatchesReference) {
-  for (int num_sources : {1, 2, 3, 4, 8}) {
-    for (int self_index = 0; self_index < num_sources; ++self_index) {
+  for (int num_sources : {1, 2, 3, 4, 8, 9, 16, 17}) {
+    for (int self_index : SelfIndices(num_sources)) {
       for (float scale : {1.0f, 1.0f / num_sources, 0.3f}) {
         CheckFinalSum({/*numel=*/1000, num_sources, self_index, scale});
       }
@@ -312,10 +331,10 @@ TEST(GinOverlapSumTest, FinalSumMatchesReference) {
 }
 
 TEST(GinOverlapSumTest, IntraNodeSumMatchesReference) {
-  for (int ranks_per_node : {1, 2, 8}) {
+  // 16 is the largest ranks_per_node of the scheduler (kMaxRanksPerNode).
+  for (int ranks_per_node : {1, 2, 8, 9, 16}) {
     for (int num_nodes : {1, 2, 4}) {
-      for (int rank_in_node = 0; rank_in_node < ranks_per_node;
-           ++rank_in_node) {
+      for (int rank_in_node : SelfIndices(ranks_per_node)) {
         CheckIntraNodeSum(
             {/*numel=*/1000, ranks_per_node, num_nodes, rank_in_node});
       }
@@ -325,56 +344,61 @@ TEST(GinOverlapSumTest, IntraNodeSumMatchesReference) {
 
 // numel 4 and 1000 with aligned pointers take the float4 path; numel 1, 3 and
 // 4097, or a pointer offset by one float, take the scalar path. 3 blocks of 64
-// threads do not divide any of these sizes.
+// threads do not divide any of these sizes. 8 sources fill one batch of the
+// float4 path; 9 and 17 add a partial batch, 16 a second full one.
 TEST(GinOverlapSumTest, Float4AndScalarPathsMatchReference) {
   struct PointerOffsets {
     size_t self_offset;
     size_t recv_offset;
   };
-  for (size_t numel : {1, 3, 4, 1000, 4097}) {
-    for (PointerOffsets offsets :
-         {PointerOffsets{0, 0}, PointerOffsets{1, 0}, PointerOffsets{0, 1}}) {
-      CheckFinalSum({numel,
-                     /*num_sources=*/8,
-                     /*self_index=*/3,
-                     /*scale=*/0.3f,
-                     offsets.self_offset,
-                     offsets.recv_offset,
-                     /*num_blocks=*/3,
-                     /*num_threads=*/64});
-      CheckIntraNodeSum({numel,
-                         /*ranks_per_node=*/8,
-                         /*num_nodes=*/2,
-                         /*rank_in_node=*/5,
-                         offsets.self_offset,
-                         offsets.recv_offset,
-                         /*num_blocks=*/3,
-                         /*num_threads=*/64});
+  for (int num_sources : {8, 9, 16, 17}) {
+    for (size_t numel : {1, 3, 4, 1000, 4097}) {
+      for (PointerOffsets offsets :
+           {PointerOffsets{0, 0}, PointerOffsets{1, 0}, PointerOffsets{0, 1}}) {
+        CheckFinalSum({numel,
+                       num_sources,
+                       /*self_index=*/3,
+                       /*scale=*/0.3f,
+                       offsets.self_offset,
+                       offsets.recv_offset,
+                       /*num_blocks=*/3,
+                       /*num_threads=*/64});
+        CheckIntraNodeSum({numel,
+                           /*ranks_per_node=*/num_sources,
+                           /*num_nodes=*/2,
+                           /*rank_in_node=*/5,
+                           offsets.self_offset,
+                           offsets.recv_offset,
+                           /*num_blocks=*/3,
+                           /*num_threads=*/64});
+      }
     }
   }
 }
 
 // Every grid gives the reference bits, so all grids give the same bits.
 TEST(GinOverlapSumTest, BlockAndThreadCountsDoNotChangeBits) {
-  for (size_t numel : {1000, 4097}) {  // float4 path, scalar path
-    for (int num_blocks : {1, 3, 64}) {
-      for (int num_threads : {64, 256, 512}) {
-        CheckFinalSum({numel,
-                       /*num_sources=*/8,
-                       /*self_index=*/3,
-                       /*scale=*/0.3f,
-                       /*shard_offset=*/0,
-                       /*recv_offset=*/0,
-                       num_blocks,
-                       num_threads});
-        CheckIntraNodeSum({numel,
-                           /*ranks_per_node=*/8,
-                           /*num_nodes=*/4,
-                           /*rank_in_node=*/5,
-                           /*grad_offset=*/0,
-                           /*recv_offset=*/0,
-                           num_blocks,
-                           num_threads});
+  for (int num_sources : {8, 17}) {      // one batch, a partial third batch
+    for (size_t numel : {1000, 4097}) {  // float4 path, scalar path
+      for (int num_blocks : {1, 3, 64}) {
+        for (int num_threads : {64, 256, 512}) {
+          CheckFinalSum({numel,
+                         num_sources,
+                         /*self_index=*/3,
+                         /*scale=*/0.3f,
+                         /*shard_offset=*/0,
+                         /*recv_offset=*/0,
+                         num_blocks,
+                         num_threads});
+          CheckIntraNodeSum({numel,
+                             /*ranks_per_node=*/num_sources,
+                             /*num_nodes=*/4,
+                             /*rank_in_node=*/5,
+                             /*grad_offset=*/0,
+                             /*recv_offset=*/0,
+                             num_blocks,
+                             num_threads});
+        }
       }
     }
   }
