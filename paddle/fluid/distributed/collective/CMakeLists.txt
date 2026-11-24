@@ -17,6 +17,38 @@ if(WITH_DISTRIBUTE
   set(DEEPEP_LIB deep_ep_xpu)
 endif()
 
+# gin_overlap: sharding-stage1 gradient communication built on NCCL GIN
+# one-sided puts. Built only when all of these hold:
+#   * WITH_DISTRIBUTE, WITH_GPU and WITH_NCCL.
+#   * An arch >= 9.0 is compiled (ARCH_BIN_CONTAINS_GE_90, as for DeepEP).
+#   * NCCL 2.30.7 or newer, with nccl_device.h next to nccl.h (the device
+#     LSA/GIN API).
+#   * CUDA 13.0 or newer: the code calls cudaMemcpyBatchAsync with the
+#     CUDA 13 signature (CUDA 12.8 / 12.9 declare a different one).
+# WITH_GIN_OVERLAP caches the result; paddle/fluid/pybind/CMakeLists.txt reads
+# it to link the library and define PADDLE_WITH_GIN_OVERLAP. _BUILD_HINT in
+# python/paddle/distributed/communication/gin_overlap/engine.py lists the same
+# conditions for the error users see; change both together.
+set(gin_overlap_supported FALSE)
+if(WITH_DISTRIBUTE
+   AND WITH_GPU
+   AND WITH_NCCL
+   AND ARCH_BIN_CONTAINS_GE_90
+   AND (CUDA_VERSION VERSION_GREATER_EQUAL 13.0)
+   AND DEFINED NCCL_VERSION)
+  if(NCCL_VERSION GREATER_EQUAL 23007 AND EXISTS
+                                          "${NCCL_INCLUDE_DIR}/nccl_device.h")
+    set(gin_overlap_supported TRUE)
+  endif()
+endif()
+set(WITH_GIN_OVERLAP
+    ${gin_overlap_supported}
+    CACHE INTERNAL "gin_overlap gradient communication is built")
+if(WITH_GIN_OVERLAP)
+  message(STATUS "Enable gin_overlap sharding-stage1 gradient communication.")
+  add_subdirectory(gin_overlap)
+endif()
+
 cc_library(
   process_group
   SRCS process_group.cc
