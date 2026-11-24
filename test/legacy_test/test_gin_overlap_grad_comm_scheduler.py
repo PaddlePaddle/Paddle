@@ -243,17 +243,56 @@ class TestRecvPoolRing(unittest.TestCase):
 
 class TestRecvPoolSizes(unittest.TestCase):
     TEXTS = ("intra bound", "inter bound", "expert bound")
+    # largest (dense, expert) bucket in bytes; only used when a pool size is auto (<= 0)
+    NO_BUCKETS = (0, 0)
 
     def test_dense_pool_split_in_proportion_to_the_lower_bounds(self):
         # 40960 B split 3:1 = 30720 / 10240, each rounded down to 4 KB
         sizes = gcs._recv_pool_sizes(
-            [12288, 4096, 0], self.TEXTS, gib(40960), 1.0
+            [12288, 4096, 0], self.TEXTS, gib(40960), 1.0, self.NO_BUCKETS
         )
         self.assertEqual(sizes, [28672, 8192, 0])
 
     def test_expert_pool_rounded_down_to_4kb(self):
-        sizes = gcs._recv_pool_sizes([0, 0, 8192], self.TEXTS, 1.0, gib(12388))
+        sizes = gcs._recv_pool_sizes(
+            [0, 0, 8192], self.TEXTS, 1.0, gib(12388), self.NO_BUCKETS
+        )
         self.assertEqual(sizes, [0, 0, 12288])
+
+    def test_auto_pool_is_twice_the_largest_bucket_rounded_up_to_a_gib(self):
+        for largest_bucket, pool_gib in ((1, 1), (2**29, 1), (2**29 + 1, 2), (3 * 2**30, 6), (3 * 2**30 + 4096, 7)):  # fmt: skip
+            with self.subTest(largest_bucket=largest_bucket):
+                self.assertEqual(gcs._auto_pool_bytes(largest_bucket), pool_gib * 2**30)  # fmt: skip
+
+    def test_auto_dense_pool_is_split_like_an_explicit_one(self):
+        # 4 nodes x 8 ranks, largest dense bucket 3 GiB + 4 KB -> auto 7 GiB, the same split as 7 GiB set by hand
+        largest = 3 * 2**30 + 4096
+        bounds = [gcs._align(largest * 7 // 8, 4096), gcs._align(largest // 8, 4096), 0]  # fmt: skip
+        auto = gcs._recv_pool_sizes(bounds, self.TEXTS, 0.0, 0.0, (largest, 0))
+        explicit = gcs._recv_pool_sizes(bounds, self.TEXTS, 7.0, 0.0, (0, 0))
+        self.assertEqual(auto, explicit)
+        # each segment is rounded down to 4 KB, so together they may be one 4 KB page short of the 7 GiB
+        self.assertIn(7 * 2**30 - sum(auto), (0, 4096))
+        self.assertGreaterEqual(auto[0], bounds[0])
+        self.assertGreaterEqual(auto[1], bounds[1])
+
+    def test_auto_expert_pool(self):
+        sizes = gcs._recv_pool_sizes([0, 0, 2**28], self.TEXTS, 0.0, -1.0, (0, 2**28))  # fmt: skip
+        self.assertEqual(sizes, [0, 0, 2**30])
+
+    def test_auto_pools_always_meet_the_lower_bounds(self):
+        # the slots of one bucket of B bytes: (L - 1) / L of it intra-node, 1 / L inter-node, all of it for experts
+        for nodes in (1, 2, 4, 16):
+            for ranks_per_node in (1, 2, 8, 16):
+                for shard_numel in (1, 3, 1000, 2**20 + 7, 2**28 + 1):
+                    with self.subTest(nodes=nodes, ranks_per_node=ranks_per_node, shard_numel=shard_numel):  # fmt: skip
+                        largest = 4 * shard_numel * nodes * ranks_per_node
+                        intra = gcs._align((ranks_per_node - 1) * nodes * shard_numel * 4) if ranks_per_node > 1 else 0  # fmt: skip
+                        inter = gcs._align(nodes * shard_numel * 4) if nodes > 1 else 0  # fmt: skip
+                        bounds = [gcs._align(intra, 4096), gcs._align(inter, 4096), gcs._align(gcs._align(largest), 4096)]  # fmt: skip
+                        sizes = gcs._recv_pool_sizes(bounds, self.TEXTS, 0.0, 0.0, (largest, largest))  # fmt: skip
+                        for size, bound in zip(sizes, bounds):
+                            self.assertGreaterEqual(size, bound)
 
     def test_too_small_pools_raise(self):
         cases = (
@@ -267,7 +306,9 @@ class TestRecvPoolSizes(unittest.TestCase):
                 self.subTest(message),
                 self.assertRaisesRegex(RuntimeError, message),
             ):
-                gcs._recv_pool_sizes(bounds, self.TEXTS, dense_gb, expert_gb)
+                gcs._recv_pool_sizes(
+                    bounds, self.TEXTS, dense_gb, expert_gb, self.NO_BUCKETS
+                )
 
 
 class TestReleaseOrder(unittest.TestCase):
@@ -701,6 +742,19 @@ class TestLayout(LayoutTestCase):
         ):
             self.layout()
 
+    def test_auto_sized_recv_pools(self):
+        # largest dense bucket 1536 x 4 B, largest expert bucket 128 x 4 B: both pools auto 1 GiB; the dense pool split
+        # 1:1 like the equal lower bounds
+        config = SimpleNamespace(gin_overlap_dense_recv_pool_gb=0.0, gin_overlap_expert_recv_pool_gb=0.0)  # fmt: skip
+        layout = gcs._Layout(self.dense_layout, self.expert_layout, DENSE_NUMELS, EXPERT_NUMELS, RELEASE_ORDER, config)  # fmt: skip
+        self.assertEqual(layout.segment_bytes, [2**29, 2**29, 2**30])
+        self.assertEqual(layout.auto_sized, (True, True, True))
+        with mock.patch.object(gcs, "logger") as logger:
+            layout.log("windows text")
+        message = logger.info.call_args[0][0]
+        self.assertIn("dense intra-node segment 0.500 GiB (auto, lower bound", message)  # fmt: skip
+        self.assertIn("expert segment 1.000 GiB (auto, lower bound", message)
+
     def test_log_on_rank_0_only(self):
         layout = self.layout()
         with mock.patch.object(gcs, "logger") as logger:
@@ -711,6 +765,7 @@ class TestLayout(LayoutTestCase):
             message,
         )
         self.assertIn("median slot 0.0 MiB, holds 2", message)
+        self.assertIn("expert segment 0.000 GiB (set, lower bound", message)
         # dense: every bucket (d = 1, 1, 2 < 3 buckets); expert: none (d = 2 = number of buckets)
         self.assertIn(
             "intra-node 3 / inter-node 3 / expert 0; windows windows text",

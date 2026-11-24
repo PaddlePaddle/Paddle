@@ -370,32 +370,55 @@ def _recv_pool_ring(order, slot_bytes, size):
     return offset, distance
 
 
-def _recv_pool_sizes(lower_bounds, bound_texts, dense_gb, expert_gb):
-    """Sizes (bytes, multiples of 4 KB) of the three segments. The dense pool is split between the intra-node and
-    inter-node segments in proportion to their lower bounds."""
+def _auto_pool_bytes(largest_bucket_bytes):
+    """Recv pool of a kind when its size is not set: 2 x the largest bucket, rounded up to a whole GiB. A segment
+    slot is at most one bucket ((L - 1) / L of it intra-node, 1 / L inter-node, all of it for experts), so this
+    holds at least two of the largest slots."""
+    return -(-2 * largest_bucket_bytes // 2**30) * 2**30
+
+
+def _recv_pool_sizes(
+    lower_bounds, bound_texts, dense_gb, expert_gb, largest_bucket_bytes
+):
+    """Sizes (bytes, multiples of 4 KB) of the three segments. dense_gb / expert_gb <= 0 = auto (_auto_pool_bytes of
+    largest_bucket_bytes = (largest dense bucket, largest expert bucket) in bytes). The dense pool is split between
+    the intra-node and inter-node segments in proportion to their lower bounds."""
     sizes = list(lower_bounds)
     dense_bound = lower_bounds[0] + lower_bounds[1]
+    dense_text = f"gin_overlap_dense_recv_pool_gb={dense_gb:g}" + (
+        " (auto)" if dense_gb <= 0 else ""
+    )
     if dense_bound > 0:
-        dense_pool = int(dense_gb * 2**30)
+        dense_pool = (
+            int(dense_gb * 2**30)
+            if dense_gb > 0
+            else _auto_pool_bytes(largest_bucket_bytes[0])
+        )
         if dense_pool < dense_bound:
             raise RuntimeError(
-                f"gin_overlap_dense_recv_pool_gb={dense_gb:g} is too small: the lower bounds of the intra-node and "
-                f"inter-node segments add up to {dense_bound / 2**30:.3f} GiB ({dense_bound} B); {bound_texts[0]}; "
-                f"{bound_texts[1]}"
+                f"{dense_text}: the pool of {dense_pool / 2**30:.3f} GiB is too small: the lower bounds of the "
+                f"intra-node and inter-node segments add up to {dense_bound / 2**30:.3f} GiB ({dense_bound} B); "
+                f"{bound_texts[0]}; {bound_texts[1]}"
             )
         sizes[0] = (lower_bounds[0] * dense_pool // dense_bound) // 4096 * 4096
         sizes[1] = (lower_bounds[1] * dense_pool // dense_bound) // 4096 * 4096
         for i in (0, 1):
             if sizes[i] < lower_bounds[i]:
                 raise RuntimeError(
-                    f"gin_overlap_dense_recv_pool_gb={dense_gb:g}: after the split, {bound_texts[i]} is not met "
-                    f"(got {sizes[i] / 2**30:.3f} GiB)"
+                    f"{dense_text}: after the split, {bound_texts[i]} is not met (got {sizes[i] / 2**30:.3f} GiB)"
                 )
     if lower_bounds[2] > 0:
-        expert_pool = int(expert_gb * 2**30) // 4096 * 4096
+        expert_text = f"gin_overlap_expert_recv_pool_gb={expert_gb:g}" + (
+            " (auto)" if expert_gb <= 0 else ""
+        )
+        expert_pool = (
+            int(expert_gb * 2**30) // 4096 * 4096
+            if expert_gb > 0
+            else _auto_pool_bytes(largest_bucket_bytes[1])
+        )
         if expert_pool < lower_bounds[2]:
             raise RuntimeError(
-                f"gin_overlap_expert_recv_pool_gb={expert_gb:g} is too small: {bound_texts[2]}"
+                f"{expert_text}: the pool of {expert_pool / 2**30:.3f} GiB is too small: {bound_texts[2]}"
             )
         sizes[2] = expert_pool
     return sizes
@@ -472,9 +495,16 @@ class _Layout:
         local_bounds = [
             _align(max(slots, default=0), 4096) for slots in slot_bytes
         ]
-        dense_bounds = paddle.to_tensor(local_bounds[:2], dtype="int64")
+        # [intra bound, inter bound, largest dense bucket bytes] and [expert bound, largest expert bucket bytes]
+        dense_bounds = paddle.to_tensor(
+            [*local_bounds[:2], 4 * max(self.dense_numels, default=0)],
+            dtype="int64",
+        )
         dist.all_reduce(dense_bounds, op=dist.ReduceOp.MAX, group=dense.group)
-        expert_bounds = paddle.to_tensor(local_bounds[2:], dtype="int64")
+        expert_bounds = paddle.to_tensor(
+            [local_bounds[2], 4 * max(self.expert_numels, default=0)],
+            dtype="int64",
+        )
         if self.expert_numels:
             dist.all_reduce(
                 expert_bounds, op=dist.ReduceOp.MAX, group=expert.group
@@ -499,6 +529,14 @@ class _Layout:
             bound_texts,
             cfg.gin_overlap_dense_recv_pool_gb,
             cfg.gin_overlap_expert_recv_pool_gb,
+            (int(dense_bounds[2]), int(expert_bounds[1])),
+        )
+        # whether each segment was auto-sized (pool size <= 0), for the init log
+        dense_auto = cfg.gin_overlap_dense_recv_pool_gb <= 0
+        self.auto_sized = (
+            dense_auto,
+            dense_auto,
+            cfg.gin_overlap_expert_recv_pool_gb <= 0,
         )
         intra_offsets, intra_distance = _recv_pool_ring(
             self.dense_order, slot_bytes[0], segment_bytes[0]
@@ -621,7 +659,7 @@ class _Layout:
                 int(self.segment_bytes[i] // median_slot) if median_slot else 0
             )
             segment_texts.append(
-                f"{names[i]} {self.segment_bytes[i] / 2**30:.3f} GiB (lower bound "
+                f"{names[i]} {self.segment_bytes[i] / 2**30:.3f} GiB ({'auto' if self.auto_sized[i] else 'set'}, lower bound "
                 f"{self.lower_bounds[i] / 2**30:.3f}, median slot {median_slot / 2**20:.1f} MiB, holds {slots_held})"
             )
         num_buckets = (

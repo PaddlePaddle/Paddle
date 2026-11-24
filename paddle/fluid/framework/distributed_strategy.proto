@@ -127,9 +127,12 @@ message DygraphShardingConfig {
   // Seconds the end of reduce_gradients waits for the step to be released.
   optional double gin_overlap_timeout = 18 [ default = 300.0 ];
   // Recv pool sizes (GiB): dense = intra-node + inter-node segments of the
-  // sharding group, expert = expert segment of the moe_sharding group.
-  optional double gin_overlap_dense_recv_pool_gb = 19 [ default = 6.5 ];
-  optional double gin_overlap_expert_recv_pool_gb = 20 [ default = 1.0 ];
+  // sharding group (split in proportion to their lower bounds), expert =
+  // expert segment of the moe_sharding group. <= 0: auto, 2 x the largest
+  // bucket of the kind (numel x 4 B, max over the group), rounded up to a
+  // whole GiB.
+  optional double gin_overlap_dense_recv_pool_gb = 19 [ default = 0.0 ];
+  optional double gin_overlap_expert_recv_pool_gb = 20 [ default = 0.0 ];
   // Under gin_overlap, upper bound (MB) of one fused parameter all_gather
   // (one all_gather per (group, dtype) batch of buckets). <= 0: no fusion,
   // every bucket runs its own sync_params, as without gin_overlap.
