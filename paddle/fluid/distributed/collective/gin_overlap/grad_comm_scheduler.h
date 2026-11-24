@@ -183,22 +183,6 @@ struct GinGradCommSchedulerConfig {
   int num_tail_marks{1024};
 };
 
-// Release progress, for debugging.
-struct GinGradCommStatus {
-  // 0 idle, 1 proxy running, 2 done, 3 error, 4 aborted.
-  int state{0};
-  int64_t completed_steps{0};
-  // Positions in the fixed order, in this order: dense intra copy, dense
-  // intra sum, dense put, dense final sum, expert put, expert final sum
-  // (pos_intra_copy_ ... pos_expert_final_sum_ of the scheduler).
-  std::vector<int> positions;
-  // Buckets that reached an op but are not released: intra copy, intra sum,
-  // put, final sum.
-  std::vector<int> pending;
-  // Buckets reported by BucketReady() in this step.
-  int reported{0};
-};
-
 class GinGradCommScheduler {
  public:
   explicit GinGradCommScheduler(const GinGradCommSchedulerConfig& config);
@@ -240,15 +224,6 @@ class GinGradCommScheduler {
 
   // Number of steps finished by FinishStep().
   int64_t CompletedSteps() const;
-
-  // Whether the bucket table has expert buckets.
-  bool HasExpertBuckets() const;
-
-  GinGradCommStatus Status() const;
-
-  // Per op: buckets released, the next bucket, and what each bucket that
-  // reached the op waits for. Empty reason while the proxy thread runs.
-  std::string StuckReport() const;
 
  private:
   DISABLE_COPY_AND_ASSIGN(GinGradCommScheduler);
@@ -326,7 +301,6 @@ class GinGradCommScheduler {
   void AfterFinalSum(int bucket, bool in_proxy);
 
   bool IsStepDone() const;
-  void PendingCounts(int* counts) const;
   int RecordTailMark();
   void StartProxy(int slot, int intra_sum_blocks, int final_sum_blocks);
   bool ConsumePublished();

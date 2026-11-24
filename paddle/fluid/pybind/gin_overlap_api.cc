@@ -178,20 +178,7 @@ void BindGinOverlapApi(py::module* m) {
            &GinGradCommScheduler::FinishStep,
            py::arg("timeout_s"),
            py::call_guard<py::gil_scoped_release>())
-      .def("completed_steps", &GinGradCommScheduler::CompletedSteps)
-      .def("has_expert_buckets", &GinGradCommScheduler::HasExpertBuckets)
-      .def("status",
-           [](const GinGradCommScheduler& self) {
-             const distributed::GinGradCommStatus status = self.Status();
-             py::dict result;
-             result["state"] = status.state;
-             result["completed_steps"] = status.completed_steps;
-             result["reported"] = status.reported;
-             result["positions"] = status.positions;
-             result["pending"] = status.pending;
-             return result;
-           })
-      .def("stuck_report", &GinGradCommScheduler::StuckReport);
+      .def("completed_steps", &GinGradCommScheduler::CompletedSteps);
 }
 
 }  // namespace pybind

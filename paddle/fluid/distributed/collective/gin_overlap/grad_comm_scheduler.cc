@@ -40,7 +40,7 @@ namespace {
 // request.
 enum State { kIdle = 0, kRun = 1, kDone = 2, kErr = 3, kAborted = 4 };
 
-// Which counter a blocked op waits for (Blocker::counter, StuckReport()).
+// Which counter a blocked op waits for (Blocker::counter, StuckReportLocked()).
 enum Counter {
   kCounterIntraCredit = 1,
   kCounterIntraArrive = 2,
@@ -72,7 +72,7 @@ constexpr int kSlotUnused = -2;
 constexpr int kSlotMarkOnly = -1;
 // Intra-node arrival counters per dense bucket (ranks_per_node <= 16).
 constexpr int kMaxRanksPerNode = 16;
-// Buckets listed per op in StuckReport().
+// Buckets listed per op in StuckReportLocked().
 constexpr int kStuckMaxItems = 8;
 constexpr int64_t kCounterBytes = 8;
 constexpr int64_t kFloatBytes = 4;
@@ -1130,27 +1130,6 @@ bool GinGradCommScheduler::IsStepDone() const {
          pos_expert_put_ >= num_expert && pos_expert_final_sum_ >= num_expert;
 }
 
-// Buckets that reached an op but are not released, in the order [intra copy,
-// intra sum, put, final sum] (put and final sum count dense and expert).
-// Intra copy and expert put count only ready buckets.
-void GinGradCommScheduler::PendingCounts(int* counts) const {
-  int ready_copy = 0;
-  int ready_expert_put = 0;
-  for (size_t position = pos_intra_copy_; position < dense_order_.size();
-       ++position) {
-    if (ready_[dense_order_[position]]) ++ready_copy;
-  }
-  for (size_t position = pos_expert_put_; position < expert_order_.size();
-       ++position) {
-    if (ready_[expert_order_[position]]) ++ready_expert_put;
-  }
-  counts[0] = ready_copy;
-  counts[1] = pos_intra_copy_ - pos_intra_sum_;
-  counts[2] = pos_intra_sum_ - pos_dense_put_ + ready_expert_put;
-  counts[3] = pos_dense_put_ - pos_dense_final_sum_ + pos_expert_put_ -
-              pos_expert_final_sum_;
-}
-
 // Records the next tail mark of this step on the compute stream and returns
 // its slot. The slots of a step are used in order from 0, each once.
 int GinGradCommScheduler::RecordTailMark() {
@@ -1593,37 +1572,6 @@ void GinGradCommScheduler::ResetStep() {
 int64_t GinGradCommScheduler::CompletedSteps() const {
   std::lock_guard<std::mutex> lock(mutex_);
   return step_;
-}
-
-bool GinGradCommScheduler::HasExpertBuckets() const {
-  return !expert_order_.empty();
-}
-
-GinGradCommStatus GinGradCommScheduler::Status() const {
-  std::lock_guard<std::mutex> lock(mutex_);
-  GinGradCommStatus status;
-  status.state = state_;
-  status.completed_steps = step_;
-  status.reported = num_reported_;
-  // The release state belongs to the proxy thread while it runs.
-  if (state_ == kRun) return status;
-  // Same order as GinGradCommStatus::positions documents.
-  status.positions = {pos_intra_copy_,
-                      pos_intra_sum_,
-                      pos_dense_put_,
-                      pos_dense_final_sum_,
-                      pos_expert_put_,
-                      pos_expert_final_sum_};
-  int pending[4] = {0, 0, 0, 0};
-  PendingCounts(pending);
-  status.pending.assign(pending, pending + 4);
-  return status;
-}
-
-std::string GinGradCommScheduler::StuckReport() const {
-  std::lock_guard<std::mutex> lock(mutex_);
-  if (state_ == kRun) return "";
-  return StuckReportLocked();
 }
 
 // Per op: "released/buckets", the next bucket of the fixed order when it has

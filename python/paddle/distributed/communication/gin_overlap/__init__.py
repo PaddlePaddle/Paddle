@@ -25,7 +25,7 @@ each time, it is not re-exported here because an imported copy would stay None):
     now; the two counts are the grid sizes of the INTRA_SUM / FINAL_SUM kernels.
   - ``release_async(intra_sum_blocks, final_sum_blocks)``: after the last window of the step, hand the rest over to
     the proxy thread.
-  - ``completed_steps()`` / ``has_expert_buckets()``: read-only.
+  - ``completed_steps()``: number of finished steps (read-only).
 
 Without a driver every bucket is released at the end of reduce_gradients. Op constants: INTRA_COPY, INTRA_SUM, PUT,
 FINAL_SUM, GATHER (bit flags, OR-ed together).
