@@ -2788,6 +2788,125 @@ class TestCrossEntropyFAPIError(unittest.TestCase):
             )
 
 
+class TestCrossEntropyLabelSmoothingIgnoreIndex(unittest.TestCase):
+    """label_smoothing together with an ignore_index >= 0 and integer labels."""
+
+    def setUp(self):
+        np.random.seed(2026)
+        self.N, self.C = 6, 5
+        self.dtype = (
+            'float32' if base.core.is_compiled_with_rocm() else 'float64'
+        )
+        self.logits = np.random.uniform(-1.0, 1.0, (self.N, self.C)).astype(
+            self.dtype
+        )
+        self.label_smoothing = 0.1
+        self.ignore_index = 2
+
+    def _reference(self, label, reduction, weight=None):
+        log_prob = np.log(np.apply_along_axis(stable_softmax, -1, self.logits))
+        q = np.full((self.N, self.C), self.label_smoothing / self.C)
+        safe_label = np.where(label != self.ignore_index, label, 0)
+        q[np.arange(self.N), safe_label] += 1.0 - self.label_smoothing
+        loss = -(q * log_prob).sum(-1)
+        valid = (label != self.ignore_index).astype(self.dtype)
+        sample_weight = valid if weight is None else valid * (q @ weight)
+        loss = loss * (sample_weight if weight is not None else valid)
+        if reduction == 'none':
+            return loss.reshape(self.N, 1)
+        if reduction == 'sum':
+            return loss.sum()
+        return loss.sum() / sample_weight.sum()
+
+    def _run_dygraph(self, label, reduction, weight=None):
+        paddle.disable_static()
+        out = paddle.nn.functional.cross_entropy(
+            paddle.to_tensor(self.logits),
+            paddle.to_tensor(label),
+            weight=None if weight is None else paddle.to_tensor(weight),
+            ignore_index=self.ignore_index,
+            reduction=reduction,
+            label_smoothing=self.label_smoothing,
+        )
+        return out.numpy()
+
+    def _run_static(self, label, reduction, weight=None):
+        paddle.enable_static()
+        try:
+            prog = base.Program()
+            with base.program_guard(prog, base.Program()):
+                x = paddle.static.data('x', [self.N, self.C], self.dtype)
+                y = paddle.static.data('y', [self.N], 'int64')
+                w = None
+                feed = {'x': self.logits, 'y': label}
+                if weight is not None:
+                    w = paddle.static.data('w', [self.C], self.dtype)
+                    feed['w'] = weight
+                out = paddle.nn.functional.cross_entropy(
+                    x,
+                    y,
+                    weight=w,
+                    ignore_index=self.ignore_index,
+                    reduction=reduction,
+                    label_smoothing=self.label_smoothing,
+                )
+                exe = base.Executor(get_device_place())
+                return exe.run(prog, feed=feed, fetch_list=[out])[0]
+        finally:
+            paddle.disable_static()
+
+    def test_ignored_samples_do_not_contribute(self):
+        label = np.array([0, 2, 1, 2, 4, 3], dtype='int64')
+        for reduction in ('none', 'sum', 'mean'):
+            expected = self._reference(label, reduction)
+            np.testing.assert_allclose(
+                self._run_dygraph(label, reduction), expected, rtol=1e-5
+            )
+            np.testing.assert_allclose(
+                self._run_static(label, reduction), expected, rtol=1e-5
+            )
+
+    def test_no_label_equals_ignore_index(self):
+        label = np.array([0, 1, 1, 3, 4, 3], dtype='int64')
+        for reduction in ('none', 'sum', 'mean'):
+            expected = self._reference(label, reduction)
+            np.testing.assert_allclose(
+                self._run_dygraph(label, reduction), expected, rtol=1e-5
+            )
+            np.testing.assert_allclose(
+                self._run_static(label, reduction), expected, rtol=1e-5
+            )
+
+    def test_ignore_index_not_a_class(self):
+        # ignore_index >= C is outside the class range and must still be ignored
+        self.ignore_index = 255
+        label = np.array([0, 255, 1, 255, 4, 3], dtype='int64')
+        for reduction in ('none', 'sum', 'mean'):
+            expected = self._reference(label, reduction)
+            np.testing.assert_allclose(
+                self._run_dygraph(label, reduction), expected, rtol=1e-5
+            )
+            np.testing.assert_allclose(
+                self._run_static(label, reduction), expected, rtol=1e-5
+            )
+
+    def test_weight(self):
+        label = np.array([0, 2, 1, 2, 4, 3], dtype='int64')
+        weight = np.array([0.5, 1.0, 2.0, 0.3, 1.5], dtype=self.dtype)
+        for reduction in ('none', 'sum', 'mean'):
+            expected = self._reference(label, reduction, weight)
+            np.testing.assert_allclose(
+                self._run_dygraph(label, reduction, weight),
+                expected,
+                rtol=1e-5,
+            )
+            np.testing.assert_allclose(
+                self._run_static(label, reduction, weight),
+                expected,
+                rtol=1e-5,
+            )
+
+
 class CrossEntropyLossCompatible(unittest.TestCase):
     """
     Minimal tests for cross_entropy under FLAGS_use_accuracy_compatible_kernel.
