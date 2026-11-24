@@ -960,7 +960,8 @@ void GinGradCommScheduler::Submit(int op,
   } catch (const std::exception& e) {
     activity_ = 0;
     Fail(op, bucket, e.what());
-    PADDLE_THROW(common::errors::External("%s", ErrorText()));
+    PADDLE_THROW(common::errors::External("gin_overlap scheduler failed: %s",
+                                          ErrorText()));
   }
   activity_ = 0;
 }
@@ -973,9 +974,8 @@ void GinGradCommScheduler::Fail(int op, int bucket, const std::string& what) {
 
 std::string GinGradCommScheduler::ErrorText() const {
   std::ostringstream text;
-  text << "gin_overlap: step " << step_ + 1 << ": submitting "
-       << OpName(err_op_) << " of bucket " << err_bucket_
-       << " failed: " << err_what_;
+  text << "step " << step_ + 1 << ": submitting " << OpName(err_op_)
+       << " of bucket " << err_bucket_ << " failed: " << err_what_;
   return text.str();
 }
 
@@ -1159,7 +1159,7 @@ int GinGradCommScheduler::RecordTailMark() {
       static_cast<int>(tail_marks_.size()),
       common::errors::ResourceExhausted(
           "Step %d used all %d tail marks (one per hand-over, per bucket "
-          "reported after it and per ReleaseAsync() after it); raise "
+          "reported after it and per ReleaseAsync() after it). Raise "
           "num_tail_marks.",
           step_ + 1,
           static_cast<int>(tail_marks_.size())));
@@ -1193,7 +1193,8 @@ void GinGradCommScheduler::BucketReady(int bucket, float scale) {
                                       static_cast<int>(buckets_.size())));
   std::lock_guard<std::mutex> lock(mutex_);
   if (state_ == kErr) {
-    PADDLE_THROW(common::errors::External("%s", ErrorText()));
+    PADDLE_THROW(common::errors::External("gin_overlap scheduler failed: %s",
+                                          ErrorText()));
   }
   PADDLE_ENFORCE_EQ(
       reported_[bucket] == 0,
@@ -1364,7 +1365,8 @@ void GinGradCommScheduler::FinishStep(double timeout_s) {
   if (state_ == kErr) {
     const std::string text = ErrorText();
     state_ = kIdle;
-    PADDLE_THROW(common::errors::External("%s", text));
+    PADDLE_THROW(
+        common::errors::External("gin_overlap scheduler failed: %s", text));
   }
   const int num_buckets = static_cast<int>(buckets_.size());
   if (num_reported_ != num_buckets) {
@@ -1413,26 +1415,29 @@ void GinGradCommScheduler::FinishStep(double timeout_s) {
           activity_text << "not in a CUDA call";
         }
         std::ostringstream text;
-        text << "gin_overlap: step " << step_ + 1 << " was not released within "
-             << timeout_s << " s, and the proxy thread did not stop within "
+        text << "step " << step_ + 1 << " was not released within " << timeout_s
+             << " s, and the proxy thread did not stop within "
              << kAbortWaitSeconds << " s (" << activity_text.str()
              << "), so there is no per-op report.";
-        LOG(ERROR) << text.str();
-        PADDLE_THROW(common::errors::ExecutionTimeout("%s", text.str()));
+        LOG(ERROR) << "gin_overlap scheduler timed out: " << text.str();
+        PADDLE_THROW(common::errors::ExecutionTimeout(
+            "gin_overlap scheduler timed out: %s", text.str()));
       }
       state_ = kIdle;
       abort_ = false;
       std::ostringstream text;
-      text << "gin_overlap: step " << step_ + 1 << " was not released within "
-           << timeout_s << " s: " << StuckReportLocked();
-      LOG(ERROR) << text.str();
-      PADDLE_THROW(common::errors::ExecutionTimeout("%s", text.str()));
+      text << "step " << step_ + 1 << " was not released within " << timeout_s
+           << " s: " << StuckReportLocked();
+      LOG(ERROR) << "gin_overlap scheduler timed out: " << text.str();
+      PADDLE_THROW(common::errors::ExecutionTimeout(
+          "gin_overlap scheduler timed out: %s", text.str()));
     }
   }
   if (state_ == kErr) {
     const std::string text = ErrorText();
     state_ = kIdle;
-    PADDLE_THROW(common::errors::External("%s", text));
+    PADDLE_THROW(
+        common::errors::External("gin_overlap scheduler failed: %s", text));
   }
   state_ = kIdle;
   abort_ = false;
@@ -1490,8 +1495,8 @@ void GinGradCommScheduler::WaitOwnedGathers(double timeout_s) {
     if (pending.empty() || some_complete) continue;
     if (std::chrono::steady_clock::now() > deadline) {
       std::ostringstream text;
-      text << "gin_overlap: step " << step_ + 1 << ": the gather of "
-           << pending.size() << " 2D buckets owned by this rank did not "
+      text << "step " << step_ + 1 << ": the gather of " << pending.size()
+           << " 2D buckets owned by this rank did not "
            << "complete within " << timeout_s << " s:";
       for (size_t pending_index = 0;
            pending_index < pending.size() &&
@@ -1500,8 +1505,9 @@ void GinGradCommScheduler::WaitOwnedGathers(double timeout_s) {
         OwnedGatherPending(pending[pending_index], &why);
         text << " " << why << ";";
       }
-      LOG(ERROR) << text.str();
-      PADDLE_THROW(common::errors::ExecutionTimeout("%s", text.str()));
+      LOG(ERROR) << "gin_overlap scheduler timed out: " << text.str();
+      PADDLE_THROW(common::errors::ExecutionTimeout(
+          "gin_overlap scheduler timed out: %s", text.str()));
     }
     std::this_thread::sleep_for(std::chrono::microseconds(kGatherPollUs));
   }

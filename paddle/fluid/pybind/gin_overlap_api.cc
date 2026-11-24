@@ -15,6 +15,7 @@
 #include "paddle/fluid/pybind/gin_overlap_api.h"
 
 #include <cstdint>
+#include <memory>
 #include <tuple>
 #include <vector>
 
@@ -60,19 +61,20 @@ GinGroupWindows ToWindows(const WindowsTuple& windows) {
   return result;
 }
 
-GinGradCommScheduler* CreateScheduler(ProcessGroupNCCL* dense_group,
-                                      ProcessGroupNCCL* expert_group,
-                                      const WindowsTuple& dense_windows,
-                                      const WindowsTuple& expert_windows,
-                                      const std::vector<BucketTuple>& buckets,
-                                      const std::vector<int>& dense_order,
-                                      const std::vector<int>& expert_order,
-                                      int64_t credit_intra_offset,
-                                      int64_t credit_inter_offset,
-                                      int64_t credit_expert_offset,
-                                      const std::vector<GatherTuple>& gather,
-                                      int num_window_marks,
-                                      int num_tail_marks) {
+std::unique_ptr<GinGradCommScheduler> CreateScheduler(
+    ProcessGroupNCCL* dense_group,
+    ProcessGroupNCCL* expert_group,
+    const WindowsTuple& dense_windows,
+    const WindowsTuple& expert_windows,
+    const std::vector<BucketTuple>& buckets,
+    const std::vector<int>& dense_order,
+    const std::vector<int>& expert_order,
+    int64_t credit_intra_offset,
+    int64_t credit_inter_offset,
+    int64_t credit_expert_offset,
+    const std::vector<GatherTuple>& gather,
+    int num_window_marks,
+    int num_tail_marks) {
   GinGradCommSchedulerConfig config;
   config.dense_group = dense_group;
   config.expert_group = expert_group;
@@ -109,7 +111,7 @@ GinGradCommScheduler* CreateScheduler(ProcessGroupNCCL* dense_group,
   config.num_window_marks = num_window_marks;
   config.num_tail_marks = num_tail_marks;
   py::gil_scoped_release release;
-  return new GinGradCommScheduler(config);
+  return std::make_unique<GinGradCommScheduler>(config);
 }
 
 }  // namespace
