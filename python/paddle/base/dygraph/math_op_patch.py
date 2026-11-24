@@ -139,6 +139,86 @@ class TensorSize(int):
         return shape[dim]
 
 
+def _inplace_dtype_rank(dtype):
+    # Rank of a dtype family: bool < integer < floating < complex.
+    # Dispatch on the dtype name so every (u)int width is covered.
+    name = str(dtype).split('.')[-1]
+    if name == 'bool':
+        return 0
+    if name.startswith(('int', 'uint')):
+        return 1
+    if name.startswith('complex'):
+        return 3
+    return 2
+
+
+def _inplace_operand_rank(other):
+    # Returns None for operands that the in-place operators do not handle.
+    if isinstance(other, paddle.Tensor):
+        return _inplace_dtype_rank(other.dtype)
+    # bool is a subclass of int, so it must be checked first.
+    if isinstance(other, bool):
+        return 0
+    if isinstance(other, int):
+        return 1
+    if isinstance(other, float):
+        return 2
+    return None
+
+
+def _check_inplace_dtype(self, other_rank, symbol, true_divide=False):
+    # Same rule as torch: the result dtype family must be castable back to
+    # ``self``, e.g. an integer Tensor can not hold the result of ``/=`` or
+    # ``+= 1.5``.
+    self_rank = _inplace_dtype_rank(self.dtype)
+    result_rank = max(self_rank, other_rank, 2 if true_divide else 0)
+    if result_rank > self_rank:
+        raise RuntimeError(
+            f"result type of 'Tensor {symbol}= operand' can't be cast to the "
+            f"desired output type {self.dtype} of the in-place operation."
+        )
+
+
+def _make_inplace_operator(symbol, api_name, true_divide=False):
+    # Build ``__iXXX__`` on top of the in-place Tensor method ``api_name``.
+    # Returning NotImplemented makes Python fall back to the out-of-place
+    # operator for operand types that are not handled here.
+    def inplace_operator(self, other):
+        other_rank = _inplace_operand_rank(other)
+        if other_rank is None:
+            return NotImplemented
+        _check_inplace_dtype(self, other_rank, symbol, true_divide)
+        if isinstance(other, paddle.Tensor):
+            if other.dtype != self.dtype:
+                other = other.astype(self.dtype)
+        else:
+            # The in-place methods expect a Tensor on the right-hand side.
+            other = paddle.full([], other, dtype=self.dtype, device=self.place)
+        out_shape = paddle.broadcast_shape(self.shape, other.shape)
+        if list(out_shape) != list(self.shape):
+            raise ValueError(
+                f"The shape of broadcast output {out_shape} is different from that of inplace tensor {self.shape} in the Inplace operation."
+            )
+        getattr(self, api_name)(other)
+        # Return self so that every alias of it observes the update.
+        return self
+
+    return inplace_operator
+
+
+def _ipow_(self, other):
+    # ``pow_`` only accepts a scalar exponent; a Tensor exponent falls back to
+    # the out-of-place ``**``.
+    if isinstance(other, paddle.Tensor):
+        return NotImplemented
+    other_rank = _inplace_operand_rank(other)
+    if other_rank is None:
+        return NotImplemented
+    _check_inplace_dtype(self, other_rank, '**')
+    self.pow_(int(other) if isinstance(other, bool) else other)
+    return self
+
+
 def monkey_patch_math_tensor():
     """
     Similar to monkey_patch_variable.
@@ -757,6 +837,20 @@ def monkey_patch_math_tensor():
     eager_methods = [
         ('__neg__', _neg_),
         ('__abs__', _abs_),
+        # In-place operators (``a += b``) only exist in dygraph, so they are
+        # registered here instead of the list shared with the static graph.
+        ('__iadd__', _make_inplace_operator('+', 'add_')),
+        ('__isub__', _make_inplace_operator('-', 'subtract_')),
+        ('__imul__', _make_inplace_operator('*', 'multiply_')),
+        ('__itruediv__', _make_inplace_operator('/', 'divide_', True)),
+        ('__ifloordiv__', _make_inplace_operator('//', 'floor_divide_')),
+        ('__imod__', _make_inplace_operator('%', 'remainder_')),
+        ('__ipow__', _ipow_),
+        ('__iand__', _make_inplace_operator('&', 'bitwise_and_')),
+        ('__ior__', _make_inplace_operator('|', 'bitwise_or_')),
+        ('__ixor__', _make_inplace_operator('^', 'bitwise_xor_')),
+        ('__ilshift__', _make_inplace_operator('<<', 'bitwise_left_shift_')),
+        ('__irshift__', _make_inplace_operator('>>', 'bitwise_right_shift_')),
         ('__complex__', _complex_),
         ('__float__', _float_),
         ('__int__', _int_),
