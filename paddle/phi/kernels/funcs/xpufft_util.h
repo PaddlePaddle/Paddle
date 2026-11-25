@@ -78,19 +78,6 @@ class FFTConfig {
     std::vector<plan_size_type> signal_sizes(sizes.cbegin() + 1, sizes.cend());
     const int signal_ndim = sizes.size() - 1;
 
-    // Check if the number of elements participating in FFT transformation is
-    // greater than 8 (XPU hardware requirement)
-    for (int i = 0; i < signal_ndim; ++i) {
-      if (signal_sizes[i] <= 8) {
-        PADDLE_THROW(common::errors::InvalidArgument(
-            "XPU FFT requires all axes to have greater than 8 elements, "
-            "but axis %d has size %d.Set XFFT_DEBUG=1 environment variable "
-            "to inspect dimensions.",
-            i,
-            signal_sizes[i]));
-      }
-    }
-
     cufftType exec_type;
     exec_type = type_input(fft_type);
 
@@ -111,19 +98,9 @@ class FFTConfig {
                                     exec_type,
                                     batch_size));
 
-    PADDLE_ENFORCE_FFT_SUCCESS(
-        phi::dynload::cufftGetSizeMany(plan(),
-                                       signal_ndim,
-                                       signal_sizes.data(),
-                                       /* inembed */ nullptr,
-                                       /* base_istride */ 1,
-                                       /* idist */ 1,
-                                       /* onembed */ nullptr,
-                                       /* base_ostride */ 1,
-                                       /* odist */ 1,
-                                       exec_type,
-                                       batch_size,
-                                       &ws_size_));
+    // Use cufftGetSize instead of cufftGetSizeMany to avoid potential plan
+    // corruption from re-specifying all plan parameters on XPU
+    PADDLE_ENFORCE_FFT_SUCCESS(phi::dynload::cufftGetSize(plan(), &ws_size_));
   }
 
   FFTConfig(const FFTConfig& other) = delete;
