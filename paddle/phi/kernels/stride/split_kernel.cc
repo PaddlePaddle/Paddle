@@ -79,10 +79,10 @@ void SplitWithNumStridedKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(split_strided,
+PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(split,
                                          STRIDED,
                                          phi::SplitStridedKernel) {}
 
-PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(split_with_num_strided,
+PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(split_with_num,
                                          STRIDED,
                                          phi::SplitWithNumStridedKernel) {}
