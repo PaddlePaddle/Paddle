@@ -169,6 +169,20 @@ struct C_CinnInterface {
 
   // --- Compile Strategy ---
   C_Status (*apply_custom_pass)(void* dev_ptr, void* ir_module);
+
+  // --- Extended Runtime ---
+  C_Status (*launch_cooperative_kernel)(void* dev_ptr,
+                                        void* func_ptr,
+                                        void** args,
+                                        int num_args,
+                                        int gx,
+                                        int gy,
+                                        int gz,
+                                        int bx,
+                                        int by,
+                                        int bz,
+                                        int shm,
+                                        void* stream);
 };
 
 struct C_DeviceInterface {
