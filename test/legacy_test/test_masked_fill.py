@@ -407,34 +407,69 @@ class TestMaskedFillValueGrad(unittest.TestCase):
     # It must not be affected by x_grad sharing its buffer with out_grad.
     def setUp(self):
         np.random.seed(2024)
+        self.places = get_places()
         self.x_shape = [4, 3]
         self.mask_np = np.random.rand(*self.x_shape) > 0.5
 
-    def _check(self, api_name, value_shape, expected_value_grad):
-        with base.dygraph.guard():
-            x = paddle.randn(self.x_shape)
-            x.stop_gradient = False
-            value = paddle.full(value_shape, 2.0)
-            value.stop_gradient = False
-            mask = paddle.to_tensor(self.mask_np)
-            out = getattr(x * 1, api_name)(mask, value)
-            out.sum().backward()
-            np.testing.assert_allclose(
-                value.grad.numpy(), expected_value_grad, rtol=1e-6
-            )
-            np.testing.assert_allclose(
-                x.grad.numpy(), (~self.mask_np).astype('float32'), rtol=1e-6
-            )
+    def _check(
+        self,
+        api_name,
+        x_shape,
+        value_shape,
+        expected_x_grad,
+        expected_value_grad,
+    ):
+        # Run on CPU and on the accelerator, as they use different kernels.
+        old_device = paddle.get_device()
+        try:
+            for idx, _ in enumerate(self.places):
+                paddle.set_device('cpu' if idx == 0 else get_device())
+                with base.dygraph.guard():
+                    x = paddle.randn(x_shape)
+                    x.stop_gradient = False
+                    value = paddle.full(value_shape, 2.0)
+                    value.stop_gradient = False
+                    mask = paddle.to_tensor(self.mask_np)
+                    out = getattr(x * 1, api_name)(mask, value)
+                    out.sum().backward()
+                    np.testing.assert_allclose(
+                        value.grad.numpy(), expected_value_grad, rtol=1e-6
+                    )
+                    np.testing.assert_allclose(
+                        x.grad.numpy(), expected_x_grad, rtol=1e-6
+                    )
+        finally:
+            paddle.set_device(old_device)
 
     def test_zero_dim_value(self):
-        expected = np.float32(self.mask_np.sum())
         for api_name in ("masked_fill", "masked_fill_"):
-            self._check(api_name, [], expected)
+            self._check(
+                api_name,
+                self.x_shape,
+                [],
+                (~self.mask_np).astype('float32'),
+                np.float32(self.mask_np.sum()),
+            )
 
     def test_full_shape_value(self):
-        expected = self.mask_np.astype('float32')
         for api_name in ("masked_fill", "masked_fill_"):
-            self._check(api_name, self.x_shape, expected)
+            self._check(
+                api_name,
+                self.x_shape,
+                self.x_shape,
+                (~self.mask_np).astype('float32'),
+                self.mask_np.astype('float32'),
+            )
+
+    def test_broadcast_x(self):
+        # x is broadcast to the shape of mask, so x_grad has to be reduced.
+        self._check(
+            "masked_fill",
+            self.x_shape[1:],
+            [],
+            (~self.mask_np).sum(axis=0).astype('float32'),
+            np.float32(self.mask_np.sum()),
+        )
 
 
 if __name__ == '__main__':
