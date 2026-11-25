@@ -39,11 +39,11 @@ from paddle.utils import strtobool
 
 from ...utils import timer_helper as timer
 from ...utils.log_util import logger
-from ...utils.param_utils import copy_param_attrs
 from ...utils.tensor_fusion_helper import (
     HOOK_ACTION,
     FusedCommBuffer,
     assign_group_by_size,
+    copy_param_attrs,
     fused_parameters,
     get_group_size,
 )

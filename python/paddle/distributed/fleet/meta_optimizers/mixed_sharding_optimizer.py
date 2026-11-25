@@ -62,11 +62,11 @@ from paddle.distributed.communication.reduce import (
 )
 from paddle.distributed.fleet.utils import timer_helper as timer
 from paddle.distributed.fleet.utils.log_util import logger
-from paddle.distributed.fleet.utils.param_utils import copy_param_attrs
 from paddle.distributed.fleet.utils.tensor_fusion_helper import (
     HOOK_ACTION,
     FusedCommBuffer,
     assign_group_by_size,
+    copy_param_attrs,
 )
 from paddle.optimizer.mixed_inner_optimizer import MixedInnerOptimizer
 

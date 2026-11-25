@@ -11,8 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for paddle.distributed.fleet.utils.param_utils.copy_param_attrs and its
-use in the sharding optimizers' ``_create_slice_param``. Single process, CPU.
+"""Tests for copy_param_attrs in paddle.distributed.fleet.utils.tensor_fusion_helper
+and its use in the sharding optimizers' ``_create_slice_param``. Single process,
+CPU.
 """
 
 import gc
@@ -30,7 +31,7 @@ from paddle.distributed.fleet.meta_optimizers import (
 from paddle.distributed.fleet.meta_optimizers.dygraph_optimizer import (
     dygraph_sharding_optimizer,
 )
-from paddle.distributed.fleet.utils.param_utils import (
+from paddle.distributed.fleet.utils.tensor_fusion_helper import (
     DEFAULT_COPY_ATTRS,
     DEFAULT_EXCLUDE_ATTRS,
     copy_param_attrs,
@@ -125,7 +126,7 @@ class TestGetExternalAttrNames(unittest.TestCase):
 
     def test_probe_does_not_consume_unique_names(self):
         get_external_attr_names(_new_param())  # warm the cache
-        from paddle.distributed.fleet.utils.param_utils import (
+        from paddle.distributed.fleet.utils.tensor_fusion_helper import (
             _builtin_attr_names,
         )
 
@@ -588,7 +589,7 @@ class TestCopyParamAttrs(unittest.TestCase):
         self.assertFalse(hasattr(dst, "_need_shard_auto"))
 
     def test_builtin_names_match_constructor(self):
-        from paddle.distributed.fleet.utils.param_utils import (
+        from paddle.distributed.fleet.utils.tensor_fusion_helper import (
             _builtin_attr_names,
         )
 
