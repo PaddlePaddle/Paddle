@@ -2853,6 +2853,8 @@ def split(
     if in_dynamic_mode():
         if isinstance(dim, Variable):
             dim = dim.item(0)
+        elif paddle.is_tensor(dim):
+            dim = dim.item()
         assert dim + len(input.shape) >= 0, "(rank(x) + axis) must >= 0"
         dim = (dim + len(input.shape)) if dim < 0 else dim
 
