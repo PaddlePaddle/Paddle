@@ -102,6 +102,7 @@ USE_PIR_PASS(elementwise_mul_add_xpu_fuse_pass);
 USE_PIR_PASS(conv2d_xpu_fuse_pass);
 USE_PIR_PASS(conv2d_add_xpu_fuse_pass);
 USE_PIR_PASS(fc_xpu_fuse_pass);
+USE_PIR_PASS(qkv_attention_xpu_fuse_pass);
 #endif
 
 #ifdef PADDLE_WITH_CINN
