@@ -29,7 +29,7 @@
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/imperative/tracer.h"
 #include "paddle/fluid/imperative/type_defs.h"
-#include "paddle/fluid/operators/ops_extra_info.h"
+#include "paddle/fluid/framework/ops_extra_info.h"
 #include "paddle/fluid/pybind/eager.h"
 #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/fluid/pybind/imperative.h"
