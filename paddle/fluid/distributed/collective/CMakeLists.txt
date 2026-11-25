@@ -34,11 +34,21 @@ if(WITH_DISTRIBUTE)
     DEPS phi common eager_api gloo_wrapper)
 endif()
 
+# gin_overlap_comm: device kernels of the GIN primitives of ProcessGroupNCCL
+# (gin_overlap/kernels/comm.h). Built under WITH_GIN_OVERLAP (gate in
+# cmake/configure.cmake). comm.cu emits device code only for sm_90 and newer;
+# for older archs its kernels trap.
+set(GIN_OVERLAP_COMM_LIB "")
+if(WITH_GIN_OVERLAP)
+  cc_library(gin_overlap_comm SRCS gin_overlap/kernels/comm.cu)
+  set(GIN_OVERLAP_COMM_LIB gin_overlap_comm)
+endif()
+
 if(WITH_NCCL OR WITH_RCCL)
   cc_library(
     process_group_nccl
     SRCS process_group_nccl.cc common.cc
-    DEPS process_group phi ${DEVICE_EVENT_LIBS})
+    DEPS process_group phi ${DEVICE_EVENT_LIBS} ${GIN_OVERLAP_COMM_LIB})
 
   cc_library(
     async_load
