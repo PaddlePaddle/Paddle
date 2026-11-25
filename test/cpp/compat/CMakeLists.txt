@@ -21,6 +21,7 @@ cc_test(ATen_autograd_test SRCS ATen_autograd_test.cc)
 cc_test(ATen_chunk_test SRCS ATen_chunk_test.cc)
 cc_test(ATen_clamp_test SRCS ATen_clamp_test.cc)
 cc_test(ATen_coalesce_test SRCS ATen_coalesce_test.cc)
+cc_test(ATen_column_stack_test SRCS ATen_column_stack_test.cc)
 cc_test(ATen_dense_sparse_conversion_test
         SRCS ATen_dense_sparse_conversion_test.cc)
 cc_test(ATen_empty_test SRCS ATen_empty_test.cc)
