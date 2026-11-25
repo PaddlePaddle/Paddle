@@ -19,6 +19,7 @@
 
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/cast_kernel.h"
 #include "paddle/phi/kernels/complex_kernel.h"
 #include "paddle/phi/kernels/elementwise_add_kernel.h"
 #include "paddle/phi/kernels/elementwise_subtract_kernel.h"
@@ -77,6 +78,44 @@ void MultiplyKernel<phi::complex64, XPUContext>(const XPUContext& dev_ctx,
       Multiply<float, XPUContext>(dev_ctx, x_imag, y_real));
   phi::ComplexKernel<float>(dev_ctx, real_out, imag_out, out);
 }
+
+template <>
+void MultiplyKernel<phi::complex128, XPUContext>(const XPUContext& dev_ctx,
+                                                 const DenseTensor& x,
+                                                 const DenseTensor& y,
+                                                 DenseTensor* out) {
+  using T = phi::complex128;
+  if (out->numel() == 0) {
+    dev_ctx.template Alloc<T>(out);
+    return;
+  }
+  // Complex128 multiplication decomposed into double real/imag operations.
+  // (a+bi)*(c+di) = (ac-bd) + (ad+bc)i
+  const DenseTensor x_real = Real<T, XPUContext>(dev_ctx, x);
+  const DenseTensor x_imag = Imag<T, XPUContext>(dev_ctx, x);
+  const DenseTensor y_real = Real<T, XPUContext>(dev_ctx, y);
+  const DenseTensor y_imag = Imag<T, XPUContext>(dev_ctx, y);
+
+  // Use float intermediate computation with cast for double precision inputs.
+  // XPU broadcast_mul does not support double, so cast to float then back.
+  DenseTensor x_real_f = Cast<double>(dev_ctx, x_real, DataType::FLOAT32);
+  DenseTensor x_imag_f = Cast<double>(dev_ctx, x_imag, DataType::FLOAT32);
+  DenseTensor y_real_f = Cast<double>(dev_ctx, y_real, DataType::FLOAT32);
+  DenseTensor y_imag_f = Cast<double>(dev_ctx, y_imag, DataType::FLOAT32);
+
+  DenseTensor real_out_f = Subtract<float, XPUContext>(
+      dev_ctx,
+      Multiply<float, XPUContext>(dev_ctx, x_real_f, y_real_f),
+      Multiply<float, XPUContext>(dev_ctx, x_imag_f, y_imag_f));
+  DenseTensor imag_out_f = Add<float, XPUContext>(
+      dev_ctx,
+      Multiply<float, XPUContext>(dev_ctx, x_real_f, y_imag_f),
+      Multiply<float, XPUContext>(dev_ctx, x_imag_f, y_real_f));
+
+  DenseTensor real_out = Cast<float>(dev_ctx, real_out_f, DataType::FLOAT64);
+  DenseTensor imag_out = Cast<float>(dev_ctx, imag_out_f, DataType::FLOAT64);
+  phi::ComplexKernel<double>(dev_ctx, real_out, imag_out, out);
+}
 #endif
 
 }  // namespace phi
@@ -90,6 +129,7 @@ PD_REGISTER_KERNEL(multiply,
                    phi::bfloat16,
 #ifdef PADDLE_WITH_XPU_FFT
                    phi::complex64,
+                   phi::complex128,
 #endif
                    float,
                    int,
