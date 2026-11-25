@@ -14,6 +14,7 @@
 
 #pragma once
 #include <functional>
+#include <limits>
 
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/framework/custom_operator_utils.h"
@@ -23,6 +24,7 @@
 #include "paddle/fluid/pir/dialect/distributed/ir/dist_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/api_builder.h"
 #include "paddle/fluid/pir/dialect/operator/ir/manual_api.h"
+#include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_api.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
@@ -558,6 +560,22 @@ extern PyObject *eager_api_run_custom_op(PyObject *self,
                                          PyObject *args,
                                          PyObject *kwargs);
 
+// Helper: extract a scalar constant from a pir::Value defined by pd_op.full.
+// Returns true if extraction succeeded, false if the value is not a constant.
+static bool GetScalarFromPirValue(pir::Value value, phi::Scalar *out_scalar) {
+  if (!value || !value.defining_op()) return false;
+  auto *defining_op = value.defining_op();
+  if (defining_op->name() == "pd_op.full") {
+    pir::Attribute val_attr = defining_op->attribute("value");
+    if (val_attr && val_attr.isa<paddle::dialect::ScalarAttribute>()) {
+      *out_scalar =
+          val_attr.dyn_cast<paddle::dialect::ScalarAttribute>().data();
+      return true;
+    }
+  }
+  return false;
+}
+
 static PyObject *static_api_run_custom_op(PyObject *self,
                                           PyObject *args,
                                           PyObject *kwargs) {
@@ -675,31 +693,129 @@ static PyObject *static_api_run_custom_op(PyObject *self,
             << " to CustomOpKernelContext. Attribute type = " << attr_type_str;
     PyObject *obj = PyTuple_GET_ITEM(args, attr_start_idx + i);
     if (attr_type_str == "bool") {
-      bool bool_attr = CastPyArg2AttrBoolean(obj, attr_start_idx + i);
+      bool bool_attr;
+      if (PyObject_CheckIRValue(obj)) {
+        pir::Value attr_value =
+            CastPyArg2Value(obj, op_type, attr_start_idx + i, false);
+        phi::Scalar scalar;
+        PADDLE_ENFORCE_EQ(
+            GetScalarFromPirValue(attr_value, &scalar),
+            true,
+            common::errors::InvalidType(
+                "Custom operator '%s': attribute '%s' (position %d) received a "
+                "non-constant pir::Value. Custom operators currently only "
+                "support constant bool attributes in PIR mode.",
+                op_type,
+                attr_name_and_type[0],
+                attr_start_idx + i + 1));
+        bool_attr = scalar.to<bool>();
+      } else {
+        bool_attr = CastPyArg2AttrBoolean(obj, attr_start_idx + i);
+      }
       custom_attrs.push_back(bool_attr);  // NOLINT
       argument.AddAttribute(
           attr_name_and_type[0],
           pir::BoolAttribute::get(pir::IrContext::Instance(), bool_attr));
     } else if (attr_type_str == "int") {
-      int int_attr = CastPyArg2AttrInt(obj, attr_start_idx + i);
+      int int_attr;
+      if (PyObject_CheckIRValue(obj)) {
+        pir::Value attr_value =
+            CastPyArg2Value(obj, op_type, attr_start_idx + i, false);
+        phi::Scalar scalar;
+        PADDLE_ENFORCE_EQ(
+            GetScalarFromPirValue(attr_value, &scalar),
+            true,
+            common::errors::InvalidType(
+                "Custom operator '%s': attribute '%s' (position %d) received a "
+                "non-constant pir::Value. Custom operators currently only "
+                "support constant int attributes in PIR mode.",
+                op_type,
+                attr_name_and_type[0],
+                attr_start_idx + i + 1));
+        PADDLE_ENFORCE_LE(
+            scalar.to<int64_t>(),
+            static_cast<int64_t>(std::numeric_limits<int>::max()),
+            common::errors::InvalidArgument(
+                "Custom op '%s' int attr '%s' value %lld overflows int32.",
+                op_type,
+                attr_name_and_type[0],
+                scalar.to<int64_t>()));
+        int_attr = scalar.to<int>();
+      } else {
+        int_attr = CastPyArg2AttrInt(obj, attr_start_idx + i);
+      }
       custom_attrs.push_back(int_attr);  // NOLINT
       argument.AddAttribute(
           attr_name_and_type[0],
           pir::Int32Attribute::get(pir::IrContext::Instance(), int_attr));
     } else if (attr_type_str == "float") {
-      float float_attr = CastPyArg2AttrFloat(obj, attr_start_idx + i);
+      float float_attr;
+      if (PyObject_CheckIRValue(obj)) {
+        pir::Value attr_value =
+            CastPyArg2Value(obj, op_type, attr_start_idx + i, false);
+        phi::Scalar scalar;
+        PADDLE_ENFORCE_EQ(
+            GetScalarFromPirValue(attr_value, &scalar),
+            true,
+            common::errors::InvalidType(
+                "Custom operator '%s': attribute '%s' (position %d) received a "
+                "non-constant pir::Value. Custom operators currently only "
+                "support constant float attributes in PIR mode.",
+                op_type,
+                attr_name_and_type[0],
+                attr_start_idx + i + 1));
+        float_attr = scalar.to<float>();
+      } else {
+        float_attr = CastPyArg2AttrFloat(obj, attr_start_idx + i);
+      }
       custom_attrs.push_back(float_attr);  // NOLINT
       argument.AddAttribute(
           attr_name_and_type[0],
           pir::FloatAttribute::get(pir::IrContext::Instance(), float_attr));
     } else if (attr_type_str == "double") {
-      double double_attr = CastPyArg2AttrDouble(obj, attr_start_idx + i);
+      double double_attr;
+      if (PyObject_CheckIRValue(obj)) {
+        pir::Value attr_value =
+            CastPyArg2Value(obj, op_type, attr_start_idx + i, false);
+        phi::Scalar scalar;
+        PADDLE_ENFORCE_EQ(
+            GetScalarFromPirValue(attr_value, &scalar),
+            true,
+            common::errors::InvalidType(
+                "Custom operator '%s': attribute '%s' (position %d) received a "
+                "non-constant pir::Value. Custom operators currently only "
+                "support constant double attributes in PIR mode.",
+                op_type,
+                attr_name_and_type[0],
+                attr_start_idx + i + 1));
+        double_attr = scalar.to<double>();
+      } else {
+        double_attr = CastPyArg2AttrDouble(obj, attr_start_idx + i);
+      }
       custom_attrs.push_back(double_attr);  // NOLINT
       argument.AddAttribute(
           attr_name_and_type[0],
           pir::DoubleAttribute::get(pir::IrContext::Instance(), double_attr));
     } else if (attr_type_str == "int64_t") {
-      int64_t long_attr = CastPyArg2AttrLong(obj, attr_start_idx + i);
+      int64_t long_attr;
+      if (PyObject_CheckIRValue(obj)) {
+        pir::Value attr_value =
+            CastPyArg2Value(obj, op_type, attr_start_idx + i, false);
+        phi::Scalar scalar;
+        PADDLE_ENFORCE_EQ(
+            GetScalarFromPirValue(attr_value, &scalar),
+            true,
+            common::errors::InvalidType(
+                "Custom operator '%s': attribute '%s' (position %d) received a "
+                "non-constant pir::Value. Custom operators currently only "
+                "support constant int64_t attributes in PIR mode.",
+                op_type,
+                attr_name_and_type[0],
+                attr_start_idx + i + 1));
+        long_attr = scalar.to<int64_t>();
+      } else {
+        long_attr = CastPyArg2AttrLong(obj, attr_start_idx + i);
+      }
       custom_attrs.push_back(long_attr);  // NOLINT
       argument.AddAttribute(
           attr_name_and_type[0],
