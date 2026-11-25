@@ -17,6 +17,7 @@ import numpy as np
 from op_test import get_device, is_custom_device
 
 import paddle
+from paddle.base import core
 from paddle.incubate.nn import FusedLinear
 from paddle.incubate.nn.functional import fused_linear, fused_matmul_bias
 
@@ -186,13 +187,18 @@ class TestFusedLinear_ZeroSize(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not is_fused_matmul_bias_supported(),
-    "fused_gemm_epilogue is only supported when CUDA version >= 11.6",
+    not paddle.is_compiled_with_cuda()
+    or paddle.is_compiled_with_rocm()
+    or not core.is_bfloat16_supported(paddle.CUDAPlace(0)),
+    "requires CUDA with bfloat16 support",
 )
 class TestFusedLinearMatchesLinear(unittest.TestCase):
     # fused_linear must be bitwise identical to F.linear in forward and
     # backward. With M = 16384 the old fused_gemm_epilogue BGRAD path
     # already produced a different weight gradient.
+    # For transpose_weight=True, F.linear(x, w.T) under
+    # FLAGS_use_accuracy_compatible_kernel launches the same linear_v2 call
+    # (transposed weight), so the bitwise comparison stays exact.
     def check(self, transpose):
         x = paddle.randn([4, 4096, 256]).astype('bfloat16')
         w = paddle.randn([128, 256] if transpose else [256, 128])
@@ -211,11 +217,17 @@ class TestFusedLinearMatchesLinear(unittest.TestCase):
                 for t in (out, xs.grad, ws.grad, bs.grad)
             ]
 
-        expected = run(
-            lambda a, c, d: paddle.nn.functional.linear(
-                a, c.T if transpose else c, d
+        flag = 'FLAGS_use_accuracy_compatible_kernel'
+        saved = paddle.get_flags(flag)[flag]
+        paddle.set_flags({flag: transpose})
+        try:
+            expected = run(
+                lambda a, c, d: paddle.nn.functional.linear(
+                    a, c.T if transpose else c, d
+                )
             )
-        )
+        finally:
+            paddle.set_flags({flag: saved})
         actual = run(lambda a, c, d: fused_linear(a, c, d, transpose))
         for e, a in zip(expected, actual):
             np.testing.assert_array_equal(a, e)
