@@ -18,7 +18,9 @@
 #include <string>
 
 #include "paddle/phi/backends/xpu/xpu_context.h"
+#include "paddle/phi/common/type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/cast_kernel.h"
 #include "paddle/phi/kernels/complex_kernel.h"
 #include "paddle/phi/kernels/elementwise_add_kernel.h"
 #include "paddle/phi/kernels/elementwise_subtract_kernel.h"
@@ -55,18 +57,14 @@ void MultiplyKernel<phi::complex64, XPUContext>(const XPUContext& dev_ctx,
                                                 const DenseTensor& x,
                                                 const DenseTensor& y,
                                                 DenseTensor* out) {
-  using T = phi::complex64;
   if (out->numel() == 0) {
-    dev_ctx.template Alloc<T>(out);
+    dev_ctx.template Alloc<phi::complex64>(out);
     return;
   }
-  // The current complex number implementation uses separate real/imaginary
-  // parts,resulting in redundant operations and performance
-  // penalties.Optimization should address this in future iterations.
-  const DenseTensor x_real = Real<T, XPUContext>(dev_ctx, x);
-  const DenseTensor x_imag = Imag<T, XPUContext>(dev_ctx, x);
-  const DenseTensor y_real = Real<T, XPUContext>(dev_ctx, y);
-  const DenseTensor y_imag = Imag<T, XPUContext>(dev_ctx, y);
+  auto x_real = Real<phi::complex64, XPUContext>(dev_ctx, x);
+  auto x_imag = Imag<phi::complex64, XPUContext>(dev_ctx, x);
+  auto y_real = Real<phi::complex64, XPUContext>(dev_ctx, y);
+  auto y_imag = Imag<phi::complex64, XPUContext>(dev_ctx, y);
   DenseTensor real_out = Subtract<float, XPUContext>(
       dev_ctx,
       Multiply<float, XPUContext>(dev_ctx, x_real, y_real),
