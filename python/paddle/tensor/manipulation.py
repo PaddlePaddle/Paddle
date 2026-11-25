@@ -256,6 +256,10 @@ def cast(x: Tensor, dtype: DTypeLike) -> Tensor:
     if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
         dtype = convert_nptype_to_datatype_or_vartype(dtype)
     if in_dynamic_or_pir_mode():
+        if hasattr(x, 'dtype') and x.dtype == dtype:
+            if not getattr(x, 'is_leaf', False):
+                return x
+
         return _C_ops.cast(x, dtype)
     else:
         check_variable_and_dtype(
