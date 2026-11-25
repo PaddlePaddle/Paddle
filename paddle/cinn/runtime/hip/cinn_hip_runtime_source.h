@@ -553,7 +553,10 @@ EXPAND_REDUCE_FP16_MACRO(CINN_WARP_SHUFFLE_INTERNAL_IMPL)
   }                                                               \
   __syncthreads();                                                \
   if (threadIdx.x < (blockDim.x + WARP_SIZE - 1) / WARP_SIZE) {   \
-    shm[0] = cinn_warp_shuffle_internal(shm[threadIdx.x]);        \
+    tmp_val = cinn_warp_shuffle_internal(shm[threadIdx.x]);       \
+    if (threadIdx.x == 0) {                                       \
+      shm[0] = tmp_val;                                           \
+    }                                                             \
   }                                                               \
   __syncthreads();                                                \
   return shm[0];
