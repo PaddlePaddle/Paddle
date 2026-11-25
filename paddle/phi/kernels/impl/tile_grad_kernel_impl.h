@@ -21,32 +21,10 @@
 #if defined(__NVCC__) || defined(__HIPCC__)
 #include "paddle/phi/kernels/gpu/reduce.h"
 #else
-#include "paddle/phi/kernels/funcs/cascade_sum.h"
+#include "paddle/phi/kernels/funcs/elementwise_grad_base.h"
 #endif
 
 namespace phi {
-
-#if !defined(__NVCC__) && !defined(__HIPCC__)
-// Sums the contiguous `x`, viewed as `shape`, over `axes` into `out` with the
-// torch-compatible CPU cascade sum. The shape is a vector, so it may exceed
-// DDim::kMaxRank. `out` must already hold the kept dims' element count.
-template <typename T, typename Context>
-void CpuContiguousSum(const Context& dev_ctx,
-                      const DenseTensor& x,
-                      const std::vector<int64_t>& shape,
-                      const std::vector<int64_t>& axes,
-                      DenseTensor* out) {
-  std::vector<int64_t> strides(shape.size());
-  int64_t stride = 1;
-  for (int i = static_cast<int>(shape.size()) - 1; i >= 0; --i) {
-    strides[i] = stride;
-    stride *= shape[i];
-  }
-  T* out_data = dev_ctx.template Alloc<T>(out);
-  funcs::TorchCompatibleReduceSum<T>(
-      x.data<T>(), shape, strides, axes, out_data, out->numel());
-}
-#endif
 
 // Mirrors torch's repeat_backward: sum the leading unsqueezed dims one at a
 // time, then view each tiled dim i as [repeat_i, x_dims[i]] and sum the
@@ -114,7 +92,11 @@ void TileGradKernel(const Context& dev_ctx,
 #if defined(__NVCC__) || defined(__HIPCC__)
     funcs::ReduceGpuKernel<T, T, kps::SumOps>(dev_ctx, cur, out, {0});
 #else
-    CpuContiguousSum<T>(dev_ctx, cur, shape, {0}, out);
+    funcs::ReduceGradTermsCascade<T>(cur.data<T>(),
+                                     shape,
+                                     {0},
+                                     dev_ctx.template Alloc<T>(out),
+                                     out->numel());
 #endif
     if (!last) {
       cur = next;
@@ -151,7 +133,11 @@ void TileGradKernel(const Context& dev_ctx,
       sum_dims.push_back(static_cast<int64_t>(d));
     }
   }
-  CpuContiguousSum<T>(dev_ctx, cur, grad_size, sum_dims, x_grad);
+  funcs::ReduceGradTermsCascade<T>(cur.data<T>(),
+                                   grad_size,
+                                   sum_dims,
+                                   dev_ctx.template Alloc<T>(x_grad),
+                                   x_grad->numel());
 #endif
 }
 
