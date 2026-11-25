@@ -1179,19 +1179,22 @@ PD_REGISTER_KERNEL(conv2d_transpose_grad,
                    ALL_LAYOUT,
                    phi::Conv2dTransposeGradGPUDNNKernel,
                    float,
-                   float16) {}
+                   float16,
+                   phi::bfloat16) {}
 PD_REGISTER_KERNEL(conv2d_transpose_double_grad,
                    GPUDNN,
                    ALL_LAYOUT,
                    phi::Conv2dTransposeDoubleGradGPUDNNKernel,
                    float,
-                   float16) {}
+                   float16,
+                   phi::bfloat16) {}
 PD_REGISTER_KERNEL(conv3d_transpose_grad,
                    GPUDNN,
                    ALL_LAYOUT,
                    phi::Conv3dTransposeGradGPUDNNKernel,
                    float,
-                   float16) {}
+                   float16,
+                   phi::bfloat16) {}
 #else
 #if CUDNN_VERSION_MIN(8, 1, 0)
 PD_REGISTER_KERNEL(conv2d_transpose_grad,
