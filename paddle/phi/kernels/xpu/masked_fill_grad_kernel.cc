@@ -21,6 +21,7 @@
 #include "paddle/phi/kernels/expand_kernel.h"
 #include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/common_infer_shape_functions.h"
+#include "paddle/phi/kernels/where_kernel.h"
 
 namespace phi {
 
@@ -129,6 +130,14 @@ void MaskedFillGradKernel(const Context& dev_ctx,
       reinterpret_cast<XPUType*>(dy_ptr),
       len);
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "masked_fill_grad");
+
+  if (value_grad_tmp) {
+    DenseTensor zero_tensor;
+    Full<T, Context>(dev_ctx, expanded_dims, 0, &zero_tensor);
+    // Ensure only true-mask elements contribute to reduced value gradients.
+    WhereKernel<T, Context>(
+        dev_ctx, mask_expand, out_grad, zero_tensor, value_grad_tmp);
+  }
 
   if (x_grad && expand_x) {
     ExpandGradKernel<T, Context>(
