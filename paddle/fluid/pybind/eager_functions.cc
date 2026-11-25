@@ -50,6 +50,7 @@ typedef SSIZE_T ssize_t;
 #include "paddle/phi/core/platform/device/gpu/gpu_info.h"
 #include "paddle/phi/core/sparse_coo_tensor.h"
 #include "paddle/phi/core/sparse_csr_tensor.h"
+#include "paddle/phi/kernels/funcs/tensor_to_npy.h"
 #include "paddle/utils/string/string_helper.h"
 #include "pybind11/numpy.h"
 #include "pybind11/pybind11.h"
@@ -1109,6 +1110,28 @@ static PyObject* eager_api_print_tensor_in_gpu(PyObject* self,
 }
 #endif
 
+static PyObject* eager_api_save_dense_tensor_to_npy(PyObject* self,
+                                                    PyObject* args,
+                                                    PyObject* kwargs) {
+  EAGER_TRY
+  auto tensor = CastPyArg2Tensor(PyTuple_GET_ITEM(args, 0), 0);
+  std::string file_path = CastPyArg2AttrString(PyTuple_GET_ITEM(args, 1), 1);
+  PADDLE_ENFORCE_EQ(
+      tensor.is_dense_tensor(),
+      true,
+      common::errors::InvalidArgument(
+          "_save_dense_tensor_to_npy only supports DenseTensor."));
+  {
+    eager_gil_scoped_release guard;
+    EagerSetDeviceId();
+    const auto& dense =
+        *static_cast<const phi::DenseTensor*>(tensor.impl().get());
+    phi::funcs::SaveDenseTensorToNpy(dense, file_path);
+  }
+  RETURN_PY_NONE
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 #if defined(PADDLE_WITH_CUDA)
 static PyObject* eager_api_async_read(PyObject* self,
                                       PyObject* args,
@@ -1713,6 +1736,10 @@ PyMethodDef variable_functions[] = {  // NOLINT
     {"_add_docstr",
      (PyCFunction)(void (*)())eager__add_doc_str,
      METH_VARARGS,
+     nullptr},
+    {"_save_dense_tensor_to_npy",
+     (PyCFunction)(void (*)())eager_api_save_dense_tensor_to_npy,
+     METH_VARARGS | METH_KEYWORDS,
      nullptr},
     {"_start_capture_backward_viz_subgraph",
      (PyCFunction)(void (*)())eager__start_capture_backward_viz_subgraph,

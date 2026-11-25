@@ -13,11 +13,65 @@
 # limitations under the License.
 from __future__ import annotations
 
+import os
 import re
 
 import numpy as np
 
 from paddle.base import core
+
+_BF16_NPY_MARKER = '.bf16'
+
+
+def _add_bf16_marker_to_npy_path(file_path):
+    path = os.fspath(file_path)
+    root, ext = os.path.splitext(path)
+    if ext.lower() == '.npy':
+        return f'{root}{_BF16_NPY_MARKER}{ext}'
+    return f'{path}{_BF16_NPY_MARKER}'
+
+
+def _is_bf16_marked_npy_path(file_path):
+    path = os.fspath(file_path)
+    root, ext = os.path.splitext(path)
+    if ext.lower() == '.npy':
+        return root.endswith(_BF16_NPY_MARKER)
+    return path.endswith(_BF16_NPY_MARKER)
+
+
+def _resolve_npy_path_for_load(file_path):
+    path = os.fspath(file_path)
+    bf16_path = _add_bf16_marker_to_npy_path(path)
+    if os.path.exists(bf16_path) and (
+        not os.path.exists(path) or os.path.getsize(path) == 0
+    ):
+        return bf16_path
+    if os.path.exists(path):
+        return path
+    if os.path.exists(bf16_path):
+        return bf16_path
+    return path
+
+
+def _load_dense_tensor_from_npy(file_path, place=None):
+    """
+    Load a NumPy ``.npy`` file as a Paddle Tensor.
+
+    Files marked with ``.bf16`` are loaded from their FP32 storage first and
+    then cast to BF16.
+    """
+    import paddle  # local import to avoid circular imports at module load time
+
+    path = _resolve_npy_path_for_load(file_path)
+    is_bf16 = _is_bf16_marked_npy_path(path)
+    array = np.load(path)
+    if is_bf16:
+        array = array.astype(np.float32, copy=False)
+
+    tensor = paddle.to_tensor(array, place=place)
+    if is_bf16:
+        tensor = tensor.astype('bfloat16')
+    return tensor
 
 
 def _print_tensor_in_gpu(tensor):
