@@ -45,16 +45,10 @@ struct radix_key_codec_base<phi::bfloat16>
 }  // namespace rocprim
 #endif  // ROCPRIM_VERSION
 #else
-// set cub base traits in order to handle float16
-namespace cub {
-template <>
-struct NumericTraits<phi::float16>
-    : BaseTraits<FLOATING_POINT, true, false, uint16_t, phi::float16> {};
 
-template <>
-struct NumericTraits<phi::bfloat16>
-    : BaseTraits<FLOATING_POINT, true, false, uint16_t, phi::bfloat16> {};
-}  // namespace cub
+// phi half/bfloat16 CUB NumericTraits registration and the CCCL 3.x
+// cuda::std::numeric_limits / cuda::is_floating_point specializations now live
+// in paddle/phi/kernels/funcs/cub.h (included above) so they are defined once.
 #endif
 
 namespace phi {
