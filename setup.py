@@ -2654,6 +2654,7 @@ def get_setup_parameters():
         'paddle.distributed.flex_checkpoint.dcp',
         'paddle.distributed.communication',
         'paddle.distributed.communication.stream',
+        'paddle.distributed.communication.gin_overlap',
         'paddle.distributed.metric',
         'paddle.distributed.ps',
         'paddle.distributed.ps.utils',

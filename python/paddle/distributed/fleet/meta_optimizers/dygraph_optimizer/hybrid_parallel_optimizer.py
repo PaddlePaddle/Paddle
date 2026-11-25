@@ -869,6 +869,18 @@ class HybridParallelOptimizer:
                 ShardingOptimizer = DygraphShardingOptimizerV2
             else:
                 ShardingOptimizer = DygraphShardingOptimizer
+            if strategy.hybrid_configs[
+                'sharding_configs'
+            ].gin_overlap and ShardingOptimizer not in (
+                DygraphShardingOptimizerV2,
+                MuonShardingOptimizer,
+            ):
+                raise ValueError(
+                    "sharding_configs.gin_overlap supports sharding stage1 "
+                    "with split_param (DygraphShardingOptimizerV2) or "
+                    "MuonShardingOptimizer, got "
+                    f"{ShardingOptimizer.__name__}"
+                )
             optimizer = ShardingOptimizer(optimizer, hcg)
 
         self._enable_timer = strategy.hybrid_configs["enable_optimizer_timer"]

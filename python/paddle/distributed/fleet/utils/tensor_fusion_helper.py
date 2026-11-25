@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import enum
+import functools
 import itertools
 import os
 import weakref
@@ -20,6 +21,8 @@ from collections import OrderedDict
 import numpy as np
 
 import paddle
+from paddle.base import unique_name
+from paddle.base.framework import EagerParamBase
 from paddle.framework import (
     _current_expected_place_,
     base as imperative_base,
@@ -588,6 +591,11 @@ class FusedCommBuffer:
         if not self._release_grads:
             self._record_addr()
 
+        # GinGradCommScheduler that owns this bucket (gin_overlap), set by
+        # build_grad_comm_scheduler; None for the collective path.
+        self._gin_scheduler = None
+        self._gin_reported = False
+
     def _refresh_param_buffer_ipc_meta(self):
         meta_tensor = self._param_buffer_meta_tensor
         if meta_tensor is None:
@@ -799,6 +807,15 @@ class FusedCommBuffer:
             if self._use_reduce_avg
             else paddle.distributed.ReduceOp.SUM
         )
+        # A bucket owned by the gin_overlap scheduler is reported to it
+        # instead of calling a collective (once per step).
+        if self._gin_scheduler is not None:
+            from paddle.distributed.communication.gin_overlap.grad_comm_scheduler import (
+                bucket_ready,
+            )
+
+            bucket_ready(self, reduce_op)
+            return
         # scale will be skipped when reduce_avg comm operation is enabled.
         if not self._scale_after_comm and not self._use_reduce_avg:
             scale_factor = 1.0 / self._comm_group.nranks
@@ -856,6 +873,19 @@ class FusedCommBuffer:
 
     @imperative_base.no_grad
     def scale_grads(self):
+        if self._gin_scheduler is not None:
+            # GinGradCommScheduler.FinishStep() already waited for the
+            # bucket; only the post-communication scaling of a SUM reduce is
+            # left.
+            if (
+                self.need_reduce_scale_sync()
+                and self._scale_after_comm
+                and not self._use_reduce_avg
+            ):
+                self.grad_storage.scale_(1.0 / self._comm_group.nranks)
+            self._gin_reported = False
+            self._reset_params_checked_in()
+            return
         if self.need_reduce_scale_sync():
             if self._comm_group.nranks == 1 and self._task is None:
                 self._reset_params_checked_in()
@@ -1146,3 +1176,233 @@ def fused_parameters(
         )
 
         return decay_fused, all_fused, all_buffers
+
+
+def fused_all_gather(buckets, fuse_mb):
+    """Parameter all_gather of the REDUCE_SCATTER buckets, fused per (communication group, dtype): this rank's
+    shards of a batch of buckets are concatenated, sent with one process_group.all_gather and split back into each
+    bucket's param_storage (the same data as FusedCommBuffer.sync_params of each bucket). A batch holds at most
+    fuse_mb MB (sharding_configs.param_allgather_fuse_mb; the sharding optimizers call this only when it is
+    positive), and at least one bucket.
+    param_storage of a bucket is [rank 0 part, rank 1 part, ...], so a bucket with part_numel elements per part
+    takes columns [column, column + part_numel) of each row of recv[nranks, total] and row r goes to
+    param_storage[r * part_numel, (r + 1) * part_numel)."""
+    limit = fuse_mb * 2**20
+    groups = {}
+    for b in buckets:
+        if (
+            not b.need_reduce_scale_sync()
+            or b._act != HOOK_ACTION.REDUCE_SCATTER
+            or b._comm_group.nranks <= 1
+        ):
+            continue
+        groups.setdefault(
+            (b._comm_group.id, str(b.param_storage.dtype)), []
+        ).append(b)
+    for group_buckets in groups.values():
+        group = group_buckets[0]._comm_group
+        nranks, rank = group.nranks, max(group.rank, 0)
+        chunk, nbytes = [], 0
+        for b in [*group_buckets, None]:
+            if b is not None:
+                bucket_bytes = (
+                    b.param_storage._numel() * b.param_storage.element_size()
+                )
+                if not chunk or nbytes + bucket_bytes <= limit:
+                    chunk.append(b)
+                    nbytes += bucket_bytes
+                    continue
+            _all_gather_chunk(chunk, group, nranks, rank)
+            if b is None:
+                break
+            chunk, nbytes = [b], bucket_bytes
+
+
+def _all_gather_chunk(chunk, group, nranks, rank):
+    part_numels = [b.param_storage._numel() // nranks for b in chunk]
+    for b, part_numel in zip(chunk, part_numels):
+        if b.param_storage._numel() != nranks * part_numel:
+            raise RuntimeError(
+                f"fused_all_gather: param_storage of the bucket of {b._params[0].name} has {b.param_storage._numel()} "
+                f"elements, not a multiple of the group size {nranks}"
+            )
+    send = paddle.concat(
+        [
+            b.param_storage._slice(part_numel * rank, part_numel * (rank + 1))
+            for b, part_numel in zip(chunk, part_numels)
+        ]
+    )
+    total = send._numel()
+    recv = paddle.empty([nranks * total], dtype=send.dtype)
+    group.process_group.all_gather(send, recv).wait()
+    column = 0
+    for b, part_numel in zip(chunk, part_numels):
+        if part_numel:
+            for src_rank in range(nranks):
+                row = src_rank * total + column
+                b.param_storage._slice(
+                    src_rank * part_numel, (src_rank + 1) * part_numel
+                ).copy_(recv._slice(row, row + part_numel), False)
+        column += part_numel
+    del send, recv
+
+
+# Copy parameter attributes, including ones attached from outside.
+#
+# The sharding optimizers create a placeholder slice parameter for each
+# parameter (``_create_slice_param``) and used to copy a fixed list of attribute
+# names onto it (``DEFAULT_COPY_ATTRS`` below). Code outside the optimizer often
+# attaches more attributes to a parameter with ``setattr`` (``color``,
+# ``split_axis``, ...). :func:`copy_param_attrs` copies both:
+#
+# 1. every name in ``DEFAULT_COPY_ATTRS`` that the source has;
+# 2. every attribute attached from outside.
+#
+# Other attributes a parameter has on its own are not copied:
+#
+# * Python-level attributes that ``EagerParamBase.__init__`` creates and that are
+#   not in ``DEFAULT_COPY_ATTRS`` (``regularizer``, ``_init_func``,
+#   ``_init_op_creator``), even if outside code later reassigned them;
+# * C-level tensor properties (``name``, ``grad``, ``stop_gradient``,
+#   ``trainable``, ...), which live on the pybind type, not in ``__dict__``.
+#
+# Some attributes refer to the source parameter's own gradient, storage or
+# runtime state; sharing them would make the destination read or write the
+# source's data. They are never copied:
+#
+# * names in ``DEFAULT_EXCLUDE_ATTRS``;
+# * values tied to the source object: methods bound to it (``__self__ is src``,
+#   e.g. ``get_main_grad``) and weak references (e.g. ``comm_buffer_ref``).
+
+# The names the sharding optimizers copied before external attributes were
+# supported. Each is copied whenever ``hasattr(src, name)`` is true, so
+# class-level or property-backed values on parameter subclasses are copied too.
+DEFAULT_COPY_ATTRS = (
+    "is_distributed",
+    "optimize_attr",
+    "do_model_average",
+    "need_clip",
+    "no_sync",
+    "is_firstly_shared",
+)
+
+# Attributes Paddle's distributed code attaches that belong to the source
+# parameter only.
+DEFAULT_EXCLUDE_ATTRS = frozenset(
+    {
+        # Gradients and things derived from them.
+        "grad",
+        "main_grad",
+        "_main_grad_addr",  # main_grad.data_ptr() of the source
+        "get_main_grad",  # method bound to the source
+        "_fused_kernel_fp32_grad",
+        "master_weight",  # fp32 copy of the source's full value
+        # References to the buffers that hold the source's data.
+        "comm_buffer_ref",
+        "fw_storage",
+        "bw_storage",
+        "_fusion_buffer",
+        "_param_offsets",
+        # Per-parameter runtime state.
+        "_fsdp_grad_hooked",
+        "use_count",
+        "status",
+        "unslice",
+        # Markers that route a parameter to a sharding path. The slice param
+        # is already sharded, so the inner optimizer must not see them.
+        "_need_shard",  # mix_precision_utils.py -> FullyShardOptimizer
+        "_need_shard_auto",  # optimizer.py -> fully_shard.shard_accumulators
+    }
+)
+
+_WEAKREF_PROXY_TYPES = (weakref.ProxyType, weakref.CallableProxyType)
+
+
+@functools.lru_cache(maxsize=1)
+def _builtin_attr_names():
+    """Names ``EagerParamBase.__init__`` puts into an instance's ``__dict__``.
+
+    ``EagerParamBase.__init__`` has two paths, ``__init_by_shape__`` and
+    ``__init_by_tensor__`` (which also sets ``_is_param``), so one probe is
+    built through each and the union of their names is taken. This keeps the
+    list in sync with the constructor. The probes are built under
+    ``unique_name.guard()`` because the constructor calls
+    ``unique_name.generate`` even when a name is passed; without the guard,
+    names of parameters created later would shift.
+    """
+    with unique_name.guard():
+        by_shape = EagerParamBase(shape=[1], dtype=paddle.float32)
+        by_tensor = EagerParamBase(paddle.zeros([1], dtype=paddle.float32))
+    return frozenset(vars(by_shape)) | frozenset(vars(by_tensor))
+
+
+def _is_tied_to(value, src):
+    """Whether ``value`` is a weak reference or a method bound to ``src``."""
+    # Check proxies by exact type before anything else: attribute access on a
+    # proxy (including the __class__ lookup isinstance does) is forwarded to
+    # its referent and raises ReferenceError once the referent is dead.
+    if type(value) in _WEAKREF_PROXY_TYPES or isinstance(value, weakref.ref):
+        return True
+    return getattr(value, "__self__", None) is src
+
+
+def get_external_attr_names(param, exclude=DEFAULT_EXCLUDE_ATTRS):
+    """Return the sorted names of attributes attached to ``param`` from outside.
+
+    An attribute counts as attached from outside when it is in
+    ``vars(param)`` but a freshly constructed ``EagerParamBase`` does not have
+    it. Names in ``exclude`` are dropped.
+    """
+    try:
+        names = vars(param).keys()
+    except TypeError:  # no __dict__, so nothing can have been attached
+        return []
+    builtin = _builtin_attr_names()
+    exclude = frozenset(exclude)
+    return sorted(n for n in names if n not in builtin and n not in exclude)
+
+
+def copy_param_attrs(
+    src,
+    dst,
+    copy_attrs=DEFAULT_COPY_ATTRS,
+    exclude=DEFAULT_EXCLUDE_ATTRS,
+):
+    """Shallow-copy parameter attributes from ``src`` to ``dst``.
+
+    Copies, in this order:
+
+    1. each name in ``copy_attrs`` that ``src`` has;
+    2. each attribute attached to ``src`` from outside
+       (see :func:`get_external_attr_names`).
+
+    Each value is shared by reference
+    (``setattr(dst, name, getattr(src, name))``). Existing values on ``dst``
+    with the same name are overwritten.
+
+    Never copied, even when listed in ``copy_attrs``: names in ``exclude``,
+    and values that are weak references or methods bound to ``src``.
+
+    Args:
+        src: Source parameter.
+        dst: Destination parameter.
+        copy_attrs: Names to copy whenever ``src`` has them.
+        exclude: Names that must never be copied. Extend the default with
+            ``DEFAULT_EXCLUDE_ATTRS | {"other_name"}``.
+
+    Returns:
+        The list of copied attribute names, in copy order.
+    """
+    exclude = frozenset(exclude)
+    candidates = [n for n in copy_attrs if n not in exclude and hasattr(src, n)]
+    candidates += [
+        n for n in get_external_attr_names(src, exclude) if n not in candidates
+    ]
+    copied = []
+    for name in candidates:
+        value = getattr(src, name)
+        if _is_tied_to(value, src):
+            continue
+        setattr(dst, name, value)
+        copied.append(name)
+    return copied
