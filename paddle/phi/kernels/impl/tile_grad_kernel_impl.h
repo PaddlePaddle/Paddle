@@ -15,7 +15,6 @@
 #pragma once
 #include <vector>
 
-#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/tile_grad_kernel.h"
 #if defined(__NVCC__) || defined(__HIPCC__)
@@ -88,9 +87,8 @@ void TileGradKernel(const Context& dev_ctx,
   }
 
   if (sum_dims.empty()) {
-    dev_ctx.template Alloc<T>(x_grad);
-    Copy(dev_ctx, cur, dev_ctx.GetPlace(), false, x_grad);
-    // TensorCopy may change the dims of dx
+    // Nothing is tiled: return out_grad itself, as torch does.
+    x_grad->ShareDataWith(cur);
     x_grad->Resize(x_dims);
     return;
   }
