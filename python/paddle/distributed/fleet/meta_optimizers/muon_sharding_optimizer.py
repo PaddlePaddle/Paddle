@@ -61,6 +61,7 @@ from paddle.distributed.fleet.utils.tensor_fusion_helper import (
     HOOK_ACTION,
     FusedCommBuffer,
     assign_group_by_size,
+    copy_param_attrs,
 )
 
 
@@ -1080,16 +1081,7 @@ class MuonShardingOptimizer:
         slice_param = EagerParamBase(shape=[1], dtype=param.dtype)
         slice_param.name = param.name
 
-        def copy_attr(attr_name):
-            if hasattr(param, attr_name):
-                setattr(slice_param, attr_name, getattr(param, attr_name))
-
-        copy_attr("is_distributed")
-        copy_attr("optimize_attr")
-        copy_attr("do_model_average")
-        copy_attr("need_clip")
-        copy_attr("no_sync")
-        copy_attr("is_firstly_shared")
+        copy_param_attrs(param, slice_param)
 
         self._slice_params[param.name] = slice_param
         return slice_param
