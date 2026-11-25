@@ -333,6 +333,63 @@ class PADDLE_API TensorBase {
 
   bool defined() const { return tensor_.defined(); }
 
+  inline bool _is_zerotensor() const {
+    return tensor_.defined() && tensor_.numel() == 0;
+  }
+
+  inline void _set_zero(bool value) {
+    if (value) {
+      TORCH_INTERNAL_ASSERT(false,
+                            "Please call `torch._efficientzerotensor` if you "
+                            "want to create a tensor with no storage.");
+    } else {
+      // key_set_ = key_set_.remove(DispatchKey::ZeroTensor);
+      // TODO(youge325): PyTorch ZeroTensor dispatch key is used to mark a
+      // tensor with no storage. In Paddle, we do not have this concept yet. So
+      // here we do nothing for now.
+    }
+  }
+
+  inline bool is_conj() const {
+    // Paddle does not have the concept of conjugate tensor yet.
+    return false;
+  }
+
+  inline void _set_conj(bool value) {
+    if (value) {
+      // key_set_ = key_set_.add(DispatchKey::Conjugate);
+      // TODO(youge325): PyTorch Conjugate dispatch key is used to mark a
+      // conjugate tensor. In Paddle, we do not have this concept yet. So here
+      // we do nothing for now.
+      TORCH_INTERNAL_ASSERT(isComplexType(dtype()));
+    } else {
+      // key_set_ = key_set_.remove(DispatchKey::Conjugate);
+      // TODO(youge325): PyTorch Conjugate dispatch key is used to mark a
+      // conjugate tensor. In Paddle, we do not have this concept yet. So here
+      // we do nothing for now.
+    }
+  }
+
+  inline bool is_neg() const {
+    // constexpr auto negative_ks = DispatchKeySet(DispatchKey::Negative);
+    // return key_set_.has_all(negative_ks);
+    // TODO(youge325): PyTorch Negative dispatch key is used to mark a negative
+    // tensor. In Paddle, we do not have this concept yet. So here we return
+    // false for now.
+    return false;
+  }
+
+  inline void _set_neg(bool value) {
+    if (value) {
+      // key_set_ = key_set_.add(DispatchKey::Negative);
+      // TODO(youge325): PyTorch Negative dispatch key is used to mark a
+      // negative tensor. In Paddle, we do not have this concept yet. So here we
+      // do nothing for now.
+    } else {
+      // key_set_ = key_set_.remove(DispatchKey::Negative);
+    }
+  }
+
   Layout layout() const {
     switch (tensor_.layout()) {
       case common::DataLayout::STRIDED:
