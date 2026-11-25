@@ -398,6 +398,33 @@ std::shared_ptr<OpStrategy> StrategyForConv2d(
 #endif
             }
           },
+          [&](common::XpuArch) {
+            if (conv_type == "forward") {
+              out = pe::Conv2d_NCHW(A.as_tensor_ref(),
+                                    B.as_tensor_ref(),
+                                    padding[0],
+                                    padding[1],
+                                    stride[0],
+                                    stride[1],
+                                    dilation[0],
+                                    dilation[1],
+                                    tensor_name);
+              out.push_back(B.as_tensor_ref());
+            } else {
+#ifdef CINN_WITH_CUDNN
+              // as backward_data and backward_filter is not
+              // support now, we built a fake op to instead.
+              // as the runtime use cudnn to compute the
+              // conv2d, so this fake op is not been called.
+              // When cinn support
+              // backward_filter/backward_data code gen, this
+              // code is to be removed.
+              out = pe::Identity(A.as_tensor_ref());
+              out.push_back(A.as_tensor_ref());
+              out.push_back(B.as_tensor_ref());
+#endif
+            }
+          },
           [&](std::variant<common::HygonDCUArchHIP, common::HygonDCUArchSYCL>) {
             PADDLE_THROW(
                 ::common::errors::Unimplemented("CINN old obsolete code!"));
@@ -535,6 +562,15 @@ std::shared_ptr<OpStrategy> StrategyForDepthwiseConv2d(
           },
           [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
           [&](common::NVGPUArch) {
+            out = pe::Depthwise_Conv2d_NCHW(A.as_tensor_ref(),
+                                            B.as_tensor_ref(),
+                                            padding[0],
+                                            padding[1],
+                                            stride[0],
+                                            stride[1],
+                                            tensor_name);
+          },
+          [&](common::XpuArch) {
             out = pe::Depthwise_Conv2d_NCHW(A.as_tensor_ref(),
                                             B.as_tensor_ref(),
                                             padding[0],
@@ -1009,6 +1045,18 @@ std::shared_ptr<OpStrategy> StrategyForPool2d(
       [&](common::ARMArch) { CINN_NOT_IMPLEMENTED; },
       [&](common::CustomDeviceArch) { CINN_NOT_IMPLEMENTED; },
       [&](common::NVGPUArch) {
+        if (global_pooling && data_format == "NCHW") {
+          // TODO(hp03): 32 may not be the exact number, try
+          // also 16 or 8 or other number
+          //      we choose 32 to make sure all the threads in
+          //      a warp has work to do,
+          if ((A_tensor->shape[2].as_int32() * A_tensor->shape[3].as_int32()) >=
+              32) {
+            use_warp_reduce = true;
+          }
+        }
+      },
+      [&](common::XpuArch) {
         if (global_pooling && data_format == "NCHW") {
           // TODO(hp03): 32 may not be the exact number, try
           // also 16 or 8 or other number

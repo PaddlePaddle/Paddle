@@ -63,6 +63,12 @@ print(s.get_config_var('LDVERSION') or s.get_config_var('VERSION'));
   set(PYTHON_LIBRARIES "${PYTHON_LIBRARY}")
 endif(WIN32)
 
+if(NOT WIN32)
+  # A static libpython (libpython3.x.a) references openpty/forkpty which live in
+  # libutil. Link util explicitly so targets embedding Python resolve these symbols.
+  list(APPEND PYTHON_LIBRARIES util)
+endif()
+
 # Fixme: Maybe find a static library. Get SHARED/STATIC by FIND_PACKAGE.
 add_library(python SHARED IMPORTED GLOBAL)
 set_property(TARGET python PROPERTY IMPORTED_LOCATION ${PYTHON_LIBRARIES})
