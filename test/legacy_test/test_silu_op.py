@@ -119,6 +119,69 @@ class TestSiluOpClass(unittest.TestCase):
         )
 
 
+class TestSiluLargeNegativeGradient(unittest.TestCase):
+    def _check_gradient(self, dtype, magnitude, static):
+        values = [
+            -magnitude - 2,
+            -magnitude - 1,
+            -magnitude,
+            -magnitude + 1,
+            -20,
+            -1,
+            0,
+            1,
+            20,
+            magnitude,
+        ]
+        x_np = np.asarray(values, dtype=dtype)
+        dout_np = np.asarray(
+            [1, -2, 1, -2, 0.25, 1.5, 0, -0.5, 2, 0.75], dtype=dtype
+        )
+        # Higher precision keeps the reference independent of dtype overflow.
+        x_ref = x_np.astype(np.longdouble)
+        exp_neg_abs_x = np.exp(-np.abs(x_ref))
+        sigmoid = np.where(
+            x_ref >= 0,
+            1 / (1 + exp_neg_abs_x),
+            exp_neg_abs_x / (1 + exp_neg_abs_x),
+        )
+        expected = (dout_np * sigmoid * (1 + x_ref * (1 - sigmoid))).astype(
+            dtype
+        )
+        place = base.CPUPlace()
+        if static:
+            paddle.enable_static()
+            with paddle.static.program_guard(paddle.static.Program()):
+                x = paddle.static.data('x', x_np.shape, dtype=dtype)
+                dout = paddle.static.data('dout', dout_np.shape, dtype=dtype)
+                x.stop_gradient = False
+                grad = paddle.static.gradients(F.silu(x), x, dout)[0]
+                actual = paddle.static.Executor(place).run(
+                    feed={'x': x_np, 'dout': dout_np}, fetch_list=[grad]
+                )[0]
+        else:
+            with dg.guard(place):
+                x = paddle.to_tensor(x_np, stop_gradient=False)
+                actual = paddle.grad(F.silu(x), x, paddle.to_tensor(dout_np))[
+                    0
+                ].numpy()
+        np.testing.assert_allclose(
+            actual, expected, rtol=1e-5 if dtype == 'float32' else 1e-12, atol=0
+        )
+
+    def test_float32_dygraph(self):
+        self._check_gradient('float32', 88, False)
+
+    def test_float64_dygraph(self):
+        self._check_gradient('float64', 709, False)
+
+    def test_float32_static(self):
+        self._check_gradient('float32', 88, True)
+
+    def test_float64_static(self):
+        self._check_gradient('float64', 709, True)
+
+
 class TestSiluOpClass_ZeroSize(unittest.TestCase):
     def _test_case1_cpu(self):
         x = np.random.uniform(-1, 1, size=(0, 17)).astype(np.float32)

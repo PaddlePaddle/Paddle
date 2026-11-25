@@ -2282,10 +2282,13 @@ struct SiluGradFunctor : public BaseActivationFunctor<T> {
             typename dOut,
             typename dX>
   void operator()(Device d, X x, Out out UNUSED, dOut dout, dX dx) const {
-    auto temp1 = static_cast<T>(1) + (-x).exp();  // 1+e^(-x)
-    auto temp2 = x * (-x).exp();                  // x*e^(-x)
-    dx.device(d) = dout * ((static_cast<T>(1) / temp1) *
-                           (static_cast<T>(1) + (temp2 / temp1)));
+    auto exp_neg_abs_x = (-x.abs() * static_cast<T>(0.5)).exp().square();
+    auto denominator = static_cast<T>(1) + exp_neg_abs_x;
+    auto sigmoid = (x >= static_cast<T>(0))
+                       .select(static_cast<T>(1) / denominator,
+                               exp_neg_abs_x / denominator);
+    dx.device(d) = dout * sigmoid *
+                   (static_cast<T>(1) + x * (static_cast<T>(1) - sigmoid));
   }
 
   static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
