@@ -50,19 +50,17 @@ void TileGradKernel(const Context& dev_ctx,
   const int num_unsqueezed =
       static_cast<int>(repeat_times_data.size()) - x_rank;
 
-  // grad_size interleaves [repeat_i, x_dims[i]] for every repeat_i != 1.
-  // Untiled dims are merged into the preceding kept dim, which the reduce
-  // kernel would collapse anyway, so the reduction itself is unchanged.
+  // Same as torch: grad_size holds [repeat_i, x_dims[i]] if repeat_i != 1,
+  // else x_dims[i].
   std::vector<int64_t> grad_size;
   std::vector<bool> is_repeat;
+  bool has_repeat = false;
   for (int i = 0; i < x_rank; ++i) {
     const int64_t repeat = repeat_times_data[i + num_unsqueezed];
     if (repeat != 1) {
       grad_size.push_back(repeat);
       is_repeat.push_back(true);
-    } else if (!grad_size.empty()) {
-      grad_size.back() *= x_dims[i];
-      continue;
+      has_repeat = true;
     }
     grad_size.push_back(x_dims[i]);
     is_repeat.push_back(false);
@@ -83,7 +81,7 @@ void TileGradKernel(const Context& dev_ctx,
   cur.Resize(make_ddim(cur_shape));
   for (int i = 0; i < num_lead_sums; ++i) {
     // When nothing is left to reduce, the last sum writes x_grad directly.
-    const bool last = i == num_lead_sums - 1 && grad_size.size() <= 1;
+    const bool last = i == num_lead_sums - 1 && !has_repeat;
     const auto shape = common::vectorize<int64_t>(cur.dims());
     DenseTensor next;
     DenseTensor* out = last ? x_grad : &next;
@@ -106,7 +104,7 @@ void TileGradKernel(const Context& dev_ctx,
     return;
   }
 
-  if (grad_size.size() <= 1) {
+  if (!has_repeat) {
     dev_ctx.template Alloc<T>(x_grad);
     Copy(dev_ctx, cur, dev_ctx.GetPlace(), false, x_grad);
     // TensorCopy may change the dims of dx
