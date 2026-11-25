@@ -59,6 +59,7 @@ def fused_matmul_bias(
     Examples:
         .. code-block:: pycon
 
+            >>> # doctest: +SKIP('fused_gemm_epilogue is only supported when CUDA version >= 11.6')
             >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
             >>> from paddle.incubate.nn.functional import fused_matmul_bias
@@ -123,7 +124,6 @@ def fused_linear(
     Examples:
         .. code-block:: pycon
 
-            >>> # doctest: +SKIP('fused_gemm_epilogue is only supported when CUDA version >= 11.6')
             >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
             >>> from paddle.incubate.nn.functional import fused_linear
