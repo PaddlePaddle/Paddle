@@ -136,6 +136,7 @@ void MultinomialKernel(const Context& dev_ctx,
                        const DenseTensor& x,
                        const Scalar& num_samples,
                        bool replacement,
+                       bool check_input_zeros,
                        DenseTensor* out) {
   using MT = typename MPTypeTrait<T>::Type;
 
@@ -149,7 +150,10 @@ void MultinomialKernel(const Context& dev_ctx,
   // If replacement is False, it's not a replaceable sample. Every category
   // can be used only once.
   if (!replacement) {
-    MultinomialInputChecker<T, Context>(dev_ctx, x, num_samples);
+    if (check_input_zeros) {
+      // num_samples <= non-zero categories.
+      MultinomialInputChecker<T, Context>(dev_ctx, x, num_samples);
+    }
     // Refer to [gumbel softmax algorithm]
     DenseTensor rand = EmptyLike<T, Context>(dev_ctx, x);
     T* rand_data = rand.data<T>();

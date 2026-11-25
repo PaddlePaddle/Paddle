@@ -24,6 +24,7 @@ void MultinomialKernel(const Context& dev_ctx,
                        const DenseTensor& x,
                        const Scalar& num_samples,
                        bool replacement,
+                       bool check_input_zeros,
                        DenseTensor* out);
 
 }  // namespace phi
