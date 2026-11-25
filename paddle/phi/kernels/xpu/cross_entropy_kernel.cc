@@ -136,6 +136,8 @@ void CrossEntropyWithSoftmaxKernel(const Context& dev_ctx,
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "softmax");
     }
     // 4. hard_cross_entropy only
+    // Use the caller-supplied ignore_index so that positions with label ==
+    // ignore_index are correctly zeroed out (matches GPU behaviour).
     r = xpu::hard_cross_entropy<XPUType, int>(dev_ctx.x_context(),
                                               softmax_data,
                                               labels_data,
@@ -143,7 +145,7 @@ void CrossEntropyWithSoftmaxKernel(const Context& dev_ctx,
                                               nullptr,
                                               n * d,
                                               t,
-                                              -100);
+                                              ignore_index);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "hard_cross_entropy");
   }
 
