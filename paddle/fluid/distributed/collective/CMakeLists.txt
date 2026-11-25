@@ -102,3 +102,10 @@ cc_library(
   processgroup_comm_utils
   SRCS processgroup_comm_utils.cc
   DEPS ${COMM_UTILS_DEPS})
+
+# gin_overlap_kernels: sum kernels on one GPU for gradient buckets
+# (gin_overlap/kernels/sum.h). They use only the CUDA runtime, so they are
+# built under WITH_GPU, independent of the gin_overlap build conditions.
+if(WITH_GPU)
+  cc_library(gin_overlap_kernels SRCS gin_overlap/kernels/sum.cu)
+endif()
