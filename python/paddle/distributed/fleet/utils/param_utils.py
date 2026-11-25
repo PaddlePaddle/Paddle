@@ -88,6 +88,10 @@ DEFAULT_EXCLUDE_ATTRS = frozenset(
         "use_count",
         "status",
         "unslice",
+        # Markers that route a parameter to a sharding path. The slice param
+        # is already sharded, so the inner optimizer must not see them.
+        "_need_shard",  # mix_precision_utils.py -> FullyShardOptimizer
+        "_need_shard_auto",  # optimizer.py -> fully_shard.shard_accumulators
     }
 )
 
@@ -98,14 +102,18 @@ _WEAKREF_PROXY_TYPES = (weakref.ProxyType, weakref.CallableProxyType)
 def _builtin_attr_names() -> frozenset[str]:
     """Names ``EagerParamBase.__init__`` puts into an instance's ``__dict__``.
 
-    Taken from a probe parameter so the list follows the constructor. The probe
-    is built under ``unique_name.guard()`` because the constructor calls
+    ``EagerParamBase.__init__`` has two paths, ``__init_by_shape__`` and
+    ``__init_by_tensor__`` (which also sets ``_is_param``), so one probe is
+    built through each and the union of their names is taken. This keeps the
+    list in sync with the constructor. The probes are built under
+    ``unique_name.guard()`` because the constructor calls
     ``unique_name.generate`` even when a name is passed; without the guard,
     names of parameters created later would shift.
     """
     with unique_name.guard():
-        probe = EagerParamBase(shape=[1], dtype=paddle.float32)
-    return frozenset(vars(probe))
+        by_shape = EagerParamBase(shape=[1], dtype=paddle.float32)
+        by_tensor = EagerParamBase(paddle.zeros([1], dtype=paddle.float32))
+    return frozenset(vars(by_shape)) | frozenset(vars(by_tensor))
 
 
 def _is_tied_to(value: Any, src: Any) -> bool:

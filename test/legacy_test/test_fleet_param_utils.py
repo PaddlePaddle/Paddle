@@ -331,6 +331,7 @@ class TestCopyParamAttrs(unittest.TestCase):
             "comm_buffer_ref", "fw_storage", "bw_storage",
             "_fusion_buffer", "_param_offsets",
             "_fsdp_grad_hooked", "use_count", "status", "unslice",
+            "_need_shard", "_need_shard_auto",
         }  # fmt: skip
         self.assertEqual(set(DEFAULT_EXCLUDE_ATTRS), expected)
 
@@ -561,14 +562,44 @@ class TestCopyParamAttrs(unittest.TestCase):
                 self.assertIs(dst.color, param.color)
                 self.assertNotIn("main_grad", vars(dst))
 
+    def test_tensor_constructed_param_builtin_attrs_not_external(self):
+        with unique_name.guard():
+            src = EagerParamBase(paddle.ones([2, 3]))
+        self.assertTrue(src._is_param)
+        self.assertEqual(get_external_attr_names(src), [])
+        src.color = {"color": "mp"}
+        dst = _new_slice_param(src)
+
+        copied = copy_param_attrs(src, dst)
+
+        self.assertEqual(copied, [*ALWAYS_PRESENT_COPY_ATTRS, "color"])
+        self.assertNotIn("_is_param", vars(dst))
+
+    def test_sharding_route_markers_not_copied(self):
+        src = _new_param()
+        src._need_shard = True
+        src._need_shard_auto = True
+        dst = _new_slice_param(src)
+
+        copied = copy_param_attrs(src, dst)
+
+        self.assertEqual(copied, ALWAYS_PRESENT_COPY_ATTRS)
+        self.assertFalse(hasattr(dst, "_need_shard"))
+        self.assertFalse(hasattr(dst, "_need_shard_auto"))
+
     def test_builtin_names_match_constructor(self):
         from paddle.distributed.fleet.utils.param_utils import (
             _builtin_attr_names,
         )
 
         with unique_name.guard():
-            fresh = EagerParamBase(shape=[4], dtype=paddle.float16, name="x")
-        self.assertEqual(_builtin_attr_names(), frozenset(vars(fresh)))
+            by_shape = EagerParamBase(shape=[4], dtype=paddle.float16, name="x")
+            by_tensor = EagerParamBase(paddle.ones([2, 3]), name="y")
+        self.assertEqual(
+            _builtin_attr_names(),
+            frozenset(vars(by_shape)) | frozenset(vars(by_tensor)),
+        )
+        self.assertIn("_is_param", _builtin_attr_names())
         self.assertTrue(set(ALWAYS_PRESENT_COPY_ATTRS) <= _builtin_attr_names())
         self.assertTrue(set(NOT_COPIED_BUILTIN_ATTRS) <= _builtin_attr_names())
 
