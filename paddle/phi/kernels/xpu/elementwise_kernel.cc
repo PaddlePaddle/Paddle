@@ -18,6 +18,7 @@
 
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "xpu/refactor/paddle_api.h"
 #ifdef PADDLE_WITH_XPU_FFT
 #include "fft/cuComplex.h"
 #include "paddle/phi/kernels/complex_kernel.h"
@@ -91,6 +92,64 @@ void ElementwisePowKernel(const Context& dev_ctx,
                           DenseTensor* out) {
   int axis = -1;
   ElementwisePowRawKernel<T>(dev_ctx, x, y, axis, out);
+}
+
+// For int64_t pow, cast inputs to float32, compute pow in float, then
+// cast result back to int64 with rounding. This mirrors GPU behavior
+// which computes pow in double precision and rounds with llrint.
+template <>
+void ElementwisePowKernel<int64_t, XPUContext>(const XPUContext& dev_ctx,
+                                               const DenseTensor& x,
+                                               const DenseTensor& y,
+                                               DenseTensor* out) {
+  dev_ctx.template Alloc<int64_t>(out);
+  if (out->numel() == 0) return;
+
+  // Cast int64 inputs to float32 for computation
+  DenseTensor x_float, y_float;
+  x_float.Resize(x.dims());
+  y_float.Resize(y.dims());
+  dev_ctx.template Alloc<float>(&x_float);
+  dev_ctx.template Alloc<float>(&y_float);
+
+  int r = xpu::cast<int64_t, float>(
+      dev_ctx.x_context(), x.data<int64_t>(), x_float.data<float>(), x.numel());
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast int64 to float");
+
+  r = xpu::cast<int64_t, float>(
+      dev_ctx.x_context(), y.data<int64_t>(), y_float.data<float>(), y.numel());
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast int64 to float");
+
+  // Compute pow in float32
+  DenseTensor out_float;
+  out_float.Resize(out->dims());
+  dev_ctx.template Alloc<float>(&out_float);
+
+  auto f = [](xpu::Context* xpu_ctx,
+              const float* x,
+              const float* y,
+              float* z,
+              const std::vector<int64_t>& xshape,
+              const std::vector<int64_t>& yshape) {
+    return xpu::broadcast_pow<float>(xpu_ctx, x, y, z, xshape, yshape);
+  };
+
+  XPUElementwise<float, float>(dev_ctx, x_float, y_float, -1, &out_float, f);
+
+  // Round float result to nearest integer and cast back to int64
+  // Use paddle_round with decimals=0 for proper rounding (equivalent to llrint)
+  r = xpu::paddle_round<float>(dev_ctx.x_context(),
+                               out_float.data<float>(),
+                               out_float.data<float>(),
+                               out_float.numel(),
+                               0);
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "paddle_round");
+
+  r = xpu::cast<float, int64_t>(dev_ctx.x_context(),
+                                out_float.data<float>(),
+                                out->data<int64_t>(),
+                                out_float.numel());
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast float to int64");
 }
 
 #ifdef PADDLE_WITH_XPU_FFT
@@ -207,4 +266,5 @@ PD_REGISTER_KERNEL(elementwise_pow,
                    phi::ElementwisePowKernel,
                    float,
                    phi::float16,
-                   phi::bfloat16) {}
+                   phi::bfloat16,
+                   int64_t) {}
