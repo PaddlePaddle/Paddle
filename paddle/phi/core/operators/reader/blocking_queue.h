@@ -16,6 +16,7 @@
 
 #include <condition_variable>  // NOLINT
 #include <deque>
+#include <string>
 #include <utility>
 
 #include "paddle/phi/core/enforce.h"
@@ -161,22 +162,30 @@ class BlockingQueue {
     return queue_.size();
   }
 
-  void Kill() {
+  void Kill(const std::string& reason = "") {
     std::lock_guard<std::mutex> lock(mutex_);
     // VLOG(1) << "kill queue";
     closed_ = true;
     killed_ = true;
+    kill_reason_ = reason;
     send_cv_.notify_all();
     receive_cv_.notify_all();
   }
 
  private:
   inline void EnforceNotKilled() {
-    PADDLE_ENFORCE_NE(
-        killed_,
-        true,
-        common::errors::Fatal("Blocking queue is killed because the "
-                              "data reader raises an exception."));
+    if (killed_) {
+      if (!kill_reason_.empty()) {
+        PADDLE_THROW(common::errors::Fatal(
+            "Blocking queue is killed because the data reader raises an "
+            "exception.\n[Original exception from data reader]:\n%s",
+            kill_reason_));
+      } else {
+        PADDLE_THROW(common::errors::Fatal(
+            "Blocking queue is killed because the data reader raises an "
+            "exception."));
+      }
+    }
   }
 
  private:
@@ -184,6 +193,7 @@ class BlockingQueue {
   bool speed_test_mode_;
   bool closed_{false};
   bool killed_{false};  // the queue is broken since exception raises
+  std::string kill_reason_;
   std::deque<T> queue_;
 
   mutable std::mutex mutex_;
