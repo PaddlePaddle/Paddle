@@ -15,12 +15,15 @@
 #pragma once
 
 #include <chrono>
+#include <cstddef>
+#include <cstdint>
 #include <map>
 #include <memory>
 #include <string>
 #include <unordered_map>
 #include <vector>
 
+#include "paddle/fluid/distributed/collective/gin_overlap/kernels/comm_args.h"
 #include "paddle/fluid/distributed/collective/process_group.h"
 #include "paddle/fluid/distributed/collective/process_group_with_stream.h"
 #include "paddle/phi/backends/gpu/forwards.h"
@@ -201,6 +204,63 @@ class ProcessGroupNCCL final : public ProcessGroupWithStream {
   void EagerConnectRingExchange(
       std::shared_ptr<phi::distributed::NCCLConfig> nccl_config);
 
+  // GIN primitives. They need IsGinSupported() and raise Unavailable
+  // otherwise. They act on the NCCL communicator of the current device, and
+  // the stream arguments are CUDA streams of that device.
+  //
+  // Same LSA team: the LSA team of a rank is the run of lsa_size consecutive
+  // ranks that contains it (NCCLDevCommInfo), all on one node. Peers in this
+  // rank's LSA team are reached by GPU loads and stores through LSA pointers,
+  // other peers through GIN (the NIC).
+
+  // True when Paddle was built with PADDLE_WITH_GIN_OVERLAP, the current GPU
+  // has compute capability 9.0 or newer, and the loaded NCCL provides the host
+  // entry points of the NCCL device (LSA/GIN) API.
+  static bool IsGinSupported();
+
+  // Creates the device communicator on the first call (collective, see
+  // NCCLCommContext::GetOrCreateDevComm()) and returns its properties. Every
+  // primitive except AllocHostWindow needs it. It raises when
+  // the LSA team of the device communicator does not match node-major rank
+  // order (lsa_rank != rank % lsa_size).
+  phi::distributed::NCCLDevCommInfo GetOrCreateDevComm(int gin_context_count);
+
+  // Properties of the device communicator. Raises when GetOrCreateDevComm()
+  // has not been called.
+  phi::distributed::NCCLDevCommInfo GetDevCommInfo();
+
+  // Allocates and registers a pinned host memory window (collective, see
+  // NCCLCommContext::AllocHostWindow()).
+  phi::distributed::NCCLHostWindow AllocHostWindow(size_t bytes);
+
+  // Issues GIN puts on `stream`. Each put increments its counter after its
+  // data has been written, so a peer that sees its counter reach a value knows
+  // the data of that many puts has arrived. The source must not be changed
+  // before Flush() on a later point of the stream. num_blocks is the number of
+  // thread blocks per launch; 0 means one block per put. A launch takes at
+  // most 32 puts; longer lists are split into launches on the same stream.
+  void Put(const std::vector<PutArgs>& puts,
+           gpuStream_t stream,
+           int num_blocks = 0);
+
+  // Increments peer counters on `stream`: through an LSA atomic add
+  // (__threadfence_system() then atomicAdd_system) for peers in this rank's
+  // LSA team, through a GIN signal for the others. Work queued on `stream`
+  // before this call has finished before an increment is made. lsa_counter of
+  // the arguments is ignored and filled in here.
+  void IncrementPeerCounter(
+      const std::vector<IncrementPeerCounterArgs>& increments,
+      gpuStream_t stream);
+
+  // Copies to windows of peers in this rank's LSA team on `stream`, with one
+  // cudaMemcpyBatchAsync for the whole list.
+  void CopyToPeers(const std::vector<CopyToPeersArgs>& copies,
+                   gpuStream_t stream);
+
+  // Flushes every GIN context on `stream`: after it, the sources of the puts
+  // issued so far may be reused.
+  void Flush(gpuStream_t stream);
+
  private:
   std::shared_ptr<ProcessGroupNCCL::NCCLTask> CreateTask(const Place& place,
                                                          int rank,
@@ -260,6 +320,15 @@ class ProcessGroupNCCL final : public ProcessGroupWithStream {
   void EagerConnect();
 
   void EagerConnectRingExchange();
+
+  // The NCCLCommContext of the current device. Raises when it has not been
+  // created, instead of creating it (creation is collective).
+  phi::distributed::NCCLCommContext* GetGinCommContext();
+
+  // Converts a group rank to its index in this rank's LSA team, or -1 when it
+  // is in another LSA team. Raises when `peer` is not a rank of this group.
+  int PeerToLsaIndex(const phi::distributed::NCCLDevCommInfo& dev_comm_info,
+                     int peer) const;
 
  private:
   std::shared_ptr<phi::distributed::Store> store_;

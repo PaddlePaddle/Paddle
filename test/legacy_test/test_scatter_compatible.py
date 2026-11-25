@@ -23,7 +23,8 @@ class TestScatterCompatible(unittest.TestCase):
     def test_non_inplace_origin_scatter(self):
         x = paddle.zeros([3, 4])
         index = paddle.arange(0, 2, dtype=paddle.int64)
-        updates = paddle.arange(12, dtype=x.dtype).reshape([3, 4])
+        # one index selects one row of updates, so the two must be as long
+        updates = paddle.arange(8, dtype=x.dtype).reshape([2, 4])
         x.stop_gradient = False
         updates.stop_gradient = False
         res_out = paddle.to_tensor(0)
@@ -46,7 +47,7 @@ class TestScatterCompatible(unittest.TestCase):
     def test_inplace_origin_scatter(self):
         x = paddle.zeros([4, 4])
         index = paddle.to_tensor([0, 1, 3], dtype=paddle.int64)
-        updates = paddle.arange(16, dtype=x.dtype).reshape([4, 4])
+        updates = paddle.arange(12, dtype=x.dtype).reshape([3, 4])
         x.stop_gradient = False
         updates.stop_gradient = False
         y = x * x + 2 * x - 1

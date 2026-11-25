@@ -21,6 +21,7 @@ limitations under the License. */
 #undef _XOPEN_SOURCE
 #endif
 
+#include <cstdint>
 #include <limits>
 
 #include "paddle/fluid/distributed/collective/process_group.h"
@@ -93,6 +94,23 @@ using ProcessGroupFlagcx = paddle::distributed::ProcessGroupFlagcx;
 #endif
 
 static UNUSED void *use_ccl_comm_func = phi::detail::GetCCLComm(CPUPlace());
+
+#if defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_NCCL)
+namespace {
+
+py::dict DevCommInfoToDict(
+    const phi::distributed::NCCLDevCommInfo &dev_comm_info) {
+  py::dict result;
+  result["rank"] = dev_comm_info.rank;
+  result["nranks"] = dev_comm_info.nranks;
+  result["lsa_rank"] = dev_comm_info.lsa_rank;
+  result["lsa_size"] = dev_comm_info.lsa_size;
+  result["gin_context_count"] = dev_comm_info.gin_context_count;
+  return result;
+}
+
+}  // namespace
+#endif
 
 void BindDistributed(py::module *m) {
   py::enum_<distributed::ReduceOp>(*m, "ReduceOp")
@@ -1319,7 +1337,43 @@ void BindDistributed(py::module *m) {
             auto *comm_context = self.GetOrCreateCommContext(p_tensor->place());
             comm_context->DeregisterWindow(p_tensor->data());
           },
-          py::arg("tensor"));
+          py::arg("tensor"))
+      // Setup of the GIN primitives for gin_overlap's Python builder: the
+      // device communicator and the host window. The primitives themselves
+      // (Put, IncrementPeerCounter, CopyToPeers, Flush) are called from C++
+      // and have no binding. Window handles are ints, like those of
+      // register_comm_buffer().
+      .def(
+          "get_or_create_dev_comm",
+          [](distributed::ProcessGroupNCCL &self, int gin_context_count) {
+            phi::distributed::NCCLDevCommInfo dev_comm_info;
+            {
+              py::gil_scoped_release release;
+              dev_comm_info = self.GetOrCreateDevComm(gin_context_count);
+            }
+            return DevCommInfoToDict(dev_comm_info);
+          },
+          py::arg("gin_context_count") = 4)
+      .def(
+          "alloc_host_window",
+          [](distributed::ProcessGroupNCCL &self, size_t bytes) {
+            phi::distributed::NCCLHostWindow host_window;
+            {
+              py::gil_scoped_release release;
+              host_window = self.AllocHostWindow(bytes);
+            }
+            return py::make_tuple(
+                reinterpret_cast<uint64_t>(host_window.window),
+                reinterpret_cast<uint64_t>(host_window.ptr),
+                host_window.bytes);
+          },
+          py::arg("bytes"),
+          R"DOC(
+          Allocates pinned host memory, mapped for the CPU and the current GPU,
+          and registers it as a window of this group (collective). Returns
+          (window, cpu_ptr, bytes): the window handle, the address of the
+          memory (the same for the CPU and the GPU) and its size.
+          )DOC");
 
   // Allocates a device buffer through ncclMemAlloc, whose address and size are
   // padded to NCCLCommContext::kNCCLWindowAlignment so that it can be handed to

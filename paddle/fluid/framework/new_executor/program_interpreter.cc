@@ -174,6 +174,11 @@ void ProgramInterpreter::RunImpl() {
   }
 
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
+  // NOTE: the legacy-IR interpreter keeps the blocking default-stream sync at
+  // the Run boundary. PirInterpreter instead orders side streams with an async
+  // event at the start of a Run (OrderCustomDeviceSideStreamsBeforeRun) and
+  // skips this host-blocking Wait. The difference is intentional; this path is
+  // not yet migrated to the event-based ordering.
   if (phi::is_custom_place(place_)) {
     phi::DeviceContextPool::Instance().Get(place_)->Wait();
   }

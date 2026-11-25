@@ -370,6 +370,14 @@ if((WITH_GPU) AND (LINUX))
 endif()
 if((WITH_GPU) AND (LINUX))
   py_test_modules(
+    test_communication_gin_dev_comm_api MODULES
+    test_communication_gin_dev_comm_api ENVS
+    "PYTHONPATH=..:${PADDLE_BINARY_DIR}/python;http_proxy=;https_proxy=")
+  set_tests_properties(test_communication_gin_dev_comm_api
+                       PROPERTIES TIMEOUT "120" LABELS "RUN_TYPE=DIST")
+endif()
+if((WITH_GPU) AND (LINUX))
+  py_test_modules(
     test_sharding_gin_overlap MODULES test_sharding_gin_overlap ENVS
     "PYTHONPATH=..:${PADDLE_BINARY_DIR}/python;http_proxy=;https_proxy=")
   set_tests_properties(test_sharding_gin_overlap
