@@ -17,5 +17,5 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/einsum_grad_kernel_impl.h"
 
-PD_REGISTER_KERNEL(einsum_grad, XPU, ALL_LAYOUT, phi::EinsumGradKernel, float) {
+PD_REGISTER_KERNEL(einsum_grad, XPU, ALL_LAYOUT, phi::EinsumGradKernel, float, phi::float16, phi::bfloat16) {
 }
