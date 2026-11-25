@@ -34,7 +34,10 @@ import paddle
 from paddle.distributed.communication.gin_overlap import (
     grad_comm_scheduler as gcs,
 )
-from paddle.distributed.fleet.meta_optimizers import muon_sharding_optimizer
+from paddle.distributed.fleet.meta_optimizers import (
+    mixed_sharding_optimizer,
+    muon_sharding_optimizer,
+)
 from paddle.distributed.fleet.meta_optimizers.dygraph_optimizer import (
     dygraph_sharding_optimizer,
 )
@@ -43,6 +46,9 @@ from paddle.distributed.fleet.meta_optimizers.dygraph_optimizer.dygraph_sharding
 )
 from paddle.distributed.fleet.meta_optimizers.dygraph_optimizer.hybrid_parallel_optimizer import (
     HybridParallelOptimizer,
+)
+from paddle.distributed.fleet.meta_optimizers.mixed_sharding_optimizer import (
+    MixedShardingOptimizer,
 )
 from paddle.distributed.fleet.meta_optimizers.muon_sharding_optimizer import (
     MuonShardingOptimizer,
@@ -352,33 +358,37 @@ class TestReleaseOrder(unittest.TestCase):
 
 
 class TestBucketClassification(unittest.TestCase):
-    def test_is_expert_param(self):
+    def test_reject_reason(self):
+        group = FakeGroup(range(4))
         cases = (
-            (param("dense"), False),
-            (expert_param("moe"), True),
-            (param("colored_expert", color={"color": "moe_expert"}), True),
-            (param("colored_dense", color={"color": "dense_weight_no_hook"}), False),
-            (param("non_dict_color", color="moe_expert"), False),
+            ("accepted", {}, None),
+            ("other act", {"act": HOOK_ACTION.REDUCE}, "act="),
+            ("release_grads", {"_release_grads": True}, "release_grads=True"),
+            ("free_grads_in_comm", {"_free_grads_in_comm": True}, "free_grads_in_comm=True"),
+            ("no grad_storage", {"grad_storage": None}, "grad_storage is None"),
+            ("bf16 grads", {"grad_storage": SimpleNamespace(dtype=paddle.bfloat16)}, "not fp32 main_grad"),
+            ("no main_grad", {"use_main_grad": False}, "not fp32 main_grad"),
         )  # fmt: skip
-        for p, is_expert in cases:
-            with self.subTest(p.name):
-                self.assertEqual(bool(gcs._is_expert_param(p)), is_expert)
+        for case, overrides, reason in cases:
+            with self.subTest(case):
+                b = bucket([param("a")], group, **overrides)
+                if "grad_storage" in overrides:
+                    b.grad_storage = overrides["grad_storage"]
+                result = gcs._reject_reason(b, HOOK_ACTION.REDUCE_SCATTER)
+                if reason is None:
+                    self.assertIsNone(result)
+                else:
+                    self.assertIn(reason, result)
 
-    def test_skip_reason(self):
+    def test_fallback_reason(self):
         group = FakeGroup(range(4))
         no_hook = param("shared", color={"color": "moe_weight_no_hook"})
         cases = (
             ("accepted", {}, None),
             ("sync-only bucket", {"sync_only": True}, "shared-parameter bucket"),
-            ("other act", {"act": HOOK_ACTION.REDUCE}, "act="),
             ("no group", {"_comm_group": None}, "has 1 rank"),
             ("one-rank group", {"_comm_group": FakeGroup([0])}, "has 1 rank"),
-            ("release_grads", {"_release_grads": True}, "release_grads=True"),
-            ("free_grads_in_comm", {"_free_grads_in_comm": True}, "free_grads_in_comm=True"),
             ("no-hook color", {"_params": [param("a"), no_hook]}, 'no-hook color "moe_weight_no_hook"'),
-            ("no grad_storage", {"grad_storage": None}, "grad_storage is None"),
-            ("bf16 grads", {"grad_storage": SimpleNamespace(dtype=paddle.bfloat16)}, "not fp32 main_grad"),
-            ("no main_grad", {"use_main_grad": False}, "not fp32 main_grad"),
             ("frozen", {"frozen": True}, "frozen"),
             ("scaled before comm", {"_scale_after_comm": False}, "scaled in place before every _comm_grads"),
         )  # fmt: skip
@@ -388,12 +398,8 @@ class TestBucketClassification(unittest.TestCase):
                 sync_only = overrides.pop("sync_only", False)
                 params = overrides.pop("_params", [param("a")])
                 b = bucket(params, group, **overrides)
-                if "grad_storage" in overrides:
-                    b.grad_storage = overrides["grad_storage"]
                 sync_ids = (id(b),) if sync_only else ()
-                result = gcs._skip_reason(
-                    b, HOOK_ACTION.REDUCE_SCATTER, sync_ids
-                )
+                result = gcs._fallback_reason(b, sync_ids)
                 if reason is None:
                     self.assertIsNone(result)
                 else:
@@ -406,7 +412,7 @@ class TestBucketClassification(unittest.TestCase):
             _scale_after_comm=False,
             _use_reduce_avg=True,
         )
-        self.assertIsNone(gcs._skip_reason(b, HOOK_ACTION.REDUCE_SCATTER))
+        self.assertIsNone(gcs._fallback_reason(b))
 
 
 class TestSplitBuckets(unittest.TestCase):
@@ -425,53 +431,62 @@ class TestSplitBuckets(unittest.TestCase):
             "test",
         )
 
-    def test_expert_and_dense_buckets(self):
+    def test_buckets_are_split_by_their_communication_group(self):
         dense = bucket([param("d0"), param("d1")], self.world)
-        expert = bucket([expert_param("e0")], self.moe_group)
-        colored = bucket(
-            [param("e1", color={"color": "moe_expert"})], self.moe_group
+        # an expert parallel size of 1 leaves a sub-model's experts in the
+        # sharding group, and a bucket may mix both kinds
+        unsharded_expert = bucket([expert_param("e0")], self.world)
+        mixed = bucket([param("d2"), expert_param("e1")], self.moe_group)
+        expert = bucket(
+            [param("e2", color={"color": "moe_expert"})], self.moe_group
         )
         self.assertEqual(
-            self.split([dense, expert, colored]), ([expert, colored], [dense])
+            self.split([dense, unsharded_expert, mixed, expert]),
+            ([mixed, expert], [dense, unsharded_expert]),
         )
 
-    def test_unsupported_buckets(self):
+    def test_buckets_that_keep_their_own_collective(self):
+        own = (
+            bucket([param("one_rank")], FakeGroup([0])),
+            bucket(
+                [param("shared", color={"color": "moe_weight_no_hook"})],
+                self.world,
+            ),
+            bucket([param("other_group")], FakeGroup(range(2), group_id=3)),
+            bucket([param("frozen")], self.world, frozen=True),
+        )
+        taken = bucket([param("fine")], self.world)
+        self.assertEqual(self.split([*own, taken]), ([], [taken]))
+
+    def test_unsupported_buckets_raise(self):
         cases = (
-            ("mixed bucket", [bucket([param("d"), expert_param("e")], self.world)], "default",
-             "mixes expert and non-expert parameters"),
-            ("expert bucket in the sharding group", [bucket([expert_param("e")], self.world)], "default",
-             "expert bucket outside the moe_sharding group \\(e.g."),
-            ("expert bucket without expert parallelism", [bucket([expert_param("e")], self.world)], None,
-             "no expert parallelism"),
-            ("dense bucket in another group", [bucket([param("d")], self.moe_group)], "default",
-             "dense bucket outside the sharding group"),
+            ("other act", bucket([param("a")], self.world, act=HOOK_ACTION.REDUCE), "act="),
+            ("release_grads", bucket([param("a")], self.world, _release_grads=True), "release_grads=True"),
         )  # fmt: skip
-        for case, buckets, moe_group, message in cases:
+        for case, b, message in cases:
             with (
                 self.subTest(case),
                 self.assertRaisesRegex(RuntimeError, message),
             ):
-                self.split(buckets, moe_group)
+                self.split([b])
 
     def test_reasons_are_aggregated(self):
         buckets = [
-            bucket([param("frozen_a")], self.world, frozen=True),
-            bucket([param("frozen_b")], self.world, frozen=True),
-            bucket([param("mixed"), expert_param("mixed_e")], self.world),
+            bucket([param("a")], self.world, _release_grads=True),
+            bucket([param("b")], self.world, _release_grads=True),
+            bucket([param("c")], self.world, act=HOOK_ACTION.REDUCE),
             bucket([param("fine")], self.world),
         ]
         with self.assertRaises(RuntimeError) as raised:
             self.split(buckets)
         message = str(raised.exception)
         self.assertIn(
-            "gin_overlap (test): 3/4 buckets are not supported", message
-        )
-        self.assertIn("2: all parameters of the bucket are frozen", message)
-        self.assertIn("['frozen_a', 'frozen_b']", message)
-        self.assertIn(
-            "1: mixes expert and non-expert parameters (e.g. ['mixed'])",
+            "gin_overlap (test): 3/4 buckets cannot be used with gin_overlap",
             message,
         )
+        self.assertIn("2: release_grads=True", message)
+        self.assertIn("['a', 'b']", message)
+        self.assertIn("1: act=", message)
 
 
 class TestTopology(unittest.TestCase):
@@ -992,15 +1007,13 @@ class TestSelectBuckets(unittest.TestCase):
         )
         opt = SimpleNamespace(_comm_buffer_list=[dense, expert])
         self.assertEqual(
-            gcs._select_v2(opt, self.world, self.moe_group),
+            gcs._select_v2(opt, self.world, self.moe_group, "V2"),
             ([expert], [dense], [], []),
         )
         reduce_bucket = bucket([param("r")], self.world, act=HOOK_ACTION.REDUCE)
         opt = SimpleNamespace(_comm_buffer_list=[reduce_bucket])
-        with self.assertRaisesRegex(
-            RuntimeError, "DygraphShardingOptimizerV2.*1/1 buckets"
-        ):
-            gcs._select_v2(opt, self.world, self.moe_group)
+        with self.assertRaisesRegex(RuntimeError, "V2.*1/1 buckets"):
+            gcs._select_v2(opt, self.world, self.moe_group, "V2")
 
     def test_muon_pads_2d_buckets_and_finds_their_owner(self):
         dense_1d = bucket([param("d1")], self.world)
@@ -1021,7 +1034,7 @@ class TestSelectBuckets(unittest.TestCase):
         opt = muon_opt(
             self.world, self.moe_group, [dense_1d], [dense_2d, expert_2d]
         )
-        selected = gcs._select_muon(opt, self.world, self.moe_group)
+        selected = gcs._select_muon(opt, self.world, self.moe_group, "Muon")
         self.assertEqual(
             selected,
             ([expert_2d], [dense_1d, dense_2d], [expert_2d], [dense_2d]),
@@ -1032,11 +1045,9 @@ class TestSelectBuckets(unittest.TestCase):
         self.assertFalse(hasattr(dense_1d, "_gin_owner_bucket"))
 
     def test_muon_unsupported_configurations(self):
-        shared = bucket([param("s")], self.world)
         cases = (
             ("no fused buckets", {"_use_fuse_gradients": False}, [], "needs comm_buffer_size_MB > 0"),
             ("group call", {"use_group_call_opt": True}, [], "comm_group_call_opt"),
-            ("sync-only 1D bucket", {"_sync_only_buffer_ids": {id(shared)}}, [shared], "(?s)1D buckets.*shared-parameter"),
         )  # fmt: skip
         for case, attrs, buckets_1d, message in cases:
             with self.subTest(case):
@@ -1044,12 +1055,25 @@ class TestSelectBuckets(unittest.TestCase):
                     self.world, self.moe_group, buckets_1d, [], **attrs
                 )
                 with self.assertRaisesRegex(RuntimeError, message):
-                    gcs._select_muon(opt, self.world, self.moe_group)
+                    gcs._select_muon(opt, self.world, self.moe_group, "Muon")
         opt = muon_opt(
             self.world, self.moe_group, [], [bucket([param("r")], self.world)]
         )
         with self.assertRaisesRegex(RuntimeError, "(?s)2D buckets.*act="):
-            gcs._select_muon(opt, self.world, self.moe_group)
+            gcs._select_muon(opt, self.world, self.moe_group, "Muon")
+        # a sync-only bucket is not taken over, and does not fail the build
+        shared = bucket([param("s")], self.world)
+        opt = muon_opt(
+            self.world,
+            self.moe_group,
+            [shared, bucket([param("fine")], self.world)],
+            [],
+            _sync_only_buffer_ids={id(shared)},
+        )
+        expert, dense, expert_2d, dense_2d = gcs._select_muon(
+            opt, self.world, self.moe_group, "Muon"
+        )
+        self.assertEqual([b._params[0].name for b in dense], ["fine"])
 
 
 class RecordingScheduler:
@@ -1649,6 +1673,7 @@ class TestShardingOptimizerGinBranches(unittest.TestCase):
             mock.patch.object(gcs, "finish_step", lambda opt: self.calls.append("finish_step")),
             mock.patch.object(dygraph_sharding_optimizer, "fused_all_gather", self.record_fused_all_gather),
             mock.patch.object(muon_sharding_optimizer, "fused_all_gather", self.record_fused_all_gather),
+            mock.patch.object(mixed_sharding_optimizer, "fused_all_gather", self.record_fused_all_gather),
         ):  # fmt: skip
             patcher.start()
             self.addCleanup(patcher.stop)
@@ -1664,7 +1689,9 @@ class TestShardingOptimizerGinBranches(unittest.TestCase):
             _param_allgather_fuse_mb=fuse_mb,
         )  # fmt: skip
 
-    def muon(self, gin, fuse_mb=0.0):
+    def muon_or_mixed(self, gin, fuse_mb=0.0):
+        """MuonShardingOptimizer and MixedShardingOptimizer read the same attributes: 2D buckets, 1D buckets, and
+        nothing else on the gin_overlap path, so falling through it raises AttributeError on _use_fuse_gradients."""
         return SimpleNamespace(
             comm_buffer_2d=[logged_buffer(self.calls, "2d")],
             _comm_buffer_list=[logged_buffer(self.calls, "1d")],
@@ -1716,7 +1743,18 @@ class TestShardingOptimizerGinBranches(unittest.TestCase):
             DygraphShardingOptimizerV2.rebuild(self.v2(gin=True))
 
     def test_muon_reduce_gradients(self):
-        MuonShardingOptimizer.reduce_gradients(self.muon(gin=True), [], None)
+        MuonShardingOptimizer.reduce_gradients(
+            self.muon_or_mixed(gin=True), [], None
+        )
+        self.assertEqual(
+            self.calls,
+            ["2d.comm", "1d.comm", "finish_step", "2d.scale", "1d.scale"],
+        )
+
+    def test_mixed_reduce_gradients(self):
+        MixedShardingOptimizer.reduce_gradients(
+            self.muon_or_mixed(gin=True), [], None
+        )
         self.assertEqual(
             self.calls,
             ["2d.comm", "1d.comm", "finish_step", "2d.scale", "1d.scale"],
@@ -1727,19 +1765,25 @@ class TestShardingOptimizerGinBranches(unittest.TestCase):
             with self.subTest(case):
                 self.calls.clear()
                 MuonShardingOptimizer._sharding_sync_parameters(
-                    self.muon(gin, fuse_mb=fuse_mb)
+                    self.muon_or_mixed(gin, fuse_mb=fuse_mb)
+                )
+                expected = [("fused_all_gather", 1, fuse_mb)] if fused else ["1d.sync"]  # fmt: skip
+                self.assertEqual(self.calls, expected)
+
+    def test_mixed_sync_parameters(self):
+        for case, gin, fuse_mb, fused in self.SYNC_CASES:
+            with self.subTest(case):
+                self.calls.clear()
+                MixedShardingOptimizer._sharding_sync_parameters(
+                    self.muon_or_mixed(gin, fuse_mb=fuse_mb)
                 )
                 expected = [("fused_all_gather", 1, fuse_mb)] if fused else ["1d.sync"]  # fmt: skip
                 self.assertEqual(self.calls, expected)
 
 
 class OwnerPartitioner:
-    """The state the Muon 2D partitioners read (see test_muon_2d_partition.py), with muon_owner_partition_mb."""
-
-    _partition_2d_parameters = MuonShardingOptimizer._partition_2d_parameters
-    _partition_2d_parameters_machine_balanced = (
-        MuonShardingOptimizer._partition_2d_parameters_machine_balanced
-    )
+    """The state the Muon / Mixed 2D partitioners read (see test_muon_2d_partition.py), with
+    muon_owner_partition_mb. The partitioners are called unbound, on the optimizer class under test."""
 
     def __init__(self, comm_buffer_size_MB, owner_partition_mb):
         self.comm_buffer_size_MB = comm_buffer_size_MB
@@ -1747,22 +1791,24 @@ class OwnerPartitioner:
         self._global_rank = 1
 
 
-class TestMuonOwnerPartitionSize(unittest.TestCase):
+class TestOwnerPartitionSize(unittest.TestCase):
     """muon_owner_partition_mb > 0 replaces comm_buffer_size_MB as the MB per owner of the 2D
     partition; unset (None, or the default 0) keeps comm_buffer_size_MB as in the original code. Eight 1 MiB fp32
     parameters (8 MiB) may spread over int(8 / MB per owner) + 1 ranks: 9 with 1 MB (so each of the 8 parameters gets
-    its own owner) and 3 with 4 MB."""
+    its own owner) and 3 with 4 MB. MuonShardingOptimizer and MixedShardingOptimizer have the same two
+    partitioners."""
 
     PARAMS = [
         SimpleNamespace(name=f"w{i}", shape=[512, 512], dtype="float32")
         for i in range(8)
     ]
 
-    def owners(self, comm_buffer_size_MB, owner_partition_mb):
-        partitioner = OwnerPartitioner(comm_buffer_size_MB, owner_partition_mb)
-        legacy = partitioner._partition_2d_parameters(self.PARAMS, 16)
+    def owners(self, optimizer, comm_buffer_size_MB, owner_partition_mb):
+        state = OwnerPartitioner(comm_buffer_size_MB, owner_partition_mb)
+        legacy = optimizer._partition_2d_parameters(state, self.PARAMS, 16)
         group_key = (None, tuple(range(16)))
-        balanced = partitioner._partition_2d_parameters_machine_balanced(
+        balanced = optimizer._partition_2d_parameters_machine_balanced(
+            state,
             {group_key: [(p.name, 512 * 512, p.dtype, 4) for p in self.PARAMS]},
             dict.fromkeys(range(16), "host0"),
         )[group_key]
@@ -1772,22 +1818,26 @@ class TestMuonOwnerPartitionSize(unittest.TestCase):
         ]
 
     def test_owner_count(self):
-        for comm_buffer_size_MB, owner_partition_mb, owner_count in (
-            (1, None, 8),
-            (1, 0, 8),
-            (1, 4, 3),
-            (4, None, 3),
-            (4, 0, 3),
-            (4, 1, 8),
-        ):
-            with self.subTest(
-                comm_buffer_size_MB=comm_buffer_size_MB,
-                owner_partition_mb=owner_partition_mb,
+        for optimizer in (MuonShardingOptimizer, MixedShardingOptimizer):
+            for comm_buffer_size_MB, owner_partition_mb, owner_count in (
+                (1, None, 8),
+                (1, 0, 8),
+                (1, 4, 3),
+                (4, None, 3),
+                (4, 0, 3),
+                (4, 1, 8),
             ):
-                self.assertEqual(
-                    self.owners(comm_buffer_size_MB, owner_partition_mb),
-                    [owner_count] * 2,
-                )
+                with self.subTest(
+                    optimizer=optimizer.__name__,
+                    comm_buffer_size_MB=comm_buffer_size_MB,
+                    owner_partition_mb=owner_partition_mb,
+                ):
+                    self.assertEqual(
+                        self.owners(
+                            optimizer, comm_buffer_size_MB, owner_partition_mb
+                        ),
+                        [owner_count] * 2,
+                    )
 
 
 class TestHybridParallelOptimizerChoice(unittest.TestCase):

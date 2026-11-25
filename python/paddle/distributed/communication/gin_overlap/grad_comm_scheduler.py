@@ -140,30 +140,35 @@ def _check_compat(opt, where):
         )
 
 
-def _is_expert_param(p):
-    """Expert parameter: is_moe_param, or color "moe_expert". Expert parameters are reduced over the moe_sharding
-    group."""
-    color = getattr(p, "color", None)
-    return getattr(p, "is_moe_param", False) or (
-        isinstance(color, dict) and color.get("color") == "moe_expert"
-    )
-
-
-def _skip_reason(b, act, sync_ids=()):
-    """Why bucket b cannot be taken over; None = it can."""
-    if id(b) in sync_ids:
-        return (
-            "shared-parameter bucket (no-hook color, in _sync_only_buffer_ids)"
-        )
+def _reject_reason(b, act):
+    """Why bucket b makes this build fail; None = it does not. These are buckets the scheduler cannot take over
+    *and* cannot leave to its own collective either, because reduce_gradients hands the whole step to the scheduler
+    (it calls _comm_grads once per bucket and no longer runs the bucket's own grad_storage bookkeeping)."""
     if b._act != act:
         return f"act={b._act} (only {act} is supported for this kind of bucket)"
+    if b._release_grads or b._free_grads_in_comm:
+        return (
+            f"release_grads={b._release_grads} free_grads_in_comm={b._free_grads_in_comm}: the gradient storage is "
+            "freed or moved around the communication"
+        )
+    if b.grad_storage is None:
+        return "grad_storage is None"
+    if b.grad_storage.dtype != paddle.float32 or not b.use_main_grad:
+        return f"gradients are not fp32 main_grad (dtype={b.grad_storage.dtype} use_main_grad={b.use_main_grad})"
+    return None
+
+
+def _fallback_reason(b, sync_ids=()):
+    """Why bucket b keeps its own collective instead of being taken over; None = it can be taken over. These
+    buckets stay on the original reduce_scatter / reduce path (FusedCommBuffer._comm_grads with _gin_scheduler
+    None), which is correct, just not overlapped."""
+    if id(b) in sync_ids:
+        return "shared-parameter bucket (no-hook color, in _sync_only_buffer_ids), reduced synchronously by design"
     if b._comm_group is None or getattr(b._comm_group, "nranks", 1) <= 1:
         return (
             f"the communication group has {getattr(b._comm_group, 'nranks', 1)} rank: there is nothing to overlap "
-            "(usually expert parallelism covers every GPU, so experts are not sharded)"
+            "(e.g. expert parallelism covers every GPU, so experts are not sharded)"
         )
-    if b._release_grads or b._free_grads_in_comm:
-        return f"release_grads={b._release_grads} free_grads_in_comm={b._free_grads_in_comm}"
     no_hook_colors = [
         p.color["color"]
         for p in b._params
@@ -172,20 +177,15 @@ def _skip_reason(b, act, sync_ids=()):
     ]
     if no_hook_colors:
         return (
-            f'parameters with the no-hook color "{no_hook_colors[0]}": they are scaled as experts but classified '
-            "into dense buckets"
+            f'parameters with the no-hook color "{no_hook_colors[0]}" (e.g. the MTP-shared last layer): they get no '
+            "per-parameter backward hook, so the bucket never reports itself as full"
         )
-    if b.grad_storage is None:
-        return "grad_storage is None"
-    if b.grad_storage.dtype != paddle.float32 or not b.use_main_grad:
-        return f"gradients are not fp32 main_grad (dtype={b.grad_storage.dtype} use_main_grad={b.use_main_grad})"
     if not b.need_reduce_scale_sync():
         return "all parameters of the bucket are frozen (need_reduce_scale_sync() is False), it is never sent"
     if not b._scale_after_comm and not b._use_reduce_avg:
         return (
             f"scale_after_comm={b._scale_after_comm} use_reduce_avg={b._use_reduce_avg}: the bucket is scaled in "
-            "place before every _comm_grads call, and reduce_gradients calls _comm_grads again for buckets "
-            "reported in the backward pass"
+            "place before every _comm_grads call"
         )
     return None
 
@@ -213,53 +213,58 @@ def _release_order(opt, buckets):
 
 
 def _split_buckets(buckets, act, world, moe_group, sync_ids, where):
-    """Splits buckets into (expert, dense). Raises on an unsupported bucket: one with a _skip_reason, one that mixes
-    expert and non-expert parameters, a dense bucket outside the sharding group and an expert bucket outside the
-    moe_sharding group (moe_group None = no expert parallelism)."""
-    expert, dense, unsupported = [], [], []
+    """Splits buckets into (expert, dense) by the group each one reduces over: the moe_sharding group (expert) or
+    the sharding group (dense). What a bucket holds does not matter, only its group does: with an expert parallel
+    size of 1 a sub-model's experts are reduced over the sharding group like any other parameter, and a bucket may
+    mix both kinds. A bucket the scheduler cannot take over keeps its own collective (_fallback_reason, logged
+    once), including one in a group of its own from its parameters' color["group"], for which there is no window.
+    Raises only on a bucket that cannot be left alone either (_reject_reason)."""
+    expert, dense, fallback, unsupported = [], [], [], []
     for bucket in buckets:
-        reason = _skip_reason(bucket, act, sync_ids)
+        reason = _reject_reason(bucket, act)
+        if reason is not None:
+            unsupported.append((bucket, reason))
+            continue
+        reason = _fallback_reason(bucket, sync_ids)
         if reason is None:
-            expert_flags = [_is_expert_param(p) for p in bucket._params]
-            if all(expert_flags):
-                if (
-                    moe_group is not None
-                    and bucket._comm_group.id == moe_group.id
-                ):
-                    expert.append(bucket)
-                    continue
-                reason = "expert bucket outside the moe_sharding group" + (
-                    " (no expert parallelism, so there is no moe_sharding group)"
+            if bucket._comm_group.id == world.id:
+                dense.append(bucket)
+                continue
+            if moe_group is not None and bucket._comm_group.id == moe_group.id:
+                expert.append(bucket)
+                continue
+            reason = (
+                "the bucket is in neither the sharding nor the moe_sharding group (its parameters carry their own "
+                "color['group']), so there is no window for it"
+                + (
+                    "; there is no moe_sharding group (no expert parallelism)"
                     if moe_group is None
                     else ""
                 )
-            elif any(expert_flags):
-                reason = "mixes expert and non-expert parameters"
-            elif bucket._comm_group.id != world.id:
-                reason = (
-                    "dense bucket outside the sharding group (its parameters carry their own color['group']); dense "
-                    "buckets must all be in one group"
-                )
-            else:
-                dense.append(bucket)
-                continue
-        unsupported.append((bucket, reason))
-    if unsupported:
-        names_by_reason = {}
-        for bucket, reason in unsupported:
-            names_by_reason.setdefault(reason, []).append(
-                bucket._params[0].name
             )
-        lines = [
-            f"{len(names)}: {reason} (e.g. {names[:2]})"
-            for reason, names in names_by_reason.items()
-        ]
+        fallback.append((bucket, reason))
+    if unsupported:
         raise RuntimeError(
-            f"gin_overlap ({where}): {len(unsupported)}/{len(buckets)} buckets are not supported. With gin_overlap on "
-            "every bucket must be taken over (no bucket falls back to NCCL).\n  "
-            + "\n  ".join(lines)
+            f"gin_overlap ({where}): {len(unsupported)}/{len(buckets)} buckets cannot be used with gin_overlap.\n  "
+            + "\n  ".join(_by_reason(unsupported))
         )
+    if fallback and dist.get_rank() == 0:
+        logger.warning(
+            f"[gin_overlap] {where}: {len(fallback)}/{len(buckets)} buckets keep their own reduce_scatter / reduce "
+            "(not overlapped, numerically unchanged).\n  " + "\n  ".join(_by_reason(fallback))
+        )  # fmt: skip
     return expert, dense
+
+
+def _by_reason(buckets_with_reason):
+    """One line per reason: how many buckets and the first parameter name of two of them."""
+    names_by_reason = {}
+    for bucket, reason in buckets_with_reason:
+        names_by_reason.setdefault(reason, []).append(bucket._params[0].name)
+    return [
+        f"{len(names)}: {reason} (e.g. {names[:2]})"
+        for reason, names in names_by_reason.items()
+    ]
 
 
 # ============================================================ layout
@@ -858,8 +863,7 @@ def _gather_table(layout, dense_2d, expert_2d, dense_index, expert_index):
 
 
 # ============================================================ build
-def _select_v2(opt, world, moe_group):
-    where = "DygraphShardingOptimizerV2"
+def _select_v2(opt, world, moe_group, where):
     expert, dense = _split_buckets(
         opt._comm_buffer_list,
         _hook_action().REDUCE_SCATTER,
@@ -871,8 +875,9 @@ def _select_v2(opt, world, moe_group):
     return expert, dense, [], []
 
 
-def _select_muon(opt, world, moe_group):
-    where = "MuonShardingOptimizer"
+def _select_muon(opt, world, moe_group, where):
+    """MuonShardingOptimizer and MixedShardingOptimizer: 1D buckets (reduce_scatter) and 2D buckets (reduce to the
+    owner), the same attributes on both."""
     if not opt._use_fuse_gradients:
         raise RuntimeError(
             f"gin_overlap ({where}) needs comm_buffer_size_MB > 0: 2D parameters must be in fused buckets"
@@ -916,18 +921,20 @@ def _hook_action():
 
 
 def build_grad_comm_scheduler(opt):
-    """Builds the GinGradCommScheduler of a DygraphShardingOptimizerV2 or MuonShardingOptimizer, after its buckets
-    are built, and sets it as the module variable ``scheduler``. Collective over the sharding group and, with
-    expert buckets, the moe_sharding group. Raises on an unsupported configuration or bucket.
-      - Every bucket is taken over: expert buckets (all parameters expert: is_moe_param or color "moe_expert") in
-        the moe_sharding group, dense buckets (no expert parameter) in the sharding group. Muon 2D buckets are
-        padded to a multiple of 4 x group size and gathered to their owner after the reduce.
-      - grad_storage of each bucket becomes its range of the send window; main_grad is re-linked.
-      - Each bucket gets ``_gin_bucket_index`` (unified index) and ``_gin_scheduler``; each parameter gets a backward
-        hook that reports its bucket once the bucket is full, i.e. after sharding_configs.accumulate_steps gradients
-        per parameter (the bucket's _acc_steps, set when the sharding optimizer creates the bucket). The trainer must
-        set sharding_configs.accumulate_steps to its gradient accumulation steps; with pipeline parallelism it must
-        equal pipeline_configs.accumulate_steps (raises otherwise)."""
+    """Builds the GinGradCommScheduler of a DygraphShardingOptimizerV2, MuonShardingOptimizer or
+    MixedShardingOptimizer, after its buckets are built, and sets it as the module variable ``scheduler``.
+    Collective over the sharding group and, with expert buckets, the moe_sharding group. Raises on an unsupported
+    configuration or bucket.
+      - A bucket is taken over by the group it reduces over: the moe_sharding group (expert buckets) or the
+        sharding group (dense buckets). Every other bucket keeps its own collective (logged once); 2D buckets
+        (Muon / Mixed) are padded to a multiple of 4 x group size and gathered to their owner after the reduce.
+      - grad_storage of each taken-over bucket becomes its range of the send window; main_grad is re-linked.
+      - Each taken-over bucket gets ``_gin_bucket_index`` (unified index) and ``_gin_scheduler``; each of its
+        parameters gets a backward hook that reports its bucket once the bucket is full, i.e. after
+        sharding_configs.accumulate_steps gradients per parameter (the bucket's _acc_steps, set when the sharding
+        optimizer creates the bucket). The trainer must set sharding_configs.accumulate_steps to its gradient
+        accumulation steps; with pipeline parallelism it must equal pipeline_configs.accumulate_steps (raises
+        otherwise)."""
     global scheduler
     from paddle.distributed.fleet.meta_optimizers.dygraph_optimizer.dygraph_sharding_optimizer import (
         DygraphShardingOptimizerV2,
@@ -943,7 +950,7 @@ def build_grad_comm_scheduler(opt):
             "process)"
         )
     is_v2 = isinstance(opt, DygraphShardingOptimizerV2)
-    where = "DygraphShardingOptimizerV2" if is_v2 else "MuonShardingOptimizer"
+    where = type(opt).__name__
     _check_compat(opt, where)
     cfg = _sharding_configs()
     if not cfg.gin_overlap_timeout > 0:
@@ -973,7 +980,7 @@ def build_grad_comm_scheduler(opt):
         else None
     )
     select = _select_v2 if is_v2 else _select_muon
-    expert, dense, expert_2d, dense_2d = select(opt, world, moe_group)
+    expert, dense, expert_2d, dense_2d = select(opt, world, moe_group, where)
     if not dense:
         raise RuntimeError(
             f"gin_overlap ({where}): there is no dense bucket; check comm_buffer_size_MB > 0 and split_param"
