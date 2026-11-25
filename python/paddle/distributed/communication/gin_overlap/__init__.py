@@ -15,8 +15,9 @@
 """gin_overlap: the sharding-stage1 gradient reduce_scatter in stages on NCCL GIN one-sided puts, released inside
 the overlap windows of the backward pass by a C++ scheduler (paddle.base.core.gin_overlap.GinGradCommScheduler).
 
-Turned on by ``strategy.hybrid_configs["sharding_configs"].gin_overlap``; DygraphShardingOptimizerV2 and
-MuonShardingOptimizer then build the scheduler (build_grad_comm_scheduler). A framework that knows the overlap
+Turned on by ``strategy.hybrid_configs["sharding_configs"].gin_overlap``; DygraphShardingOptimizerV2,
+MuonShardingOptimizer and MixedShardingOptimizer then build the scheduler (build_grad_comm_scheduler). A bucket the
+scheduler cannot take over keeps its own reduce_scatter / reduce. A framework that knows the overlap
 windows (for example the DeepEP callbacks of a MoE layer) drives it through
 ``grad_comm_scheduler.scheduler`` (None when gin_overlap is off; read it on the grad_comm_scheduler module
 each time, it is not re-exported here because an imported copy would stay None):

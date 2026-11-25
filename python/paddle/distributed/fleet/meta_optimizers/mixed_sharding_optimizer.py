@@ -886,7 +886,7 @@ class MixedShardingOptimizer:
             total_size_mb = total_size_bytes / (1024**2)
 
             # muon_owner_partition_mb when it is set
-            buffer_size_mb = getattr(self, "_owner_partition_mb", None) or (
+            buffer_size_mb = self._owner_partition_mb or (
                 self.comm_buffer_size_MB
                 if self.comm_buffer_size_MB > 0
                 else 256
@@ -975,7 +975,7 @@ class MixedShardingOptimizer:
             # reduced, so comm buffer sizes stay as they are.
             total_size_mb = bucket["numel"] * 4 / (1024**2)
             # muon_owner_partition_mb when it is set
-            buffer_size_mb = getattr(self, "_owner_partition_mb", None) or (
+            buffer_size_mb = self._owner_partition_mb or (
                 self.comm_buffer_size_MB
                 if self.comm_buffer_size_MB > 0
                 else 256
@@ -1348,7 +1348,7 @@ class MixedShardingOptimizer:
             paddle.device.synchronize()
 
         with framework.no_grad():
-            if getattr(self, "_gin_scheduler", None) is not None:
+            if self._gin_scheduler is not None:
                 # Report the buckets not reported in the backward pass (2D
                 # and 1D), wait for the step, then reset the buckets. A bucket
                 # the scheduler did not take over runs its own collective in
@@ -1787,7 +1787,7 @@ class MixedShardingOptimizer:
                     task.wait()
 
             # --- 1D params: all-gather via comm buffers ---
-            if getattr(self, "_param_allgather_fuse_mb", 0) > 0:
+            if self._param_allgather_fuse_mb > 0:
                 # one all_gather per (group, dtype) batch of at most
                 # param_allgather_fuse_mb; unset = sync_params per bucket
                 fused_all_gather(

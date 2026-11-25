@@ -216,9 +216,9 @@ def _split_buckets(buckets, act, world, moe_group, sync_ids, where):
     """Splits buckets into (expert, dense) by the group each one reduces over: the moe_sharding group (expert) or
     the sharding group (dense). What a bucket holds does not matter, only its group does: with an expert parallel
     size of 1 a sub-model's experts are reduced over the sharding group like any other parameter, and a bucket may
-    mix both kinds. A bucket the scheduler cannot take over keeps its own collective (_fallback_reason, logged
-    once), including one in a group of its own from its parameters' color["group"], for which there is no window.
-    Raises only on a bucket that cannot be left alone either (_reject_reason)."""
+    mix both kinds. A bucket the scheduler cannot take over keeps its own collective (_fallback_reason, logged once
+    per sharding group), including one in a group of its own from its parameters' color["group"], for which there is
+    no window. Raises only on a bucket that cannot be left alone either (_reject_reason)."""
     expert, dense, fallback, unsupported = [], [], [], []
     for bucket in buckets:
         reason = _reject_reason(bucket, act)
@@ -248,11 +248,15 @@ def _split_buckets(buckets, act, world, moe_group, sync_ids, where):
             f"gin_overlap ({where}): {len(unsupported)}/{len(buckets)} buckets cannot be used with gin_overlap.\n  "
             + "\n  ".join(_by_reason(unsupported))
         )
-    if fallback and dist.get_rank() == 0:
+    # the first rank of this sharding group, not global rank 0: with pipeline parallelism every stage has its own
+    # buckets (the MTP-shared no-hook layer, for instance, is in the last stage only), so a warning from global
+    # rank 0 alone would hide the fallback buckets of every other stage
+    if fallback and world.rank == 0:
         logger.warning(
-            f"[gin_overlap] {where}: {len(fallback)}/{len(buckets)} buckets keep their own reduce_scatter / reduce "
-            "(not overlapped, numerically unchanged).\n  " + "\n  ".join(_by_reason(fallback))
-        )  # fmt: skip
+            f"[gin_overlap] {where} (global rank {dist.get_rank()}): {len(fallback)}/{len(buckets)} buckets keep "
+            "their own reduce_scatter / reduce (not overlapped, numerically unchanged).\n  "
+            + "\n  ".join(_by_reason(fallback))
+        )
     return expert, dense
 
 
@@ -875,9 +879,11 @@ def _select_v2(opt, world, moe_group, where):
     return expert, dense, [], []
 
 
-def _select_muon(opt, world, moe_group, where):
-    """MuonShardingOptimizer and MixedShardingOptimizer: 1D buckets (reduce_scatter) and 2D buckets (reduce to the
-    owner), the same attributes on both."""
+def _select_1d_2d(opt, world, moe_group, where):
+    """The optimizers with both kinds of bucket, MuonShardingOptimizer and MixedShardingOptimizer: 1D buckets
+    (reduce_scatter) in _comm_buffer_list and 2D buckets (reduce to the owner) in comm_buffer_2d, under the same
+    attribute names on both. build_grad_comm_scheduler checks the type, so a new optimizer does not reach this by
+    accident."""
     if not opt._use_fuse_gradients:
         raise RuntimeError(
             f"gin_overlap ({where}) needs comm_buffer_size_MB > 0: 2D parameters must be in fused buckets"
@@ -939,6 +945,12 @@ def build_grad_comm_scheduler(opt):
     from paddle.distributed.fleet.meta_optimizers.dygraph_optimizer.dygraph_sharding_optimizer import (
         DygraphShardingOptimizerV2,
     )
+    from paddle.distributed.fleet.meta_optimizers.mixed_sharding_optimizer import (
+        MixedShardingOptimizer,
+    )
+    from paddle.distributed.fleet.meta_optimizers.muon_sharding_optimizer import (
+        MuonShardingOptimizer,
+    )
 
     if _LIB is None:
         raise RuntimeError(
@@ -951,6 +963,16 @@ def build_grad_comm_scheduler(opt):
         )
     is_v2 = isinstance(opt, DygraphShardingOptimizerV2)
     where = type(opt).__name__
+    # the two shapes of optimizer state the scheduler knows, named explicitly: everything else would silently be
+    # read as if it were a Muon / Mixed optimizer
+    if not is_v2 and not isinstance(
+        opt, (MuonShardingOptimizer, MixedShardingOptimizer)
+    ):
+        raise RuntimeError(
+            f"gin_overlap: {where} is not supported; it takes over the gradient buckets of "
+            "DygraphShardingOptimizerV2 (sharding stage1 with split_param), MuonShardingOptimizer or "
+            "MixedShardingOptimizer"
+        )
     _check_compat(opt, where)
     cfg = _sharding_configs()
     if not cfg.gin_overlap_timeout > 0:
@@ -979,7 +1001,7 @@ def build_grad_comm_scheduler(opt):
         if hasattr(hcg, "get_moe_sharding_parallel_group")
         else None
     )
-    select = _select_v2 if is_v2 else _select_muon
+    select = _select_v2 if is_v2 else _select_1d_2d
     expert, dense, expert_2d, dense_2d = select(opt, world, moe_group, where)
     if not dense:
         raise RuntimeError(
@@ -1082,7 +1104,7 @@ def build_grad_comm_scheduler(opt):
     layout.log(windows)
     if gather and dist.get_rank() == 0:
         logger.info(
-            f"[gin_overlap] init: {len(gather)} Muon 2D buckets gathered to their owners (dense {len(dense_2d)} / "
+            f"[gin_overlap] init: {len(gather)} 2D buckets gathered to their owners (dense {len(dense_2d)} / "
             f"expert {len(expert_2d)})"
         )
     scheduler = new_scheduler
