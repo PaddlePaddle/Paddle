@@ -28,12 +28,16 @@
 namespace paddle {
 namespace pybind {
 
-// Capture the current Python call stack (innermost frame first) and return an
-// interned, deduplicated opaque id (0 == nothing captured). CALLER MUST HOLD
-// THE GIL. Cheap no-op (a single relaxed atomic read) when recording or stack
-// capture is disabled. Called from the eager python_c wrappers just before
-// PyEval_SaveThread releases the GIL.
-uint64_t CaptureCurrentPyStack();
+struct MemStackCapture {
+  bool active;
+  uint64_t stack_id;
+};
+
+// Capture the current Python call stack (innermost frame first). `active`
+// reports whether memory history was enabled at the call site, while stack_id
+// is 0 when stack capture is disabled or no stack was captured. CALLER MUST
+// HOLD THE GIL. Called just before PyEval_SaveThread releases the GIL.
+MemStackCapture CaptureCurrentPyStack();
 
 // Resolve a previously captured stack_id into a list of frame dicts
 // ``{filename, name, line}`` (innermost first). Empty list for id 0 or unknown.

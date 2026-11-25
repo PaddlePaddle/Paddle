@@ -109,12 +109,11 @@ inline uint64_t CurrentMemStackId() {
 }
 
 // RAII guard pushed at op-dispatch / PyLayer entry (while the GIL is held).
-// Pushes only when recording is enabled (captured at construction so push/pop
-// stay balanced even if recording is toggled mid-op); zero-overhead (one
-// relaxed atomic load) when disabled. Mirrors MemLabelGuard.
+// `active` is the recording-state snapshot taken during stack capture, keeping
+// push/pop balanced if recording is toggled mid-op without reading it twice.
 class MemStackGuard {
  public:
-  explicit MemStackGuard(uint64_t stack_id) : active_(MemHistoryEnabled()) {
+  MemStackGuard(bool active, uint64_t stack_id) : active_(active) {
     if (active_) MemStackIdStack().push_back(stack_id);
   }
   ~MemStackGuard() {

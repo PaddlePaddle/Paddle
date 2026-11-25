@@ -115,7 +115,9 @@ static PyObject * %s(PyObject *self, PyObject *args, PyObject *kwargs)
     %s
     framework::AttributeMap attrs;
     ConstructAttrMapFromPyArgs("%s", args, %d, PyTuple_GET_SIZE(args) , attrs);
-    paddle::memory::MemStackGuard __mem_stack_guard(paddle::pybind::CaptureCurrentPyStack());
+    const auto __mem_stack_capture = paddle::pybind::CaptureCurrentPyStack();
+    paddle::memory::MemStackGuard __mem_stack_guard(
+        __mem_stack_capture.active, __mem_stack_capture.stack_id);
     tstate = PyEval_SaveThread();
     %s
     PyEval_RestoreThread(tstate);
