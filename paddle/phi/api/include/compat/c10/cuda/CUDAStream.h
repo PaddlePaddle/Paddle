@@ -38,8 +38,6 @@ class CUDAStream {
  public:
   enum Unchecked { UNCHECKED };
 
-  CUDAStream() = delete;
-
   explicit CUDAStream(Stream stream) : stream_(stream) {
     TORCH_CHECK(stream_.device_type() == DeviceType::CUDA);
   }
