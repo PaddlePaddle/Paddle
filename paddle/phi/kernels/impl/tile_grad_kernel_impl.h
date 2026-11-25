@@ -51,37 +51,22 @@ void TileGradKernel(const Context& dev_ctx,
       static_cast<int>(repeat_times_data.size()) - x_rank;
 
   // Same as torch: grad_size holds [repeat_i, x_dims[i]] if repeat_i != 1,
-  // else x_dims[i].
+  // else x_dims[i]; sum_dims are the positions of the repeat_i.
   std::vector<int64_t> grad_size;
-  std::vector<bool> is_repeat;
-  bool has_repeat = false;
+  std::vector<int64_t> sum_dims;
   for (int i = 0; i < x_rank; ++i) {
     const int64_t repeat = repeat_times_data[i + num_unsqueezed];
     if (repeat != 1) {
       grad_size.push_back(repeat);
-      is_repeat.push_back(true);
-      has_repeat = true;
+      sum_dims.push_back(static_cast<int64_t>(grad_size.size()) - 1);
     }
     grad_size.push_back(x_dims[i]);
-    is_repeat.push_back(false);
   }
 
-  // A leading dim with repeat 1 has size 1: drop it with a reshape instead of
-  // a sum, so that each sum over dim 0 below lands on a real repeat dim.
   DenseTensor cur = out_grad;
-  std::vector<int64_t> cur_shape;
-  int num_lead_sums = 0;
-  for (int i = 0; i < cur.dims().size(); ++i) {
-    if (i < num_unsqueezed && repeat_times_data[i] == 1) {
-      continue;
-    }
-    num_lead_sums += i < num_unsqueezed;
-    cur_shape.push_back(cur.dims()[i]);
-  }
-  cur.Resize(make_ddim(cur_shape));
-  for (int i = 0; i < num_lead_sums; ++i) {
+  for (int i = 0; i < num_unsqueezed; ++i) {
     // When nothing is left to reduce, the last sum writes x_grad directly.
-    const bool last = i == num_lead_sums - 1 && !has_repeat;
+    const bool last = i == num_unsqueezed - 1 && sum_dims.empty();
     const auto shape = common::vectorize<int64_t>(cur.dims());
     DenseTensor next;
     DenseTensor* out = last ? x_grad : &next;
@@ -96,15 +81,13 @@ void TileGradKernel(const Context& dev_ctx,
                                      dev_ctx.template Alloc<T>(out),
                                      out->numel());
 #endif
-    if (!last) {
-      cur = next;
-      continue;
+    if (last) {
+      return;
     }
-    x_grad->Resize(x_dims);
-    return;
+    cur = next;
   }
 
-  if (!has_repeat) {
+  if (sum_dims.empty()) {
     dev_ctx.template Alloc<T>(x_grad);
     Copy(dev_ctx, cur, dev_ctx.GetPlace(), false, x_grad);
     // TensorCopy may change the dims of dx
@@ -116,21 +99,9 @@ void TileGradKernel(const Context& dev_ctx,
   // reach 2 * rank(x) = 14 dims, more than a DDim holds, so it is passed as a
   // shape vector on both CPU and GPU.
 #if defined(__NVCC__) || defined(__HIPCC__)
-  std::vector<int> reduce_dims;
-  for (size_t d = 0; d < grad_size.size(); ++d) {
-    if (is_repeat[d]) {
-      reduce_dims.push_back(static_cast<int>(d));
-    }
-  }
   funcs::ReduceSumGpuKernelWithShape<T, T>(
-      dev_ctx, cur, x_grad, grad_size, reduce_dims);
+      dev_ctx, cur, x_grad, grad_size, sum_dims);
 #else
-  std::vector<int64_t> sum_dims;
-  for (size_t d = 0; d < grad_size.size(); ++d) {
-    if (is_repeat[d]) {
-      sum_dims.push_back(static_cast<int64_t>(d));
-    }
-  }
   funcs::ReduceGradTermsCascade<T>(cur.data<T>(),
                                    grad_size,
                                    sum_dims,

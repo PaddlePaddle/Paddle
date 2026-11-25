@@ -17,7 +17,6 @@
 #include <bitset>
 #include <limits>
 #include <set>
-#include <utility>
 
 #include "paddle/common/enforce.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
@@ -137,23 +136,6 @@ inline std::bitset<64> MakeDimMask(std::vector<int> opt_dims,
 
   // Otherwise, use the dimensions specified in opt_dims.
   return DimListToBitset(opt_dims, ndim);
-}
-
-// Shape and contiguous strides of the reduce output over `src_shape`, with the
-// dims in `mask` kept as size 1. An empty mask gives the strides of the
-// contiguous input itself.
-inline std::pair<std::vector<int64_t>, std::vector<int64_t>> ReduceResultView(
-    const std::vector<int64_t>& src_shape, std::bitset<64> mask) {
-  const int ndim = static_cast<int>(src_shape.size());
-  std::vector<int64_t> shape(ndim);
-  std::vector<int64_t> stride(ndim);
-  int64_t cal_stride = 1;
-  for (int dim = ndim - 1; dim >= 0; dim--) {
-    shape[dim] = mask[dim] ? 1 : src_shape[dim];
-    stride[dim] = cal_stride;
-    cal_stride *= shape[dim];
-  }
-  return {shape, stride};
 }
 
 inline DenseTensor ReviewReduceResult(const DenseTensor& src,
@@ -1485,7 +1467,8 @@ void ReduceGpuKernel(const KPDevice& dev_ctx,
   return;
 }
 
-// Sums the contiguous `x`, read as `x_shape`, over `reduce_dims` into `y`.
+// Sums the contiguous non-empty `x`, read as `x_shape`, over the non-negative
+// `reduce_dims` into `y`.
 // ReduceGpuKernel views `x` through its DDim; `x_shape` here may have more
 // dims than DDim::kMaxRank, e.g. tile_grad's [repeat_i, x_i] view.
 template <typename Tx, typename Ty>
@@ -1493,19 +1476,13 @@ void ReduceSumGpuKernelWithShape(const KPDevice& dev_ctx,
                                  const phi::DenseTensor& x,
                                  phi::DenseTensor* y,
                                  const std::vector<int64_t>& x_shape,
-                                 const std::vector<int>& reduce_dims) {
+                                 const std::vector<int64_t>& reduce_dims) {
   dev_ctx.Alloc<Ty>(y);
-  if (x.numel() == 0) {
-    return;
+  std::vector<int64_t> out_shape = x_shape;
+  for (int64_t d : reduce_dims) {
+    out_shape[d] = 1;
   }
-
-  const int64_t ndim = static_cast<int64_t>(x_shape.size());
-  auto mask = MakeDimMask(ConvertToPositiveDims(reduce_dims, ndim), ndim);
-  auto [out_shape, out_stride] = ReduceResultView(x_shape, mask);
-  auto x_stride = ReduceResultView(x_shape, std::bitset<64>()).second;
-
-  DenseTensorIterator iter(
-      ReduceViewIterator(*y, out_shape, out_stride, x, x_shape, x_stride));
+  DenseTensorIterator iter(ReduceViewIterator(*y, out_shape, x, x_shape));
 
   using MPType = typename MPTypeTrait<Ty>::Type;
   using SumOp = kps::SumOps<Tx, MPType, Ty>;

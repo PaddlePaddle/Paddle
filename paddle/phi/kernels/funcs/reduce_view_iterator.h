@@ -22,9 +22,9 @@
 namespace phi {
 
 /**
- * ReduceViewIterator: reduction iterator over one output and one input whose
- * shape and strides (in elements) are given as vectors instead of read from
- * the tensors' DDim, so the view may have more dims than DDim::kMaxRank.
+ * ReduceViewIterator: reduction iterator over one contiguous output and one
+ * contiguous input whose shapes are given as vectors instead of read from the
+ * tensors' DDim, so the view may have more dims than DDim::kMaxRank.
  *
  * `out_shape` has 1 at the reduced dims. The result equals what
  * DenseTensorIteratorConfig::is_reduction(true).build() gives for tensors of
@@ -33,15 +33,13 @@ namespace phi {
 struct ReduceViewIterator : public DenseTensorIteratorBase {
   ReduceViewIterator(const DenseTensor& out,
                      const std::vector<int64_t>& out_shape,
-                     const std::vector<int64_t>& out_strides,
                      const DenseTensor& in,
-                     const std::vector<int64_t>& in_shape,
-                     const std::vector<int64_t>& in_strides) {
+                     const std::vector<int64_t>& in_shape) {
     is_reduction_ = true;
     num_outputs_ = 1;
     shape_ = in_shape;
-    AddOperand(out, out_shape, out_strides, /*is_output=*/true);
-    AddOperand(in, in_shape, in_strides, /*is_output=*/false);
+    AddOperand(out, out_shape, /*is_output=*/true);
+    AddOperand(in, in_shape, /*is_output=*/false);
     reorder_dimensions();
     coalesce_dimensions();
     view_offsets_.assign(std::max(ndim(), 1), 0);
@@ -50,17 +48,16 @@ struct ReduceViewIterator : public DenseTensorIteratorBase {
  private:
   void AddOperand(const DenseTensor& t,
                   const std::vector<int64_t>& shape,
-                  const std::vector<int64_t>& strides,
                   bool is_output) {
     auto& op = operands_.emplace_back(const_cast<DenseTensor*>(&t));
     op.is_output = is_output;
     op.data = const_cast<void*>(t.data());
-    const int64_t elem_size = static_cast<int64_t>(phi::SizeOf(t.dtype()));
     op.stride_bytes.resize(ndim());
-    for (int i = 0; i < ndim(); ++i) {
+    int64_t stride = static_cast<int64_t>(phi::SizeOf(t.dtype()));
+    for (int i = ndim() - 1; i >= 0; --i) {
       // Broadcast dims read the same element, as in compute_strides.
-      op.stride_bytes[i] =
-          (shape[i] == 1 && shape_[i] != 1) ? 0 : strides[i] * elem_size;
+      op.stride_bytes[i] = (shape[i] == 1 && shape_[i] != 1) ? 0 : stride;
+      stride *= shape[i];
     }
   }
 };
