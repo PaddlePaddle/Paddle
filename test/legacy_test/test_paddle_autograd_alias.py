@@ -49,6 +49,36 @@ class TestSavedTensorAlias(TestAlias):
         self.functionObject = paddle.autograd.function.FunctionCtx.saved_tensor
 
 
+class TestEnableGradAlias(TestAlias):
+    def setUp(self):
+        self.autogradObject = paddle.autograd.enable_grad
+        self.functionObject = paddle.enable_grad
+
+    def test_public_api(self):
+        self.assertIn('enable_grad', paddle.autograd.__all__)
+
+    def test_context_manager(self):
+        x = paddle.to_tensor([1.0], stop_gradient=False)
+        with paddle.no_grad():
+            y = x * 2
+            with paddle.autograd.enable_grad():
+                z = x * 2
+
+        self.assertTrue(y.stop_gradient)
+        self.assertFalse(z.stop_gradient)
+
+    def test_decorator(self):
+        @paddle.autograd.enable_grad()
+        def double(x):
+            return x * 2
+
+        x = paddle.to_tensor([1.0], stop_gradient=False)
+        with paddle.no_grad():
+            y = double(x)
+
+        self.assertFalse(y.stop_gradient)
+
+
 class TestSetMaterializeGradsAlias(TestAlias):
     def setUp(self):
         self.autogradObject = (
