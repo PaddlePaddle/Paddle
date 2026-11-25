@@ -21,7 +21,10 @@
 #include "paddle/phi/kernels/fft_grad_kernel.h"
 
 #include "paddle/common/ddim.h"
+#include "paddle/phi/backends/context_pool.h"
+#include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/common/data_type.h"
+#include "paddle/phi/common/place.h"
 #include "paddle/phi/core/tensor_meta.h"
 #include "paddle/phi/kernels/complex_kernel.h"
 #include "paddle/phi/kernels/empty_kernel.h"
@@ -30,6 +33,18 @@
 #include "paddle/phi/kernels/pad_kernel.h"
 
 namespace phi {
+
+// XPU FFT requires all signal dimensions > 8. The XPU cuFFT library
+// crashes with heap corruption for smaller dimensions, so we fall
+// back to CPU for those cases.
+static bool NeedsCpuFallback(const DDim& dims,
+                             const std::vector<int64_t>& axes) {
+  for (auto axis : axes) {
+    if (dims[axis] <= 8) return true;
+  }
+  return false;
+}
+
 template <typename T, typename Context>
 void FFTC2CGradKernel(const Context& dev_ctx,
                       const DenseTensor& out_grad,
@@ -42,6 +57,29 @@ void FFTC2CGradKernel(const Context& dev_ctx,
     return;
   }
   auto norm_type = funcs::get_norm_from_string(normalization, forward);
+
+  if (NeedsCpuFallback(out_grad.dims(), axes)) {
+    auto cpu_place = CPUPlace();
+    phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
+    auto* cpu_ctx = static_cast<CPUContext*>(pool.Get(cpu_place));
+
+    DenseTensor out_grad_cpu;
+    out_grad_cpu.Resize(out_grad.dims());
+    cpu_ctx->template Alloc<T>(&out_grad_cpu);
+    Copy(dev_ctx, out_grad, cpu_place, false, &out_grad_cpu);
+    x_grad->Resize(x_grad->dims());
+    DenseTensor x_grad_cpu;
+    x_grad_cpu.Resize(x_grad->dims());
+    cpu_ctx->template Alloc<T>(&x_grad_cpu);
+
+    funcs::FFTC2CFunctor<CPUContext, T, T> fft_c2c_func;
+    fft_c2c_func(
+        *cpu_ctx, out_grad_cpu, &x_grad_cpu, axes, norm_type, !forward);
+
+    Copy(dev_ctx, x_grad_cpu, dev_ctx.GetPlace(), false, x_grad);
+    return;
+  }
+
   funcs::FFTC2CFunctor<Context, T, T> fft_c2c_func;
   fft_c2c_func(dev_ctx, out_grad, x_grad, axes, norm_type, !forward);
 }
@@ -62,6 +100,55 @@ void FFTR2CGradKernel(const Context& dev_ctx,
     return;
   }
   auto norm_type = funcs::get_norm_from_string(normalization, forward);
+
+  if (NeedsCpuFallback(out_grad.dims(), axes)) {
+    auto cpu_place = CPUPlace();
+    phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
+    auto* cpu_ctx = static_cast<CPUContext*>(pool.Get(cpu_place));
+
+    // out_grad is the upstream gradient (complex64). Copy it to CPU.
+    DenseTensor out_grad_cpu;
+    out_grad_cpu.Resize(out_grad.dims());
+    cpu_ctx->template Alloc<T>(&out_grad_cpu);
+    Copy(dev_ctx, out_grad, cpu_place, false, &out_grad_cpu);
+
+    // Derive shapes from x_grad rather than from x
+    // (x may not have memory allocated in the backward context).
+    DenseTensor complex_x_grad_cpu =
+        EmptyLike<T>(*cpu_ctx, *x_grad);
+    x_grad->Resize(x_grad->dims());
+    DenseTensor x_grad_cpu;
+    x_grad_cpu.Resize(x_grad->dims());
+    cpu_ctx->template Alloc<R>(&x_grad_cpu);
+
+    funcs::FFTC2CFunctor<CPUContext, T, T> fft_c2c_func;
+
+    if (!onesided) {
+      fft_c2c_func(
+          *cpu_ctx, out_grad_cpu, &complex_x_grad_cpu, axes, norm_type, !forward);
+    } else {
+      DenseTensor full_dy_cpu;
+      DenseTensorMeta full_dy_meta(out_grad_cpu.type(), x_grad_cpu.dims());
+      full_dy_cpu.set_meta(full_dy_meta);
+      auto zero_length = static_cast<int>(full_dy_cpu.dims().at(axes.back()) -
+                                          out_grad_cpu.dims().at(axes.back()));
+      auto rank = out_grad_cpu.dims().size();
+      std::vector<int> pads(rank * 2, 0);
+      pads[axes.back() * 2 + 1] = zero_length;
+      PadKernel<T>(*cpu_ctx,
+                   out_grad_cpu,
+                   pads,
+                   static_cast<float>(0.0),
+                   &full_dy_cpu);
+      fft_c2c_func(
+          *cpu_ctx, full_dy_cpu, &complex_x_grad_cpu, axes, norm_type, !forward);
+    }
+    RealKernel<T>(*cpu_ctx, complex_x_grad_cpu, &x_grad_cpu);
+
+    Copy(dev_ctx, x_grad_cpu, dev_ctx.GetPlace(), false, x_grad);
+    return;
+  }
+
   funcs::FFTC2CFunctor<Context, T, T> fft_c2c_func;
 
   if (!onesided) {
