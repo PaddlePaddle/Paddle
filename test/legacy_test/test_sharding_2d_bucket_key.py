@@ -279,6 +279,9 @@ class TestMachineBalancedBuckets(unittest.TestCase):
                 opt = _bare_optimizer(
                     cls,
                     comm_buffer_size_MB=0,
+                    # muon_owner_partition_mb unset: the partition uses
+                    # comm_buffer_size_MB, as __init__ leaves it
+                    _owner_partition_mb=None,
                     _global_rank=1,
                     _params_2d_by_color=buckets,
                 )
