@@ -93,7 +93,7 @@ class TestTensorInplaceOperators(unittest.TestCase):
     def test_leaf_requiring_grad_raises(self):
         x = paddle.ones([2, 2])
         x.stop_gradient = False
-        with self.assertRaises(Exception):
+        with self.assertRaises(ValueError):
             x += 1.0
 
     def test_non_leaf_requiring_grad(self):

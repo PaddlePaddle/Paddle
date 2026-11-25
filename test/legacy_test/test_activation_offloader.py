@@ -86,10 +86,10 @@ class TestMain(unittest.TestCase):
         enable_activation_offload(model, enable=True, retry_times=1000)
         x = paddle.randn([10])
         x.stop_gradient = False
-        x += 1
+        x = x + 1
         paddle.nn.functional.relu_(x)
         y = x[3:5]
-        y *= y
+        y = y * y
 
         z = paddle.randn([10, 10])
         model(z)

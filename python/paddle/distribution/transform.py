@@ -593,7 +593,7 @@ class ChainTransform(Transform):
         value = 0.0
         event_rank = self._domain.event_rank
         for t in self.transforms:
-            value += self._sum_rightmost(
+            value = value + self._sum_rightmost(
                 t.forward_log_det_jacobian(x), event_rank - t._domain.event_rank
             )
             x = t.forward(x)
