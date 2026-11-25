@@ -527,7 +527,7 @@ XPUOpMap& get_kl3_ops() {
       {"matmul_v2", XPUKernelSet({FLOAT32, BFLOAT16, FLOAT16})},
       {"matmul", XPUKernelSet({FLOAT32, BFLOAT16, FLOAT16})},
       {"batched_gemm", XPUKernelSet({FLOAT32, BFLOAT16})},
-      {"mean_grad", XPUKernelSet({FLOAT32, FLOAT16, BFLOAT16})},
+      {"mean_grad", XPUKernelSet({FLOAT32, FLOAT16, BFLOAT16, INT32, INT64})},
       {"mean", XPUKernelSet({FLOAT32, FLOAT16, BFLOAT16})},
       {"merged_momentum", XPUKernelSet({FLOAT32, FLOAT16})},
       {"momentum", XPUKernelSet({FLOAT32, FLOAT16})},
