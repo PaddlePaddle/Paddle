@@ -55,6 +55,19 @@ static void GetReduceDims(const DDim& xdims,
   }
 }
 
+inline bool UseFloatReduceForFloat64Sum(const SumFunctor*,
+                                        DataType out_dtype,
+                                        DataType x_dtype) {
+  return out_dtype == DataType::FLOAT64 && x_dtype == DataType::FLOAT32;
+}
+
+template <typename Functor>
+inline bool UseFloatReduceForFloat64Sum(const Functor*,
+                                        DataType out_dtype,
+                                        DataType x_dtype) {
+  return false;
+}
+
 template <typename Context, typename T>
 int XPUReduce(const Context& dev_ctx,
               const DenseTensor& x,
@@ -145,15 +158,32 @@ void XPUReduce(const Context& dev_ctx,
                                     dev_ctx, x, out, xdims, reduce_dims);
                               }));
   } else {
-    // cast x tensor to out_dtype
-    auto tmp_tensor = Cast<T, Context>(dev_ctx, x, out_dtype);
+    DataType reduce_dtype = out_dtype;
+    Functor func;
+    if (UseFloatReduceForFloat64Sum(&func, out_dtype, x.dtype())) {
+      reduce_dtype = DataType::FLOAT32;
+    }
+
+    // cast x tensor to reduce_dtype
+    auto tmp_tensor = Cast<T, Context>(dev_ctx, x, reduce_dtype);
+
+    DenseTensor reduce_out;
+    DenseTensor* reduce_out_ptr = out;
+    if (reduce_dtype != out_dtype) {
+      reduce_out.Resize(out->dims());
+      reduce_out_ptr = &reduce_out;
+    }
 
     // do reduce sum
     PD_VISIT_XPU_REDUCE_TYPES(
-        out_dtype, "ReduceKernelImpl", ([&] {
+        reduce_dtype, "ReduceKernelImpl", ([&] {
           ReduceKernelImpl<Context, T, data_t, Functor>(
-              dev_ctx, tmp_tensor, out, xdims, reduce_dims);
+              dev_ctx, tmp_tensor, reduce_out_ptr, xdims, reduce_dims);
         }));
+
+    if (reduce_dtype != out_dtype) {
+      *out = Cast<float, Context>(dev_ctx, reduce_out, out_dtype);
+    }
 
     if (dev_ctx.x_context()->xpu_stream) {
       dev_ctx.Wait();
