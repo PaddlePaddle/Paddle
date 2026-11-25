@@ -93,8 +93,12 @@ void ExpandAsKernel(const Context& dev_ctx,
     dev_ctx.template Alloc<T>(out);
     return;
   }
+  std::vector<int64_t> real_target_shape = target_shape;
+  if (y.get_ptr()) {
+    real_target_shape = vectorize<int64_t>(y.get_ptr()->dims());
+  }
   auto rank = x.dims().size();
-  auto target_rank = target_shape.size();
+  auto target_rank = real_target_shape.size();
   PADDLE_ENFORCE_GE(target_rank,
                     rank,
                     common::errors::InvalidArgument(
@@ -116,7 +120,7 @@ void ExpandAsKernel(const Context& dev_ctx,
                         "expand_as_v2 op must be less than or equal to %d.",
                         target_rank,
                         MAX_RANK_SUPPORTED));
-  ExpandAs<Context, T>(dev_ctx, x, target_shape, out);
+  ExpandAs<Context, T>(dev_ctx, x, real_target_shape, out);
 }
 }  // namespace phi
 
