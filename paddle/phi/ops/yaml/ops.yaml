@@ -2988,8 +2988,6 @@
     func : index_select
     data_type : x
   backward : index_select_grad
-  data_transform :
-    skip_transform : index
   interfaces : paddle::dialect::InferSymbolicShapeInterface, paddle::dialect::LayoutTransformationInterface
 
 - op : index_select_strided
