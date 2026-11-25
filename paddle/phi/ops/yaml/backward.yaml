@@ -749,6 +749,7 @@
     param: [x]
   kernel :
     func : cumprod_grad
+    data_type : out_grad
   composite: cumprod_grad(x, out, out_grad, dim, exclusive, reverse, x_grad)
 
 - backward_op : cumsum_grad
