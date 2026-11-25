@@ -591,6 +591,11 @@ class FusedCommBuffer:
         if not self._release_grads:
             self._record_addr()
 
+        # GinGradCommScheduler that owns this bucket (gin_overlap), set by
+        # build_grad_comm_scheduler; None for the collective path.
+        self._gin_scheduler = None
+        self._gin_reported = False
+
     def _refresh_param_buffer_ipc_meta(self):
         meta_tensor = self._param_buffer_meta_tensor
         if meta_tensor is None:
@@ -802,6 +807,15 @@ class FusedCommBuffer:
             if self._use_reduce_avg
             else paddle.distributed.ReduceOp.SUM
         )
+        # A bucket owned by the gin_overlap scheduler is reported to it
+        # instead of calling a collective (once per step).
+        if self._gin_scheduler is not None:
+            from paddle.distributed.communication.gin_overlap.grad_comm_scheduler import (
+                bucket_ready,
+            )
+
+            bucket_ready(self, reduce_op)
+            return
         # scale will be skipped when reduce_avg comm operation is enabled.
         if not self._scale_after_comm and not self._use_reduce_avg:
             scale_factor = 1.0 / self._comm_group.nranks
@@ -859,6 +873,19 @@ class FusedCommBuffer:
 
     @imperative_base.no_grad
     def scale_grads(self):
+        if self._gin_scheduler is not None:
+            # GinGradCommScheduler.FinishStep() already waited for the
+            # bucket; only the post-communication scaling of a SUM reduce is
+            # left.
+            if (
+                self.need_reduce_scale_sync()
+                and self._scale_after_comm
+                and not self._use_reduce_avg
+            ):
+                self.grad_storage.scale_(1.0 / self._comm_group.nranks)
+            self._gin_reported = False
+            self._reset_params_checked_in()
+            return
         if self.need_reduce_scale_sync():
             if self._comm_group.nranks == 1 and self._task is None:
                 self._reset_params_checked_in()
@@ -1149,6 +1176,75 @@ def fused_parameters(
         )
 
         return decay_fused, all_fused, all_buffers
+
+
+def fused_all_gather(buckets, fuse_mb):
+    """Parameter all_gather of the REDUCE_SCATTER buckets, fused per (communication group, dtype): this rank's
+    shards of a batch of buckets are concatenated, sent with one process_group.all_gather and split back into each
+    bucket's param_storage (the same data as FusedCommBuffer.sync_params of each bucket). A batch holds at most
+    fuse_mb MB (sharding_configs.param_allgather_fuse_mb; the sharding optimizers call this only when it is
+    positive), and at least one bucket.
+    param_storage of a bucket is [rank 0 part, rank 1 part, ...], so a bucket with part_numel elements per part
+    takes columns [column, column + part_numel) of each row of recv[nranks, total] and row r goes to
+    param_storage[r * part_numel, (r + 1) * part_numel)."""
+    limit = fuse_mb * 2**20
+    groups = {}
+    for b in buckets:
+        if (
+            not b.need_reduce_scale_sync()
+            or b._act != HOOK_ACTION.REDUCE_SCATTER
+            or b._comm_group.nranks <= 1
+        ):
+            continue
+        groups.setdefault(
+            (b._comm_group.id, str(b.param_storage.dtype)), []
+        ).append(b)
+    for group_buckets in groups.values():
+        group = group_buckets[0]._comm_group
+        nranks, rank = group.nranks, max(group.rank, 0)
+        chunk, nbytes = [], 0
+        for b in [*group_buckets, None]:
+            if b is not None:
+                bucket_bytes = (
+                    b.param_storage._numel() * b.param_storage.element_size()
+                )
+                if not chunk or nbytes + bucket_bytes <= limit:
+                    chunk.append(b)
+                    nbytes += bucket_bytes
+                    continue
+            _all_gather_chunk(chunk, group, nranks, rank)
+            if b is None:
+                break
+            chunk, nbytes = [b], bucket_bytes
+
+
+def _all_gather_chunk(chunk, group, nranks, rank):
+    part_numels = [b.param_storage._numel() // nranks for b in chunk]
+    for b, part_numel in zip(chunk, part_numels):
+        if b.param_storage._numel() != nranks * part_numel:
+            raise RuntimeError(
+                f"fused_all_gather: param_storage of the bucket of {b._params[0].name} has {b.param_storage._numel()} "
+                f"elements, not a multiple of the group size {nranks}"
+            )
+    send = paddle.concat(
+        [
+            b.param_storage._slice(part_numel * rank, part_numel * (rank + 1))
+            for b, part_numel in zip(chunk, part_numels)
+        ]
+    )
+    total = send._numel()
+    recv = paddle.empty([nranks * total], dtype=send.dtype)
+    group.process_group.all_gather(send, recv).wait()
+    column = 0
+    for b, part_numel in zip(chunk, part_numels):
+        if part_numel:
+            for src_rank in range(nranks):
+                row = src_rank * total + column
+                b.param_storage._slice(
+                    src_rank * part_numel, (src_rank + 1) * part_numel
+                ).copy_(recv._slice(row, row + part_numel), False)
+        column += part_numel
+    del send, recv
 
 
 # Copy parameter attributes, including ones attached from outside.
