@@ -64,8 +64,32 @@ void DeformableConvKernel(const Context& dev_ctx,
   const T* input_ptr = x.data<T>();
   const T* filter_ptr = filter.data<T>();
   const float* offset_ptr = offset.data<T>();
-  const float* mask_ptr = mask ? mask->data<T>() : nullptr;
   T* output_prt = out->data<T>();
+
+  int64_t output_dim =
+      output_shape_vec[1] * output_shape_vec[2] * output_shape_vec[3];
+  std::vector<int64_t> ksize{filter.dims()[2], filter.dims()[3]};
+
+  DenseTensor effective_mask;
+  const T* mask_ptr = nullptr;
+  int64_t input_mask_dim = 0;
+  if (mask) {
+    mask_ptr = mask->data<T>();
+    input_mask_dim = mask->numel() / mask->dims()[0];
+  } else {
+    // Deformable conv v1 has no modulation mask. XDNN expects a valid mask
+    // buffer, so use an all-one effective mask to preserve v1 semantics.
+    effective_mask.Resize({batch_size,
+                           deformable_groups * ksize[0] * ksize[1],
+                           output_shape_vec[2],
+                           output_shape_vec[3]});
+    T* effective_mask_ptr = dev_ctx.template Alloc<T>(&effective_mask);
+    int r_mask = xpu::constant<T>(
+        dev_ctx.x_context(), effective_mask_ptr, effective_mask.numel(), 1);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r_mask, "constant");
+    mask_ptr = effective_mask_ptr;
+    input_mask_dim = effective_mask.numel() / effective_mask.dims()[0];
+  }
 
   // set zeros for d_table_data
   const int zero = 0;
@@ -73,32 +97,56 @@ void DeformableConvKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
   int64_t input_dim = x.numel() / x.dims()[0];
   int64_t input_offset_dim = offset.numel() / offset.dims()[0];
-  int64_t input_mask_dim = mask->numel() / mask->dims()[0];
-  int64_t output_dim =
-      output_shape_vec[1] * output_shape_vec[2] * output_shape_vec[3];
-  std::vector<int64_t> ksize{filter.dims()[2], filter.dims()[3]};
   int64_t n = static_cast<int64_t>(im2col_step);
   int64_t c = x.dims()[1];
   int64_t h = x.dims()[2];
   int64_t w = x.dims()[3];
   int64_t f = filter.dims()[0];
+  std::vector<int64_t> conv_paddings{paddings.begin(), paddings.end()};
+
+  DenseTensor padded_x;
+  const T* conv_input_ptr = input_ptr;
+  int64_t conv_h = h;
+  int64_t conv_w = w;
+  int64_t conv_input_dim = input_dim;
+  // XDNN rejects legal Paddle cases whose symmetric padding is as large as the
+  // kernel. Materialize the zero padding and call XDNN with padding 0 instead;
+  // this keeps the math identical while avoiding XDNN_INVALID_PARAM.
+  if (paddings[0] >= ksize[0] || paddings[1] >= ksize[1]) {
+    conv_h = h + 2 * paddings[0];
+    conv_w = w + 2 * paddings[1];
+    padded_x.Resize({batch_size, c, conv_h, conv_w});
+    T* padded_x_ptr = dev_ctx.template Alloc<T>(&padded_x);
+    int r_pad =
+        xpu::pad<T>(dev_ctx.x_context(),
+                    input_ptr,
+                    padded_x_ptr,
+                    std::vector<int64_t>{batch_size, c, h, w},
+                    std::vector<int64_t>{0, 0, paddings[0], paddings[1]},
+                    std::vector<int64_t>{0, 0, paddings[0], paddings[1]},
+                    static_cast<T>(0));
+    PADDLE_ENFORCE_XDNN_SUCCESS(r_pad, "pad");
+    conv_input_ptr = padded_x_ptr;
+    conv_input_dim = c * conv_h * conv_w;
+    conv_paddings = {0, 0};
+  }
 
   for (int64_t i = 0; i < batch_size / n; ++i) {
     int r = xpu::deformable_conv<float, float, float, int>(
         dev_ctx.x_context(),
-        input_ptr + i * n * input_dim,
+        conv_input_ptr + i * n * conv_input_dim,
         filter_ptr,
         offset_ptr + i * n * input_offset_dim,
         mask_ptr + i * n * input_mask_dim,
         output_prt + i * n * output_dim,
         n,
         c,
-        h,
-        w,
+        conv_h,
+        conv_w,
         f,
         ksize,
         std::vector<int64_t>{strides.begin(), strides.end()},
-        std::vector<int64_t>{paddings.begin(), paddings.end()},
+        conv_paddings,
         std::vector<int64_t>{dilations.begin(), dilations.end()},
         groups,
         deformable_groups,
