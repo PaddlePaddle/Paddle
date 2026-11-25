@@ -244,7 +244,13 @@ struct FFTC2RFunctor<XPUContext, Ti, To> {
                   bool forward) {
     std::vector<int64_t> out_dims = vectorize(out->dims());
 
-    if (detail::use_optimized_fft_path(axes)) {
+    // Decompose multi-dim C2R into C2C + 1D C2R when the last-dim complex
+    // input size is 9 or 10, to work around precision issues in the XPU
+    // FFT library's fused multi-dimension C2R plan for these sizes.
+    bool decompose_for_precision =
+        (axes.size() > 1) &&
+        (x.dims()[axes.back()] == 9 || x.dims()[axes.back()] == 10);
+    if (detail::use_optimized_fft_path(axes) && !decompose_for_precision) {
       DenseTensor x_copy = Assign(dev_ctx, x);
       detail::exec_fft<Ti, To>(dev_ctx, x_copy, out, axes, forward);
     } else {
