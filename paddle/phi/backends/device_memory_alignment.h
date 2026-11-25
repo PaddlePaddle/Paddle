@@ -35,7 +35,7 @@ inline size_t Alignment(size_t size,
     alignment = align_size;
   } else {
     alignment = 1024;
-    if (place.GetType() == phi::AllocationType::CPU) {
+    if (place.GetType() == AllocationType::CPU) {
       alignment = phi::backends::cpu::CpuMinChunkSize();
     } else {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
