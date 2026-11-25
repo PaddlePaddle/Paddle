@@ -16,6 +16,8 @@ limitations under the License. */
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/backends/xpu/xpu_header.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/cast_kernel.h"
+#include "paddle/phi/kernels/complex_kernel.h"
 #include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/xpu/elementwise.h"
 
@@ -63,6 +65,127 @@ void SubtractGradKernel(const Context& dev_ctx,
       dev_ctx, x, y, dout, axis, dx, dy, f, false);
 }
 
+#ifdef PADDLE_WITH_XPU_FFT
+template <>
+void SubtractGradKernel<phi::complex64, XPUContext>(const XPUContext& dev_ctx,
+                                                    const DenseTensor& x,
+                                                    const DenseTensor& y,
+                                                    const DenseTensor& dout,
+                                                    int axis,
+                                                    DenseTensor* dx,
+                                                    DenseTensor* dy) {
+  using T = phi::complex64;
+  const bool compute_dx = (dx != nullptr);
+  const bool compute_dy = (dy != nullptr);
+
+  DenseTensor dout_real = Real<T, XPUContext>(dev_ctx, dout);
+  DenseTensor dout_imag = Imag<T, XPUContext>(dev_ctx, dout);
+
+  if (compute_dx || compute_dy) {
+    DenseTensor dx_real, dx_imag, dy_real, dy_imag;
+    DenseTensor tmp_real, tmp_imag;
+
+    if (compute_dx) {
+      dx_real.Resize(dx->dims());
+      dx_imag.Resize(dx->dims());
+    }
+    if (compute_dy) {
+      dy_real.Resize(dy->dims());
+      dy_imag.Resize(dy->dims());
+    }
+
+    SubtractGradKernel<float, XPUContext>(dev_ctx,
+                                          tmp_real,
+                                          tmp_imag,
+                                          dout_real,
+                                          axis,
+                                          compute_dx ? &dx_real : nullptr,
+                                          compute_dy ? &dy_real : nullptr);
+
+    SubtractGradKernel<float, XPUContext>(dev_ctx,
+                                          tmp_real,
+                                          tmp_imag,
+                                          dout_imag,
+                                          axis,
+                                          compute_dx ? &dx_imag : nullptr,
+                                          compute_dy ? &dy_imag : nullptr);
+
+    if (compute_dx) {
+      dev_ctx.template Alloc<T>(dx);
+      phi::ComplexKernel<float>(dev_ctx, dx_real, dx_imag, dx);
+    }
+    if (compute_dy) {
+      dev_ctx.template Alloc<T>(dy);
+      phi::ComplexKernel<float>(dev_ctx, dy_real, dy_imag, dy);
+    }
+  }
+}
+
+template <>
+void SubtractGradKernel<phi::complex128, XPUContext>(const XPUContext& dev_ctx,
+                                                     const DenseTensor& x,
+                                                     const DenseTensor& y,
+                                                     const DenseTensor& dout,
+                                                     int axis,
+                                                     DenseTensor* dx,
+                                                     DenseTensor* dy) {
+  using T = phi::complex128;
+  const bool compute_dx = (dx != nullptr);
+  const bool compute_dy = (dy != nullptr);
+
+  DenseTensor dout_real = Real<T, XPUContext>(dev_ctx, dout);
+  DenseTensor dout_imag = Imag<T, XPUContext>(dev_ctx, dout);
+
+  // Cast double parts to float since XPU xdnn does not support
+  // broadcast_sub_grad<double>; use float path with type casting.
+  DenseTensor dout_real_f = Cast<float>(dev_ctx, dout_real, DataType::FLOAT32);
+  DenseTensor dout_imag_f = Cast<float>(dev_ctx, dout_imag, DataType::FLOAT32);
+
+  if (compute_dx || compute_dy) {
+    DenseTensor dx_real_f, dx_imag_f, dy_real_f, dy_imag_f;
+    DenseTensor tmp_real, tmp_imag;
+
+    if (compute_dx) {
+      dx_real_f.Resize(dx->dims());
+      dx_imag_f.Resize(dx->dims());
+    }
+    if (compute_dy) {
+      dy_real_f.Resize(dy->dims());
+      dy_imag_f.Resize(dy->dims());
+    }
+
+    SubtractGradKernel<float, XPUContext>(dev_ctx,
+                                          tmp_real,
+                                          tmp_imag,
+                                          dout_real_f,
+                                          axis,
+                                          compute_dx ? &dx_real_f : nullptr,
+                                          compute_dy ? &dy_real_f : nullptr);
+
+    SubtractGradKernel<float, XPUContext>(dev_ctx,
+                                          tmp_real,
+                                          tmp_imag,
+                                          dout_imag_f,
+                                          axis,
+                                          compute_dx ? &dx_imag_f : nullptr,
+                                          compute_dy ? &dy_imag_f : nullptr);
+
+    if (compute_dx) {
+      DenseTensor dx_real = Cast<double>(dev_ctx, dx_real_f, DataType::FLOAT64);
+      DenseTensor dx_imag = Cast<double>(dev_ctx, dx_imag_f, DataType::FLOAT64);
+      dev_ctx.template Alloc<T>(dx);
+      phi::ComplexKernel<double>(dev_ctx, dx_real, dx_imag, dx);
+    }
+    if (compute_dy) {
+      DenseTensor dy_real = Cast<double>(dev_ctx, dy_real_f, DataType::FLOAT64);
+      DenseTensor dy_imag = Cast<double>(dev_ctx, dy_imag_f, DataType::FLOAT64);
+      dev_ctx.template Alloc<T>(dy);
+      phi::ComplexKernel<double>(dev_ctx, dy_real, dy_imag, dy);
+    }
+  }
+}
+#endif
+
 }  // namespace phi
 
 PD_REGISTER_KERNEL(subtract_grad,
@@ -71,4 +194,9 @@ PD_REGISTER_KERNEL(subtract_grad,
                    phi::SubtractGradKernel,
                    phi::float16,
                    phi::bfloat16,
-                   float) {}
+#ifdef PADDLE_WITH_XPU_FFT
+                   phi::complex64,
+                   phi::complex128,
+#endif
+                   float) {
+}
