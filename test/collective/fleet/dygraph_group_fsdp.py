@@ -1025,7 +1025,7 @@ class KeepWholeInner(ElementwiseInner):
         return moment / (norm + 1e-6)
 
 
-def build_mixed_optimizer(model, sub_name=None):
+def build_mixed_optimizer(model, sub_name=None, grad_clip=None):
     """embed (2D, owner path with P2P gather) and w_up / w_down (3D,
     matrix-aligned path) -> KeepWholeInner; attn / bf16 w_low / head ->
     ElementwiseInner on fused shards.
@@ -1059,15 +1059,19 @@ def build_mixed_optimizer(model, sub_name=None):
     return MixedInnerOptimizer(
         subs,
         learning_rate=0.01,
-        grad_clip=nn.ClipGradByGlobalNorm(MIXED_CLIP_NORM),
+        grad_clip=(
+            nn.ClipGradByGlobalNorm(MIXED_CLIP_NORM)
+            if grad_clip is None
+            else grad_clip
+        ),
         multi_precision=True,
     )
 
 
-def build_mixed_fsdp_run(init_state, sub_name=None):
+def build_mixed_fsdp_run(init_state, sub_name=None, grad_clip=None):
     model = MuonModel(low="bfloat16")
     model.set_state_dict(init_state)
-    mixed = build_mixed_optimizer(model, sub_name)
+    mixed = build_mixed_optimizer(model, sub_name, grad_clip)
     model = fully_shard(model, optimizer=mixed)
     fsdp_context = model._fsdp_context
     model = mix_precision_utils.MixPrecisionLayer(model, dtype="float16")
@@ -1167,6 +1171,107 @@ def run_mixed_shard():
             assert mixed._route[name] is mixed._route[group.params[0].name]
     assert_params_close(
         gathered_params(model, fsdp_context), base_params, "mixed vs base"
+    )
+
+
+class GroupedNormClip(nn.ClipGradBase):
+    """Global-norm clip per param group, keyed by param name.
+
+    Shaped like PaddleFleet's MixedClipGrad: under FSDP it asks for per-param
+    local grad slices (``fsdp_clip_by_param``) and sums them over the sharding
+    group itself, counting a grad only where ``is_firstly_shared`` holds.
+    """
+
+    fsdp_clip_by_param = True
+
+    def __init__(self, clip_norm):
+        super().__init__()
+        self.group_of = None  # param name -> group index, set once built
+        self.clip_norm = clip_norm
+        self.comm_group = None
+        self.norms = []
+
+    @paddle.autograd.no_grad()
+    def _dygraph_clip(self, params_grads):
+        num_groups = max(self.group_of.values()) + 1
+        sums = [paddle.zeros([], "float32") for _ in range(num_groups)]
+        owned = []
+        for param, grad in params_grads:
+            if grad is None:
+                continue
+            gi = self.group_of[param.name]
+            owned.append((gi, grad))
+            if getattr(param, "is_firstly_shared", True):
+                sums[gi] = sums[gi] + (grad.astype("float32") ** 2).sum()
+        sq = paddle.stack(sums)
+        if self.comm_group is not None:
+            paddle.distributed.all_reduce(sq, group=self.comm_group)
+        norm = paddle.sqrt(sq)
+        self.norms.append(norm.numpy())
+        coef = self.clip_norm / paddle.maximum(
+            norm, paddle.full_like(norm, self.clip_norm)
+        )
+        for gi, grad in owned:
+            grad.multiply_(coef[gi].astype(grad.dtype))
+        return params_grads
+
+
+def grouped_clip_groups(model):
+    """The embedding and layer 0 in group 0, the rest in group 1."""
+    first = ("embed.", "layers.0.")
+    return {
+        p.name: 0 if any(key in name for key in first) else 1
+        for name, p in model.named_parameters()
+    }
+
+
+def run_mixed_grouped_clip():
+    """A clip grouping params by name sees the same per-group norms under FSDP
+    (per-param slices of the fused grads) as on a single card."""
+    init_state = mixed_init_state()
+    paddle.seed(2026)
+    data = [paddle.randn([TOKENS, HIDDEN]) for _ in range(STEPS)]
+
+    register_fsdp_context(None)
+    base_model = MuonModel(low="bfloat16")
+    base_model.set_state_dict(init_state)
+    base_clip = GroupedNormClip(MIXED_CLIP_NORM)
+    base_clip.group_of = grouped_clip_groups(base_model)
+    base_optimizer = mix_precision_utils.MixPrecisionOptimizer(
+        build_mixed_optimizer(base_model, grad_clip=base_clip)
+    )
+    base_model = mix_precision_utils.MixPrecisionLayer(
+        base_model, dtype="float16"
+    )
+    base_losses = train_mixed(base_model, base_optimizer, data)
+    base_params = [p.numpy() for p in base_model.parameters()]
+
+    fsdp_clip = GroupedNormClip(MIXED_CLIP_NORM)
+    model, fsdp_context, _, optimizer = build_mixed_fsdp_run(
+        init_state, grad_clip=fsdp_clip
+    )
+    fsdp_clip.group_of = grouped_clip_groups(model)
+    fsdp_clip.comm_group = fsdp_context.buffer_manager._fsdp_group
+    assert sorted(fsdp_clip.group_of.values()) == sorted(
+        base_clip.group_of.values()
+    ), "the runs group different params"
+
+    losses = train_mixed(model, optimizer, data)
+    assert not hasattr(fsdp_clip, "fsdp_group"), "shard-dim comm was set"
+    assert all(n.min() > MIXED_CLIP_NORM for n in base_clip.norms), (
+        "a group is under the clip norm, the test would not clip it"
+    )
+    np.testing.assert_allclose(
+        np.stack(fsdp_clip.norms),
+        np.stack(base_clip.norms),
+        rtol=1e-5,
+        err_msg="per-group grad norms diverged",
+    )
+    np.testing.assert_allclose(
+        losses, base_losses, rtol=1e-5, err_msg="grouped clip losses diverged"
+    )
+    assert_params_close(
+        gathered_params(model, fsdp_context), base_params, "grouped clip"
     )
 
 
@@ -1531,4 +1636,5 @@ if __name__ == '__main__':
     run_adamh_shard()
     run_muon_checkpoint()
     run_mixed_shard()
+    run_mixed_grouped_clip()
     run_mixed_checkpoint()

@@ -384,14 +384,21 @@ class MixedInnerOptimizer(InnerOptimizer):
         from paddle.distributed.fsdp._fsdp_context import get_fsdp_context
 
         fsdp_context = get_fsdp_context()
+        clip_params_grads = None
         if fsdp_context is not None:
-            params_grads = self._fsdp_params_grads(fsdp_context)
+            params_grads, clip_params_grads = self._fsdp_params_grads(
+                fsdp_context
+            )
 
         # Global gradient clip, exactly once, over the full mixed batch -- keeps
         # the clipped-norm bit-identical to the single-optimizer path. Each
         # sub-optimizer is constructed with grad_clip=None (set in __init__), so
         # it will NOT clip again.
-        if self._grad_clip is not None:
+        if clip_params_grads is not None:
+            # Per-param views of the fused grads: the clip scales them in
+            # place, the subs step on the fused buffers.
+            self._grad_clip(clip_params_grads)
+        elif self._grad_clip is not None:
             params_grads = self._grad_clip(params_grads)
 
         # Split by owning sub-optimizer, preserving input order within a bucket.
@@ -428,9 +435,12 @@ class MixedInnerOptimizer(InnerOptimizer):
 
     def _fsdp_params_grads(self, fsdp_context):
         """FSDP params_grads: whole params for keep_whole subs, fused shards
-        for the rest."""
+        for the rest. Also returns what the clip gets: ``None`` for the fused
+        list, or per-param views when the clip groups params by name
+        (``fsdp_clip_by_param``)."""
         fsdp_context.comm_sync_and_reset_status()
-        params_grads = list(fsdp_context.whole_params_grads())
+        whole = list(fsdp_context.whole_params_grads())
+        params_grads = list(whole)
         for group in fsdp_context.buffer_manager.buffer_groups:
             if group.keep_whole or group.grads_buffer is None:
                 continue
@@ -456,10 +466,15 @@ class MixedInnerOptimizer(InnerOptimizer):
         for sub in self._sub_opts:
             fsdp_context.bind_decay_param_fun(sub, groups_of_sub[id(sub)])
         fsdp_context.bind_decay_param_fun(self, fallback_groups)
-        if self._grad_clip is not None:
-            self._grad_clip.should_comm_on_shard_dim = True
-            self._grad_clip.fsdp_group = fsdp_context.buffer_manager._fsdp_group
-        return params_grads
+        if self._grad_clip is None:
+            return params_grads, None
+        if getattr(self._grad_clip, "fsdp_clip_by_param", False):
+            # The clip reduces each param's local slices over the sharding
+            # groups itself (as for stage1 slice params), so no shard-dim comm.
+            return params_grads, whole + fsdp_context.clip_params_grads()
+        self._grad_clip.should_comm_on_shard_dim = True
+        self._grad_clip.fsdp_group = fsdp_context.buffer_manager._fsdp_group
+        return params_grads, None
 
     # ------------------------------------------------------------------
     # State dict (checkpoint save / load) -- aggregate over sub-optimizers
