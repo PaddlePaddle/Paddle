@@ -134,6 +134,9 @@ def _fully_shard_manual_parallel(
     comm_unit_size=None,
     reshard_policy="after_forward",
     reshard_filter="all",
+    buffer_pool=None,
+    zero_sm_all_gather=False,
+    zero_sm_min_bytes=1 << 20,
 ):
     layers = module._layers if isinstance(module, MetaParallelBase) else module
     if optimizer is not None:
@@ -152,6 +155,9 @@ def _fully_shard_manual_parallel(
         comm_unit_size=comm_unit_size,
         reshard_policy=reshard_policy,
         reshard_filter=reshard_filter,
+        buffer_pool=buffer_pool,
+        zero_sm_all_gather=zero_sm_all_gather,
+        zero_sm_min_bytes=zero_sm_min_bytes,
     )
     layers._fsdp_context.set_grad_accum_steps(grad_accum_steps)
     if optimizer is not None:
@@ -201,6 +207,9 @@ def fully_shard(
     comm_unit_size: int | None = None,
     reshard_policy: str = "after_forward",
     reshard_filter: str | Callable[..., bool] = "all",
+    buffer_pool: str | None = None,
+    zero_sm_all_gather: bool = False,
+    zero_sm_min_bytes: int = 1 << 20,
 ) -> paddle.nn.Layer:
     """
     Apply fully sharded data parallel (FSDP) to the given module.
@@ -268,6 +277,15 @@ def fully_shard(
             ``"dense"``: non-expert parameters only. A callable for per-layer
             selection is reserved and not supported yet. Defaults to
             ``"all"``.
+        buffer_pool (str | None, optional): Manual parallel mode only. Reuse
+            persistent gather buffers. ``"params"``: param buffers; ``"all"``:
+            also grad buffers. Defaults to None.
+        zero_sm_all_gather (bool, optional): Manual parallel mode only. Run
+            param all_gather on the copy engine. Needs ``buffer_pool``, NCCL
+            >= 2.30.7 and ``cta_policy=2``. Its memory is not counted by
+            ``max_memory_reserved``. Defaults to False.
+        zero_sm_min_bytes (int, optional): Manual parallel mode only. Smaller
+            buffers stay on SM. Defaults to 1 MiB.
 
     Returns:
         module: A wrapper module that applies FSDP to the input module.
@@ -327,4 +345,7 @@ def fully_shard(
             *args,
             reshard_policy=reshard_policy,
             reshard_filter=reshard_filter,
+            buffer_pool=buffer_pool,
+            zero_sm_all_gather=zero_sm_all_gather,
+            zero_sm_min_bytes=zero_sm_min_bytes,
         )

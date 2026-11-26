@@ -107,8 +107,13 @@ def quantize_fp8_shard(params_buffer):
 def get_fp8_tmp_buffer(params_buffer):
     quantize_fp8_shard(params_buffer)
     fp8 = params_buffer.fp8
+    pool = params_buffer.pool
     fp8.fulls = [
-        paddle.empty([s.shape[0] * params_buffer.fsdp_degree], s.dtype)
+        (
+            pool.acquire(s.shape[0] * params_buffer.fsdp_degree, s.dtype)
+            if pool is not None
+            else paddle.empty([s.shape[0] * params_buffer.fsdp_degree], s.dtype)
+        )
         for s in fp8.shards
     ]
     return list(zip(fp8.fulls, fp8.shards))
@@ -152,4 +157,13 @@ def clear_fp8_tmp_buffer(params_buffer):
             for attr in (d, s):
                 if hasattr(param, attr):
                     delattr(param, attr)
-    params_buffer.fp8.fulls = None
+    fp8 = params_buffer.fp8
+    # Unsharded: fulls are the shards themselves, never pooled.
+    if (
+        params_buffer.pool is not None
+        and fp8.fulls is not None
+        and fp8.fulls is not fp8.shards
+    ):
+        for full in fp8.fulls:
+            params_buffer.pool.release(full)
+    fp8.fulls = None

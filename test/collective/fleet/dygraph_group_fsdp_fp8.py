@@ -139,7 +139,12 @@ def experts(model):
 
 
 def build_grouped(
-    fp8, quantizer=None, muon=False, multi_precision=True, group=None
+    fp8,
+    quantizer=None,
+    muon=False,
+    multi_precision=True,
+    group=None,
+    **fsdp_kwargs,
 ):
     if group is None:
         hcg = fleet.get_hybrid_communicate_group()
@@ -178,6 +183,7 @@ def build_grouped(
         model,
         optimizer=opt,
         grad_accum_steps=ACCUM_STEPS,
+        **fsdp_kwargs,
     )
     return model, opt, model._fsdp_context
 
@@ -218,7 +224,13 @@ def expected_caches(ctx, model, quantizer):
 
 
 def train_fp8(
-    keep_transpose, fp8_gather, data, muon=False, mp=True, group=None
+    keep_transpose,
+    fp8_gather,
+    data,
+    muon=False,
+    mp=True,
+    group=None,
+    **fsdp_kwargs,
 ):
     quantizer = BlockQuantizer(keep_transpose)
     model, opt, ctx = build_grouped(
@@ -227,6 +239,7 @@ def train_fp8(
         muon=muon,
         multi_precision=mp,
         group=group,
+        **fsdp_kwargs,
     )
     groups = ctx.buffer_manager.buffer_groups
     fp8_groups = [g for g in groups if g.params_buffer.fp8 is not None]
@@ -299,6 +312,10 @@ def run_fp8_gather():
         # master vs fp32 main may round differently on some archs (Volta).
         assert ref[1][0] == new[1][0], f"{tag}: fp8 caches differ"
         assert ref[0][:ACCUM_STEPS] == new[0][:ACCUM_STEPS], tag
+        pooled = train_fp8(
+            keep_transpose, True, data, muon, mp, buffer_pool="all"
+        )
+        assert pooled == new, f"{tag}: buffer pool changed the run"
 
 
 def fp8_slices(ctx):
