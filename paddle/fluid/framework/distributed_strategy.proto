@@ -132,12 +132,13 @@ message DygraphShardingConfig {
   // whole GiB.
   optional double gin_overlap_dense_recv_pool_gb = 19 [ default = 0.0 ];
   optional double gin_overlap_expert_recv_pool_gb = 20 [ default = 0.0 ];
-  // Sharding stage1 (DygraphShardingOptimizerV2, MuonShardingOptimizer):
-  // upper bound (MB) of one fused parameter all_gather after the step (one
-  // all_gather per (group, dtype) batch of buckets). <= 0: no fusion, every
-  // bucket runs its own sync_params.
+  // Sharding stage1 (DygraphShardingOptimizerV2, MuonShardingOptimizer,
+  // MixedShardingOptimizer): upper bound (MB) of one fused parameter
+  // all_gather after the step (one all_gather per (group, dtype) batch of
+  // buckets). <= 0: no fusion, every bucket runs its own sync_params.
   optional double param_allgather_fuse_mb = 21 [ default = 0.0 ];
-  // MuonShardingOptimizer: MB per owner when it partitions the 2D
+  // MuonShardingOptimizer and MixedShardingOptimizer (both partition 2D
+  // parameters to owner ranks): MB per owner when it partitions the 2D
   // parameters, independent of the gradient bucket size comm_buffer_size_MB.
   // <= 0: the partition uses comm_buffer_size_MB.
   optional double muon_owner_partition_mb = 22 [ default = 0.0 ];

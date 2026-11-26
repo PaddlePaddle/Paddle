@@ -44,6 +44,10 @@ class _StubPartitioner:
         # Non-zero by default so the rank-0 placement summary stays out of the
         # test output.
         self._global_rank = global_rank
+        # sharding_configs.muon_owner_partition_mb, which __init__ always sets;
+        # None keeps comm_buffer_size_MB as the MB per owner (see
+        # TestOwnerPartitionSize in test_gin_overlap_grad_comm_scheduler.py).
+        self._owner_partition_mb = None
 
 
 def _hybrid_layout():
