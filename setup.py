@@ -2425,6 +2425,13 @@ def get_headers():
                 paddle_source_dir + '/paddle/fluid/distributed/collective',
             )
         )
+        + list(
+            find_files(
+                'comm_args.h',
+                paddle_source_dir
+                + '/paddle/fluid/distributed/collective/gin_overlap/kernels',
+            )
+        )
     )
 
     jit_layer_headers = [
