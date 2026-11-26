@@ -891,12 +891,14 @@ class TestAssertException(TestCaseBase):
     @strict_mode_guard(NOT_ALLOW_FALLBACK)
     def test_assert_with_py_var_as_condition(self):
         # Test the case where `condition` is Python variable
-        self.assert_results(self.try_assert, paddle.to_tensor(1), False)
-        self.assert_results(self.try_assert, paddle.to_tensor(2), True)
-        self.assert_results(self.try_assert, paddle.to_tensor(3), [])
-        self.assert_results(self.try_assert, paddle.to_tensor(4), [1])
-        self.assert_results(self.try_assert, paddle.to_tensor(5), "")
-        self.assert_results(self.try_assert, paddle.to_tensor(6), "QAQ")
+        # `x` is a float Tensor: `x /= 2` raises on an integer Tensor in eager
+        # mode, while SOT still translates it to an out-of-place divide.
+        self.assert_results(self.try_assert, paddle.to_tensor(1.0), False)
+        self.assert_results(self.try_assert, paddle.to_tensor(2.0), True)
+        self.assert_results(self.try_assert, paddle.to_tensor(3.0), [])
+        self.assert_results(self.try_assert, paddle.to_tensor(4.0), [1])
+        self.assert_results(self.try_assert, paddle.to_tensor(5.0), "")
+        self.assert_results(self.try_assert, paddle.to_tensor(6.0), "QAQ")
         # TODO(DrRyanHuang): The following two cases are not supported yet.
         # self.assert_results(self.try_assert, paddle.to_tensor(7), ValueError)
         # self.assert_results(self.try_assert, paddle.to_tensor(8), ValueError())
