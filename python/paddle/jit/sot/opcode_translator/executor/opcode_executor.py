@@ -928,6 +928,9 @@ class OpcodeExecutorBase:
 
     # inplace operators
     # paddle variable do not have inplace operators. For example when call `y **= x`, will call var.__pow__
+    # NOTE: this differs from eager mode, where Tensor has real in-place
+    # operators (see ``_make_inplace_operator`` in
+    # ``paddle/base/dygraph/math_op_patch.py``).
     INPLACE_POWER = tos_inplace_op_wrapper(operator.ipow)
     INPLACE_MULTIPLY = tos_inplace_op_wrapper(operator.imul)
     INPLACE_MATRIX_MULTIPLY = tos_inplace_op_wrapper(operator.imatmul)

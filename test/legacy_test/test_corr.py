@@ -119,5 +119,15 @@ class Corr_Test5(Corr_Comeplex_Test):
         self.dtype = 'complex64'
 
 
+class Corr_Backward_Test(unittest.TestCase):
+    def test_backward_2d(self):
+        # corrcoef of a 2-D input must stay differentiable.
+        paddle.disable_static()
+        np_arr = np.random.rand(4, 5).astype('float64')
+        x = paddle.to_tensor(np_arr, stop_gradient=False)
+        paddle.linalg.corrcoef(x).sum().backward()
+        self.assertEqual(list(x.grad.shape), [4, 5])
+
+
 if __name__ == '__main__':
     unittest.main()

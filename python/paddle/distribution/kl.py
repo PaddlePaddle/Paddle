@@ -276,7 +276,7 @@ def _kl_expfamily_expfamily(p, q):
         p_natural_params, q_natural_params, p_grads
     ):
         term = (q_param - p_param) * p_grad
-        kl -= _sum_rightmost(term, len(q.event_shape))
+        kl = kl - _sum_rightmost(term, len(q.event_shape))
 
     return kl
 

@@ -66,6 +66,40 @@ class TestTensorInplaceOperators(unittest.TestCase):
         x_np = np.array([[1.0, 2.0], [3.0, 4.0]], dtype='float32')
         self._check(operator.ipow, x_np, 2, x_np**2)
 
+    def test_numpy_scalar_operand(self):
+        # numpy scalars are updated in place like Python scalars.
+        x_np = np.array([[1.0, 2.0], [3.0, 4.0]], dtype='float32')
+        self._check(operator.iadd, x_np, np.float32(1.5), x_np + 1.5)
+        self._check(operator.imul, x_np, np.float64(2.0), x_np * 2.0)
+        self._check(operator.ipow, x_np, np.int64(2), x_np**2)
+        x = paddle.to_tensor([2, 4], dtype='int32')
+        with self.assertRaises(RuntimeError):
+            x += np.float32(1.5)
+
+    def test_mixed_dtype_operand(self):
+        x_np = np.array([[1.0, 2.0], [3.0, 4.0]], dtype='float32')
+        y_np = np.array([[2.0, 4.0], [5.0, 8.0]], dtype='float64')
+        x = paddle.to_tensor(x_np)
+        x += paddle.to_tensor(y_np)
+        # The result keeps the dtype of the left-hand side.
+        self.assertEqual(x.dtype, paddle.float32)
+        np.testing.assert_allclose(x.numpy(), x_np + y_np, rtol=1e-6)
+
+    def test_complex_operand(self):
+        x = paddle.to_tensor([1.0, 2.0], dtype='float32')
+        with self.assertRaises(RuntimeError):
+            x += paddle.to_tensor([1.0, 2.0], dtype='complex64')
+        with self.assertRaises(RuntimeError):
+            x += 1j
+        z = paddle.to_tensor([1.0, 2.0], dtype='complex64')
+        z += 1.0
+        np.testing.assert_allclose(z.numpy(), np.array([2.0, 3.0]), rtol=1e-6)
+
+    def test_integer_pow_float_exponent_raises(self):
+        x = paddle.to_tensor([2, 4], dtype='int32')
+        with self.assertRaises(RuntimeError):
+            x **= 2.0
+
     def test_alias_in_container(self):
         # The case from the bug report: a /= 2 must also update tensors["a"].
         tensors = {"a": paddle.ones([3, 3])}

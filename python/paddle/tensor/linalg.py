@@ -4377,8 +4377,8 @@ def corrcoef(x: Tensor, rowvar: bool = True, name: str | None = None) -> Tensor:
     if paddle.is_complex(d):
         d = d.real()
     stddev = paddle.sqrt(d)
-    c /= stddev[:, None]
-    c /= stddev[None, :]
+    c = c / stddev[:, None]
+    c = c / stddev[None, :]
 
     # Clip to [-1, 1].  This does not guarantee
     if paddle.is_complex(c):
@@ -5280,7 +5280,7 @@ def histogramdd(
             shape = D * [1]
             shape[i] = hist_shape[i] - 2
             hist = hist / dedges[i].reshape(shape)
-        hist /= s
+        hist = hist / s
 
     return (hist, edges)
 

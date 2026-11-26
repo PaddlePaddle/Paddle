@@ -156,6 +156,9 @@ def _inplace_operand_rank(other):
     # Returns None for operands that the in-place operators do not handle.
     if isinstance(other, paddle.Tensor):
         return _inplace_dtype_rank(other.dtype)
+    # numpy scalars are classified by their dtype kind (b/i/u/f/c).
+    if isinstance(other, np.generic):
+        return {'b': 0, 'i': 1, 'u': 1, 'f': 2, 'c': 3}.get(other.dtype.kind)
     # bool is a subclass of int, so it must be checked first.
     if isinstance(other, bool):
         return 0
@@ -163,6 +166,8 @@ def _inplace_operand_rank(other):
         return 1
     if isinstance(other, float):
         return 2
+    if isinstance(other, complex):
+        return 3
     return None
 
 
@@ -192,6 +197,8 @@ def _make_inplace_operator(symbol, api_name, true_divide=False):
             if other.dtype != self.dtype:
                 other = other.astype(self.dtype)
         else:
+            if isinstance(other, np.generic):
+                other = other.item()
             # The in-place methods expect a Tensor on the right-hand side.
             other = paddle.full([], other, dtype=self.dtype, device=self.place)
         out_shape = paddle.broadcast_shape(self.shape, other.shape)
@@ -207,14 +214,17 @@ def _make_inplace_operator(symbol, api_name, true_divide=False):
 
 
 def _ipow_(self, other):
-    # ``pow_`` only accepts a scalar exponent; a Tensor exponent falls back to
-    # the out-of-place ``**``.
+    # ``pow_`` only accepts a scalar exponent. A Tensor exponent falls back to
+    # the out-of-place ``**``, so unlike the other in-place operators the
+    # result is rebound and other references to ``self`` are not updated.
     if isinstance(other, paddle.Tensor):
         return NotImplemented
     other_rank = _inplace_operand_rank(other)
     if other_rank is None:
         return NotImplemented
     _check_inplace_dtype(self, other_rank, '**')
+    if isinstance(other, np.generic):
+        other = other.item()
     self.pow_(int(other) if isinstance(other, bool) else other)
     return self
 
@@ -839,6 +849,9 @@ def monkey_patch_math_tensor():
         ('__abs__', _abs_),
         # In-place operators (``a += b``) only exist in dygraph, so they are
         # registered here instead of the list shared with the static graph.
+        # NOTE: SOT and the static graph still translate ``a += b`` to
+        # ``a = a + b``, so aliases are not updated and dtype/shape mismatches
+        # do not raise there.
         ('__iadd__', _make_inplace_operator('+', 'add_')),
         ('__isub__', _make_inplace_operator('-', 'subtract_')),
         ('__imul__', _make_inplace_operator('*', 'multiply_')),

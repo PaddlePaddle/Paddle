@@ -476,7 +476,7 @@ class MultivariateNormal(distribution.Distribution):
             .diagonal(axis1=-2, axis2=-1)
             .sum(-1)
         )
-        expectation += batch_mahalanobis(
+        expectation = expectation + batch_mahalanobis(
             other._unbroadcasted_scale_tril, self.loc - other.loc
         )
         return (
