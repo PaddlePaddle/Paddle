@@ -407,7 +407,11 @@ class TestMaskedFillValueGrad(unittest.TestCase):
     # It must not be affected by x_grad sharing its buffer with out_grad.
     def setUp(self):
         np.random.seed(2024)
-        self.places = get_places()
+        # ``get_places()`` only returns the accelerator in a default CUDA
+        # build, so the devices are listed explicitly here.
+        self.devices = ['cpu']
+        if get_device() is not None:
+            self.devices.append(get_device())
         self.x_shape = [4, 3]
         self.mask_np = np.random.rand(*self.x_shape) > 0.5
 
@@ -422,8 +426,8 @@ class TestMaskedFillValueGrad(unittest.TestCase):
         # Run on CPU and on the accelerator, as they use different kernels.
         old_device = paddle.get_device()
         try:
-            for idx, _ in enumerate(self.places):
-                paddle.set_device('cpu' if idx == 0 else get_device())
+            for device in self.devices:
+                paddle.set_device(device)
                 with base.dygraph.guard():
                     x = paddle.randn(x_shape)
                     x.stop_gradient = False

@@ -87,8 +87,8 @@ void MaskedFillGradKernel(const Context& dev_ctx,
 
   if (numel <= 0) return;
 
-  // x_grad may share its buffer with out_grad (inplace: out_grad -> x_grad),
-  // so value_grad must be computed before x_grad overwrites out_grad.
+  // x_grad may share its buffer with out_grad, see the note of
+  // MaskedFillGradKernel. So value_grad is computed before x_grad is written.
   if (v_grad) {
     dev_ctx.template Alloc<T>(v_grad);
 

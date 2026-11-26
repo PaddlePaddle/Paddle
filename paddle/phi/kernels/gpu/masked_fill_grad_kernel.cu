@@ -123,12 +123,15 @@ __global__ void GPUMaskedFillGradKernel(const T* out_grad,
   }
   const VecType* vec_value = reinterpret_cast<const VecType*>(&set_value[0]);
 
+  // x_grad may alias out_grad, see the note of MaskedFillGradKernel. Read
+  // out_grad once before any write, so the result does not depend on the order
+  // of the writes below.
+  const VecType src_val = *src;
   if (mask[mask_idx]) {
-    // x_grad may alias out_grad (inplace), so read src for value_grad first.
-    *value_grad_dst = *src;
+    *value_grad_dst = src_val;
     *x_grad_dst = *vec_value;
   } else {
-    *x_grad_dst = *src;
+    *x_grad_dst = src_val;
     *value_grad_dst = *vec_value;
   }
 }
