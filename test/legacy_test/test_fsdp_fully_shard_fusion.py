@@ -907,8 +907,12 @@ class TestPrefetchBySizeSequence(unittest.TestCase):
         before = self._run_step()
         for unit in (1, 2, 3):
             self.assertEqual(before[("fwd", unit)], [fsf.BufferState.FREED] * 2)
-        # Gathered on demand, waited right away.
-        self.assertEqual(self.issued, self.waited)
+        for unit in (0, 1, 2):
+            self.assertEqual(before[("bwd", unit)], [fsf.BufferState.FREED] * 2)
+        # Forward gathers on demand, waited right away. Backward issues a
+        # unit's gathers in descending gid order, then waits on them.
+        self.assertEqual(self.issued[:8], self.waited[:8])
+        self.assertEqual(self.issued[8:], [5, 4, 3, 2, 1, 0])
 
     def test_large_limit(self):
         # Everything prefetched; no READY buffer is ever freed in forward.
