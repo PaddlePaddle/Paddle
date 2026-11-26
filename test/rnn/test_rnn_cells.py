@@ -202,8 +202,20 @@ class TestLSTMCell(unittest.TestCase):
         self.test_errors()
 
 
+class TestRNNCellOneDimInput(unittest.TestCase):
+    def test_lstm_cell_1d_input(self):
+        # The result of the input is 1-D while the one of the initial state is
+        # 2-D, so adding them must broadcast instead of updating in place.
+        cell = paddle.nn.LSTMCell(3, 12)
+        y, (h, c) = cell(paddle.rand([3]))
+        self.assertEqual(list(y.shape), [3, 12])
+        self.assertEqual(list(h.shape), [3, 12])
+        self.assertEqual(list(c.shape), [3, 12])
+
+
 def load_tests(loader, tests, pattern):
     suite = unittest.TestSuite()
+    suite.addTest(TestRNNCellOneDimInput("test_lstm_cell_1d_input"))
     devices = ["cpu", "gpu"] if paddle.base.is_compiled_with_cuda() else ["cpu"]
     for weight in [True, False]:
         for bias in [True, False]:

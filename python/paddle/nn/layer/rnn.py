@@ -1129,7 +1129,9 @@ class LSTMCell(RNNCellBase):
         if bias_ih is not None:
             gates = gates + bias_ih
 
-        gates += paddle.matmul(pre_hidden, self.weight_hh, transpose_y=True)
+        gates = gates + paddle.matmul(
+            pre_hidden, self.weight_hh, transpose_y=True
+        )
 
         bias_hh = getattr(self, 'bias_hh', None)
         if bias_hh is not None:
