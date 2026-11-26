@@ -101,6 +101,66 @@ COMMON_DECLARE_bool(async_fast_eager_deletion_mode);
 
 namespace paddle::framework {
 
+namespace {
+
+constexpr int64_t kLightweightSyncOpMaxNumel = 64;
+
+// Returns true if the instruction produces a single tensor whose static shape
+// is fully known and has at most `max_numel` elements (e.g., scalar axis or
+// tiny metadata constant).
+bool HasSmallStaticOutput(const InstructionBase* ins,
+                          int64_t max_numel = kLightweightSyncOpMaxNumel) {
+  const pir::Operation* op = ins->Operation();
+  if (op == nullptr || op->num_results() != 1) {
+    return false;
+  }
+  auto tensor_type = op->result(0)
+                         .type()
+                         .dyn_cast<paddle::dialect::AllocatedDenseTensorType>();
+  if (!tensor_type) {
+    return false;
+  }
+  const auto& dims = tensor_type.dims();
+  int64_t numel = 1;
+  for (int i = 0; i < dims.size(); ++i) {
+    if (dims[i] < 0) {
+      return false;
+    }
+    if (dims[i] == 0) {
+      return true;
+    }
+    if (numel > max_numel / dims[i]) {
+      return false;
+    }
+    numel *= dims[i];
+  }
+  return true;
+}
+
+// Host-side metadata/scalar ops (e.g., scalar `axis` emitted by concat/split/
+// slice, `full_int_array`, or shape queries) take sub-microsecond CPU time.
+// Dispatching them through MultiThreadRun incurs far more thread wakeup and
+// cross-thread handoff overhead than executing them inline in TraceRun.
+bool IsLightweightMetadataSyncOp(const InstructionBase* ins) {
+  using Predicate = bool (*)(const InstructionBase*);
+  static const auto kAlwaysLightweight = [](const InstructionBase*) {
+    return true;
+  };
+  static const auto kSmallStaticOutput = [](const InstructionBase* instr) {
+    return HasSmallStaticOutput(instr);
+  };
+  static const std::unordered_map<std::string, Predicate> kLightweightOps = {
+      {"pd_op.full_int_array", kAlwaysLightweight},
+      {"pd_op.shape", kAlwaysLightweight},
+      {"pd_op.shape64", kAlwaysLightweight},
+      {"pd_op.full", kSmallStaticOutput},
+  };
+  auto it = kLightweightOps.find(ins->Name());
+  return it != kLightweightOps.end() && it->second(ins);
+}
+
+}  // namespace
+
 void RecordLowPrecisionOp(const InstructionBase* instr_node) {
   if (FLAGS_low_precision_op_list) {
     std::string op_name = instr_node->Name();
@@ -529,8 +589,9 @@ std::string PirInterpreter::GetNameByValue(pir::Value value) const {
 void PirInterpreter::UpdateSyncOpNum() {
   int64_t sync_op_num = 0;
   for (auto& ins : vec_instruction_base_) {
-    if (ins->KernelType() == OpFuncType::kCpuSync ||
-        ins->KernelType() == OpFuncType::kGpuSync) {
+    if ((ins->KernelType() == OpFuncType::kCpuSync ||
+         ins->KernelType() == OpFuncType::kGpuSync) &&
+        !IsLightweightMetadataSyncOp(ins.get())) {
       sync_op_num = sync_op_num + 1;
     }
   }
