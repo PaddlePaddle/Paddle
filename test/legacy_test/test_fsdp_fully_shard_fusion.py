@@ -340,6 +340,9 @@ class _RecordingCommManager:
         # left for unshard_params to restore.
         self.sharded = list(params)
 
+    def _keeps_non_unit_gathered(self, group):
+        return getattr(group, "keep_non_unit_gathered", False)
+
     _free_params_buffer = fsf.FSDPCommManager._free_params_buffer
 
 
@@ -486,6 +489,27 @@ class TestUnshardParams(unittest.TestCase):
         self.assertEqual(cm.buffer_cnt_in_using, 0)
         self.assertEqual(groups[0].params_buffer.status, fsf.BufferState.FREED)
         self.assertEqual(groups[0].params_buffer.clear_calls, 1)
+
+    def test_non_unit_kept_group_unbound_then_freed(self):
+        # shard_params leaves a keep_non_unit_gathered group bound, so on exit
+        # unshard_params unbinds its params itself and marks the non-unit
+        # params for a fresh gather in the next forward.
+        fsdp, groups = self._make_fsdp([(fsf.BufferState.FREED,)], {"w": 0})
+        cm = fsdp.comm_manager
+        cm._non_unit_ready = True
+        param = paddle.create_parameter([2, 3], "float32")
+        param.name = "w"
+        groups[0].keep_non_unit_gathered = True
+        groups[0].params = [param]
+        with fsdp.unshard_params([param]):
+            self.assertTrue(param._is_initialized())
+        self.assertFalse(param._is_initialized())
+        self.assertEqual(param.shape, [2, 3])
+        self.assertFalse(param.stop_gradient)
+        self.assertFalse(cm._non_unit_ready)
+        self.assertEqual(groups[0].params_buffer.status, fsf.BufferState.FREED)
+        self.assertEqual(groups[0].params_buffer.clear_calls, 1)
+        self.assertEqual(cm.buffer_cnt_in_using, 0)
 
 
 def _make_comm_manager(layout, **kwargs):

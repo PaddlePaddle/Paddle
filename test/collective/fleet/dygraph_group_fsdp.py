@@ -67,6 +67,8 @@ FSDP_CONFIGS = [
         "reshard_filter": "expert",
         "comm_unit_size": 1 << 20,
     },
+    {"keep_non_unit_gathered": True},
+    {"keep_non_unit_gathered": True, "reshard_policy": "after_step"},
 ]
 
 

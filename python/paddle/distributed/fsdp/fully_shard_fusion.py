@@ -28,6 +28,7 @@ from paddle.distributed import fleet
 from paddle.distributed.fleet.utils.tensor_fusion_helper import (
     align,
     alignment,
+    copy_param_attrs,
     get_current_device_type,
 )
 from paddle.distributed.flex_checkpoint.dcp.sharded_weight import ShardedWeight
@@ -849,7 +850,7 @@ class FSDPCommManager:
             return self.reshard_policy
         return "after_forward"
 
-    def _keeps_whole_step(self, group):
+    def _keeps_non_unit_gathered(self, group):
         # keep_non_unit_gathered: params outside every FSDP unit (embedding,
         # LM head, small heads) stay gathered from the first forward of the
         # step to its end, as in stage1, so code may read them directly
@@ -863,7 +864,7 @@ class FSDPCommManager:
         )
 
     def _keep_after_forward(self, group):
-        if self._keeps_whole_step(group):
+        if self._keeps_non_unit_gathered(group):
             return True
         return self._reshard_policy_of(group) != "after_forward"
 
@@ -881,7 +882,7 @@ class FSDPCommManager:
         params = [
             param
             for group in self.buffer_manager.buffer_groups
-            if self._keeps_whole_step(group)
+            if self._keeps_non_unit_gathered(group)
             for param in group.params
         ]
         if not params:
@@ -1186,7 +1187,7 @@ class FSDPCommManager:
         for param in params:
             gid = self.buffer_manager.param_to_buffer_id.get(param.name)
             group = self.buffer_manager.buffer_groups[gid]
-            if self._keeps_whole_step(group):
+            if self._keeps_non_unit_gathered(group):
                 # Freed by reset_params_buffer_status at the end of the step.
                 continue
             stop_gradient = param.stop_gradient
@@ -2053,7 +2054,7 @@ class FullyShardFusion:
                 group = bm.buffer_groups[gid]
                 params_buffer = group.params_buffer
                 if params_buffer.status != BufferState.FREED:
-                    if cm._keeps_whole_step(group):
+                    if cm._keeps_non_unit_gathered(group):
                         # shard_params left these bound; unbind before freeing,
                         # and let the next forward gather them again.
                         cm._non_unit_ready = False
@@ -2325,16 +2326,7 @@ class FullyShardFusion:
         if stand_in is None:
             stand_in = EagerParamBase(shape=[1], dtype=param.dtype)
             stand_in.name = param.name
-            for attr in (
-                "is_distributed",
-                "optimize_attr",
-                "do_model_average",
-                "need_clip",
-                "no_sync",
-                "color",
-            ):
-                if hasattr(param, attr):
-                    setattr(stand_in, attr, getattr(param, attr))
+            copy_param_attrs(param, stand_in)
             stand_in.is_firstly_shared = False
             cache[param.name] = stand_in
         return stand_in

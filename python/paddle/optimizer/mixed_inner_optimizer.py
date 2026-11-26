@@ -397,7 +397,13 @@ class MixedInnerOptimizer(InnerOptimizer):
         if clip_params_grads is not None:
             # Per-param views of the fused grads: the clip scales them in
             # place, the subs step on the fused buffers.
-            self._grad_clip(clip_params_grads)
+            in_grads = {id(g) for _, g in clip_params_grads}
+            for _, g in self._grad_clip(clip_params_grads):
+                if g is not None and id(g) not in in_grads:
+                    raise RuntimeError(
+                        "A grad_clip with fsdp_clip_by_param=True must scale "
+                        "the given grads in place, not return new tensors."
+                    )
         elif self._grad_clip is not None:
             params_grads = self._grad_clip(params_grads)
 
