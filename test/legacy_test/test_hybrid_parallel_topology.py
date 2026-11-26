@@ -13,10 +13,13 @@
 # limitations under the License.
 
 import unittest
+from unittest import mock
 
 import numpy as np
 
+import paddle
 from paddle.distributed import fleet
+from paddle.distributed.fleet.base import topology as tp
 
 
 class TestCommunicateTopology(unittest.TestCase):
@@ -484,6 +487,137 @@ class TestCommunicateTopology(unittest.TestCase):
         self.assertEqual(topo.get_dim_size("pp"), 2)
         self.assertEqual(topo.get_dim_size("sharding"), 2)
         self.assertEqual(topo.get_dim_size("sep"), 2)
+
+
+class _Group:
+    def __init__(self, ranks):
+        self.ranks, self.nranks, self.id = list(ranks), len(ranks), 0
+
+
+class TestFSDPGroups(unittest.TestCase):
+    # Builds every rank's HCG in one process with collectives mocked, as CI
+    # has too few cards to split FSDP groups.
+    def build(self, make_hcg, world, degree):
+        hcgs, calls = [], []
+        for rank in range(world):
+            log = []
+            calls.append(log)
+
+            def new_group(ranks, *args, log=log, **kwargs):
+                log.append(list(ranks))
+                return _Group(ranks)
+
+            with mock.patch.multiple(
+                paddle.distributed,
+                new_group=new_group,
+                get_rank=mock.Mock(return_value=rank),
+                get_world_size=mock.Mock(return_value=world),
+                all_reduce=mock.DEFAULT,
+                barrier=mock.DEFAULT,
+                broadcast=mock.DEFAULT,
+            ):
+                hcg = make_hcg()
+                log.clear()
+                hcg._build_fsdp_groups(degree)
+            hcgs.append(hcg)
+        # new_group is collective: every rank must call it the same way.
+        self.assertTrue(all(c == calls[0] for c in calls))
+        return hcgs
+
+    def splits(self, hcgs, is_expert=False):
+        return [
+            (
+                h.get_fsdp_inner_group(is_expert).ranks,
+                h.get_fsdp_outer_group(is_expert).ranks,
+            )
+            for h in hcgs
+        ]
+
+    def dense_hcg(self):
+        return tp.HybridCommunicateGroup(
+            tp.CommunicateTopology(
+                ["data", "pipe", "sharding", "sep", "model"], [1, 1, 8, 1, 1]
+            )
+        )
+
+    def test_dense(self):
+        hcgs = self.build(self.dense_hcg, 8, 2)
+        expect = [
+            (list(range(r // 4 * 4, r // 4 * 4 + 4)), [r % 4, r % 4 + 4])
+            for r in range(8)
+        ]
+        self.assertEqual(self.splits(hcgs), expect)
+        self.assertEqual(self.splits(hcgs, True), expect)
+
+    def test_ep(self):
+        # Dense FSDP group [0..7], expert FSDP groups [r, r + 4] of 2 ranks,
+        # fewer than degree 4: unsharded inner, the expert group is outer.
+        names = ["pipe", "moe_sharding", "expert", "data", "sharding"]
+        names += ["sep", "context", "model"]
+        dims = [1, 2, 4, 1, 8, 1, 1, 1]
+        hcgs = self.build(
+            lambda: tp.EPHybridCommunicateGroup(names, dims), 8, 4
+        )
+        self.assertEqual(
+            self.splits(hcgs),
+            [
+                ([r // 2 * 2, r // 2 * 2 + 1], list(range(r % 2, 8, 2)))
+                for r in range(8)
+            ],
+        )
+        self.assertEqual(
+            self.splits(hcgs, True),
+            [([r], [r % 4, r % 4 + 4]) for r in range(8)],
+        )
+        for h in hcgs:
+            self.assertIs(
+                h.get_fsdp_outer_group(True),
+                h.get_moe_sharding_parallel_group(),
+            )
+
+    def test_dense_pipe(self):
+        # pp outside sharding: inner/outer stay within a stage.
+        def hcg():
+            return tp.HybridCommunicateGroup(
+                tp.CommunicateTopology(
+                    ["data", "pipe", "sharding", "sep", "model"],
+                    [1, 2, 4, 1, 2],
+                )
+            )
+
+        hcgs = self.build(hcg, 16, 2)
+        for r, h in enumerate(hcgs):
+            inner, outer = self.splits([h])[0]
+            stage = set(h.get_pipe_parallel_group().ranks)
+            self.assertEqual(set(inner) & stage, {r})
+            self.assertEqual(set(outer) & stage, {r})
+            self.assertEqual(len(inner), 2)
+            self.assertEqual(len(outer), 2)
+        self.assertEqual(self.splits(hcgs[:1]), [([0, 2], [0, 4])])
+
+    def test_mesh(self):
+        hcgs = self.build(self.dense_hcg, 8, 2)
+        for r, h in enumerate(hcgs):
+            mesh = h.get_fsdp_mesh()
+            self.assertEqual(mesh, [[0, 1, 2, 3], [4, 5, 6, 7]])
+            # Row = inner group, column = outer group.
+            self.assertEqual(mesh[r // 4], list(h.get_fsdp_inner_group().ranks))
+            self.assertEqual(
+                [row[r % 4] for row in mesh],
+                list(h.get_fsdp_outer_group().ranks),
+            )
+
+    def test_mesh_without_hsdp(self):
+        # Outer degree 1: a single row.
+        for h in self.build(self.dense_hcg, 8, 1):
+            self.assertEqual(h.get_fsdp_mesh(), [list(range(8))])
+
+    def test_invalid_degree(self):
+        for degree in (3, 8):
+            with self.assertRaisesRegex(
+                ValueError, "Invalid fsdp_outer_degree"
+            ):
+                self.build(self.dense_hcg, 8, degree)
 
 
 if __name__ == '__main__':

@@ -15,6 +15,7 @@ limitations under the License. */
 #include <thrust/equal.h>
 #include <thrust/execution_policy.h>
 
+#include "paddle/phi/backends/gpu/gpu_thrust_policy.h"
 #include "paddle/phi/kernels/elementwise_add_kernel.h"
 #include "paddle/phi/kernels/sparse/elementwise_kernel.h"
 #include "paddle/phi/kernels/sparse/empty_kernel.h"
@@ -45,7 +46,7 @@ void ElementWiseAddCooGPUKernel(const GPUContext& dev_ctx,
 #ifdef PADDLE_WITH_HIP
     bool is_same = thrust::equal(thrust::hip::par.on(dev_ctx.stream()),
 #else
-    bool is_same = thrust::equal(thrust::cuda::par.on(dev_ctx.stream()),
+    bool is_same = thrust::equal(PADDLE_THRUST_CUDA_PAR.on(dev_ctx.stream()),
 #endif
                                  x_indices_ptr,
                                  x_indices_ptr + x_indices.numel(),

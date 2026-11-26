@@ -13,6 +13,9 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/collective/process_group_nccl.h"
+
+#include <cstring>
+
 #include "glog/logging.h"
 #include "paddle/common/flags.h"
 #include "paddle/fluid/distributed/collective/common.h"
@@ -30,6 +33,10 @@
 #include "paddle/phi/core/platform/device/gpu/nccl_helper.h"
 #include "paddle/phi/core/utils/data_type.h"
 #include "paddle/utils/string/string_helper.h"
+
+#ifdef PADDLE_WITH_GIN_OVERLAP
+#include "paddle/fluid/distributed/collective/gin_overlap/kernels/comm.h"
+#endif
 
 COMMON_DECLARE_bool(benchmark);
 COMMON_DECLARE_bool(benchmark_nccl);
@@ -60,6 +67,64 @@ bool IsCommBufferRegistered(phi::distributed::NCCLCommContext* comm_context,
   return comm_context->IsRegistered(
       tensor.data(), tensor.numel() * phi::SizeOf(tensor.dtype()));
 }
+
+// Raises Unavailable when the GIN primitives cannot be used.
+void CheckGinSupported() {
+  PADDLE_ENFORCE_EQ(
+      ProcessGroupNCCL::IsGinSupported(),
+      true,
+      common::errors::Unavailable(
+          "The GIN primitives of ProcessGroupNCCL are not "
+          "available. They need Paddle built with PADDLE_WITH_GIN_OVERLAP "
+          "(WITH_DISTRIBUTE, WITH_GPU and WITH_NCCL for an arch of sm_90 or "
+          "newer, CUDA 13.0 or newer and NCCL 2.30.7 or newer with "
+          "nccl_device.h), a GPU of compute capability 9.0 or newer, and a "
+          "loaded NCCL library that provides the device API."));
+}
+
+#ifdef PADDLE_WITH_GIN_OVERLAP
+// Checks that [offset, offset + bytes) lies in `window` and that `offset` is
+// a multiple of `alignment`, and returns the start of the window's buffer.
+// `range_name` names the argument in the error.
+void* CheckWindowRange(phi::distributed::NCCLCommContext* comm_context,
+                       void* window,
+                       size_t offset,
+                       size_t bytes,
+                       size_t alignment,
+                       const char* range_name) {
+  void* window_base = nullptr;
+  size_t window_bytes = 0;
+  PADDLE_ENFORCE_EQ(
+      comm_context->GetWindowRange(window, &window_base, &window_bytes),
+      true,
+      common::errors::InvalidArgument(
+          "The %s window %p is not registered on this process group.",
+          range_name,
+          window));
+  PADDLE_ENFORCE_EQ(
+      offset <= window_bytes && bytes <= window_bytes - offset,
+      true,
+      common::errors::InvalidArgument(
+          "The %s range [%d, %d + %d) is outside window %p of %d bytes.",
+          range_name,
+          offset,
+          offset,
+          bytes,
+          window,
+          window_bytes));
+  PADDLE_ENFORCE_EQ(offset % alignment,
+                    static_cast<size_t>(0),
+                    common::errors::InvalidArgument(
+                        "The %s offset %d must be a multiple of %d bytes.",
+                        range_name,
+                        offset,
+                        alignment));
+  return window_base;
+}
+
+// Size and alignment of a counter.
+constexpr size_t kCounterBytes = sizeof(uint64_t);
+#endif
 
 }  // namespace
 
@@ -1462,4 +1527,295 @@ void ProcessGroupNCCL::EndCoalescing(
   coalescing_place_keys_.clear();
 }
 
+bool ProcessGroupNCCL::IsGinSupported() {
+#ifdef PADDLE_WITH_GIN_OVERLAP
+  return phi::distributed::NCCLCommContext::IsDevCommSupported() &&
+         phi::backends::gpu::GetGPUComputeCapability(
+             phi::backends::gpu::GetCurrentDeviceId()) >= 90;
+#else
+  return false;
+#endif
+}
+
+phi::distributed::NCCLCommContext* ProcessGroupNCCL::GetGinCommContext() {
+  const auto place = phi::GPUPlace(phi::backends::gpu::GetCurrentDeviceId());
+  PADDLE_ENFORCE_NE(
+      place_to_comm_ctx_.find(GetKeyFromPlace(place)),
+      place_to_comm_ctx_.end(),
+      common::errors::PreconditionNotMet(
+          "Process group %d has no NCCL communicator on device %d; call "
+          "get_or_create_dev_comm() on every rank first.",
+          gid_,
+          place.GetDeviceId()));
+  return GetOrCreateCommContext(place);
+}
+
+int ProcessGroupNCCL::PeerToLsaIndex(
+    const phi::distributed::NCCLDevCommInfo& dev_comm_info, int peer) const {
+  PADDLE_ENFORCE_EQ(
+      peer >= 0 && peer < size_,
+      true,
+      common::errors::InvalidArgument(
+          "Peer %d is not a rank of this process group of size %d.",
+          peer,
+          size_));
+  if (peer / dev_comm_info.lsa_size != rank_ / dev_comm_info.lsa_size) {
+    return -1;
+  }
+  return peer % dev_comm_info.lsa_size;
+}
+
+phi::distributed::NCCLDevCommInfo ProcessGroupNCCL::GetOrCreateDevComm(
+    int gin_context_count) {
+  CheckGinSupported();
+  auto* comm_context = GetOrCreateCommContext(
+      phi::GPUPlace(phi::backends::gpu::GetCurrentDeviceId()));
+  const auto dev_comm_info =
+      comm_context->GetOrCreateDevComm(gin_context_count);
+  PADDLE_ENFORCE_EQ(
+      dev_comm_info.rank == rank_ && dev_comm_info.nranks == size_,
+      true,
+      common::errors::PreconditionNotMet(
+          "The NCCL device communicator has rank %d of %d, but the process "
+          "group has rank %d of %d.",
+          dev_comm_info.rank,
+          dev_comm_info.nranks,
+          rank_,
+          size_));
+  // PeerToLsaIndex() takes the LSA team of rank r to be ranks
+  // [r / lsa_size * lsa_size, (r / lsa_size + 1) * lsa_size), which holds when
+  // the ranks of each node are consecutive in the group (node-major order).
+  PADDLE_ENFORCE_EQ(
+      dev_comm_info.lsa_size > 0 && size_ % dev_comm_info.lsa_size == 0 &&
+          dev_comm_info.lsa_rank == rank_ % dev_comm_info.lsa_size,
+      true,
+      common::errors::PreconditionNotMet(
+          "The GIN primitives of ProcessGroupNCCL require node-major rank "
+          "order: the ranks of each node must be consecutive in the group, "
+          "so that group rank r has LSA rank r %% lsa_size in the LSA team "
+          "r / lsa_size. Got rank %d of a group of %d with LSA rank %d and "
+          "LSA team size %d.",
+          rank_,
+          size_,
+          dev_comm_info.lsa_rank,
+          dev_comm_info.lsa_size));
+  PADDLE_ENFORCE_GT(
+      dev_comm_info.gin_context_count,
+      0,
+      common::errors::Unavailable(
+          "The NCCL device communicator was created without GIN contexts."));
+  return dev_comm_info;
+}
+
+phi::distributed::NCCLDevCommInfo ProcessGroupNCCL::GetDevCommInfo() {
+  CheckGinSupported();
+  return GetGinCommContext()->GetDevCommInfo();
+}
+
+phi::distributed::NCCLHostWindow ProcessGroupNCCL::AllocHostWindow(
+    size_t bytes) {
+  CheckGinSupported();
+  return GetOrCreateCommContext(
+             phi::GPUPlace(phi::backends::gpu::GetCurrentDeviceId()))
+      ->AllocHostWindow(bytes);
+}
+
+void ProcessGroupNCCL::Put(const std::vector<PutArgs>& puts,
+                           gpuStream_t stream,
+                           int num_blocks) {
+  CheckGinSupported();
+#ifdef PADDLE_WITH_GIN_OVERLAP
+  PADDLE_ENFORCE_GE(
+      num_blocks,
+      0,
+      common::errors::InvalidArgument(
+          "num_blocks must not be negative, but got %d.", num_blocks));
+  if (puts.empty()) {
+    return;
+  }
+  auto* comm_context = GetGinCommContext();
+  const auto& dev_comm_info = comm_context->GetDevCommInfo();
+  for (const auto& put : puts) {
+    PeerToLsaIndex(dev_comm_info, put.peer);
+    PADDLE_ENFORCE_NE(put.peer,
+                      rank_,
+                      common::errors::InvalidArgument(
+                          "Put() cannot target this rank (%d).", rank_));
+    PADDLE_ENFORCE_GT(
+        put.bytes,
+        static_cast<size_t>(0),
+        common::errors::InvalidArgument("A put must move at least one byte."));
+    CheckWindowRange(
+        comm_context, put.src_window, put.src_offset, put.bytes, 1, "source");
+    CheckWindowRange(comm_context,
+                     put.dst_window,
+                     put.dst_offset,
+                     put.bytes,
+                     1,
+                     "destination");
+    CheckWindowRange(comm_context,
+                     put.counter_window,
+                     put.counter_offset,
+                     kCounterBytes,
+                     kCounterBytes,
+                     "counter");
+  }
+  gin_overlap::PutBatch batch{};
+  auto launch_batch = [&]() {
+    const int grid_blocks = num_blocks > 0 ? num_blocks : batch.count;
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        gin_overlap::LaunchPut(dev_comm_info.dev_comm,
+                               batch,
+                               dev_comm_info.gin_context_count,
+                               grid_blocks,
+                               stream));
+    batch.count = 0;
+  };
+  for (const auto& put : puts) {
+    batch.puts[batch.count++] = put;
+    if (batch.count == gin_overlap::kMaxOpsPerLaunch) {
+      launch_batch();
+    }
+  }
+  if (batch.count > 0) {
+    launch_batch();
+  }
+#endif
+}
+
+void ProcessGroupNCCL::IncrementPeerCounter(
+    const std::vector<IncrementPeerCounterArgs>& increments,
+    gpuStream_t stream) {
+  CheckGinSupported();
+#ifdef PADDLE_WITH_GIN_OVERLAP
+  if (increments.empty()) {
+    return;
+  }
+  auto* comm_context = GetGinCommContext();
+  const auto& dev_comm_info = comm_context->GetDevCommInfo();
+  std::vector<int> lsa_indices;
+  lsa_indices.reserve(increments.size());
+  for (const auto& increment : increments) {
+    lsa_indices.push_back(PeerToLsaIndex(dev_comm_info, increment.peer));
+    PADDLE_ENFORCE_NE(increment.peer,
+                      rank_,
+                      common::errors::InvalidArgument(
+                          "IncrementPeerCounter() cannot target this rank "
+                          "(%d).",
+                          rank_));
+    CheckWindowRange(comm_context,
+                     increment.counter_window,
+                     increment.counter_offset,
+                     kCounterBytes,
+                     kCounterBytes,
+                     "counter");
+  }
+  gin_overlap::IncrementPeerCounterBatch batch{};
+  auto launch_batch = [&]() {
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        gin_overlap::LaunchIncrementPeerCounter(dev_comm_info.dev_comm,
+                                                batch,
+                                                dev_comm_info.gin_context_count,
+                                                stream));
+    batch.count = 0;
+  };
+  for (size_t i = 0; i < increments.size(); ++i) {
+    const auto& increment = increments[i];
+    IncrementPeerCounterArgs& batched = batch.increments[batch.count++];
+    batched = increment;
+    batched.lsa_counter = lsa_indices[i] < 0
+                              ? nullptr
+                              : static_cast<uint64_t*>(comm_context->LsaPointer(
+                                    increment.counter_window,
+                                    lsa_indices[i],
+                                    increment.counter_offset));
+    if (batch.count == gin_overlap::kMaxOpsPerLaunch) {
+      launch_batch();
+    }
+  }
+  if (batch.count > 0) {
+    launch_batch();
+  }
+#endif
+}
+
+void ProcessGroupNCCL::CopyToPeers(const std::vector<CopyToPeersArgs>& copies,
+                                   gpuStream_t stream) {
+  CheckGinSupported();
+#ifdef PADDLE_WITH_GIN_OVERLAP
+  if (copies.empty()) {
+    return;
+  }
+  auto* comm_context = GetGinCommContext();
+  const auto& dev_comm_info = comm_context->GetDevCommInfo();
+  std::vector<void*> dsts;
+  std::vector<const void*> srcs;
+  std::vector<size_t> sizes;
+  dsts.reserve(copies.size());
+  srcs.reserve(copies.size());
+  sizes.reserve(copies.size());
+  for (const auto& copy : copies) {
+    const int lsa_index = PeerToLsaIndex(dev_comm_info, copy.peer);
+    PADDLE_ENFORCE_GE(
+        lsa_index,
+        0,
+        common::errors::InvalidArgument(
+            "CopyToPeers() needs a peer in the LSA team of "
+            "rank %d (ranks %d to %d), but got %d.",
+            rank_,
+            rank_ / dev_comm_info.lsa_size * dev_comm_info.lsa_size,
+            rank_ / dev_comm_info.lsa_size * dev_comm_info.lsa_size +
+                dev_comm_info.lsa_size - 1,
+            copy.peer));
+    PADDLE_ENFORCE_NE(
+        copy.peer,
+        rank_,
+        common::errors::InvalidArgument(
+            "CopyToPeers() cannot target this rank (%d).", rank_));
+    PADDLE_ENFORCE_GT(
+        copy.bytes,
+        static_cast<size_t>(0),
+        common::errors::InvalidArgument("A copy must move at least one byte."));
+    const void* src_window_base = CheckWindowRange(comm_context,
+                                                   copy.src_window,
+                                                   copy.src_offset,
+                                                   copy.bytes,
+                                                   1,
+                                                   "source");
+    CheckWindowRange(comm_context,
+                     copy.dst_window,
+                     copy.dst_offset,
+                     copy.bytes,
+                     1,
+                     "destination");
+    dsts.push_back(
+        comm_context->LsaPointer(copy.dst_window, lsa_index, copy.dst_offset));
+    srcs.push_back(static_cast<const char*>(src_window_base) + copy.src_offset);
+    sizes.push_back(copy.bytes);
+  }
+  cudaMemcpyAttributes copy_attrs;
+  std::memset(&copy_attrs, 0, sizeof(copy_attrs));
+  copy_attrs.srcAccessOrder = cudaMemcpySrcAccessOrderStream;
+  // CUDA 13 signature: (dsts, srcs, sizes, count, attrs, attrsIdxs, numAttrs,
+  // stream). The one attribute set applies from copy 0 on.
+  size_t attr_start_copy = 0;
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyBatchAsync(dsts.data(),
+                                                  srcs.data(),
+                                                  sizes.data(),
+                                                  dsts.size(),
+                                                  &copy_attrs,
+                                                  &attr_start_copy,
+                                                  1,
+                                                  stream));
+#endif
+}
+
+void ProcessGroupNCCL::Flush(gpuStream_t stream) {
+  CheckGinSupported();
+#ifdef PADDLE_WITH_GIN_OVERLAP
+  const auto& dev_comm_info = GetGinCommContext()->GetDevCommInfo();
+  PADDLE_ENFORCE_GPU_SUCCESS(gin_overlap::LaunchFlush(
+      dev_comm_info.dev_comm, dev_comm_info.gin_context_count, stream));
+#endif
+}
 }  // namespace paddle::distributed

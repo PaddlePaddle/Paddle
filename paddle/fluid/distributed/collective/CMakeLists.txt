@@ -34,11 +34,21 @@ if(WITH_DISTRIBUTE)
     DEPS phi common eager_api gloo_wrapper)
 endif()
 
+# gin_overlap_comm: device kernels of the GIN primitives of ProcessGroupNCCL
+# (gin_overlap/kernels/comm.h). Built under WITH_GIN_OVERLAP (gate in
+# cmake/configure.cmake). comm.cu emits device code only for sm_90 and newer;
+# for older archs its kernels trap.
+set(GIN_OVERLAP_COMM_LIB "")
+if(WITH_GIN_OVERLAP)
+  cc_library(gin_overlap_comm SRCS gin_overlap/kernels/comm.cu)
+  set(GIN_OVERLAP_COMM_LIB gin_overlap_comm)
+endif()
+
 if(WITH_NCCL OR WITH_RCCL)
   cc_library(
     process_group_nccl
     SRCS process_group_nccl.cc common.cc
-    DEPS process_group phi ${DEVICE_EVENT_LIBS})
+    DEPS process_group phi ${DEVICE_EVENT_LIBS} ${GIN_OVERLAP_COMM_LIB})
 
   cc_library(
     async_load
@@ -92,3 +102,22 @@ cc_library(
   processgroup_comm_utils
   SRCS processgroup_comm_utils.cc
   DEPS ${COMM_UTILS_DEPS})
+
+# gin_overlap_kernels: sum kernels on one GPU for gradient buckets
+# (gin_overlap/kernels/sum.h). They use only the CUDA runtime, so they are
+# built under WITH_GPU, independent of the gin_overlap build conditions.
+if(WITH_GPU)
+  cc_library(gin_overlap_kernels SRCS gin_overlap/kernels/sum.cu)
+endif()
+
+# gin_overlap_scheduler: GinGradCommScheduler, the staged gradient
+# reduce_scatter of the sharding-stage1 buckets
+# (gin_overlap/grad_comm_scheduler.h). Built under WITH_GIN_OVERLAP (gate in
+# cmake/configure.cmake) on the GIN primitives of process_group_nccl and the
+# sum kernels of gin_overlap_kernels.
+if(WITH_GIN_OVERLAP)
+  cc_library(
+    gin_overlap_scheduler
+    SRCS gin_overlap/grad_comm_scheduler.cc
+    DEPS process_group_nccl gin_overlap_kernels phi common)
+endif()

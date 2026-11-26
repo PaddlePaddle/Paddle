@@ -16,6 +16,7 @@
 #include <thrust/device_vector.h>
 #include <thrust/host_vector.h>
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/backends/gpu/gpu_thrust_policy.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/contiguous_kernel.h"
@@ -51,7 +52,7 @@ void apply_moe_dispatch_bwd(const T* y_grad,
   auto out_grad_ptr = thrust::device_pointer_cast(combine_weights_out_grad);
   auto in_grad_ptr = thrust::device_pointer_cast(combine_weights_in_grad);
   auto combine_weight_ptr = thrust::device_pointer_cast(combine_weights);
-  thrust::transform(thrust::cuda::par.on(stream),
+  thrust::transform(PADDLE_THRUST_CUDA_PAR.on(stream),
                     out_grad_ptr,
                     out_grad_ptr + num_rows * k,
                     combine_weight_ptr,

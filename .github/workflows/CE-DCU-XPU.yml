@@ -24,13 +24,6 @@ jobs:
     needs: clone
     uses: ./.github/workflows/docker.yml
 
-  xpu:
-    name: Linux-XPU
-    uses: ./.github/workflows/_Linux-XPU.yml
-    needs: [clone, build-docker]
-    with:
-      docker_xpu_image: ${{ needs.build-docker.outputs.docker_xpu_image }}
-
   dcu:
     name: Linux-DCU
     uses: ./.github/workflows/_Linux-DCU.yml

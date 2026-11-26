@@ -24,6 +24,7 @@ limitations under the License. */
 #if defined(__NVCC__) || defined(__HIPCC__)
 #include <thrust/execution_policy.h>
 #include <thrust/transform.h>
+#include "paddle/phi/backends/gpu/gpu_thrust_policy.h"
 #include "thrust/device_ptr.h"
 #endif
 
@@ -161,7 +162,7 @@ struct Transform<GPUContext> {
                       CastToCUDATransformIterator(result),
                       op);
 #else
-    thrust::transform(thrust::cuda::par.on(dev_ctx.stream()),
+    thrust::transform(PADDLE_THRUST_CUDA_PAR.on(dev_ctx.stream()),
                       CastToCUDATransformIterator(first),
                       CastToCUDATransformIterator(last),
                       CastToCUDATransformIterator(result),
@@ -199,7 +200,7 @@ struct Transform<GPUContext> {
                       CastToCUDATransformIterator(result),
                       op);
 #else
-    thrust::transform(thrust::cuda::par.on(dev_ctx.stream()),
+    thrust::transform(PADDLE_THRUST_CUDA_PAR.on(dev_ctx.stream()),
                       CastToCUDATransformIterator(first1),
                       CastToCUDATransformIterator(last1),
                       CastToCUDATransformIterator(first2),
