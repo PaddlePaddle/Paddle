@@ -1176,7 +1176,7 @@ def run_mixed_shard():
     )
 
 
-class GroupedNormClip(nn.ClipGradBase):
+class GroupedNormClip(paddle.nn.clip.ClipGradBase):
     """Global-norm clip per param group, keyed by param name.
 
     Shaped like PaddleFleet's MixedClipGrad: under FSDP it asks for per-param
