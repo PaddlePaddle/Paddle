@@ -2906,6 +2906,56 @@ class TestCrossEntropyLabelSmoothingIgnoreIndex(unittest.TestCase):
                 rtol=1e-5,
             )
 
+    def test_one_hot_label_ignores_ignore_index(self):
+        # one-hot labels have no class index, so ignore_index has no effect
+        one_hot = np.eye(self.C, dtype=self.dtype)[np.array([0, 2, 1, 2, 4, 3])]
+        weight = np.array([0.5, 1.0, 2.0, 0.3, 1.5], dtype=self.dtype)
+        paddle.disable_static()
+        for reduction in ('none', 'sum', 'mean'):
+            for w in (None, weight):
+                outs = []
+                for ignore_index in (self.ignore_index, -100):
+                    outs.append(
+                        paddle.nn.functional.cross_entropy(
+                            paddle.to_tensor(self.logits),
+                            paddle.to_tensor(one_hot),
+                            weight=None if w is None else paddle.to_tensor(w),
+                            ignore_index=ignore_index,
+                            reduction=reduction,
+                            label_smoothing=self.label_smoothing,
+                        ).numpy()
+                    )
+                np.testing.assert_allclose(outs[0], outs[1], rtol=1e-6)
+
+    def test_spatial_labels(self):
+        # [N, H, W, C] logits with [N, H, W] integer labels match the flattened case
+        H, W = 2, 3
+        logits = np.random.uniform(-1.0, 1.0, (2, H, W, self.C)).astype(
+            self.dtype
+        )
+        label = np.random.randint(0, self.C, (2, H, W)).astype('int64')
+        label[0, 0, 1] = self.ignore_index
+        label[1, 1, 2] = self.ignore_index
+        paddle.disable_static()
+        for reduction in ('none', 'mean'):
+            out = paddle.nn.functional.cross_entropy(
+                paddle.to_tensor(logits),
+                paddle.to_tensor(label),
+                ignore_index=self.ignore_index,
+                reduction=reduction,
+                label_smoothing=self.label_smoothing,
+            ).numpy()
+            flat = paddle.nn.functional.cross_entropy(
+                paddle.to_tensor(logits.reshape(-1, self.C)),
+                paddle.to_tensor(label.reshape(-1)),
+                ignore_index=self.ignore_index,
+                reduction=reduction,
+                label_smoothing=self.label_smoothing,
+            ).numpy()
+            np.testing.assert_allclose(
+                out.reshape(-1), flat.reshape(-1), rtol=1e-5
+            )
+
 
 class CrossEntropyLossCompatible(unittest.TestCase):
     """

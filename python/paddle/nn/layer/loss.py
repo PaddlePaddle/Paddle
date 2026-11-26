@@ -325,7 +325,10 @@ class CrossEntropyLoss(Layer):
             Default is ``'None'`` .
         ignore_index (int, optional): Specifies a target value that is ignored
             and does not contribute to the loss. A negative value means that no label
-            value needs to be ignored. Only valid when soft_label = False.
+            value needs to be ignored. Only valid when soft_label = False. When
+            ``label_smoothing > 0`` it applies to integer labels only: ignored samples
+            do not contribute to the loss or to the ``'mean'`` denominator, and it has
+            no effect on one-hot labels.
             Default is ``-100`` .
         reduction (str, optional): Indicate how to average the loss by batch_size,
             the candidates are ``'none'`` | ``'mean'`` | ``'sum'``.
