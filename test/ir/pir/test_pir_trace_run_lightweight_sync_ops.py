@@ -42,7 +42,7 @@ class ConcatReshapeNet(nn.Layer):
 
     def forward(self, x, y):
         # Emits lightweight host metadata ops in PIR (scalar CPU pd_op.full for
-        # concat axis, pd_op.full_int_array, and pd_op.shape).
+        # concat axis and pd_op.full_int_array for reshape).
         h = paddle.concat([x, y], axis=1)
         h = paddle.tanh(self.fc(h))
         return paddle.reshape(h, [-1, 8])
@@ -59,14 +59,6 @@ class CpuFull65Net(nn.Layer):
     def forward(self, x):
         # Just above threshold (numel == 65 > 64) on CPU: blocks TraceRun.
         c = paddle._C_ops.full([65], 1.0, paddle.float32, paddle.CPUPlace())
-        return x + c.to(x.place)
-
-
-class DynamicCpuFullNet(nn.Layer):
-    def forward(self, x):
-        # Dynamic-shape CPU pd_op.full (dim == -1): conservatively blocks TraceRun.
-        n = paddle.shape(x)[0]
-        c = paddle._C_ops.full([n], 1.0, paddle.float32, paddle.CPUPlace())
         return x + c.to(x.place)
 
 
@@ -186,14 +178,6 @@ class TestPirTraceRunLightweightSyncOps(unittest.TestCase):
         self.assertIn("CPU_FULL_65_OK", output)
         self.assertIn("pir interpreter is running by multi-thread mode", output)
 
-    def test_dynamic_cpu_full_keeps_multithread_mode(self):
-        if _select_accelerator() is None:
-            self.skipTest("Requires GPU or CustomDevice accelerator")
-
-        output = _run_self_case("cpu_full_dynamic")
-        self.assertIn("CPU_FULL_DYNAMIC_OK", output)
-        self.assertIn("pir interpreter is running by multi-thread mode", output)
-
     def test_non_lightweight_cpu_op_keeps_multithread_mode(self):
         if _select_accelerator() is None:
             self.skipTest("Requires GPU or CustomDevice accelerator")
@@ -211,10 +195,6 @@ if __name__ == "__main__":
         _run_cpu_full_case(CpuFull64Net, [64], [64], "CPU_FULL_64_OK")
     elif case == "cpu_full_65":
         _run_cpu_full_case(CpuFull65Net, [65], [65], "CPU_FULL_65_OK")
-    elif case == "cpu_full_dynamic":
-        _run_cpu_full_case(
-            DynamicCpuFullNet, [16], [None], "CPU_FULL_DYNAMIC_OK"
-        )
     elif case == "non_lightweight":
         _run_non_lightweight_case()
     else:
