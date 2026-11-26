@@ -130,6 +130,8 @@ class PirInterpreter : public InterpreterBaseImpl {
 
  private:
   // build graph
+  // Counts kCpuSync/kGpuSync instructions that block TraceRun (excluding
+  // lightweight host metadata ops via IsLightweightMetadataSyncOp).
   void UpdateSyncOpNum();
   void UpdateNcclOpNum();
   void UpdateOneDNNOpNum();
@@ -207,7 +209,10 @@ class PirInterpreter : public InterpreterBaseImpl {
 
   // used for Trace
   bool use_trace_run_{false};
-  int64_t sync_op_num_{-1};
+  // Number of kCpuSync/kGpuSync ops that block TraceRun (lightweight host
+  // metadata ops excluded; differs from ProgramInterpreter::sync_op_num_ which
+  // counts all sync ops).
+  int64_t trace_blocking_sync_op_num_{-1};
   int64_t nccl_op_num_{-1};
   int64_t onednn_op_num_{-1};
   std::vector<size_t> trace_execute_order_;

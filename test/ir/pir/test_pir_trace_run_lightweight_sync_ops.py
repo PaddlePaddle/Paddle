@@ -48,10 +48,31 @@ class ConcatReshapeNet(nn.Layer):
         return paddle.reshape(h, [-1, 8])
 
 
+class CpuFull64Net(nn.Layer):
+    def forward(self, x):
+        # Exact threshold (numel == 64) on CPU: still treated as lightweight.
+        c = paddle._C_ops.full([64], 1.0, paddle.float32, paddle.CPUPlace())
+        return x + c.to(x.place)
+
+
+class CpuFull65Net(nn.Layer):
+    def forward(self, x):
+        # Just above threshold (numel == 65 > 64) on CPU: blocks TraceRun.
+        c = paddle._C_ops.full([65], 1.0, paddle.float32, paddle.CPUPlace())
+        return x + c.to(x.place)
+
+
+class DynamicCpuFullNet(nn.Layer):
+    def forward(self, x):
+        # Dynamic-shape CPU pd_op.full (dim == -1): conservatively blocks TraceRun.
+        n = paddle.shape(x)[0]
+        c = paddle._C_ops.full([n], 1.0, paddle.float32, paddle.CPUPlace())
+        return x + c.to(x.place)
+
+
 class NonLightweightCpuOpNet(nn.Layer):
     def forward(self, x):
-        # Computing on a host shape tensor emits a non-lightweight CPU op
-        # (pd_op.add on CPU), which must keep multi-thread mode active.
+        # Non-metadata host op (CPU scale via shape + 0): keeps multi-thread mode.
         s = paddle.shape(x) + 0
         return paddle.reshape(x, s)
 
@@ -81,6 +102,27 @@ def _run_lightweight_case():
         out = static_net(x, y).numpy()
     np.testing.assert_allclose(out, ref, rtol=1e-5, atol=1e-5)
     print("LIGHTWEIGHT_CASE_OK", flush=True)
+
+
+def _run_cpu_full_case(cls, shape, spec_shape, tag):
+    dev = _select_accelerator()
+    paddle.set_device(dev)
+    paddle.seed(2026)
+
+    net = cls().eval()
+    x = paddle.randn(shape, dtype="float32")
+    static_net = paddle.jit.to_static(
+        net,
+        input_spec=[paddle.static.InputSpec(shape=spec_shape, dtype="float32")],
+        full_graph=True,
+        backend=None,
+    )
+
+    with paddle.no_grad():
+        ref = net(x).numpy()
+        out = static_net(x).numpy()
+    np.testing.assert_allclose(out, ref, rtol=1e-5, atol=1e-5)
+    print(tag, flush=True)
 
 
 def _run_non_lightweight_case():
@@ -128,6 +170,30 @@ class TestPirTraceRunLightweightSyncOps(unittest.TestCase):
         self.assertIn("LIGHTWEIGHT_CASE_OK", output)
         self.assertIn("pir interpreter is running by trace mode", output)
 
+    def test_cpu_full_at_threshold_uses_trace_run(self):
+        if _select_accelerator() is None:
+            self.skipTest("Requires GPU or CustomDevice accelerator")
+
+        output = _run_self_case("cpu_full_64")
+        self.assertIn("CPU_FULL_64_OK", output)
+        self.assertIn("pir interpreter is running by trace mode", output)
+
+    def test_cpu_full_above_threshold_keeps_multithread_mode(self):
+        if _select_accelerator() is None:
+            self.skipTest("Requires GPU or CustomDevice accelerator")
+
+        output = _run_self_case("cpu_full_65")
+        self.assertIn("CPU_FULL_65_OK", output)
+        self.assertIn("pir interpreter is running by multi-thread mode", output)
+
+    def test_dynamic_cpu_full_keeps_multithread_mode(self):
+        if _select_accelerator() is None:
+            self.skipTest("Requires GPU or CustomDevice accelerator")
+
+        output = _run_self_case("cpu_full_dynamic")
+        self.assertIn("CPU_FULL_DYNAMIC_OK", output)
+        self.assertIn("pir interpreter is running by multi-thread mode", output)
+
     def test_non_lightweight_cpu_op_keeps_multithread_mode(self):
         if _select_accelerator() is None:
             self.skipTest("Requires GPU or CustomDevice accelerator")
@@ -141,6 +207,14 @@ if __name__ == "__main__":
     case = os.environ.get("TEST_PIR_TRACE_RUN_CASE")
     if case == "lightweight":
         _run_lightweight_case()
+    elif case == "cpu_full_64":
+        _run_cpu_full_case(CpuFull64Net, [64], [64], "CPU_FULL_64_OK")
+    elif case == "cpu_full_65":
+        _run_cpu_full_case(CpuFull65Net, [65], [65], "CPU_FULL_65_OK")
+    elif case == "cpu_full_dynamic":
+        _run_cpu_full_case(
+            DynamicCpuFullNet, [16], [None], "CPU_FULL_DYNAMIC_OK"
+        )
     elif case == "non_lightweight":
         _run_non_lightweight_case()
     else:

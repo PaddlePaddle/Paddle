@@ -348,6 +348,60 @@ OpFuncType AnalyseOpFuncType(pir::Operation* op, const Place& place) {
   return OpFuncType::kGpuAsync;
 }
 
+namespace {
+
+constexpr int64_t kLightweightSyncOpMaxNumel = 64;
+
+bool HasSmallStaticOutput(const InstructionBase* ins) {
+  const pir::Operation* op = ins->Operation();
+  if (op == nullptr || op->num_results() != 1) {
+    return false;
+  }
+  auto tensor_type = op->result(0)
+                         .type()
+                         .dyn_cast<paddle::dialect::AllocatedDenseTensorType>();
+  if (!tensor_type) {
+    return false;
+  }
+  const auto& dims = tensor_type.dims();
+  int64_t numel = 1;
+  bool has_zero_dim = false;
+  for (int i = 0; i < dims.size(); ++i) {
+    if (dims[i] < 0) {
+      return false;
+    }
+    if (dims[i] == 0) {
+      has_zero_dim = true;
+      continue;
+    }
+    if (!has_zero_dim && numel > kLightweightSyncOpMaxNumel / dims[i]) {
+      return false;
+    }
+    if (!has_zero_dim) {
+      numel *= dims[i];
+    }
+  }
+  return true;
+}
+
+}  // namespace
+
+bool IsLightweightMetadataSyncOp(const InstructionBase* ins) {
+  static const std::unordered_set<std::string> kAlwaysLightweightOps = {
+      paddle::dialect::FullIntArrayOp::name(),
+      paddle::dialect::ShapeOp::name(),
+      paddle::dialect::Shape64Op::name(),
+  };
+  const std::string& name = ins->Name();
+  if (kAlwaysLightweightOps.count(name) > 0) {
+    return true;
+  }
+  if (name == paddle::dialect::FullOp::name()) {
+    return HasSmallStaticOutput(ins);
+  }
+  return false;
+}
+
 void GetInputIds(pir::Operation* op,
                  const ValueExecutionInfo& value_exec_info,
                  std::unordered_map<pir::Value, std::vector<int>>* input_ids) {

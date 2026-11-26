@@ -22,12 +22,20 @@
 
 #include "paddle/phi/core/kernel_registry.h"
 
+#include "paddle/fluid/framework/new_executor/instruction/instruction_base.h"
+#include "paddle/fluid/framework/new_executor/instruction/instruction_util.h"
 #include "paddle/fluid/framework/new_executor/pir_interpreter.h"
+#include "paddle/fluid/pir/dialect/kernel/ir/kernel_attribute.h"
+#include "paddle/fluid/pir/dialect/kernel/ir/kernel_dialect.h"
+#include "paddle/fluid/pir/dialect/kernel/ir/kernel_op.h"
+#include "paddle/fluid/pir/dialect/kernel/ir/kernel_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/control_flow_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
 #include "paddle/pir/include/core/builder.h"
+#include "paddle/pir/include/core/builtin_attribute.h"
+#include "paddle/pir/include/core/builtin_type.h"
 #include "paddle/pir/include/core/ir_context.h"
 #include "paddle/pir/include/core/program.h"
 
@@ -383,6 +391,91 @@ TEST(StandaloneExecutor, while_op) {
   bool res0 = out_tensor.data<int>()[0] == 11;
 
   EXPECT_EQ(res0, true);
+}
+
+namespace {
+
+class StubInstruction : public InstructionBase {
+ public:
+  StubInstruction(std::string name, pir::Operation* op)
+      : InstructionBase(0, phi::CPUPlace()), name_(std::move(name)), op_(op) {}
+
+  void Run() override {}
+  const std::string& Name() const override { return name_; }
+  pir::Operation* Operation() const override { return op_; }
+
+ private:
+  std::string name_;
+  pir::Operation* op_;
+};
+
+pir::Operation* BuildFullKernelOpWithDims(pir::IrContext* ctx,
+                                          pir::Program* storage,
+                                          const std::vector<int64_t>& shape) {
+  auto alloc_type =
+      paddle::dialect::AllocatedDenseTensorType::get(ctx,
+                                                     phi::CPUPlace(),
+                                                     pir::Float32Type::get(ctx),
+                                                     common::make_ddim(shape),
+                                                     phi::DataLayout::NCHW,
+                                                     phi::LegacyLoD{},
+                                                     0);
+  pir::AttributeMap attrs;
+  attrs["op_name"] =
+      pir::StrAttribute::get(ctx, paddle::dialect::FullOp::name());
+  attrs["kernel_name"] = pir::StrAttribute::get(ctx, "full");
+  attrs["kernel_key"] = paddle::dialect::KernelAttribute::get(
+      ctx,
+      phi::KernelKey(phi::Backend::CPU,
+                     phi::DataLayout::ALL_LAYOUT,
+                     phi::DataType::FLOAT32));
+  auto op_info = ctx->GetRegisteredOpInfo(paddle::dialect::PhiKernelOp::name());
+  pir::Operation* op = pir::Operation::Create({}, attrs, {alloc_type}, op_info);
+  storage->block()->push_back(op);
+  return op;
+}
+
+}  // namespace
+
+TEST(StandaloneExecutor, is_lightweight_metadata_sync_op_boundaries) {
+  pir::IrContext* ctx = pir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<OperatorDialect>();
+  ctx->GetOrRegisterDialect<KernelDialect>();
+
+  // Always-lightweight ops
+  StubInstruction full_int_array_ins(FullIntArrayOp::name(), nullptr);
+  StubInstruction shape_ins(ShapeOp::name(), nullptr);
+  StubInstruction shape64_ins(Shape64Op::name(), nullptr);
+  StubInstruction other_ins("pd_op.add", nullptr);
+  EXPECT_TRUE(IsLightweightMetadataSyncOp(&full_int_array_ins));
+  EXPECT_TRUE(IsLightweightMetadataSyncOp(&shape_ins));
+  EXPECT_TRUE(IsLightweightMetadataSyncOp(&shape64_ins));
+  EXPECT_FALSE(IsLightweightMetadataSyncOp(&other_ins));
+
+  // FullOp boundary cases: 0-D scalar, zero-size tensor, 0-size with dynamic
+  // dim, exact 64 threshold, 65 (> 64) rejected, overflow-like huge shape
+  // rejected, dynamic -1 dim rejected, and null op rejected.
+  StubInstruction null_full_ins(FullOp::name(), nullptr);
+  EXPECT_FALSE(IsLightweightMetadataSyncOp(&null_full_ins));
+
+  pir::Program holder(ctx);
+  auto check_full = [&](const std::vector<int64_t>& shape, bool expected) {
+    pir::Operation* op = BuildFullKernelOpWithDims(ctx, &holder, shape);
+    StubInstruction ins(FullOp::name(), op);
+    EXPECT_EQ(IsLightweightMetadataSyncOp(&ins), expected);
+  };
+
+  check_full({}, true);                             // 0-D scalar (numel = 1)
+  check_full({1}, true);                            // 1-element tensor
+  check_full({0, 1000}, true);                      // 0-size tensor (numel = 0)
+  check_full({0, -1}, false);                       // 0-size with dynamic dim
+  check_full({8, 8}, true);                         // exact threshold (64)
+  check_full({64}, true);                           // exact threshold (64)
+  check_full({65}, false);                          // just above threshold (65)
+  check_full({8, 9}, false);                        // 72 > 64
+  check_full({-1}, false);                          // dynamic shape
+  check_full({4, -1}, false);                       // partially dynamic shape
+  check_full({1000000000LL, 1000000000LL}, false);  // overflow-safe rejection
 }
 
 }  // namespace framework
