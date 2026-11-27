@@ -1341,37 +1341,13 @@ class FSDPCommManager:
 
     def reduce_scatter_grads(self, param):
         self._maybe_zero_grads()
-        gid = self.buffer_manager.param_to_buffer_id.get(param.name)
-        group = self.buffer_manager.buffer_groups[gid]
-        group.grads_use_cnt += 1
         param.main_grad = None
-
         # Dense groups outside the FSDP units (lm_head, final norm, embedding)
-        # and of the first unit have no later unit change to flush them.
-        # Reduce one as soon as every param's grad hook of the last
-        # micro-batch has fired, so it overlaps the rest of backward. A
-        # param's hook fires once per backward, after all its uses; a
-        # unit-change signal is not enough, as a weight's grad can land after
-        # backward has moved on.
-        grads_buffer = group.grads_buffer
-        if (
-            grads_buffer is None
-            or not grads_buffer.is_sharded
-            or group.is_expert_param
-        ):
-            return
-        if group.fsdp_unit_id not in (None, self._first_unit_id):
-            return
-        if group.grads_use_cnt < group.grads_use_sum:
-            return
-        group.grads_use_cnt = 0
-        group.grads_ready_cnt += 1
-        if (
-            group.grads_ready_cnt >= self.grad_accum_steps
-            and grads_buffer.tmp_data_buffer is not None
-            and grads_buffer not in self.grad_reduce_queue
-        ):
-            self._issue_reduce_scatter(grads_buffer)
+        # and of the first unit are reduced in finish_grads_sync, in buffer
+        # order. Issuing them from the grad hook made the reduce-scatter's
+        # place in the NCCL stream depend on when autograd delivered the last
+        # grad, which differs across dp ranks with different data (multimodal
+        # encoder vs. text path) and deadlocked the shared fsdp group.
 
     def _reduce_group_grads(self, group):
         # Reduce-scatter one group's fused grad buffer over its own fsdp_group.
