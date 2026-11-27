@@ -460,6 +460,29 @@ class NoPipelineParallel(MetaParallelBase):
         # default loss function index
         self.loss_fn_idx = 0
 
+        # Same event publisher as PipelineParallel, with a single stage: a
+        # listener sees one step of `accumulate_steps` forward / backward pairs
+        # and no p2p. See pipeline_event_hook.py.
+        self._pp_hook = pp_ev.get_pipeline_event_hook()
+        self._pp_hook.set_context(
+            stage_id=0,
+            num_stages=1,
+            global_rank=paddle.distributed.get_rank(),
+            replica_ranks=[
+                fn()
+                for fn in (
+                    getattr(hcg, name, None)
+                    for name in (
+                        "get_data_parallel_rank",
+                        "get_sharding_parallel_rank",
+                        "get_model_parallel_rank",
+                    )
+                )
+                if fn is not None
+            ],
+            batch_p2p_comm=False,
+        )
+
         if self._hcg is not None:
             self.use_data_parallel = (
                 self._hcg.get_data_parallel_world_size() > 1
@@ -565,61 +588,69 @@ class NoPipelineParallel(MetaParallelBase):
             )
 
         loss_list = []
-        for _ in range(self.accumulate_steps):
-            # data prepare
-            data_iter = next(micro_dataset)
-            input_tensor = data_iter[0]
-            label = data_iter[1]
-            self._check_micro_batch_data_valid(input_tensor)
-            self._check_micro_batch_data_valid(label)
+        with self._pp_hook.step():
+            with self._pp_hook.phase("steady", micro=0):
+                for micro_step in range(self.accumulate_steps):
+                    # data prepare
+                    data_iter = next(micro_dataset)
+                    input_tensor = data_iter[0]
+                    label = data_iter[1]
+                    self._check_micro_batch_data_valid(input_tensor)
+                    self._check_micro_batch_data_valid(label)
 
-            # forward
-            output_tensor = self._layers.forward(input_tensor)
+                    with self._pp_hook.forward(micro=micro_step):
+                        # forward
+                        output_tensor = self._layers.forward(input_tensor)
 
-            # loss is loss_fn[loss_fn_idx]'s result
-            loss = None
-            # cal loss
-            for idx, loss_fn in enumerate(self._layers._loss_fn):
-                loss_tensor = loss_fn(output_tensor, label)
-                assert isinstance(loss_tensor, paddle.Tensor), (
-                    "Currently, loss_fn should obtain Paddle.Tensor dtype"
-                )
+                        # loss is loss_fn[loss_fn_idx]'s result
+                        loss = None
+                        # cal loss
+                        for idx, loss_fn in enumerate(self._layers._loss_fn):
+                            loss_tensor = loss_fn(output_tensor, label)
+                            assert isinstance(loss_tensor, paddle.Tensor), (
+                                "Currently, loss_fn should obtain Paddle.Tensor dtype"
+                            )
 
-                if self.total_loss is None:
-                    self.total_loss = []
-                # when self.total_loss length is less than idx, append a new tensor
-                if len(self.total_loss) <= idx:
-                    self.total_loss.append([])
+                            if self.total_loss is None:
+                                self.total_loss = []
+                            # when self.total_loss length is less than idx, append a new tensor
+                            if len(self.total_loss) <= idx:
+                                self.total_loss.append([])
 
-                self.total_loss[idx].append(loss_tensor.detach())
+                            self.total_loss[idx].append(loss_tensor.detach())
 
-                if idx == self.loss_fn_idx:
-                    loss = loss_tensor
+                            if idx == self.loss_fn_idx:
+                                loss = loss_tensor
 
-            # backward
+                    # backward
+                    with (
+                        self._pp_hook.backward(micro=micro_step),
+                        paddle.amp.auto_cast(enable=False),
+                    ):
+                        if self.scaler:
+                            paddle.autograd.backward(self.scaler.scale(loss))
+                        else:
+                            paddle.autograd.backward(loss)
+
+                    assert self.total_loss is not None, (
+                        "train_batch() in last stage should obtain valid loss"
+                    )
+
+            losses = []
             with paddle.amp.auto_cast(enable=False):
-                if self.scaler:
-                    paddle.autograd.backward(self.scaler.scale(loss))
-                else:
-                    paddle.autograd.backward(loss)
-
-            assert self.total_loss is not None, (
-                "train_batch() in last stage should obtain valid loss"
-            )
-
-        losses = []
-        with paddle.amp.auto_cast(enable=False):
-            for idx in range(len(self._layers._loss_fn)):
-                self.total_loss[idx] = paddle.to_tensor(self.total_loss[idx])
-                if not return_micro_batch_loss:
-                    # TODO(shenliang03): it will use mean/sum to calculate loss
-                    tmp = paddle.zeros_like(self.total_loss[idx][0])
-                    for loss in self.total_loss[idx]:
-                        tmp += loss.detach()
-                    losses.append(tmp / self.accumulate_steps)
-                else:
-                    losses.append(self.total_loss[idx].detach())
-        return losses[0] if len(losses) == 1 else losses
+                for idx in range(len(self._layers._loss_fn)):
+                    self.total_loss[idx] = paddle.to_tensor(
+                        self.total_loss[idx]
+                    )
+                    if not return_micro_batch_loss:
+                        # TODO(shenliang03): it will use mean/sum to calculate loss
+                        tmp = paddle.zeros_like(self.total_loss[idx][0])
+                        for loss in self.total_loss[idx]:
+                            tmp += loss.detach()
+                        losses.append(tmp / self.accumulate_steps)
+                    else:
+                        losses.append(self.total_loss[idx].detach())
+            return losses[0] if len(losses) == 1 else losses
 
     def train_batch(
         self,

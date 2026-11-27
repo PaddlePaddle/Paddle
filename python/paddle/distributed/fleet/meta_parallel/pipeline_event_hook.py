@@ -128,6 +128,7 @@ DIRECTION_BACKWARD = "backward"
 # ── span kinds ──────────────────────────────────────────────────────────
 # A kind is the pair of events: ``forward`` -> forward_begin / forward_end.
 # The wire vocabulary is unchanged; this is only the call-site surface.
+SPAN_STEP = "step"
 SPAN_PHASE = "phase"
 SPAN_FORWARD = "forward"
 SPAN_BACKWARD = "backward"
@@ -138,6 +139,7 @@ SPAN_P2P_WAIT = "p2p_wait"
 SPAN_SUB = "sub_span"
 
 SPAN_KINDS = (
+    SPAN_STEP,
     SPAN_PHASE,
     SPAN_FORWARD,
     SPAN_BACKWARD,
@@ -267,6 +269,15 @@ class PipelineEventHook:
     # The helpers below exist so a call site reads as what it is, and so a typo
     # in a payload key is a TypeError here rather than a silently dropped field
     # a hundred thousand events later.
+    def step(self):
+        """One optimizer step: step_begin on entry, step_end on exit.
+
+        For a scheduler whose whole step sits in one block (NoPipelineParallel).
+        The pipeline schedulers emit STEP_BEGIN / STEP_END at the two ends of
+        forward_backward_pipeline instead.
+        """
+        return self.span(SPAN_STEP)
+
     def phase(self, name: str, micro: int | None = None):
         """warmup / steady / cooldown.
 
