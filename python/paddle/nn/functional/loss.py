@@ -3052,7 +3052,10 @@ def cross_entropy(
             Default is ``'None'`` .
         ignore_index (int64, optional): Specifies a target value that is ignored
             and does not contribute to the loss. A negative value means that no label
-            value needs to be ignored. Only valid when soft_label = False.
+            value needs to be ignored. Only valid when soft_label = False. When
+            ``label_smoothing > 0`` it applies to integer labels only: ignored samples
+            do not contribute to the loss or to the ``'mean'`` denominator, and it has
+            no effect on one-hot labels.
             Default is ``-100`` .
         reduction (str, optional): Indicate how to average the loss by batch_size,
             the candidates are ``'none'`` | ``'mean'`` | ``'sum'``.
@@ -3210,6 +3213,10 @@ def cross_entropy(
              (got input_dims{input_dims}, label_dims{label_dims})'
         )
 
+    # mask of the samples that take part in the loss when integer labels are
+    # smoothed, since the smoothed (soft) label can no longer be compared with
+    # ``ignore_index``
+    smoothed_valid_mask = None
     if label_smoothing > 0.0:
         soft_label = True
         # converting the label to one-hot encoding
@@ -3217,7 +3224,15 @@ def cross_entropy(
         # for 2d case, converting label's shape from [N, d_1, ..., d_k] to [N, d_1, ..., d_k, C]
         if input_dims - 1 == label_dims:
             label = paddle.squeeze(label, axis=axis)
+            if ignore_index >= 0:
+                smoothed_valid_mask = label != ignore_index
+                label = paddle.where(
+                    smoothed_valid_mask, label, paddle.zeros_like(label)
+                )
             label = paddle.nn.functional.one_hot(label, input.shape[-1])
+        else:
+            # one-hot labels have no class index to compare with ignore_index
+            ignore_index = -100
 
         label = paddle.nn.functional.label_smooth(
             label, epsilon=label_smoothing
@@ -3293,6 +3308,11 @@ def cross_entropy(
             if _nll_orig_dtype in (paddle.float16, paddle.bfloat16):
                 loss = paddle.cast(loss, _nll_orig_dtype)
             return loss
+
+        if smoothed_valid_mask is not None:
+            out = out * paddle.unsqueeze(
+                paddle.cast(smoothed_valid_mask, out.dtype), axis=-1
+            )
 
         if weight is not None:
             # trans weight from class to sample, shape:N or [N,H,W] for 1d and 2d cases.
@@ -3383,7 +3403,10 @@ def cross_entropy(
                 # for each label[i],set 1 or 0, according to ignore_index
                 # mask[i]=0, if label[i]==ignore_index
                 # mask[i]=1, otherwise
-                mask = label != ignore_index
+                if smoothed_valid_mask is not None:
+                    mask = paddle.unsqueeze(smoothed_valid_mask, axis=-1)
+                else:
+                    mask = label != ignore_index
                 if weight is None:
                     mask = paddle.cast(mask, dtype=out_sum.dtype)
                     count = _C_ops.sum(mask, [], None, False)
@@ -3456,6 +3479,11 @@ def cross_entropy(
                 inputs={'Logits': input, 'Label': label},
                 outputs=outputs,
                 attrs=attrs,
+            )
+
+        if smoothed_valid_mask is not None:
+            out = out * paddle.unsqueeze(
+                paddle.cast(smoothed_valid_mask, out.dtype), axis=-1
             )
 
         if weight is not None:
@@ -3536,7 +3564,10 @@ def cross_entropy(
                 # for each label[i],set 1 or 0, according to ignore_index
                 # mask[i]=0, if label[i]==ignore_index
                 # mask[i]=1, otherwise
-                mask = label != ignore_index
+                if smoothed_valid_mask is not None:
+                    mask = paddle.unsqueeze(smoothed_valid_mask, axis=-1)
+                else:
+                    mask = label != ignore_index
                 if weight is None:
                     mask = paddle.cast(mask, dtype=out_sum.dtype)
                     count = paddle.sum(mask, name=name)
