@@ -21,6 +21,7 @@ from paddle import _C_ops, in_dynamic_mode
 from paddle.framework import core, in_dynamic_or_pir_mode
 from paddle.utils.decorator_utils import (
     gumbel_softmax_decorator,
+    ignore_one_param,
     param_one_alias,
     param_two_alias,
 )
@@ -1392,6 +1393,71 @@ def softmax_(
         dtype = convert_nptype_to_datatype_or_vartype(dtype)
     outs_cast = x if dtype is None else _C_ops.cast(x, dtype)
     return _C_ops.softmax_(outs_cast, axis)
+
+
+@ignore_one_param("_stacklevel", 2, int)
+@param_two_alias(["x", "input"], ["axis", "dim"])
+def softmin(
+    x: Tensor,
+    axis: int | None = None,
+    dtype: DTypeLike | None = None,
+    name: str | None = None,
+) -> Tensor:
+    r"""
+    Softmin activation function.
+
+    The softmin function converts a vector of real values into a probability
+    distribution where smaller values receive larger probabilities. It is
+    defined as:
+
+    .. math::
+
+        \text{softmin}(x_i) = \frac{\exp(-x_i)}{\sum_j \exp(-x_j)}
+
+    As ``softmin(x)`` is exactly ``softmax(-x)``, this implementation reuses
+    ``softmax`` so that it keeps the same numerical stability and supports the
+    same input dtypes.
+
+    To keep ``torch.nn.functional.softmin`` call sites working, the third
+    positional parameter ``_stacklevel`` of PyTorch is accepted and ignored,
+    so ``softmin(input, dim, _stacklevel, dtype)`` can be called directly.
+
+    Parameters:
+        x (Tensor): The input Tensor with data type bfloat16, float16, float32, float64.
+            Alias: ``input``.
+        axis (int|None, optional): The axis along which to perform softmin
+            calculations. It should be in range [-D, D), where D is the
+            rank of ``x`` . If ``axis`` < 0, it works the same way as
+            :math:`axis + D` . If ``axis`` is None, it defaults to 0 for
+            0-D, 1-D and 3-D tensors and 1 for other tensors, which keeps
+            the same behavior as ``torch.nn.functional.softmin``.
+            Default is None. Alias: ``dim``.
+        dtype (str|np.dtype|core.VarDesc.VarType|core.DataType, optional):
+            The data type of the output tensor, can be bfloat16, float16,
+            float32, float64. Default is None.
+        name (str|None, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+
+    Returns:
+        A Tensor with the same shape and data type (use ``dtype`` if it is
+        specified) as x.
+
+    Examples:
+        .. code-block:: pycon
+
+            >>> import paddle
+            >>> import paddle.nn.functional as F
+
+            >>> x = paddle.to_tensor([[1.0, 2.0, 3.0], [3.0, 2.0, 1.0]])
+            >>> out = F.softmin(x, axis=-1)
+            >>> print(out)
+            Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+                   [[0.66524094, 0.24472848, 0.09003057],
+                    [0.09003057, 0.24472848, 0.66524094]])
+    """
+    if axis is None:
+        ndim = x.ndim
+        axis = 0 if ndim in (0, 1, 3) else 1
+    return softmax(-x, axis=axis, dtype=dtype, name=name)
 
 
 @param_two_alias(["x", "input"], ["threshold", "lambd"])

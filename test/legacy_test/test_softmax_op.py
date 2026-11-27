@@ -978,5 +978,104 @@ class TestSoftmaxAPI_CompatibleWithTorch2(TestSoftmaxAPI):
                 compat.nn.functional.softmax(input=x, dim=-1)
 
 
+class TestSoftminAPI(unittest.TestCase):
+    def setUp(self):
+        self.x_np = np.random.random((2, 3, 4)).astype("float32")
+
+    def test_softmin_value(self):
+        with dygraph_guard():
+            x = paddle.to_tensor(self.x_np)
+            for axis in (-1, 0, 1):
+                out = F.softmin(x, axis=axis)
+                np.testing.assert_allclose(
+                    out.numpy(),
+                    ref_softmax(-self.x_np, axis=axis),
+                    rtol=1e-6,
+                    atol=1e-6,
+                )
+
+    def test_softmin_default_axis(self):
+        # torch.nn.functional.softmin defaults dim to None: 0 for 0/1/3-D input
+        # and 1 for other ranks. Cover both branches here.
+        cases = [((6,), 0), ((3, 4), 1), ((2, 3, 4), 0), ((2, 3, 2, 3), 1)]
+        with dygraph_guard():
+            for shape, axis in cases:
+                with self.subTest(shape=shape):
+                    x_np = np.random.random(shape).astype("float32")
+                    x = paddle.to_tensor(x_np)
+                    np.testing.assert_allclose(
+                        F.softmin(x).numpy(),
+                        ref_softmax(-x_np, axis=axis),
+                        rtol=1e-6,
+                        atol=1e-6,
+                    )
+
+    def test_softmin_alias(self):
+        with dygraph_guard():
+            x = paddle.to_tensor(self.x_np)
+            out = F.softmin(input=x, dim=-1)
+            ref = F.softmin(x, axis=-1)
+            np.testing.assert_allclose(
+                out.numpy(), ref.numpy(), rtol=1e-6, atol=1e-6
+            )
+
+    def test_softmin_stacklevel(self):
+        # torch style signature: softmin(input, dim, _stacklevel, dtype)
+        with dygraph_guard():
+            x = paddle.to_tensor(self.x_np)
+            ref = F.softmin(x, axis=-1)
+
+            out_kw = F.softmin(input=x, dim=-1, _stacklevel=3)
+            np.testing.assert_allclose(
+                out_kw.numpy(), ref.numpy(), rtol=1e-6, atol=1e-6
+            )
+
+            out_pos = F.softmin(x, -1, 3, "float64")
+            self.assertEqual(out_pos.dtype, paddle.float64)
+            np.testing.assert_allclose(
+                out_pos.numpy(),
+                ref.numpy().astype("float64"),
+                rtol=1e-6,
+                atol=1e-6,
+            )
+
+            # dtype can also be a paddle dtype object
+            out_dtype_obj = F.softmin(x, -1, 3, paddle.float64)
+            self.assertEqual(out_dtype_obj.dtype, paddle.float64)
+
+    def test_softmin_dtype(self):
+        with dygraph_guard():
+            x = paddle.to_tensor(self.x_np)
+            out = F.softmin(x, axis=-1, dtype="float64")
+            self.assertEqual(out.dtype, paddle.float64)
+
+    def test_softmin_grad(self):
+        # sum(softmin(x)) is constantly 1 along the softmin axis, so a plain
+        # sum() loss cannot expose a wrong gradient. Use a weighted loss and
+        # compare against the analytic gradient.
+        with dygraph_guard():
+            w_np = np.random.random(self.x_np.shape).astype("float32")
+            x = paddle.to_tensor(self.x_np, stop_gradient=False)
+            (F.softmin(x, axis=-1) * paddle.to_tensor(w_np)).sum().backward()
+
+            s = np.exp(-self.x_np)
+            s /= s.sum(axis=-1, keepdims=True)
+            expected = s * ((w_np * s).sum(axis=-1, keepdims=True) - w_np)
+            np.testing.assert_allclose(
+                x.grad.numpy(), expected, rtol=1e-6, atol=1e-6
+            )
+
+    def test_static_check(self):
+        with static_guard():
+            with paddle.static.program_guard(paddle.static.Program()):
+                x = paddle.static.data('X', self.x_np.shape, 'float32')
+                out = F.softmin(x, axis=-1)
+                exe = paddle.static.Executor(paddle.CPUPlace())
+                res = exe.run(feed={'X': self.x_np}, fetch_list=[out])
+            np.testing.assert_allclose(
+                ref_softmax(-self.x_np, axis=-1), res[0], rtol=1e-5
+            )
+
+
 if __name__ == "__main__":
     unittest.main()
