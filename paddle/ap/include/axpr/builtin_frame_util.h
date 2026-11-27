@@ -47,6 +47,7 @@ void VisitEachBuiltinFrameAttr(const YieldT& Yield) {
   Yield("__builtin__registry", &GetRegistry);
   Yield("__builtin__dirname", &fs::DirName);
   Yield("__builtin__basename", &fs::BaseName);
+  Yield("__builtin__getenv", &fs::GetEnv);
 
   auto YieldTwice = [&](const auto& name, const auto& value) {
     Yield(name, value);

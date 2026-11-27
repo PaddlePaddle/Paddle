@@ -13,33 +13,98 @@
 # limitations under the License.
 
 import ap
+import pir
 
 
 class CompileCommandGenerator:
     def __init__(self):
         self.file_ext = "cu"
+        self.compute_capability = 80
         self.op_type2generate_func = ap.OrderedDict(
             [
-                ['matmul', self.generate_matmul_compile_command],
+                ['matmul', self.generate_compile_command_with_cutlass],
+                ['conv2d', self.generate_compile_command_with_cutlass],
+                ['attention', self.generate_compile_command_with_cutlass],
             ]
         )
 
-    def __call__(self, op_type, tpl_dirname, library_name):
-        return self.op_type2generate_func[op_type](tpl_dirname, library_name)
+    def __call__(self, op_type, source_dir, library_name, enable_autotune):
+        return (
+            self.generate_compile_command_with_flash_attn(
+                source_dir, library_name, enable_autotune
+            )
+            if (op_type == "attention" and ap.getenv("AP_FLASHATTN_DIR"))
+            else self.op_type2generate_func[op_type](
+                source_dir, library_name, enable_autotune
+            )
+        )
 
-    def generate_matmul_compile_command(self, tpl_dirname, library_name):
-        matmul_source_dir = f"{tpl_dirname}/matmul"
+    def supports(self, op_type):
+        return self.op_type2generate_func.contains(op_type) and (
+            pir.get_compute_capability() == self.compute_capability
+        )
 
-        compile_cmd = "nvcc -std=c++20 -O3 -Xcompiler=-fPIC -arch=sm_80 --expt-relaxed-constexpr"
+    def generate_compile_command_with_cutlass(
+        self, source_dir, library_name, enable_autotune
+    ):
+        assert ap.getenv("AP_CUTLASS_DIR"), (
+            "'AP_CUTLASS_DIR' is not set, but the generated kernel includes "
+            "the cutlass headers from '${AP_CUTLASS_DIR}'"
+        )
+        autotune_flag = 1 if enable_autotune else 0
+        compile_cmd = (
+            "nvcc -std=c++20 -O3 -Xcompiler=-fPIC -arch=sm_"
+            f"{self.compute_capability} --expt-relaxed-constexpr"
+        )
         compile_cmd = compile_cmd + " -I ${AP_CUTLASS_DIR}/include"
         compile_cmd = compile_cmd + " -I ${AP_CUTLASS_DIR}/tools/util/include"
-        compile_cmd = compile_cmd + " -I " + matmul_source_dir
+        compile_cmd = compile_cmd + " -I " + source_dir
         compile_cmd = (
             compile_cmd
             + " -DCUTLASS_ENABLE_TENSOR_CORE_MMA=1 -DCUTLASS_DEBUG_TRACE_LEVEL=0"
         )
         compile_cmd = (
-            compile_cmd + " -DAP_ENABLE_AUTOTUNE=1 -DAP_ENABLE_DEBUG=0"
+            compile_cmd
+            + f" -DAP_ENABLE_AUTOTUNE={autotune_flag} -DAP_ENABLE_DEBUG=0"
+        )
+        compile_cmd = (
+            compile_cmd
+            + f" --shared {library_name}.{self.file_ext} -o lib{library_name}.so"
+        )
+        return compile_cmd
+
+    def generate_compile_command_with_flash_attn(
+        self, source_dir, library_name, enable_autotune
+    ):
+        flash_attn_dir = ap.getenv("AP_FLASHATTN_DIR")
+        assert flash_attn_dir, (
+            "'AP_FLASHATTN_DIR' is not set, but the generated attention kernel "
+            "includes the (patched) FlashAttention headers from it"
+        )
+        autotune_flag = 0  # the FA head-dim bucket already picks the kernel
+        compile_cmd = (
+            "nvcc -std=c++17 -O3 -Xcompiler=-fPIC -arch=sm_"
+            f"{self.compute_capability} --expt-relaxed-constexpr"
+            " --diag-suppress=177"
+        )
+        # The patched flash.h / flash_fwd_kernel.h live in the AP overlay
+        # directory; put it first so the quoted includes in the FA launch
+        # template resolve to the patched copies.
+        compile_cmd = (
+            compile_cmd
+            + f" -I {source_dir}/flash_attn_patch"
+            + f" -I {flash_attn_dir}/csrc/flash_attn/src"
+            + f" -I {flash_attn_dir}/csrc/cutlass/include"
+        )
+        compile_cmd = compile_cmd + " -I " + source_dir
+        compile_cmd = compile_cmd + (
+            " -DAP_ATTENTION_USE_FLASH_ATTN=1"
+            " -DAP_ATTENTION_VARIADIC_FUNCTOR='ap::VariadicEpilogueFunctor'"
+            " -DAP_ATTENTION_VARIADIC_ARGS='ap::VariadicEpilogueFunctor<float>::Arguments'"
+        )
+        compile_cmd = (
+            compile_cmd
+            + f" -DAP_ENABLE_AUTOTUNE={autotune_flag} -DAP_ENABLE_DEBUG=0"
         )
         compile_cmd = (
             compile_cmd

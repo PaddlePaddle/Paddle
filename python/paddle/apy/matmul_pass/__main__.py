@@ -12,4 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import attention_variadic_ptn  # noqa: F401
+import conv2d_variadic_ptn  # noqa: F401
 import matmul_variadic_ptn  # noqa: F401
