@@ -84,5 +84,45 @@ class TestConvertSyncBatchNormCase(unittest.TestCase):
         )
 
 
+class TestConvertSyncBatchNormUseGlobalStats(unittest.TestCase):
+    def test_layer_is_kept(self):
+        model = paddle.nn.Sequential(
+            paddle.nn.Conv2D(3, 4, 3),
+            paddle.nn.BatchNorm2D(4, use_global_stats=True),
+            paddle.nn.Conv2D(4, 4, 3),
+            paddle.nn.BatchNorm2D(4),
+        )
+        frozen_bn = model[1]
+        model = paddle.nn.SyncBatchNorm.convert_sync_batchnorm(model)
+        # the layer with use_global_stats=True is kept, the other is converted
+        self.assertIs(model[1], frozen_bn)
+        self.assertNotIsInstance(model[1], paddle.nn.SyncBatchNorm)
+        self.assertIsInstance(model[3], paddle.nn.SyncBatchNorm)
+
+    def test_stats_are_not_updated(self):
+        model = paddle.nn.Sequential(
+            paddle.nn.Conv2D(3, 4, 3),
+            paddle.nn.BatchNorm2D(4, use_global_stats=True),
+        )
+        model = paddle.nn.SyncBatchNorm.convert_sync_batchnorm(model)
+        mean = model[1]._mean.numpy().copy()
+        variance = model[1]._variance.numpy().copy()
+        np.random.seed(10)
+        data = np.random.random([4, 3, 8, 8]).astype('float32')
+        x = paddle.to_tensor(data)
+
+        model.train()
+        train_out = model(x)
+        np.testing.assert_array_equal(model[1]._mean.numpy(), mean)
+        np.testing.assert_array_equal(model[1]._variance.numpy(), variance)
+
+        # the stored statistics are also the ones used in train mode
+        model.eval()
+        eval_out = model(x)
+        np.testing.assert_allclose(
+            train_out.numpy(), eval_out.numpy(), rtol=1e-05
+        )
+
+
 if __name__ == "__main__":
     unittest.main()
