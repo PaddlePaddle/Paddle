@@ -15,7 +15,7 @@ import sys
 import unittest
 
 from test_case_base import (
-    TestCaseBase,
+    TestCaseBase as _TestCaseBase,
 )
 
 import paddle
@@ -27,6 +27,18 @@ from paddle.jit.sot.psdb import check_no_breakgraph
 from paddle.jit.sot.utils import strict_mode_guard
 
 NOT_ALLOW_FALLBACK = ALREADY_SUPPORTED_EXCEPTION
+
+
+class TestCaseBase(_TestCaseBase):
+    # The functions below update `x` in place (`x += 1`), so the translated
+    # run and the eager run must not share the same input Tensor.
+    def assert_results(self, func, *args, **kwargs):
+        sym_args = [
+            a.clone() if isinstance(a, paddle.Tensor) else a for a in args
+        ]
+        sym_output = symbolic_translate(func)(*sym_args, **kwargs)
+        paddle_output = func(*args, **kwargs)
+        self.assert_nest_match(sym_output, paddle_output)
 
 
 class TestRaiseVarargs(TestCaseBase):
@@ -795,36 +807,39 @@ class TestNestingCase(TestCaseBase):
     @strict_mode_guard(NOT_ALLOW_FALLBACK)
     @check_no_breakgraph
     def test_function_nesting(self):
+        # The helpers below use out-of-place ops on purpose: with in-place ops
+        # their updates would leak into the caller's `x` through the exception
+        # path, which SOT does not reproduce yet.
         def raise_value_error_obj(x):
-            x += 1
+            x = x + 1
             raise ValueError("")
 
         def raise_value_error_cls(x):
-            x += 2
+            x = x + 2
             raise ValueError
 
         def raise_zero_div_error(x):
-            x += 3
+            x = x + 3
             return 19.0 / 0
 
         def raise_assert_error(x):
-            x += 4
+            x = x + 4
             assert []
 
         def raise_not_implemented_error(x):
-            x += 5
+            x = x + 5
             raise NotImplementedError
 
         def one_nesting(x, func):
-            x *= 6
+            x = x * 6
             func(x)
 
         def two_nesting(x, func):
-            x /= 7
+            x = x / 7
             one_nesting(x, func)
 
         def three_nesting(x, func):
-            x -= 8
+            x = x - 8
             two_nesting(x, func)
 
         def get_test_func(x, func=None):
@@ -876,12 +891,14 @@ class TestAssertException(TestCaseBase):
     @strict_mode_guard(NOT_ALLOW_FALLBACK)
     def test_assert_with_py_var_as_condition(self):
         # Test the case where `condition` is Python variable
-        self.assert_results(self.try_assert, paddle.to_tensor(1), False)
-        self.assert_results(self.try_assert, paddle.to_tensor(2), True)
-        self.assert_results(self.try_assert, paddle.to_tensor(3), [])
-        self.assert_results(self.try_assert, paddle.to_tensor(4), [1])
-        self.assert_results(self.try_assert, paddle.to_tensor(5), "")
-        self.assert_results(self.try_assert, paddle.to_tensor(6), "QAQ")
+        # `x` is a float Tensor: `x /= 2` raises on an integer Tensor in eager
+        # mode, while SOT still translates it to an out-of-place divide.
+        self.assert_results(self.try_assert, paddle.to_tensor(1.0), False)
+        self.assert_results(self.try_assert, paddle.to_tensor(2.0), True)
+        self.assert_results(self.try_assert, paddle.to_tensor(3.0), [])
+        self.assert_results(self.try_assert, paddle.to_tensor(4.0), [1])
+        self.assert_results(self.try_assert, paddle.to_tensor(5.0), "")
+        self.assert_results(self.try_assert, paddle.to_tensor(6.0), "QAQ")
         # TODO(DrRyanHuang): The following two cases are not supported yet.
         # self.assert_results(self.try_assert, paddle.to_tensor(7), ValueError)
         # self.assert_results(self.try_assert, paddle.to_tensor(8), ValueError())

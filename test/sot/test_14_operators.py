@@ -294,6 +294,10 @@ class TestOperators(TestCaseBase):
         e = paddle.to_tensor([[1, 2], [3, 4], [5, 6]], dtype='float32')
         f = paddle.to_tensor([[1, 2, 3], [4, 5, 6]], dtype='float32')
         g = paddle.to_tensor(False)
+        # In-place true division is rejected for integer Tensors (same as torch),
+        # so it is checked with float Tensors.
+        h = paddle.to_tensor(3.0)
+        i = paddle.to_tensor(4.0)
 
         self.assert_results(unary_positive, 1)
         self.assert_results(unary_negative, a)
@@ -318,7 +322,7 @@ class TestOperators(TestCaseBase):
         self.assert_results(inplace_multiply, c, d)
         self.assert_results(inplace_matrix_multiply, e, f)
         self.assert_results(inplace_floor_divide, c, d)
-        self.assert_results(inplace_true_divide, c, d)
+        self.assert_results(inplace_true_divide, h, i)
         self.assert_results(inplace_modulo, c, d)
         self.assert_results(inplace_add, c, d)
         self.assert_results(inplace_subtract, c, d)

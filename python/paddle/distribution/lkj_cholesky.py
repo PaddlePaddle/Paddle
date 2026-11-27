@@ -256,7 +256,7 @@ class LKJCholesky(distribution.Distribution):
         eps = paddle.finfo(w.dtype).tiny
         diag_elems = paddle.clip(1 - paddle.sum(w**2, axis=-1), min=eps).sqrt()
 
-        w += paddle.diag_embed(diag_elems)
+        w = w + paddle.diag_embed(diag_elems)
         return w
 
     def _cvine(self, sample_shape: Sequence[int]) -> Tensor:
@@ -310,7 +310,7 @@ class LKJCholesky(distribution.Distribution):
         )
 
         # Calculate the final Cholesky factor
-        r += paddle.eye(
+        r = r + paddle.eye(
             partial_correlation.shape[-2], partial_correlation.shape[-1]
         )
         r = r * z1m_cumprod_sqrt_shifted

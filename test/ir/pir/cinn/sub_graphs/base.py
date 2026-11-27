@@ -104,8 +104,8 @@ class TestBase(unittest.TestCase):
             if isinstance(st_out, (tuple, list)):
                 st_loss, cinn_loss = 0, 0
                 for i in range(len(st_out)):
-                    st_loss += st_out[i].mean()
-                    cinn_loss += cinn_out[i].mean()
+                    st_loss = st_loss + st_out[i].mean()
+                    cinn_loss = cinn_loss + cinn_out[i].mean()
             else:
                 st_loss = st_out.mean()
                 cinn_loss = cinn_out.mean()

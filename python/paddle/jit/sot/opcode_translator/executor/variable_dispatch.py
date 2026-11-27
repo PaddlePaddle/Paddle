@@ -1235,7 +1235,10 @@ for unary_fn in UNARY_OPS:
 for binary_fn in BINARY_OPS:
     for magic_method in magic_method_builtin_dispatch(binary_fn):
         # skip all inplace magic method name, we will dispatch it to non-inplace
-        # magic methods
+        # magic methods.
+        # NOTE: eager Tensor now has real in-place operators (``a += b`` updates
+        # ``a`` and its aliases and may raise on dtype/shape mismatch), while
+        # under SOT ``a += b`` is still translated to ``a = a + b``.
         if magic_method.is_inplace:
             continue
 

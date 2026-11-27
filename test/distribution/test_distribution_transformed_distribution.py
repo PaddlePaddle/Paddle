@@ -75,5 +75,25 @@ class TestIndependent(unittest.TestCase):
         self.assertEqual(data.dtype, self.base.loc.dtype)
 
 
+class TestTransformedDistributionScalarParams(unittest.TestCase):
+    def test_log_prob_batch_value(self):
+        # The log-det-jacobian of a scalar-parameter transform is 0-D while
+        # the base log_prob follows the shape of value.
+        base = paddle.distribution.Normal(0.0, 1.0)
+        td = paddle.distribution.TransformedDistribution(
+            base,
+            [
+                paddle.distribution.AffineTransform(
+                    paddle.to_tensor(1.0), paddle.to_tensor(2.0)
+                )
+            ],
+        )
+        value = paddle.to_tensor([0.5, 1.0])
+        expected = base.log_prob((value - 1.0) / 2.0) - np.log(2.0)
+        np.testing.assert_allclose(
+            td.log_prob(value).numpy(), expected.numpy(), rtol=1e-5
+        )
+
+
 if __name__ == '__main__':
     unittest.main()

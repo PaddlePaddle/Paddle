@@ -75,8 +75,8 @@ class ExponentialFamily(distribution.Distribution):
         else:
             grads = paddle.static.gradients(log_norm.sum(), natural_parameters)
 
-        entropy_value += log_norm
+        entropy_value = entropy_value + log_norm
         for p, g in zip(natural_parameters, grads):
-            entropy_value -= p * g
+            entropy_value = entropy_value - p * g
 
         return entropy_value
