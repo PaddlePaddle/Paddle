@@ -28,6 +28,7 @@ distributed launch:
   the double-buffer bookkeeping it restores on exit.
 * the grads buffer ``grad_div`` under context parallel.
 * ``full`` -- export through CPU copies of the released params.
+* summing sequence-parallel grads over tensor parallel.
 """
 
 import contextlib
@@ -1053,9 +1054,10 @@ class _FakeGroup:
 
 
 class _FakeHcg:
-    def __init__(self, sharding_nranks, cp_degree):
+    def __init__(self, sharding_nranks, cp_degree, tp_degree=1):
         self._group = _FakeGroup(sharding_nranks)
         self._cp_degree = cp_degree
+        self.tp_group = _FakeGroup(tp_degree)
 
     def get_sharding_parallel_group(self):
         return self._group
@@ -1072,6 +1074,12 @@ class _FakeHcg:
     def get_context_parallel_world_size(self):
         return self._cp_degree
 
+    def get_model_parallel_world_size(self):
+        return self.tp_group.nranks
+
+    def get_model_parallel_group(self):
+        return self.tp_group
+
 
 class _RecordingFusionBuffer:
     """Records grad_div instead of allocating buffers."""
@@ -1085,6 +1093,40 @@ class _RecordingFusionBuffer:
 
     def param_shard(self, param):
         return True
+
+
+class _OffsetFusionBuffer(_RecordingFusionBuffer):
+    """Lays params out back to back; this rank owns the whole buffer."""
+
+    def __init__(self, gid, params, fsdp_group, dtype, **kwargs):
+        super().__init__(gid, params, fsdp_group, dtype, **kwargs)
+        self.param_offsets = {}
+        for p in params:
+            self.param_offsets[p.name] = self.total_buffer_size
+            self.total_buffer_size += int(np.prod(p.shape))
+
+    def param_shard(self, param):
+        offset = self.param_offsets[param.name]
+        numel = int(np.prod(param.shape))
+        return offset, offset + numel, slice(0, numel)
+
+
+def _build_manager(model, hcg, buffer_cls=_RecordingFusionBuffer):
+    with contextlib.ExitStack() as stack:
+        stack.enter_context(
+            mock.patch.object(
+                fsf.fleet, "get_hybrid_communicate_group", return_value=hcg
+            )
+        )
+        stack.enter_context(
+            mock.patch.object(fsf, "TensorFusionBuffer", buffer_cls)
+        )
+        stack.enter_context(
+            mock.patch.object(
+                fsf.FSDPBufferManager, "_comm_stream", return_value=None
+            )
+        )
+        return fsf.FSDPBufferManager(model)
 
 
 class TestCpGradDiv(unittest.TestCase):
@@ -1101,24 +1143,7 @@ class TestCpGradDiv(unittest.TestCase):
         params["expert_rep"].is_moe_param = True
         params["expert_rep"].expert_cp_replicated = True
 
-        hcg = _FakeHcg(sharding_nranks, cp_degree)
-        with contextlib.ExitStack() as stack:
-            stack.enter_context(
-                mock.patch.object(
-                    fsf.fleet, "get_hybrid_communicate_group", return_value=hcg
-                )
-            )
-            stack.enter_context(
-                mock.patch.object(
-                    fsf, "TensorFusionBuffer", _RecordingFusionBuffer
-                )
-            )
-            stack.enter_context(
-                mock.patch.object(
-                    fsf.FSDPBufferManager, "_comm_stream", return_value=None
-                )
-            )
-            manager = fsf.FSDPBufferManager(model)
+        manager = _build_manager(model, _FakeHcg(sharding_nranks, cp_degree))
 
         def group_of(name):
             gid = manager.param_to_buffer_id[params[name].name]
@@ -1144,6 +1169,182 @@ class TestCpGradDiv(unittest.TestCase):
         self.assertEqual(len(groups), 2)
         for group in groups:
             self.assertEqual(group.grads_buffer.grad_div, 4)
+
+
+class TestSpGradSumOverTp(unittest.TestCase):
+    """Only sequence-parallel grads are summed over tp."""
+
+    def _build(self, numel=3, shard=None):
+        names = ("sp_a", "sp_b", "plain", "sp_c")
+        params = []
+        for name in names:
+            p = paddle.create_parameter([numel], "float32")
+            p.sequence_parallel = name.startswith("sp")
+            params.append(p)
+        # CPU-only CI builds report device "unknown", which has no alignment.
+        with mock.patch.object(
+            fsf, "get_current_device_type", return_value="gpu"
+        ):
+            buf = fsf.TensorFusionBuffer(
+                0, params, _FakeGroup(1), paddle.float32, grad_div=1
+            )
+        if shard is not None:
+            # Stand in for this rank's shard of an fsdp_degree > 1 buffer.
+            buf.shard_start, buf.shard_end = shard
+            buf.data_buffer = paddle.zeros([shard[1] - shard[0]], "float32")
+        group = types.SimpleNamespace(params=params, grads_buffer=buf)
+        return buf, params, [group]
+
+    def _fake_tp_sum(self, calls):
+        def fake_all_reduce(t, op=None, group=None, sync_op=True):
+            calls.append(group)
+            t.scale_(2.0)  # tp=2
+
+        return mock.patch.object(
+            fsf.paddle.distributed, "all_reduce", fake_all_reduce
+        )
+
+    def test_slices_merge_adjacent_sp_params(self):
+        buf, params, groups = self._build()
+        slices = fsf._sp_grad_slices(groups)
+        offs = buf.param_offsets
+        self.assertEqual(
+            [(lo, hi) for _, lo, hi in slices],
+            [
+                (offs[params[0].name], offs[params[1].name] + 3),
+                (offs[params[3].name], offs[params[3].name] + 3),
+            ],
+        )
+
+    def test_sum_touches_only_sp_slices(self):
+        buf, params, groups = self._build()
+        buf.data_buffer = paddle.ones_like(buf.data_buffer)
+        calls = []
+        with self._fake_tp_sum(calls):
+            fsf._sum_slices_over_group(fsf._sp_grad_slices(groups), "tp")
+        self.assertEqual(calls, ["tp"])
+        out = buf.data_buffer.numpy()
+        for p in params:
+            off = buf.param_offsets[p.name]
+            expected = 2.0 if p.sequence_parallel else 1.0
+            np.testing.assert_array_equal(out[off : off + 3], [expected] * 3)
+
+    def test_slices_clipped_to_local_shard(self):
+        # numel 100 pads to 128: sp_a@0, sp_b@128, plain@256, sp_c@384.
+        cases = [
+            # sp_a clipped at the shard start, merged with sp_b.
+            ((64, 320), [(0, 164)]),
+            # sp_b clipped; sp_c clipped at the shard end; plain between
+            # them keeps the two apart.
+            ((192, 448), [(0, 36), (192, 256)]),
+            # sp_a lies wholly before the shard and is skipped.
+            ((128, 256), [(0, 100)]),
+            # Only plain and padding are local; sp_c starts at shard_end.
+            ((256, 384), []),
+        ]
+        for shard, expected in cases:
+            with self.subTest(shard=shard):
+                buf, params, groups = self._build(numel=100, shard=shard)
+                self.assertEqual(
+                    [buf.param_offsets[p.name] for p in params],
+                    [0, 128, 256, 384],
+                )
+                slices = fsf._sp_grad_slices(groups)
+                self.assertEqual([(lo, hi) for _, lo, hi in slices], expected)
+                for b, _, hi in slices:
+                    self.assertIs(b, buf)
+                    self.assertLessEqual(hi, shard[1] - shard[0])
+
+    def test_sum_on_clipped_shard(self):
+        buf, _, groups = self._build(numel=100, shard=(192, 448))
+        buf.data_buffer = paddle.ones([256], "float32")
+        calls = []
+        with self._fake_tp_sum(calls):
+            fsf._sum_slices_over_group(fsf._sp_grad_slices(groups), "tp")
+        # Two slices of one dtype go out in a single all_reduce.
+        self.assertEqual(calls, ["tp"])
+        expected = np.ones([256], "float32")
+        expected[0:36] = 2.0
+        expected[192:256] = 2.0
+        np.testing.assert_array_equal(buf.data_buffer.numpy(), expected)
+
+    def test_released_buffer_skipped(self):
+        buf, _, groups = self._build()
+        buf._data_released = True
+        calls = []
+        with self._fake_tp_sum(calls):
+            fsf._sum_slices_over_group(fsf._sp_grad_slices(groups), "tp")
+        self.assertEqual(calls, [])
+
+    def test_no_slices_without_sp_params(self):
+        _, params, groups = self._build()
+        for p in params:
+            p.sequence_parallel = False
+        self.assertEqual(fsf._sp_grad_slices(groups), [])
+
+
+class TestSpGradSlicesInManager(unittest.TestCase):
+    """FSDPBufferManager collects sp slices only when tp > 1."""
+
+    def _build(self, tp_degree):
+        model = paddle.nn.Layer()
+        params = {}
+        for name in ("sp_a", "plain", "sp_b"):
+            params[name] = model.create_parameter([4, 4])
+            params[name].sequence_parallel = name.startswith("sp")
+            setattr(model, name, params[name])
+        hcg = _FakeHcg(1, 1, tp_degree=tp_degree)
+        manager = _build_manager(model, hcg, _OffsetFusionBuffer)
+        return manager, params, hcg
+
+    def test_tp_collects_sp_slices(self):
+        manager, params, hcg = self._build(tp_degree=2)
+        self.assertIs(manager.tp_group, hcg.tp_group)
+        covered = set()
+        for buf, lo, hi in manager.sp_grad_slices:
+            covered |= {(id(buf), i) for i in range(lo, hi)}
+        expected = set()
+        for name in ("sp_a", "sp_b"):
+            p = params[name]
+            buf = manager.buffer_groups[
+                manager.param_to_buffer_id[p.name]
+            ].grads_buffer
+            off = buf.param_offsets[p.name]
+            expected |= {(id(buf), i) for i in range(off, off + 16)}
+        self.assertEqual(covered, expected)
+
+    def test_tp_one_skips_sum(self):
+        manager, _, _ = self._build(tp_degree=1)
+        self.assertIsNone(manager.tp_group)
+        self.assertEqual(manager.sp_grad_slices, [])
+
+
+class TestFinishGradsSyncTpSum(unittest.TestCase):
+    """finish_grads_sync sums the sp slices over tp after the reduce."""
+
+    def _run(self, sp_grad_slices):
+        bm = types.SimpleNamespace(
+            buffer_groups=[],
+            sp_grad_slices=sp_grad_slices,
+            tp_group="tp",
+            model=paddle.nn.Layer(),
+        )
+        cm = fsf.FSDPCommManager(bm)
+        calls = []
+        with mock.patch.object(
+            fsf,
+            "_sum_slices_over_group",
+            lambda slices, group: calls.append((slices, group)),
+        ):
+            cm.finish_grads_sync()
+        return calls
+
+    def test_sums_sp_slices_over_tp(self):
+        slices = [("buf", 0, 4)]
+        self.assertEqual(self._run(slices), [(slices, "tp")])
+
+    def test_no_sum_without_sp_slices(self):
+        self.assertEqual(self._run([]), [])
 
 
 if __name__ == "__main__":
