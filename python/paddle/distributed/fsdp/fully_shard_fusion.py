@@ -1428,6 +1428,26 @@ class FSDPCommManager:
             grads_buffer.data_buffer.scale_(grads_buffer.grad_scale)
             grads_buffer.grad_scale_pending = False
 
+        # Optional param._fsdp_grad_to_param_layout(grad, param_slice): the
+        # main_grad accumulated in another layout. Convert the reduced grad in
+        # place once a step; grad is a flat view of the part of the flat
+        # param that param_slice covers.
+        for group in self.buffer_manager.buffer_groups:
+            grads_buffer = group.grads_buffer
+            if grads_buffer is None or getattr(
+                grads_buffer, "_data_released", False
+            ):
+                continue
+            for param in group.params:
+                convert = getattr(param, "_fsdp_grad_to_param_layout", None)
+                shard = grads_buffer.param_shard(param) if convert else None
+                if shard is not None:
+                    lo, hi, param_slice = shard
+                    convert(
+                        _view_slice(grads_buffer.data_buffer, lo, hi),
+                        param_slice,
+                    )
+
         # set_grad_sum_scale: every path above applied grad_scale exactly once
         # (AVG only when it equals 1/nranks), so dividing it out gives the sum.
         sum_scale, self.grad_sum_scale = self.grad_sum_scale, None
