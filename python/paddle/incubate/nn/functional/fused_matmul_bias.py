@@ -16,7 +16,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Literal
 
+import paddle
 from paddle import _C_ops, _legacy_C_ops
+from paddle.base import core
 from paddle.base.layer_helper import LayerHelper
 from paddle.framework import (
     in_dynamic_mode,
@@ -97,7 +99,15 @@ def fused_linear(
     name: str | None = None,
 ) -> Tensor:
     """
-    Fully-connected linear transformation operator. This method requires CUDA version >= 11.6.
+    Fully-connected linear transformation operator.
+
+    With ``bias`` in dynamic graph or PIR mode on CUDA, this computes the same
+    result as :func:`paddle.nn.functional.linear` (``transpose_weight=True``
+    passes the transposed weight to ``linear_v2`` directly, as
+    ``paddle.nn.functional.linear`` does under
+    ``FLAGS_use_accuracy_compatible_kernel``). Otherwise, or when
+    ``FLAGS_use_legacy_linear`` is set, it uses ``fused_gemm_epilogue``, which
+    requires CUDA version >= 11.6.
 
     Args:
         x (Tensor): the input Tensor to be multiplied.
@@ -114,7 +124,6 @@ def fused_linear(
     Examples:
         .. code-block:: pycon
 
-            >>> # doctest: +SKIP('fused_gemm_epilogue is only supported when CUDA version >= 11.6')
             >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
             >>> from paddle.incubate.nn.functional import fused_linear
@@ -127,6 +136,21 @@ def fused_linear(
             >>> print(out.shape)
             paddle.Size([3, 5])
     """
+    # Same decomposition as paddle.nn.functional.linear and torch: the bias
+    # gradient is a separate reduction. The BGRAD epilogue of
+    # fused_gemm_epilogue runs without split-K (1 MiB cublasLt workspace), so
+    # its weight gradient drifts from linear/torch for large M.
+    if (
+        bias is not None
+        and in_dynamic_or_pir_mode()
+        and core.is_compiled_with_cuda()
+        and not paddle.get_flags("FLAGS_use_legacy_linear")[
+            "FLAGS_use_legacy_linear"
+        ]
+    ):
+        if transpose_weight:
+            return _C_ops.linear_v2(x, weight, bias, True)
+        return paddle.nn.functional.linear(x, weight, bias)
     return fused_matmul_bias(x, weight, bias, False, transpose_weight, name)
 
 
