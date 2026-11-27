@@ -32,6 +32,8 @@ from paddle._C_ops import (  # noqa: F401
     acos_,
     acosh,
     acosh_,
+    addcmul,
+    addcmul_,
     addmm_,
     all,
     amax,

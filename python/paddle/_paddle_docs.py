@@ -4656,6 +4656,75 @@ def i1e(
 
 
 @add_doc_and_signature
+def addcmul(
+    input: Tensor,
+    tensor1: Tensor,
+    tensor2: Tensor,
+    value: float = 1,
+    name: str | None = None,
+    *,
+    out: Tensor | None = None,
+) -> Tensor:
+    r"""
+    Performs the element-wise multiplication of ``tensor1`` by ``tensor2``,
+    multiplies the result by the scalar ``value`` and adds it to ``input``.
+
+    .. math::
+        out = input + value * tensor1 * tensor2
+
+    The shapes of ``input``, ``tensor1`` and ``tensor2`` must be broadcastable.
+    If their data types are different, they are promoted to a common data type
+    before the computation.
+
+    Args:
+        input (Tensor): The tensor to be added. The data type should be bfloat16, float16, float32,
+            float64, uint8, int8, int16, int32, int64, complex64 or complex128.
+        tensor1 (Tensor): The first tensor to be multiplied. The data type should be the same as ``input``.
+        tensor2 (Tensor): The second tensor to be multiplied. The data type should be the same as ``input``.
+        value (int|float|complex, optional): The multiplier for ``tensor1 * tensor2``. It must be
+            representable by the computation type, and its imaginary part must be 0 if the inputs are
+            not complex. Default: 1.
+        name (str|None, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Keyword args:
+        out (Tensor|None, optional): The output tensor. Default: None.
+
+    Returns:
+        Tensor, the result of ``input + value * tensor1 * tensor2``. Its shape is the broadcast shape of the inputs.
+
+    Examples:
+        .. code-block:: pycon
+
+            >>> import paddle
+
+            >>> input = paddle.to_tensor([1.0, 2.0, 3.0])
+            >>> tensor1 = paddle.to_tensor([1.0, 2.0, 3.0])
+            >>> tensor2 = paddle.to_tensor([[1.0], [2.0]])
+            >>> out = paddle.addcmul(input, tensor1, tensor2, value=0.5)
+            >>> print(out)
+            Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[1.50000000, 3.        , 4.50000000],
+             [2.        , 4.        , 6.        ]])
+    """
+    ...
+
+
+@add_doc_and_signature
+def addcmul_(
+    input: Tensor,
+    tensor1: Tensor,
+    tensor2: Tensor,
+    value: float = 1,
+    name: str | None = None,
+) -> Tensor:
+    r"""
+    Inplace version of ``addcmul`` API, the output Tensor will be inplaced with input ``input``.
+    Please refer to :ref:`api_paddle_addcmul`.
+    """
+    ...
+
+
+@add_doc_and_signature
 def addmm_(
     input: Tensor,
     x: Tensor,

@@ -20,6 +20,7 @@ from typing import TYPE_CHECKING
 
 import paddle.pir
 from paddle.autograd.backward_utils import (
+    ALLOW_EMPTY_OUTPUT_GRAD_OPS,
     State,
     ValueDict,
     ValueSet,
@@ -270,6 +271,8 @@ def prepare_grad_outputs(grad_outputs, outputs, state):
             if opresult in state.value_to_valuegrad:
                 visited_output.add(opresult)
                 continue
+            elif output.get_defining_op().name() in ALLOW_EMPTY_OUTPUT_GRAD_OPS:
+                continue
             else:
                 if paddle.pir.is_fake_value(opresult):
                     state.value_to_valuegrad[opresult] = [
@@ -464,10 +467,14 @@ def append_backward_ops(
                     # last bwd_op return None because input in no_grad_set,
                     # but this bwd_op need a input.
 
+                    zero_flag[i] = True
+                    if op.name() in ALLOW_EMPTY_OUTPUT_GRAD_OPS:
+                        outputs.append(new_value)
+                        output_grads.append([paddle.pir.fake_value()])
+                        continue
                     append_full_like(
                         0.0, new_value[0], value, state, backward_ops
                     )
-                    zero_flag[i] = True
 
             outputs.append(new_value)
             grad_value = state.value_to_valuegrad[value][0]

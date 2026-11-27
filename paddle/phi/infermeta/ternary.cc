@@ -94,6 +94,28 @@ void AccuracyInferMeta(const MetaTensor& out,
   accuracy->share_lod(out);
 }
 
+void AddcmulInferMeta(const MetaTensor& input,
+                      const MetaTensor& tensor1,
+                      const MetaTensor& tensor2,
+                      MetaTensor* out) {
+  PADDLE_ENFORCE_EQ(
+      tensor1.dtype() == input.dtype() && tensor2.dtype() == input.dtype(),
+      true,
+      common::errors::InvalidArgument(
+          "The dtypes of input, tensor1 and tensor2 of addcmul must be the "
+          "same, but received input: %s, tensor1: %s, tensor2: %s.",
+          input.dtype(),
+          tensor1.dtype(),
+          tensor2.dtype()));
+
+  DDim out_dims =
+      funcs::GetOutputDimsForDynamicShape(input.dims(), tensor1.dims());
+  out_dims = funcs::GetOutputDimsForDynamicShape(out_dims, tensor2.dims());
+  out->set_dims(out_dims);
+  out->set_dtype(input.dtype());
+  out->share_lod(input);
+}
+
 void AddmmInferMeta(const MetaTensor& input,
                     const MetaTensor& x,
                     const MetaTensor& y,
