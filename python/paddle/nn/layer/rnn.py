@@ -902,11 +902,13 @@ class SimpleRNNCell(RNNCellBase):
             states = self.get_initial_states(inputs, self.state_shape)
         pre_h = states
         i2h = paddle.matmul(inputs, self.weight_ih, transpose_y=True)
+        # Keep the out-of-place add: the in-place operator adds Python-level
+        # checks, which show up in the dispatch time of this small cell.
         if self.bias_ih is not None:
-            i2h += self.bias_ih
+            i2h = i2h + self.bias_ih
         h2h = paddle.matmul(pre_h, self.weight_hh, transpose_y=True)
         if self.bias_hh is not None:
-            h2h += self.bias_hh
+            h2h = h2h + self.bias_hh
         h = self._activation_fn(i2h + h2h)
         return h, h
 
