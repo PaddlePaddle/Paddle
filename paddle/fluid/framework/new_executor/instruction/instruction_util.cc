@@ -31,6 +31,7 @@
 #include "paddle/pir/include/dialect/control_flow/ir/cf_op.h"
 
 #include "paddle/fluid/framework/new_executor/interpreter/interpreter_util.h"
+#include "paddle/fluid/framework/new_executor/interpreter/op_schedule_analyzer.h"
 #include "paddle/fluid/framework/new_executor/interpreter/stream_analyzer.h"
 #include "paddle/fluid/framework/new_executor/pir_adaptor/pir_adaptor_util.h"
 #include "paddle/phi/core/dense_tensor.h"
@@ -283,69 +284,7 @@ phi::DeviceContext* ParseDeviceContext(pir::Operation* op,
   return origin_dev_ctx;
 }
 OpFuncType AnalyseOpFuncType(pir::Operation* op, const Place& place) {
-  if (phi::is_cpu_place(place)) {
-    return OpFuncType::kCpuSync;
-  }
-
-  PADDLE_ENFORCE_EQ(
-      interpreter::IsSupportedHeterPlace(place),
-      true,
-      common::errors::Fatal("Unsupported current place %s", place));
-
-  auto& op_attributes = op->attributes();
-
-  if ((op->dialect()->name() == paddle::dialect::KernelDialect::name()) &&
-      (op_attributes.count("kernel_key") > 0)) {
-    auto kernel_key = op_attributes.at("kernel_key")
-                          .dyn_cast<dialect::KernelAttribute>()
-                          .data();
-    if (phi::TransToPhiPlace(kernel_key.backend()).GetType() ==
-        phi::AllocationType::CPU) {
-      return OpFuncType::kCpuSync;
-    }
-  }
-
-  // Some GPU OPs do not launch CUDA Kernel, but spend a lot of time on CPU
-  // computing. They execute serially in device thread and block CUDA kernel
-  // launching in other GPU OPs. To improve performance, set them as kGpuSync
-  // and so that they would be dispatched to host thread.
-  if ((op->dialect()->name() == "pd_kernel") &&
-      (op_attributes.count("op_name") > 0)) {
-    auto op_name =
-        op_attributes.at("op_name").dyn_cast<pir::StrAttribute>().AsString();
-    if (op_name == "pd_op.coalesce_tensor" &&
-        (!phi::is_xpu_place(place) ||
-         op->attribute<pir::BoolAttribute>("persist_output").data() == false) &&
-        op->attribute<pir::BoolAttribute>("set_constant").data() == false &&
-        op->attribute<pir::BoolAttribute>("copy_data").data() == false) {
-      return OpFuncType::kGpuSync;
-    }
-
-    if (phi::is_gpu_place(place) && (op_name == "pd_op.memcpy_d2h" ||
-                                     op_name == "pd_op.memcpy_d2h_multi_io")) {
-      return OpFuncType::kGpuSync;
-    }
-
-    if (op_name.compare(paddle::dialect::ShapeOp::name()) == 0 ||
-        op_name.compare(paddle::dialect::Shape64Op::name()) == 0) {
-      return OpFuncType::kGpuSync;
-    }
-  }
-
-  if (auto combine_op = op->dyn_cast<pir::CombineOp>()) {
-    for (size_t i = 0; i < combine_op.num_operands(); ++i) {
-      if (auto combine_operand_type =
-              combine_op.operand_source(i)
-                  .type()
-                  .dyn_cast<paddle::dialect::AllocatedDenseTensorType>()) {
-        if (phi::is_cpu_place(combine_operand_type.place())) {
-          return OpFuncType::kCpuSync;
-        }
-      }
-    }
-  }
-
-  return OpFuncType::kGpuAsync;
+  return interpreter::AnalyzeOpFuncType(op, place);
 }
 
 void GetInputIds(pir::Operation* op,

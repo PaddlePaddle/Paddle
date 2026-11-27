@@ -21,6 +21,7 @@
 
 #include "paddle/fluid/framework/details/nan_inf_utils.h"
 #include "paddle/fluid/framework/new_executor/interpreter/interpreter_util.h"
+#include "paddle/fluid/framework/new_executor/interpreter/op_schedule_analyzer.h"
 #include "paddle/fluid/framework/new_executor/interpreter/static_build.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/profiler/supplement_tracing.h"
@@ -118,11 +119,11 @@ void RecordLowPrecisionOp(const InstructionBase* instr_node) {
 
 bool UseTraceRun(const ExecutionConfig& execution_config,
                  size_t onednn_op_num,
-                 size_t sync_op_num) {
+                 size_t trace_blocking_sync_op_num) {
   return FLAGS_enable_pir_in_executor_trace_run || onednn_op_num ||
          execution_config.used_for_inference || execution_config.used_for_sot ||
          ((execution_config.used_for_jit || execution_config.used_for_cinn) &&
-          (sync_op_num == 0));
+          (trace_blocking_sync_op_num == 0));
 }
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -156,7 +157,7 @@ PirInterpreter::PirInterpreter(const Place& place,
       dependency_count_(nullptr),
       deps_(),
       refs_(),
-      sync_op_num_(-1),
+      trace_blocking_sync_op_num_(-1),
       nccl_op_num_(-1),
       onednn_op_num_(-1),
       trace_execute_order_(),
@@ -248,7 +249,7 @@ PirInterpreter::PirInterpreter(
       dependency_count_(nullptr),
       deps_(),
       refs_(),
-      sync_op_num_(-1),
+      trace_blocking_sync_op_num_(-1),
       nccl_op_num_(-1),
       onednn_op_num_(-1),
       trace_execute_order_(),
@@ -526,16 +527,12 @@ std::string PirInterpreter::GetNameByValue(pir::Value value) const {
   return value_exe_info_->GetVarName(value);
 }
 
+// Count kCpuSync/kGpuSync instructions that justify MultiThreadRun overlap,
+// using the unified OpScheduleInfo classification and graph-level host budget.
 void PirInterpreter::UpdateSyncOpNum() {
-  int64_t sync_op_num = 0;
-  for (auto& ins : vec_instruction_base_) {
-    if (ins->KernelType() == OpFuncType::kCpuSync ||
-        ins->KernelType() == OpFuncType::kGpuSync) {
-      sync_op_num = sync_op_num + 1;
-    }
-  }
-  sync_op_num_ = sync_op_num;
-  VLOG(4) << "Update sync op num, sync op num is: " << sync_op_num_;
+  trace_blocking_sync_op_num_ =
+      interpreter::CountTraceBlockingSyncOps(vec_instruction_base_);
+  VLOG(4) << "trace_blocking_sync_op_num: " << trace_blocking_sync_op_num_;
 }
 
 void PirInterpreter::UpdateNcclOpNum() {
@@ -985,6 +982,11 @@ void PirInterpreter::BuildInstruction() {
           "custom_engine_op "
           "and cinn dialect."));
     }
+  }
+  // Compute unified scheduling classification (OpFuncType + HostSyncCost +
+  // estimated host numel) once per instruction after construction.
+  for (auto& ins : vec_instruction_base_) {
+    ins->SetScheduleInfo(interpreter::AnalyzeOpScheduleInfo(ins.get(), place_));
   }
 }
 
@@ -2131,7 +2133,8 @@ void PirInterpreter::PreAnalysis() {
   UpdateOneDNNOpNum();
   VLOG(4) << "Done UpdateOneDNNOpNum";
 
-  use_trace_run_ = UseTraceRun(execution_config_, onednn_op_num_, sync_op_num_);
+  use_trace_run_ = UseTraceRun(
+      execution_config_, onednn_op_num_, trace_blocking_sync_op_num_);
 }
 
 pir::Value PirInterpreter::GetValueByName(const std::string& var_name) {

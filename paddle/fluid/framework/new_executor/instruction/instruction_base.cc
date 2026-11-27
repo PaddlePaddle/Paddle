@@ -197,12 +197,14 @@ InstructionBase::InstructionBase(size_t id, const Place& place)
 
   if (phi::is_cpu_place(place)) {
     type_ = OpFuncType::kCpuSync;
+    schedule_info_ = {OpFuncType::kCpuSync, HostSyncCost::kCompute, 0};
   } else {
     PADDLE_ENFORCE_EQ(
         interpreter::IsSupportedHeterPlace(place),
         true,
         common::errors::Fatal("Unsupported current place %s", place));
     type_ = OpFuncType::kGpuAsync;
+    schedule_info_ = {OpFuncType::kGpuAsync, HostSyncCost::kNone, 0};
   }
 
   dev_ctx_ = phi::DeviceContextPool::Instance().Get(place);
