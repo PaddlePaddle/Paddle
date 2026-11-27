@@ -442,7 +442,6 @@ class ClipGradByAdaptiveNorm(clip.ClipGradBase):
         global_norm_var_dist_moe,
         global_norm_var_not_dist_moe,
     ):
-
         # sharding first
         sharding_flag = self._hcg.get_sharding_parallel_world_size() > 1
         dp_flag = self._hcg.get_data_parallel_world_size() > 1
@@ -869,6 +868,19 @@ class HybridParallelOptimizer:
                 ShardingOptimizer = DygraphShardingOptimizerV2
             else:
                 ShardingOptimizer = DygraphShardingOptimizer
+            if strategy.hybrid_configs[
+                'sharding_configs'
+            ].gin_overlap and ShardingOptimizer not in (
+                DygraphShardingOptimizerV2,
+                MuonShardingOptimizer,
+                MixedShardingOptimizer,
+            ):
+                raise ValueError(
+                    "sharding_configs.gin_overlap supports sharding stage1 "
+                    "with split_param (DygraphShardingOptimizerV2), "
+                    "MuonShardingOptimizer or MixedShardingOptimizer, got "
+                    f"{ShardingOptimizer.__name__}"
+                )
             optimizer = ShardingOptimizer(optimizer, hcg)
 
         self._enable_timer = strategy.hybrid_configs["enable_optimizer_timer"]

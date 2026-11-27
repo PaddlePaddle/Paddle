@@ -66,6 +66,8 @@ from paddle.distributed.fleet.utils.tensor_fusion_helper import (
     HOOK_ACTION,
     FusedCommBuffer,
     assign_group_by_size,
+    copy_param_attrs,
+    fused_all_gather,
 )
 from paddle.optimizer.mixed_inner_optimizer import MixedInnerOptimizer
 
@@ -239,6 +241,21 @@ class MixedShardingOptimizer:
         self.enable_fuse_optimizer_states = (
             sharding_configs.enable_fuse_optimizer_states
         )
+        self._gin_overlap = sharding_configs.gin_overlap
+        # > 0: one fused all_gather per (group, dtype) batch of at most this
+        # many MB after the step; <= 0: sync_params per bucket.
+        self._param_allgather_fuse_mb = sharding_configs.param_allgather_fuse_mb
+        # MB per owner of the 2D partition, independent of the gradient
+        # bucket size comm_buffer_size_MB; None = comm_buffer_size_MB.
+        self._owner_partition_mb = None
+        if sharding_configs.muon_owner_partition_mb > 0:
+            self._owner_partition_mb = sharding_configs.muon_owner_partition_mb
+        if self._owner_partition_mb is not None and self._global_rank == 0:
+            logger.info(
+                f"[sharding] 2D owner partition uses "
+                f"muon_owner_partition_mb={self._owner_partition_mb} MB "
+                f"(gradient buckets stay {self.comm_buffer_size_MB} MB)"
+            )
 
         self.use_group_call_opt = sharding_configs.comm_group_call_opt
         hcg = fleet.get_hybrid_communicate_group()
@@ -655,6 +672,17 @@ class MixedShardingOptimizer:
                     group = paddle.distributed.new_group(ranks)
                     self.trainer_same_card_comms[pp_idx][card_idx] = group
 
+        # gin_overlap: the gradient reduce of the buckets (1D reduce_scatter,
+        # 2D reduce to the owner) runs in stages during the backward pass
+        # (GinGradCommScheduler).
+        self._gin_scheduler = None
+        if self._gin_overlap:
+            from paddle.distributed.communication.gin_overlap.grad_comm_scheduler import (
+                build_grad_comm_scheduler,
+            )
+
+            build_grad_comm_scheduler(self)
+
     # ------------------------------------------------------------------
     # 2D partition (V1-style greedy)
     # ------------------------------------------------------------------
@@ -857,7 +885,8 @@ class MixedShardingOptimizer:
             total_size_bytes = total_numel * 4
             total_size_mb = total_size_bytes / (1024**2)
 
-            buffer_size_mb = (
+            # muon_owner_partition_mb when it is set
+            buffer_size_mb = self._owner_partition_mb or (
                 self.comm_buffer_size_MB
                 if self.comm_buffer_size_MB > 0
                 else 256
@@ -945,7 +974,8 @@ class MixedShardingOptimizer:
             # numel * 4 is the fp32 main_grad width that actually gets
             # reduced, so comm buffer sizes stay as they are.
             total_size_mb = bucket["numel"] * 4 / (1024**2)
-            buffer_size_mb = (
+            # muon_owner_partition_mb when it is set
+            buffer_size_mb = self._owner_partition_mb or (
                 self.comm_buffer_size_MB
                 if self.comm_buffer_size_MB > 0
                 else 256
@@ -1108,16 +1138,7 @@ class MixedShardingOptimizer:
         slice_param = EagerParamBase(shape=[1], dtype=param.dtype)
         slice_param.name = param.name
 
-        def copy_attr(attr_name):
-            if hasattr(param, attr_name):
-                setattr(slice_param, attr_name, getattr(param, attr_name))
-
-        copy_attr("is_distributed")
-        copy_attr("optimize_attr")
-        copy_attr("do_model_average")
-        copy_attr("need_clip")
-        copy_attr("no_sync")
-        copy_attr("is_firstly_shared")
+        copy_param_attrs(param, slice_param)
 
         self._slice_params[param.name] = slice_param
         return slice_param
@@ -1327,6 +1348,26 @@ class MixedShardingOptimizer:
             paddle.device.synchronize()
 
         with framework.no_grad():
+            if self._gin_scheduler is not None:
+                # Report the buckets not reported in the backward pass (2D
+                # and 1D), wait for the step, then reset the buckets. A bucket
+                # the scheduler did not take over runs its own collective in
+                # _comm_grads and is waited for in scale_grads.
+                from paddle.distributed.communication.gin_overlap.grad_comm_scheduler import (
+                    finish_step,
+                )
+
+                for comm_buffer in self.comm_buffer_2d:
+                    comm_buffer._comm_grads()
+                for comm_buffer in self._comm_buffer_list:
+                    comm_buffer._comm_grads()
+                finish_step(self)
+                for comm_buffer in self.comm_buffer_2d:
+                    comm_buffer.scale_grads()
+                for comm_buffer in self._comm_buffer_list:
+                    comm_buffer.scale_grads()
+                return
+
             # --- 2D params: reduce to owner rank via each color's group ---
             if self._use_fuse_gradients:
                 for comm_buffer in self.comm_buffer_2d:
@@ -1746,8 +1787,15 @@ class MixedShardingOptimizer:
                     task.wait()
 
             # --- 1D params: all-gather via comm buffers ---
-            for comm_buffer in self._comm_buffer_list:
-                comm_buffer.sync_params()
+            if self._param_allgather_fuse_mb > 0:
+                # one all_gather per (group, dtype) batch of at most
+                # param_allgather_fuse_mb; unset = sync_params per bucket
+                fused_all_gather(
+                    self._comm_buffer_list, self._param_allgather_fuse_mb
+                )
+            else:
+                for comm_buffer in self._comm_buffer_list:
+                    comm_buffer.sync_params()
 
     # ------------------------------------------------------------------
     # Clear gradients

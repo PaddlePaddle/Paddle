@@ -27,8 +27,11 @@ from safetensors.numpy import safe_open
 import paddle
 from paddle.distributed.fleet.utils.log_util import logger
 
-from ..aoa.aoa_engine import (
-    postprocess_transpose,
+from ..aoa.postprocess import (
+    is_permute,
+    is_reshape,
+    reshape_op_shape,
+    shape_after_postprocess,
 )
 from .metadata import (
     LocalTensorIndex,
@@ -299,130 +302,26 @@ def get_overlap_region(desc_offset, desc_shape, shard_offset, shard_shape):
     return True, overlap_offset, overlap_shape, desc_starts, shard_starts
 
 
+def apply_postprocess(tensor, operations):
+    """Replay a postprocess list -- permutes, casts and reshapes -- onto ``tensor``."""
+    for operation in operations or []:
+        if is_reshape(operation):
+            tensor = tensor.reshape(list(reshape_op_shape(operation)))
+        elif is_permute(operation):
+            tensor = paddle.transpose(tensor, ast.literal_eval(operation))
+        elif isinstance(operation, str):
+            tensor = paddle.cast(tensor, operation)
+    return tensor
+
+
 def assign_sharded_slice(
     src_desc, src_shard, dst_desc, dst_shard, postprocess_list=None
 ):
-    # Leading-block reshape between an N-D canonical layout and its 2-D
-    # flattened form: canonical [d0, d1, *rest] <-> flattened [d0*d1, prod(rest)].
-    # "reshape:" maps flattened(2-D) -> canonical(N-D); "flatten:" the reverse.
-    reshape_marker = next(
-        (
-            item
-            for item in (postprocess_list or [])
-            if isinstance(item, str)
-            and (item.startswith("reshape:") or item.startswith("flatten:"))
-        ),
-        None,
-    )
-    if reshape_marker is not None:
-        _is_forward = reshape_marker.startswith("reshape:")
-        canonical_shape = tuple(
-            ast.literal_eval(reshape_marker.split(":", 1)[1])
-        )
-        block_width = canonical_shape[1]
-        # Transposes that follow the reshape/flatten marker permute the
-        # destination layout. The reshape/flatten itself must be applied in the
-        # reshape-output axis order, so express the destination region in that
-        # pre-transpose coordinate system, slice there, and only then replay the
-        # trailing transpose/cast operations to reach the final layout.
-        marker_index = postprocess_list.index(reshape_marker)
-        remaining_pp = postprocess_list[marker_index + 1 :]
-        pre_pp_offset = postprocess_transpose(
-            list(dst_desc.global_offset), remaining_pp, reverse=True
-        )
-        pre_pp_shape = postprocess_transpose(
-            list(dst_desc.local_shape), remaining_pp, reverse=True
-        )
-        src_starts = [
-            offset - shard_offset
-            for offset, shard_offset in zip(
-                src_desc.global_offset, src_shard.global_offset
-            )
-        ]
-        src_tensor_slice = paddle.slice(
-            src_shard.local_tensor,
-            axes=list(range(len(src_desc.local_shape))),
-            starts=src_starts,
-            ends=[
-                start + size
-                for start, size in zip(src_starts, src_desc.local_shape)
-            ],
-        )
-        if _is_forward:
-            if (
-                src_desc.local_shape[0] % block_width != 0
-                or src_desc.global_offset[0] % block_width != 0
-                or src_desc.local_shape[1] != int(np.prod(canonical_shape[2:]))
-                or src_desc.global_offset[1] != 0
-            ):
-                raise ValueError(
-                    "reshape requires block-aligned full-row source shards, "
-                    f"but got local_shape={src_desc.local_shape}, "
-                    f"global_offset={src_desc.global_offset}, "
-                    f"canonical_shape={canonical_shape}."
-                )
-            local_blocks = src_desc.local_shape[0] // block_width
-            src_tensor_slice = src_tensor_slice.reshape(
-                (local_blocks, *canonical_shape[1:])
-            )
-            target_starts = [0, *pre_pp_offset[1:]]
-        else:
-            if (
-                len(src_desc.local_shape) != len(canonical_shape)
-                or src_desc.local_shape[1:] != canonical_shape[1:]
-                or src_desc.global_offset[1:]
-                != (0,) * (len(canonical_shape) - 1)
-            ):
-                raise ValueError(
-                    "flatten requires complete trailing-dim source shards, "
-                    f"but got local_shape={src_desc.local_shape}, "
-                    f"global_offset={src_desc.global_offset}, "
-                    f"canonical_shape={canonical_shape}."
-                )
-            # See the forward branch above.
-            src_tensor_slice = src_tensor_slice.reshape(
-                (
-                    src_desc.local_shape[0] * block_width,
-                    int(np.prod(canonical_shape[2:])),
-                )
-            )
-            target_starts = [0, pre_pp_offset[1]]
-        # ``paddle.slice`` and ``reshape`` both return views that share storage
-        # with the source. On some backends (e.g. XPU) slicing such a
-        # reshape-view reads wrong (all-zero) data, so materialize a contiguous,
-        # owning copy of the reshaped layout before the slice below.
-        src_tensor_slice = src_tensor_slice.clone()
-        src_tensor_slice = paddle.slice(
-            src_tensor_slice,
-            axes=list(range(len(pre_pp_shape))),
-            starts=target_starts,
-            ends=[
-                start + size for start, size in zip(target_starts, pre_pp_shape)
-            ],
-        )
+    """Copy the ``src_desc`` region of ``src_shard`` into ``dst_desc`` of ``dst_shard``.
 
-        for operation in postprocess_list:
-            if operation == reshape_marker:
-                continue
-            is_list, result = is_list_string(operation)
-            if is_list:
-                src_tensor_slice = paddle.transpose(src_tensor_slice, result)
-            elif isinstance(operation, str):
-                src_tensor_slice = paddle.cast(src_tensor_slice, operation)
-
-        dst_starts = [
-            offset - shard_offset
-            for offset, shard_offset in zip(
-                dst_desc.global_offset, dst_shard.global_offset
-            )
-        ]
-        dst_index = tuple(
-            slice(start, start + size)
-            for start, size in zip(dst_starts, dst_desc.local_shape)
-        )
-        dst_shard.local_tensor[dst_index] = src_tensor_slice
-        return
-
+    The source region becomes the destination region once its postprocess list
+    has run; a permute or a reshape in it is why the two can differ in shape.
+    """
     src_has, _, overlap_shape, src_desc_starts, src_shard_starts = (
         get_overlap_region(
             src_desc.global_offset,
@@ -442,60 +341,62 @@ def assign_sharded_slice(
     )
 
     assert src_has or dst_has, "no overlap!"
-    if overlap_shape != overlap_shape2:
-        assert postprocess_list is not None, (
-            "only post transpose operation could make overlap shape mismatch"
-        )
-        transposed_src_overlap_shape = postprocess_transpose(
-            overlap_shape, postprocess_list
-        )
+    processed_overlap_shape = shape_after_postprocess(
+        overlap_shape, postprocess_list
+    )
+    assert processed_overlap_shape == overlap_shape2, (
+        f"overlap shape mismatch: {processed_overlap_shape} vs {overlap_shape2}"
+    )
 
-        assert transposed_src_overlap_shape == overlap_shape2, (
-            f"overlap shape mismatch: {transposed_src_overlap_shape} vs {overlap_shape2}"
+    src_tensor_slice = paddle.slice(
+        src_shard.local_tensor,
+        axes=list(range(len(overlap_shape))),
+        starts=src_shard_starts,
+        ends=[s + o for s, o in zip(src_shard_starts, overlap_shape)],
+    )
+    dst_tensor_slice = paddle.slice(
+        dst_shard.local_tensor,
+        axes=list(range(len(overlap_shape2))),
+        starts=dst_shard_starts,
+        ends=[s + o for s, o in zip(dst_shard_starts, overlap_shape2)],
+    )
+    src_tensor_slice = apply_postprocess(src_tensor_slice, postprocess_list)
+    if _should_write_by_setitem(
+        dst_shard.local_tensor, dst_tensor_slice, src_tensor_slice
+    ):
+        dst_index = tuple(
+            slice(s, s + o) for s, o in zip(dst_shard_starts, overlap_shape2)
         )
-        axes = list(range(len(transposed_src_overlap_shape)))
-
-        src_tensor_slice = paddle.slice(
-            src_shard.local_tensor,
-            axes=axes,
-            starts=src_shard_starts,
-            ends=[s + o for s, o in zip(src_shard_starts, overlap_shape)],
-        )
-
-        dst_tensor_slice = paddle.slice(
-            dst_shard.local_tensor,
-            axes=axes,
-            starts=dst_shard_starts,
-            ends=[s + o for s, o in zip(dst_shard_starts, overlap_shape2)],
-        )
-
+        # __setitem__ is an in-place set_value on the whole target, which a
+        # parameter that does not stop gradient refuses outside no_grad.
+        with paddle.no_grad():
+            dst_shard.local_tensor[dst_index] = src_tensor_slice
     else:
-        axes = list(range(len(overlap_shape)))
+        paddle.assign(src_tensor_slice, dst_tensor_slice)
 
-        src_tensor_slice = paddle.slice(
-            src_shard.local_tensor,
-            axes=axes,
-            starts=src_shard_starts,
-            ends=[s + o for s, o in zip(src_shard_starts, overlap_shape)],
-        )
 
-        dst_tensor_slice = paddle.slice(
-            dst_shard.local_tensor,
-            axes=axes,
-            starts=dst_shard_starts,
-            ends=[s + o for s, o in zip(dst_shard_starts, overlap_shape)],
-        )
-
-    if postprocess_list is not None:
-        for ps in postprocess_list:
-            is_list, result = is_list_string(ps)
-            if is_list:
-                src_tensor_slice = paddle.transpose(src_tensor_slice, result)
-            else:
-                if isinstance(ps, str):
-                    src_tensor_slice = paddle.cast(src_tensor_slice, ps)
-
-    paddle.assign(src_tensor_slice, dst_tensor_slice)
+def _should_write_by_setitem(target, region, value):
+    """Whether to write ``value`` into ``region`` of ``target`` with
+    ``target[index] = value`` (an in-place ``set_value`` on the whole target)
+    rather than ``paddle.assign`` into the ``region`` slice."""
+    place = target.place
+    if not region._is_shared_buffer_with(target):
+        # With FLAGS_use_stride_kernel off -- the XPU CI runs with it off, and
+        # layout autotune turns it off -- paddle.slice returns a copy instead
+        # of a view of the target, so assign would fill that copy and leave
+        # the target unchanged; set_value writes the target itself.
+        return True
+    # load_state_dict moves the receive buffer to the target's place first;
+    # should the two still differ, keep assign, since __setitem__ would move
+    # the whole target to the value's place.
+    if value.place != place:
+        return False
+    if place.is_cpu_place():
+        # assign fills a strided slice of a CPU target (e.g. the CPU copy that
+        # load_state_dict stages a pinned optimizer state in) element by
+        # element; set_value writes it several times faster.
+        return not region.is_contiguous()
+    return False
 
 
 def merge_shard_info_list(list_of_dicts):
@@ -514,14 +415,6 @@ def build_shard_desc(val):
         global_offset=tuple(val.global_offset),
         dtype=str(val.local_tensor.dtype).split(".")[-1],
     )
-
-
-def is_list_string(s):
-    try:
-        result = ast.literal_eval(s)
-        return (True, result) if isinstance(result, list) else (False, None)
-    except:
-        return False, None
 
 
 def write_to_file_if_empty(data, path):

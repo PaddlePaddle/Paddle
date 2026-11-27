@@ -19,6 +19,7 @@ limitations under the License. */
 
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
+#include "paddle/phi/backends/gpu/gpu_thrust_policy.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/visit_type.h"
 #include "paddle/phi/kernels/funcs/index_impl.cu.h"
@@ -90,7 +91,7 @@ void CoalesceCooGPUKernel(const GPUContext& dev_ctx,
 #ifdef PADDLE_WITH_HIP
   thrust::sort_by_key(thrust::hip::par.on(dev_ctx.stream()),
 #else
-  thrust::sort_by_key(thrust::cuda::par.on(dev_ctx.stream()),
+  thrust::sort_by_key(PADDLE_THRUST_CUDA_PAR.on(dev_ctx.stream()),
 #endif
                       indices_ptr,
                       indices_ptr + nnz,
@@ -101,7 +102,7 @@ void CoalesceCooGPUKernel(const GPUContext& dev_ctx,
 #ifdef PADDLE_WITH_HIP
       thrust::unique_by_key(thrust::hip::par.on(dev_ctx.stream()),
 #else
-      thrust::unique_by_key(thrust::cuda::par.on(dev_ctx.stream()),
+      thrust::unique_by_key(PADDLE_THRUST_CUDA_PAR.on(dev_ctx.stream()),
 #endif
                             indices_ptr,
                             indices_ptr + nnz,

@@ -22,6 +22,8 @@ distributed launch:
 * the fused-kernel fp32 gradient hand-off inside the grad hook.
 * the tuple branch of the forward post hook that splices exposed parameters
   back untouched while routing the rest through the backward all_gather hook.
+* the dict branch of the forward post hook, which must route all hookable
+  values through a single backward hook so the unit is all-gathered once.
 * ``unshard_params`` -- the synchronous gather / reshard context manager and
   the double-buffer bookkeeping it restores on exit.
 * the grads buffer ``grad_div`` under context parallel.
@@ -222,6 +224,74 @@ class TestForwardPostHookTupleBranch(unittest.TestCase):
         self.assertEqual(len(result), 2)
         np.testing.assert_array_equal(result[0].numpy(), a.numpy())
         np.testing.assert_array_equal(result[1].numpy(), b.numpy())
+
+
+class _GatherCountingCommManager(_NoopCommManager):
+    """Counts the backward all_gather calls issued by ``FusionBackwardHook``."""
+
+    def __init__(self):
+        super().__init__()
+        self.backward_gathers = 0
+
+    def all_gather_params(self, params, is_backward=False):
+        if is_backward:
+            self.backward_gathers += 1
+
+
+class TestForwardPostHookDictBranch(unittest.TestCase):
+    """Covers the dict branch of the forward post hook built by
+    ``_register_fusion_layer_hooks``."""
+
+    def _capture_post_hook(self, param_names):
+        fsdp = object.__new__(fsf.FullyShardFusion)
+        fsdp.comm_manager = _GatherCountingCommManager()
+        layer = _FakeLayer([_NamedParam(n) for n in param_names])
+        fsdp._register_fusion_layer_hooks(layer, recursive=False)
+        self.assertIsNotNone(layer.post_hook)
+        return fsdp, layer
+
+    def test_multiple_values_all_gather_once_in_backward(self):
+        # A PyLayer per value would all-gather the unit once per value, the
+        # first time as soon as any single value's gradient arrives.
+        fsdp, layer = self._capture_post_hook([])
+        x = paddle.to_tensor([1.0, 2.0], stop_gradient=False)
+        outputs = {"a": x * 1.0, "b": x * 2.0}
+        result = layer.post_hook(layer, (), outputs)
+        (result["a"].sum() + result["b"].sum()).backward()
+        self.assertEqual(fsdp.comm_manager.backward_gathers, 1)
+        np.testing.assert_allclose(x.grad.numpy(), [3.0, 3.0])
+
+    def test_unhookable_values_kept_untouched(self):
+        hidden = paddle.to_tensor([1.0, 2.0], stop_gradient=False) * 1.0
+        frozen = paddle.to_tensor([5.0])  # stop_gradient=True
+        weight = paddle.to_tensor([3.0, 4.0])  # exposed LM-head weight
+        _, layer = self._capture_post_hook([weight.name])
+        outputs = {"h": hidden, "frozen": frozen, "w": weight, "n": 7}
+        result = layer.post_hook(layer, (), outputs)
+        self.assertEqual(list(result.keys()), ["h", "frozen", "w", "n"])
+        self.assertIs(result["frozen"], frozen)
+        self.assertIs(result["w"], weight)
+        self.assertEqual(result["n"], 7)
+        np.testing.assert_array_equal(result["h"].numpy(), [1.0, 2.0])
+
+    def test_nothing_hookable_returns_outputs_without_hook(self):
+        _, layer = self._capture_post_hook([])
+        outputs = {"frozen": paddle.to_tensor([1.0]), "n": 3}
+        with mock.patch.object(fsf.FusionBackwardHook, "apply") as apply:
+            result = layer.post_hook(layer, (), outputs)
+        apply.assert_not_called()
+        self.assertIs(result, outputs)
+
+    def test_single_hookable_value_written_back(self):
+        # FusionBackwardHook.forward returns a bare tensor for one input.
+        fsdp, layer = self._capture_post_hook([])
+        x = paddle.to_tensor([1.0, 2.0], stop_gradient=False)
+        outputs = {"a": x * 2.0, "n": 1}
+        result = layer.post_hook(layer, (), outputs)
+        self.assertIsInstance(result["a"], paddle.Tensor)
+        result["a"].sum().backward()
+        self.assertEqual(fsdp.comm_manager.backward_gathers, 1)
+        np.testing.assert_allclose(x.grad.numpy(), [2.0, 2.0])
 
 
 class _FakeParamsBuffer:
@@ -989,6 +1059,12 @@ class _FakeHcg:
 
     def get_sharding_parallel_group(self):
         return self._group
+
+    def get_fsdp_group(self, is_expert=False):
+        return self._group
+
+    def get_data_parallel_world_size(self):
+        return 1
 
     def get_expert_parallel_world_size(self):
         return 1

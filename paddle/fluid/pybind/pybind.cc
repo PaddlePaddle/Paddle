@@ -155,6 +155,10 @@ limitations under the License. */
 #include "paddle/fluid/pybind/dist_api.h"
 #endif
 
+#ifdef PADDLE_WITH_GIN_OVERLAP
+#include "paddle/fluid/pybind/gin_overlap_api.h"
+#endif
+
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/pybind/nccl_wrapper_py.h"
 #endif
@@ -4713,6 +4717,9 @@ All parameter, weight, gradient are variables in Paddle.
 #endif
 #if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_DEEP_EP)
   BindDeepEPApi(&m);
+#endif
+#ifdef PADDLE_WITH_GIN_OVERLAP
+  BindGinOverlapApi(&m);
 #endif
 
 #if defined(PADDLE_WITH_CUDA)

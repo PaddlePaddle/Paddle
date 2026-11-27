@@ -5056,7 +5056,7 @@ void SplitInferMeta(const MetaTensor& x,
                           "Only one dimension value of Attr(num_or_sections) "
                           "in SplitOp can be -1. "
                           "But received Attr(num_or_sections) = [%s].",
-                          make_ddim(sections_data)));
+                          paddle::string::join_strings(sections_data, ", ")));
 
     if (unknown_dim_idx != -1) {
       // for example, input shape = [4 ,5], axis = 1, sections = [2, 3, -1].
@@ -5071,7 +5071,7 @@ void SplitInferMeta(const MetaTensor& x,
               "size "
               "along the split dimension. But received Attr(num_or_sections) "
               "= [%s], input(X)'s shape = [%s], Attr(dim) = %d.",
-              make_ddim(sections_data),
+              paddle::string::join_strings(sections_data, ", "),
               x.dims(),
               axis_value));
 
@@ -5085,7 +5085,7 @@ void SplitInferMeta(const MetaTensor& x,
               "size "
               "along the split dimension. But received Attr(num_or_sections)"
               " = [%s], input(X)'s shape = [%s], Attr(dim) = %d.",
-              make_ddim(sections_data),
+              paddle::string::join_strings(sections_data, ", "),
               x.dims(),
               axis_value));
     }

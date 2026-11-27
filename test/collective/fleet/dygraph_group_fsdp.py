@@ -873,6 +873,11 @@ def check_muon_checkpoint(num_mats_down, ckpt_path, dense):
     groups = muon_groups_of(ctx)
     matrix_sharded = all(g.whole_shard_numel is not None for g in groups)
     assert matrix_sharded == (not dense and num_mats_down is None)
+    # Matrix-sharded params are released after the step, so
+    # sharded_state_dict binds them a scratch instead of the shard view.
+    for group in groups if matrix_sharded else []:
+        for param in group.params:
+            assert not param._is_initialized(), f"{param.name} kept storage"
 
     state = state_dict()
     muon_names = {p.name for g in groups for p in g.params}

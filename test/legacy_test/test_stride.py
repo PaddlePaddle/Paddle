@@ -933,6 +933,35 @@ class TestStride(unittest.TestCase):
         np.testing.assert_allclose(out_c1.numpy(), np_out)
         self.assertTrue(out_c1._is_shared_buffer_with(out3))
 
+    def call_view_dtype_offset(self):
+        # view(dtype) of a sliced tensor keeps the slice's byte offset.
+        x = paddle.arange(64, dtype="int32")
+        x_np = x.numpy()
+        u = x.view(paddle.uint8)
+
+        # widening: uint8 -> int32 starting at byte 128
+        s = u[128:256]
+        out = s.view(paddle.int32)
+        self.assertEqual(out.data_ptr(), x.data_ptr() + 128)
+        np.testing.assert_array_equal(out.numpy(), x_np[32:64])
+
+        # widening to a type wider than the source by 8x
+        out = u[64:128].view(paddle.int64)
+        self.assertEqual(out.data_ptr(), x.data_ptr() + 64)
+        np.testing.assert_array_equal(out.numpy(), x_np[16:32].view(np.int64))
+
+        # narrowing: int32 -> uint8 starting at element 32 (byte 128)
+        s = x[32:48]
+        out = s.view(paddle.uint8)
+        self.assertEqual(out.data_ptr(), x.data_ptr() + 128)
+        np.testing.assert_array_equal(out.numpy(), x_np[32:48].view(np.uint8))
+
+        # a byte offset that is not a multiple of the new dtype size
+        with self.assertRaises(ValueError):
+            u[2:10].view(paddle.int32)
+        with self.assertRaises(ValueError):
+            u[4:20].view(paddle.int64)
+
     def call_view_alias2(self):
         x_np = np.random.random(size=[10, 10, 10, 20]).astype('float32')
         x = paddle.to_tensor(x_np)
@@ -996,6 +1025,7 @@ class TestStride(unittest.TestCase):
         self.call_view_equal()
         self.call_view_alias1()
         self.call_view_alias2()
+        self.call_view_dtype_offset()
         self.call_view_as()
         self.call_unfold()
 

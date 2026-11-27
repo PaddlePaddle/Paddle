@@ -33,6 +33,8 @@ void SwiGluGradKernel(const Context& dev_ctx,
                       const DenseTensor& dz,
                       DenseTensor* dx,
                       DenseTensor* dy) {
+  SwiGLUGradCheckShapes(x, y, dz);
+
   if (dx && dx->numel() == 0) {
     dev_ctx.template Alloc<T>(dx);
     if (dy) {
@@ -59,18 +61,10 @@ void SwiGluGradKernel(const Context& dev_ctx,
 
   if (y) {
     const auto& y_tensor = y.get();
-    const auto& y_dims = y_tensor.dims();
     const auto* y_data = y_tensor.data<T>();
     auto* dy_data = dev_ctx.template Alloc<T>(dy);
     y_ptr = reinterpret_cast<const XPUType*>(y_data);
     dy_ptr = reinterpret_cast<XPUType*>(dy_data);
-    PADDLE_ENFORCE_EQ(y_dims,
-                      dims,
-                      common::errors::InvalidArgument(
-                          "The shape of Input(Y):[%s] must be equal "
-                          "to the shape of Input(X):[%s].",
-                          y_dims,
-                          dims));
   }
   int ret = xpu::swiglu_grad(dev_ctx.x_context(),
                              reinterpret_cast<const XPUType*>(x_data),
