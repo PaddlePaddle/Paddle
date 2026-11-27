@@ -602,6 +602,7 @@ def instance_norm(
         return instance_norm_out
 
 
+@param_one_alias(["x", "input"])
 def local_response_norm(
     x: Tensor,
     size: int,
@@ -631,6 +632,7 @@ def local_response_norm(
 
     Args:
         x (Tensor): The input 3-D/4-D/5-D tensor. The data type is float16 or float32.
+            Alias: ``input``.
         size (int): The number of channels to sum over.
         alpha (float, optional): The scaling parameter, positive. Default:1e-4
         beta (float, optional): The exponent, positive. Default:0.75
