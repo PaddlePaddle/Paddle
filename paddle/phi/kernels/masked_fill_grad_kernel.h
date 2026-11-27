@@ -20,6 +20,11 @@
 
 namespace phi {
 
+// NOTE: `x_grad` may share its buffer with `out_grad`, because masked_fill_grad
+// is declared with `inplace : (out_grad -> x_grad)` in backward.yaml. A backend
+// must therefore finish reading `out_grad` for `v_grad` before it writes
+// `x_grad`, or read each element of `out_grad` before it writes the matching
+// element of `x_grad`.
 template <typename T, typename Context>
 void MaskedFillGradKernel(const Context& dev_ctx,
                           const DenseTensor& x,

@@ -86,24 +86,9 @@ void MaskedFillGradKernel(const Context& dev_ctx,
   auto numel = mask_expand.numel();
 
   if (numel <= 0) return;
-  if (x_grad) {
-    dev_ctx.template Alloc<T>(x_grad);
 
-    DenseTensor* x_grad_tmp = x_grad;
-    if (expand_x) {
-      x_grad_tmp = &x_grad_expand;
-    }
-    auto* dx = x_grad_tmp->data<T>();
-    for (int i = 0; i < numel; i++) {
-      dx[i] = mask_data[i] ? T{} : dout[i];
-    }
-
-    if (expand_x) {
-      ExpandGradKernel<T, Context>(
-          dev_ctx, x, x_grad_expand, IntArray(expanded_size), x_grad);
-    }
-  }
-
+  // x_grad may share its buffer with out_grad, see the note of
+  // MaskedFillGradKernel. So value_grad is computed before x_grad is written.
   if (v_grad) {
     dev_ctx.template Alloc<T>(v_grad);
 
@@ -121,16 +106,34 @@ void MaskedFillGradKernel(const Context& dev_ctx,
         }
       }
     } else {
+      // Positions that are not filled must be zeroed explicitly, because the
+      // buffer returned by Alloc is uninitialized.
       for (int i = 0; i < numel; i++) {
-        if (mask_data[i]) {
-          dv[i] = dout[i];
-        }
+        dv[i] = mask_data[i] ? dout[i] : T{};
       }
 
       if (expand_value) {
         ExpandGradKernel<T, Context>(
             dev_ctx, x, value_grad_expand, IntArray(expanded_size), v_grad);
       }
+    }
+  }
+
+  if (x_grad) {
+    dev_ctx.template Alloc<T>(x_grad);
+
+    DenseTensor* x_grad_tmp = x_grad;
+    if (expand_x) {
+      x_grad_tmp = &x_grad_expand;
+    }
+    auto* dx = x_grad_tmp->data<T>();
+    for (int i = 0; i < numel; i++) {
+      dx[i] = mask_data[i] ? T{} : dout[i];
+    }
+
+    if (expand_x) {
+      ExpandGradKernel<T, Context>(
+          dev_ctx, x, x_grad_expand, IntArray(expanded_size), x_grad);
     }
   }
 }

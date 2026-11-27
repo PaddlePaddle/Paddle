@@ -402,6 +402,80 @@ class TestMaskedFillAPI_ZeroSize2(TestMaskedFillAPI_ZeroSize):
         self.scalar_value = False
 
 
+class TestMaskedFillValueGrad(unittest.TestCase):
+    # The grad of ``value`` is the sum of out_grad over the filled positions.
+    # It must not be affected by x_grad sharing its buffer with out_grad.
+    def setUp(self):
+        np.random.seed(2024)
+        # ``get_places()`` only returns the accelerator in a default CUDA
+        # build, so the devices are listed explicitly here.
+        self.devices = ['cpu']
+        if get_device() is not None:
+            self.devices.append(get_device())
+        self.x_shape = [4, 3]
+        self.mask_np = np.random.rand(*self.x_shape) > 0.5
+
+    def _check(
+        self,
+        api_name,
+        x_shape,
+        value_shape,
+        expected_x_grad,
+        expected_value_grad,
+    ):
+        # Run on CPU and on the accelerator, as they use different kernels.
+        old_device = paddle.get_device()
+        try:
+            for device in self.devices:
+                paddle.set_device(device)
+                with base.dygraph.guard():
+                    x = paddle.randn(x_shape)
+                    x.stop_gradient = False
+                    value = paddle.full(value_shape, 2.0)
+                    value.stop_gradient = False
+                    mask = paddle.to_tensor(self.mask_np)
+                    out = getattr(x * 1, api_name)(mask, value)
+                    out.sum().backward()
+                    np.testing.assert_allclose(
+                        value.grad.numpy(), expected_value_grad, rtol=1e-6
+                    )
+                    np.testing.assert_allclose(
+                        x.grad.numpy(), expected_x_grad, rtol=1e-6
+                    )
+        finally:
+            paddle.set_device(old_device)
+
+    def test_zero_dim_value(self):
+        for api_name in ("masked_fill", "masked_fill_"):
+            self._check(
+                api_name,
+                self.x_shape,
+                [],
+                (~self.mask_np).astype('float32'),
+                np.float32(self.mask_np.sum()),
+            )
+
+    def test_full_shape_value(self):
+        for api_name in ("masked_fill", "masked_fill_"):
+            self._check(
+                api_name,
+                self.x_shape,
+                self.x_shape,
+                (~self.mask_np).astype('float32'),
+                self.mask_np.astype('float32'),
+            )
+
+    def test_broadcast_x(self):
+        # x is broadcast to the shape of mask, so x_grad has to be reduced.
+        self._check(
+            "masked_fill",
+            self.x_shape[1:],
+            [],
+            (~self.mask_np).sum(axis=0).astype('float32'),
+            np.float32(self.mask_np.sum()),
+        )
+
+
 if __name__ == '__main__':
     paddle.enable_static()
     unittest.main()
