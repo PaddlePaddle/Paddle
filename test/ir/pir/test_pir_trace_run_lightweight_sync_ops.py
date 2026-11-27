@@ -41,32 +41,56 @@ class ConcatReshapeNet(nn.Layer):
         self.fc = nn.Linear(2, 8)
 
     def forward(self, x, y):
-        # Emits lightweight host metadata ops in PIR (scalar CPU pd_op.full for
-        # concat axis and pd_op.full_int_array for reshape).
+        # Tier 2 + Tier 3: scalar CPU pd_op.full (concat axis) and
+        # pd_op.full_int_array (reshape) both classify as kInlineMetadata.
         h = paddle.concat([x, y], axis=1)
         h = paddle.tanh(self.fc(h))
         return paddle.reshape(h, [-1, 8])
 
 
+class ShapeArithmeticNet(nn.Layer):
+    def forward(self, x):
+        # Tier 2 (shape) + Tier 3 (small static CPU scale on 2-elem shape
+        # vector): total I/O numel = 4 <= 64 -> kInlineMetadata -> trace mode.
+        s = paddle.shape(x) + 0
+        return paddle.reshape(x, s)
+
+
 class CpuFull64Net(nn.Layer):
     def forward(self, x):
-        # Exact threshold (numel == 64) on CPU: still treated as lightweight.
+        # Exact Tier 3 threshold (numel == 64) on CPU: still kInlineMetadata.
         c = paddle._C_ops.full([64], 1.0, paddle.float32, paddle.CPUPlace())
         return x + c.to(x.place)
 
 
 class CpuFull65Net(nn.Layer):
     def forward(self, x):
-        # Just above threshold (numel == 65 > 64) on CPU: blocks TraceRun.
+        # Just above Tier 3 threshold (numel == 65 > 64) on CPU: kCompute ->
+        # keeps multi-thread mode.
         c = paddle._C_ops.full([65], 1.0, paddle.float32, paddle.CPUPlace())
         return x + c.to(x.place)
 
 
-class NonLightweightCpuOpNet(nn.Layer):
+class Tier1BlockingSortNet(nn.Layer):
     def forward(self, x):
-        # Non-metadata host op (CPU scale via shape + 0): keeps multi-thread mode.
-        s = paddle.shape(x) + 0
-        return paddle.reshape(x, s)
+        # Tier 1 blocklist: CPU argsort is superlinear/heavy even on a tiny
+        # 4-element tensor -> kCompute -> keeps multi-thread mode.
+        c = paddle._C_ops.full([4], 1.0, paddle.float32, paddle.CPUPlace())
+        idx = paddle.argsort(c)
+        return x + idx.astype("float32").to(x.place)
+
+
+class GraphBudgetExceededNet(nn.Layer):
+    def forward(self, x):
+        # 17 small CPU full([64]) ops -> cumulative host numel = 1088 > 1024
+        # (kGraphInlineMetadataNumelBudget) -> falls back to multi-thread mode.
+        acc = x
+        for i in range(17):
+            c = paddle._C_ops.full(
+                [64], float(i + 1) * 0.01, paddle.float32, paddle.CPUPlace()
+            )
+            acc = acc + c.to(x.place)
+        return acc
 
 
 def _run_lightweight_case():
@@ -96,7 +120,7 @@ def _run_lightweight_case():
     print("LIGHTWEIGHT_CASE_OK", flush=True)
 
 
-def _run_cpu_full_case(cls, shape, spec_shape, tag):
+def _run_single_input_case(cls, shape, spec_shape, tag):
     dev = _select_accelerator()
     paddle.set_device(dev)
     paddle.seed(2026)
@@ -115,27 +139,6 @@ def _run_cpu_full_case(cls, shape, spec_shape, tag):
         out = static_net(x).numpy()
     np.testing.assert_allclose(out, ref, rtol=1e-5, atol=1e-5)
     print(tag, flush=True)
-
-
-def _run_non_lightweight_case():
-    dev = _select_accelerator()
-    paddle.set_device(dev)
-    paddle.seed(2026)
-
-    net = NonLightweightCpuOpNet().eval()
-    x = paddle.randn([16, 16], dtype="float32")
-    static_net = paddle.jit.to_static(
-        net,
-        input_spec=[paddle.static.InputSpec(shape=[16, 16], dtype="float32")],
-        full_graph=True,
-        backend=None,
-    )
-
-    with paddle.no_grad():
-        ref = net(x).numpy()
-        out = static_net(x).numpy()
-    np.testing.assert_allclose(out, ref, rtol=1e-5, atol=1e-5)
-    print("NON_LIGHTWEIGHT_CASE_OK", flush=True)
 
 
 def _run_self_case(case_name):
@@ -162,6 +165,14 @@ class TestPirTraceRunLightweightSyncOps(unittest.TestCase):
         self.assertIn("LIGHTWEIGHT_CASE_OK", output)
         self.assertIn("pir interpreter is running by trace mode", output)
 
+    def test_small_static_shape_arithmetic_uses_trace_run(self):
+        if _select_accelerator() is None:
+            self.skipTest("Requires GPU or CustomDevice accelerator")
+
+        output = _run_self_case("shape_arith")
+        self.assertIn("SHAPE_ARITH_OK", output)
+        self.assertIn("pir interpreter is running by trace mode", output)
+
     def test_cpu_full_at_threshold_uses_trace_run(self):
         if _select_accelerator() is None:
             self.skipTest("Requires GPU or CustomDevice accelerator")
@@ -178,12 +189,20 @@ class TestPirTraceRunLightweightSyncOps(unittest.TestCase):
         self.assertIn("CPU_FULL_65_OK", output)
         self.assertIn("pir interpreter is running by multi-thread mode", output)
 
-    def test_non_lightweight_cpu_op_keeps_multithread_mode(self):
+    def test_tier1_blocklisted_cpu_op_keeps_multithread_mode(self):
         if _select_accelerator() is None:
             self.skipTest("Requires GPU or CustomDevice accelerator")
 
-        output = _run_self_case("non_lightweight")
-        self.assertIn("NON_LIGHTWEIGHT_CASE_OK", output)
+        output = _run_self_case("tier1_sort")
+        self.assertIn("TIER1_SORT_OK", output)
+        self.assertIn("pir interpreter is running by multi-thread mode", output)
+
+    def test_graph_budget_exceeded_keeps_multithread_mode(self):
+        if _select_accelerator() is None:
+            self.skipTest("Requires GPU or CustomDevice accelerator")
+
+        output = _run_self_case("graph_budget")
+        self.assertIn("GRAPH_BUDGET_OK", output)
         self.assertIn("pir interpreter is running by multi-thread mode", output)
 
 
@@ -191,11 +210,19 @@ if __name__ == "__main__":
     case = os.environ.get("TEST_PIR_TRACE_RUN_CASE")
     if case == "lightweight":
         _run_lightweight_case()
+    elif case == "shape_arith":
+        _run_single_input_case(
+            ShapeArithmeticNet, [16, 16], [16, 16], "SHAPE_ARITH_OK"
+        )
     elif case == "cpu_full_64":
-        _run_cpu_full_case(CpuFull64Net, [64], [64], "CPU_FULL_64_OK")
+        _run_single_input_case(CpuFull64Net, [64], [64], "CPU_FULL_64_OK")
     elif case == "cpu_full_65":
-        _run_cpu_full_case(CpuFull65Net, [65], [65], "CPU_FULL_65_OK")
-    elif case == "non_lightweight":
-        _run_non_lightweight_case()
+        _run_single_input_case(CpuFull65Net, [65], [65], "CPU_FULL_65_OK")
+    elif case == "tier1_sort":
+        _run_single_input_case(Tier1BlockingSortNet, [4], [4], "TIER1_SORT_OK")
+    elif case == "graph_budget":
+        _run_single_input_case(
+            GraphBudgetExceededNet, [64], [64], "GRAPH_BUDGET_OK"
+        )
     else:
         unittest.main()

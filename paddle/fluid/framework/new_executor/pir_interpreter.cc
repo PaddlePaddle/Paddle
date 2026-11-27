@@ -21,6 +21,7 @@
 
 #include "paddle/fluid/framework/details/nan_inf_utils.h"
 #include "paddle/fluid/framework/new_executor/interpreter/interpreter_util.h"
+#include "paddle/fluid/framework/new_executor/interpreter/op_schedule_analyzer.h"
 #include "paddle/fluid/framework/new_executor/interpreter/static_build.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/profiler/supplement_tracing.h"
@@ -527,19 +528,11 @@ std::string PirInterpreter::GetNameByValue(pir::Value value) const {
 }
 
 // Count kCpuSync/kGpuSync instructions that justify MultiThreadRun overlap,
-// excluding lightweight host metadata ops (IsLightweightMetadataSyncOp).
+// using the unified OpScheduleInfo classification and graph-level host budget.
 void PirInterpreter::UpdateSyncOpNum() {
-  int64_t trace_blocking_sync_op_num = 0;
-  for (auto& ins : vec_instruction_base_) {
-    if ((ins->KernelType() == OpFuncType::kCpuSync ||
-         ins->KernelType() == OpFuncType::kGpuSync) &&
-        !IsLightweightMetadataSyncOp(ins.get())) {
-      trace_blocking_sync_op_num = trace_blocking_sync_op_num + 1;
-    }
-  }
-  trace_blocking_sync_op_num_ = trace_blocking_sync_op_num;
-  VLOG(4) << "Update trace-blocking sync op num (lightweight metadata ops "
-             "excluded): "
+  trace_blocking_sync_op_num_ =
+      interpreter::CountTraceBlockingSyncOps(vec_instruction_base_);
+  VLOG(4) << "Update trace-blocking sync op num (via OpScheduleInfo): "
           << trace_blocking_sync_op_num_;
 }
 
@@ -990,6 +983,11 @@ void PirInterpreter::BuildInstruction() {
           "custom_engine_op "
           "and cinn dialect."));
     }
+  }
+  // Compute unified scheduling classification (OpFuncType + HostSyncCost +
+  // estimated host numel) once per instruction after construction.
+  for (auto& ins : vec_instruction_base_) {
+    ins->SetScheduleInfo(interpreter::AnalyzeOpScheduleInfo(ins.get(), place_));
   }
 }
 

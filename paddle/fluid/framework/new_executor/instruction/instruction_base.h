@@ -48,7 +48,16 @@ class InstructionBase {
   void SetSyncAfterLaunch(bool sync) { sync_after_launch_ = sync; }
 
   OpFuncType KernelType() const;
-  void SetKernelType(OpFuncType type) { type_ = type; }
+  void SetKernelType(OpFuncType type) {
+    type_ = type;
+    schedule_info_.func_type = type;
+  }
+
+  const OpScheduleInfo& ScheduleInfo() const { return schedule_info_; }
+  void SetScheduleInfo(const OpScheduleInfo& info) {
+    schedule_info_ = info;
+    type_ = info.func_type;
+  }
 
   int GetStreamPriority() const { return stream_priority_; }
   void SetStreamPriority(int stream_priority) {
@@ -191,6 +200,8 @@ class InstructionBase {
   bool sync_after_launch_{false};
 
   OpFuncType type_;
+
+  OpScheduleInfo schedule_info_;
 
   // dist attrs：lower value, higher priority
   int stream_priority_{0};

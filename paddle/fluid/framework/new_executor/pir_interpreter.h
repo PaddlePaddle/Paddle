@@ -130,8 +130,8 @@ class PirInterpreter : public InterpreterBaseImpl {
 
  private:
   // build graph
-  // Counts kCpuSync/kGpuSync instructions that block TraceRun (excluding
-  // lightweight host metadata ops via IsLightweightMetadataSyncOp).
+  // Counts kCpuSync/kGpuSync instructions that block TraceRun using each
+  // instruction's OpScheduleInfo and the graph-level host numel budget.
   void UpdateSyncOpNum();
   void UpdateNcclOpNum();
   void UpdateOneDNNOpNum();

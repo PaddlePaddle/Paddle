@@ -41,12 +41,6 @@ phi::DeviceContext* ParseDeviceContext(pir::Operation* op,
 
 OpFuncType AnalyseOpFuncType(pir::Operation* op, const Place& place);
 
-// Returns true if the instruction is a sub-microsecond host metadata/scalar op
-// (e.g., shape query, `full_int_array`, or statically small `full`) that does
-// not benefit from overlapping via MultiThreadRun and should not block
-// TraceRun.
-bool IsLightweightMetadataSyncOp(const InstructionBase* ins);
-
 void GetInputIds(pir::Operation* op,
                  const ValueExecutionInfo& value_exec_info,
                  std::unordered_map<pir::Value, std::vector<int>>* input_ids);

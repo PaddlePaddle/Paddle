@@ -48,5 +48,34 @@ enum class OpFuncType {
   kGpuAsync  // GPU or other device kernel with asynchronous operation
 };
 
+// Host-side execution cost tier of an instruction, used by PirInterpreter
+// scheduling decisions (e.g., TraceRun gating and thread assignment).
+enum class HostSyncCost {
+  kNone,              // Asynchronous device launch (kGpuAsync)
+  kInlineMetadata,    // Sub-microsecond host metadata/scalar op; safe to run
+                      // inline without blocking TraceRun (subject to graph
+                      // host budget)
+  kCompute,           // General CPU compute (large/dynamic/superlinear/unknown)
+  kBlockingDeviceIO,  // Blocking D2H / host I/O / Python callback / control
+                      // flow; must stay off the fast inline launch path
+};
+
+struct OpScheduleInfo {
+  OpFuncType func_type{OpFuncType::kGpuAsync};
+  HostSyncCost host_cost{HostSyncCost::kNone};
+  // Estimated host element count processed by kInlineMetadata ops, used to
+  // enforce a graph-level cumulative host budget for TraceRun.
+  int64_t estimated_host_numel{0};
+
+  bool IsSync() const {
+    return func_type == OpFuncType::kCpuSync ||
+           func_type == OpFuncType::kGpuSync;
+  }
+
+  bool CanInlineInTraceRun() const {
+    return !IsSync() || host_cost == HostSyncCost::kInlineMetadata;
+  }
+};
+
 }  // namespace framework
 }  // namespace paddle
