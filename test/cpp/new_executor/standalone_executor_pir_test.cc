@@ -465,6 +465,38 @@ TEST(StandaloneExecutor, op_schedule_info_three_tier_classification) {
   const phi::Place cpu_place = phi::CPUPlace();
   pir::Program holder(ctx);
 
+  // --- Nullptr & direct pir::Operation* overload coverage ---
+  {
+    auto null_ins_info = AnalyzeOpScheduleInfo(
+        static_cast<const InstructionBase*>(nullptr), cpu_place);
+    EXPECT_EQ(null_ins_info.func_type, OpFuncType::kGpuAsync);
+    EXPECT_EQ(null_ins_info.host_cost, HostSyncCost::kNone);
+
+    auto null_op_cpu_info =
+        AnalyzeOpScheduleInfo(static_cast<pir::Operation*>(nullptr), cpu_place);
+    EXPECT_EQ(null_op_cpu_info.func_type, OpFuncType::kCpuSync);
+    EXPECT_EQ(null_op_cpu_info.host_cost, HostSyncCost::kCompute);
+
+    auto null_op_gpu_info = AnalyzeOpScheduleInfo(
+        static_cast<pir::Operation*>(nullptr), phi::GPUPlace(0));
+    EXPECT_EQ(null_op_gpu_info.func_type, OpFuncType::kGpuAsync);
+    EXPECT_EQ(null_op_gpu_info.host_cost, HostSyncCost::kNone);
+
+    pir::Operation* small_full =
+        BuildPhiKernelOp(ctx, &holder, FullOp::name(), {}, {{4}});
+    auto op_info = AnalyzeOpScheduleInfo(small_full, cpu_place);
+    EXPECT_EQ(op_info.func_type, OpFuncType::kCpuSync);
+    EXPECT_EQ(op_info.host_cost, HostSyncCost::kInlineMetadata);
+    EXPECT_EQ(op_info.estimated_host_numel, 4);
+
+    // Null op fallback on a Tier 1a blocking op name.
+    StubInstruction null_blocking_ins(
+        "pd_op.memcpy_d2h", nullptr, OpFuncType::kCpuSync);
+    auto blocking_info = AnalyzeOpScheduleInfo(&null_blocking_ins, cpu_place);
+    EXPECT_EQ(blocking_info.host_cost, HostSyncCost::kBlockingDeviceIO);
+    EXPECT_FALSE(blocking_info.CanInlineInTraceRun());
+  }
+
   // --- Tier 0: kGpuAsync -> kNone ---
   {
     StubInstruction async_ins("pd_op.relu", nullptr, OpFuncType::kGpuAsync);

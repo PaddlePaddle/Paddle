@@ -219,11 +219,7 @@ bool TryEstimateSmallStaticCpuOpNumel(const pir::Operation* op,
   return true;
 }
 
-std::string ExtractLogicalOpName(const pir::Operation* op,
-                                 const std::string& fallback_name) {
-  if (op == nullptr) {
-    return fallback_name;
-  }
+std::string ExtractLogicalOpName(const pir::Operation* op) {
   const auto& attrs = op->attributes();
   auto it = attrs.find("op_name");
   if (it != attrs.end()) {
@@ -262,7 +258,7 @@ OpScheduleInfo ClassifyOpScheduleInfo(pir::Operation* op,
   }
 
   const std::string dialect_name = op->dialect()->name();
-  const std::string op_name = ExtractLogicalOpName(op, fallback_name);
+  const std::string op_name = ExtractLogicalOpName(op);
 
   // Tier 2 (builtin.combine): pointer-packing of CPU metadata tensors only.
   if (auto combine_op = op->dyn_cast<pir::CombineOp>()) {

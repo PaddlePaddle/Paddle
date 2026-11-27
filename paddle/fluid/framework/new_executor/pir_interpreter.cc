@@ -532,8 +532,7 @@ std::string PirInterpreter::GetNameByValue(pir::Value value) const {
 void PirInterpreter::UpdateSyncOpNum() {
   trace_blocking_sync_op_num_ =
       interpreter::CountTraceBlockingSyncOps(vec_instruction_base_);
-  VLOG(4) << "Update trace-blocking sync op num (via OpScheduleInfo): "
-          << trace_blocking_sync_op_num_;
+  VLOG(4) << "trace_blocking_sync_op_num: " << trace_blocking_sync_op_num_;
 }
 
 void PirInterpreter::UpdateNcclOpNum() {
