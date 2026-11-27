@@ -341,6 +341,9 @@ class _RecordingCommManager:
         # left for unshard_params to restore.
         self.sharded = list(params)
 
+    def _keeps_non_unit_gathered(self, group):
+        return getattr(group, "keep_non_unit_gathered", False)
+
     _free_params_buffer = fsf.FSDPCommManager._free_params_buffer
 
 
@@ -487,6 +490,27 @@ class TestUnshardParams(unittest.TestCase):
         self.assertEqual(cm.buffer_cnt_in_using, 0)
         self.assertEqual(groups[0].params_buffer.status, fsf.BufferState.FREED)
         self.assertEqual(groups[0].params_buffer.clear_calls, 1)
+
+    def test_non_unit_kept_group_unbound_then_freed(self):
+        # shard_params leaves a keep_non_unit_gathered group bound, so on exit
+        # unshard_params unbinds its params itself and marks the non-unit
+        # params for a fresh gather in the next forward.
+        fsdp, groups = self._make_fsdp([(fsf.BufferState.FREED,)], {"w": 0})
+        cm = fsdp.comm_manager
+        cm._non_unit_ready = True
+        param = paddle.create_parameter([2, 3], "float32")
+        param.name = "w"
+        groups[0].keep_non_unit_gathered = True
+        groups[0].params = [param]
+        with fsdp.unshard_params([param]):
+            self.assertTrue(param._is_initialized())
+        self.assertFalse(param._is_initialized())
+        self.assertEqual(param.shape, [2, 3])
+        self.assertFalse(param.stop_gradient)
+        self.assertFalse(cm._non_unit_ready)
+        self.assertEqual(groups[0].params_buffer.status, fsf.BufferState.FREED)
+        self.assertEqual(groups[0].params_buffer.clear_calls, 1)
+        self.assertEqual(cm.buffer_cnt_in_using, 0)
 
 
 def _make_comm_manager(layout, **kwargs):
@@ -1045,6 +1069,62 @@ class TestReshardPolicy(unittest.TestCase):
                 self.assertEqual(
                     groups[gid].params_buffer.status, fsf.BufferState.USING
                 )
+
+    def test_non_unit_gather_without_non_unit_groups(self):
+        cm = _make_comm_manager(_LAYOUT, keep_non_unit_gathered=True)
+        cm.all_gather_params = mock.Mock()
+        cm._ensure_non_unit_gathered()
+        self.assertTrue(cm._non_unit_ready)
+        cm.all_gather_params.assert_not_called()
+
+
+class TestClipParamsGrads(unittest.TestCase):
+    """Covers ``FullyShardFusion.clip_params_grads`` and its stand-ins."""
+
+    def _clip_params_grads(self, rank):
+        w, frozen, other = (
+            paddle.create_parameter([4], "float32") for _ in range(3)
+        )
+        w.need_clip = False
+        frozen.stop_gradient = True
+        buf = paddle.arange(8, dtype="float32")
+        ns = types.SimpleNamespace
+        grads_buffer = ns(
+            is_sharded=False,
+            data_buffer=buf,
+            param_shard=lambda p: (0, 4, None) if p is w else None,
+        )
+        group = ns(
+            keep_whole=False,
+            grads_buffer=grads_buffer,
+            params_buffer=ns(data_buffer=ns(stop_gradient=False)),
+            params=[w, frozen, other],
+            whole_owner_rank=None,
+            fsdp_group=ns(nranks=2),
+        )
+        fsdp = object.__new__(fsf.FullyShardFusion)
+        fsdp.buffer_manager = ns(buffer_groups=[group])
+        fsdp._clip_slice_params = {}
+        with mock.patch.object(
+            paddle.distributed, "get_rank", return_value=rank
+        ):
+            out = fsdp.clip_params_grads()
+            self.assertIs(fsdp.clip_params_grads()[0][0], out[0][0])
+        self.assertEqual(len(out), 1)
+        return w, buf, *out[0]
+
+    def test_rank0_counts_the_model_param(self):
+        w, _, param, _ = self._clip_params_grads(rank=0)
+        self.assertIs(param, w)
+
+    def test_other_ranks_get_stand_in(self):
+        w, buf, stand_in, grad = self._clip_params_grads(rank=1)
+        self.assertIsNot(stand_in, w)
+        self.assertEqual(stand_in.name, w.name)
+        self.assertFalse(stand_in.is_firstly_shared)
+        self.assertFalse(stand_in.need_clip)
+        grad.scale_(2.0)  # a view: the scale reaches the fused buffer
+        np.testing.assert_array_equal(buf.numpy(), [0, 2, 4, 6, 4, 5, 6, 7])
 
 
 class _FakeGroup:

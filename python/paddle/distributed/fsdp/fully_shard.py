@@ -134,6 +134,7 @@ def _fully_shard_manual_parallel(
     comm_unit_size=None,
     reshard_policy="after_forward",
     reshard_filter="all",
+    keep_non_unit_gathered=False,
 ):
     layers = module._layers if isinstance(module, MetaParallelBase) else module
     if optimizer is not None:
@@ -152,6 +153,7 @@ def _fully_shard_manual_parallel(
         comm_unit_size=comm_unit_size,
         reshard_policy=reshard_policy,
         reshard_filter=reshard_filter,
+        keep_non_unit_gathered=keep_non_unit_gathered,
     )
     layers._fsdp_context.set_grad_accum_steps(grad_accum_steps)
     if optimizer is not None:
@@ -201,6 +203,7 @@ def fully_shard(
     comm_unit_size: int | None = None,
     reshard_policy: str = "after_forward",
     reshard_filter: str | Callable[..., bool] = "all",
+    keep_non_unit_gathered: bool = False,
 ) -> paddle.nn.Layer:
     """
     Apply fully sharded data parallel (FSDP) to the given module.
@@ -268,6 +271,12 @@ def fully_shard(
             ``"dense"``: non-expert parameters only. A callable for per-layer
             selection is reserved and not supported yet. Defaults to
             ``"all"``.
+        keep_non_unit_gathered (bool, optional): Manual parallel mode only.
+            Keep parameters outside every FSDP unit (embedding, LM head,
+            small heads) all-gathered from the first forward of a step to
+            its end, as in stage1, so code may read them without calling
+            their owner's forward. Costs one full copy of these parameters.
+            Defaults to False.
 
     Returns:
         module: A wrapper module that applies FSDP to the input module.
@@ -327,4 +336,5 @@ def fully_shard(
             *args,
             reshard_policy=reshard_policy,
             reshard_filter=reshard_filter,
+            keep_non_unit_gathered=keep_non_unit_gathered,
         )

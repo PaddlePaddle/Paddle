@@ -23,6 +23,7 @@ import numpy as np
 
 import paddle
 from paddle.autograd import PyLayer
+from paddle.base.framework import EagerParamBase
 from paddle.distributed import fleet
 from paddle.distributed.fleet.utils.sequence_parallel_utils import (
     is_sequence_parallel_parameter,
@@ -30,6 +31,7 @@ from paddle.distributed.fleet.utils.sequence_parallel_utils import (
 from paddle.distributed.fleet.utils.tensor_fusion_helper import (
     align,
     alignment,
+    copy_param_attrs,
     get_current_device_type,
 )
 from paddle.distributed.flex_checkpoint.dcp.sharded_weight import ShardedWeight
@@ -794,6 +796,7 @@ class FSDPCommManager:
         comm_unit_size=None,
         reshard_policy="after_forward",
         reshard_filter="all",
+        keep_non_unit_gathered=False,
     ):
         if reshard_policy not in self.RESHARD_POLICIES:
             raise ValueError(
@@ -814,6 +817,9 @@ class FSDPCommManager:
         self.enable_overlap = enable_overlap
         self.reshard_policy = reshard_policy
         self.reshard_filter = reshard_filter
+        self.keep_non_unit_gathered = keep_non_unit_gathered
+        # Whether the non-unit params are gathered for the current step.
+        self._non_unit_ready = False
         for group in buffer_manager.buffer_groups:
             group.params_buffer.keep_gathered = self._keep_after_forward(group)
         self.grad_reduce_queue = []
@@ -903,11 +909,50 @@ class FSDPCommManager:
             return self.reshard_policy
         return "after_forward"
 
+    def _keeps_non_unit_gathered(self, group):
+        # keep_non_unit_gathered: params outside every FSDP unit (embedding,
+        # LM head, small heads) stay gathered from the first forward of the
+        # step to its end, as in stage1, so code may read them directly
+        # without calling their owner's forward.
+        return (
+            self.keep_non_unit_gathered
+            and group.fsdp_unit_id is None
+            and not group.keep_whole
+            and group.params_buffer.is_sharded
+            and group.params_buffer.fp8 is None
+        )
+
     def _keep_after_forward(self, group):
+        if self._keeps_non_unit_gathered(group):
+            return True
         return self._reshard_policy_of(group) != "after_forward"
 
     def _keep_after_backward(self, group):
         return self._reshard_policy_of(group) == "after_step"
+
+    def _ensure_non_unit_gathered(self):
+        # On the first forward gather of a step, before any layer runs, so a
+        # reader may use a param before its owner's forward (a draft head
+        # reading the LM head) or without it. Synchronous, outside the
+        # prefetch pipeline; the buffers stay until reset_params_buffer_status.
+        if not self.keep_non_unit_gathered or self._non_unit_ready:
+            return
+        self._non_unit_ready = True
+        params = [
+            param
+            for group in self.buffer_manager.buffer_groups
+            if self._keeps_non_unit_gathered(group)
+            for param in group.params
+        ]
+        if not params:
+            return
+        enable_overlap = self.enable_overlap
+        self.enable_overlap = False
+        try:
+            with paddle.no_grad():
+                self.all_gather_params(params)
+        finally:
+            self.enable_overlap = enable_overlap
 
     def _count_gathered(self, params_buffer):
         # A sharded buffer just got its full storage allocated. fp8 and kept
@@ -1066,6 +1111,8 @@ class FSDPCommManager:
     def all_gather_params(self, params, is_backward=False):
         if len(params) == 0:
             return
+        if not is_backward:
+            self._ensure_non_unit_gathered()
 
         req_gids = []
         for param in params:
@@ -1199,6 +1246,9 @@ class FSDPCommManager:
         for param in params:
             gid = self.buffer_manager.param_to_buffer_id.get(param.name)
             group = self.buffer_manager.buffer_groups[gid]
+            if self._keeps_non_unit_gathered(group):
+                # Freed by reset_params_buffer_status at the end of the step.
+                continue
             stop_gradient = param.stop_gradient
             _shape = param.shape
             param._clear_data()
@@ -1214,6 +1264,7 @@ class FSDPCommManager:
 
     def reset_params_buffer_status(self):
         self._last_backward_unit_id = None
+        self._non_unit_ready = False
         for group in self.buffer_manager.buffer_groups:
             params_buffer = group.params_buffer
             if params_buffer.fp8 is not None:
@@ -1612,6 +1663,7 @@ class FullyShardFusion:
         comm_unit_size=None,
         reshard_policy="after_forward",
         reshard_filter="all",
+        keep_non_unit_gathered=False,
     ):
         self.model = model
         self.mp_policy = mp_policy
@@ -1631,6 +1683,7 @@ class FullyShardFusion:
             comm_unit_size=comm_unit_size,
             reshard_policy=reshard_policy,
             reshard_filter=reshard_filter,
+            keep_non_unit_gathered=keep_non_unit_gathered,
         )
         self.register_tensor_fusion_hooks(self.model)
         register_fsdp_context(self)
@@ -1638,6 +1691,8 @@ class FullyShardFusion:
         self._shard_descs = {}
         # Keep-whole param name -> how its per-param optimizer state maps onto the checkpoint
         self._whole_state_descs = {}
+        # Param name -> stand-in clip_params_grads hands out for replicated grads on rank > 0
+        self._clip_slice_params = {}
         # Redirect the model's own API; the original stays as our description base.
         self._model_sharded_state_dict = self.model.sharded_state_dict
         self.model.sharded_state_dict = self.sharded_state_dict
@@ -2062,8 +2117,19 @@ class FullyShardFusion:
         finally:
             cm.shard_params(params)
             for gid in was_freed:
-                params_buffer = bm.buffer_groups[gid].params_buffer
+                group = bm.buffer_groups[gid]
+                params_buffer = group.params_buffer
                 if params_buffer.status != BufferState.FREED:
+                    if cm._keeps_non_unit_gathered(group):
+                        # shard_params left these bound; unbind before freeing,
+                        # and let the next forward gather them again.
+                        cm._non_unit_ready = False
+                        for param in group.params:
+                            stop_gradient = param.stop_gradient
+                            _shape = param.shape
+                            param._clear_data()
+                            param.stop_gradient = stop_gradient
+                            param.get_tensor()._set_dims(_shape)
                     cm._free_params_buffer(params_buffer)
 
     def optimizer_sharded_state_dict(self, optimizer):
@@ -2305,6 +2371,59 @@ class FullyShardFusion:
         if ops:
             for w in paddle.distributed.batch_isend_irecv(ops):
                 w.wait()
+
+    def _clip_slice_param(self, param, group):
+        """``param`` itself, or a stand-in when this rank's copy must not count.
+
+        A replicated grads buffer is counted in the global norm by rank 0 only
+        (see ``_set_clip_attrs``). The flag goes on a stand-in named and tagged
+        like the stage1 sharding slice param, not on the model param, which
+        other code reads."""
+        grads_buffer = group.grads_buffer
+        if (
+            grads_buffer.is_sharded
+            or group.whole_owner_rank is not None
+            or group.fsdp_group.nranks <= 1
+            or paddle.distributed.get_rank(group.fsdp_group) == 0
+        ):
+            return param
+        cache = self._clip_slice_params
+        stand_in = cache.get(param.name)
+        if stand_in is None:
+            stand_in = EagerParamBase(shape=[1], dtype=param.dtype)
+            stand_in.name = param.name
+            copy_param_attrs(param, stand_in)
+            stand_in.is_firstly_shared = False
+            cache[param.name] = stand_in
+        return stand_in
+
+    @paddle.autograd.no_grad()
+    def clip_params_grads(self):
+        """Per-param ``(param, grad)`` of every fused (non keep_whole) grads buffer.
+
+        The grad is this rank's slice of the param inside the fused grads buffer
+        (a view, so an in-place scale reaches the buffer the optimizer steps on).
+        It gives a clipper that groups params by name the same input as the
+        stage1 sharding optimizer, whose slice params keep the param names.
+        Call after ``comm_sync_and_reset_status``; keep_whole params come from
+        ``whole_params_grads``."""
+        out = []
+        for group in self.buffer_manager.buffer_groups:
+            if group.keep_whole or group.grads_buffer is None:
+                continue
+            if group.params_buffer.data_buffer.stop_gradient:
+                continue
+            grads_buffer = group.grads_buffer
+            for param in group.params:
+                if not param.trainable:
+                    continue
+                shard = grads_buffer.param_shard(param)
+                if shard is None:
+                    continue
+                lo, hi, _ = shard
+                grad = _view_slice(grads_buffer.data_buffer, lo, hi)
+                out.append((self._clip_slice_param(param, group), grad))
+        return out
 
     @paddle.autograd.no_grad()
     def whole_params_grads(self):
