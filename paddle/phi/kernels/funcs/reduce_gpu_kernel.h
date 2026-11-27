@@ -26,6 +26,7 @@
 #include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/dense_tensor_iterator.h"
 #include "paddle/phi/kernels/funcs/index_elementwise.cu.h"
+#include "paddle/phi/kernels/funcs/reduce_view_iterator.h"
 #include "paddle/phi/kernels/funcs/scatter.cu.h"
 #include "paddle/phi/kernels/gpu/reduce.h"
 #include "paddle/phi/kernels/legacy/reduce_max_kernel.h"
@@ -1464,6 +1465,32 @@ void ReduceGpuKernel(const KPDevice& dev_ctx,
       dev_ctx, iter, reducer, ident);
 
   return;
+}
+
+// Sums the contiguous non-empty `x`, read as `x_shape`, over the non-negative
+// `reduce_dims` into `y`.
+// ReduceGpuKernel views `x` through its DDim; `x_shape` here may have more
+// dims than DDim::kMaxRank, e.g. tile_grad's [repeat_i, x_i] view.
+template <typename Tx, typename Ty>
+void ReduceSumGpuKernelWithShape(const KPDevice& dev_ctx,
+                                 const phi::DenseTensor& x,
+                                 phi::DenseTensor* y,
+                                 const std::vector<int64_t>& x_shape,
+                                 const std::vector<int64_t>& reduce_dims) {
+  dev_ctx.Alloc<Ty>(y);
+  std::vector<int64_t> out_shape = x_shape;
+  for (int64_t d : reduce_dims) {
+    out_shape[d] = 1;
+  }
+  DenseTensorIterator iter(ReduceViewIterator(*y, out_shape, x, x_shape));
+
+  using MPType = typename MPTypeTrait<Ty>::Type;
+  using SumOp = kps::SumOps<Tx, MPType, Ty>;
+  constexpr int kVecSize = 4;
+  // Same input vector width as ReduceGpuKernel uses for sum.
+  constexpr int kInputVecSize = sizeof(Tx) == 2 ? 8 : kVecSize;
+  GPUReduceScheduler<Tx, Ty, kVecSize, kInputVecSize, SumOp>(
+      dev_ctx, iter, SumOp{}, Tx{0});
 }
 }  // namespace funcs
 }  // namespace phi

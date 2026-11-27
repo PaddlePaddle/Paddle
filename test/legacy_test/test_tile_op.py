@@ -658,6 +658,75 @@ class TestTileAlias(unittest.TestCase):
             np.testing.assert_array_equal(out_ref.numpy(), out_both.numpy())
 
 
+def tile_grad_ref(grad, ori_shape, repeat_times):
+    rank = max(len(ori_shape), len(repeat_times))
+    full = [1] * (rank - len(ori_shape)) + list(ori_shape)
+    reps = [1] * (rank - len(repeat_times)) + list(repeat_times)
+    view = grad.reshape([d for r, f in zip(reps, full) for d in (r, f)])
+    return view.sum(axis=tuple(range(0, 2 * len(full), 2))).reshape(ori_shape)
+
+
+@unittest.skipIf(
+    not (core.is_compiled_with_cuda() or is_custom_device()),
+    "tile_grad for float8 is only registered on GPU",
+)
+class TestTileGradFP8(unittest.TestCase):
+    # (ori_shape, repeat_times), at most 6 copies per element
+    cases = [
+        ([4, 5], [2, 3]),
+        ([2, 4, 3], [2, 1, 2]),
+        ([2, 3], [3, 1, 2]),
+    ]
+
+    def test_fp8_backward(self):
+        place = get_device_place()
+        with base.dygraph.guard(place):
+            for dtype in ['float8_e4m3fn', 'float8_e5m2']:
+                for ori_shape, repeat_times in self.cases:
+                    x = paddle.zeros(ori_shape).astype(dtype)
+                    x.stop_gradient = False
+                    out = paddle.tile(x, repeat_times)
+                    # Sums of at most 6 values in {-1, 0, 1} are exact in
+                    # both float8 formats.
+                    grad_np = np.random.randint(-1, 2, size=out.shape).astype(
+                        "float32"
+                    )
+                    out.backward(paddle.to_tensor(grad_np).astype(dtype))
+                    np.testing.assert_array_equal(
+                        x.grad.astype("float32").numpy(),
+                        tile_grad_ref(grad_np, ori_shape, repeat_times),
+                        err_msg=f"{dtype}, {ori_shape}, {repeat_times}",
+                    )
+
+
+class TestTileGradHighRank(unittest.TestCase):
+    cases = [
+        # The interleaved [repeat, size] view exceeds DDim::kMaxRank(9).
+        ([2, 2, 2, 2, 2, 2, 2], [2, 2, 2, 2, 2, 2, 2]),
+        ([3, 2, 1, 2, 2, 3], [2, 2, 3, 2, 1, 2, 2]),
+        # Leading unsqueezed dims with repeat 1.
+        ([4], [1, 3, 2]),
+        ([4], [1, 3, 1]),
+        ([2, 3], [1, 2, 1, 1]),
+    ]
+
+    def test_high_rank_backward(self):
+        for place in get_places():
+            with base.dygraph.guard(place):
+                for ori_shape, repeat_times in self.cases:
+                    x = paddle.zeros(ori_shape, dtype="float64")
+                    x.stop_gradient = False
+                    out = paddle.tile(x, repeat_times)
+                    grad_np = np.random.random(out.shape)
+                    out.backward(paddle.to_tensor(grad_np))
+                    np.testing.assert_allclose(
+                        x.grad.numpy(),
+                        tile_grad_ref(grad_np, ori_shape, repeat_times),
+                        rtol=1e-12,
+                        err_msg=f"{place}, {ori_shape}, {repeat_times}",
+                    )
+
+
 if __name__ == "__main__":
     paddle.enable_static()
     unittest.main()
