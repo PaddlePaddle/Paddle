@@ -1068,6 +1068,7 @@ class TestReshardPolicy(unittest.TestCase):
                 self.assertEqual(
                     groups[gid].params_buffer.status, fsf.BufferState.USING
                 )
+
     def test_non_unit_gather_without_non_unit_groups(self):
         cm = _make_comm_manager(_LAYOUT, keep_non_unit_gathered=True)
         cm.all_gather_params = mock.Mock()
