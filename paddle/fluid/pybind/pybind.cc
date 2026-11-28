@@ -3742,6 +3742,8 @@ All parameter, weight, gradient are variables in Paddle.
     }
     platform::EmptyCache();
   });
+  m.def("cuda_pinned_empty_cache",
+        [] { memory::Release(phi::GPUPinnedPlace()); });
   m.def(
       "get_device_properties",
       [](int id) -> const gpuDeviceProp & {
