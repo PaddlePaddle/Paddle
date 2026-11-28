@@ -410,6 +410,35 @@ jobs:
           cp build/coverage_files/* /home/data/cfs/coverage/${PR_ID}/${COMMIT_ID}
           '
 
+      # Best effort: a failed upload does not fail the coverage check.
+      - name: Upload full coverage to BOS
+        if: always()
+        continue-on-error: true
+        env:
+          home_path: ${{ github.workspace }}/..
+          bos_file: ${{ github.workspace }}/../bos_retry/BosClient.py
+        run: |
+          docker exec -t ${{ env.container_name }} /bin/bash -c '
+          source ${{ github.workspace }}/../../../proxy
+          python -m pip install -q bce-python-sdk==0.8.74
+          export AK=paddle
+          export SK=paddle
+          if [ ! -f "${{ env.bos_file }}" ]; then
+            wget -q --no-proxy -O ${{ env.home_path }}/bos_retry.tar.gz https://xly-devops.bj.bcebos.com/home/bos_retry.tar.gz --no-check-certificate
+            mkdir -p ${{ env.home_path }}/bos_retry
+            tar xf ${{ env.home_path }}/bos_retry.tar.gz -C ${{ env.home_path }}/bos_retry
+          fi
+          cd /paddle/build
+          for f in coverage-full.info python-coverage-full.info python-coverage.xml; do
+            if [ -f "$f" ]; then
+              python ${{ env.bos_file }} $f paddle-github-action/PR/coverage/${PR_ID}/${COMMIT_ID}
+              echo "https://paddle-github-action.bj.bcebos.com/PR/coverage/${PR_ID}/${COMMIT_ID}/$f"
+            else
+              echo "$f not found, skip"
+            fi
+          done
+          '
+
       - name: Upload coverage report
         uses: codecov/codecov-action@v6
         with:
