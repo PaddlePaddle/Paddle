@@ -35,7 +35,7 @@ class PADDLE_API PyReader : public framework::FileReader {
       const std::vector<framework::proto::VarType::Type>& var_types,
       const std::vector<bool>& need_check_feed);
 
-  void ReadNext(phi::TensorArray* out) override;
+  bool ReadNext(phi::TensorArray* out) override;
 
   ~PyReader();
 
